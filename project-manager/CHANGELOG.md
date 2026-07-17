@@ -4,6 +4,29 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-17 (sesi keempat puluh sembilan)
+
+### Added — AI Context layer (opsi A)
+
+* `context/README.md` — tujuan, struktur, batas keras antar file, cara pakai agent.
+* `context/ctx-project.md` — Project OS, state, rules, ADR.
+* `context/ctx-business.md` — Business + Product + User (gap opsi A ditutup tanpa file baru).
+* `context/ctx-domain.md` — BC, shared types, boundary rules.
+* `context/ctx-architecture.md` — layer, ACL, jobs, auth arch, realtime, DB strategy.
+* `context/ctx-technical-context.md` — stack, env, Prisma, Better Auth, deploy/CI.
+* `context/ctx-development.md` — DX, perintah, **aturan coding/konvensi**.
+* `context/ctx-implementation.md` — pola implementasi di `apps/web` / `domains/`.
+* `context/ctx-design.md` — `design/` + pointer UX (`04-ux/`).
+
+### Changed
+
+* `AGENTS.md` — `context/` aktif (bukan “direncanakan”); mapping task → `ctx-*` + baseline; step sesi baca `context/`.
+* `README.md` — pointer AI Context ke `context/README.md`.
+* `PROJECT_STATE.md` — scaffold selesai; next focus M8 Development.
+* `CONVERSATIONS.md` — log keputusan opsi A.
+
+---
+
 ## 2026-07-17 (sesi keempat puluh delapan)
 
 ### Added — Official agent skills (vendor)
@@ -34,7 +57,7 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ### Notes
 
-* Folder `context/` belum dibuat/diisi — menunggu eksekusi next task (isi sebagai indeks, bukan duplikasi baseline).
+* Folder `context/` kemudian di-scaffold pada sesi keempat puluh sembilan (opsi A).
 
 ---
 

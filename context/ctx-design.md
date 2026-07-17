@@ -1,0 +1,62 @@
+# Context — Design (+ UX)
+
+Indeks **desain operasional** (`design/`) dan **pointer ke UX Planning** (`04-ux/`).  
+Opsi A: UX digabung di file ini (bukan `ctx-ux.md` terpisah).  
+Product/roles/persona → `ctx-business.md`.
+
+---
+
+## Baca dulu
+
+### Design (handoff & visual)
+
+| Dokumen                                                            | Kapan                                    |
+| ------------------------------------------------------------------ | ---------------------------------------- |
+| [`../design/README.md`](../design/README.md)                       | Orientasi folder design                  |
+| [`../design/DESIGN_OVERVIEW.md`](../design/DESIGN_OVERVIEW.md)     | Product UX Map + Design System Blueprint |
+| [`../design/DESIGN_BRIEF.md`](../design/DESIGN_BRIEF.md)           | Brief lengkap                            |
+| [`../design/DESIGN_ONEPAGER.html`](../design/DESIGN_ONEPAGER.html) | Ringkas untuk handoff                    |
+
+### UX Planning Baseline — `04-ux/`
+
+| Dokumen                                                                                 | Topik                             |
+| --------------------------------------------------------------------------------------- | --------------------------------- |
+| [`../product-discovery/04-ux/README.md`](../product-discovery/04-ux/README.md)          | Indeks UX Baseline v1.0 (ADR-013) |
+| [`information-architecture.md`](../product-discovery/04-ux/information-architecture.md) | IA / struktur informasi           |
+| [`user-flows.md`](../product-discovery/04-ux/user-flows.md)                             | Alur solusi                       |
+| [`navigation-patterns.md`](../product-discovery/04-ux/navigation-patterns.md)           | Navigasi                          |
+| [`key-screen-patterns.md`](../product-discovery/04-ux/key-screen-patterns.md)           | Pola layar kritis                 |
+| [`ux-principles.md`](../product-discovery/04-ux/ux-principles.md)                       | Prinsip UX                        |
+
+---
+
+## Aturan operasional
+
+1. `design/` **tidak** menggantikan `product-discovery/04-ux/` — UX detail tetap di baseline.
+2. Perubahan di `design/` untuk handoff visual **tidak wajib** masuk CHANGELOG development (lihat aturan project); perubahan UX Baseline tetap lewat proses dokumen + ADR bila material.
+3. Wireframe detail di fase M8: **terbatas** — hanya jika dibutuhkan untuk implementasi layar (lihat `PROJECT_STATE` Active Conversation Mode).
+4. Status konten & roles visual harus selaras `roles-permissions.md` (lihat `ctx-business.md`).
+5. Persona di UI copy / contoh: Raka, Maya, Sinta, Dimas, Lara.
+6. Jangan mengarang IA, flow, atau pola navigasi baru yang bertentangan dengan `04-ux/` tanpa ADR / update baseline.
+
+---
+
+## Mapping task UI → baca
+
+| Task                                     | Baca                                |
+| ---------------------------------------- | ----------------------------------- |
+| Susun halaman / route sesuai menu        | `information-architecture.md`       |
+| Alur publish / approve / connect account | `user-flows.md`                     |
+| Sidebar, navigasi, workspace switch      | `navigation-patterns.md`            |
+| Pola layar editor, inbox, analytics      | `key-screen-patterns.md`            |
+| Token / komponen Figma / brief           | `design/DESIGN_OVERVIEW.md` + brief |
+
+Implementasi React mengikuti `ctx-implementation.md` + komponen yang sudah ada di app (mis. shadcn bila dipakai).
+
+---
+
+## Related context
+
+- Roles, MVP, persona → `ctx-business.md`
+- Pola kode UI entry → `ctx-implementation.md`
+- Project mode (wireframe boleh/tidak) → `ctx-project.md` + `PROJECT_STATE.md`

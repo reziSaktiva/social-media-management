@@ -18,6 +18,18 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-07-17 — AI Context opsi A (struktur + coding rules)
+
+**Phase:** M7 complete → siap M8 Development
+
+**Summary:** Sebelum scaffold `context/`, dievaluasi apakah 8 file `ctx-*` sudah sesuai kebutuhan. Disepakati **opsi A**: pertahankan struktur screenshot; Product+User masuk `ctx-business`; UX masuk `ctx-design`; aturan coding di `ctx-development` dan pola fitur di `ctx-implementation`. Scaffold kemudian dieksekusi sebagai indeks + aturan operasional (bukan duplikasi baseline).
+
+**Key Insight / Decision:** Jangan tambah `ctx-product` / `ctx-ux` / `ctx-coding-rules` terpisah. Batas keras antar file ditulis di `context/README.md` agar architecture / technical / development / implementation tidak overlap.
+
+**Impact:** Folder `context/` dibuat; `AGENTS.md`, `README.md`, `PROJECT_STATE.md`, `CHANGELOG.md` diupdate. Next: M8 Development.
+
+---
+
 ## 2026-07-14 — Project Overview & Gambaran Folder Structure
 
 **Phase:** Phase 2 — UX Planning (M4)
