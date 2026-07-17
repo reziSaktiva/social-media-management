@@ -1,0 +1,10 @@
+/** App-level error utilities. */
+export class AppError extends Error {
+  constructor(
+    message: string,
+    readonly code: string = "APP_ERROR",
+  ) {
+    super(message);
+    this.name = "AppError";
+  }
+}

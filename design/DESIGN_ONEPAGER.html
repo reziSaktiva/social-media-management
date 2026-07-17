@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>Design One-Pager — Social Media Management</title>
+<style>
+  @page { size: A4; margin: 12mm 12mm 11mm 12mm; }
+  :root {
+    --ink: #1a1f24;
+    --muted: #5a6570;
+    --line: #d5dce3;
+    --surface: #f3f6f8;
+    --accent: #0f3d4c;
+    --accent-soft: #e8f1f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font: 8.4pt/1.32 "IBM Plex Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    border-bottom: 2.5px solid var(--accent);
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+  }
+  .brand {
+    font-size: 16pt;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+    line-height: 1.1;
+  }
+  .brand small {
+    display: block;
+    margin-top: 2px;
+    font-size: 8.5pt;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0;
+  }
+  .meta {
+    text-align: right;
+    font-size: 7.8pt;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+  .meta strong { color: var(--ink); font-weight: 650; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 10px 14px;
+  }
+  .full { grid-column: 1 / -1; }
+  h2 {
+    margin: 0 0 5px;
+    font-size: 8.6pt;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  p { margin: 0 0 5px; }
+  .lead {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding: 7px 9px;
+    margin-bottom: 2px;
+  }
+  .lead strong { color: var(--accent); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 7.7pt;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 3px 5px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--surface); font-weight: 650; }
+  ul {
+    margin: 0;
+    padding-left: 1.1em;
+  }
+  li { margin: 1px 0; }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .box {
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 6px 7px;
+  }
+  .box.lock { background: #f7fafb; }
+  .box.open { background: #fffdf8; }
+  .cycle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 4px 0 0;
+  }
+  .cycle span {
+    background: var(--accent);
+    color: #fff;
+    padding: 2px 7px;
+    font-size: 7.5pt;
+    font-weight: 600;
+  }
+  .cycle i {
+    font-style: normal;
+    color: var(--muted);
+    align-self: center;
+    font-size: 8pt;
+  }
+  .nav {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .nav span {
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 2px 6px;
+    font-weight: 650;
+    font-size: 7.5pt;
+  }
+  footer {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--line);
+    font-size: 7.4pt;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  code {
+    font-family: "IBM Plex Mono", Menlo, Consolas, monospace;
+    font-size: 7.3pt;
+    background: var(--surface);
+    padding: 0 2px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      Social Media Management
+      <small>Design One-Pager · Executive Kickoff</small>
+    </div>
+    <div class="meta">
+      <strong>v1.0.0</strong> · 17 July 2026<br />
+      Audience: Product / UX / UI / Design System<br />
+      Detail lengkap: <em>Design Brief PDF</em>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="full lead">
+      <p>
+        Platform web untuk siklus konten marketing:
+        <strong>Draft → Schedule → Publish → Engage → Analyze</strong>
+        dalam satu dashboard. Analogi: alternatif modern Buffer —
+        sederhana, cepat, dapat dipercaya. Integrasi sosial via Outstand
+        (desain fokus ke connected accounts & status publish, bukan native API).
+      </p>
+      <div class="cycle">
+        <span>Draft</span><i>→</i>
+        <span>Schedule</span><i>→</i>
+        <span>Publish</span><i>→</i>
+        <span>Engage</span><i>→</i>
+        <span>Analyze</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Personas (satu UI, dua mode)</h2>
+      <table>
+        <tr><th>Persona</th><th>Mode</th><th>Butuh dari UI</th></tr>
+        <tr><td><strong>Maya</strong> — Manager</td><td>Visibilitas</td><td>Home, Calendar overview, Analytics</td></tr>
+        <tr><td><strong>Raka</strong> — SMM (P0)</td><td>Eksekusi</td><td>Publish, Draft Editor, Queue, Inbox</td></tr>
+        <tr><td><strong>Sinta</strong> — Creator</td><td>Produksi</td><td>Drafts + status handoff</td></tr>
+        <tr><td><strong>Dimas / Lara</strong></td><td>Secondary</td><td>Workspace switch / alur lean</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h2>Primary nav (urutan wajib)</h2>
+      <div class="nav">
+        <span>1 Home</span>
+        <span>2 Publish</span>
+        <span>3 Engage</span>
+        <span>4 Analyze</span>
+        <span>5 Start Page</span>
+      </div>
+      <p style="margin-top:6px">Publish default = <strong>Calendar</strong>. Badge unread hanya di Engage.</p>
+      <p><strong>Bukan</strong> primary nav: AI Assistant · Media Library · Approval Workflow.</p>
+      <p>AI hanya <strong>inline di Draft Editor</strong> — tidak ada menu AI.</p>
+    </section>
+
+    <section class="full">
+      <h2>8 layar kritis (prioritas Figma)</h2>
+      <table>
+        <tr>
+          <th>ID</th><th>Layar</th><th>Fokus desain</th>
+          <th>ID</th><th>Layar</th><th>Fokus desain</th>
+        </tr>
+        <tr>
+          <td>KSP-01</td><td>Home</td><td>Status scannable</td>
+          <td>KSP-05</td><td>Draft Editor</td><td>Caption, AI, media, trust</td>
+        </tr>
+        <tr>
+          <td>KSP-02</td><td>Calendar</td><td>Default Publish; Failed mencolok</td>
+          <td>KSP-06</td><td>Inbox</td><td>Triage + reply cepat</td>
+        </tr>
+        <tr>
+          <td>KSP-03</td><td>Queue</td><td>Antrean & gap</td>
+          <td>KSP-07</td><td>Analyze</td><td>Snapshot, bukan BI penuh</td>
+        </tr>
+        <tr>
+          <td>KSP-04</td><td>Drafts</td><td>List + filter status</td>
+          <td>KSP-08</td><td>Accounts</td><td>Connect / reconnect jelas</td>
+        </tr>
+      </table>
+    </section>
+
+    <section class="full">
+      <h2>Content status (visual wajib konsisten)</h2>
+      <table>
+        <tr>
+          <th>Draft</th><th>In Review</th><th>Ready to Schedule</th>
+          <th>Scheduled</th><th>Published</th><th>Failed</th>
+        </tr>
+        <tr>
+          <td>Netral</td>
+          <td>Koordinasi ringan</td>
+          <td>Positif ringan</td>
+          <td>Trust / confirmed</td>
+          <td>Success</td>
+          <td><strong>Highest urgency</strong> — jangan samar</td>
+        </tr>
+      </table>
+    </section>
+
+    <section class="full">
+      <h2>Dikunci vs terbuka</h2>
+      <div class="two-col">
+        <div class="box lock">
+          <strong>Dikunci</strong> — jangan diubah tanpa diskusi
+          <ul>
+            <li>Urutan primary nav & siklus konten</li>
+            <li>Dua mode Maya/Raka dalam satu UI</li>
+            <li>6 status + treatment <code>Failed</code></li>
+            <li>AI hanya inline di editor</li>
+            <li>Tidak ada Approval Workflow di MVP</li>
+            <li>UI copy: Bahasa Indonesia</li>
+          </ul>
+        </div>
+        <div class="box open">
+          <strong>Terbuka</strong> — eksplorasi designer (DS-O01–O07)
+          <ul>
+            <li>Brand / wordmark & warna primer</li>
+            <li>Type pairing (display + UI sans)</li>
+            <li>Light-only MVP vs dark (preferensi: light)</li>
+            <li>Illustration empty state</li>
+            <li>Kekuatan warna platform di Calendar</li>
+            <li>Detail komponen, motion, polish visual</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="full">
+      <h2>Filter keputusan visual (ringkas)</h2>
+      <table>
+        <tr>
+          <td>Clarity &gt; decoration</td>
+          <td>Trust terlihat (akun, jadwal, Failed)</td>
+          <td>Status sebelum chrome UI</td>
+          <td>Satu pekerjaan per view</td>
+          <td>AI tenang sampai dibutuhkan</td>
+        </tr>
+      </table>
+    </section>
+  </div>
+
+  <footer>
+    <div>Lanjut baca: <strong>Design-Brief-Social-Media-Management.pdf</strong> (detail lengkap + design system blueprint).</div>
+    <div>Jika Figma bentrok dengan keputusan UX yang dikunci → baseline produk yang menang.</div>
+  </footer>
+</body>
+</html>

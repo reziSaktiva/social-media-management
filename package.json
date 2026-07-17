@@ -1,0 +1,51 @@
+{
+  "name": "social-media-management",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --cwd apps/web dev",
+    "build": "bun run --cwd apps/web build",
+    "typecheck": "bun run --cwd apps/web typecheck",
+    "start": "bun run --cwd apps/web start",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "bun run --cwd apps/web db:generate",
+    "db:migrate": "bun run --cwd apps/web db:migrate",
+    "db:deploy": "bun run --cwd apps/web db:deploy",
+    "prepare": "lefthook install"
+  },
+  "lint-staged": {
+    "apps/**/*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "packages/**/*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "{apps,packages}/**/*.{json,css,md}": [
+      "prettier --write"
+    ],
+    "*.{json,md,mjs,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "eslint-config-prettier": "^10.1.8",
+    "lefthook": "^2.1.10",
+    "lint-staged": "^17.0.8",
+    "prettier": "^3.9.5",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  }
+}
