@@ -52,6 +52,8 @@ App: `http://localhost:3000`
 
 ## Documentation
 
+- AI agents (pintu masuk): `AGENTS.md`
 - Project status: `project-manager/PROJECT_STATE.md`
 - Engineering baseline: `product-discovery/06-engineering/`
 - Monorepo layout: `product-discovery/06-engineering/monorepo-setup.md`
+- AI Context (direncanakan): `context/` — lihat Next Tasks di `PROJECT_STATE.md`
