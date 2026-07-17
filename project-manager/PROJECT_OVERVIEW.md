@@ -6,7 +6,7 @@
 | ------------ | ----------------------------------------- |
 | Project Name | Social Media Management *(Working Title)* |
 | Version      | 0.1.0                                     |
-| Status       | Planning                                  |
+| Status       | Active                                    |
 | Owner        | Rezi                                      |
 | Last Updated | 2026-07-17                                |
 

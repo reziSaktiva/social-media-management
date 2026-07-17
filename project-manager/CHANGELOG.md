@@ -4,6 +4,53 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-17 (sesi keempat puluh enam)
+
+### Changed — Prisma 7 datasource config
+
+* `schema.prisma` — hapus `url`/`directUrl` dari datasource (tidak didukung Prisma 7).
+* Tambah `apps/web/prisma.config.ts` — CLI migrate memakai `DIRECT_URL` (DO-D04).
+* `src/lib/prisma/client.ts` — `PrismaClient` via `@prisma/adapter-pg` + pooled `DATABASE_URL`.
+* Generator `prisma-client` → output `src/generated/prisma` (gitignored).
+* Upgrade deps ke Prisma 7.8 + `pg` / `@prisma/adapter-pg`.
+* Update cuplikan di `database-orm.md` agar selaras Prisma 7 (semantik DO-D04 tetap).
+
+### Notes
+
+* Error IDE “`url` is no longer supported in schema files” terselesaikan dengan migrasi ke pola Prisma 7.
+* Verifikasi: `prisma validate`, `typecheck`, `lint`, `build` hijau.
+
+---
+
+## 2026-07-17 (sesi keempat puluh lima)
+
+### Added — M7 Prisma, Better Auth, env, CI (M7 selesai)
+
+* `apps/web/prisma/schema.prisma` — identity_* + domain MVP + `background_jobs`; migrasi `20260717100000_init`.
+* `apps/web/src/lib/prisma/client.ts` — singleton PrismaClient.
+* `apps/web/src/lib/better-auth/auth.ts` — Better Auth + Prisma adapter; `supabase-jwt.ts` (AS-D03).
+* `apps/web/src/lib/supabase/{client,server,middleware}.ts` — stubs Realtime/Storage (DO-D02).
+* `apps/web/src/lib/env.ts` — fail-fast required server vars (EM-D05).
+* `apps/web/.env.example` — katalog env (EM-D04).
+* `.github/workflows/ci.yml` — quality gates CI-D02.
+* Route `/api/auth/[...all]` di-wire ke Better Auth (`toNextJsHandler`).
+
+### Changed
+
+* `apps/web/package.json` — deps Prisma 6.x, better-auth, @supabase/supabase-js, jose; script `db:*` + `postinstall` generate.
+* `README.md` — setup env/migrate; hapus “Remaining M7”.
+* `PROJECT_STATE.md` — Version 1.0.2 → 1.0.3; M7 ✅ Completed; fokus → M8.
+* `PROJECT_OVERVIEW.md` — Status `Planning` → `Active` (hilangkan living-state stale).
+
+### Notes
+
+* Verifikasi: `typecheck`, `lint`, `test`, `format:check`, `build` hijau.
+* Semantik DO-D04 tetap (`DATABASE_URL` pooled + `DIRECT_URL` migrate); di Prisma 7 URL tidak lagi di `schema.prisma` (lihat sesi keempat puluh enam).
+* Email verification sementara off (AS-D04); RLS policies SQL belum di migrasi awal.
+* Belum: initial git commit (menunggu instruksi).
+
+---
+
 ## 2026-07-17 (sesi keempat puluh empat)
 
 ### Added — M7 DX tooling

@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.2      |
+| Version      | 1.0.3      |
 | Status       | Active     |
 | Last Updated | 2026-07-17 |
 
@@ -12,47 +12,43 @@
 
 # Current Status
 
-| Item              | Value                               |
-| ----------------- | ----------------------------------- |
-| Current Phase     | Phase 5 — Repository & Bootstrap    |
-| Current Milestone | M7 — Repository & Bootstrap         |
-| Current Sprint    | Sprint 5                            |
-| Overall Progress  | ~60% (M7)                           |
-| Project Status    | Repository & Bootstrap — Aktif      |
+| Item              | Value                            |
+| ----------------- | -------------------------------- |
+| Current Phase     | Phase 5 — Repository & Bootstrap |
+| Current Milestone | M7 — Repository & Bootstrap      |
+| Current Sprint    | Sprint 5                         |
+| Overall Progress  | 100% (M7)                        |
+| Project Status    | M7 Complete — siap M8            |
 
 ---
 
 # Current Focus
 
-Saat ini project berfokus pada:
+M7 Repository & Bootstrap **selesai**.
 
-* Monorepo inti + DX tooling (ESLint, Prettier, Lefthook, Vitest) selesai.
-* Sisa M7: Prisma + Better Auth skeleton, `apps/web/.env.example`, CI GitHub Actions.
-
-Belum ada implementasi fitur produk (M8).
+* Monorepo + DX tooling, Prisma schema/client, Better Auth skeleton, `.env.example`, dan CI GitHub Actions sudah ada.
+* Langkah berikutnya: **M8 — Development** (implementasi fitur produk).
 
 ---
 
 # Active Conversation Mode
 
-Current Mode: Repository & Bootstrap
+Current Mode: Ready for Development
 
-Current Phase: Phase 5 — Repository & Bootstrap
+Current Phase: Phase 5 complete → siap Phase 6 / M8 Development
 
 Current Objective:
-- Menyelesaikan sisa bootstrap sesuai Engineering Planning Baseline v1.0
-- Setup DX tooling, Prisma, Better Auth skeleton, env template, dan CI
+- Memulai implementasi fitur produk sesuai Architecture & Engineering Baseline
 
 Allowed Actions:
 - Discussion
 - Brainstorm
 - Documentation
-- Bootstrap (inisialisasi repo, config, scaffolding sesuai baseline)
+- Feature Implementation (M8)
 
 Restricted Actions:
-- Feature Implementation (logika bisnis / layar produk)
-- Wireframe Detail
 - Perubahan Architecture / Engineering Baseline tanpa ADR
+- Wireframe Detail (kecuali dibutuhkan untuk implementasi layar)
 
 ---
 
@@ -67,7 +63,7 @@ Restricted Actions:
 | M4 — UX Planning             | ✅ Completed    |
 | M5 — System Architecture     | ✅ Completed    |
 | M6 — Engineering Planning    | ✅ Completed    |
-| M7 — Repository & Bootstrap  | 🟡 In Progress |
+| M7 — Repository & Bootstrap  | ✅ Completed    |
 | M8 — Development             | ⏳ Pending      |
 | M9 — Testing & Release       | ⏳ Pending      |
 
@@ -121,7 +117,7 @@ Restricted Actions:
 * Menyelesaikan dokumentasi `product-discovery/06-engineering/database-orm.md` — Prisma sebagai ORM formal, batas Supabase client (Realtime/Storage), Prisma Migrate, Supavisor pooling, Better Auth Prisma adapter (ADR-031).
 * Menyelesaikan dokumentasi `product-discovery/06-engineering/cicd-pipeline.md` — GitHub Actions quality gates, promosi feature→staging→main, Railway CD, migrate on release (ADR-032).
 * Menyelesaikan dokumentasi `product-discovery/06-engineering/environment-management.md` — katalog env vars, secret native (Railway + `.env.local`), project Cloud `social-media-local` / staging / prod, rencana cloud→self-host (ADR-033).
-* Menyelesaikan dokumentasi `product-discovery/06-engineering/dx-tooling.md` — ESLint + Prettier, Lefthook + lint-staged, Vitest, script workspace & local setup (ADR-034).
+* Menyelesaikan dokumentasi `product-discovery/06-engineering/dx-tooling.md` — ESLint + Prettier, Lefthook + Vitest, script workspace & local setup (ADR-034).
 * Menyelesaikan dokumentasi `product-discovery/06-engineering/dependency-strategy.md` — caret ranges, lockfile root, penempatan dep, aturan shared package, update manual (ADR-035).
 * Menyelesaikan seluruh 8 dokumen M6 Engineering Planning.
 * Menyelesaikan Engineering Planning Review — 6 inkonsistensi ditemukan dan diperbaiki (ENG-REVIEW-01 s/d ENG-REVIEW-06).
@@ -131,28 +127,36 @@ Restricted Actions:
 * Menetapkan lokasi env M7: `apps/web/.env.example` + `apps/web/.env.local` (EM-D04 dikunci di `environment-management.md`).
 * **M7 DX tooling:** ESLint + Prettier (root), Lefthook + lint-staged (`prepare`), Vitest di root + smoke test `@social/shared`; script root sesuai DX-D04; `git init` di root (branch `main`); verifikasi `lint` / `format:check` / `test` / `typecheck` hijau.
 * DX-D06 / DX-D07 dikunci di `dx-tooling.md` (Vitest config di root; Lefthook via `prepare`).
+* **M7 Prisma + Auth + env + CI (selesai):**
+  * `apps/web/prisma/schema.prisma` — identity_* (Better Auth) + tabel domain MVP + `background_jobs`; migrasi awal `20260717100000_init`.
+  * Prisma Client singleton (`src/lib/prisma/client.ts`); Prisma **7.x** — migrate via `prisma.config.ts` (`DIRECT_URL`), runtime via `@prisma/adapter-pg` (`DATABASE_URL`) (DO-D04).
+  * Better Auth skeleton (`src/lib/better-auth/auth.ts`) + route `/api/auth/[...all]`; JWT Realtime helper (AS-D03); Supabase client stubs (Realtime/Storage only).
+  * Env fail-fast (`src/lib/env.ts`) + `apps/web/.env.example` (EM-D04/EM-D05).
+  * `.github/workflows/ci.yml` — gates CI-D02 (install → prisma generate/validate → typecheck → lint → test).
 
 ---
 
 # In Progress
 
-* Repository & Bootstrap (M7) — monorepo + DX selesai; Prisma / Auth / env template / CI belum.
+* Tidak ada — M7 selesai.
 
 ---
 
 # Next Tasks
 
-* Bootstrap Prisma schema/client dan skeleton Better Auth sesuai `database-orm.md` / `auth-strategy.md`.
-* Menyiapkan `apps/web/.env.example` dan CI GitHub Actions.
-* (Opsional) rapikan inkonsistensi `PROJECT_OVERVIEW.md` Status: Planning vs Phase 5 living state.
+* **M8 — Development:** mulai fitur produk (auth flows UI, workspace onboarding, publishing MVP, dll.) sesuai baseline.
+* Buat project Supabase Cloud `social-media-local` dan jalankan `bun run db:migrate` terhadap `.env.local`.
+* (Opsional) initial git commit — menunggu instruksi eksplisit.
+* (Opsional) pilih transactional email provider (AS-D04) saat butuh verification / password reset.
 
 ---
 
 # Known Issues
 
-* **Dependency terbuka — Transactional Email Provider.** Password reset & email verification (Better Auth) membutuhkan email provider yang belum ditetapkan (kandidat: Resend, Postmark, AWS SES, SMTP Supabase). Dicatat di `auth-strategy.md` (AS-D04). Disarankan diputuskan bersamaan dengan kebutuhan email notifikasi lain. Tidak memblokir bootstrap M7.
-* **Next.js 16 middleware deprecation warning.** Baseline masih memakai `middleware.ts`; evaluasi migrasi ke `proxy` belakangan jika Next menstabilkan API pengganti — tidak memblokir scaffold.
+* **Dependency terbuka — Transactional Email Provider.** Password reset & email verification (Better Auth) membutuhkan email provider yang belum ditetapkan (kandidat: Resend, Postmark, AWS SES, SMTP Supabase). Dicatat di `auth-strategy.md` (AS-D04). `requireEmailVerification` dinonaktifkan sementara di skeleton. Tidak memblokir M8 awal.
+* **Next.js 16 middleware deprecation warning.** Baseline masih memakai `middleware.ts`; evaluasi migrasi ke `proxy` belakangan jika Next menstabilkan API pengganti — tidak memblokir.
 * **Belum ada commit awal.** Repo sudah `git init` (branch `main`); working tree belum di-commit — commit awal menunggu instruksi eksplisit.
+* **RLS SQL policies** belum digenerate di migrasi awal — ditambahkan saat jalur server set `app.current_user_id` diimplementasi (DO-D06).
 
 ---
 
@@ -164,6 +168,7 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* M7 — Prisma **7.x**: URL di `prisma.config.ts` (`DIRECT_URL`) + runtime adapter (`DATABASE_URL`); semantik DO-D04 tetap (2026-07-17).
 * M7 — DX-D06/DX-D07: Vitest di root; Lefthook via `prepare` (2026-07-17).
 * M7 — Lokasi env file: `apps/web/` (EM-D04 dikunci; Architecture README tidak mengatur lokasi env).
 * ADR-025 — System Architecture Baseline v1.0 ditetapkan: product-discovery/05-architecture/ (2026-07-15).
