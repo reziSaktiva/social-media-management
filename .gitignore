@@ -34,3 +34,6 @@ yarn-error.log*
 
 # Bun
 *.bun-build
+
+# Prisma generated client (Prisma 7 output)
+apps/web/src/generated/prisma/

@@ -106,20 +106,34 @@ apps/web/
 
 ## Datasource & Generator (acuan)
 
+Prisma **7+**: URL koneksi tidak lagi di `schema.prisma`. Semantik DO-D04 tetap sama — dipisah antara CLI migrate dan runtime client.
+
 ```prisma
 // apps/web/prisma/schema.prisma
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")   // pooled (Supavisor) — runtime
-  directUrl = env("DIRECT_URL")     // direct — migrate & introspect
+  provider = "postgresql"
 }
 ```
 
-> Acuan struktur, bukan kode final. Model tabel mengikuti `database-strategy.md` dan di-bootstrap pada M7.
+```ts
+// apps/web/prisma.config.ts — CLI migrate / introspect
+datasource: {
+  url: env("DIRECT_URL"), // direct/session — bukan pooled
+}
+```
+
+```ts
+// apps/web/src/lib/prisma/client.ts — runtime
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+export const prisma = new PrismaClient({ adapter }); // pooled Supavisor
+```
+
+> Acuan struktur. Model tabel mengikuti `database-strategy.md`.
 
 ## Prisma Client Lifecycle
 

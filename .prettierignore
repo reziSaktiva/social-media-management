@@ -9,3 +9,4 @@ project-manager
 design
 .agents
 apps/web/next-env.d.ts
+apps/web/src/generated/**

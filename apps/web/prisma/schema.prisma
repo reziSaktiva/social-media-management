@@ -1,0 +1,455 @@
+// Prisma schema — Social Media Management
+// Tables: identity_* (Better Auth) + domain MVP + background_jobs
+// Source: product-discovery/05-architecture/database-strategy.md
+// ORM strategy: product-discovery/06-engineering/database-orm.md (DO-D01–D05)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Connection URLs live in prisma.config.ts (Prisma 7+).
+  // Runtime pooled URL → PrismaClient adapter (DATABASE_URL).
+  // Migrate/introspect → prisma.config.ts datasource.url (DIRECT_URL).
+}
+
+// ─────────────────────────────────────────────
+// BC-01 — Identity (Better Auth / AS-D01, DO-D05)
+// Prisma model names match Better Auth defaults;
+// @@map applies identity_* table prefix (DB-D04).
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  @@unique([email])
+  @@map("identity_user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("identity_session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("identity_account")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("identity_verification")
+}
+
+// ─────────────────────────────────────────────
+// BC-02 — Workspace
+// ─────────────────────────────────────────────
+
+model Workspace {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  slug            String   @unique
+  ownerId         String   @map("owner_id")
+  plan            String   @default("free")
+  brandName       String?  @map("brand_name")
+  brandTone       String?  @map("brand_tone")
+  brandGuidelines String?  @map("brand_guidelines")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  members           WorkspaceMember[]
+  connectedAccounts WorkspaceConnectedAccount[]
+  posts             PublishingPost[]
+  queueSlots        PublishingQueueSlot[]
+  aiRequests        AiRequest[]
+  inboxItems        EngagementInboxItem[]
+  analyticsSnapshots AnalyticsWorkspaceSnapshot[]
+  startPages        StartPagePage[]
+  mediaItems        MediaItem[]
+  notifications     Notification[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String    @map("workspace_id") @db.Uuid
+  userId      String    @map("user_id")
+  role        String
+  status      String    @default("pending")
+  invitedAt   DateTime  @default(now()) @map("invited_at") @db.Timestamptz(6)
+  joinedAt    DateTime? @map("joined_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@map("workspace_members")
+}
+
+model WorkspaceConnectedAccount {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId       String   @map("workspace_id") @db.Uuid
+  platform          String
+  outstandAccountId String   @map("outstand_account_id")
+  handle            String
+  status            String   @default("active")
+  connectedAt       DateTime @default(now()) @map("connected_at") @db.Timestamptz(6)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace  Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  postTargets PublishingPostTarget[]
+  queueSlots PublishingQueueSlot[]
+  inboxItems EngagementInboxItem[]
+
+  @@unique([workspaceId, outstandAccountId])
+  @@index([workspaceId])
+  @@map("workspace_connected_accounts")
+}
+
+// ─────────────────────────────────────────────
+// BC-03 — Publishing
+// ─────────────────────────────────────────────
+
+model PublishingPost {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId   String    @map("workspace_id") @db.Uuid
+  authorId      String    @map("author_id")
+  status        String    @default("draft")
+  caption       String    @default("")
+  mediaIds      String[]  @default([]) @map("media_ids") @db.Uuid
+  scheduledAt   DateTime? @map("scheduled_at") @db.Timestamptz(6)
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  failedAt      DateTime? @map("failed_at") @db.Timestamptz(6)
+  failureReason String?   @map("failure_reason")
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace  Workspace              @relation(fields: [workspaceId], references: [id])
+  targets    PublishingPostTarget[]
+  queueSlots PublishingQueueSlot[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([scheduledAt])
+  @@index([deletedAt])
+  @@map("publishing_posts")
+}
+
+model PublishingPostTarget {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId             String   @map("post_id") @db.Uuid
+  connectedAccountId String   @map("connected_account_id") @db.Uuid
+  platform           String
+  outstandJobId      String?  @map("outstand_job_id")
+  status             String   @default("pending")
+  publishedUrl       String?  @map("published_url")
+  error              String?
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  post             PublishingPost           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id])
+
+  @@index([postId])
+  @@map("publishing_post_targets")
+}
+
+model PublishingQueueSlot {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId        String   @map("workspace_id") @db.Uuid
+  connectedAccountId String   @map("connected_account_id") @db.Uuid
+  scheduledAt        DateTime @map("scheduled_at") @db.Timestamptz(6)
+  postId             String?  @map("post_id") @db.Uuid
+  order              Int      @map("order")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace        Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id])
+  post             PublishingPost?           @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@unique([connectedAccountId, scheduledAt])
+  @@index([workspaceId])
+  @@map("publishing_queue_slots")
+}
+
+// ─────────────────────────────────────────────
+// BC-04 — AI Assistant
+// ─────────────────────────────────────────────
+
+model AiRequest {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  userId      String   @map("user_id")
+  postId      String?  @map("post_id") @db.Uuid
+  type        String
+  prompt      String
+  context     String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace  @relation(fields: [workspaceId], references: [id])
+  results   AiResult[]
+
+  @@index([workspaceId])
+  @@map("ai_requests")
+}
+
+model AiResult {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestId    String   @map("request_id") @db.Uuid
+  content      String
+  variantIndex Int      @default(0) @map("variant_index")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  request AiRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("ai_results")
+}
+
+// ─────────────────────────────────────────────
+// BC-05 — Engagement
+// ─────────────────────────────────────────────
+
+model EngagementInboxItem {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId        String    @map("workspace_id") @db.Uuid
+  connectedAccountId String    @map("connected_account_id") @db.Uuid
+  platform           String
+  type               String
+  externalId         String    @map("external_id")
+  authorHandle       String    @map("author_handle")
+  content            String
+  status             String    @default("unread")
+  postId             String?   @map("post_id") @db.Uuid
+  receivedAt         DateTime  @map("received_at") @db.Timestamptz(6)
+  readAt             DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace        Workspace                 @relation(fields: [workspaceId], references: [id])
+  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id])
+  replies          EngagementReply[]
+
+  @@unique([workspaceId, externalId])
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([externalId])
+  @@map("engagement_inbox_items")
+}
+
+model EngagementReply {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inboxItemId     String   @map("inbox_item_id") @db.Uuid
+  userId          String   @map("user_id")
+  content         String
+  outstandReplyId String?  @map("outstand_reply_id")
+  status          String   @default("pending")
+  sentAt          DateTime @default(now()) @map("sent_at") @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  inboxItem EngagementInboxItem @relation(fields: [inboxItemId], references: [id])
+
+  @@map("engagement_replies")
+}
+
+// ─────────────────────────────────────────────
+// BC-06 — Analytics
+// ─────────────────────────────────────────────
+
+model AnalyticsPostMetric {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId             String   @map("post_id") @db.Uuid
+  connectedAccountId String   @map("connected_account_id") @db.Uuid
+  platform           String
+  impressions        Int      @default(0)
+  reach              Int      @default(0)
+  likes              Int      @default(0)
+  comments           Int      @default(0)
+  shares             Int      @default(0)
+  clicks             Int?
+  engagementRate     Decimal  @default(0) @map("engagement_rate") @db.Decimal(5, 4)
+  fetchedAt          DateTime @map("fetched_at") @db.Timestamptz(6)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([postId])
+  @@map("analytics_post_metrics")
+}
+
+model AnalyticsWorkspaceSnapshot {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId       String   @map("workspace_id") @db.Uuid
+  period            String
+  periodStart       DateTime @map("period_start") @db.Date
+  periodEnd         DateTime @map("period_end") @db.Date
+  totalPosts        Int      @default(0) @map("total_posts")
+  totalReach        BigInt   @default(0) @map("total_reach")
+  totalEngagements  BigInt   @default(0) @map("total_engagements")
+  avgEngagementRate Decimal  @default(0) @map("avg_engagement_rate") @db.Decimal(5, 4)
+  topPostId         String?  @map("top_post_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([workspaceId, period, periodStart])
+  @@index([workspaceId])
+  @@map("analytics_workspace_snapshots")
+}
+
+// ─────────────────────────────────────────────
+// BC-07 — Start Page
+// ─────────────────────────────────────────────
+
+model StartPagePage {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  slug        String   @unique
+  title       String
+  bio         String?
+  avatarUrl   String?  @map("avatar_url")
+  theme       String   @default("default")
+  isPublished Boolean  @default(false) @map("is_published")
+  viewCount   BigInt   @default(0) @map("view_count")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  links     StartPageLink[]
+
+  @@index([workspaceId])
+  @@map("start_page_pages")
+}
+
+model StartPageLink {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  startPageId String   @map("start_page_id") @db.Uuid
+  label       String
+  url         String
+  position    Int
+  isActive    Boolean  @default(true) @map("is_active")
+  clickCount  BigInt   @default(0) @map("click_count")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  startPage StartPagePage @relation(fields: [startPageId], references: [id], onDelete: Cascade)
+
+  @@map("start_page_links")
+}
+
+// ─────────────────────────────────────────────
+// BC-08 — Media
+// ─────────────────────────────────────────────
+
+model MediaItem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  uploaderId  String   @map("uploader_id")
+  filename    String
+  mimeType    String   @map("mime_type")
+  size        BigInt
+  url         String
+  storagePath String   @map("storage_path")
+  type        String
+  width       Int?
+  height      Int?
+  duration    Decimal? @db.Decimal(10, 2)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@map("media_items")
+}
+
+// ─────────────────────────────────────────────
+// BC-09 — Notification
+// ─────────────────────────────────────────────
+
+model Notification {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId       String    @map("workspace_id") @db.Uuid
+  userId            String    @map("user_id")
+  type              String
+  title             String
+  body              String
+  isRead            Boolean   @default(false) @map("is_read")
+  relatedEntityType String?   @map("related_entity_type")
+  relatedEntityId   String?   @map("related_entity_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt            DateTime? @map("read_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+// System — Background Jobs (cross-cutting)
+// ─────────────────────────────────────────────
+
+model BackgroundJob {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type         String
+  payload      Json
+  status       String    @default("pending")
+  scheduledAt  DateTime  @default(now()) @map("scheduled_at") @db.Timestamptz(6)
+  startedAt    DateTime? @map("started_at") @db.Timestamptz(6)
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz(6)
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(3) @map("max_attempts")
+  lastError    String?   @map("last_error")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([status, scheduledAt])
+  @@map("background_jobs")
+}

@@ -22,6 +22,7 @@ const eslintConfig = defineConfig([
     "**/dist/**",
     "**/coverage/**",
     "apps/web/next-env.d.ts",
+    "apps/web/src/generated/**",
     "product-discovery/**",
     "project-manager/**",
     "design/**",

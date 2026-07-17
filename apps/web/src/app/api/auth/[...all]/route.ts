@@ -1,13 +1,5 @@
-import { NextResponse } from "next/server";
+import { toNextJsHandler } from "better-auth/next-js";
 
-/** Better Auth catch-all — wired in later M7 bootstrap. */
-export function GET() {
-  return NextResponse.json(
-    { error: "Better Auth not bootstrapped yet" },
-    { status: 501 },
-  );
-}
+import { auth } from "@/lib/better-auth/auth";
 
-export function POST() {
-  return GET();
-}
+export const { GET, POST } = toNextJsHandler(auth);
