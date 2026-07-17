@@ -24,27 +24,30 @@
 
 # Current Focus
 
-M7 Repository & Bootstrap **selesai**.
+M7 Repository & Bootstrap **selesai**. Siap M8 Development.
 
-* Monorepo + DX tooling, Prisma schema/client, Better Auth skeleton, `.env.example`, dan CI GitHub Actions sudah ada.
-* Langkah berikutnya: **M8 — Development** (implementasi fitur produk).
+* Paralel: membangun **AI Context layer** agar agent coding punya pintu masuk ringkas tanpa menduplikasi baseline.
+* `AGENTS.md` di root sudah ada; skill resmi vendor (Prisma, Better Auth, Vercel, Supabase, shadcn) sudah terpasang di `.agents/skills/`.
+* Folder `context/` (struktur `ctx-*.md`) **direncanakan** — belum diisi.
 
 ---
 
 # Active Conversation Mode
 
-Current Mode: Ready for Development
+Current Mode: Ready for Development (+ AI Context scaffolding)
 
 Current Phase: Phase 5 complete → siap Phase 6 / M8 Development
 
 Current Objective:
 - Memulai implementasi fitur produk sesuai Architecture & Engineering Baseline
+- Menyusun folder `context/` sesuai struktur yang disepakati (lihat Next Tasks)
 
 Allowed Actions:
 - Discussion
 - Brainstorm
 - Documentation
 - Feature Implementation (M8)
+- AI Context scaffolding (`context/`, penyempurnaan `AGENTS.md`)
 
 Restricted Actions:
 - Perubahan Architecture / Engineering Baseline tanpa ADR
@@ -71,6 +74,8 @@ Restricted Actions:
 
 # Completed
 
+* Membuat `AGENTS.md` di root — pintu masuk AI agent; merujuk Project OS, skills, aturan keras M8, dan rencana struktur `context/`.
+* Memasang official agent skills di `.agents/skills/` + `skills-lock.json` (Prisma, Better Auth, Vercel React, Supabase, shadcn).
 * Membuat `project-manager/ARCHITECTURE_OVERVIEW.md` — High-Level Architecture Overview sebagai blueprint Figma (System Context & Containers + Internal Layers & Domains).
 * Menentukan arah project.
 * Memilih Hybrid Monorepo sebagai strategi repository.
@@ -138,12 +143,15 @@ Restricted Actions:
 
 # In Progress
 
-* Tidak ada — M7 selesai.
+* **AI Context:** rencana folder `context/` dengan file `ctx-*.md` (lihat Next Tasks). `AGENTS.md` + skill vendor resmi sudah ada.
 
 ---
 
 # Next Tasks
 
+* **AI Context — scaffold `context/`:** buat struktur persis:
+  `README.md`, `ctx-project.md`, `ctx-business.md`, `ctx-domain.md`, `ctx-architecture.md`, `ctx-technical-context.md`, `ctx-development.md`, `ctx-implementation.md`, `ctx-design.md`.
+  Isi sebagai indeks + aturan operasional agent (menunjuk baseline), bukan salinan penuh `product-discovery/`.
 * **M8 — Development:** mulai fitur produk (auth flows UI, workspace onboarding, publishing MVP, dll.) sesuai baseline.
 * Buat project Supabase Cloud `social-media-local` dan jalankan `bun run db:migrate` terhadap `.env.local`.
 * (Opsional) initial git commit — menunggu instruksi eksplisit.

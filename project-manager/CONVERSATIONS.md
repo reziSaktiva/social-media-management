@@ -150,6 +150,18 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-07-17 — AI Context layer (`context/` + `AGENTS.md`)
+
+**Phase:** M7 complete → siap M8 Development
+
+**Summary:** User menanyakan apakah dokumentasi baseline sudah cukup tanpa AI Context. Disepakati dokumentasi = Source of Truth, sementara AI Context tetap diperlukan sebagai lapisan operasional agent. User meminta struktur folder `context/` persis seperti referensi screenshot (`ctx-project`, `ctx-business`, `ctx-domain`, `ctx-architecture`, `ctx-technical-context`, `ctx-development`, `ctx-implementation`, `ctx-design`, + `README.md`), dan meminta `AGENTS.md` dibuat di root.
+
+**Key Insight / Decision:** AI Context tidak menggantikan `product-discovery/` / `project-manager/`; file `ctx-*.md` berisi indeks + aturan operasional. `AGENTS.md` adalah pintu masuk; isi penuh `context/` menyusul sebagai next task.
+
+**Impact:** `AGENTS.md` dibuat; `PROJECT_STATE.md` + `CHANGELOG.md` diupdate. Scaffold `context/` belum dieksekusi.
+
+---
+
 ## 2026-07-17 — Engineering Planning Review (M6)
 
 **Phase:** Phase 4 — Engineering Planning (M6)

@@ -4,6 +4,40 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-17 (sesi keempat puluh delapan)
+
+### Added — Official agent skills (vendor)
+
+* Prisma: `prisma-cli`, `prisma-client-api`, `prisma-database-setup`, `prisma-upgrade-v7` (`prisma/skills`).
+* Better Auth: `better-auth-best-practices`, `create-auth`, `better-auth-security-best-practices`, `email-and-password-best-practices` (`better-auth/skills`).
+* Vercel: `vercel-react-best-practices`, `vercel-composition-patterns`, `vercel-optimize`, `web-design-guidelines` (`vercel-labs/agent-skills`).
+* Supabase: `supabase`, `supabase-postgres-best-practices` (`supabase/agent-skills`).
+* shadcn/ui: `shadcn` (`shadcn/ui`).
+* `skills-lock.json` — lock hash skill terpasang.
+
+### Notes
+
+* Skill deploy-Vercel / React Native / 2FA / organization / migrate-radix-to-base / Prisma Postgres tidak dipasang (di luar stack MVP).
+
+---
+
+## 2026-07-17 (sesi keempat puluh tujuh)
+
+### Added
+
+* `AGENTS.md` di root — pintu masuk AI coding agent (Source of Truth pointers, skills wajib, hard rules, mapping task → dokumen).
+
+### Changed
+
+* `PROJECT_STATE.md` — catat rencana AI Context layer (`context/` + `ctx-*.md`); `AGENTS.md` masuk Completed; next task scaffold `context/`.
+* `CONVERSATIONS.md` — log keputusan struktur AI Context mengikuti screenshot referensi user.
+
+### Notes
+
+* Folder `context/` belum dibuat/diisi — menunggu eksekusi next task (isi sebagai indeks, bukan duplikasi baseline).
+
+---
+
 ## 2026-07-17 (sesi keempat puluh enam)
 
 ### Changed — Prisma 7 datasource config
