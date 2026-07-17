@@ -15,7 +15,7 @@ Dokumen ini **bukan** Source of Truth produk. Ia mengarahkan agent ke dokumen ya
 | Keputusan (ADR)                  | `project-manager/DECISIONS.md`             |
 | Produk & engineering             | `product-discovery/`                       |
 | Orientasi arsitektur (ringkas)   | `project-manager/ARCHITECTURE_OVERVIEW.md` |
-| AI Context (ringkas, per domain) | `context/` _(direncanakan — lihat bawah)_  |
+| AI Context (ringkas, per domain) | `context/`                                 |
 
 ## Wajib di awal sesi
 
@@ -23,27 +23,26 @@ Dokumen ini **bukan** Source of Truth produk. Ia mengarahkan agent ke dokumen ya
 2. Ikuti skill project: `.agents/skills/project-os-navigator/SKILL.md`.
 3. Untuk keputusan yang belum ada di baseline: ikuti `.agents/skills/proactive-clarification/SKILL.md`.
 4. Setelah pekerjaan selesai: ikuti `.agents/skills/work-report-simple/SKILL.md`.
+5. Untuk task spesifik: buka file `context/ctx-*.md` yang relevan (lihat `context/README.md`).
 
 ## AI Context layer (`context/`)
 
-Struktur yang disepakati (akan diisi; jangan mengarang isi sebelum file ada):
+Struktur **opsi A** (aktif):
 
 ```
 context/
-├── README.md
-├── ctx-project.md
-├── ctx-business.md
-├── ctx-domain.md
-├── ctx-architecture.md
-├── ctx-technical-context.md
-├── ctx-development.md
-├── ctx-implementation.md
-└── ctx-design.md
+├── README.md                  ← batas antar file + cara pakai
+├── ctx-project.md             ← Project OS, state, rules, ADR
+├── ctx-business.md            ← Business + Product + User
+├── ctx-domain.md              ← Bounded context, shared types, boundary
+├── ctx-architecture.md        ← Layer, ACL, jobs, auth arch, realtime
+├── ctx-technical-context.md   ← Stack, env, Prisma, Better Auth, deploy/CI
+├── ctx-development.md         ← DX, script, lint/test, aturan coding
+├── ctx-implementation.md      ← Pola implementasi di apps/web & domains/
+└── ctx-design.md              ← design/ + pointer UX (04-ux)
 ```
 
 **Aturan:** file `context/ctx-*.md` adalah **indeks + aturan operasional untuk agent** — menunjuk ke baseline, bukan menyalin ulang isi `product-discovery/` atau `project-manager/`. Jika konflik, baseline + ADR menang.
-
-Sampai folder `context/` terisi, gunakan tabel Source of Truth di atas dan dokumen baseline yang relevan untuk task.
 
 ## Stack & layout (ingat cepat)
 
@@ -77,15 +76,16 @@ Lihat `Active Conversation Mode` di `PROJECT_STATE.md`.
 
 ## Mapping task → baca dulu
 
-| Jenis task                   | Baca minimal                                                                                                |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Fitur / use-case             | `PROJECT_STATE.md` → BC terkait di `05-architecture/` + UX flow di `04-ux/`                                 |
-| Schema / migrasi             | `05-architecture/database-strategy.md` + `06-engineering/database-orm.md` + `apps/web/prisma/schema.prisma` |
-| Auth / session               | `05-architecture/auth-architecture.md` + `06-engineering/auth-strategy.md`                                  |
-| Outstand / webhook / publish | `05-architecture/integration-layer.md`                                                                      |
-| Jobs / cron                  | `05-architecture/background-jobs.md`                                                                        |
-| Env / deploy / CI            | `06-engineering/environment-management.md`, `deployment-infrastructure.md`, `cicd-pipeline.md`              |
-| Desain / handoff UI          | `design/README.md` (perubahan di `design/` tidak wajib masuk CHANGELOG development)                         |
+| Jenis task                   | Context dulu                                 | Baseline minimal                                                                               |
+| ---------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Fitur / use-case             | `ctx-domain` + `ctx-implementation`          | BC di `05-architecture/` + UX di `04-ux/` (+ `ctx-business` untuk roles/MVP)                   |
+| Schema / migrasi             | `ctx-architecture` + `ctx-technical-context` | `database-strategy.md` + `database-orm.md` + `apps/web/prisma/schema.prisma`                   |
+| Auth / session               | `ctx-architecture` + `ctx-technical-context` | `auth-architecture.md` + `auth-strategy.md`                                                    |
+| Outstand / webhook / publish | `ctx-architecture`                           | `integration-layer.md`                                                                         |
+| Jobs / cron                  | `ctx-architecture`                           | `background-jobs.md`                                                                           |
+| Env / deploy / CI            | `ctx-technical-context`                      | `environment-management.md`, `deployment-infrastructure.md`, `cicd-pipeline.md`                |
+| Coding conventions / DX      | `ctx-development`                            | `dx-tooling.md`                                                                                |
+| Desain / handoff UI          | `ctx-design`                                 | `design/README.md` + `04-ux/` (perubahan di `design/` tidak wajib masuk CHANGELOG development) |
 
 ## Setelah mengubah sesuatu
 
@@ -98,4 +98,4 @@ Lihat `Active Conversation Mode` di `PROJECT_STATE.md`.
 
 - Root setup: `README.md`
 - Skills: `.agents/skills/`
-- Planned context index: `context/README.md` _(setelah folder dibuat)_
+- AI Context index: `context/README.md`
