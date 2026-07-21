@@ -33,25 +33,27 @@ Product/roles/persona → `ctx-business.md`.
 ## Aturan operasional
 
 1. `design/` **tidak** menggantikan `product-discovery/04-ux/` — UX detail tetap di baseline.
-2. Perubahan di `design/` untuk handoff visual **tidak wajib** masuk CHANGELOG development (lihat aturan project); perubahan UX Baseline tetap lewat proses dokumen + ADR bila material.
-3. Wireframe detail di fase M8: **terbatas** — hanya jika dibutuhkan untuk implementasi layar (lihat `PROJECT_STATE` Active Conversation Mode).
-4. Status konten & roles visual harus selaras `roles-permissions.md` (lihat `ctx-business.md`).
-5. Persona di UI copy / contoh: Raka, Maya, Sinta, Dimas, Lara.
-6. Jangan mengarang IA, flow, atau pola navigasi baru yang bertentangan dengan `04-ux/` tanpa ADR / update baseline.
+2. `design/` **bukan** SoT design tokens — setelah design approve, nilai final di `../product-discovery/06-engineering/design-tokens.md` (ADR-038).
+3. Perubahan di `design/` untuk handoff visual **tidak wajib** masuk CHANGELOG development (lihat aturan project); perubahan UX Baseline atau lock token material tetap lewat proses dokumen + ADR.
+4. Wireframe detail di fase M8: **terbatas** — hanya jika dibutuhkan untuk implementasi layar (lihat `PROJECT_STATE` Active Conversation Mode).
+5. Status konten & roles visual harus selaras `roles-permissions.md` (lihat `ctx-business.md`).
+6. Persona di UI copy / contoh: Raka, Maya, Sinta, Dimas, Lara.
+7. Jangan mengarang IA, flow, atau pola navigasi baru yang bertentangan dengan `04-ux/` tanpa ADR / update baseline.
 
 ---
 
 ## Mapping task UI → baca
 
-| Task                                     | Baca                                |
-| ---------------------------------------- | ----------------------------------- |
-| Susun halaman / route sesuai menu        | `information-architecture.md`       |
-| Alur publish / approve / connect account | `user-flows.md`                     |
-| Sidebar, navigasi, workspace switch      | `navigation-patterns.md`            |
-| Pola layar editor, inbox, analytics      | `key-screen-patterns.md`            |
-| Token / komponen Figma / brief           | `design/DESIGN_OVERVIEW.md` + brief |
+| Task                                     | Baca                                                   |
+| ---------------------------------------- | ------------------------------------------------------ |
+| Susun halaman / route sesuai menu        | `information-architecture.md`                          |
+| Alur publish / approve / connect account | `user-flows.md`                                        |
+| Sidebar, navigasi, workspace switch      | `navigation-patterns.md`                               |
+| Pola layar editor, inbox, analytics      | `key-screen-patterns.md`                               |
+| Brief / handoff designer                 | `design/DESIGN_OVERVIEW.md` + brief                    |
+| Font, warna, neutral, status (SoT)       | `../product-discovery/06-engineering/design-tokens.md` |
 
-Implementasi React mengikuti `ctx-implementation.md` + komponen yang sudah ada di app (mis. shadcn bila dipakai).
+Implementasi React mengikuti `ctx-implementation.md` + komponen yang sudah ada di app (mis. shadcn bila dipakai), memakai token yang sudah di-lock.
 
 ---
 
@@ -59,4 +61,5 @@ Implementasi React mengikuti `ctx-implementation.md` + komponen yang sudah ada d
 
 - Roles, MVP, persona → `ctx-business.md`
 - Pola kode UI entry → `ctx-implementation.md`
+- Stack / mirror token ke kode → `ctx-technical-context.md`
 - Project mode (wireframe boleh/tidak) → `ctx-project.md` + `PROJECT_STATE.md`

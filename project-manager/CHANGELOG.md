@@ -4,6 +4,22 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-21 (sesi kelima puluh satu)
+
+### Added — Design Tokens SoT + alur lock (ADR-038)
+
+* `product-discovery/06-engineering/design-tokens.md` — template SoT visual tokens (font, brand/neutral/status/feedback, spacing, tema) + **panduan PM** saat design siap; status Draft / nilai `TBD`.
+* ADR-038 di `DECISIONS.md` — lokasi SoT token di Engineering; `design/` bukan SoT; isi setelah design approve lalu mirror ke `apps/web`.
+
+### Changed
+
+* `product-discovery/06-engineering/README.md` — daftar dokumen + scope + decision rules untuk design tokens.
+* `design/README.md` — pointer SoT token ke `design-tokens.md`.
+* `context/ctx-technical-context.md`, `context/ctx-design.md` — pointer token ke Engineering.
+* `PROJECT_STATE.md`, `CONVERSATIONS.md` — next task + log keputusan ADR-038.
+
+---
+
 ## 2026-07-21 (sesi kelima puluh)
 
 ### Added — SocialPlatform: Threads & Pinterest (ADR-037)

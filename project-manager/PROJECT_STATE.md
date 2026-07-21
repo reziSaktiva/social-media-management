@@ -144,12 +144,14 @@ Restricted Actions:
 # In Progress
 
 * Tidak ada item dokumentasi AI Context yang sedang dikerjakan — scaffold `context/` selesai. Fokus berikutnya: M8 Development.
+* Template `design-tokens.md` sudah disiapkan (status Draft / TBD); menunggu approve design untuk diisi nilai final.
 
 ---
 
 # Next Tasks
 
 * **M8 — Development:** mulai fitur produk (auth flows UI, workspace onboarding, publishing MVP, dll.) sesuai baseline + `context/`.
+* **Setelah design UI di-approve:** isi nilai di `product-discovery/06-engineering/design-tokens.md` (ganti `TBD`), ubah status → Locked, mirror ke tema `apps/web` — panduan PM ada di dokumen tersebut (ADR-038).
 * (Opsional) Perkaya aturan coding di `context/ctx-development.md` saat konvensi baru muncul dari praktik M8.
 * Buat project Supabase Cloud `social-media-local` dan jalankan `bun run db:migrate` terhadap `.env.local`.
 * (Opsional) initial git commit — menunggu instruksi eksplisit.
@@ -174,6 +176,7 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-038 — SoT design tokens di `product-discovery/06-engineering/design-tokens.md`; diisi setelah design approve; `design/` bukan SoT token (2026-07-21).
 * ADR-037 — Perluasan aditif `SocialPlatform`: Threads & Pinterest ditambah; Twitter/X & LinkedIn tetap. Daftar resmi: Instagram, Facebook, Twitter/X, LinkedIn, TikTok, YouTube, Threads, Pinterest (2026-07-21).
 * AI Context — opsi A: pertahankan 8 `ctx-*.md`; Product+User di `ctx-business`; UX di `ctx-design`; coding rules di `ctx-development` + pola fitur di `ctx-implementation` (2026-07-17).
 * M7 — Prisma **7.x**: URL di `prisma.config.ts` (`DIRECT_URL`) + runtime adapter (`DATABASE_URL`); semantik DO-D04 tetap (2026-07-17).
