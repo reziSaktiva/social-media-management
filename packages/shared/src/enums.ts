@@ -23,6 +23,8 @@ export enum SocialPlatform {
   LinkedIn = "linkedin",
   TikTok = "tiktok",
   YouTube = "youtube",
+  Threads = "threads",
+  Pinterest = "pinterest",
 }
 
 export enum WorkspacePlan {

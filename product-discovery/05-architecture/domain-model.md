@@ -166,7 +166,7 @@ Workspace adalah **root context** — seluruh data domain lain terikat ke `Works
 **ConnectedAccount**
 - `id: ConnectedAccountId`
 - `workspaceId: WorkspaceId`
-- `platform: SocialPlatform` — `instagram | facebook | twitter | linkedin | tiktok | ...`
+- `platform: SocialPlatform` — `instagram | facebook | twitter | linkedin | tiktok | youtube | threads | pinterest`
 - `outstandAccountId: string` — ID dari Outstand API (external reference)
 - `handle: string` — nama akun (@handle atau nama page)
 - `status: ConnectedAccountStatus` — `active | disconnected | error`
@@ -660,6 +660,8 @@ enum SocialPlatform {
   LinkedIn = 'linkedin',
   TikTok = 'tiktok',
   YouTube = 'youtube',
+  Threads = 'threads',
+  Pinterest = 'pinterest',
 }
 
 // Workspace plan

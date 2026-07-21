@@ -8,7 +8,7 @@
 | Version      | 0.1.0                                     |
 | Status       | Active                                    |
 | Owner        | Rezi                                      |
-| Last Updated | 2026-07-17                                |
+| Last Updated | 2026-07-21                                |
 
 ---
 
@@ -74,6 +74,23 @@ Fitur utama yang direncanakan pada MVP:
 * Engagement
 * AI Assistant
 * Start Page
+
+---
+
+# Supported Social Platforms
+
+Platform media sosial yang didukung aplikasi (ADR-037; via Outstand):
+
+1. Instagram
+2. Facebook
+3. Twitter / X
+4. LinkedIn
+5. TikTok
+6. YouTube
+7. Threads
+8. Pinterest
+
+Source of Truth enum: `SocialPlatform` di `packages/shared`.
 
 ---
 

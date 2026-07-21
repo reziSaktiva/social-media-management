@@ -84,7 +84,8 @@ Menjawab: *siapa yang memakai sistem, dan sistem apa saja yang berbatasan dengan
           │
           ▼
 ┌──────────────────────────────────────────────────────────────┐
-│  Instagram · Facebook · X/Twitter · LinkedIn · TikTok · …    │
+│  Instagram · Facebook · X/Twitter · LinkedIn · TikTok ·      │
+│  YouTube · Threads · Pinterest                               │
 │  (via Outstand — bukan integrasi langsung dari app kita)     │
 └──────────────────────────────────────────────────────────────┘
 ```

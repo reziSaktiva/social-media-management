@@ -711,7 +711,7 @@ Layar ini adalah satu-satunya tempat pengguna mengelola koneksi akun media sosia
 ```
 [+ Connect Account]
     ↓
-Tampilkan daftar platform: Instagram, Facebook, X, LinkedIn, dll.
+Tampilkan daftar platform: Instagram, Facebook, X, LinkedIn, TikTok, YouTube, Threads, Pinterest.
     ↓
 Pengguna memilih platform
     ↓

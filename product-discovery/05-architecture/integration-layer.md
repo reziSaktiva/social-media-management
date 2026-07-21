@@ -50,7 +50,8 @@ Outstand API adalah **external system** — berada di luar batas domain internal
 ┌──────────────────────────────────────────────────────┼──────────┐
 │                    EXTERNAL SYSTEM                    │           │
 │                                                       ▼           │
-│            Instagram · Facebook · Twitter · LinkedIn · TikTok    │
+│  Instagram · Facebook · Twitter · LinkedIn · TikTok · YouTube    │
+│                  · Threads · Pinterest                           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

@@ -18,6 +18,18 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-07-21 — Daftar platform sosial yang didukung (aditif)
+
+**Phase:** M7 complete → siap M8 Development
+
+**Summary:** Product owner meminta catatan daftar platform yang tersedia di app: Facebook, Instagram, Threads, Pinterest, TikTok, YouTube. Dibandingkan dengan baseline/enum lama (Instagram, Facebook, Twitter/X, LinkedIn, TikTok, YouTube). Diputuskan opsi **tambah saja** — Threads & Pinterest masuk; Twitter/X & LinkedIn tetap.
+
+**Key Insight / Decision:** ADR-037 — daftar resmi jadi 8 platform. Source of Truth: `SocialPlatform` di `packages/shared` + Shared Types di `domain-model.md`.
+
+**Impact:** Enum shared, Architecture/UX docs terkait platform, `DECISIONS.md`, `CHANGELOG.md`, `PROJECT_STATE.md` diupdate.
+
+---
+
 ## 2026-07-17 — AI Context opsi A (struktur + coding rules)
 
 **Phase:** M7 complete → siap M8 Development
