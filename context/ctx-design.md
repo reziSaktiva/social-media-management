@@ -50,6 +50,7 @@ Product/roles/persona → `ctx-business.md`.
 | Alur publish / approve / connect account | `user-flows.md`                                        |
 | Sidebar, navigasi, workspace switch      | `navigation-patterns.md`                               |
 | Pola layar editor, inbox, analytics      | `key-screen-patterns.md`                               |
+| Content Format (Post/Reel/Story/Pin)     | `key-screen-patterns.md` (KSP-05-F11) + ADR-039        |
 | Brief / handoff designer                 | `design/DESIGN_OVERVIEW.md` + brief                    |
 | Font, warna, neutral, status (SoT)       | `../product-discovery/06-engineering/design-tokens.md` |
 
