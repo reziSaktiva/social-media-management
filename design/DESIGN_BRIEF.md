@@ -39,7 +39,7 @@ Dokumen ini adalah **paket handoff resmi untuk tim desain**. Isinya merangkum pr
 | Persona & dua mode kerja (eksekusi / visibilitas) | Light-only vs dark (preferensi: light MVP) |
 | 6 content status + makna visual `Failed` | Illustration style untuk empty state |
 | AI hanya inline di Draft Editor (bukan menu) | Kekuatan warna platform di Calendar |
-| Tidak ada Approval Workflow di MVP | Detail visual komponen & motion |
+| Content Format per akun (ADR-039) + tidak ada Approval Workflow di MVP | Detail visual komponen & motion |
 
 ### Cara menyalin ke Figma (minimal 4 frame)
 
@@ -178,7 +178,7 @@ Home
 Publish
 ├── Calendar          ← default tab
 ├── Queue
-├── Drafts → Draft Editor (AI inline, media, accounts, schedule, status)
+├── Drafts → Draft Editor (AI inline, media, accounts, content format, schedule, status)
 └── History → Post Detail
 
 Engage
@@ -208,7 +208,7 @@ Gunakan sebagai backlog frame Figma.
 | KSP-02 | Publish — Calendar | Raka + Maya | Default Publish; status per item; Failed mencolok |
 | KSP-03 | Publish — Queue | Raka | Antrean sehat / gap terlihat |
 | KSP-04 | Publish — Drafts | Raka / Sinta | List + filter status; masuk ke editor |
-| KSP-05 | Publish — Draft Editor | Raka / Sinta | Layar paling padat — caption, AI, media, akun, jadwal, trust |
+| KSP-05 | Publish — Draft Editor | Raka / Sinta | Caption, AI, media, akun, **format Post/Reel/Story/Pin per akun** (ADR-039), jadwal, trust |
 | KSP-06 | Engage — Inbox | Raka | Triage cepat; badge; thread + reply |
 | KSP-07 | Analyze — Dashboard | Maya + Raka | Snapshot, bukan BI kompleks |
 | KSP-08 | Connected Accounts | Raka / Maya | Connect / reconnect / disconnect jelas |
@@ -234,7 +234,7 @@ Creator tidak bisa langsung `Draft` → `Scheduled`. Manager/Admin/Owner bisa sk
 
 | Flow | Siapa | Inti |
 | ---- | ----- | ---- |
-| Create & Publish | Raka (+ Sinta draft) | Draft Editor → akun + jadwal → schedule/publish → status |
+| Create & Publish | Raka (+ Sinta draft) | Draft Editor → akun + format + jadwal → schedule/publish → status |
 | Content Calendar | Raka + Maya | Lihat minggu → buka item → edit |
 | Queue Management | Raka | Isi antrean, deteksi gap |
 | Engagement | Raka | Inbox → reply → done |
@@ -343,6 +343,7 @@ Bangun library dengan prioritas berikut (P0 dulu):
 | Draft Editor layout (caption + side panel) | KSP-05 |
 | AI Assist control + suggestion cards | KSP-05 (inline only) |
 | Media thumbnail / attachment strip | KSP-05 |
+| Content format radios / Pin fields (per account) | KSP-05 (ADR-039) |
 | Schedule picker | KSP-05 |
 | Inbox thread + reply composer | KSP-06 |
 | Metric stat (simple) | KSP-01, KSP-07 |
