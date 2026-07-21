@@ -4,6 +4,24 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-21 (sesi kelima puluh)
+
+### Added — SocialPlatform: Threads & Pinterest (ADR-037)
+
+* `threads` dan `pinterest` ditambahkan ke enum `SocialPlatform` di `packages/shared/src/enums.ts`.
+* ADR-037 di `DECISIONS.md` — perluasan aditif daftar platform yang didukung.
+
+### Changed
+
+* `product-discovery/05-architecture/domain-model.md` — Shared Types `SocialPlatform` + deskripsi field platform.
+* `product-discovery/05-architecture/integration-layer.md` — daftar platform eksternal.
+* `project-manager/ARCHITECTURE_OVERVIEW.md` — daftar platform di System Context.
+* `product-discovery/04-ux/user-flows.md` dan `key-screen-patterns.md` — daftar platform di UI connect/selector.
+* `PROJECT_OVERVIEW.md` — catatan daftar platform yang didukung.
+* `CONVERSATIONS.md`, `PROJECT_STATE.md` — log keputusan ADR-037.
+
+---
+
 ## 2026-07-17 (sesi keempat puluh sembilan)
 
 ### Added — AI Context layer (opsi A)

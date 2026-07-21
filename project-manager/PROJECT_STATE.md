@@ -6,7 +6,7 @@
 | ------------ | ---------- |
 | Version      | 1.0.3      |
 | Status       | Active     |
-| Last Updated | 2026-07-17 |
+| Last Updated | 2026-07-21 |
 
 ---
 
@@ -174,6 +174,7 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-037 — Perluasan aditif `SocialPlatform`: Threads & Pinterest ditambah; Twitter/X & LinkedIn tetap. Daftar resmi: Instagram, Facebook, Twitter/X, LinkedIn, TikTok, YouTube, Threads, Pinterest (2026-07-21).
 * AI Context — opsi A: pertahankan 8 `ctx-*.md`; Product+User di `ctx-business`; UX di `ctx-design`; coding rules di `ctx-development` + pola fitur di `ctx-implementation` (2026-07-17).
 * M7 — Prisma **7.x**: URL di `prisma.config.ts` (`DIRECT_URL`) + runtime adapter (`DATABASE_URL`); semantik DO-D04 tetap (2026-07-17).
 * M7 — DX-D06/DX-D07: Vitest di root; Lefthook via `prepare` (2026-07-17).

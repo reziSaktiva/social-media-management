@@ -279,7 +279,7 @@ Setiap flow memiliki struktur:
 
 1. Aktor membuka **Workspace Settings → Connected Accounts**.
 2. Aktor klik **Connect Account**.
-3. Sistem menampilkan daftar platform yang tersedia (Instagram, Facebook, X, LinkedIn, dll.).
+3. Sistem menampilkan daftar platform yang tersedia (Instagram, Facebook, X, LinkedIn, TikTok, YouTube, Threads, Pinterest).
 4. Aktor memilih platform tujuan.
 5. Sistem membuka alur OAuth platform — aktor login ke akun platform-nya dan memberikan izin.
 6. Platform mengirim konfirmasi ke sistem.
