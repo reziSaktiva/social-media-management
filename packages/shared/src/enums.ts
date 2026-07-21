@@ -31,3 +31,14 @@ export enum WorkspacePlan {
   Free = "free",
   Pro = "pro",
 }
+
+/**
+ * Format publikasi per target akun (PostTarget).
+ * Selector UI menampilkan opsi yang diizinkan per SocialPlatform (lihat domain-model / ADR-039).
+ */
+export enum ContentFormat {
+  Post = "post",
+  Reel = "reel",
+  Story = "story",
+  Pin = "pin",
+}
