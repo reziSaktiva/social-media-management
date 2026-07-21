@@ -30,10 +30,11 @@ Topik yang termasuk dalam scope:
 * **Environment Management** — variabel environment, secret management, local vs staging vs production.
 * **Package & Dependency Strategy** — versioning, lockfile, shared packages.
 * **Developer Experience (DX) Tooling** — linting, formatting, pre-commit hooks, local dev setup.
+* **Design Tokens** — Source of Truth font, warna semantic, neutral, status, spacing untuk implementasi UI (ADR-038); diisi setelah design di-approve PM.
 
 Topik berikut **tidak dibahas** pada folder ini:
 
-* Wireframe dan UI Design
+* Wireframe detail, eksplorasi Figma, dan brief handoff designer (ada di `../../design/` — bukan SoT token)
 * Product Scope dan Feature Priority (sudah di 02-product)
 * System Architecture high-level (ada di 05-architecture)
 * Implementasi kode (ada di fase Development)
@@ -51,6 +52,7 @@ Topik berikut **tidak dibahas** pada folder ini:
 * `environment-management.md` — katalog env vars, secret native (Railway + `.env.local`), Supabase Cloud `social-media-local` / staging / prod (ADR-033).
 * `dx-tooling.md` — ESLint + Prettier, Lefthook + lint-staged, Vitest, script workspace (ADR-034).
 * `dependency-strategy.md` — caret ranges, `bun.lockb` root, penempatan dep, aturan `@social/shared`, update manual (ADR-035).
+* `design-tokens.md` — SoT visual tokens (font, brand/neutral/status/feedback colors, spacing); template siap diisi saat design lock (ADR-038).
 
 ---
 
@@ -95,6 +97,7 @@ Setiap keputusan teknis yang signifikan harus dicatat sebagai ADR di `../../proj
 7. Tetapkan DX tooling di `dx-tooling.md`.
 8. Dokumentasikan aturan dependency di `dependency-strategy.md`.
 9. Gunakan seluruh output sebagai acuan Repository & Bootstrap (M7).
+10. Setelah design UI di-approve: isi `design-tokens.md` lalu mirror ke tema `apps/web` (M8) — lihat panduan PM di dokumen tersebut (ADR-038).
 
 ---
 
@@ -182,6 +185,7 @@ Keputusan teknis berikut **wajib** masuk ke `../../project-manager/DECISIONS.md`
 * Perubahan pada monorepo structure
 * Perubahan pada environment strategy
 * Perubahan pada dependency strategy (versioning, lockfile, shared packages)
+* Lock atau perubahan material design tokens (font, brand colors, tema light/dark) — lihat `design-tokens.md` (ADR-038)
 
 Perubahan progress Engineering Planning harus diperbarui pada:
 

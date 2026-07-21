@@ -18,6 +18,18 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-07-21 — Lokasi SoT design tokens setelah design siap
+
+**Phase:** M7 complete → siap M8 Development
+
+**Summary:** PM menanyakan cara menerapkan hasil design ke repo. Disepakati tidak menjadikan folder `design/` sebagai acuan token. SoT visual tokens disiapkan di Engineering: `design-tokens.md`, diisi setelah design di-approve, lalu di-mirror ke kode.
+
+**Key Insight / Decision:** ADR-038 — lokasi SoT = `product-discovery/06-engineering/design-tokens.md`. UX (`04-ux/`) tetap SoT alur; `design/` tetap handoff saja.
+
+**Impact:** Template `design-tokens.md` + panduan PM; update Engineering README, `design/README.md`, context, `DECISIONS.md`, `CHANGELOG.md`, `PROJECT_STATE.md`.
+
+---
+
 ## 2026-07-21 — Daftar platform sosial yang didukung (aditif)
 
 **Phase:** M7 complete → siap M8 Development

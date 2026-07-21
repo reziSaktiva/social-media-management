@@ -1364,6 +1364,8 @@ Seluruh 8 dokumen pada folder `product-discovery/06-engineering/` ditetapkan seb
 
 Dokumen-dokumen ini telah melalui Engineering Planning Review (6 inkonsistensi ditemukan dan diperbaiki: ENG-REVIEW-01 s/d ENG-REVIEW-06) dan dinyatakan konsisten satu sama lain serta dengan System Architecture Baseline v1.0 (ADR-025).
 
+**Addendum:** `design-tokens.md` ditambahkan kemudian sebagai SoT visual tokens (ADR-038) — template siap; nilai diisi setelah design approve.
+
 Baseline ini menjadi acuan wajib untuk:
 
 * M7 — Repository & Bootstrap
@@ -1423,3 +1425,40 @@ Enum kanonikal `SocialPlatform` di `packages/shared` dan Shared Types di Archite
 
 * Mengganti daftar lama (hapus Twitter/X & LinkedIn, ganti dengan Threads & Pinterest) — ditolak; product owner memilih opsi *tambah saja*.
 * Mencatat hanya di CONVERSATIONS tanpa update enum/baseline — ditolak; risiko implementasi M8 memakai daftar yang usang.
+
+---
+
+## Decision ADR-038
+
+### Title
+
+Design Tokens — lokasi SoT & alur lock setelah design siap
+
+### Status
+
+Accepted
+
+### Date
+
+2026-07-21
+
+### Decision
+
+1. **Source of Truth visual tokens** untuk implementasi UI adalah  
+   `product-discovery/06-engineering/design-tokens.md`  
+   (font, brand/secondary, neutral, content status, feedback, spacing/radius, tema).
+2. Dokumen tersebut merupakan **addendum Engineering Baseline** (melengkapi ADR-036): template disiapkan sekarang; **nilai token diisi setelah design di-approve Project Manager**.
+3. Folder `design/` tetap ruang operasional handoff designer — **bukan** SoT token. UX Baseline (`product-discovery/04-ux/`) tetap SoT alur & struktur layar — **bukan** tempat hex/font.
+4. Setelah nilai di-lock: status dokumen → Locked; mirror ke CSS variables / Tailwind theme di `apps/web`; catat di CHANGELOG (+ ADR amandemen nilai bila dampak brand/tema luas).
+
+### Reason
+
+* PM membutuhkan satu tempat jelas untuk mengisi styling setelah design beres, tanpa mengandalkan screenshot atau brief `design/` sebagai acuan engineering.
+* Menempatkan tokens di Engineering mendekatkan SoT ke implementasi (Tailwind / shadcn) dan menjaga `04-ux/` fokus pada pola fungsi.
+* Addendum lebih aman daripada mengarang SoT di folder yang secara preferensi kerja tidak masuk tracking development (`design/`).
+
+### Alternatives Considered
+
+* SoT di `product-discovery/04-ux/visual-style.md` — ditolak; UX Baseline sengaja tidak mengunci visual.
+* SoT hanya di `design/DESIGN_OVERVIEW.md` — ditolak; `design/` bukan acuan Project OS untuk engineering.
+* Token hanya di kode tanpa dokumen — ditolak; PM sulit mereview/lock sebelum implementasi.

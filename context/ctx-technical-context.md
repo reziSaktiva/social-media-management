@@ -7,16 +7,17 @@ Bukan tempat pola folder domain atau aturan gaya kode (itu `ctx-implementation` 
 
 ## Baca dulu
 
-| Dokumen                                                                                            | Topik                                                       |
-| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| [`../product-discovery/06-engineering/README.md`](../product-discovery/06-engineering/README.md)   | Indeks Engineering Baseline v1.0 (ADR-036)                  |
-| [`monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)                       | Layout Hybrid Monorepo, Bun workspaces                      |
-| [`database-orm.md`](../product-discovery/06-engineering/database-orm.md)                           | Prisma 7, migrate, pooling, batas Supabase client (ADR-031) |
-| [`auth-strategy.md`](../product-discovery/06-engineering/auth-strategy.md)                         | Better Auth, Google OAuth, JWT Realtime (ADR-030)           |
-| [`environment-management.md`](../product-discovery/06-engineering/environment-management.md)       | Env vars, secrets, `social-media-local` (ADR-033)           |
-| [`deployment-infrastructure.md`](../product-discovery/06-engineering/deployment-infrastructure.md) | Railway + Supabase SEA (ADR-028, ADR-029)                   |
-| [`cicd-pipeline.md`](../product-discovery/06-engineering/cicd-pipeline.md)                         | GitHub Actions gates, Railway CD (ADR-032)                  |
-| [`dependency-strategy.md`](../product-discovery/06-engineering/dependency-strategy.md)             | Caret ranges, lockfile, `@social/shared` (ADR-035)          |
+| Dokumen                                                                                            | Topik                                                                          |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [`../product-discovery/06-engineering/README.md`](../product-discovery/06-engineering/README.md)   | Indeks Engineering Baseline v1.0 (ADR-036)                                     |
+| [`monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)                       | Layout Hybrid Monorepo, Bun workspaces                                         |
+| [`database-orm.md`](../product-discovery/06-engineering/database-orm.md)                           | Prisma 7, migrate, pooling, batas Supabase client (ADR-031)                    |
+| [`auth-strategy.md`](../product-discovery/06-engineering/auth-strategy.md)                         | Better Auth, Google OAuth, JWT Realtime (ADR-030)                              |
+| [`environment-management.md`](../product-discovery/06-engineering/environment-management.md)       | Env vars, secrets, `social-media-local` (ADR-033)                              |
+| [`deployment-infrastructure.md`](../product-discovery/06-engineering/deployment-infrastructure.md) | Railway + Supabase SEA (ADR-028, ADR-029)                                      |
+| [`cicd-pipeline.md`](../product-discovery/06-engineering/cicd-pipeline.md)                         | GitHub Actions gates, Railway CD (ADR-032)                                     |
+| [`dependency-strategy.md`](../product-discovery/06-engineering/dependency-strategy.md)             | Caret ranges, lockfile, `@social/shared` (ADR-035)                             |
+| [`design-tokens.md`](../product-discovery/06-engineering/design-tokens.md)                         | SoT visual tokens (font, warna, status) — isi setelah design approve (ADR-038) |
 
 Implementasi di repo:
 
@@ -58,6 +59,7 @@ Implementasi di repo:
 5. CI wajib: install → prisma generate/validate → typecheck → lint → test.
 6. Email transactional provider masih terbuka (AS-D04) — jangan hardcode provider baru tanpa keputusan.
 7. Jangan ubah Engineering Baseline tanpa ADR.
+8. Design tokens: SoT di `design-tokens.md` — **bukan** di folder `design/`. Jangan hardcode hex di komponen sebelum token di-lock.
 
 ---
 

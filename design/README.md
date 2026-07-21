@@ -72,9 +72,12 @@ node _build-brief-pdf.mjs
 | UX Principles, IA, Flows, Nav, Screens | `../product-discovery/04-ux/` (Baseline v1.0, ADR-013) |
 | Personas & insights | `../product-discovery/03-user/` (Baseline v1.0, ADR-009) |
 | Roles, content status | `../product-discovery/02-product/roles-permissions.md` |
+| **Design tokens** (font, warna, neutral, status — setelah design approve) | `../product-discovery/06-engineering/design-tokens.md` (ADR-038) |
 | Status project | `../project-manager/PROJECT_STATE.md` |
 
-Jika desain Figma bertentangan dengan baseline di atas, **baseline yang menang** — kecuali perubahan disepakati lewat ADR.
+Folder ini (`design/`) adalah **handoff operasional**, bukan SoT token atau UX. Setelah design di-approve, PM mengisi nilai final ke `design-tokens.md` (lihat panduan PM di dokumen tersebut).
+
+Jika desain Figma bertentangan dengan baseline UX / token yang sudah di-lock, **baseline + ADR yang menang** — kecuali perubahan disepakati lewat ADR.
 
 ---
 
