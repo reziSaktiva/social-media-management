@@ -188,6 +188,8 @@ model PublishingPostTarget {
   postId             String   @map("post_id") @db.Uuid
   connectedAccountId String   @map("connected_account_id") @db.Uuid
   platform           String
+  contentFormat      String   @default("post") @map("content_format")
+  platformOptions    Json?    @map("platform_options")
   outstandJobId      String?  @map("outstand_job_id")
   status             String   @default("pending")
   publishedUrl       String?  @map("published_url")
