@@ -80,6 +80,7 @@ Bukan berarti fitur tersebut tidak penting, tetapi bukan prioritas untuk mencapa
 ### Must Have
 
 * Content Draft
+* Content Format Selection (Post / Reel / Story pada IG & FB; Pin pada Pinterest; default Post pada platform lain — ADR-039)
 * Schedule Post
 * Calendar View
 * Queue Management

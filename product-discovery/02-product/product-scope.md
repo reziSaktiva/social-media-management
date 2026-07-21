@@ -50,6 +50,7 @@ Mengelola seluruh proses publikasi konten.
 Mencakup:
 
 * Content Draft
+* Content Format per akun (Post / Reel / Story / Pin — ADR-039)
 * Schedule
 * Queue
 * Calendar

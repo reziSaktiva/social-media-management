@@ -42,6 +42,7 @@ Mengelola seluruh siklus publikasi konten.
 Responsibilities:
 
 * Content Draft
+* Content Format per target (Post / Reel / Story / Pin — ADR-039)
 * Schedule
 * Queue
 * Calendar

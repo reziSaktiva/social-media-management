@@ -42,6 +42,11 @@ Kemampuan berikut wajib tersedia pada MVP.
 ## Publishing
 
 * Membuat draft konten.
+* Memilih **tipe/format konten per akun tujuan** sesuai kemampuan platform & Outstand (ADR-039):
+  * Instagram & Facebook: **Post / Reel / Story**
+  * TikTok: posting video/feed (tanpa selector Reel/Story di UI)
+  * Pinterest: **Pin** (judul, destination link, board)
+  * Platform lain yang didukung: format `post` sebagai default
 * Menjadwalkan posting.
 * Melihat kalender publikasi.
 * Mengelola antrean (queue) posting.

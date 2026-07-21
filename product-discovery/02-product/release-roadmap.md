@@ -65,6 +65,7 @@ Memungkinkan pengguna membuat dan menjadwalkan konten.
 Fokus:
 
 * Content Draft
+* Content Format per akun (Post / Reel / Story / Pin — ADR-039)
 * Schedule
 * Queue
 * Calendar
