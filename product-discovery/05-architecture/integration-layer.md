@@ -91,6 +91,8 @@ OutstandAdapter (Anti-Corruption Layer)
   ├── connectAccount(params) → ConnectedAccountData
   ├── disconnectAccount(outstandAccountId) → void
   ├── schedulePost(params) → OutstandJobResult
+  │     // params mencakup: outstandAccountId, caption, mediaUrls, scheduledAt,
+  │     // contentFormat, platformOptions? — dipetakan ke override Outstand di ACL
   ├── cancelScheduledPost(outstandJobId) → void
   ├── fetchEngagementItems(outstandAccountId, cursor?) → EngagementPage
   ├── replyToEngagementItem(outstandItemId, text) → void
@@ -206,15 +208,18 @@ Publishing ke social media dilakukan melalui Outstand API — sistem internal ti
 
 **Langkah-langkah:**
 1. `PublishingService` memvalidasi bahwa semua `PostTarget` memiliki `ConnectedAccount` yang `active`.
-2. Per `PostTarget`, `PublishingService` memanggil `OutstandAdapter.schedulePost(params)` dengan:
+2. `PublishingService` memvalidasi `contentFormat` tiap `PostTarget` terhadap matriks platform (ADR-039) serta kelengkapan media / `platformOptions` (mis. Pinterest pin).
+3. Per `PostTarget`, `PublishingService` memanggil `OutstandAdapter.schedulePost(params)` dengan:
    - `outstandAccountId` dari `ConnectedAccount`.
    - Caption, media URLs, dan waktu tayang.
-3. Outstand mengembalikan `outstandJobId`.
-4. `PublishingService` menyimpan `outstandJobId` pada `PostTarget` dan mengubah `PostTarget.status` ke `scheduled`.
+   - `contentFormat` + `platformOptions` — diterjemahkan ACL ke override Outstand (Story/Reel/Pin, dll.).
+4. Outstand mengembalikan `outstandJobId`.
+5. `PublishingService` menyimpan `outstandJobId` pada `PostTarget` dan mengubah `PostTarget.status` ke `scheduled`.
 
 **Catatan:**
 - Media diupload ke Supabase Storage sebelum dijadwalkan. Bucket `media` bersifat private — saat menjadwalkan ke Outstand, **signed URL sementara** (TTL sekitar 24 jam) di-generate dari `storage_path` dan dikirim ke Outstand. Outstand mengambil media dari signed URL tersebut sebelum TTL habis.
 - Jika salah satu `PostTarget` gagal dijadwalkan, `PostTarget` tersebut ditandai `failed`. `PostTarget` lain pada post yang sama tidak terpengaruh.
+- **Content format (ADR-039):** Outstand memfasilitasi Post / Reel / Story (dan opsi platform lain seperti Pinterest board). Domain menyimpan `ContentFormat` per target; hanya `OutstandAdapter` yang mengetahui bentuk field API Outstand (mis. flag Story / routing Reel / metadata Pin).
 
 ## Alur Batalkan Post
 

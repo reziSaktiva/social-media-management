@@ -135,6 +135,7 @@ Publish
 │       ├── Caption Editor    — area tulis caption, dengan AI inline
 │       ├── Media Attachment  — lampirkan gambar / video
 │       ├── Account Selector  — pilih akun tujuan
+│       ├── Content Format    — Post / Reel / Story / Pin per akun (ADR-039)
 │       ├── Schedule Picker   — tentukan waktu publish
 │       └── Status Indicator  — draft / in review / ready to schedule / scheduled / published / failed
 └── History                   — riwayat konten yang telah dipublish
@@ -142,7 +143,7 @@ Publish
 ```
 
 **Pengguna utama:** Raka (eksekusi publishing harian).
-**Catatan:** AI Caption Assistance berada di dalam Draft Editor — bukan layar terpisah.
+**Catatan:** AI Caption Assistance berada di dalam Draft Editor — bukan layar terpisah. Content Format Selector mengikuti matriks platform (IG/FB: Post·Reel·Story; Pinterest: Pin; TikTok & lainnya: Post).
 
 ---
 
@@ -237,6 +238,7 @@ Tabel berikut memetakan fitur MVP (Must Have) ke layar spesifik dalam IA.
 | Roles & Permissions | Workspace Settings → Roles & Permissions |
 | Social Account Connection | Workspace Settings → Connected Accounts |
 | Content Draft | Publish → Drafts → Draft Editor |
+| Content Format Selection (ADR-039) | Publish → Draft Editor → Content Format per akun |
 | Schedule Post | Publish → Draft Editor → Schedule Picker |
 | Calendar View | Publish → Calendar |
 | Queue Management | Publish → Queue |

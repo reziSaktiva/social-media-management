@@ -18,6 +18,18 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-07-21 — Content Format (Post/Reel/Story/Pin) wajib di MVP
+
+**Phase:** M7 complete → siap M8 Development
+
+**Summary:** Setelah membandingkan Create Post Outstand (FB/IG punya Post·Reel·Story; TikTok tanpa radio itu; Pinterest = Pin), PM menyatakan fitur ini **harusnya ada**. Dipilih opsi MVP sekarang: tipe konten per platform + update Product/UX/domain + ADR. Review konsistensi menemukan gap (UF-01, confirmation summary, default Pinterest vs DB, context pointers) dan sudah dirapikan.
+
+**Key Insight / Decision:** ADR-039 — `ContentFormat` per `PostTarget`; IG/FB: post/reel/story; Pinterest: pin; TikTok & lainnya: post. Outstand memfasilitasi; ACL yang memetakan. Default DB `post` ≠ izin bisnis untuk Pinterest.
+
+**Impact:** Product + Architecture + UX + shared enum + migrasi Prisma; laporan ke PM; implementasi UI Draft Editor menjadi bagian M8.
+
+---
+
 ## 2026-07-21 — Lokasi SoT design tokens setelah design siap
 
 **Phase:** M7 complete → siap M8 Development

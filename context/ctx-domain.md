@@ -42,6 +42,7 @@ Modul kode: `apps/web/src/domains/<nama-domain>/` (lihat `ctx-implementation.md`
 4. Domain logic **tidak** mengimpor Prisma, Supabase client, atau HTTP client Outstand.
 5. Penamaan entity/tabel mengikuti `domain-model.md` + amandemen ADR (mis. ADR-027 untuk pengecualian naming tabel).
 6. Jangan menambah BC baru atau mengubah boundary tanpa ADR.
+7. Publishing format: enum `ContentFormat` di `packages/shared`; nilai hidup di `PostTarget` (+ `platformOptions` JSON). Matriks platform & default bisnis → `domain-model.md` / **ADR-039**. Override Outstand hanya di ACL.
 
 Boundary rules lengkap (BR-01 dst.) → `domain-model.md`.
 

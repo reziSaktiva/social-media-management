@@ -3,7 +3,7 @@
 > **FILE SEMENTARA — BUKAN BASELINE / BUKAN ACUAN**
 >
 > File ini dibuat hanya untuk diskusi visual. Silakan hapus setelah dibaca.
-> Sumber yang dipakai: ringkasan dari `04-ux` (UF-01, UF-05) + pola auth/workspace di baseline — **bukan** dokumen resmi baru.
+> Sumber yang dipakai: ringkasan dari `04-ux` (UF-01, UF-05) + pola auth/workspace + **ADR-039 Content Format** — **bukan** dokumen resmi baru.
 
 ---
 
@@ -28,7 +28,7 @@ flowchart TD
   G -->|Sudah| M[Publish → Drafts → New Post]
 
   H --> I[Workspace Settings → Connected Accounts]
-  I --> J[Pilih platform<br/>IG / FB / X / LinkedIn / dll]
+  I --> J[Pilih platform<br/>IG FB X LinkedIn TikTok<br/>YouTube Threads Pinterest]
   J --> K[OAuth di platform pihak ketiga]
   K --> L{OAuth sukses?}
 
@@ -39,10 +39,11 @@ flowchart TD
   M --> N[Tulis caption<br/>manual atau AI Assist opsional]
   N --> O[Upload / lampirkan media<br/>file lokal atau Media Library]
   O --> P[Pilih akun tujuan<br/>Account Selector]
-  P --> Q{Siap dijadwalkan?}
+  P --> P2[Content Format per akun<br/>IG/FB: Post Reel Story<br/>Pinterest: Pin · lainnya: Post]
+  P2 --> Q{Siap dijadwalkan?}
 
   Q -->|Belum| R[Save as Draft]
-  Q -->|Ya| S[Pilih waktu → Schedule]
+  Q -->|Ya| S[Pilih waktu → Schedule<br/>konfirmasi caption + akun + format]
 
   R --> T[Selesai: konten tersimpan Draft]
   S --> U[Selesai: status Scheduled<br/>muncul di Calendar & Queue]
@@ -67,7 +68,7 @@ flowchart LR
   end
 
   subgraph Upload_Publish
-    C4 --> P1[New Post] --> P2[Caption] --> P3[Upload media] --> P4[Pilih akun] --> P5[Schedule / Draft]
+    C4 --> P1[New Post] --> P2[Caption] --> P3[Upload media] --> P4[Pilih akun] --> P4b[Content Format] --> P5[Schedule / Draft]
   end
 ```
 
@@ -75,18 +76,27 @@ flowchart LR
 
 ## Catatan singkat (bukan spesifikasi)
 
-| Tahap     | Inti                                                                             |
-| --------- | -------------------------------------------------------------------------------- |
-| Buka app  | Entry via auth; tanpa session → login/signup                                     |
-| Workspace | Multi-tenant: user masuk ke satu workspace aktif                                 |
-| Connect   | Via **Workspace Settings → Connected Accounts** (UF-05), OAuth Outstand/platform |
-| Upload    | Media dilampirkan di **Draft Editor** (UF-01), lalu pilih akun + schedule/draft  |
+| Tahap     | Inti                                                                                                           |
+| --------- | -------------------------------------------------------------------------------------------------------------- |
+| Buka app  | Entry via auth; tanpa session → login/signup                                                                   |
+| Workspace | Multi-tenant: user masuk ke satu workspace aktif                                                               |
+| Connect   | Via **Workspace Settings → Connected Accounts** (UF-05), OAuth Outstand/platform                               |
+| Upload    | Media dilampirkan di **Draft Editor** (UF-01), lalu pilih akun + **Content Format** (ADR-039) + schedule/draft |
+
+**Content Format (ADR-039) — wajib di Draft Editor:**
+
+| Platform                              | Format di UI                           |
+| ------------------------------------- | -------------------------------------- |
+| Instagram, Facebook                   | Post · Reel · Story                    |
+| Pinterest                             | Pin (+ title, destination link, board) |
+| TikTok, X, LinkedIn, YouTube, Threads | Post (default; tanpa radio Reel/Story) |
 
 **Cabang penting (opsional di mental model):**
 
 - Token kadaluarsa → status `Disconnected` → **Reconnect** (bukan setup ulang dari nol).
 - Belum siap publish → **Save as Draft** (tidak masuk Calendar/Queue).
 - User yang sudah punya akun terhubung → bisa langsung New Post tanpa melewati Connect lagi.
+- Format harus valid per platform sebelum Schedule (mis. Pinterest tidak boleh tersimpan sebagai `post`).
 
 ---
 
@@ -312,13 +322,13 @@ Ini yang di flowchart sebagai cabang **multi-page**.
 
 ### Mapping ke langkah di flowchart TEMP
 
-| Langkah user flow                     | Outstand                                                                |
-| ------------------------------------- | ----------------------------------------------------------------------- |
-| (sekali, ops eng) Configure platforms | API key + `POST /v1/social-networks` atau dashboard                     |
-| User klik Connect Account             | `POST .../social-networks/{network}/auth-url`                           |
-| OAuth di platform                     | User diarahkan ke `auth_url`                                            |
-| Kembali ke app / Active               | Callback + (opsional) pending/finalize → list `GET /v1/social-accounts` |
-| Upload & schedule post                | Endpoint Posts Outstand (setelah akun `Active`) — lewat ACL             |
+| Langkah user flow                     | Outstand                                                                                                                     |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| (sekali, ops eng) Configure platforms | API key + `POST /v1/social-networks` atau dashboard                                                                          |
+| User klik Connect Account             | `POST .../social-networks/{network}/auth-url`                                                                                |
+| OAuth di platform                     | User diarahkan ke `auth_url`                                                                                                 |
+| Kembali ke app / Active               | Callback + (opsional) pending/finalize → list `GET /v1/social-accounts`                                                      |
+| Upload & schedule post                | Endpoint Posts Outstand (setelah akun `Active`) — lewat ACL; `ContentFormat` dipetakan ke override Outstand (Story/Reel/Pin) |
 
 ---
 

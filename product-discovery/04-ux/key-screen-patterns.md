@@ -359,11 +359,12 @@ Draft Editor adalah **layar kerja terpenting** dalam produk. Raka menulis, melen
 | KSP-05-F03 | Media Attachment | Lampirkan gambar atau video dari perangkat lokal atau Media Library | UXP-01 |
 | KSP-05-F04 | Account Selector | Pilih satu atau beberapa akun tujuan — dengan indikator status koneksi tiap akun | UXP-04 |
 | KSP-05-F05 | Schedule Picker | Tentukan tanggal dan waktu publish | UXP-04 |
-| KSP-05-F06 | Confirmation Summary | Ringkasan: preview caption, akun tujuan, waktu — ditampilkan sebelum Schedule dieksekusi | UXP-04 |
+| KSP-05-F06 | Confirmation Summary | Ringkasan: preview caption, akun tujuan, **format per akun**, waktu — ditampilkan sebelum Schedule dieksekusi | UXP-04 |
 | KSP-05-F07 | Status Indicator | Status draft saat ini: Draft, In Review, Ready to Schedule, Scheduled, Published, Failed — selalu terlihat | UXP-06 |
 | KSP-05-F08 | Save as Draft | Simpan progres tanpa menjadwalkan | UXP-01 |
 | KSP-05-F09 | Schedule Action | Eksekusi penjadwalan setelah pengguna konfirmasi | UXP-04 |
 | KSP-05-F10 | Kembali ke Sub-Screen Asal | Tombol Back / Close mengembalikan ke Calendar / Queue / Drafts tanpa kehilangan state | UXP-03 |
+| KSP-05-F11 | Content Format Selector | Pilih format publikasi **per akun terpilih** sesuai platform (ADR-039): IG/FB → Post / Reel / Story; Pinterest → Pin (+ field pin); TikTok & lainnya → Post (tanpa radio Reel/Story) | UXP-01, UXP-03 |
 
 ---
 
@@ -379,22 +380,26 @@ Draft Editor dibagi menjadi dua area utama:
 │                            │                            │
 │  [Tulis caption di sini...]│  Account Selector          │
 │                            │  ☐ Instagram @brand        │
-│  [AI Assist ✨]            │  ☐ X @brand                │
-│                            │  ☐ LinkedIn @brand [!warn] │
+│  [AI Assist ✨]            │    ○ Post  ○ Reel  ○ Story │
+│                            │  ☐ Facebook @brand         │
+│  MEDIA ATTACHMENT          │    ○ Post  ○ Reel  ○ Story │
+│  [+ Tambah Media]          │  ☐ TikTok @brand           │
+│                            │    (format: Post)          │
+│  [preview media]           │  ☐ Pinterest @brand        │
+│                            │    format Pin + title/link │
 │                            │                            │
-│  MEDIA ATTACHMENT          │  Schedule Picker           │
-│  [+ Tambah Media]          │  [Tanggal] [Waktu]         │
-│                            │                            │
-│  [preview media]           ├────────────────────────────┤
+│                            │  Schedule Picker           │
+│                            │  [Tanggal] [Waktu]         │
+│                            ├────────────────────────────┤
 │                            │  [Save as Draft]  [Schedule│
 └────────────────────────────┴────────────────────────────┘
 ```
 
 **Zona kiri — Caption Editor:** Area utama yang menjadi fokus saat layar terbuka. Caption Editor besar, bisa expand. AI Assist trigger tampil di dalam atau di dekat Caption Editor.
 
-**Zona kiri — Media Attachment:** Di bawah Caption Editor. Preview media yang dilampirkan.
+**Zona kiri — Media Attachment:** Di bawah Caption Editor. Preview media yang dilampirkan. Syarat media menyesuaikan format terpilih (mis. Story/Reel biasanya butuh media vertikal).
 
-**Zona kanan — Account Selector:** Daftar akun terhubung yang tersedia. Setiap akun menampilkan status koneksinya. Akun Disconnected menampilkan warning.
+**Zona kanan — Account Selector + Content Format:** Daftar akun terhubung. Di bawah tiap akun Meta (IG/FB) tampil selector **Post / Reel / Story**. Pinterest menampilkan field Pin. TikTok & platform lain tanpa radio Reel/Story. Akun Disconnected menampilkan warning.
 
 **Zona kanan — Schedule Picker:** Input tanggal dan waktu. Terletak di bawah Account Selector.
 
@@ -445,13 +450,16 @@ Sebelum tombol Schedule dieksekusi, pengguna melihat ringkasan konfirmasi:
 ```
 Konfirmasi Jadwal:
   Caption: "Selamat pagi! Hari ini kami..."
-  Akun: Instagram @brandname, X @brandname
+  Akun:
+    · Instagram @brandname — Reel
+    · Facebook @brandname — Post
+    · X @brandname — Post
   Waktu: Senin, 14 Jul 2025 — 10:00 WIB
   
   [Batal]   [Konfirmasi & Jadwalkan]
 ```
 
-Ini adalah satu-satunya momen di mana pengguna diminta konfirmasi eksplisit sebelum data diproses. (UXP-04)
+Ini adalah satu-satunya momen di mana pengguna diminta konfirmasi eksplisit sebelum data diproses. (UXP-04). Format per akun wajib terlihat agar tidak salah jadwalkan Story/Reel.
 
 ---
 
@@ -459,8 +467,9 @@ Ini adalah satu-satunya momen di mana pengguna diminta konfirmasi eksplisit sebe
 
 | State | Tampilan |
 | ----- | -------- |
-| Draft baru (kosong) | Caption Editor terfokus; Account Selector belum dipilih; Schedule Picker kosong |
-| Draft ada konten | Caption terisi, media terlampir (jika ada), akun dan waktu terisi |
+| Draft baru (kosong) | Caption Editor terfokus; Account Selector belum dipilih; Content Format belum relevan sampai akun dipilih; Schedule Picker kosong |
+| Draft ada konten | Caption terisi, media terlampir (jika ada), akun + format per akun, dan waktu terisi |
+| Format tidak valid untuk platform | Selector menolak opsi; Schedule diblok sampai format/media/`platformOptions` valid (ADR-039) |
 | Status Scheduled | Status Indicator menampilkan "Scheduled"; aksi berubah: Edit Schedule / Unschedule |
 | Status Published | Status Indicator menampilkan "Published"; layar read-only dengan opsi lihat di platform |
 | Status Failed | Status Indicator menampilkan "Failed" + pesan alasan; aksi: Retry atau Edit |
@@ -777,6 +786,7 @@ Keputusan desain yang dibuat dalam dokumen ini.
 | KSP-D09 | Post terjadwal tidak dibatalkan otomatis saat akun disconnect | Pembatalan otomatis lebih merusak daripada membiarkan post dalam antrean dan menunggu reconnect | UXP-04 |
 | KSP-D10 | Publish History tidak masuk daftar 8 layar kritis | History adalah layar review passif — polanya sederhana (daftar + detail) dan tidak memerlukan dokumentasi mendalam di fase ini | UXP-03 |
 | KSP-D11 | Start Page tidak masuk daftar 8 layar kritis | Start Page bukan bagian dari siklus kerja harian (UXP-01: Draft → Schedule → Publish → Engage → Review). Start Page adalah fitur konfigurasi yang diakses sesekali — bukan setiap sesi kerja. Polanya sederhana: form pengaturan + preview publik. Tidak ada pola koordinasi tim atau alur multi-langkah yang perlu didokumentasikan mendalam di fase ini. | UXP-01, UXP-03 |
+| KSP-D12 | Content Format Selector per akun di Draft Editor (bukan satu toggle global) | Format bergantung platform (IG/FB vs TikTok vs Pinterest); multi-account posting membutuhkan format independen per `PostTarget` (ADR-039) | UXP-01, UXP-03 |
 
 ---
 

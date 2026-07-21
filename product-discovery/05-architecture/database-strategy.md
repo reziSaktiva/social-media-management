@@ -259,6 +259,8 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 | `post_id` | `uuid NOT NULL REFERENCES publishing_posts(id) ON DELETE CASCADE` | |
 | `connected_account_id` | `uuid NOT NULL REFERENCES workspace_connected_accounts(id)` | |
 | `platform` | `text NOT NULL` | Snapshot platform saat target dibuat |
+| `content_format` | `text NOT NULL DEFAULT 'post'` | `post \| reel \| story \| pin` (ADR-039). Default DB = fallback teknis; **Application Service wajib set nilai bisnis** (Pinterest → `pin`) dan memvalidasi matriks platform |
+| `platform_options` | `jsonb` | Field khusus platform (mis. Pinterest title/link/board); null jika tidak dipakai |
 | `outstand_job_id` | `text` | ID job dari Outstand API setelah post dijadwalkan |
 | `status` | `text NOT NULL DEFAULT 'pending'` | `pending \| scheduled \| published \| failed` |
 | `published_url` | `text` | URL post yang sudah dipublikasikan |

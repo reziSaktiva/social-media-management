@@ -222,10 +222,42 @@ Publishing bertanggung jawab atas status konten kanonikal: `Draft → In Review 
 - `postId: PostId`
 - `connectedAccountId: ConnectedAccountId` — referensi ke Workspace BC
 - `platform: SocialPlatform`
+- `contentFormat: ContentFormat` — `post | reel | story | pin` (enum di `packages/shared`; ADR-039)
+- `platformOptions: PlatformPublishOptions?` — field khusus platform (mis. Pinterest: title, destination link, board)
 - `outstandJobId: string?` — ID job dari Outstand API setelah post dijadwalkan
 - `status: PostTargetStatus` — `pending | scheduled | published | failed`
 - `publishedUrl: string?` — URL post yang sudah dipublikasikan
 - `error: string?`
+
+**ContentFormat per platform (MVP — ADR-039)**
+
+Format dipilih **per `PostTarget`** (bukan satu format global untuk seluruh post), agar multi-account tetap bisa beda tipe per jaringan.
+
+| Platform | Format yang diizinkan di MVP | Default |
+| -------- | ---------------------------- | ------- |
+| Instagram | `post`, `reel`, `story` | `post` |
+| Facebook | `post`, `reel`, `story` | `post` |
+| TikTok | `post` (video/feed TikTok; tanpa selector Reel/Story di UI) | `post` |
+| Pinterest | `pin` | `pin` |
+| Twitter / X | `post` | `post` |
+| LinkedIn | `post` | `post` |
+| YouTube | `post` | `post` |
+| Threads | `post` | `post` |
+
+`platformOptions` (bentuk konseptual — disimpan sebagai JSON di DB, **bukan** enum shared; tidak mengandung logika bisnis):
+
+```typescript
+// Contoh payload Pinterest (MVP)
+type PlatformPublishOptions = {
+  pinTitle?: string;
+  destinationUrl?: string;
+  boardId?: string;
+};
+```
+
+Field diisi hanya jika platform membutuhkannya. Mapping ke API Outstand tetap di `OutstandAdapter`.
+
+**Default `contentFormat` saat target dibuat:** ditentukan Application Service per platform (Pinterest → `pin`; lainnya → `post` jika diizinkan). Default kolom DB `post` hanyalah fallback teknis migrasi — **bukan** izin untuk menyimpan `post` pada Pinterest.
 
 **QueueSlot**
 - `id: QueueSlotId`
@@ -241,6 +273,9 @@ Publishing bertanggung jawab atas status konten kanonikal: `Draft → In Review 
 2. `Post` dapat memiliki multiple `PostTarget` (multi-account posting).
 3. `Post` hanya menyimpan referensi `MediaId[]` — tidak embed data media. Detail media diambil dari Media BC secara terpisah.
 4. `outstandJobId` pada `PostTarget` hanya ada setelah konten dikirim ke Outstand API untuk dijadwalkan — dikelola oleh Integration Layer.
+5. `contentFormat` pada `PostTarget` wajib valid untuk `platform` tersebut (matriks ADR-039). Application Service menolak create/update/schedule target jika format tidak diizinkan atau media tidak memenuhi syarat format (mis. Story/Reel membutuhkan media yang sesuai).
+6. Field khusus platform (Pinterest pin metadata) disimpan di `platformOptions` pada `PostTarget` — bukan di `Post` agar multi-target tetap independen.
+7. Default bisnis format: Pinterest = `pin`; platform lain = `post` (kecuali user memilih Reel/Story di IG/FB). Jangan mengandalkan default kolom DB saja saat menulis target baru.
 
 ---
 
@@ -669,6 +704,14 @@ enum WorkspacePlan {
   Free = 'free',
   Pro = 'pro',
 }
+
+// Content format per publish target (ADR-039)
+enum ContentFormat {
+  Post = 'post',
+  Reel = 'reel',
+  Story = 'story',
+  Pin = 'pin',
+}
 ```
 
 ## Value Objects
@@ -825,6 +868,7 @@ Tabel berikut memetakan Bounded Context ke modul yang didefinisikan di Product B
 | DM-D04 | `ContentStatus` enum didefinisikan di `packages/shared` bukan di Publishing BC | Status konten dikonsumsi oleh Engagement, Analytics, dan Notification — harus shared | Definisikan di Publishing dan re-export (menambah coupling) |
 | DM-D05 | `ConnectedAccount` berada di Workspace BC bukan Publishing BC | Account adalah workspace-level resource, bukan publication-level resource; Publishing hanya referensi `ConnectedAccountId` | ConnectedAccount di Publishing BC (membuat Publishing terlalu besar) |
 | DM-D06 | Tidak ada "Activity Feed" BC — activity tercatat di Notification BC | Activity Feed (Should Have di MVP) dapat dimodel sebagai `NotificationType` yang di-query; tidak memerlukan BC baru pada MVP | BC Activity tersendiri (post-MVP jika diperlukan) |
+| DM-D07 | `ContentFormat` di `PostTarget` (+ `platformOptions`), enum di `packages/shared` | Format bergantung platform & multi-account; Outstand override tetap di ACL (ADR-039) | Format hanya di `Post` global, atau hardcode field Outstand di domain |
 
 ---
 
