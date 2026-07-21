@@ -4,6 +4,34 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-21 (sesi kelima puluh dua)
+
+### Added — Content Format MVP: Post / Reel / Story / Pin (ADR-039)
+
+* ADR-039 — format publikasi per `PostTarget` masuk Must Have MVP; matriks IG/FB vs TikTok vs Pinterest.
+* `ContentFormat` enum di `packages/shared` (`post | reel | story | pin`).
+* Migrasi Prisma `20260721140000_add_content_format` — kolom `content_format`, `platform_options` pada `publishing_post_targets`.
+
+### Changed
+
+* Product: `mvp-definition.md`, `feature-modules.md`, `feature-priority.md`, `product-scope.md`.
+* Architecture: `domain-model.md`, `integration-layer.md`, `database-strategy.md`.
+* UX: `key-screen-patterns.md` (KSP-05-F11, KSP-D12), `information-architecture.md` (IA tree + pemetaan fitur), `user-flows.md` (UF-01).
+* Architecture: `application-layer.md`, `ARCHITECTURE_OVERVIEW.md` — Format di Publishing.
+* Product: `release-roadmap.md` v0.2.
+* Context: `ctx-domain.md`, `ctx-design.md`.
+* `design/DESIGN_OVERVIEW.md` + `DESIGN_BRIEF.md` — catatan format di Draft Editor (handoff designer).
+* `PROJECT_STATE.md`, `CONVERSATIONS.md` — keputusan + next task implementasi UI format.
+
+### Consistency fix (review ADR-039)
+
+* Klarifikasi default Pinterest `pin` vs default kolom DB `post` (fallback teknis; Application Service wajib set nilai bisnis).
+* Definisi bentuk `PlatformPublishOptions` (JSON, bukan enum shared).
+* Renomori fungsi UX: Content Format Selector = `KSP-05-F11` (bukan F04b).
+* UF-01 & confirmation summary menyertakan format per akun.
+
+---
+
 ## 2026-07-21 (sesi kelima puluh satu)
 
 ### Added — Design Tokens SoT + alur lock (ADR-038)

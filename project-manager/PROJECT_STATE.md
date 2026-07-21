@@ -145,12 +145,14 @@ Restricted Actions:
 
 * Tidak ada item dokumentasi AI Context yang sedang dikerjakan — scaffold `context/` selesai. Fokus berikutnya: M8 Development.
 * Template `design-tokens.md` sudah disiapkan (status Draft / TBD); menunggu approve design untuk diisi nilai final.
+* ADR-039 dikunci: Content Format MVP terdokumentasi di Product/UX/Architecture + enum `ContentFormat` + migrasi Prisma; UI Draft Editor belum diimplementasi.
 
 ---
 
 # Next Tasks
 
 * **M8 — Development:** mulai fitur produk (auth flows UI, workspace onboarding, publishing MVP, dll.) sesuai baseline + `context/`.
+* **Publishing MVP:** Draft Editor harus mengimplementasi Content Format Selector per akun (ADR-039) — jangan ship New Post tanpa Post/Reel/Story (IG/FB) dan Pin (Pinterest).
 * **Setelah design UI di-approve:** isi nilai di `product-discovery/06-engineering/design-tokens.md` (ganti `TBD`), ubah status → Locked, mirror ke tema `apps/web` — panduan PM ada di dokumen tersebut (ADR-038).
 * (Opsional) Perkaya aturan coding di `context/ctx-development.md` saat konvensi baru muncul dari praktik M8.
 * Buat project Supabase Cloud `social-media-local` dan jalankan `bun run db:migrate` terhadap `.env.local`.
@@ -176,6 +178,7 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-039 — Content Format (Post/Reel/Story/Pin) masuk MVP Publishing; format per `PostTarget`; matriks platform + Outstand ACL (2026-07-21).
 * ADR-038 — SoT design tokens di `product-discovery/06-engineering/design-tokens.md`; diisi setelah design approve; `design/` bukan SoT token (2026-07-21).
 * ADR-037 — Perluasan aditif `SocialPlatform`: Threads & Pinterest ditambah; Twitter/X & LinkedIn tetap. Daftar resmi: Instagram, Facebook, Twitter/X, LinkedIn, TikTok, YouTube, Threads, Pinterest (2026-07-21).
 * AI Context — opsi A: pertahankan 8 `ctx-*.md`; Product+User di `ctx-business`; UX di `ctx-design`; coding rules di `ctx-development` + pola fitur di `ctx-implementation` (2026-07-17).
