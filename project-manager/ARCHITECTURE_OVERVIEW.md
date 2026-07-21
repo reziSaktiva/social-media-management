@@ -234,7 +234,7 @@ Letakkan sebagai grid di dalam area Domain Logic / Application Service (satu kar
 │  ┌──────────┐  ┌──────────┐  ┌────────────────────────────┐ │
 │  │ BC-01    │  │ BC-02    │  │ BC-03 Publishing           │ │
 │  │ Identity │  │Workspace │  │ Post · Queue · Target      │ │
-│  │Better Auth│ │ Members  │  │ Draft · Schedule · Publish │ │
+│  │Better Auth│ │ Members  │  │ Draft · Format · Schedule  │ │
 │  └──────────┘  │ Accounts │  └────────────────────────────┘ │
 │                │ Brand    │                                 │
 │                └──────────┘                                 │
