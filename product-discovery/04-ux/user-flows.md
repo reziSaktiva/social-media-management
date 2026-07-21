@@ -71,7 +71,7 @@ Setiap flow memiliki struktur:
 
 **Trigger:** Raka memulai sesi kerja konten harian atau menerima brief baru.
 
-**Modul:** Publishing (Draft Editor, Account Selector, Schedule Picker), AI Assistant
+**Modul:** Publishing (Draft Editor, Account Selector, Content Format Selector, Schedule Picker), AI Assistant
 
 ---
 
@@ -84,10 +84,11 @@ Setiap flow memiliki struktur:
    - **Menggunakan AI Assist** (opsional) — Raka memicu AI inline di Caption Editor, memilih tone/intent singkat, AI menghasilkan beberapa opsi caption. Raka memilih satu dan mengeditnya seperlunya.
 4. Raka melampirkan media melalui **Media Attachment** — dari file lokal atau Media Library.
 5. Raka memilih satu atau beberapa akun tujuan via **Account Selector**.
-6. Raka menetapkan waktu publish via **Schedule Picker**.
-7. Draft Editor menampilkan ringkasan: preview caption, akun tujuan, dan waktu yang dipilih.
-8. Raka menekan **Schedule** — status konten berubah menjadi `Scheduled`.
-9. Post muncul di **Calendar** dan **Queue** sesuai waktu yang ditentukan.
+6. Per akun terpilih, Raka menetapkan **Content Format** sesuai platform (ADR-039): IG/FB → Post / Reel / Story; Pinterest → Pin (+ field pin bila perlu); TikTok & lainnya → Post.
+7. Raka menetapkan waktu publish via **Schedule Picker**.
+8. Draft Editor menampilkan ringkasan: preview caption, akun tujuan + format masing-masing, dan waktu yang dipilih.
+9. Raka menekan **Schedule** — status konten berubah menjadi `Scheduled`.
+10. Post muncul di **Calendar** dan **Queue** sesuai waktu yang ditentukan.
 
 **Outcome:** Konten terjadwal dan terlihat di Calendar dan Queue.
 
@@ -109,7 +110,7 @@ Setiap flow memiliki struktur:
 ### UX Principles
 
 * **UXP-01** — Flow ini mewakili tahapan Production → Scheduling dalam satu siklus kerja tanpa context switching ke tool lain.
-* **UXP-04** — Ringkasan konfirmasi (caption + akun + waktu) sebelum schedule membangun kepercayaan bahwa konten akan terbit ke tempat yang benar.
+* **UXP-04** — Ringkasan konfirmasi (caption + akun + format + waktu) sebelum schedule membangun kepercayaan bahwa konten akan terbit ke tempat dan format yang benar.
 * **UXP-06 (I-06)** — AI Assist hadir di dalam Caption Editor sebagai aksi kontekstual, bukan modul terpisah yang memaksa Raka keluar dari flow.
 
 ---
