@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.4      |
+| Version      | 1.0.8      |
 | Status       | Active     |
 | Last Updated | 2026-07-23 |
 
@@ -27,10 +27,15 @@
 M7 Repository & Bootstrap **selesai**. Siap M8 Development.
 
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
-* `AGENTS.md` di root sudah ada; skill resmi vendor (Prisma, Better Auth, Vercel, Supabase, shadcn) sudah terpasang di `.agents/skills/`.
+* `AGENTS.md` di root sudah ada; skill resmi vendor yang relevan (Prisma,
+  Better Auth, Vercel, Supabase) sudah terpasang di `.agents/skills/`.
 * Alignment ADR-040 pada dokumentasi baseline dan schema/migration sudah
   selesai. Implementasi runtime Outstand tetap bagian M8 dan belum dinyatakan
   selesai.
+* Alignment dokumentasi ADR-041 selesai: Engineering Baseline, Project
+  Overview, AGENTS, dan AI Context sudah memakai Astryx permanen, neutral theme
+  M8, Tailwind layout-only, wrapper selektif, serta exact pin Beta. Instalasi
+  dan smoke test Next.js 16 juga sudah selesai.
 
 ---
 
@@ -78,7 +83,9 @@ Restricted Actions:
 
 * **AI Context — opsi A:** scaffold `context/` (`README.md` + 8 `ctx-*.md`) sebagai indeks + aturan operasional; Product/User di `ctx-business`, UX di `ctx-design`, coding rules di `ctx-development`, pola fitur di `ctx-implementation`. Update `AGENTS.md` + root `README.md`.
 * Membuat `AGENTS.md` di root — pintu masuk AI agent; merujuk Project OS, skills, aturan keras M8, dan struktur `context/`.
-* Memasang official agent skills di `.agents/skills/` + `skills-lock.json` (Prisma, Better Auth, Vercel React, Supabase, shadcn).
+* Memasang official agent skills di `.agents/skills/` + `skills-lock.json`
+  (Prisma, Better Auth, Vercel React, Supabase). Skill UI lama sudah dihapus
+  setelah Astryx ditetapkan sebagai fondasi.
 * Membuat `project-manager/ARCHITECTURE_OVERVIEW.md` — High-Level Architecture Overview sebagai blueprint Figma (System Context & Containers + Internal Layers & Domains).
 * Menentukan arah project.
 * Memilih Hybrid Monorepo sebagai strategi repository.
@@ -144,13 +151,21 @@ Restricted Actions:
 * **ADR-040 alignment selesai:** kontrak resmi Outstand sudah diselaraskan pada
   Product/UX/Architecture/Engineering dan schema/migration. Ini menyelesaikan
   alignment, bukan implementasi runtime.
+* **ADR-041 implementasi fondasi UI selesai:** Astryx Core, Neutral Theme, CLI,
+  dan StyleX dipasang dengan exact pin `0.1.8` / `0.19.0`; provider global,
+  CSS cascade Tailwind, token bridge, dan halaman smoke terintegrasi. Button,
+  Dialog, TextInput, Table, light/dark mode, CLI doctor, typecheck, lint, test,
+  browser interaction, serta Next.js 16 production build sudah terverifikasi.
 
 ---
 
 # In Progress
 
-* Tidak ada item dokumentasi AI Context yang sedang dikerjakan — scaffold `context/` selesai. Fokus berikutnya: M8 Development.
-* Template `design-tokens.md` sudah disiapkan (status Draft / TBD); menunggu approve design untuk diisi nilai final.
+* Tidak ada item alignment atau smoke test yang sedang dikerjakan. Fokus
+  berikutnya: M8 Development.
+* Template `design-tokens.md` sudah disiapkan (status Draft / TBD); nilai final
+  diisi setelah feature selesai dan designer masuk (ADR-041 mengamendemen urutan
+  kerja ADR-038).
 * ADR-039 dikunci: Content Format MVP terdokumentasi di Product/UX/Architecture + enum `ContentFormat` + migrasi Prisma; UI Draft Editor belum diimplementasi.
 
 ---
@@ -165,7 +180,10 @@ Restricted Actions:
 * **Operasional X:** Project Owner mengonfigurasi kredensial BYOK X secara
   manual di dashboard Outstand; aplikasi tidak membuat form atau secret store X.
 * **Publishing MVP:** Draft Editor harus mengimplementasi Content Format Selector per akun (ADR-039) — jangan ship New Post tanpa Post/Reel/Story (IG/FB) dan Pin (Pinterest).
-* **Setelah design UI di-approve:** isi nilai di `product-discovery/06-engineering/design-tokens.md` (ganti `TBD`), ubah status → Locked, mirror ke tema `apps/web` — panduan PM ada di dokumen tersebut (ADR-038).
+* **Setelah feature selesai dan design UI di-approve:** isi nilai di
+  `product-discovery/06-engineering/design-tokens.md` (ganti `TBD`), ubah status
+  → Locked, lalu mirror ke Astryx theme + Tailwind token bridge (ADR-038,
+  ADR-041).
 * (Opsional) Perkaya aturan coding di `context/ctx-development.md` saat konvensi baru muncul dari praktik M8.
 * Buat project Supabase Cloud `social-media-local` dan jalankan `bun run db:migrate` terhadap `.env.local`.
 * (Opsional) initial git commit — menunggu instruksi eksplisit.
@@ -183,6 +201,10 @@ Restricted Actions:
   schema/migration sudah selesai, tetapi handler webhook, durable ingestion,
   retry internal, media upload Outstand, engagement sync/reply, dan reconnect
   flow masih task M8.
+* **Astryx masih Beta.** Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat
+  smoke test dan production build, tetapi risiko perubahan API tetap dikelola
+  dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
+  verifikasi ulang saat upgrade.
 
 ---
 
@@ -194,6 +216,10 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-041 — Astryx menggantikan shadcn/ui sebagai fondasi komponen permanen;
+  neutral theme dipakai selama feature development, Tailwind dibatasi ke
+  layout, wrapper selektif, designer masuk setelah feature selesai, dan risiko
+  Beta diterima dengan exact pin + smoke test (2026-07-23).
 * ADR-040 — kontrak resmi Outstand: webhook
   `post.published`/`post.error`/`account.token_expired`,
   durable-before-ACK + retry internal, Engagement komentar/reply via sync 30
@@ -201,7 +227,10 @@ Tidak ada blocker saat ini.
   Outstand media working copy, dan X BYOK manual di dashboard Outstand
   (2026-07-23).
 * ADR-039 — Content Format (Post/Reel/Story/Pin) masuk MVP Publishing; format per `PostTarget`; matriks platform + Outstand ACL (2026-07-21).
-* ADR-038 — SoT design tokens di `product-discovery/06-engineering/design-tokens.md`; diisi setelah design approve; `design/` bukan SoT token (2026-07-21).
+* ADR-038 + ADR-041 — SoT design tokens tetap di
+  `product-discovery/06-engineering/design-tokens.md`; neutral theme Astryx
+  dipakai selama M8 dan nilai final diisi setelah feature selesai serta designer
+  masuk; `design/` bukan SoT token.
 * ADR-037 — Perluasan aditif `SocialPlatform`: Threads & Pinterest ditambah; Twitter/X & LinkedIn tetap. Daftar resmi: Instagram, Facebook, Twitter/X, LinkedIn, TikTok, YouTube, Threads, Pinterest (2026-07-21).
 * AI Context — opsi A: pertahankan 8 `ctx-*.md`; Product+User di `ctx-business`; UX di `ctx-design`; coding rules di `ctx-development` + pola fitur di `ctx-implementation` (2026-07-17).
 * M7 — Prisma **7.x**: URL di `prisma.config.ts` (`DIRECT_URL`) + runtime adapter (`DATABASE_URL`); semantik DO-D04 tetap (2026-07-17).

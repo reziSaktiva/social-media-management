@@ -4,6 +4,115 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-23 — Pembersihan Artefak UI Lama
+
+### Removed
+
+* Skill UI lama dari `.agents/skills/`.
+* Entri skill terkait dari `skills-lock.json`.
+* Referensi operasional skill lama di `AGENTS.md` dan `PROJECT_STATE.md`.
+
+### Verification
+
+* Tidak ada package, konfigurasi `components.json`, komponen, atau import runtime
+  UI lama di aplikasi.
+* Referensi pada ADR dan catatan diskusi dipertahankan sebagai riwayat keputusan,
+  bukan dependency aktif.
+
+---
+
+## 2026-07-23 — Instalasi & Smoke Test Astryx
+
+### Added
+
+* Dependency Astryx dipasang dengan exact pin: Core, Neutral Theme, dan CLI
+  `0.1.8`, serta StyleX `0.19.0`.
+* Provider global Astryx dengan neutral theme dan integrasi router-aware
+  Next.js Link.
+* Halaman smoke test untuk Button, Dialog, TextInput, Table, light mode, dark
+  mode, serta Tailwind token bridge.
+* Script `astryx` dan konfigurasi theme package untuk CLI diagnostics.
+
+### Changed
+
+* Global CSS memakai cascade layer resmi Astryx + Tailwind dan token bridge.
+* Root layout sekarang membungkus aplikasi dengan Astryx provider.
+* `PROJECT_STATE.md` dan `TEMP-project-owner-questions.md` diperbarui untuk
+  menandai implementasi fondasi dan smoke test ADR-041 selesai.
+
+### Verification
+
+* Astryx doctor: 5 pass, 0 warning.
+* Typecheck, lint, dan 3 test lulus.
+* Next.js `16.2.10` production build lulus dengan env placeholder non-rahasia.
+* Browser smoke test lulus untuk render light/dark, input, table, dan interaksi
+  buka/tutup dialog beserta focus management.
+
+### Status
+
+Fondasi Astryx ADR-041 siap digunakan untuk M8 Development. Astryx tetap Beta,
+sehingga exact pin dan verifikasi ulang saat upgrade tetap wajib.
+
+---
+
+## 2026-07-23 — Alignment Engineering & AI Context ADR-041
+
+### Changed
+
+* Engineering Baseline (`monorepo-setup.md`, `dependency-strategy.md`,
+  `design-tokens.md`, dan `06-engineering/README.md`) — Astryx permanen,
+  neutral theme selama M8, Tailwind layout-only, wrapper selektif, design-later
+  workflow, exact pin Beta, dan smoke test gate.
+* `PROJECT_OVERVIEW.md` — stack UI diperbarui dari shadcn/ui Planned menjadi
+  Astryx (ADR-041) + Tailwind layout-only.
+* `AGENTS.md` — stack cepat, hard rule UI, dan mapping task UI diarahkan ke
+  Astryx serta baseline ADR-041.
+* `context/ctx-design.md`, `ctx-technical-context.md`,
+  `ctx-implementation.md`, dan `ctx-development.md` — aturan operasional agent
+  diselaraskan dengan component boundary, dependency guardrail, dan alur
+  designer setelah feature selesai.
+* `PROJECT_STATE.md` — alignment ADR-041 ditandai selesai; instalasi dan smoke
+  test Astryx tetap next task.
+
+### Status
+
+Alignment dokumentasi ADR-041 selesai. Kode aplikasi dan dependency belum
+diubah; langkah berikutnya adalah instalasi dan smoke test Astryx pada Next.js
+16.
+
+---
+
+## 2026-07-23 — Astryx UI Foundation (ADR-041)
+
+### Added
+
+* ADR-041 — Astryx menggantikan shadcn/ui sebagai fondasi component system
+  permanen; neutral theme digunakan selama feature development dan designer
+  menetapkan visual system final setelah feature selesai.
+* Guardrail adopsi Astryx Beta — exact stable version, upgrade core+theme
+  bersamaan, tanpa canary/swizzle awal, wrapper selektif, update manual,
+  staging, dan smoke test Next.js 16.
+
+### Changed
+
+* ADR-035 diamendemen dengan pengecualian exact version untuk paket Astryx
+  selama masih Beta.
+* ADR-038 diamendemen pada urutan kerja: implementasi feature tidak menunggu
+  design final; design tokens tetap Draft/TBD sampai designer masuk.
+* `PROJECT_STATE.md` — next tasks alignment dan smoke test Astryx, Known Issue
+  Beta/Next.js 16, serta Recent Decision ADR-041 ditambahkan.
+* `TEMP-project-owner-questions.md` — diskusi UI component system ditandai
+  selesai dan dipindahkan ke ADR-041.
+* `CONVERSATIONS.md` — konteks keputusan design-later dan boundary styling
+  dicatat.
+
+### Status
+
+Keputusan ADR-041 sudah Accepted. Alignment baseline, instalasi dependency, dan
+smoke test belum dikerjakan.
+
+---
+
 ## 2026-07-23 — Penyelarasan Kontrak Outstand (ADR-040)
 
 ### Added
