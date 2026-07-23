@@ -90,12 +90,11 @@ Untuk setiap task UI di `apps/web`, jalankan dari root repository:
 CLI lokal adalah referensi utama karena sesuai exact version yang terpasang.
 Jangan mengganti langkah ini dengan asumsi model atau dokumentasi versi lain.
 
-## Mode kerja saat ini
+## Mode kerja
 
-Lihat `Active Conversation Mode` di `PROJECT_STATE.md`.
-
-- M7 (Repository & Bootstrap) selesai → fokus **M8 Development** diizinkan.
-- Wireframe detail & perubahan arsitektur tanpa ADR: **tidak** diizinkan.
+Lihat `Active Conversation Mode` di `PROJECT_STATE.md` untuk fase, objective,
+action yang diizinkan, dan pembatasan terkini. Jangan menduplikasi status atau
+fase aktif di file ini.
 
 ## Mapping task → baca dulu
 

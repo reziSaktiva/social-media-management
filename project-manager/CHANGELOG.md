@@ -4,6 +4,51 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-23 — Konfigurasi Dasar Claude Code
+
+### Added
+
+* `CLAUDE.md` mengimpor `AGENTS.md` sebagai instruksi project pada setiap sesi
+  Claude Code tanpa menduplikasi aturan.
+* `.claude/settings.json` menambahkan schema resmi dan menolak pembacaan file
+  env, private key, serta file kredensial.
+
+### Changed
+
+* `.gitignore` mengabaikan `.claude/settings.local.json` dan `CLAUDE.local.md`
+  yang bersifat lokal serta tidak boleh dibagikan melalui repository.
+
+---
+
+## 2026-07-23 — Dukungan Agent Skills untuk Claude Code
+
+### Added
+
+* Menambahkan proyeksi project-level di `.claude/skills/` untuk 14 skill vendor
+  resmi dari Better Auth, Prisma, Supabase, dan Vercel.
+* Menautkan tiga skill internal (`project-os-navigator`,
+  `proactive-clarification`, dan `work-report-simple`) ke sumber kanonikal di
+  `.agents/skills/` agar perubahan otomatis tersedia untuk Claude Code.
+
+### Verification
+
+* Skills CLI mendeteksi seluruh 17 skill sebagai skill project untuk Claude
+  Code.
+
+---
+
+## 2026-07-23 — Perbaikan Status Dinamis di AGENTS.md
+
+### Fixed
+
+* Menghapus status M7/M8 dan pembatasan fase aktif dari `AGENTS.md` karena file
+  tersebut merupakan Static Reference.
+* Section mode kerja kini hanya mengarahkan agent ke `PROJECT_STATE.md` sebagai
+  satu-satunya Source of Truth untuk fase, objective, izin, dan pembatasan
+  terkini.
+
+---
+
 ## 2026-07-23 — Aturan Workflow Astryx untuk Agent
 
 ### Added
