@@ -182,7 +182,7 @@ Antrean konten sering tidak terlihat utuh, sehingga kekosongan jadwal baru ketah
 
 **Description**
 
-Komentar dan pesan harus dicek per platform native. Prioritas interaksi mudah terlewat.
+Dalam kondisi saat ini, komentar dan pesan harus dicek per platform native. Prioritas interaksi mudah terlewat. Solusi MVP mengurangi pain ini untuk komentar dan reply; Direct Message dan mention belum dikonsolidasikan (ADR-040).
 
 **Impact**
 
@@ -314,7 +314,7 @@ Pain points mengarahkan fokus produk pada:
 * Konsolidasi workflow publishing sebagai fondasi.
 * Kejelasan status konten dan akun.
 * Pengurangan risiko operasional.
-* Inbox engagement yang cukup untuk pekerjaan harian.
+* Comments Inbox dengan reply, periodic pull 30 menit, dan manual refresh yang cukup untuk triage harian.
 * Analytics ringkas yang menghemat waktu buyer.
 * AI yang mempercepat draft di dalam alur kerja.
 * Kesederhanaan onboarding agar adopsi tim terjadi.

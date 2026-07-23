@@ -45,6 +45,9 @@ Opsi A: Product + User digabung di file ini (bukan file `ctx-*` terpisah).
 3. Jangan menambah fitur di luar MVP/scope tanpa ADR + update Product Baseline.
 4. Status konten kanonikal (Draft → … → Published/Failed) harus konsisten dengan `roles-permissions.md` dan UX.
 5. Diskusi pricing / competitor / metrics bisnis → baca `01-business/`; jangan mengarang angka atau positioning baru di kode.
+6. Scope Engagement MVP mengikuti ADR-040: komentar + reply melalui sync 30
+   menit dan manual refresh. Direct Message, mention, dan engagement webhook
+   bukan MVP.
 
 ---
 

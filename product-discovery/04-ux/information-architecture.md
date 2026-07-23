@@ -109,7 +109,7 @@ Entry point yang memberi ringkasan status lintas domain.
 Home
 ├── Today's Schedule          — konten yang terjadwal hari ini
 ├── Recent Activity           — aktivitas publikasi terbaru (sukses / gagal)
-├── Engagement Snapshot       — jumlah interaksi yang belum ditangani
+├── Engagement Snapshot       — jumlah komentar unread dari sinkronisasi terakhir
 └── Analytics Snapshot        — highlight performa minggu ini
 ```
 
@@ -154,6 +154,7 @@ Area untuk menangani interaksi audiens yang masuk.
 ```
 Engage
 └── Inbox
+    ├── Sync Status + Manual Refresh
     ├── Filter (by account, by platform, by status)
     ├── Comment Thread        — tampilkan komentar + konteks post
     │   └── Reply Action      — balas komentar
@@ -161,7 +162,7 @@ Engage
 ```
 
 **Pengguna utama:** Raka / Community Manager.
-**Catatan:** Direct Messages masuk sebagai Should Have — akan ada di Inbox ketika siap.
+**Catatan:** Inbox mengambil komentar melalui periodic pull setiap 30 menit dan menyediakan manual refresh. Direct Message, mention, dan webhook engagement tidak termasuk MVP (ADR-040).
 
 ---
 

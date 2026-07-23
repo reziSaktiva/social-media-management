@@ -4,9 +4,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.3      |
+| Version      | 1.0.4      |
 | Status       | Active     |
-| Last Updated | 2026-07-21 |
+| Last Updated | 2026-07-23 |
 
 ---
 
@@ -28,6 +28,9 @@ M7 Repository & Bootstrap **selesai**. Siap M8 Development.
 
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
 * `AGENTS.md` di root sudah ada; skill resmi vendor (Prisma, Better Auth, Vercel, Supabase, shadcn) sudah terpasang di `.agents/skills/`.
+* Alignment ADR-040 pada dokumentasi baseline dan schema/migration sudah
+  selesai. Implementasi runtime Outstand tetap bagian M8 dan belum dinyatakan
+  selesai.
 
 ---
 
@@ -138,6 +141,9 @@ Restricted Actions:
   * Better Auth skeleton (`src/lib/better-auth/auth.ts`) + route `/api/auth/[...all]`; JWT Realtime helper (AS-D03); Supabase client stubs (Realtime/Storage only).
   * Env fail-fast (`src/lib/env.ts`) + `apps/web/.env.example` (EM-D04/EM-D05).
   * `.github/workflows/ci.yml` — gates CI-D02 (install → prisma generate/validate → typecheck → lint → test).
+* **ADR-040 alignment selesai:** kontrak resmi Outstand sudah diselaraskan pada
+  Product/UX/Architecture/Engineering dan schema/migration. Ini menyelesaikan
+  alignment, bukan implementasi runtime.
 
 ---
 
@@ -152,6 +158,12 @@ Restricted Actions:
 # Next Tasks
 
 * **M8 — Development:** mulai fitur produk (auth flows UI, workspace onboarding, publishing MVP, dll.) sesuai baseline + `context/`.
+* **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
+  `post.published` / `post.error` / `account.token_expired` dengan
+  durable-before-ACK, job retry internal, media upload working copy, serta
+  engagement comment/reply sync 30 menit + manual refresh.
+* **Operasional X:** Project Owner mengonfigurasi kredensial BYOK X secara
+  manual di dashboard Outstand; aplikasi tidak membuat form atau secret store X.
 * **Publishing MVP:** Draft Editor harus mengimplementasi Content Format Selector per akun (ADR-039) — jangan ship New Post tanpa Post/Reel/Story (IG/FB) dan Pin (Pinterest).
 * **Setelah design UI di-approve:** isi nilai di `product-discovery/06-engineering/design-tokens.md` (ganti `TBD`), ubah status → Locked, mirror ke tema `apps/web` — panduan PM ada di dokumen tersebut (ADR-038).
 * (Opsional) Perkaya aturan coding di `context/ctx-development.md` saat konvensi baru muncul dari praktik M8.
@@ -167,6 +179,10 @@ Restricted Actions:
 * **Next.js 16 middleware deprecation warning.** Baseline masih memakai `middleware.ts`; evaluasi migrasi ke `proxy` belakangan jika Next menstabilkan API pengganti — tidak memblokir.
 * **Belum ada commit awal.** Repo sudah `git init` (branch `main`); working tree belum di-commit — commit awal menunggu instruksi eksplisit.
 * **RLS SQL policies** belum digenerate di migrasi awal — ditambahkan saat jalur server set `app.current_user_id` diimplementasi (DO-D06).
+* **Runtime ADR-040 belum diimplementasikan.** Alignment dokumentasi dan
+  schema/migration sudah selesai, tetapi handler webhook, durable ingestion,
+  retry internal, media upload Outstand, engagement sync/reply, dan reconnect
+  flow masih task M8.
 
 ---
 
@@ -178,6 +194,12 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-040 — kontrak resmi Outstand: webhook
+  `post.published`/`post.error`/`account.token_expired`,
+  durable-before-ACK + retry internal, Engagement komentar/reply via sync 30
+  menit + manual refresh tanpa DM/webhook engagement, Supabase original +
+  Outstand media working copy, dan X BYOK manual di dashboard Outstand
+  (2026-07-23).
 * ADR-039 — Content Format (Post/Reel/Story/Pin) masuk MVP Publishing; format per `PostTarget`; matriks platform + Outstand ACL (2026-07-21).
 * ADR-038 — SoT design tokens di `product-discovery/06-engineering/design-tokens.md`; diisi setelah design approve; `design/` bukan SoT token (2026-07-21).
 * ADR-037 — Perluasan aditif `SocialPlatform`: Threads & Pinterest ditambah; Twitter/X & LinkedIn tetap. Daftar resmi: Instagram, Facebook, Twitter/X, LinkedIn, TikTok, YouTube, Threads, Pinterest (2026-07-21).

@@ -255,14 +255,14 @@ Publish → Queue     → [New Post]  → Draft Editor (item baru)
 
 ## Pola: Thread Expansion
 
-Terjadi di Engage. Klik satu thread membuka detail thread di dalam Inbox — tidak membuka layar baru.
+Terjadi di Engage. Klik satu thread komentar membuka detail thread di dalam Inbox — tidak membuka layar baru.
 
 ```
 Engage → Inbox → [klik thread]  → Thread detail muncul di panel kanan / inline
                                    (sidebar tetap terlihat, Inbox tetap terlihat di kiri)
 ```
 
-**Alasan:** Volume triage engagement tinggi — pengguna perlu berpindah cepat antar thread tanpa full-page navigation setiap kali.
+**Alasan:** Volume triage komentar dapat tinggi — pengguna perlu berpindah cepat antar thread tanpa full-page navigation setiap kali.
 
 ---
 
@@ -304,15 +304,17 @@ Publish → History (kosong)
 
 # Notification Badge Pattern
 
-Notification badge pada item Engage di sidebar menginformasikan pengguna bahwa ada interaksi baru — tanpa mengganggu alur pekerjaan yang sedang berjalan.
+Notification badge pada item Engage di sidebar menginformasikan pengguna bahwa periodic pull 30 menit atau manual refresh menemukan komentar unread — tanpa mengganggu alur pekerjaan yang sedang berjalan.
 
 ```
 Badge behavior:
-├── Muncul: ketika ada interaksi unread baru di Inbox
+├── Muncul: setelah sinkronisasi menemukan komentar unread baru di Inbox
 ├── Angka: menampilkan jumlah unread (cap di angka 99+)
 ├── Hilang: ketika semua item di Inbox ditandai Done atau dibuka
 └── Tetap terlihat dari section manapun (sidebar persisten)
 ```
+
+Badge bukan indikator webhook atau real-time. Inbox menyediakan waktu sinkronisasi terakhir dan tombol Manual Refresh agar pengguna dapat meminta data terbaru tanpa menunggu siklus berikutnya (ADR-040).
 
 **Prinsip:** Badge hanya ada pada Engage — sesuai dengan fokus produk pada siklus kerja. Tidak ada badge pada Analytics atau Publish karena kedua section tersebut bukan "inbox" yang menuntut respons segera.
 

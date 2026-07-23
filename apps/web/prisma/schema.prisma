@@ -1,5 +1,5 @@
 // Prisma schema — Social Media Management
-// Tables: identity_* (Better Auth) + domain MVP + background_jobs
+// Tables: identity_* (Better Auth) + domain MVP + cross-cutting system tables
 // Source: product-discovery/05-architecture/database-strategy.md
 // ORM strategy: product-discovery/06-engineering/database-orm.md (DO-D01–D05)
 
@@ -100,16 +100,16 @@ model Workspace {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  members           WorkspaceMember[]
-  connectedAccounts WorkspaceConnectedAccount[]
-  posts             PublishingPost[]
-  queueSlots        PublishingQueueSlot[]
-  aiRequests        AiRequest[]
-  inboxItems        EngagementInboxItem[]
+  members            WorkspaceMember[]
+  connectedAccounts  WorkspaceConnectedAccount[]
+  posts              PublishingPost[]
+  queueSlots         PublishingQueueSlot[]
+  aiRequests         AiRequest[]
+  inboxItems         EngagementInboxItem[]
   analyticsSnapshots AnalyticsWorkspaceSnapshot[]
-  startPages        StartPagePage[]
-  mediaItems        MediaItem[]
-  notifications     Notification[]
+  startPages         StartPagePage[]
+  mediaItems         MediaItem[]
+  notifications      Notification[]
 
   @@map("workspaces")
 }
@@ -139,14 +139,15 @@ model WorkspaceConnectedAccount {
   outstandAccountId String   @map("outstand_account_id")
   handle            String
   status            String   @default("active")
+  reconnectRequired Boolean  @default(false) @map("reconnect_required")
   connectedAt       DateTime @default(now()) @map("connected_at") @db.Timestamptz(6)
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace  Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   postTargets PublishingPostTarget[]
-  queueSlots PublishingQueueSlot[]
-  inboxItems EngagementInboxItem[]
+  queueSlots  PublishingQueueSlot[]
+  inboxItems  EngagementInboxItem[]
 
   @@unique([workspaceId, outstandAccountId])
   @@index([workspaceId])
@@ -197,7 +198,7 @@ model PublishingPostTarget {
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  post             PublishingPost           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post             PublishingPost            @relation(fields: [postId], references: [id], onDelete: Cascade)
   connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id])
 
   @@index([postId])
@@ -265,7 +266,7 @@ model EngagementInboxItem {
   workspaceId        String    @map("workspace_id") @db.Uuid
   connectedAccountId String    @map("connected_account_id") @db.Uuid
   platform           String
-  type               String
+  type               String    @default("comment")
   externalId         String    @map("external_id")
   authorHandle       String    @map("author_handle")
   content            String
@@ -280,7 +281,7 @@ model EngagementInboxItem {
   connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id])
   replies          EngagementReply[]
 
-  @@unique([workspaceId, externalId])
+  @@unique([workspaceId, connectedAccountId, externalId])
   @@index([workspaceId])
   @@index([workspaceId, status])
   @@index([externalId])
@@ -391,19 +392,23 @@ model StartPageLink {
 // ─────────────────────────────────────────────
 
 model MediaItem {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspaceId String   @map("workspace_id") @db.Uuid
-  uploaderId  String   @map("uploader_id")
-  filename    String
-  mimeType    String   @map("mime_type")
-  size        BigInt
-  url         String
-  storagePath String   @map("storage_path")
-  type        String
-  width       Int?
-  height      Int?
-  duration    Decimal? @db.Decimal(10, 2)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId        String    @map("workspace_id") @db.Uuid
+  uploaderId         String    @map("uploader_id")
+  filename           String
+  mimeType           String    @map("mime_type")
+  size               BigInt
+  url                String?
+  storagePath        String    @map("storage_path")
+  outstandMediaId    String?   @map("outstand_media_id")
+  outstandMediaUrl   String?   @map("outstand_media_url")
+  outstandUploadedAt DateTime? @map("outstand_uploaded_at") @db.Timestamptz(6)
+  outstandExpiresAt  DateTime? @map("outstand_expires_at") @db.Timestamptz(6)
+  type               String
+  width              Int?
+  height             Int?
+  duration           Decimal?  @db.Decimal(10, 2)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
 
@@ -440,18 +445,35 @@ model Notification {
 // ─────────────────────────────────────────────
 
 model BackgroundJob {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  type         String
-  payload      Json
-  status       String    @default("pending")
-  scheduledAt  DateTime  @default(now()) @map("scheduled_at") @db.Timestamptz(6)
-  startedAt    DateTime? @map("started_at") @db.Timestamptz(6)
-  completedAt  DateTime? @map("completed_at") @db.Timestamptz(6)
-  attempts     Int       @default(0)
-  maxAttempts  Int       @default(3) @map("max_attempts")
-  lastError    String?   @map("last_error")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type        String
+  payload     Json
+  status      String    @default("pending")
+  scheduledAt DateTime  @default(now()) @map("scheduled_at") @db.Timestamptz(6)
+  startedAt   DateTime? @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3) @map("max_attempts")
+  lastError   String?   @map("last_error")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([status, scheduledAt])
   @@map("background_jobs")
+}
+
+model OutstandWebhookEvent {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  outstandEventId    String    @unique @map("outstand_event_id")
+  eventType          String    @map("event_type")
+  rawBody            String    @map("raw_body")
+  status             String    @default("received")
+  processingAttempts Int       @default(0) @map("processing_attempts")
+  lastError          String?   @map("last_error")
+  receivedAt         DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt        DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, receivedAt])
+  @@map("outstand_webhook_events")
 }

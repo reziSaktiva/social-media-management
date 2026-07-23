@@ -4,6 +4,52 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-23 — Penyelarasan Kontrak Outstand (ADR-040)
+
+### Added
+
+* ADR-040 — kontrak resmi Outstand untuk webhook, Engagement, media, dan X BYOK.
+* Migrasi Prisma `20260723121000_align_outstand_contract` — durable receipt
+  `outstand_webhook_events`, reconnect state, metadata working copy media
+  Outstand, serta idempotency Engagement per akun.
+* Shared enum `EngagementType.Comment` untuk scope MVP.
+
+### Changed
+
+* Product, User, dan UX Baseline — Engagement MVP dibatasi ke komentar/reply
+  melalui sync 30 menit + manual refresh; Direct Message, mention, dan webhook
+  Engagement dikeluarkan dari MVP.
+* Architecture dan Engineering Baseline — event resmi
+  `post.published`/`post.error`/`account.token_expired`, durable-before-ACK,
+  `outstand.webhook.process`, upload working copy media Outstand, serta
+  konfigurasi X BYOK manual di dashboard Outstand.
+* Prisma schema — menambahkan durable webhook receipt, reconnect state, metadata
+  media Outstand, URL media cache nullable, dan constraint Engagement
+  comments-only.
+* Design handoff — Comments Inbox, manual refresh, dan status last sync
+  diselaraskan tanpa mengubah visual token.
+
+* `ARCHITECTURE_OVERVIEW.md` — diagram dan runtime flow diselaraskan untuk tiga
+  webhook resmi, durable-before-ACK, retry internal, Engagement sync 30 menit +
+  manual refresh, media working copy Outstand, dan X BYOK manual.
+* `PROJECT_STATE.md` — metadata, completion alignment dokumen+schema, next tasks,
+  known issues, dan recent decisions diperbarui tanpa mengklaim runtime sudah
+  diimplementasikan.
+* `context/ctx-project.md`, `ctx-business.md`, `ctx-domain.md`,
+  `ctx-architecture.md`, `ctx-technical-context.md`, dan
+  `ctx-implementation.md` — pointer dan guardrail M8 diperbarui agar agent tidak
+  memakai kontrak Outstand lama.
+* `TEMP-project-owner-questions.md` — section 3–5 ditandai selesai dan sudah
+  dipindahkan ke ADR-040/baseline; catatan historis dipertahankan dan section
+  landing/UI Astryx yang masih terbuka tidak diubah.
+
+### Status
+
+Alignment dokumentasi baseline dan schema/migration ADR-040 sudah selesai.
+Implementasi handler, adapter, job, sync, dan UI tetap M8 pending.
+
+---
+
 ## 2026-07-21 (sesi kelima puluh dua)
 
 ### Added — Content Format MVP: Post / Reel / Story / Pin (ADR-039)

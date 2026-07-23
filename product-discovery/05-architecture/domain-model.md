@@ -170,6 +170,7 @@ Workspace adalah **root context** — seluruh data domain lain terikat ke `Works
 - `outstandAccountId: string` — ID dari Outstand API (external reference)
 - `handle: string` — nama akun (@handle atau nama page)
 - `status: ConnectedAccountStatus` — `active | disconnected | error`
+- `reconnectRequired: boolean` — `true` saat ACL memetakan `account.token_expired`
 - `connectedAt: Date`
 
 **BrandSettings** (Value Object, embedded di Workspace)
@@ -180,6 +181,7 @@ Workspace adalah **root context** — seluruh data domain lain terikat ke `Works
 ### Catatan
 
 - `ConnectedAccount` adalah jembatan antara domain internal dan Outstand API. `outstandAccountId` adalah external reference yang tidak berubah setelah koneksi.
+- Untuk Twitter/X, Project Owner wajib mengonfigurasi kredensial BYOK secara manual di dashboard Outstand. Domain aplikasi tidak memiliki atribut Client ID/Client Secret X.
 - `MemberRole` dan `MemberStatus` dipublish ke `packages/shared` agar domain lain dapat membaca role tanpa import implementasi Workspace.
 
 ---
@@ -323,7 +325,7 @@ Mengelola permintaan AI untuk pembuatan dan perbaikan caption. AI Assistant dira
 
 ### Responsibility
 
-Mengelola interaksi dengan audiens dari akun media sosial yang terhubung — komentar, pesan, dan inbox terpadu. Engagement adalah **retention layer** setelah Publishing (I-05).
+Mengelola komentar audiens dan reply dari akun media sosial yang terhubung. Engagement adalah **retention layer** setelah Publishing (I-05). Direct Message dan mention berada di luar scope MVP.
 
 ### Core Entities
 
@@ -339,8 +341,8 @@ Mengelola interaksi dengan audiens dari akun media sosial yang terhubung — kom
 - `workspaceId: WorkspaceId`
 - `connectedAccountId: ConnectedAccountId`
 - `platform: SocialPlatform`
-- `type: EngagementType` — `comment | direct_message | mention`
-- `externalId: string` — ID item di platform media sosial (dari Outstand webhook)
+- `type: EngagementType` — `comment` pada MVP
+- `externalId: string` — ID komentar dari Outstand Comments API
 - `authorHandle: string` — username pengirim
 - `content: string` — isi interaksi
 - `status: InboxItemStatus` — `unread | read | replied | archived`
@@ -359,8 +361,9 @@ Mengelola interaksi dengan audiens dari akun media sosial yang terhubung — kom
 
 ### Catatan
 
-- `InboxItem` diisi oleh webhook dari Outstand API — detail mekanisme di `integration-layer.md`.
+- `InboxItem` diisi oleh JOB-03 periodic pull setiap 30 menit atau manual refresh melalui Outstand Comments API.
 - `postId` pada `InboxItem` adalah referensi soft — Engagement BC tidak import implementasi Publishing.
+- Reply dikirim melalui Outstand; DM, mention, dan webhook Engagement tidak dimodelkan untuk MVP.
 
 ---
 
@@ -474,8 +477,12 @@ Mengelola file media yang diunggah oleh pengguna untuk digunakan dalam konten. M
 - `filename: string`
 - `mimeType: string`
 - `size: number` — bytes
-- `url: string` — URL dari Supabase Storage
+- `url: string?` — cache URL akses aplikasi dari Supabase Storage; boleh kosong/kedaluwarsa dan dibuat ulang dari `storagePath`
 - `storagePath: string` — path internal di Supabase Storage bucket
+- `outstandMediaId: string?` — metadata opsional working copy publishing
+- `outstandMediaUrl: string?` — metadata opsional; bukan source of truth original
+- `outstandUploadedAt: Date?` — waktu working copy dikonfirmasi di Outstand
+- `outstandExpiresAt: Date?` — waktu kedaluwarsa working copy Outstand
 - `type: MediaType` — `image | video | gif`
 - `width: number?`
 - `height: number?`
@@ -485,6 +492,7 @@ Mengelola file media yang diunggah oleh pengguna untuk digunakan dalam konten. M
 ### Catatan
 
 - Media file disimpan di **Supabase Storage** (keputusan pra-architecture).
+- Saat publish, original dibuatkan working copy melalui Outstand request upload URL → PUT → confirm; URL Outstand yang dikembalikan digunakan untuk scheduling/publishing.
 - Publishing BC hanya menyimpan `MediaId[]` — tidak meng-embed data media.
 - Saat merender Post, Application Layer mengambil `MediaItem` dari Media BC berdasarkan `MediaId[]`.
 
@@ -508,7 +516,7 @@ Mengelola notifikasi in-app untuk pengguna. Notification adalah supporting domai
 - `id: NotificationId`
 - `workspaceId: WorkspaceId`
 - `userId: UserId` — penerima notifikasi
-- `type: NotificationType` — `post_published | post_failed | new_inbox_item | member_invited | ...`
+- `type: NotificationType` — `post_published | post_failed | account_reconnect_required | engagement_new | member_invited | ...`
 - `title: string`
 - `body: string`
 - `isRead: boolean`
@@ -607,7 +615,7 @@ Context Map mendokumentasikan bagaimana bounded context saling berinteraksi. Dal
 
      External System:
      BC-03 Publishing ──── Outstand API ────► PostTarget.outstandJobId
-     BC-05 Engagement ◄─── Outstand Webhook ─ InboxItem (incoming)
+     BC-05 Engagement ◄──── Outstand Comments API ─ JOB-03/manual pull
      BC-06 Analytics ◄──── Outstand API ───── PostMetrics (fetch)
 ```
 
@@ -869,6 +877,9 @@ Tabel berikut memetakan Bounded Context ke modul yang didefinisikan di Product B
 | DM-D05 | `ConnectedAccount` berada di Workspace BC bukan Publishing BC | Account adalah workspace-level resource, bukan publication-level resource; Publishing hanya referensi `ConnectedAccountId` | ConnectedAccount di Publishing BC (membuat Publishing terlalu besar) |
 | DM-D06 | Tidak ada "Activity Feed" BC — activity tercatat di Notification BC | Activity Feed (Should Have di MVP) dapat dimodel sebagai `NotificationType` yang di-query; tidak memerlukan BC baru pada MVP | BC Activity tersendiri (post-MVP jika diperlukan) |
 | DM-D07 | `ContentFormat` di `PostTarget` (+ `platformOptions`), enum di `packages/shared` | Format bergantung platform & multi-account; Outstand override tetap di ACL (ADR-039) | Format hanya di `Post` global, atau hardcode field Outstand di domain |
+| DM-D08 | Engagement MVP hanya `comment` + `Reply`, diisi melalui pull | Selaras kontrak Outstand; DM/mention dan webhook Engagement tidak tersedia untuk MVP | Mempertahankan tipe yang tidak dapat dipenuhi provider |
+| DM-D09 | Media original tetap di Supabase; metadata working copy Outstand opsional | Memisahkan ownership aset dari artefak publishing provider | Menjadikan URL Outstand source of truth |
+| DM-D10 | ADR-040 | DM-D08–D09 dan status reconnect akun mengamandemen model lama |
 
 ---
 

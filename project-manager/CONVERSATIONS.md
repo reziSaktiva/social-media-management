@@ -18,6 +18,27 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-07-23 — Sinkronisasi Project OS setelah ADR-040
+
+**Phase:** M7 complete → siap M8 Development
+
+**Summary:** Setelah ADR-040 menetapkan kontrak resmi Outstand, Project OS,
+overview arsitektur, AI Context, dan catatan pertanyaan Project Owner
+diselaraskan. Alignment dokumentasi baseline dan schema/migration dicatat
+selesai, sementara implementasi runtime tetap belum diklaim.
+
+**Key Insight / Decision:** M8 wajib memakai tiga webhook
+`post.published`/`post.error`/`account.token_expired`, durable-before-ACK dengan
+retry internal, Engagement komentar/reply via sync 30 menit + manual refresh,
+Supabase original + Outstand media working copy, dan X BYOK manual di dashboard
+Outstand. Tidak ada DM/comment webhook.
+
+**Impact:** `ARCHITECTURE_OVERVIEW.md`, `PROJECT_STATE.md`, context operasional,
+dan section Outstand 3–5 di `TEMP-project-owner-questions.md` diperbarui.
+Handler, adapter, job runner, sync runtime, dan UI tetap next task M8.
+
+---
+
 ## 2026-07-21 — Content Format (Post/Reel/Story/Pin) wajib di MVP
 
 **Phase:** M7 complete → siap M8 Development

@@ -123,7 +123,8 @@ Pengguna tidak perlu mengakses semuanya sejak hari pertama. Produk harus membiar
 
 **Implikasi desain:**
 - Onboarding fokus pada publishing; engagement dan analytics diperkenalkan sebagai kelanjutan siklus, bukan fitur yang harus disetup di awal.
-- Navigasi harus membuat engagement inbox dan analytics mudah diakses ketika pengguna siap, tapi tidak membebani alur publishing awal.
+- Navigasi harus membuat Comments Inbox dan analytics mudah diakses ketika pengguna siap, tapi tidak membebani alur publishing awal.
+- Comments Inbox harus menunjukkan waktu sinkronisasi terakhir dan menyediakan Manual Refresh; jangan memberi kesan data engagement real-time karena MVP memakai periodic pull 30 menit (ADR-040).
 - Jangan buat kesan bahwa produk "belum lengkap" jika pengguna hanya menggunakan publishing.
 
 ---

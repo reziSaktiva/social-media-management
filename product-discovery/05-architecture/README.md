@@ -51,7 +51,7 @@ Keputusan berikut sudah disepakati sebelum dokumentasi ini dimulai dan menjadi f
 | Runtime | Bun (ADR-002) |
 | Repository | Hybrid Monorepo (ADR-001) |
 | Architecture Pattern | Modular Monolith + DDD (ADR-004) |
-| Social Media Integration | Outstand API (ADR-005) |
+| Social Media Integration | Outstand API; kontrak resmi dan batas MVP diamandemen ADR-040 |
 | Database Platform | Supabase PostgreSQL Cloud |
 | Multi-tenancy | Row-Level Security dengan `workspace_id` |
 | Auth Library | Better Auth |
@@ -123,6 +123,14 @@ Keputusan architecture tidak otomatis mengubah Business, Product, atau UX Baseli
 * MVP Must Have: Draft, Schedule, Queue, Calendar, Connected Accounts, Engagement Inbox, Analytics Snapshot, AI Caption.
 * 4 Roles: Owner, Admin, Manager, Creator — dengan set status konten kanonikal.
 
+## Amandemen Kontrak Outstand (ADR-040)
+
+* Webhook MVP hanya `post.published`, `post.error`, dan `account.token_expired`; nama vendor diterjemahkan ACL ke status/notifikasi domain.
+* Ingestion webhook: verify HMAC raw body → persist `outstand_webhook_events` idempoten → enqueue JOB-01 → ACK `2xx`; retry delivery vendor terpisah dari retry process internal.
+* Engagement MVP hanya comments/replies melalui JOB-03 setiap 30 menit dan manual refresh; tanpa webhook comment/DM/mention.
+* Original media tetap di Supabase Storage; publishing memakai working copy Outstand melalui request upload URL → PUT → confirm.
+* Twitter/X tetap MVP dengan BYOK wajib yang dikonfigurasi Project Owner di dashboard Outstand; aplikasi tidak menyimpan X client secret.
+
 ## Dari UX Planning Baseline v1.0
 
 * Navigasi utama: Home, Publish, Engage, Analyze, Start Page.
@@ -179,6 +187,8 @@ harus didokumentasikan pada:
 Perubahan progress Architecture Planning harus diperbarui pada:
 
 * `../../project-manager/PROJECT_STATE.md`
+
+Untuk penyelarasan ADR-040, batas edit sesi dapat mengecualikan pembaruan living/append-only document; Decision Log masing-masing dokumen Architecture tetap harus menandai amandemen tersebut.
 
 ---
 

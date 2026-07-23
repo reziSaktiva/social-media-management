@@ -165,7 +165,7 @@ Publish
 └── History → Post Detail
 
 Engage
-└── Inbox → Comment Thread → Reply
+└── Comments Inbox → Last Sync + Manual Refresh → Comment Thread → Reply
 
 Analyze
 └── Dashboard (account / post / engagement summary)
@@ -192,7 +192,7 @@ Gunakan sebagai backlog frame Figma. Detail fungsi & state: `../product-discover
 | KSP-03 | Publish — Queue | Raka | Antrean sehat / gap terlihat |
 | KSP-04 | Publish — Drafts | Raka / Sinta | List + filter status; masuk ke editor |
 | KSP-05 | Publish — Draft Editor | Raka / Sinta | Caption, AI, media, akun, **format Post/Reel/Story/Pin per akun** (ADR-039), jadwal, trust |
-| KSP-06 | Engage — Inbox | Raka | Triage cepat; badge; thread + reply |
+| KSP-06 | Engage — Comments Inbox | Raka | Triage komentar; last sync; manual refresh; badge setelah sync; thread + reply |
 | KSP-07 | Analyze — Dashboard | Maya + Raka | Snapshot, bukan BI kompleks |
 | KSP-08 | Connected Accounts | Raka / Maya | Connect / reconnect / disconnect jelas |
 
@@ -220,12 +220,14 @@ Creator tidak bisa langsung `Draft` → `Scheduled`. Manager/Admin/Owner bisa sk
 | Create & Publish | Raka (+ Sinta draft) | Draft Editor → akun + format + jadwal → schedule/publish → status |
 | Content Calendar | Raka + Maya | Lihat minggu → buka item → edit |
 | Queue Management | Raka | Isi antrean, deteksi gap |
-| Engagement | Raka | Inbox → reply → done |
+| Engagement | Raka | Periodic pull 30 menit / manual refresh → komentar → reply → done |
 | Analytics | Maya | Dashboard periode → drill ke post bila perlu |
 
 Detail langkah: `../product-discovery/04-ux/user-flows.md`.
 
 ---
+
+**Batas Engagement MVP (ADR-040):** desain KSP-06 hanya mencakup komentar dan reply. Jangan membuat tab, composer, atau state untuk Direct Message maupun mention, dan jangan menggambarkan badge sebagai webhook/real-time. Tampilkan waktu sinkronisasi terakhir, state refresh, serta kegagalan refresh tanpa menghilangkan data lama.
 
 # Bagian B — Design System Blueprint
 

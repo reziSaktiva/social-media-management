@@ -66,7 +66,11 @@ Kemampuan berikut wajib tersedia pada MVP.
 
 * Melihat komentar dari akun yang terhubung.
 * Membalas komentar dari dalam aplikasi.
-* Inbox sederhana.
+* Inbox komentar sederhana.
+* Sinkronisasi komentar berkala setiap 30 menit.
+* Manual refresh untuk mengambil komentar terbaru saat dibutuhkan.
+
+Direct Message, mention, dan webhook engagement tidak termasuk MVP (ADR-040).
 
 ---
 
@@ -125,6 +129,8 @@ Fitur berikut tidak menjadi bagian dari MVP.
 * Enterprise SSO.
 * Advanced Workflow Automation.
 * Social Listening.
+* Direct Message dan mention di Engagement Inbox.
+* Webhook engagement.
 * Multi Workspace Management.
 
 ---

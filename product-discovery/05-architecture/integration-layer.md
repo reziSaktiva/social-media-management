@@ -90,12 +90,16 @@ Anti-Corruption Layer (ACL) adalah layer terjemahan yang:
 OutstandAdapter (Anti-Corruption Layer)
   ├── connectAccount(params) → ConnectedAccountData
   ├── disconnectAccount(outstandAccountId) → void
+  ├── requestMediaUpload(params) → OutstandUploadTarget
+  ├── uploadMedia(uploadUrl, bytes, contentType) → void
+  ├── confirmMediaUpload(uploadId) → OutstandMediaData
   ├── schedulePost(params) → OutstandJobResult
-  │     // params mencakup: outstandAccountId, caption, mediaUrls, scheduledAt,
+  │     // params mencakup: outstandAccountId, caption, outstandMediaUrls, scheduledAt,
   │     // contentFormat, platformOptions? — dipetakan ke override Outstand di ACL
+  ├── fetchPostOutcome(outstandJobId) → PostTargetOutcome[]
   ├── cancelScheduledPost(outstandJobId) → void
-  ├── fetchEngagementItems(outstandAccountId, cursor?) → EngagementPage
-  ├── replyToEngagementItem(outstandItemId, text) → void
+  ├── fetchComments(outstandAccountId, cursor?) → CommentPage
+  ├── replyToComment(outstandCommentId, text) → ReplyResult
   ├── fetchPostMetrics(outstandJobId) → PostMetricsData
   └── fetchWorkspaceMetrics(outstandAccountId, period) → WorkspaceMetricsData
 ```
@@ -170,6 +174,7 @@ Menghubungkan akun media sosial ke workspace dilakukan melalui OAuth flow yang d
 **Catatan:**
 - Access token OAuth **tidak disimpan** di database internal. Token dikelola sepenuhnya oleh Outstand.
 - Revoke token dilakukan melalui Outstand API, bukan secara langsung ke platform.
+- **Twitter/X tetap platform MVP dengan BYOK wajib.** Project Owner mengonfigurasi Client ID/Client Secret X secara manual di dashboard Outstand untuk setiap environment. Aplikasi hanya memakai akun yang sudah tersedia melalui Outstand dan **tidak menerima, menyimpan, atau meneruskan secret X**.
 
 ## Alur Disconnect Account
 
@@ -193,7 +198,7 @@ Publishing ke social media dilakukan melalui Outstand API — sistem internal ti
          │                          │                          │
          │  schedulePost(params)    │                          │
          │─────────────────────────►│                          │
-         │                          │  POST /jobs/schedule     │
+         │                          │  POST /v1/posts/         │
          │                          │─────────────────────────►│
          │                          │  Return { jobId, ... }   │
          │                          │◄─────────────────────────│
@@ -209,15 +214,17 @@ Publishing ke social media dilakukan melalui Outstand API — sistem internal ti
 **Langkah-langkah:**
 1. `PublishingService` memvalidasi bahwa semua `PostTarget` memiliki `ConnectedAccount` yang `active`.
 2. `PublishingService` memvalidasi `contentFormat` tiap `PostTarget` terhadap matriks platform (ADR-039) serta kelengkapan media / `platformOptions` (mis. Pinterest pin).
-3. Per `PostTarget`, `PublishingService` memanggil `OutstandAdapter.schedulePost(params)` dengan:
+3. Untuk setiap media original dari Supabase Storage, `PublishingService` meminta working copy melalui ACL: request upload URL Outstand → `PUT` bytes ke URL tersebut → confirm upload → terima URL media Outstand.
+4. Per `PostTarget`, `PublishingService` memanggil `OutstandAdapter.schedulePost(params)` dengan:
    - `outstandAccountId` dari `ConnectedAccount`.
-   - Caption, media URLs, dan waktu tayang.
+   - Caption, URL working copy media dari Outstand, dan waktu tayang.
    - `contentFormat` + `platformOptions` — diterjemahkan ACL ke override Outstand (Story/Reel/Pin, dll.).
-4. Outstand mengembalikan `outstandJobId`.
-5. `PublishingService` menyimpan `outstandJobId` pada `PostTarget` dan mengubah `PostTarget.status` ke `scheduled`.
+5. Outstand mengembalikan `outstandJobId`.
+6. `PublishingService` menyimpan `outstandJobId` pada `PostTarget` dan mengubah `PostTarget.status` ke `scheduled`.
 
 **Catatan:**
-- Media diupload ke Supabase Storage sebelum dijadwalkan. Bucket `media` bersifat private — saat menjadwalkan ke Outstand, **signed URL sementara** (TTL sekitar 24 jam) di-generate dari `storage_path` dan dikirim ke Outstand. Outstand mengambil media dari signed URL tersebut sebelum TTL habis.
+- Media original tetap menjadi milik aplikasi di bucket private Supabase Storage. Signed URL Supabase hanya boleh dipakai untuk akses internal/UI, **bukan** sebagai URL publishing ke Outstand.
+- URL/media ID working copy Outstand boleh disimpan sebagai metadata opsional untuk observability, reuse aman, atau cleanup; ia bukan source of truth aset original.
 - Jika salah satu `PostTarget` gagal dijadwalkan, `PostTarget` tersebut ditandai `failed`. `PostTarget` lain pada post yang sama tidak terpengaruh.
 - **Content format (ADR-039):** Outstand memfasilitasi Post / Reel / Story (dan opsi platform lain seperti Pinterest board). Domain menyimpan `ContentFormat` per target; hanya `OutstandAdapter` yang mengetahui bentuk field API Outstand (mis. flag Story / routing Reel / metadata Pin).
 
@@ -233,20 +240,22 @@ Publishing ke social media dilakukan melalui Outstand API — sistem internal ti
 
 ## Overview
 
-Outstand mengirim event webhook ke sistem kita untuk memberitahu hasil publikasi, kegagalan akun, dan data engagement baru. Webhook adalah mekanisme utama untuk mengetahui status post setelah dijadwalkan.
+Outstand mengirim event webhook untuk hasil publikasi dan masa berlaku token akun. Engagement tidak menggunakan webhook pada MVP.
 
 **Endpoint:** `POST /api/webhooks/outstand`
 
 ## Keamanan Webhook
 
-Setiap request webhook dari Outstand harus diverifikasi sebelum diproses:
+Setiap request webhook dari Outstand harus diverifikasi atas **raw body** sebelum payload diparse:
 
 ```
 Request masuk
     └── Route Handler `/api/webhooks/outstand`
-            ├── Verifikasi signature (HMAC-SHA256 dengan webhook secret)
+            ├── Baca raw body
+            ├── Verifikasi signature HMAC-SHA256 atas raw body
             ├── Tolak jika signature tidak valid → 401
-            └── Lanjut ke WebhookProcessor
+            ├── Persist receipt idempoten ke outstand_webhook_events
+            └── ACK 2xx; pemrosesan dilanjutkan oleh JOB-01
 ```
 
 - Outstand menyertakan header `X-Outstand-Signature` berisi HMAC-SHA256 dari request body.
@@ -257,11 +266,11 @@ Request masuk
 
 | Event | Deskripsi | Domain yang Dinotifikasi |
 |-------|-----------|--------------------------|
-| `post.published` | Post berhasil dipublikasikan ke platform | Publishing BC |
-| `post.failed` | Post gagal dipublikasikan | Publishing BC, Notification BC |
-| `account.disconnected` | Akun media sosial dicabut aksesnya | Workspace BC, Notification BC |
-| `comment.received` | Komentar baru diterima pada post | Engagement BC |
-| `message.received` | Pesan DM baru diterima | Engagement BC |
+| `post.published` | Sedikitnya satu target berhasil dipublikasikan; outcome tetap dibaca per akun | Publishing BC |
+| `post.error` | Semua target gagal setelah retry Outstand; ACL memetakan outcome per akun ke status domain `failed` | Publishing BC, Notification BC |
+| `account.token_expired` | Token akun kedaluwarsa; ACL memetakan akun ke `error` dan membutuhkan reconnect | Workspace BC, Notification BC |
+
+Event `comment.received`, `message.received`, mention, dan webhook engagement lainnya **bukan kontrak MVP**.
 
 ## Alur Pemrosesan Webhook
 
@@ -269,30 +278,32 @@ Request masuk
 Outstand
     └── POST /api/webhooks/outstand
             └── Route Handler
-                    ├── Verifikasi signature
-                    ├── Parse event type + payload
-                    └── WebhookProcessor.process(event)
-                                ├── event: post.published → PublishingService.markPostPublished(outstandJobId, publishedUrl)
-                                ├── event: post.failed    → PublishingService.markPostFailed(outstandJobId, reason)
-                                │                           NotificationService.notify(workspaceId, ...)
-                                ├── event: account.disconnected → WorkspaceService.markAccountDisconnected(outstandAccountId)
-                                │                                  NotificationService.notify(workspaceId, ...)
-                                ├── event: comment.received → EngagementService.ingestInboxItem(payload)
-                                └── event: message.received → EngagementService.ingestInboxItem(payload)
+                    ├── Baca raw body + verifikasi HMAC
+                    ├── INSERT idempoten outstand_webhook_events
+                    ├── Enqueue JOB-01 untuk receipt baru
+                    └── ACK 2xx
+
+JOB-01
+    └── WebhookProcessor.process(receipt)
+            ├── post.published / post.error
+            │     → OutstandAdapter.fetchPostOutcome(...)
+            │     → PublishingService.applyTargetOutcomes(...)
+            └── account.token_expired → ACL mapping
+                                      → WorkspaceService.markAccountReconnectRequired(...)
 ```
 
 **Prinsip pemrosesan webhook:**
-- Route Handler **tidak** mengandung business logic — hanya verifikasi dan dispatch ke `WebhookProcessor`.
+- Route Handler **tidak** mengandung business logic — hanya membaca raw body, memverifikasi HMAC, melakukan durable idempotent receipt, enqueue, lalu ACK.
 - `WebhookProcessor` memanggil Application Service yang tepat menggunakan `outstandJobId` atau `outstandAccountId` sebagai external reference.
-- Respons ke Outstand dikembalikan **segera** (`200 OK`) setelah event diterima dan sebelum pemrosesan selesai — untuk mencegah timeout pada sisi Outstand.
-- Jika pemrosesan gagal, payload event disimpan ke tabel `background_jobs` sebagai job `JOB-01` (webhook retry) — strategi retry detail di `background-jobs.md`.
+- Respons `2xx` hanya dikembalikan **setelah** receipt berhasil dipersistenkan. Kegagalan persistensi mengembalikan non-2xx agar Outstand dapat melakukan retry delivery.
+- Retry delivery dari Outstand berhenti pada boundary receipt/ACK. Retry pemrosesan internal dilakukan terpisah oleh `JOB-01`; kegagalan pemrosesan tidak meminta Outstand mengirim ulang event.
 
 ## Idempotency
 
-Outstand dapat mengirim event yang sama lebih dari sekali (retry on failure). Sistem harus idempoten:
+Outstand dapat mengirim event yang sama lebih dari sekali. `outstand_webhook_events.outstand_event_id` menyimpan event ID vendor jika tersedia; jika kontrak delivery tidak menyediakannya, ingestion menggunakan fingerprint deterministik (SHA-256 raw body) sebagai identity receipt. Duplicate valid di-ACK `2xx` tanpa enqueue ulang.
 
-- Sebelum memproses `post.published`, cek apakah `PostTarget.status` sudah `published` — jika ya, skip.
-- Sebelum memproses `comment.received`, cek apakah `InboxItem` dengan `outstandItemId` yang sama sudah ada — jika ya, skip.
+- Handler domain tetap idempoten dan menerapkan outcome per `PostTarget`. Event `post.published` tidak boleh menandai seluruh target berhasil karena event tersebut juga dapat mewakili partial success.
+- Status receipt mencatat `received | processing | processed | failed | dead_lettered` untuk audit pemrosesan internal.
 
 ---
 
@@ -300,24 +311,20 @@ Outstand dapat mengirim event yang sama lebih dari sekali (retry on failure). Si
 
 ## Sumber Data
 
-Data engagement (komentar dan DM) diterima dari dua mekanisme:
+Engagement MVP hanya mencakup **komentar dan reply**. Direct Message dan mention berada di luar scope MVP.
 
-| Mekanisme | Event | Kegunaan |
-|-----------|-------|----------|
-| **Webhook** (push) | `comment.received`, `message.received` | Item baru secara real-time |
-| **Polling** (pull) | Jadwal periodik | Catch-up jika webhook terlewat |
+| Mekanisme | Trigger | Kegunaan |
+|-----------|---------|----------|
+| **Periodic pull** | JOB-03 setiap 30 menit | Sumber utama komentar baru/perubahan |
+| **Manual refresh** | Aksi user | Menjalankan sync komentar on-demand lalu memuat data terbaru |
 
-## Ingest via Webhook
-
-- Event `comment.received` dan `message.received` diproses oleh `EngagementService.ingestInboxItem(payload)`.
-- `OutstandAdapter` mentranslasikan payload Outstand ke `InboxItemData` (konsep domain internal).
-- `EngagementService` membuat atau mengupdate `InboxItem` di repository.
+`OutstandAdapter.fetchComments` mentranslasikan response Outstand menjadi data komentar domain. `EngagementService` melakukan upsert idempoten berdasarkan external comment ID. Jika sync menemukan item baru, service membuat notifikasi internal `engagement_new` secara agregat; notifikasi ini **berasal dari sync**, bukan webhook.
 
 **Atribut `InboxItem` yang berasal dari Outstand:**
 - `outstandItemId` — ID unik dari Outstand, digunakan untuk idempotency check.
 - `platform` — dari `ConnectedAccount`.
-- `authorName` — nama pengirim komentar/DM.
-- `content` — teks komentar/DM.
+- `authorName` — nama pengirim komentar.
+- `content` — teks komentar.
 - `postId` — referensi ke `Post` jika komentar terkait post internal (matched via `outstandJobId`).
 - `receivedAt` — timestamp dari Outstand.
 
@@ -326,7 +333,7 @@ Data engagement (komentar dan DM) diterima dari dua mekanisme:
 Ketika user membalas dari Engagement Inbox:
 
 1. `EngagementService.reply(inboxItemId, text)` dipanggil.
-2. `EngagementService` memanggil `OutstandAdapter.replyToEngagementItem(outstandItemId, text)`.
+2. `EngagementService` memanggil `OutstandAdapter.replyToComment(outstandCommentId, text)`.
 3. Setelah berhasil, `Reply` entity disimpan di repository sebagai audit trail.
 
 ---
@@ -385,9 +392,9 @@ Background Job (scheduler)
 - Gagal (permanent) → tandai `PostTarget.status = failed`, simpan `PostTarget.error`, notifikasi creator.
 
 **Webhook Processing:**
-- Gagal memproses event → simpan sebagai job `JOB-01` (`outstand.webhook.retry`) di tabel `background_jobs`, jadwalkan retry.
+- Gagal memproses receipt → JOB-01 dijadwalkan ulang secara internal dan receipt ditandai `failed`.
 - Retry maks 3x dengan exponential backoff: 5 menit, 15 menit, 60 menit (sesuai JOB-01 di `background-jobs.md`).
-- Setelah maks retry habis → `background_jobs.status = 'failed'` (dead letter), dicatat di tabel untuk inspeksi manual.
+- Setelah maks retry habis → job `failed` dan receipt `dead_lettered`, dicatat untuk inspeksi manual.
 
 **Analytics Sync:**
 - Gagal polling → log error, skip siklus ini, coba lagi di jadwal berikutnya.
@@ -415,12 +422,16 @@ Domain internal **tidak pernah** melihat HTTP error code Outstand secara langsun
 |----|-------|-----------|
 | IL-D01 | ACL Pattern | Anti-Corruption Layer via `OutstandAdapter` — satu-satunya titik interaksi dengan Outstand API |
 | IL-D02 | Token Management | OAuth access token tidak disimpan di database internal — dikelola sepenuhnya oleh Outstand |
-| IL-D03 | Webhook Security | HMAC-SHA256 signature verification sebelum setiap pemrosesan webhook event |
-| IL-D04 | Webhook Response | Respons `200 OK` dikembalikan segera sebelum pemrosesan selesai (async processing) |
-| IL-D05 | Webhook Idempotency | Cek duplikasi via `outstandJobId` / `outstandItemId` sebelum memproses event |
+| IL-D03 | Webhook Security | HMAC-SHA256 diverifikasi atas raw body sebelum parse/persist |
+| IL-D04 | Webhook Response | Durable-before-ACK: receipt idempoten tersimpan dan JOB-01 terjadwal sebelum respons `2xx` |
+| IL-D05 | Webhook Idempotency | Event ID vendor atau fingerprint SHA-256 raw body pada `outstand_webhook_events`; handler domain tetap idempoten |
 | IL-D06 | Analytics Strategy | Pull-based polling periodik — tidak ada webhook dari Outstand untuk metrics |
-| IL-D07 | Media Strategy | Media diupload ke Supabase Storage (bucket private) terlebih dahulu; signed URL sementara (TTL ~24 jam) di-generate saat scheduling dan dikirim ke Outstand |
+| IL-D07 | Media Strategy | Original di Supabase Storage; working copy diunggah via Outstand request URL → PUT → confirm; URL Outstand dipakai untuk publish |
 | IL-D08 | Error Translation | Seluruh error Outstand diterjemahkan ke `IntegrationError` di dalam `OutstandAdapter` |
+| IL-D09 | Engagement MVP | Comments/replies only melalui JOB-03 30 menit + manual refresh; tanpa webhook/DM/mention |
+| IL-D10 | X BYOK | Project Owner mengatur kredensial X di dashboard Outstand; aplikasi tidak menyimpan X client secret |
+| IL-D11 | Publish Outcome | `post.published`/`post.error` memicu pembacaan outcome per akun; status setiap `PostTarget` diperbarui independen |
+| IL-D12 | ADR-040 | IL-D03–D11 mengamandemen kontrak lama sesuai ADR-040 |
 
 ---
 

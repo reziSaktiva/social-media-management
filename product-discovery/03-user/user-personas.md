@@ -112,13 +112,13 @@ Paling peduli pada Workspace, Calendar visibility, Analytics ringkas, dan kejela
 
 ### Day-to-Day Context
 
-Raka menyusun jadwal, memastikan draft siap, menjadwalkan ke beberapa akun, memantau komentar penting, dan menjaga konsistensi kehadiran brand di channel.
+Raka menyusun jadwal, memastikan draft siap, menjadwalkan ke beberapa akun, memantau komentar penting melalui sinkronisasi berkala atau manual refresh, dan menjaga konsistensi kehadiran brand di channel.
 
 ### Goals
 
 * Menyelesaikan siklus draft → review ringan → schedule → publish dengan cepat.
 * Menjaga antrean konten tetap sehat.
-* Membalas interaksi penting tanpa hilang di banyak native apps.
+* Membaca dan membalas komentar penting tanpa hilang di banyak native apps.
 
 ### Friction
 
@@ -128,11 +128,11 @@ Raka menyusun jadwal, memastikan draft siap, menjadwalkan ke beberapa akun, mema
 
 ### Success Criteria
 
-Dalam satu sesi kerja, Raka dapat merencanakan dan menjadwalkan konten minggu berjalan serta menangani inbox prioritas tanpa pindah terlalu banyak tool.
+Dalam satu sesi kerja, Raka dapat merencanakan dan menjadwalkan konten minggu berjalan serta menangani komentar prioritas melalui Comments Inbox tanpa pindah terlalu banyak tool.
 
 ### Product Relevance
 
-Paling peduli pada Publishing (draft, schedule, queue, calendar), Engagement inbox, dan AI caption assistance yang cepat.
+Paling peduli pada Publishing (draft, schedule, queue, calendar), Engagement Comments Inbox, dan AI caption assistance yang cepat.
 
 ---
 

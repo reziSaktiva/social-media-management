@@ -228,13 +228,13 @@ External System / Browser Fetch
 ```
 
 **Kapan digunakan:**
-- Webhook Outstand (notifikasi status posting, data engagement/analytics baru).
+- Webhook resmi Outstand (`post.published`, `post.error`, `account.token_expired`).
 - Health check endpoint.
 - File download endpoint (jika diperlukan).
 
 **Aturan:**
-- Webhook Route Handler harus memvalidasi signature request sebelum memproses payload.
-- Route Handler tidak boleh langsung mengakses database — wajib melalui Application Service.
+- Webhook Route Handler membaca raw body, memvalidasi HMAC atas bytes tersebut, lalu memanggil ingestion Application Service untuk persist receipt idempoten dan enqueue JOB-01 sebelum ACK `2xx`.
+- Route Handler tidak boleh langsung mengakses database — termasuk receipt webhook; wajib melalui Application Service/repository sistem.
 - Route Handler bukan pengganti Server Actions untuk mutasi dari UI.
 
 ---
@@ -365,16 +365,19 @@ User klik "Schedule" di UI
 Outstand API kirim POST /api/webhooks/outstand
   │
   ├─ [Route Handler]
-  │    ├─ Validasi webhook signature
-  │    └─ Panggil PublishingService.handlePublishCallback(payload)
+  │    ├─ Baca raw body + validasi HMAC
+  │    ├─ Panggil WebhookIngestionService.persistReceipt(rawBody, headers)
+  │    └─ ACK 2xx setelah receipt durable + JOB-01 terjadwal
   │
-  ├─ [PublishingService]
-  │    ├─ Cari Post via outstandJobId
-  │    ├─ Update Post.status = "published"
-  │    ├─ Simpan via IPostRepository.save(post)
-  │    └─ Panggil NotificationService.notify(workspaceId, { type: "post_published", ... })
+  ├─ [JOB-01 / WebhookProcessor]
+  │    ├─ Muat receipt idempoten
+  │    ├─ ACL terjemahkan event vendor ke command domain
+  │    └─ PublishingService.markPostPublished(...)
   │
-  └─ [Route Handler] Kembalikan 200 OK ke Outstand
+  └─ [PublishingService]
+       ├─ Cari Post via outstandJobId
+       ├─ Update status "published"
+       └─ NotificationService.notify(..., { type: "post_published" })
 ```
 
 ## Contoh 3: Load Halaman Calendar
@@ -428,7 +431,7 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 | `deletePost` | Server Action | Soft delete post |
 | `getScheduledPosts` | Server Component | Load post untuk Calendar view |
 | `getDraftPosts` | Server Component | Load post untuk Draft list |
-| `handlePublishCallback` | Route Handler (webhook) | Update status setelah Outstand callback |
+| `applyTargetOutcomes` | JOB-01 internal | Setelah `post.published`/`post.error`, baca outcome Outstand per akun lalu update setiap `PostTarget` secara independen; notifikasi internal boleh `post_published`/`post_failed` |
 | `getQueueSlots` | Server Component | Load slot antrian |
 | `setQueueSlots` | Server Action | Konfigurasi slot antrian harian |
 
@@ -445,8 +448,8 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 |--------|---------|-----------|
 | `getInboxItems` | Server Component | Load engagement inbox |
 | `markAsRead` | Server Action | Tandai item sebagai sudah dibaca |
-| `replyToItem` | Server Action | Kirim reply via Outstand |
-| `syncInbox` | Route Handler (webhook) | Terima data engagement baru dari Outstand |
+| `replyToComment` | Server Action | Kirim reply komentar via Outstand |
+| `syncComments` | JOB-03 / Server Action manual refresh | Pull komentar via ACL, upsert idempoten, buat `engagement_new` untuk item baru |
 
 ## AnalyticsService
 
@@ -454,13 +457,14 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 |--------|---------|-----------|
 | `getWorkspaceSnapshot` | Server Component | Load ringkasan analytics workspace |
 | `getPostMetrics` | Server Component | Load metrik per post |
-| `syncMetrics` | Route Handler (webhook) | Terima update metrik dari Outstand |
+| `syncMetrics` | JOB-04 | Pull update metrik dari Outstand |
 
 ## MediaService
 
 | Method | Trigger | Keterangan |
 |--------|---------|-----------|
 | `uploadMedia` | Server Action | Upload file ke Supabase Storage + simpan metadata |
+| `createOutstandWorkingCopy` | Internal Publishing flow | Request upload URL → PUT → confirm; kembalikan URL Outstand untuk publish |
 | `getMediaLibrary` | Server Component | Load daftar media workspace |
 | `deleteMedia` | Server Action | Hapus file dan metadata |
 
@@ -498,6 +502,9 @@ Untuk MVP, tidak semua service method di atas diimplementasikan. Prioritas imple
 | AL-D02 | Repository Pattern eksplisit — interface di domain, implementasi via Prisma Client (ADR-031) | Selaras dengan DDD; type-safe persistence; test domain logic tanpa database; batas dependency jelas | Akses Prisma/Supabase langsung di service (coupling tinggi, sulit di-test); Supabase client untuk CRUD (digantikan ADR-031) |
 | AL-D03 | Service-to-service call via public API modul (`index.ts`) | Sederhana untuk MVP solo developer; tidak memerlukan event bus; dependency explicit dan mudah ditelusuri | Domain Events (lebih decoupled tapi kompleksitas tinggi untuk MVP); Shared Read Model (query langsung ke DB lintas context — melanggar boundary) |
 | AL-D04 | 4-layer stack: Entry Points → Application Service → Domain Logic → Repository | Selaras Modular Monolith + DDD; setiap layer punya tanggung jawab yang jelas; testable per layer | 2-layer (Entry Point + DB) — terlalu flat, tidak scalable; full CQRS — terlalu kompleks untuk MVP |
+| AL-D05 | Webhook Route Handler hanya verify raw HMAC → durable receipt → enqueue → ACK | Menjamin event tidak hilang dan menjaga entry point tetap tipis |
+| AL-D06 | Engagement sync melalui JOB-03/manual refresh; bukan Route Handler webhook | Kontrak resmi Outstand tidak menyediakan webhook Engagement MVP |
+| AL-D07 | ADR-040 | AL-D05–D06 mengamandemen contoh dan kontrak service lama |
 
 ---
 

@@ -14,7 +14,7 @@ Bukan tempat config env, script DX, atau gaya kode.
 | [`application-layer.md`](../product-discovery/05-architecture/application-layer.md)                | 4-layer stack, entry points, services, repository, error handling |
 | [`domain-model.md`](../product-discovery/05-architecture/domain-model.md)                          | BC & boundary (detail juga di `ctx-domain.md`)                    |
 | [`database-strategy.md`](../product-discovery/05-architecture/database-strategy.md)                | Multi-tenancy RLS, tabel, storage, soft delete                    |
-| [`integration-layer.md`](../product-discovery/05-architecture/integration-layer.md)                | Outstand ACL, OAuth, publish, webhook, sync                       |
+| [`integration-layer.md`](../product-discovery/05-architecture/integration-layer.md)                | Outstand ACL, OAuth, publish, media upload, webhook, comment sync |
 | [`background-jobs.md`](../product-discovery/05-architecture/background-jobs.md)                    | Job queue Postgres, Railway Cron, job types                       |
 | [`realtime-strategy.md`](../product-discovery/05-architecture/realtime-strategy.md)                | Supabase Realtime untuk notifikasi                                |
 | [`auth-architecture.md`](../product-discovery/05-architecture/auth-architecture.md)                | Session, middleware workspace, RBAC di service, RLS               |
@@ -41,6 +41,19 @@ Entry Points (RSC / Server Actions / Route Handlers / Middleware)
 4. RBAC dievaluasi di Application Service; RLS = defense-in-depth.
 5. Cross-domain lewat public API — lihat `application-layer.md` + `ctx-domain.md`.
 6. Jangan ubah Architecture Baseline tanpa ADR baru.
+7. Kontrak Outstand MVP mengikuti **ADR-040**:
+   - webhook hanya `post.published`, `post.error`, dan `account.token_expired`;
+   - verifikasi HMAC raw body → receipt idempoten durable di
+     `outstand_webhook_events` → ACK `2xx` → pemrosesan/retry internal;
+   - Engagement hanya komentar/reply melalui sync 30 menit + manual refresh;
+     tidak ada DM, mention, atau webhook engagement;
+   - original media di Supabase Storage; publishing memakai working copy hasil
+     upload + confirm melalui Outstand Media API;
+   - X BYOK dikonfigurasi manual oleh Project Owner di dashboard Outstand;
+     aplikasi tidak menerima/menyimpan Client ID atau Client Secret X.
+8. Jangan memakai nama event vendor sebagai tipe domain. `OutstandAdapter`
+   menerjemahkan `post.error` → status `failed` dan
+   `account.token_expired` → status akun `error` + reconnect.
 
 ---
 
@@ -51,7 +64,9 @@ Entry Points (RSC / Server Actions / Route Handlers / Middleware)
 | Fitur / use-case             | BC di `domain-model` + service di `application-layer` + UX di `ctx-design` |
 | Schema / migrasi             | `database-strategy` (+ engineering ORM di `ctx-technical-context`)         |
 | Auth / session               | `auth-architecture` (+ `auth-strategy` di technical)                       |
-| Outstand / webhook / publish | `integration-layer`                                                        |
+| Outstand / webhook / publish | `integration-layer` + ADR-040                                              |
+| Engagement komentar/reply    | `integration-layer` + `background-jobs` + ADR-040                          |
+| Media untuk publishing       | `integration-layer` + `database-strategy` + ADR-040                        |
 | Jobs / cron                  | `background-jobs`                                                          |
 | Notifikasi realtime          | `realtime-strategy`                                                        |
 

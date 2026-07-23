@@ -125,7 +125,7 @@ Setelah publishing berjalan, pengguna membutuhkan cara menangani interaksi prior
 
 **Implication**
 
-Urutan value: Publishing reliability → Engagement triage → Analytics snapshot. Selaras dengan Product Baseline, bukan bertentangan.
+Urutan value: Publishing reliability → triage komentar → Analytics snapshot. Engagement MVP dibatasi pada Comments Inbox + reply dengan periodic pull 30 menit dan manual refresh; Direct Message, mention, serta webhook engagement tidak termasuk MVP (ADR-040).
 
 ---
 
@@ -223,7 +223,7 @@ Catatan: detail arsitektur tidak dibahas di sini.
 Pertanyaan berikut belum ditutup oleh desktop discovery dan dapat dibawa ke fase berikutnya (tanpa memblokir baseline saat ini):
 
 1. Seberapa jauh status handoff perlu divisualisasikan sebelum terasa seperti approval workflow?
-2. Tingkat kedalaman inbox engagement apa yang “cukup” sebelum masuk social listening?
+2. Setelah MVP komentar/reply tervalidasi, apakah perluasan inbox ke Direct Message atau mention memberi nilai cukup untuk fase berikutnya?
 3. Snapshot analytics mingguan mana yang paling sering dipakai buyer pada praktik nyata?
 4. Pada agency lean, apakah pemisahan konteks brand cukup melalui account grouping sederhana?
 

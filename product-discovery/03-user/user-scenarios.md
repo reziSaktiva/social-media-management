@@ -196,17 +196,17 @@ Draft siap-jadwal selesai lebih cepat dengan sedikit bolak-balik.
 
 **Context**
 
-Komentar dan pesan masuk sepanjang hari dari beberapa platform.
+Dalam kondisi saat ini, komentar dan pesan masuk sepanjang hari dari beberapa platform. Solusi MVP mengonsolidasikan komentar saja; Direct Message dan mention tetap ditangani di native app (ADR-040).
 
 **Trigger**
 
-Notifikasi native atau permintaan “tolong balas yang ini”.
+Waktu triage terjadwal, manual refresh, atau notifikasi internal setelah sinkronisasi komentar.
 
 **Current Behavior**
 
 * Membuka tiap native app.
-* Mencari thread penting secara manual.
-* Membalas satu per satu.
+* Mencari komentar penting secara manual.
+* Membalas komentar satu per satu.
 
 **Friction**
 
@@ -216,7 +216,7 @@ Notifikasi native atau permintaan “tolong balas yang ini”.
 
 **Desired Outcome**
 
-Interaksi penting tertangani dalam SLA internal tim.
+Komentar penting tertangani dalam SLA internal tim melalui Comments Inbox yang diperbarui setiap 30 menit atau saat manual refresh.
 
 **Related:** J-04 | PP-06, PP-01
 

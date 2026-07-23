@@ -43,6 +43,11 @@ Modul kode: `apps/web/src/domains/<nama-domain>/` (lihat `ctx-implementation.md`
 5. Penamaan entity/tabel mengikuti `domain-model.md` + amandemen ADR (mis. ADR-027 untuk pengecualian naming tabel).
 6. Jangan menambah BC baru atau mengubah boundary tanpa ADR.
 7. Publishing format: enum `ContentFormat` di `packages/shared`; nilai hidup di `PostTarget` (+ `platformOptions` JSON). Matriks platform & default bisnis → `domain-model.md` / **ADR-039**. Override Outstand hanya di ACL.
+8. Engagement MVP (**ADR-040**) hanya komentar dan reply. Direct Message,
+   mention, serta webhook engagement bukan kontrak domain MVP; data baru berasal
+   dari sync internal 30 menit atau manual refresh.
+9. Nama event Outstand bukan enum/status domain. ACL memetakan
+   `post.published`, `post.error`, dan `account.token_expired` ke bahasa domain.
 
 Boundary rules lengkap (BR-01 dst.) → `domain-model.md`.
 

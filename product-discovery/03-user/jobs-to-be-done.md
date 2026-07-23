@@ -103,12 +103,12 @@ When volume akun dan aset meningkat, I want memastikan konten dijadwalkan ke aku
 
 **Job Story**
 
-When komentar dan pesan masuk dari beberapa platform, I want menangani interaksi prioritas dari satu inbox, so I can merespons cepat tanpa melewatkan percakapan penting.
+When komentar masuk dari beberapa platform, I want membaca dan membalas komentar prioritas dari satu inbox, so I can merespons cepat tanpa melewatkan interaksi penting.
 
 * **Type:** Functional
 * **Actor:** Raka / Community Manager
 * **Pain Points:** PP-06, PP-01
-* **MVP Relevance:** Must — Engagement basics
+* **MVP Relevance:** Must — Comments Inbox + reply; periodic pull 30 menit dan manual refresh (ADR-040)
 
 ---
 

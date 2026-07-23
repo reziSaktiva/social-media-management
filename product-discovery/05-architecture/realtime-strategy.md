@@ -36,9 +36,9 @@ Sistem **tidak** membangun full real-time collaboration (seperti Google Docs). S
 | Fitur | Pendekatan | Alasan |
 |-------|-----------|--------|
 | Notifikasi in-app (badge, toast) | Supabase Realtime | Diperlukan untuk awareness tim tanpa polling |
-| Status post (published/failed) | Manual refresh + notifikasi | Data berubah via webhook — cukup dengan notifikasi |
+| Status post (published/failed) | Manual refresh + notifikasi | Data berubah setelah JOB-01 memproses receipt webhook — cukup dengan notifikasi |
 | Content calendar | Manual refresh | Data jarang berubah secara real-time selama sesi |
-| Engagement inbox | Manual refresh + badge count | Notifikasi menandai ada item baru, user refresh manual |
+| Engagement inbox (comments/replies) | JOB-03 pull 30 menit + manual refresh + badge | Sync internal mendeteksi komentar baru; tidak ada webhook Engagement MVP |
 | Analytics | Manual refresh | Data snapshot harian — tidak perlu real-time |
 | Presence (who's editing) | Post-MVP | Kompleksitas tinggi, bukan kebutuhan MVP |
 | Collaborative editing | Post-MVP | Di luar scope MVP |
@@ -116,14 +116,16 @@ notifications
 
 | Type | Trigger | Penerima | Toast |
 |------|---------|----------|-------|
-| `post.published` | Post berhasil dipublish via Outstand webhook | Pemilik post (Creator/Manager yang buat) | Ya |
-| `post.failed` | Post gagal dipublish via Outstand webhook | Pemilik post | Ya |
-| `engagement.new` | Item engagement baru terdeteksi saat sync | Manager, Admin, Owner | Tidak (hanya badge) |
-| `post.scheduled_reminder` | Post akan tayang dalam 1 jam | Pemilik post | Tidak |
+| `post_published` | JOB-01 memproses `post.published` | Pemilik post (Creator/Manager yang buat) | Ya |
+| `post_failed` | JOB-01 memetakan event vendor `post.error` ke status domain `failed` | Pemilik post | Ya |
+| `account_reconnect_required` | JOB-01 memetakan `account.token_expired` ke akun `error` | Owner, Admin | Ya |
+| `engagement_new` | JOB-03/manual sync menemukan komentar baru | Manager, Admin, Owner | Tidak (hanya badge) |
+| `post_scheduled_reminder` | Post akan tayang dalam 1 jam | Pemilik post | Tidak |
 
 **Catatan:**
-- `engagement.new` tidak menampilkan toast untuk menghindari spam saat sync menemukan banyak item baru sekaligus. Hanya badge count yang bertambah.
-- `post.scheduled_reminder` adalah nice-to-have MVP — dapat diskip jika menambah kompleksitas.
+- `engagement_new` tidak menampilkan toast untuk menghindari spam saat sync menemukan banyak komentar sekaligus. Hanya badge count yang bertambah.
+- Nama event vendor tidak dipakai sebagai `NotificationType`; nama internal seperti `post_failed` tetap kanonikal.
+- `post_scheduled_reminder` adalah nice-to-have MVP — dapat diskip jika menambah kompleksitas.
 
 ---
 
@@ -139,14 +141,16 @@ Content calendar tidak menggunakan Supabase Realtime. Alasannya:
 **Pola yang digunakan:**
 - Setelah user melakukan aksi (buat draft, jadwalkan post), UI di-update secara optimistic atau via Server Action yang mengembalikan data terbaru.
 - User dapat menekan tombol refresh manual di Content Calendar.
-- Saat notifikasi `post.published` atau `post.failed` diterima, UI menampilkan pesan "Status konten berubah. Refresh untuk melihat update." dengan tombol refresh.
+- Saat notifikasi `post_published` atau `post_failed` diterima, UI menampilkan pesan "Status konten berubah. Refresh untuk melihat update." dengan tombol refresh.
 
 ## Engagement Inbox
 
 Engagement inbox menggunakan kombinasi badge + manual refresh:
-- Badge count diperbarui via Supabase Realtime saat notifikasi `engagement.new` masuk.
+- JOB-03 menarik comments setiap 30 menit; tombol refresh memicu sync yang sama secara on-demand.
+- Badge count diperbarui via Supabase Realtime saat notifikasi `engagement_new` dari hasil sync masuk.
 - User membuka Engagement Inbox → data diambil fresh dari database (Server Component).
 - Tidak ada auto-refresh tanpa interaksi user.
+- Replies dikirim melalui Outstand API; DM, mention, dan webhook engagement berada di luar MVP.
 
 ## Analytics Dashboard
 
@@ -160,7 +164,7 @@ Analytics tidak memerlukan real-time — data adalah snapshot periodik (sync har
 |---------|-----------|
 | Notifikasi yang harus segera terlihat user | Supabase Realtime (INSERT subscription) |
 | Status yang berubah karena aksi user sendiri | Optimistic update + Server Action response |
-| Data yang berubah via background job / webhook | Manual refresh + notifikasi badge/toast |
+| Data yang berubah via background job / webhook receipt | Manual refresh + notifikasi badge/toast |
 | Data snapshot (analytics, audit log) | Manual refresh on demand |
 | Data yang jarang berubah (workspace settings) | Fetch saat halaman dimuat, tidak di-subscribe |
 
@@ -225,8 +229,11 @@ Fitur real-time berikut tidak masuk MVP tetapi perlu dipertimbangkan saat scalin
 | RT-D01 | Supabase Realtime hanya untuk tabel `notifications` | Scope minimal — notifikasi adalah satu-satunya use case yang benar-benar butuh real-time di MVP |
 | RT-D02 | Content calendar menggunakan manual refresh, bukan Realtime | Mengurangi kompleksitas; perubahan kalender terjadi melalui aksi user atau webhook yang sudah ditangani via notifikasi |
 | RT-D03 | Filter Realtime subscription per `user_id` | Privacy — user tidak boleh menerima notifikasi user lain; sejalan dengan RLS |
-| RT-D04 | `engagement.new` tidak memunculkan toast | Mencegah spam notifikasi saat sync menemukan banyak item sekaligus; badge count lebih appropriate |
+| RT-D04 | `engagement_new` tidak memunculkan toast | Mencegah spam notifikasi saat sync menemukan banyak komentar sekaligus; badge count lebih appropriate |
 | RT-D05 | Optimistic update untuk aksi user sendiri | UX yang responsif tanpa perlu menunggu konfirmasi database; fallback ke error state jika gagal |
+| RT-D06 | Nama notifikasi internal memakai `snake_case`; ACL memisahkannya dari nama event vendor | Domain tidak bergantung pada kontrak Outstand; `post.error` tetap menghasilkan `post_failed` |
+| RT-D07 | Engagement notification hanya berasal dari JOB-03/manual sync | Tidak ada webhook comment/DM/mention dalam kontrak MVP |
+| RT-D08 | ADR-040 | RT-D06–D07 mengamandemen registry dan sumber notifikasi lama |
 
 ---
 
