@@ -221,6 +221,7 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 | `outstand_account_id` | `text NOT NULL` | ID dari Outstand API (external reference) |
 | `handle` | `text NOT NULL` | Nama akun (@handle atau nama page) |
 | `status` | `text NOT NULL DEFAULT 'active'` | `active \| disconnected \| error` |
+| `reconnect_required` | `boolean NOT NULL DEFAULT false` | `true` setelah `account.token_expired`; kembali `false` setelah reconnect |
 | `connected_at` | `timestamptz NOT NULL DEFAULT now()` | |
 | `created_at` | `timestamptz NOT NULL DEFAULT now()` | |
 | `updated_at` | `timestamptz NOT NULL DEFAULT now()` | |
@@ -322,8 +323,8 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 | `workspace_id` | `uuid NOT NULL REFERENCES workspaces(id)` | |
 | `connected_account_id` | `uuid NOT NULL REFERENCES workspace_connected_accounts(id)` | |
 | `platform` | `text NOT NULL` | Platform asal interaksi |
-| `type` | `text NOT NULL` | `comment \| direct_message \| mention` |
-| `external_id` | `text NOT NULL` | ID item di platform media sosial (dari Outstand webhook) |
+| `type` | `text NOT NULL DEFAULT 'comment'` | MVP hanya `comment` |
+| `external_id` | `text NOT NULL` | ID komentar dari Outstand Comments API |
 | `author_handle` | `text NOT NULL` | Username pengirim |
 | `content` | `text NOT NULL` | Isi interaksi |
 | `status` | `text NOT NULL DEFAULT 'unread'` | `unread \| read \| replied \| archived` |
@@ -333,7 +334,7 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 | `created_at` | `timestamptz NOT NULL DEFAULT now()` | |
 | `updated_at` | `timestamptz NOT NULL DEFAULT now()` | |
 
-**Constraint:** `UNIQUE(workspace_id, external_id)` — mencegah duplicate dari webhook retry.
+**Constraint:** `UNIQUE(workspace_id, connected_account_id, external_id)` — menjaga upsert periodic/manual sync tetap idempoten.
 
 **Catatan:** `post_id` tidak menggunakan FOREIGN KEY karena merupakan soft reference — post yang direferensi bisa tidak ada (dihapus) tanpa harus menghapus inbox item.
 
@@ -443,8 +444,12 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 | `filename` | `text NOT NULL` | Nama file asli |
 | `mime_type` | `text NOT NULL` | Contoh: `image/jpeg`, `video/mp4` |
 | `size` | `bigint NOT NULL` | Ukuran file dalam bytes |
-| `url` | `text NOT NULL` | Public URL dari Supabase Storage |
+| `url` | `text` | Cache URL akses aplikasi yang dapat kedaluwarsa; bukan identitas aset |
 | `storage_path` | `text NOT NULL` | Path internal di Supabase Storage bucket |
+| `outstand_media_id` | `text` | Metadata opsional working copy Outstand |
+| `outstand_media_url` | `text` | Metadata opsional URL working copy; bukan source of truth original |
+| `outstand_uploaded_at` | `timestamptz` | Waktu working copy terakhir dikonfirmasi di Outstand |
+| `outstand_expires_at` | `timestamptz` | Waktu kedaluwarsa working copy menurut respons Outstand |
 | `type` | `text NOT NULL` | `image \| video \| gif` |
 | `width` | `integer` | Resolusi horizontal (untuk image/video) |
 | `height` | `integer` | Resolusi vertikal (untuk image/video) |
@@ -462,7 +467,7 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 | `id` | `uuid PK DEFAULT gen_random_uuid()` | Notification ID |
 | `workspace_id` | `uuid NOT NULL REFERENCES workspaces(id)` | |
 | `user_id` | `uuid NOT NULL` | Penerima — referensi ke `identity_user.id` |
-| `type` | `text NOT NULL` | `post_published \| post_failed \| new_inbox_item \| member_invited \| ...` |
+| `type` | `text NOT NULL` | `post_published \| post_failed \| account_reconnect_required \| engagement_new \| member_invited \| ...` |
 | `title` | `text NOT NULL` | |
 | `body` | `text NOT NULL` | |
 | `is_read` | `boolean NOT NULL DEFAULT false` | |
@@ -530,6 +535,26 @@ Tabel berikut bukan milik bounded context manapun — mereka adalah infrastruktu
 
 Detail arsitektur background job didefinisikan di `background-jobs.md`.
 
+### `outstand_webhook_events`
+
+Durable receipt untuk memisahkan delivery webhook Outstand dari pemrosesan internal.
+
+| Kolom | Tipe | Keterangan |
+|-------|------|-----------|
+| `id` | `uuid PK DEFAULT gen_random_uuid()` | ID receipt internal |
+| `outstand_event_id` | `text NOT NULL UNIQUE` | Event ID vendor jika tersedia; jika tidak, gunakan fingerprint SHA-256 raw body |
+| `event_type` | `text NOT NULL` | `post.published \| post.error \| account.token_expired` untuk MVP |
+| `raw_body` | `text NOT NULL` | Raw body persis yang diverifikasi HMAC |
+| `status` | `text NOT NULL DEFAULT 'received'` | `received \| processing \| processed \| failed \| dead_lettered` |
+| `processing_attempts` | `integer NOT NULL DEFAULT 0` | Percobaan proses internal; bukan delivery attempt Outstand |
+| `last_error` | `text` | Error pemrosesan terakhir |
+| `received_at` | `timestamptz NOT NULL DEFAULT now()` | Waktu receipt durable |
+| `processed_at` | `timestamptz` | Waktu selesai |
+| `created_at` | `timestamptz NOT NULL DEFAULT now()` | |
+| `updated_at` | `timestamptz NOT NULL DEFAULT now()` | |
+
+Route Handler hanya memberi ACK `2xx` setelah insert idempoten berhasil dan JOB-01 internal tersedia. Duplicate receipt valid di-ACK tanpa enqueue ganda. Tabel ini server-only dan tidak memakai RLS.
+
 ---
 
 # Index Strategy
@@ -556,7 +581,9 @@ Berlaku untuk: `workspace_members`, `workspace_connected_accounts`, `publishing_
 | `publishing_post_targets` | `post_id` | Lookup targets per post |
 | `publishing_queue_slots` | `(connected_account_id, scheduled_at)` | Queue lookup per account |
 | `engagement_inbox_items` | `(workspace_id, status)` | Filter inbox by status |
-| `engagement_inbox_items` | `external_id` | Webhook dedup lookup |
+| `engagement_inbox_items` | `(workspace_id, connected_account_id, external_id)` | Upsert idempoten hasil sync |
+| `outstand_webhook_events` | `outstand_event_id` | Durable receipt/idempotency (sudah UNIQUE) |
+| `outstand_webhook_events` | `(status, received_at)` | Claim receipt untuk JOB-01 dan inspeksi dead letter |
 | `analytics_post_metrics` | `post_id` | Metrics per post |
 | `notifications` | `(user_id, is_read)` | Notifikasi belum dibaca per user |
 | `start_page_pages` | `slug` | Public URL lookup (sudah UNIQUE) |
@@ -593,9 +620,9 @@ avatars/abc-123-workspace/avatar.jpg
 
 ## Storage URL di Database
 
-`media_items.url` menyimpan **signed URL** yang di-generate saat upload. Untuk akses selanjutnya, application layer men-generate signed URL baru menggunakan `storage_path` yang tersimpan.
+`media_items.storage_path` adalah source of truth lokasi original. `media_items.url`, jika diisi, hanya cache URL akses aplikasi dan boleh kedaluwarsa; application layer men-generate signed URL baru dari `storage_path`.
 
-`media_items.storage_path` adalah path internal (`{workspace_id}/{year}/{month}/{uuid}.{ext}`) yang digunakan untuk signed URL generation dan penghapusan file.
+Untuk publishing, aplikasi **tidak** mengirim signed URL Supabase ke Outstand. Aplikasi meminta upload URL Outstand, melakukan `PUT`, mengonfirmasi upload, lalu memakai URL working copy Outstand. `outstand_media_id`/`outstand_media_url` boleh dipersistenkan secara opsional.
 
 ---
 
@@ -658,6 +685,7 @@ Detail implementasi migrasi didefinisikan di Engineering Planning (M6). Poin ars
 | `Subscription` | `billing_subscriptions` (post-MVP) | BC-10 |
 | `Invoice` | `billing_invoices` (post-MVP) | BC-10 |
 | *(system)* | `background_jobs` | Cross-cutting — tidak terikat ke BC manapun |
+| *(system)* | `outstand_webhook_events` | Cross-cutting — durable webhook receipt |
 
 ---
 
@@ -671,6 +699,9 @@ Detail implementasi migrasi didefinisikan di Engineering Planning (M6). Poin ars
 | DB-D04 | Better Auth menggunakan prefix `identity_` | Konsisten dengan naming convention domain; mudah dibedakan dari tabel aplikasi | Tanpa prefix (nama tabel generik seperti `user`, `session` — mudah konflik) |
 | DB-D05 | Application-enforced auth + RLS sebagai safety net | Better Auth tidak terintegrasi native dengan Supabase JWT; semua akses sudah server-side | Custom JWT claim untuk Supabase RLS (lebih kompleks setup untuk MVP) |
 | DB-D06 | `created_at` dan `updated_at` di semua tabel | Standar audit trail minimal; diperlukan untuk sync, debugging, dan pagination cursor | Hanya `created_at` (kehilangan kemampuan track update waktu) |
+| DB-D07 | `outstand_webhook_events` sebagai durable idempotent receipt | Menjamin event tersimpan sebelum ACK dan memisahkan delivery vendor dari processing internal | ACK sebelum persist; payload hanya di job queue |
+| DB-D08 | Engagement schema MVP hanya komentar/reply | Selaras kontrak Outstand dan sumber JOB-03/manual sync | Menyimpan DM/mention yang tidak dapat disinkronkan |
+| DB-D09 | ADR-040 | DB-D07–D08 serta metadata working copy media mengamandemen skema konseptual lama |
 
 ---
 
@@ -678,7 +709,7 @@ Detail implementasi migrasi didefinisikan di Engineering Planning (M6). Poin ars
 
 * `domain-model.md` — fondasi entitas dan relasi yang dipetakan ke tabel database ini
 * `application-layer.md` — bagaimana application layer berinteraksi dengan database *(dokumen berikutnya)*
-* `integration-layer.md` — Outstand API dan webhook yang mengisi `engagement_inbox_items` dan `analytics_post_metrics`
+* `integration-layer.md` — Outstand Comments API/JOB-03 yang mengisi `engagement_inbox_items`, webhook receipt untuk status publishing/account, dan polling analytics
 * `background-jobs.md` — background job yang mengakses `publishing_queue_slots` dan `analytics_post_metrics`
 * `realtime-strategy.md` — Supabase Realtime untuk `notifications`
 * `auth-architecture.md` — Better Auth dan RLS detail — `workspace_members` sebagai authorization table

@@ -25,7 +25,7 @@ Keputusan berikut sudah ditetapkan sebelum dokumen ini dibuat dan menjadi fondas
 | Database Platform | Supabase PostgreSQL Cloud | Keputusan pra-architecture |
 | Deployment | Railway | Keputusan pra-architecture |
 | Social Media Integration | Outstand API (webhook untuk status post) | ADR-005 |
-| Webhook Handling | Async processing — respons segera, proses di background | ADR-020 |
+| Webhook Handling | Verifikasi raw-body HMAC → durable receipt idempoten → ACK 2xx → proses internal | ADR-020, ADR-040 |
 | Schema Organization | Single schema `public` dengan domain prefix | ADR-014 |
 
 ---
@@ -36,7 +36,7 @@ Sistem membutuhkan dua kategori background job:
 
 | Kategori | Trigger | Contoh |
 |----------|---------|--------|
-| **Event-driven** | Dipicu oleh event domain tertentu | Retry webhook gagal, notifikasi publish |
+| **Event-driven** | Dipicu oleh event domain tertentu | Pemrosesan receipt webhook, notifikasi publish |
 | **Periodic** | Dijadwalkan berulang pada interval tetap | Sinkronisasi engagement, sinkronisasi analytics |
 
 ---
@@ -47,8 +47,8 @@ Sistem membutuhkan dua kategori background job:
 
 Sistem menggunakan **PostgreSQL-backed job queue** dengan tabel `background_jobs` sebagai sumber kebenaran status job. Eksekusi job dipicu oleh:
 
-1. **Railway Cron** — memanggil Route Handler `/api/jobs/run` pada interval tertentu (setiap menit untuk event-driven jobs, setiap jam untuk periodic sync).
-2. **Domain Service** — menulis job baru ke tabel `background_jobs` saat event terjadi (misalnya webhook gagal diproses).
+1. **Railway Cron** — memanggil Route Handler `/api/jobs/run` pada interval tertentu (setiap menit untuk event-driven jobs dan setiap 30 menit untuk JOB-03 Engagement sync; Analytics memiliki jadwal harian tersendiri).
+2. **Ingestion/Application Service** — menulis job baru ke tabel `background_jobs` saat ada receipt webhook baru atau operasi async lain.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -116,32 +116,32 @@ pending → running → done
 
 # Job Type Registry
 
-## JOB-01 — Webhook Retry
+## JOB-01 — Internal Webhook Processing
 
-**Trigger:** Webhook dari Outstand gagal diproses (`WebhookProcessor` gagal).
+**Trigger:** Receipt baru berhasil dipersistenkan ke `outstand_webhook_events`, atau percobaan pemrosesan internal sebelumnya gagal.
 
-**Tipe:** `outstand.webhook.retry`
+**Tipe:** `outstand.webhook.process`
 
 **Payload:**
 ```
 {
-  "webhookEventId": "uuid",
-  "eventType": "post.published | post.failed | engagement.new",
-  "rawPayload": { ... }
+  "webhookEventId": "uuid"
 }
 ```
 
-**Handler:** Memanggil ulang `WebhookProcessor` dengan payload asli.
+**Handler:** Memuat raw payload receipt yang sudah lolos HMAC dari `outstand_webhook_events`, menandai `processing`, lalu memanggil `WebhookProcessor`. Event resmi MVP: `post.published`, `post.error`, `account.token_expired`. ACL memetakan `post.error` → status domain `failed`, serta `account.token_expired` → status akun `error`/reconnect.
 
 **Retry:** Maksimal 3 kali. Interval: 5 menit, 15 menit, 60 menit (exponential backoff).
 
-**On permanent failure:** Catat di log, tandai webhook event sebagai `dead_lettered`, kirim notifikasi internal (jika ada monitoring).
+**On permanent failure:** Catat di log, tandai receipt `dead_lettered`, kirim notifikasi internal (jika ada monitoring).
+
+**Boundary retry:** Retry delivery oleh Outstand hanya terjadi jika ingestion tidak berhasil durable/ACK. Setelah ACK `2xx`, semua retry adalah mekanisme internal JOB-01 dan tidak bergantung pada delivery ulang vendor.
 
 ---
 
 ## JOB-02 — Post Status Notification
 
-**Trigger:** Webhook `post.published` atau `post.failed` diterima dari Outstand.
+**Trigger:** JOB-01 menyelesaikan `post.published` atau memetakan `post.error` ke status domain `failed`.
 
 **Tipe:** `notification.post_status`
 
@@ -179,14 +179,14 @@ pending → running → done
 ```
 
 **Handler:**
-1. Memanggil `OutstandAdapter.fetchEngagementItems(outstandAccountId, cursor?)`.
+1. Memanggil `OutstandAdapter.fetchComments(outstandAccountId, cursor?)`.
 2. Membandingkan dengan data yang sudah ada di tabel `engagement_inbox_items`.
-3. Menyimpan item baru melalui `EngagementService`.
-4. Memanggil `NotificationService.notify(workspaceId, { type: 'engagement.new', ... })` langsung untuk setiap item baru yang ditemukan (bukan membuat job terpisah — notifikasi engagement adalah operasi ringan yang tidak memerlukan retry). Hanya mengirim satu notifikasi aggregate jika banyak item baru masuk sekaligus (mencegah spam).
+3. Menyimpan/upsert komentar baru melalui `EngagementService`.
+4. Memanggil `NotificationService.notify(workspaceId, { type: 'engagement_new', ... })` dari hasil sync. Hanya mengirim satu notifikasi aggregate jika banyak komentar baru ditemukan.
 
 **Retry:** Maksimal 2 kali. Interval: 10 menit.
 
-**Catatan:** Job ini dibuat per `ConnectedAccount` yang `active`. Railway Cron memanggil endpoint `/api/jobs/run` yang kemudian membuat job sync untuk setiap workspace aktif.
+**Catatan:** JOB-03 adalah sumber utama Engagement MVP dan dibuat per `ConnectedAccount` yang `active`. Manual refresh memicu handler sync yang sama secara on-demand. Tidak ada webhook komentar, DM, atau mention; scope hanya comments/replies.
 
 ---
 
@@ -244,9 +244,10 @@ Job yang mencapai `max_attempts` tanpa sukses diubah statusnya ke `failed` dan t
 ```
 PublishingService
   └── Webhook POST /api/webhooks/outstand
-        └── WebhookProcessor
-              ├── Sukses → Update PostTarget status → Buat JOB-02 (notification)
-              └── Gagal  → Buat JOB-01 (webhook retry)
+        └── Verify raw HMAC → persist outstand_webhook_events → ACK 2xx
+              └── JOB-01 (internal processing)
+                    ├── Sukses → update receipt + status domain → buat JOB-02
+                    └── Gagal → retry internal; delivery Outstand tetap terpisah
 ```
 
 ## Workspace BC → Background Job
@@ -331,6 +332,9 @@ Monitoring yang lebih advanced (alerting, dashboard) didokumentasikan di Enginee
 | BG-D04 | Exponential backoff: 5m, 15m, 60m | Pragmatis untuk MVP — memberi waktu yang cukup untuk Outstand recovery tanpa terlalu lama |
 | BG-D05 | Max 10 job per run | Mencegah Railway timeout (max 30 detik per request) |
 | BG-D06 | Dead letter = status `failed` di tabel | Cukup untuk MVP; tidak perlu queue terpisah |
+| BG-D07 | JOB-01 memproses durable receipt internal (`outstand.webhook.process`) | Memisahkan retry delivery vendor dari retry pemrosesan internal |
+| BG-D08 | JOB-03 adalah sumber utama comments/replies setiap 30 menit + manual refresh | Outstand tidak menyediakan webhook Engagement MVP |
+| BG-D09 | ADR-040 | BG-D07–D08 mengamandemen semantik JOB-01 dan Engagement lama |
 
 ---
 

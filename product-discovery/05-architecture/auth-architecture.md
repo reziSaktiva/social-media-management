@@ -301,7 +301,7 @@ Route Handlers yang menerima request dari sistem eksternal (webhook, job runner)
 
 | Route | Mekanisme Proteksi |
 |-------|-------------------|
-| `/api/webhooks/outstand` | HMAC-SHA256 signature verification (ADR-020) |
+| `/api/webhooks/outstand` | HMAC-SHA256 atas raw body, durable idempotent receipt sebelum ACK (ADR-020, ADR-040) |
 | `/api/jobs/run` | Secret header `X-Job-Secret` dibandingkan env variable |
 | `/api/integrations/outstand/callback` | CSRF protection via `state` parameter (ADR-021) |
 
@@ -310,6 +310,10 @@ Route Handlers yang menerima request dari sistem eksternal (webhook, job runner)
 Route Handler yang dipanggil dari Client Components harus:
 1. Diproteksi oleh Middleware (session check).
 2. Memeriksa workspace membership jika berkaitan dengan data workspace.
+
+**Boundary secret eksternal:**
+- `OUTSTAND_WEBHOOK_SECRET` dan API key Outstand hanya tersedia server-side.
+- Kredensial BYOK Twitter/X dikonfigurasi manual oleh Project Owner di dashboard Outstand. Aplikasi tidak menyediakan form, endpoint, tabel, atau env var untuk X Client ID/Client Secret.
 
 ---
 
@@ -389,6 +393,9 @@ Login berhasil
 | AU-D05 | Authorization check di Application Service layer | Selaras dengan DDD — domain service yang mengetahui aturan bisnis; Entry Point tetap thin |
 | AU-D06 | RLS sebagai defense-in-depth, bukan primary enforcement | Application-enforced lebih fleksibel dan testable; RLS sebagai safety net jika ada bug di layer atas |
 | AU-D07 | Email + Password + Google OAuth untuk MVP | Cukup untuk target user (tim profesional); Magic Link dan SSO dipertimbangkan post-MVP |
+| AU-D08 | HMAC webhook diverifikasi atas raw body dan receipt durable sebelum ACK | Menjaga autentisitas sekaligus mencegah kehilangan event |
+| AU-D09 | Secret BYOK X berada di dashboard Outstand, bukan aplikasi | Mengurangi exposure secret platform dan selaras ADR-040 |
+| AU-D10 | ADR-040 | AU-D08–D09 mengamandemen boundary proteksi integrasi |
 
 ---
 
