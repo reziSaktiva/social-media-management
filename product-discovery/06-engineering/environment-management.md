@@ -119,6 +119,8 @@ Lokasi file di monorepo (ditetapkan M7): **`apps/web/`** — `.env.example` (di 
 | `OUTSTAND_WEBHOOK_SECRET` | local | staging | prod | Verifikasi HMAC webhook |
 | `JOB_SECRET` | local | staging | prod | Header `X-Job-Secret` untuk trigger cron → web |
 
+**Tidak ada env var X/Twitter Client ID atau Client Secret.** BYOK X dikonfigurasi Project Owner langsung di dashboard Outstand per environment. Secret tersebut tidak disalin ke `.env.local`, Railway Variables, GitHub Actions, database, atau aplikasi.
+
 ## Client (boleh di-bundle)
 
 | Variable | Keterangan |
@@ -161,6 +163,7 @@ Implementasi cookie local vs HTTPS harus selaras `auth-strategy.md` — staging/
 4. Buat OAuth Google client (atau tambahkan redirect URI local) mengarah ke `http://localhost:3000/api/auth/callback/google`.
 5. `bun install` → `bunx prisma migrate dev` (memakai `DIRECT_URL` local).
 6. `bun run dev` — verifikasi auth, Realtime (anon + JWT), dan Storage dasar.
+7. Konfigurasikan X BYOK di dashboard Outstand untuk akun/environment test bila alur Twitter/X akan diverifikasi; jangan menyalin secret X ke file env aplikasi.
 
 Developer **tidak** mengarah `DATABASE_URL` local ke staging/prod.
 
@@ -202,6 +205,8 @@ Keputusan self-host di masa depan wajib ADR di `DECISIONS.md`; dokumen ini hanya
 | EM-D04 | `.env.example` + `.env.local` di `apps/web/`; secret file di-gitignore | Next.js memuat env dari app dir secara native; template onboarding tanpa membocorkan secret | Env di root monorepo (butuh wiring ekstra); commit `.env` terenkripsi (overhead); tanpa example (onboarding buram) |
 | EM-D05 | Fail-fast validasi required server env | Gagal cepat lebih baik daripada runtime error samar | Optional env dengan default berbahaya |
 | EM-D06 | Larangan berbagi secret lintas tier | Konsekuensi langsung DI-D03 / isolasi kredensial | Satu key dipakai semua env (blast radius besar) |
+| EM-D07 | Tidak ada X client credential di env aplikasi | BYOK X dikelola manual di dashboard Outstand; mengurangi exposure secret |
+| EM-D08 | ADR-040 | EM-D07 mengamandemen katalog/prasyarat integrasi Engineering Baseline |
 
 ---
 

@@ -190,8 +190,10 @@ Catatan arsitektur di `database-strategy.md` yang sebelumnya menyebut Supabase C
 
 1. Inisialisasi Prisma schema + datasource.
 2. Model / migrasi tabel `identity_*` selaras Better Auth (+ Prisma adapter).
-3. Migrasi tabel domain sesuai `database-strategy.md` (termasuk `background_jobs`, RLS policies sebagai SQL di migrasi atau script terpisah yang di-track di repo).
+3. Migrasi tabel domain sesuai `database-strategy.md` (termasuk `background_jobs`, `outstand_webhook_events`, RLS policies sebagai SQL di migrasi atau script terpisah yang di-track di repo).
 4. Seed minimal hanya jika diperlukan untuk local/staging — bukan production user data.
+
+Penyelarasan ADR-040 menggunakan migrasi aditif `20260723121000_align_outstand_contract` untuk durable webhook receipt, reconnect state, metadata media Outstand, dan constraint Engagement. Status penerapan dan implementasi runtime mengacu hanya ke `PROJECT_STATE.md`.
 
 ## RLS Policies dalam Migrasi
 
@@ -212,6 +214,17 @@ Selaras ADR-017 (amended) dan `application-layer.md`:
 | Soft delete | Hormati `deleted_at` pada `publishing_posts` (`database-strategy.md`) |
 
 Application Service **tidak** mengimpor `@prisma/client` atau `src/lib/prisma/client` secara langsung.
+
+## Durable Webhook Receipt (ADR-040)
+
+Repository sistem untuk webhook menjalankan satu transaksi Prisma:
+
+1. Insert `outstand_webhook_events` dengan unique vendor event identity/fingerprint deterministik.
+2. Jika receipt baru, insert `background_jobs` tipe `outstand.webhook.process` yang mereferensikan receipt ID.
+3. Commit transaksi, baru Route Handler mengembalikan `2xx`.
+4. Jika duplicate, tidak membuat job kedua dan tetap boleh ACK `2xx`.
+
+Raw body disimpan setelah HMAC valid agar JOB-01 dapat memproses payload yang sama tanpa bergantung pada delivery ulang Outstand. `processing_attempts`/status receipt mencatat pemrosesan internal; attempt delivery vendor tidak dicampur ke kolom tersebut.
 
 ---
 
@@ -254,6 +267,8 @@ Ini menuntaskan placeholder di `auth-strategy.md`: driver/dialect Better Auth = 
 | Subscribe Realtime `notifications` | Job queue CRUD (`background_jobs`) |
 | Operasi admin Storage bucket | Query analytics / engagement / publishing |
 
+Supabase Storage menyimpan original media. Flow Outstand working copy (request upload URL → `PUT` → confirm) adalah HTTP melalui ACL, bukan CRUD Supabase/Prisma. Metadata Outstand media boleh dipersistenkan opsional via repository Media.
+
 Repository domain **tidak** boleh bergantung pada `@supabase/supabase-js` untuk persistence.
 
 ---
@@ -281,6 +296,9 @@ Detail script Bun (`db:migrate`, `db:generate`) ditetapkan di `dx-tooling.md` (D
 | DO-D04 | Supavisor: pooled `DATABASE_URL` + `DIRECT_URL` migrate | Mencegah exhaustion koneksi di Next.js; migrate butuh session langsung | Direct-only (risiko kehabisan koneksi); pooled-only untuk migrate (sering gagal) |
 | DO-D05 | Better Auth via Prisma adapter di DB yang sama | Satu skema/migrate path; konsisten AS-D01 | Better Auth raw SQL driver terpisah dari Prisma schema |
 | DO-D06 | `SET LOCAL app.current_user_id` via Prisma untuk RLS | Mempertahankan defense-in-depth DB-D05 setelah pindah dari Supabase JS ke Prisma | Nonaktifkan RLS sepenuhnya (menghapus safety net) |
+| DO-D07 | Receipt webhook + JOB-01 dibuat atomik sebelum ACK | Tidak ada celah receipt tersimpan tanpa job atau ACK tanpa durable state |
+| DO-D08 | Original media tetap Storage; metadata working copy Outstand opsional | Ownership aset tidak berpindah ke provider publishing |
+| DO-D09 | ADR-040 | DO-D07–D08 mengamandemen model operasional database Engineering Baseline |
 
 ---
 

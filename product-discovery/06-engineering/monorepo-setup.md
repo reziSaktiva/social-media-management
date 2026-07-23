@@ -193,7 +193,7 @@ src/app/
     │       └── route.ts          ← Job runner (Railway Cron → X-Job-Secret)
     └── webhooks/
         └── outstand/
-            └── route.ts          ← Outstand webhook handler
+            └── route.ts          ← raw body HMAC → durable receipt → ACK 2xx
 ```
 
 **Aturan routing:**
@@ -201,6 +201,7 @@ src/app/
 - Route group `(auth)` tidak mewarisi workspace layout — render halaman kosong tanpa sidebar.
 - `api/` hanya untuk Route Handlers platform/eksternal: Better Auth (`/api/auth/*`), health check, job runner (`/api/jobs/run`), dan webhook. Mutations UI menggunakan Server Actions, bukan route API internal.
 - `/api/auth/*` dan `/api/jobs/*` di-bypass dari session Middleware — auth sendiri dilindungi Better Auth; job runner dilindungi header `X-Job-Secret` (lihat `auth-architecture.md`, `deployment-infrastructure.md`).
+- `/api/webhooks/outstand` wajib membaca raw body sebelum parsing. Route memanggil WebhookIngestion Application Service untuk menulis `outstand_webhook_events` idempoten dan enqueue `outstand.webhook.process`; business processing tidak berjalan inline.
 - `billing/` ada di routing MVP tapi halaman menampilkan placeholder — implementasi Post-MVP.
 
 ---
@@ -282,6 +283,8 @@ src/lib/
 │   └── middleware.ts             ← Supabase client untuk Middleware (jika diperlukan)
 ├── better-auth/
 │   └── auth.ts                   ← Better Auth instance & config (Prisma adapter)
+├── outstand/
+│   └── adapter.ts                ← ACL: webhook mapping, media upload, comments/replies
 ├── repositories/                 ← Repository implementations (Prisma-based)
 │   ├── identity/
 │   ├── workspace/
@@ -444,6 +447,9 @@ import { something } from '@/domains/workspace';  // di dalam packages/shared/
 | MS-D03 | App Router routing menggunakan `[slug]` sebagai workspace dynamic segment | Workspace context di-resolve dari URL slug — selaras dengan auth-architecture.md dan keputusan Middleware workspace resolution | Query param `?workspace=slug` (kurang bersih, tidak SEO-friendly) |
 | MS-D04 | `packages/shared` hanya untuk branded IDs, enums, dan value objects yang digunakan 2+ domain | Mencegah shared menjadi "junk drawer" — hanya types yang genuinely cross-domain | Tidak ada shared package, tiap domain define ulang (duplikasi) |
 | MS-D05 | Repository implementations ada di `src/lib/repositories/`, bukan di dalam domain folder | Domain hanya kenal interface — implementations di-inject, memudahkan testing dan penggantian infrastruktur | Repository implementation di dalam domain folder (mencampur domain logic dan infrastructure) |
+| MS-D06 | Outstand webhook route hanya ingestion; processor berjalan sebagai JOB-01 | Durable-before-ACK dan retry internal tidak bercampur dengan HTTP delivery vendor |
+| MS-D07 | `src/lib/outstand/` menjadi lokasi implementasi ACL | Semua kontrak vendor, termasuk upload media dan comments/replies, terisolasi dari domain |
+| MS-D08 | ADR-040 | MS-D06–D07 mengamandemen detail route/infrastructure Engineering Baseline |
 
 ---
 

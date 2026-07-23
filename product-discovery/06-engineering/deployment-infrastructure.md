@@ -112,7 +112,7 @@ Outstand API (integrasi social media) adalah dependency eksternal yang diakses d
 | Supabase project | Project terpisah (prod) | Project terpisah (staging) |
 | Domain | domain produksi (custom) | subdomain staging (mis. `staging.<domain>`) |
 | Data | Data user nyata | Data dummy / sanitized — tidak boleh berisi data produksi |
-| Outstand | Kredensial produksi | Kredensial sandbox/test Outstand (jika tersedia) |
+| Outstand | API/webhook credential produksi; X BYOK prod dikonfigurasi manual di dashboard Outstand | API/webhook credential staging; X BYOK staging/test dikonfigurasi terpisah jika tersedia |
 | Akses | Publik | Terbatas (tim internal) |
 
 **Prinsip:**
@@ -173,6 +173,8 @@ Selaras dengan ADR-022 (`background-jobs.md`): Railway Cron bertindak sebagai **
 | Frekuensi | Sesuai kebutuhan job queue (mis. tiap 1 menit) — detail di `background-jobs.md` |
 
 `web` service kemudian menarik job dari tabel `background_jobs` menggunakan `SELECT FOR UPDATE SKIP LOCKED` dan mengeksekusinya. Logika ini tidak berubah dari arsitektur — dokumen ini hanya menetapkan bahwa trigger di-deploy sebagai Railway Cron.
+
+JOB-03 comments sync dijadwalkan setiap 30 menit dan juga dapat dipicu manual melalui Application Service. JOB-01 hanya memproses durable receipt internal; retry delivery webhook tetap mekanisme Outstand yang berakhir setelah ACK `2xx`.
 
 ---
 
@@ -248,6 +250,10 @@ Setiap environment memegang set env vars sendiri di Railway. Kategori utama:
 
 Detail lengkap penamaan, sumber, dan pengelolaan secret didefinisikan di `environment-management.md`. Dokumen ini hanya menetapkan bahwa **secret tidak dibagikan lintas environment** — konsekuensi langsung dari DI-D03.
 
+**Prasyarat operasional X/Twitter:** Project Owner mengisi BYOK X langsung di dashboard Outstand untuk environment terkait. Tidak ada Railway Variable untuk X Client ID/Client Secret dan tidak ada secret X yang melewati aplikasi.
+
+**Jalur media:** service `web` membaca original dari Supabase Storage, meminta upload URL Outstand, melakukan `PUT`, lalu confirm. Egress Supabase→Railway/Outstand dan timeout upload perlu dipantau; URL working copy Outstand dipakai saat schedule.
+
 ---
 
 # Decision Log
@@ -260,6 +266,9 @@ Detail lengkap penamaan, sumber, dan pengelolaan secret didefinisikan di `enviro
 | DI-D04 | Dua Railway service per environment: `web` + `cron` | Memisahkan trigger cron dari app; selaras ADR-022 (Railway Cron sebagai trigger) | Cron di dalam proses web (kurang eksplisit, sulit dijadwalkan independen) |
 | DI-D05 | Deploy otomatis dari branch (`main`→prod, `staging`→staging) | Alur deploy sederhana dan deterministik; gate kualitas di CI sebelum merge | Manual deploy (rawan human error); deploy dari tag (menambah overhead rilis untuk MVP) |
 | DI-D06 | Rollback via redeploy Railway + migration reversible + expand-and-contract | Rollback aman terhadap skema DB; tidak ada state yang hilang | Rollback hanya di app (bisa bentrok dengan skema baru) |
+| DI-D07 | JOB-03 dijadwalkan 30 menit; JOB-01 hanya processing internal | Menjalankan source utama Engagement dan memisahkan dua jenis retry |
+| DI-D08 | X BYOK dikonfigurasi manual per environment di dashboard Outstand | Aplikasi tidak menjadi custodian secret platform X |
+| DI-D09 | ADR-040 | DI-D07–D08 dan jalur media working copy mengamandemen baseline operasional |
 
 ---
 

@@ -140,9 +140,16 @@ Keputusan-keputusan berikut sudah ditetapkan di `product-discovery/05-architectu
 | Storage | Supabase Storage | `database-strategy.md` |
 | Deployment | Railway | keputusan pra-architecture |
 | External Integration | Outstand API via Anti-Corruption Layer (OutstandAdapter) | `integration-layer.md` (ADR-019) |
-| Webhook Handling | Route Handler + HMAC signature verification | `integration-layer.md` (ADR-020) |
+| Webhook Handling | Verify HMAC raw body → durable receipt → ACK 2xx → JOB-01 internal | `integration-layer.md` (ADR-020, ADR-040) |
+| Engagement MVP | Comments/replies; JOB-03 pull 30 menit + manual refresh | `background-jobs.md` (ADR-040) |
+| Publishing Media | Original Supabase Storage; working copy via Outstand upload URL → PUT → confirm | `integration-layer.md` (ADR-040) |
+| Twitter/X | MVP, BYOK wajib di dashboard Outstand; app tidak menyimpan X client secret | ADR-040 |
 
 Keputusan di tabel ini **tidak perlu diputuskan ulang** di Engineering Planning. Engineering Planning mendokumentasikan detail teknis implementasinya — konfigurasi, tooling, dan strategi operasional.
+
+## Amandemen Engineering Baseline — ADR-040
+
+ADR-040 mengamandemen ADR-036 secara aditif. Engineering wajib menyediakan route ingestion raw-body-safe, persistence `outstand_webhook_events`, handler JOB-01 internal, scheduler JOB-03 30 menit + manual refresh, flow working copy media Outstand, dan runbook BYOK X per environment. Schema dan migrasi aditif wajib mengikuti kontrak tersebut; status implementasi mengacu hanya ke `PROJECT_STATE.md`.
 
 ---
 
