@@ -51,7 +51,9 @@ UI / Route / Server Action / Route Handler
         → Repository interface → Prisma implementation (infrastructure)
 ```
 
-Webhook / cron / eksternal → Route Handler atau job runner → Application Service (bukan logic di handler).
+Webhook / cron / eksternal → Route Handler atau job runner → Application Service
+(bukan logic di handler). Khusus webhook Outstand, receipt wajib durable sebelum
+ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
 
 ---
 
@@ -66,6 +68,14 @@ Webhook / cron / eksternal → Route Handler atau job runner → Application Ser
 7. **Shared**: tipe bersama di `@social/shared`; jangan taruh use-case di shared package.
 8. **Billing (BC-10)**: jangan diimplementasi sebagai fitur MVP kecuali keputusan berubah + ADR.
 9. Schema DB: selaraskan dengan `database-strategy.md` + `schema.prisma`; migrasi lewat Prisma Migrate.
+10. **Kontrak Outstand ADR-040:** jangan membuat handler webhook komentar/DM,
+    jangan mengirim signed URL Supabase sebagai media publish, dan jangan
+    meminta secret X dari user aplikasi. Gunakan tiga event webhook resmi,
+    Outstand Media API working copy, comment sync 30 menit/manual refresh, serta
+    X BYOK manual di dashboard Outstand.
+11. Keberadaan kontrak dokumentasi atau schema **bukan** bukti runtime sudah
+    diimplementasikan. Saat mulai M8, verifikasi service, adapter, handler, job,
+    dan test yang benar-benar ada sebelum mengandalkannya.
 
 ---
 
@@ -74,8 +84,10 @@ Webhook / cron / eksternal → Route Handler atau job runner → Application Ser
 1. Identifikasi BC + baca service contract di `application-layer.md`.
 2. Cek roles/status di `roles-permissions.md` jika menyentuh akses atau workflow konten.
 3. Cek UX flow di `04-ux/` (pointer di `ctx-design.md`) jika ada UI.
-4. Implement di `domains/<bc>/` + entry point tipis di `app/`.
-5. Jalankan checklist di `ctx-development.md`.
+4. Jika menyentuh Outstand, baca ADR-040 dan checklist kontrak di
+   `ctx-architecture.md`.
+5. Implement di `domains/<bc>/` + entry point tipis di `app/`.
+6. Jalankan checklist di `ctx-development.md`.
 
 ---
 

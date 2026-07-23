@@ -26,6 +26,9 @@ Skill wajib: [`.agents/skills/project-os-navigator/SKILL.md`](../.agents/skills/
 4. Setelah pekerjaan selesai → update `PROJECT_STATE.md` + `CHANGELOG.md` bila progress berubah.
 5. Bahasa dokumentasi & komunikasi project: **Bahasa Indonesia** (kecuali diminta lain).
 6. Jangan commit/push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
+7. Untuk implementasi Outstand M8, ADR-040 mengamendemen kontrak lama. Baca
+   `DECISIONS.md` + `ctx-architecture.md`; jangan menyimpulkan handler/job
+   runtime sudah ada hanya karena alignment dokumentasi dan schema selesai.
 
 ---
 
