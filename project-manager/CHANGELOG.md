@@ -4,6 +4,17 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-23 — Aturan Workflow Astryx untuk Agent
+
+### Added
+
+* `AGENTS.md` mewajibkan agent membaca template, skeleton, dokumentasi komponen,
+  styling, dan tokens melalui CLI Astryx lokal sebelum menulis UI.
+* CLI lokal ditetapkan sebagai referensi utama agar dokumentasi selalu sesuai
+  exact version Astryx yang terpasang dan agent tidak menebak props.
+
+---
+
 ## 2026-07-23 — Pembersihan Artefak UI Lama
 
 ### Removed

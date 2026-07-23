@@ -69,6 +69,26 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
 10. Jangan commit / push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
 11. UI produk hanya memakai Astryx. Wrapper dibuat selektif; jangan memakai
     canary atau `swizzle` Astryx pada tahap awal (ADR-041).
+12. Sebelum menulis atau mengubah UI Astryx, baca dokumentasi dari CLI lokal
+    yang versinya terkunci. Jangan menebak nama komponen, props, atau pola
+    styling.
+
+## Workflow Astryx wajib
+
+Untuk setiap task UI di `apps/web`, jalankan dari root repository:
+
+1. `bun run --cwd apps/web astryx -- template --list` — cari pola halaman yang
+   paling dekat.
+2. `bun run --cwd apps/web astryx -- template <name> --skeleton` — pelajari
+   struktur layout bila ada template relevan.
+3. `bun run --cwd apps/web astryx -- component <Name> --dense` — baca API setiap
+   komponen yang akan dipakai.
+4. Untuk styling atau token, baca
+   `bun run --cwd apps/web astryx -- docs styling --dense` dan
+   `bun run --cwd apps/web astryx -- docs tokens --dense`.
+
+CLI lokal adalah referensi utama karena sesuai exact version yang terpasang.
+Jangan mengganti langkah ini dengan asumsi model atau dokumentasi versi lain.
 
 ## Mode kerja saat ini
 
