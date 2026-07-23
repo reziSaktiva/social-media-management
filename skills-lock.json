@@ -49,12 +49,6 @@
       "skillPath": "prisma-upgrade-v7/SKILL.md",
       "computedHash": "0e07dc2831f86cf27627df914db43d862b0fc75d72c1f9070434aab7940bad7c"
     },
-    "shadcn": {
-      "source": "shadcn/ui",
-      "sourceType": "github",
-      "skillPath": "skills/shadcn/SKILL.md",
-      "computedHash": "d81caa0f86aabab65b25e302d454f23a3328760386ed9078345584c0d5c8058e"
-    },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
