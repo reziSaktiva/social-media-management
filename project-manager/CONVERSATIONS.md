@@ -18,6 +18,27 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-07-23 — Astryx sebagai fondasi UI permanen
+
+**Phase:** M7 complete → siap M8 Development
+
+**Summary:** Designer baru tersedia setelah implementasi feature selesai.
+Project Owner menetapkan Astryx sebagai fondasi komponen permanen, bukan
+prototype sementara. Selama M8, feature memakai neutral theme Astryx; visual
+direction dan design tokens final diterapkan setelah designer masuk.
+
+**Key Insight / Decision:** ADR-041 menggantikan shadcn/ui dengan Astryx,
+mempertahankan Tailwind hanya untuk layout dan responsive composition, memakai
+wrapper selektif, serta menerima risiko Beta dengan exact pin, tanpa
+canary/swizzle awal, update manual, staging, dan smoke test Next.js 16.
+ADR-041 mengamendemen ADR-035 dan urutan kerja ADR-038.
+
+**Impact:** ADR-041 ditambahkan; `PROJECT_STATE.md` dan catatan Project Owner
+diperbarui. Alignment Engineering Baseline/AI Context, instalasi, dan smoke test
+masih menjadi pekerjaan berikutnya.
+
+---
+
 ## 2026-07-23 — Sinkronisasi Project OS setelah ADR-040
 
 **Phase:** M7 complete → siap M8 Development
