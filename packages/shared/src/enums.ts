@@ -42,3 +42,11 @@ export enum ContentFormat {
   Story = "story",
   Pin = "pin",
 }
+
+/**
+ * Jenis item Engagement yang dapat di-ingest pada MVP (ADR-040).
+ * Direct Message dan mention berada di luar scope MVP.
+ */
+export enum EngagementType {
+  Comment = "comment",
+}
