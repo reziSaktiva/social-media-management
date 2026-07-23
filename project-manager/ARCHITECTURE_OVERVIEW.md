@@ -4,9 +4,9 @@
 
 | Field        | Value                                           |
 | ------------ | ----------------------------------------------- |
-| Version      | 1.0.0                                           |
+| Version      | 1.1.0                                           |
 | Status       | Active                                          |
-| Last Updated | 2026-07-17                                      |
+| Last Updated | 2026-07-23                                      |
 | Audience     | Blueprint visual (Figma) + orientasi arsitektur |
 
 ---
@@ -78,7 +78,7 @@ Menjawab: *siapa yang memakai sistem, dan sistem apa saja yang berbatasan dengan
 ┌────────────────────┐   ┌─────────────────┐   ┌──────────────────┐
 │  Outstand API      │   │  Google OAuth   │   │  Supabase Cloud  │
 │  Social integration│   │  Login provider │   │  PostgreSQL      │
-│  Publish · Inbox   │   │                 │   │  Storage         │
+│  Publish · Comments│   │                 │   │  Storage         │
 │  Analytics · Accts │   │                 │   │  Realtime        │
 └─────────┬──────────┘   └─────────────────┘   └──────────────────┘
           │
@@ -95,10 +95,14 @@ Menjawab: *siapa yang memakai sistem, dan sistem apa saja yang berbatasan dengan
 | Dari            | Ke           | Relasi                                                      |
 | --------------- | ------------ | ----------------------------------------------------------- |
 | Marketing Team  | Platform     | Mengelola konten & kolaborasi tim di satu dashboard         |
-| Platform        | Outstand API | Publish, sync engagement/analytics, OAuth connected accounts |
-| Outstand API    | Platform     | Webhook status publish & event inbox                        |
+| Platform        | Outstand API | Publish, upload working copy media, sync komentar/analytics, OAuth connected accounts |
+| Outstand API    | Platform     | Webhook `post.published`, `post.error`, `account.token_expired` |
 | Platform        | Google OAuth | Login sosial (selain email/password)                        |
-| Platform        | Supabase     | Persistensi data, file media, channel notifikasi in-app     |
+| Platform        | Supabase     | Persistensi data, original media, channel notifikasi in-app |
+
+Engagement MVP hanya mencakup **komentar dan reply** melalui sinkronisasi 30
+menit serta manual refresh. Tidak ada webhook komentar/DM dan Direct Message
+tidak termasuk MVP (ADR-040).
 
 ---
 
@@ -135,8 +139,8 @@ Menjawab: *container apa yang kita deploy, dan bagaimana mereka saling bicara?*
 ┌────────┐ ┌──────────┐          ┌──────────────┐
 │Supabase│ │Supabase  │          │ Outstand API │
 │Postgres│ │Storage   │          │ (external)   │
-│+ RLS   │ │(media)   │          │              │
-│+ jobs  │ │          │          │◄── webhook ──┤
+│+ RLS   │ │original  │          │Media API     │
+│+ jobs  │ │media     │          │webhook → web │
 └───┬────┘ └──────────┘          └──────┬───────┘
     │                                   │
     │ Realtime                          │ HTTPS
@@ -151,12 +155,16 @@ Menjawab: *container apa yang kita deploy, dan bagaimana mereka saling bicara?*
 | Container / System  | Tanggung jawab                                              | Technology                          |
 | ------------------- | ------------------------------------------------------------- | ----------------------------------- |
 | `web`               | UI, API route, domain logic, auth, ACL ke Outstand            | Next.js, Bun, Better Auth, Prisma   |
-| `cron`              | Pemicu job terjadwal (retry, sync, notifikasi jadwal)         | Railway Cron → `POST /api/jobs/run` |
+| `cron`              | Pemicu retry internal, engagement sync 30 menit, analytics sync, dan job internal lain | Railway Cron → `POST /api/jobs/run` |
 | Supabase PostgreSQL | Data bisnis + queue job + RLS multi-tenant (`workspace_id`)   | Cloud · `ap-southeast-1`            |
-| Supabase Storage    | File media (signed URL)                                       | Supabase Storage                    |
+| Supabase Storage    | Original media milik aplikasi                                 | Supabase Storage                    |
 | Supabase Realtime   | Channel notifikasi in-app                                     | Supabase Realtime                   |
-| Outstand API        | Integrasi jaringan sosial (bukan dimiliki kita)              | External SaaS                       |
+| Outstand API        | Integrasi sosial, working copy media, publish, komentar/reply, analytics | External SaaS                       |
 | Google OAuth        | Identity provider opsional                                    | External                            |
+
+Untuk X/Twitter, Project Owner mengonfigurasi kredensial BYOK secara manual di
+dashboard Outstand. Aplikasi tidak menerima atau menyimpan Client ID/Client
+Secret X (ADR-040).
 
 ### Environment topology (opsional di frame yang sama / anotasi)
 
@@ -278,33 +286,53 @@ Letakkan sebagai grid di dalam area Domain Logic / Application Service (satu kar
 
 ## 2.3 Key Runtime Flows (opsional sebagai anotasi / mini-frame)
 
-Tiga alur paling penting untuk digambar sebagai panah tipis di Frame 2 atau frame kecil terpisah:
+Empat alur paling penting untuk digambar sebagai panah tipis di Frame 2 atau frame kecil terpisah:
 
 ### A. Publish terjadwal
 
 ```text
-UI → Server Action → PublishingService → DB (Post scheduled)
+UI → Server Action → PublishingService → DB
                          ↓
-              background_jobs (queue)
+Supabase original media → Outstand Media API upload + confirm
                          ↓
-         cron → POST /api/jobs/run → OutstandAdapter → Outstand
+       Outstand working-copy URL → create/schedule post
                          ↓
-              webhook status → update PostTarget
+       post.published / post.error webhook
+                         ↓
+ durable receipt → ACK 2xx → internal job → update PostTarget
 ```
 
 ### B. Webhook inbound
 
 ```text
 Outstand → Route Handler /api/webhooks/outstand
-        → WebhookProcessor → Application Service (Publishing / Engagement)
-        → DB (+ optional Notification)
+        → verify HMAC atas raw body
+        → simpan receipt idempoten di outstand_webhook_events
+        → ACK 2xx
+        → internal job/retry
+        → Application Service (Publishing / Workspace)
+        → DB (+ Notification)
 ```
+
+Event MVP hanya `post.published`, `post.error`, dan
+`account.token_expired`. Nama event vendor diterjemahkan oleh
+`OutstandAdapter`; tidak ada webhook komentar atau DM.
 
 ### C. Notifikasi in-app
 
 ```text
 Domain event / job → NotificationService → insert notifications
                   → Supabase Realtime → Browser subscription (RLS)
+```
+
+### D. Engagement komentar/reply
+
+```text
+Railway Cron (30 menit) / Manual Refresh
+  → EngagementService → OutstandAdapter
+  → pull komentar → simpan/update internal
+  → reply user via OutstandAdapter
+  → NotificationService (engagement_new dari hasil sync)
 ```
 
 ---
@@ -342,7 +370,7 @@ Ringkasan untuk legend / sidebar di Figma (selaras `PROJECT_OVERVIEW.md`):
 | Auth architecture  | `../product-discovery/05-architecture/auth-architecture.md`      |
 | Monorepo layout    | `../product-discovery/06-engineering/monorepo-setup.md`          |
 | Deploy topology    | `../product-discovery/06-engineering/deployment-infrastructure.md` |
-| Keputusan          | `DECISIONS.md` (ADR-001 s/d ADR-036)                             |
+| Keputusan          | `DECISIONS.md` (ADR-001 s/d ADR-040)                             |
 
 Jika diagram Figma bertentangan dengan dokumen di atas, **yang menang adalah dokumen product-discovery + ADR** — perbarui overview / Figma setelahnya.
 
