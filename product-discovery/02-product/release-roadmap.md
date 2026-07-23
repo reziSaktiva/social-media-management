@@ -105,13 +105,16 @@ Menyatukan interaksi media sosial dalam satu tempat.
 Fokus:
 
 * Comments
-* Inbox
+* Comments Inbox
 * Reply Management
-* Activity
+* Periodic Pull setiap 30 menit
+* Manual Refresh
 
 Outcome:
 
-Pengguna dapat mengelola interaksi tanpa berpindah platform.
+Pengguna dapat membaca dan membalas komentar tanpa berpindah platform, dengan data yang diperbarui setiap 30 menit atau melalui manual refresh.
+
+Direct Message, mention, dan webhook engagement tidak termasuk rilis MVP ini (ADR-040).
 
 ---
 

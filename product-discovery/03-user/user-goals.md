@@ -75,7 +75,7 @@ Daily user (Raka, Sinta, serta Dimas pada mode eksekusi) mengejar:
 | OG-01 | Menyelesaikan publishing tepat waktu | Konsistensi channel adalah KPI dasar | Konten terjadwal dan terbit sesuai rencana |
 | OG-02 | Mengurangi context switching | Perpindahan tool memperlambat dan menimbulkan error | Satu alur kerja untuk draft–schedule–publish |
 | OG-03 | Menjaga antrean konten tetap sehat | Kekosongan jadwal berisiko bagi brand | Calendar/queue terlihat jelas dan terisi |
-| OG-04 | Menanggapi interaksi penting dengan cepat | Engagement memengaruhi persepsi brand | Komentar/pesan prioritas tidak terlewat |
+| OG-04 | Menanggapi komentar penting dengan cepat | Engagement memengaruhi persepsi brand | Komentar prioritas dapat ditemukan dan dibalas melalui Comments Inbox |
 | OG-05 | Mempercepat pembuatan draft berkualitas | Produksi caption memakan waktu | Draft siap-jadwal lebih cepat dengan sedikit revisi |
 | OG-06 | Menghindari kesalahan operasional | Salah akun/salah jadwal berbiaya tinggi | Publish dengan kontrol dan kejelasan akun |
 

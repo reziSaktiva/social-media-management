@@ -146,14 +146,14 @@ Journey utama mengikuti sudut pandang:
 
 | Aspect | Detail |
 | ------ | ------ |
-| Actions | Cek komentar/pesan, prioritaskan, balas, escalate bila perlu |
+| Actions | Cek komentar dan pesan di native app, prioritaskan, balas, escalate bila perlu |
 | Common tools | Native Instagram/Facebook/X/LinkedIn apps, kadang inbox tool terpisah |
 | Actors | Raka / Community Manager |
 | Emotion | Terpecah perhatian; FOMO terhadap komentar penting |
 | Friction | Inbox tersebar; prioritas tidak terpusat; response time tidak konsisten |
 | Related | S-05, PP-06, PP-01, J-04 |
 
-**Opportunity area:** Konsolidasi interaksi prioritas tanpa kompleksitas social listening enterprise.
+**Opportunity area:** Untuk MVP, konsolidasikan komentar dan reply melalui periodic pull 30 menit + manual refresh. Direct Message, mention, dan webhook engagement tetap di luar scope (ADR-040).
 
 ---
 

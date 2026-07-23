@@ -38,7 +38,7 @@ Pemilik workspace. Role ini dipegang oleh orang yang mendaftarkan workspace ke p
 | Brand Settings | Baca dan ubah |
 | Content | Buat, edit, hapus, jadwalkan, publish semua konten |
 | Analytics | Akses penuh |
-| Engagement (Inbox) | Baca dan balas semua interaksi |
+| Engagement (Comments Inbox) | Baca dan balas semua komentar |
 | Audit Logs | Baca |
 | Transfer Ownership | Ya |
 
@@ -63,7 +63,7 @@ Admin adalah kepercayaan Owner. Role ini cocok untuk manajer senior atau orang k
 | Brand Settings | Baca dan ubah |
 | Content | Buat, edit, hapus, jadwalkan, publish semua konten |
 | Analytics | Akses penuh |
-| Engagement (Inbox) | Baca dan balas semua interaksi |
+| Engagement (Comments Inbox) | Baca dan balas semua komentar |
 | Audit Logs | Baca |
 | Transfer Ownership | Tidak |
 
@@ -89,7 +89,7 @@ Manager adalah operator harian workspace. Role ini cocok untuk Social Media Mana
 | Brand Settings | Baca saja |
 | Content | Buat, edit, hapus, jadwalkan, publish semua konten |
 | Analytics | Baca semua |
-| Engagement (Inbox) | Baca dan balas semua interaksi |
+| Engagement (Comments Inbox) | Baca dan balas semua komentar |
 | Audit Logs | Tidak ada akses |
 | Transfer Ownership | Tidak |
 
@@ -116,7 +116,7 @@ Creator adalah anggota tim yang berfokus pada pembuatan konten. Role ini cocok u
 | Content (milik sendiri) | Buat, edit, kirim ke review |
 | Content (milik lain) | Baca saja (status dan preview) |
 | Analytics | Baca ringkasan (tidak bisa akses detail) |
-| Engagement (Inbox) | Tidak ada akses |
+| Engagement (Comments Inbox) | Tidak ada akses |
 | Audit Logs | Tidak ada akses |
 | Transfer Ownership | Tidak |
 
@@ -136,7 +136,7 @@ Creator adalah anggota tim yang berfokus pada pembuatan konten. Role ini cocok u
 | Buat/edit konten | ✅ | ✅ | ✅ | ✅ (milik sendiri) |
 | Jadwalkan/publish konten | ✅ | ✅ | ✅ | ❌ |
 | Akses Analytics penuh | ✅ | ✅ | ✅ | 👁 ringkasan |
-| Kelola Engagement Inbox | ✅ | ✅ | ✅ | ❌ |
+| Kelola Engagement Comments Inbox | ✅ | ✅ | ✅ | ❌ |
 | Baca Audit Logs | ✅ | ✅ | ❌ | ❌ |
 
 **Legenda:** ✅ Ya &nbsp; ❌ Tidak &nbsp; 👁 Baca saja

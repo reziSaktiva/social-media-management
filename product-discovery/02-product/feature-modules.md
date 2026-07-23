@@ -65,14 +65,17 @@ Responsibilities:
 
 ## Engagement
 
-Mengelola interaksi dengan audiens.
+Mengelola komentar audiens dan reply dari satu inbox.
 
 Responsibilities:
 
 * Comments
-* Messages
-* Inbox
-* Activity
+* Comment Replies
+* Comments Inbox
+* Periodic Sync setiap 30 menit
+* Manual Refresh
+
+Direct Message, mention, dan webhook engagement bukan responsibility MVP modul ini (ADR-040).
 
 ---
 

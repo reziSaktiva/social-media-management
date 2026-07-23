@@ -130,12 +130,10 @@ Bukan berarti fitur tersebut tidak penting, tetapi bukan prioritas untuk mencapa
 ### Must Have
 
 * Comments
-* Inbox
+* Comments Inbox
 * Reply Comments
-
-### Should Have
-
-* Direct Messages
+* Periodic Sync setiap 30 menit
+* Manual Refresh
 
 ### Could Have
 
@@ -144,6 +142,9 @@ Bukan berarti fitur tersebut tidak penting, tetapi bukan prioritas untuk mencapa
 ### Won't Have
 
 * Social Listening
+* Direct Messages
+* Mentions
+* Engagement Webhooks
 
 ---
 

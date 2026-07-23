@@ -73,14 +73,17 @@ Mencakup:
 
 ## Engagement
 
-Mengelola interaksi dengan audiens.
+Mengelola komentar audiens dan reply dari satu inbox.
 
 Mencakup:
 
 * Comments
-* Messages
+* Comment Replies
 * Inbox
-* Activity
+* Periodic Pull setiap 30 menit
+* Manual Refresh
+
+Direct Message, mention, dan webhook engagement berada di luar scope MVP (ADR-040).
 
 ---
 
@@ -155,6 +158,7 @@ Fitur berikut tidak menjadi prioritas pada fase MVP:
 * Public API.
 * Plugin Ecosystem.
 * Enterprise Workflow yang kompleks.
+* Direct Message, mention, dan webhook engagement.
 
 Topik tersebut akan dievaluasi pada fase pengembangan berikutnya.
 
