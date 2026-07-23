@@ -68,7 +68,7 @@ Home **bukan** layar kerja. Tidak ada aksi berat yang diselesaikan dari sini.
 | -- | ------ | --------- | ------- |
 | KSP-01-F01 | Today's Schedule | Daftar konten yang terjadwal untuk hari ini, per akun, dengan status | UXP-02, UXP-04 |
 | KSP-01-F02 | Recent Activity | Riwayat aksi terbaru: post berhasil dipublish, post gagal, akun disconnected | UXP-04, UXP-06 |
-| KSP-01-F03 | Engagement Snapshot | Jumlah interaksi unread di Inbox — mendorong Raka ke Engage | UXP-07 |
+| KSP-01-F03 | Engagement Snapshot | Jumlah komentar unread dari sinkronisasi terakhir — mendorong Raka ke Engage | UXP-07 |
 | KSP-01-F04 | Analytics Snapshot | Highlight performa minggu ini: total posts, total reach, engagement rate | UXP-02, UXP-07 |
 | KSP-01-F05 | Deep Link ke Section | Setiap item/snapshot dapat diklik dan membawa pengguna ke layar yang relevan | UXP-01 |
 
@@ -87,7 +87,7 @@ Home dibagi menjadi empat zona yang disusun secara vertikal:
 │  aksi terbaru: publish success / failed      │
 ├──────────────────────────────────────────────┤
 │  ENGAGEMENT SNAPSHOT    │  ANALYTICS SNAPSHOT│
-│  jumlah unread inbox    │  total posts, reach│
+│  komentar unread        │  total posts, reach│
 └──────────────────────────────────────────────┘
 ```
 
@@ -102,7 +102,7 @@ Home dibagi menjadi empat zona yang disusun secara vertikal:
 | Default (ada data) | Semua zona terisi dengan data aktual |
 | Tidak ada jadwal hari ini | Today's Schedule: _"Tidak ada jadwal untuk hari ini"_ + CTA ke Publish → Calendar |
 | Tidak ada aktivitas terbaru | Recent Activity: kosong tersembunyi atau pesan singkat |
-| Inbox kosong | Engagement Snapshot: _"0 unread"_ — tetap tampil, tidak disembunyikan |
+| Inbox kosong | Engagement Snapshot: _"0 komentar unread"_ — tetap tampil, tidak disembunyikan |
 | Belum ada data analytics | Analytics Snapshot: _"Belum ada data"_ + CTA ke Analyze |
 | Ada post gagal hari ini | Recent Activity menampilkan item Failed dengan visual highlight yang membedakannya |
 
@@ -492,7 +492,7 @@ Ini adalah satu-satunya momen di mana pengguna diminta konfirmasi eksplisit sebe
 
 ### Tujuan
 
-Inbox adalah pusat triage engagement — Raka menangani komentar dari semua akun dalam satu tempat, tanpa harus membuka native app per platform.
+Inbox adalah pusat triage komentar — Raka membaca dan membalas komentar dari semua akun dalam satu tempat, tanpa harus membuka native app per platform. Data diperbarui melalui periodic pull setiap 30 menit atau manual refresh.
 
 ---
 
@@ -500,12 +500,14 @@ Inbox adalah pusat triage engagement — Raka menangani komentar dari semua akun
 
 | ID | Fungsi | Deskripsi | Prinsip |
 | -- | ------ | --------- | ------- |
-| KSP-06-F01 | Thread List | Daftar komentar/interaksi berurutan berdasarkan waktu masuk, dengan status Unread/Done | UXP-06 |
+| KSP-06-F01 | Thread List | Daftar thread komentar berurutan berdasarkan waktu masuk, dengan status Unread/Done | UXP-06 |
 | KSP-06-F02 | Filter | Filter berdasarkan akun, platform, atau status (Unread / Done) | UXP-03 |
 | KSP-06-F03 | Thread Expansion Inline | Klik thread membuka detail di panel kanan atau inline — tidak membuka layar baru | UXP-03 |
 | KSP-06-F04 | Konteks Post Asal | Thread menampilkan preview post yang memicu komentar tersebut | UXP-01 |
 | KSP-06-F05 | Reply Action | Pengguna dapat membalas komentar langsung dari Inbox | UXP-01 |
-| KSP-06-F06 | Mark as Done | Pengguna menandai interaksi sebagai selesai — item hilang dari antrian Unread | UXP-06 |
+| KSP-06-F06 | Mark as Done | Pengguna menandai komentar sebagai selesai — item hilang dari antrian Unread | UXP-06 |
+| KSP-06-F07 | Sync Status | Menampilkan waktu sinkronisasi terakhir dan state sinkronisasi | UXP-03, UXP-06 |
+| KSP-06-F08 | Manual Refresh | Mengambil komentar terbaru tanpa menunggu periodic pull 30 menit berikutnya | UXP-03 |
 
 ---
 
@@ -515,6 +517,7 @@ Inbox menggunakan pola **master-detail**: daftar thread di kiri, detail thread d
 
 ```
 ┌────────────────────────────────────────────────────────┐
+│  Diperbarui 10:30  [Refresh]                           │
 │  Filter: [Semua Akun ▼] [Semua Platform ▼] [Unread ▼] │
 ├───────────────────────────┬────────────────────────────┤
 │  THREAD LIST              │  THREAD DETAIL             │
@@ -533,6 +536,8 @@ Inbox menggunakan pola **master-detail**: daftar thread di kiri, detail thread d
 
 **Zona filter:** Memfilter Thread List berdasarkan akun, platform, atau status.
 
+**Zona sinkronisasi:** Menampilkan waktu sinkronisasi terakhir dan tombol Refresh. Saat refresh berjalan, tombol masuk state loading dan tidak memulai refresh kedua.
+
 **Zona Thread List:** Setiap item menampilkan nama pengguna, potongan komentar, platform, waktu, dan status (Unread ditandai berbeda dari Done).
 
 **Zona Thread Detail:** Muncul saat thread diklik. Menampilkan konteks post asal, thread komentar, area balas, dan tombol Mark as Done.
@@ -548,6 +553,8 @@ Inbox menggunakan pola **master-detail**: daftar thread di kiri, detail thread d
 | Inbox kosong (tidak ada interaksi) | _"Belum ada interaksi"_ + pesan _"Mulai publish konten untuk melihat engagement"_ + CTA ke Publish |
 | Filter aktif — tidak ada hasil | _"Tidak ada interaksi untuk filter ini"_ |
 | Thread terbuka | Thread Detail tampil di panel kanan; Thread List tetap terlihat |
+| Manual refresh berjalan | Tombol Refresh loading; thread yang sudah ada tetap terlihat |
+| Refresh gagal | Pesan ringkas _"Komentar terbaru belum dapat diambil"_ + aksi Coba Lagi; data sinkronisasi terakhir tetap terlihat |
 
 ---
 
@@ -563,7 +570,9 @@ Badge muncul → Raka menyelesaikan pekerjaan saat ini (tidak interrupt)
              → Badge hilang saat semua Unread sudah Done
 ```
 
-Badge tidak memaksa Raka interrupt alur yang sedang berjalan. Badge adalah sinyal, bukan perintah. (UXP-01, UXP-03)
+Badge tidak memaksa Raka interrupt alur yang sedang berjalan. Badge diperbarui setelah periodic pull atau manual refresh selesai; ia bukan indikator webhook real-time. Badge adalah sinyal, bukan perintah. (UXP-01, UXP-03)
+
+**Batas MVP:** KSP-06 hanya menampilkan komentar dan reply. Tidak ada tab atau state untuk Direct Message, mention, maupun webhook engagement (ADR-040).
 
 ---
 
@@ -787,6 +796,7 @@ Keputusan desain yang dibuat dalam dokumen ini.
 | KSP-D10 | Publish History tidak masuk daftar 8 layar kritis | History adalah layar review passif — polanya sederhana (daftar + detail) dan tidak memerlukan dokumentasi mendalam di fase ini | UXP-03 |
 | KSP-D11 | Start Page tidak masuk daftar 8 layar kritis | Start Page bukan bagian dari siklus kerja harian (UXP-01: Draft → Schedule → Publish → Engage → Review). Start Page adalah fitur konfigurasi yang diakses sesekali — bukan setiap sesi kerja. Polanya sederhana: form pengaturan + preview publik. Tidak ada pola koordinasi tim atau alur multi-langkah yang perlu didokumentasikan mendalam di fase ini. | UXP-01, UXP-03 |
 | KSP-D12 | Content Format Selector per akun di Draft Editor (bukan satu toggle global) | Format bergantung platform (IG/FB vs TikTok vs Pinterest); multi-account posting membutuhkan format independen per `PostTarget` (ADR-039) | UXP-01, UXP-03 |
+| KSP-D13 | Engage Inbox hanya memuat komentar/reply dan menampilkan last sync + Manual Refresh | Kontrak resmi Outstand mendukung comment pull/reply, bukan unified DM/mention atau webhook engagement; periodic pull 30 menit perlu ekspektasi freshness yang terlihat (ADR-040) | UXP-03, UXP-06 |
 
 ---
 
@@ -799,7 +809,7 @@ Keputusan desain yang dibuat dalam dokumen ini.
 | KSP-03 Queue | Daftar linear berurutan + filter | Item Failed, Queue kosong |
 | KSP-04 Drafts | Daftar draft + CTA New Post | Drafts kosong |
 | KSP-05 Draft Editor | Dua zona (Caption / Konfigurasi) + AI inline + Confirmation Summary | Akun Disconnected, Status Failed |
-| KSP-06 Inbox | Master-detail (thread list + thread detail inline) | Badge → Unread, Inbox kosong |
+| KSP-06 Inbox | Master-detail + sync status + Manual Refresh | Badge setelah sync, refresh gagal, Inbox kosong |
 | KSP-07 Dashboard | Summary Row + Account Overview + Post Performance | Empty state (belum ada data) |
 | KSP-08 Connected Accounts | Daftar akun + status + aksi kontekstual | Disconnected → Reconnect |
 

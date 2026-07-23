@@ -105,14 +105,15 @@ UX Planning dibangun di atas fondasi berikut.
 ## Dari Product Baseline v1.0
 
 * Domain prioritas MVP: Publishing, Workspace, Engagement, Analytics, AI Assistant.
-* Must Have: Draft, Schedule, Queue, Calendar, Connected Accounts, Engagement Inbox, Analytics Snapshot, AI Caption.
+* Must Have: Draft, Schedule, Queue, Calendar, Connected Accounts, Engagement Comments Inbox + reply, Analytics Snapshot, AI Caption.
+* Engagement MVP memakai periodic pull 30 menit + manual refresh; Direct Message, mention, dan webhook engagement tidak termasuk MVP (ADR-040).
 * Fokus persona: Raka (P0 daily user), Maya (P0 buyer).
 
 ## Dari User Discovery Journey
 
 * 8 stage current-state: Intake → Production → Scheduling → Verification → Publish → Engagement → Review → Tool Evaluation.
 * Friction terbesar: context switching, status tidak terlihat lintas peran, risiko salah publish.
-* Opportunity: reduce tool switches, status visibility, publish confidence, lightweight engagement triage.
+* Opportunity: reduce tool switches, status visibility, publish confidence, lightweight comment triage.
 
 ---
 

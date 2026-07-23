@@ -216,11 +216,11 @@ Setiap flow memiliki struktur:
 
 ## UF-04 — Triage Engagement Inbox
 
-**Goal:** Raka menangani interaksi audiens yang penting dari semua akun yang terhubung tanpa harus membuka native app per platform.
+**Goal:** Raka membaca dan membalas komentar audiens yang penting dari semua akun yang terhubung tanpa harus membuka native app per platform.
 
 **Aktor:** Raka (primary)
 
-**Trigger:** Raka membuka sesi kerja engagement, atau Raka mendapat notifikasi ada interaksi baru.
+**Trigger:** Raka membuka sesi kerja engagement, menerima notifikasi internal setelah sinkronisasi komentar, atau ingin mengambil komentar terbaru melalui manual refresh.
 
 **Modul:** Engagement (Inbox)
 
@@ -229,26 +229,27 @@ Setiap flow memiliki struktur:
 ### Happy Path
 
 1. Raka membuka **Engage → Inbox**.
-2. Inbox menampilkan komentar dan pesan dari semua akun terhubung, berurutan berdasarkan waktu masuk.
-3. Raka memfilter berdasarkan akun, platform, atau status (`Unread / Done`) jika volume tinggi.
-4. Raka membuka satu thread komentar — komentar ditampilkan bersama konteks post asalnya.
-5. Raka membalas komentar langsung dari dalam Inbox — tanpa membuka native app.
-6. Raka menandai interaksi sebagai `Done` — item hilang dari antrian unread.
-7. Raka lanjut ke interaksi berikutnya.
+2. Inbox menampilkan waktu sinkronisasi terakhir dan komentar dari semua akun terhubung, berurutan berdasarkan waktu masuk.
+3. Jika membutuhkan data terbaru sebelum jadwal periodic pull berikutnya, Raka menekan **Refresh** dan melihat state loading sampai sinkronisasi selesai.
+4. Raka memfilter berdasarkan akun, platform, atau status (`Unread / Done`) jika volume tinggi.
+5. Raka membuka satu thread komentar — komentar ditampilkan bersama konteks post asalnya.
+6. Raka membalas komentar langsung dari dalam Inbox — tanpa membuka native app.
+7. Raka menandai komentar sebagai `Done` — item hilang dari antrian unread.
+8. Raka lanjut ke komentar berikutnya.
 
-**Outcome:** Interaksi prioritas selesai ditangani dalam satu session di Inbox, tanpa context switching ke native apps.
+**Outcome:** Komentar prioritas selesai ditangani dalam satu session di Inbox, tanpa context switching ke native apps.
 
 ---
 
-### Alternate Path — Notifikasi Engagement Masuk Saat Raka Bekerja di Publish
+### Alternate Path — Sinkronisasi Menemukan Komentar Saat Raka Bekerja di Publish
 
-**Kondisi:** Raka sedang dalam flow publishing (UF-01 atau UF-02) ketika ada interaksi penting masuk.
+**Kondisi:** Raka sedang dalam flow publishing (UF-01 atau UF-02) ketika periodic pull 30 menit menemukan komentar baru.
 
-1. Badge notifikasi muncul pada item **Engage** di primary navigation.
+1. Setelah sinkronisasi internal selesai, badge notifikasi muncul pada item **Engage** di primary navigation.
 2. Raka menyelesaikan aksi saat ini terlebih dahulu di Publish — tidak perlu interrupt flow.
 3. Setelah selesai, Raka berpindah ke **Engage → Inbox**.
-4. Interaksi baru tampil sebagai `Unread` di atas antrian.
-5. Raka menangani interaksi tersebut → tandai `Done`.
+4. Komentar baru tampil sebagai `Unread` di atas antrian.
+5. Raka menangani komentar tersebut → tandai `Done`.
 
 **Outcome:** Engagement tertangani tepat waktu tanpa memotong flow publishing yang sedang berjalan.
 
@@ -259,6 +260,8 @@ Setiap flow memiliki struktur:
 * **UXP-01** — Engage adalah tahapan natural setelah Publish dalam satu siklus kerja — navigasi mencerminkan urutan ini.
 * **UXP-03** — Inbox yang terpusat menggantikan kebutuhan membuka multiple native apps; kesederhanaan ini adalah solusi inti, bukan fitur tambahan.
 * **UXP-05 (I-05)** — Engagement adalah retention layer produk; Inbox yang terkonsolidasi mendorong Raka tetap menggunakan produk setelah fase publishing.
+
+**Batas MVP:** Flow ini hanya mencakup komentar dan reply. Direct Message, mention, dan webhook engagement tidak termasuk MVP. Data diperbarui melalui periodic pull 30 menit atau manual refresh (ADR-040).
 
 ---
 
