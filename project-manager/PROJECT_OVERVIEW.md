@@ -115,9 +115,9 @@ Source of Truth enum: `SocialPlatform` di `packages/shared`.
 | Pre-commit          | Lefthook + lint-staged     |
 | Test Runner         | Vitest                     |
 | Env / Secrets       | Railway Variables + `.env.local` (native) |
-| Dependencies        | Bun workspaces; `^` ranges; root `bun.lockb`; update manual |
-| Styling             | Tailwind CSS *(Planned)*   |
-| UI Components       | shadcn/ui *(Planned)*      |
+| Dependencies        | Bun workspaces; `^` ranges (Astryx Beta exact); root `bun.lockb`; update manual |
+| Styling             | Tailwind CSS *(layout-only)* |
+| UI Components       | Astryx *(ADR-041)*         |
 | External Provider   | Outstand API               |
 
 ---

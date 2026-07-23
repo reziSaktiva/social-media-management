@@ -43,26 +43,37 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
 
 1. Format & lint dipercayakan ke **Prettier + ESLint** — jangan reformatting massal di luar scope task.
 2. TypeScript ketat: hindari `any`; prefer tipe dari `@social/shared` untuk ID/enum lintas BC.
-3. Jangan commit secret; jangan menambah dependency tanpa alasan jelas (ikuti `dependency-strategy.md`).
+3. Jangan commit secret; jangan menambah dependency tanpa alasan jelas (ikuti
+   `dependency-strategy.md`). Paket Astryx Beta wajib exact pin; core, neutral
+   theme, dan CLI di-upgrade sebagai satu unit.
 4. Perubahan kecil & terfokus — jangan refactor spekulatif di luar task.
 5. Komentar hanya untuk intent non-obvious; jangan komentar narasi ulang kode.
 
+### UI / styling
+
+6. Astryx adalah fondasi komponen permanen; gunakan stable release, bukan
+   canary.
+7. Tailwind hanya untuk layout, wrapper, spacing, grid, flex, dan responsive
+   page composition.
+8. Wrapper Astryx dibuat selektif. Hindari `swizzle` dan authoring StyleX pada
+   tahap awal.
+
 ### Naming & file
 
-6. Domain module: `apps/web/src/domains/<domain>/` — nama selaras BC (kebab/folder lowercase).
-7. Public API domain diekspor dari `index.ts` module tersebut.
-8. Shared types: `packages/shared` — nama jelas, tanpa logic bisnis.
-9. Persona & role: pakai nama kanonikal (Raka, Maya, … / Owner, Admin, Manager, Creator).
+9. Domain module: `apps/web/src/domains/<domain>/` — nama selaras BC (kebab/folder lowercase).
+10. Public API domain diekspor dari `index.ts` module tersebut.
+11. Shared types: `packages/shared` — nama jelas, tanpa logic bisnis.
+12. Persona & role: pakai nama kanonikal (Raka, Maya, … / Owner, Admin, Manager, Creator).
 
 ### Testing
 
-10. Unit/domain test: **Vitest** (`bun run test`).
-11. Test yang ditambah harus relevan dengan behavior yang diubah; jangan stub berlebihan tanpa nilai.
+13. Unit/domain test: **Vitest** (`bun run test`).
+14. Test yang ditambah harus relevan dengan behavior yang diubah; jangan stub berlebihan tanpa nilai.
 
 ### Git / PR (saat diminta user)
 
-12. Commit hanya jika user meminta — Conventional Commits, imperative, fokus “why”.
-13. Jangan `--no-verify` / force push ke main kecuali diminta eksplisit.
+15. Commit hanya jika user meminta — Conventional Commits, imperative, fokus “why”.
+16. Jangan `--no-verify` / force push ke main kecuali diminta eksplisit.
 
 ---
 
@@ -72,6 +83,8 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
 - [ ] `bun run typecheck` hijau
 - [ ] `bun run lint` hijau
 - [ ] Test relevan hijau (jika ada)
+- [ ] Jika menambah/meng-upgrade Astryx: smoke test UI + dark mode + Tailwind
+      cascade layer + Next.js production build hijau
 - [ ] `PROJECT_STATE` / `CHANGELOG` diupdate jika progress project berubah
 
 ---

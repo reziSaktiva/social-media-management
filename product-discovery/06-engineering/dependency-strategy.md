@@ -40,6 +40,7 @@ Dokumen ini melengkapi `monorepo-setup.md` (workspace layout, `@social/shared`, 
 | DS-D04 | Penempatan dependency | Root = tooling monorepo; `apps/web` = runtime app; `packages/shared` = tanpa runtime deps (tipe murni) |
 | DS-D05 | Shared packages | Tetap satu `@social/shared` di MVP; package baru di `packages/` hanya dengan alasan kuat (lihat aturan) |
 | DS-D06 | Sinkronisasi versi lintas workspace | **Tanpa Bun Catalog** di MVP; cukup caret + satu lockfile |
+| DS-D07 | Pengecualian Astryx Beta | Paket Astryx memakai **exact stable version**, tanpa canary; core + theme di-upgrade bersama dan wajib melewati smoke test (ADR-041) |
 
 ---
 
@@ -52,11 +53,29 @@ Dokumen ini melengkapi `monorepo-setup.md` (workspace layout, `@social/shared`, 
 | Dependency npm publik | Caret range | `"next": "^15.0.0"`, `"prisma": "^6.0.0"` |
 | Workspace internal | Protocol workspace | `"@social/shared": "workspace:*"` |
 | Exact pin | Hanya jika ada alasan kuat (bug kritis, vendor minta pin) | `"some-lib": "1.2.3"` — dicatat di PR/ADR bila jangka panjang |
+| Astryx Beta | Exact stable version | `"@astryxdesign/core": "0.1.8"`, `"@astryxdesign/theme-neutral": "0.1.8"` |
 
 **Prinsip:**
 - `package.json` menyatakan **rentang yang diterima**; `bun.lockb` menyatakan **versi yang terpasang**.
 - Jangan mengandalkan "latest" atau range terbuka (`*`, `latest`) untuk dependency produksi.
 - Major bump (breaking) selalu disengaja: baca changelog, jalankan typecheck/lint/test, lalu commit lockfile bersama perubahan kode.
+
+### Pengecualian Astryx Beta (DS-D07)
+
+ADR-041 mengamendemen aturan caret ADR-035 khusus untuk Astryx selama masih
+Beta:
+
+- `@astryxdesign/core`, `@astryxdesign/theme-neutral`, dan
+  `@astryxdesign/cli` memakai exact stable version yang sama; initial adoption
+  memakai `0.1.8`;
+- peer `@stylexjs/stylex` dipasang exact pada versi kompatibel yang diverifikasi
+  (`0.19.0`);
+- jangan memakai tag `latest`, wildcard, atau canary;
+- core dan theme selalu di-upgrade sebagai satu unit;
+- hindari `swizzle` dan authoring StyleX pada tahap awal; dan
+- setiap upgrade wajib melewati staging serta smoke test Button, Dialog, form
+  controls, Table, dark mode, Tailwind cascade layer, typecheck, lint, test, dan
+  Next.js production build.
 
 ## Yang tidak dipakai di MVP
 
@@ -144,6 +163,10 @@ Domain modules **tetap** di `apps/web/src/domains/` (ADR-026) — jangan dipromo
 5. Commit package.json + bun.lockb (+ perubahan kode adaptasi) dalam satu PR
 ```
 
+Untuk Astryx, tambahkan langkah khusus: bump core + theme + CLI sebagai satu
+unit, verifikasi peer StyleX, jalankan smoke test UI dan production build di
+branch terpisah, lalu uji di staging sebelum promosi.
+
 | Situasi | Tindakan |
 |---------|----------|
 | Patch/minor dalam caret | Boleh `bun update <pkg>` berkala; commit lockfile |
@@ -191,6 +214,7 @@ Domain modules **tetap** di `apps/web/src/domains/` (ADR-026) — jangan dipromo
 | DS-D04 | Root = tooling; web = runtime; shared = tanpa runtime deps | Boundary jelas; mencegah "god root package.json" | Semua dependency di root |
 | DS-D05 | Hanya `@social/shared` di MVP; package baru butuh alasan kuat | Hindari premature package explosion; selaras ADR-026 | Banyak packages sejak awal |
 | DS-D06 | Tanpa Bun Catalog di MVP | Hanya dua workspace relevan; catalog belum memberi nilai | Catalog sejak hari pertama |
+| DS-D07 | Exact stable version untuk Astryx Beta | Mengurangi risiko breaking change; core/theme harus tetap kompatibel dan diuji sebagai satu unit | Caret; canary; update otomatis |
 
 ---
 
@@ -201,4 +225,4 @@ Domain modules **tetap** di `apps/web/src/domains/` (ADR-026) — jangan dipromo
 * `cicd-pipeline.md` — `bun install --frozen-lockfile` (CI-D02)
 * `dx-tooling.md` — dependency tooling monorepo di root
 * `deployment-infrastructure.md` — install dari root saat build Railway
-* `../../project-manager/DECISIONS.md` — ADR-002, ADR-026, ADR-032, ADR-035
+* `../../project-manager/DECISIONS.md` — ADR-002, ADR-026, ADR-032, ADR-035, ADR-041

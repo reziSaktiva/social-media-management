@@ -1102,12 +1102,18 @@ terkait; implementasi runtime tetap M8 pending**.
 
 ## 6. Perubahan UI Component System: shadcn/ui → Astryx
 
+> **Status keputusan (2026-07-23): Selesai — ADR-041.** Project Owner
+> menyetujui Astryx sebagai fondasi komponen permanen, Tailwind khusus layout
+> dan responsive composition, wrapper selektif, serta penerimaan risiko beta
+> dengan mitigasi. Keputusan sudah dipindahkan ke ADR-041; alignment dokumen
+> baseline, instalasi, dan smoke test Next.js 16 sudah selesai.
+
 ### Pertanyaan
 
 Apakah shadcn/ui dapat diganti dengan Astryx, dan bagaimana posisi Tailwind
 setelah perubahan tersebut?
 
-### Jawaban Awal
+### Jawaban Final
 
 Perubahan ini layak dilakukan sekarang karena implementasi UI produk belum
 banyak dimulai. Biaya migrasinya masih jauh lebih rendah dibandingkan jika
@@ -1124,6 +1130,27 @@ Astryx adalah design system open source dari Meta dengan karakteristik:
 - tooling yang dapat dibaca AI agent;
 - dapat digunakan pada Next.js; dan
 - saat ini masih berstatus beta.
+
+### Hasil Verifikasi Teknis
+
+Verifikasi terhadap dokumentasi resmi, repository `facebook/astryx`, metadata
+package npm, dan CLI pada 2026-07-23 menghasilkan:
+
+- Astryx merupakan project resmi Meta Open Source dengan lisensi MIT;
+- package utama adalah `@astryxdesign/core`;
+- versi stabil terbaru yang diverifikasi adalah `0.1.8`;
+- membutuhkan React dan React DOM minimal versi 19;
+- project saat ini memakai React `19.2.x`, sehingga memenuhi peer dependency;
+- tersedia jalur resmi Next.js + Tailwind CSS v4 menggunakan precompiled CSS;
+- penggunaan package precompiled tidak membutuhkan plugin StyleX, PostCSS
+  tambahan, atau Babel;
+- CLI Astryx `0.1.8` berhasil dijalankan dengan Bun;
+- contoh resmi saat verifikasi menggunakan Next.js 15, sedangkan project memakai
+  Next.js 16. Tidak ada peer dependency Astryx yang membatasi versi Next.js,
+  tetapi kompatibilitas final tetap harus dibuktikan melalui smoke test dan
+  production build project; dan
+- `@astryxdesign/core`, theme, CLI, serta peer dependency StyleX harus dipasang
+  pada versi yang saling kompatibel.
 
 ### Rekomendasi Stack UI
 
@@ -1213,7 +1240,7 @@ style tidak saling bertabrakan:
 
 ### Dampak terhadap Struktur Komponen
 
-Konsep yang disarankan:
+Project memakai wrapper secara selektif:
 
 ```text
 src/components/
@@ -1227,6 +1254,33 @@ Wrapper tidak wajib dibuat untuk seluruh komponen. Gunakan wrapper jika:
 - perlu adapter API agar aplikasi tidak terlalu terikat pada Astryx;
 - komponen dipakai luas di banyak fitur; atau
 - perlu menambahkan behavior produk.
+
+Komponen Astryx yang sederhana dan hanya dipakai secara lokal boleh diimpor
+langsung. Seluruh komponen tidak perlu dibungkus karena akan menghasilkan layer
+abstraksi tanpa manfaat.
+
+### Strategi Implementasi Sebelum Designer Tersedia
+
+Designer baru tersedia setelah implementasi feature project selesai. Karena itu:
+
+1. selama M8, layar dibangun menggunakan komponen dan neutral theme bawaan
+   Astryx;
+2. fokus UI awal adalah kelengkapan flow, usability, accessibility, responsive
+   behavior, loading, empty, error, dan permission state;
+3. Tailwind hanya digunakan untuk layout, wrapper, spacing, grid, flex, dan
+   responsive page composition;
+4. custom branding dan final visual polish tidak menjadi blocker implementasi
+   fitur;
+5. setelah feature selesai, designer menyusun visual direction dan nilai design
+   tokens final;
+6. hasil design dipetakan ke Astryx theme dan Tailwind token bridge tanpa
+   mengganti fondasi komponen; dan
+7. perubahan desain yang membutuhkan component-specific adaptation dilakukan
+   melalui theme atau wrapper selektif.
+
+Dengan pola ini, UI awal bukan disposable prototype. Struktur komponen,
+accessibility, interaction behavior, dan flow tetap dipertahankan; designer
+menyempurnakan visual system di atas fondasi yang sama.
 
 ### Dampak terhadap Baseline dan Dokumentasi
 
@@ -1248,22 +1302,343 @@ perlu ADR baru. Dokumen/area yang terdampak antara lain:
 Design tokens tetap menjadi Source of Truth visual. Setelah desain disetujui,
 nilai token dipetakan ke Astryx theme, bukan ke semantic token shadcn.
 
-### Kesimpulan Sementara
+ADR-038 perlu diamendemen pada urutan pelaksanaannya: implementasi feature tidak
+lagi menunggu design final. Template token tetap belum dikunci selama
+development feature; nilai final diisi dan di-lock setelah designer masuk.
+
+### Keputusan Final
 
 ```text
 Hapus:
 shadcn/ui sebagai component system
 
 Gunakan:
-Astryx sebagai component system
-Tailwind sebagai layout/utility styling
-Design Tokens sebagai Source of Truth visual
+Astryx sebagai fondasi component system permanen
+Astryx neutral theme untuk UI awal selama development
+Tailwind hanya untuk layout dan responsive composition
+Wrapper selektif untuk komponen kritis / luas / beradaptasi
+Design Tokens sebagai Source of Truth visual setelah designer masuk
 ```
 
-Pergantian sebaiknya dilakukan sebelum implementasi layar M8 berkembang lebih
-jauh. Risiko beta dapat dikendalikan melalui version locking, staging, wrapper
-untuk komponen kritis, dan update dependency secara manual.
+Project Owner menerima risiko Astryx Beta dengan mitigasi berikut:
 
-Status diskusi: **belum tuntas — keputusan final mempertahankan Tailwind,
-strategi wrapper, serta penerimaan risiko Astryx Beta perlu dikonfirmasi sebelum
-masuk ADR dan baseline**.
+- gunakan versi exact yang telah diverifikasi, bukan range caret;
+- core dan theme harus di-upgrade sebagai satu unit;
+- update dilakukan manual dan diuji di staging;
+- gunakan wrapper selektif untuk komponen kritis;
+- jangan memakai canary release;
+- hindari `swizzle` dan authoring StyleX pada tahap awal;
+- jalankan typecheck, lint, test, dan production build pada setiap upgrade; dan
+- sebelum adopsi penuh, lakukan smoke test Button, Dialog, form controls, Table,
+  dark mode, Tailwind cascade layer, serta Next.js 16 production build.
+
+Status diskusi: **selesai — dipindahkan ke ADR-041; alignment baseline,
+instalasi, dan smoke test Next.js 16 sudah dikerjakan**.
+
+---
+
+## 7. Server Structure Flow Terbaru
+
+### Tujuan
+
+Bagian ini merangkum bagaimana request masuk, business logic dijalankan, data
+disimpan, pekerjaan terjadwal diproses, dan Outstand diintegrasikan setelah
+penyelarasan ADR-040.
+
+Ini adalah ringkasan operasional dari baseline Architecture dan Engineering,
+bukan pengganti dokumen Source of Truth.
+
+### Struktur Server Tingkat Tinggi
+
+```mermaid
+flowchart TD
+  Client["Browser / External System"] --> RailwayWeb["Railway web service"]
+
+  subgraph server ["Next.js App Router + Bun"]
+    Middleware["Middleware: auth guard + workspace slug"]
+    Entry["Entry Points"]
+    AppService["Application Services"]
+    Domain["Domain Logic"]
+    Infra["Infrastructure"]
+
+    Middleware --> Entry
+    Entry --> AppService
+    AppService --> Domain
+    AppService --> Infra
+  end
+
+  RailwayWeb --> Middleware
+
+  Entry --> RSC["Server Components"]
+  Entry --> Actions["Server Actions"]
+  Entry --> Routes["Route Handlers"]
+
+  Infra --> Prisma["Prisma Repository"]
+  Infra --> StorageClient["Supabase Storage"]
+  Infra --> RealtimeClient["Supabase Realtime"]
+  Infra --> Auth["Better Auth"]
+  Infra --> ACL["OutstandAdapter"]
+
+  Prisma --> Postgres["Supabase PostgreSQL"]
+  StorageClient --> Storage["Original Media"]
+  ACL --> Outstand["Outstand API"]
+  RealtimeClient --> BrowserEvent["Badge / Toast di Browser"]
+```
+
+### Batas Tanggung Jawab Layer
+
+```mermaid
+flowchart TD
+  Entry["Entry Point"] --> App["Application Service"]
+  App --> Domain["Domain Business Rules"]
+  App --> Repo["Repository Interface"]
+  Repo --> Prisma["Prisma Repository"]
+  App --> ACL["OutstandAdapter"]
+  App --> SupabaseClient["Supabase Client"]
+
+  Prisma --> Database["PostgreSQL CRUD"]
+  ACL --> Outstand["Outstand API"]
+  SupabaseClient --> Storage["Storage"]
+  SupabaseClient --> Realtime["Realtime"]
+```
+
+### Flow 1 — Membuka Halaman
+
+```mermaid
+flowchart LR
+  Browser["Browser"] --> Middleware["Next.js Middleware"]
+  Middleware --> Session["Validasi session Better Auth"]
+  Session --> Workspace["Resolve workspace dari slug"]
+  Workspace --> RSC["Server Component"]
+  RSC --> Service["Application Service"]
+  Service --> Repository["Prisma Repository"]
+  Repository --> Database["Supabase PostgreSQL"]
+  Database --> Response["HTML / React Server Component"]
+  Response --> Browser
+```
+
+Business logic dan query database tidak diletakkan langsung di page atau layout.
+
+### Flow 2 — Mutation dari UI
+
+Contoh: membuat draft, menjadwalkan post, membalas komentar, atau mengubah
+workspace.
+
+```mermaid
+flowchart LR
+  User["User Action"] --> Action["Server Action"]
+  Action --> Input["Validasi Input"]
+  Input --> Access["Validasi Session + Role"]
+  Access --> Service["Application Service"]
+  Service --> Rule["Domain Rule"]
+  Rule --> Dependency{"Dependency yang dibutuhkan"}
+  Dependency -->|Data internal| Repository["Prisma Repository"]
+  Dependency -->|Integrasi sosial| ACL["OutstandAdapter"]
+  Repository --> Update["Database Update"]
+  ACL --> Update
+  Update --> Result["Revalidate UI / Return Result"]
+```
+
+Server Action diperlakukan seperti public endpoint: authentication dan
+authorization tetap diperiksa di dalam use-case.
+
+### Flow 3 — Upload Media dan Publishing
+
+```mermaid
+flowchart TD
+  Upload["User Upload Media"] --> Action["Server Action"]
+  Action --> MediaService["MediaService"]
+  MediaService --> Storage["Supabase Storage: Original Media"]
+  MediaService --> Metadata["media_items: metadata + storage_path"]
+
+  Schedule["User Publish / Schedule"] --> Publishing["PublishingService"]
+  Publishing --> ReadOriginal["Baca Original Media"]
+  ReadOriginal --> RequestURL["OutstandAdapter: Request Upload URL"]
+  RequestURL --> PutFile["PUT File ke Outstand"]
+  PutFile --> Confirm["Confirm Upload"]
+  Confirm --> WorkingCopy["Outstand Working-copy URL"]
+  WorkingCopy --> CreatePost["Create / Schedule Post"]
+  CreatePost --> Target["Simpan Outstand Reference di PostTarget"]
+```
+
+Supabase Storage tetap menjadi tempat original media. Working copy Outstand
+bersifat operasional dan dapat kedaluwarsa.
+
+### Flow 4 — Webhook Outstand
+
+```mermaid
+flowchart TD
+  Outstand["Outstand"] --> Route["POST /api/webhooks/outstand"]
+  Route --> Raw["Baca Raw Body"]
+  Raw --> Verify{"HMAC Valid?"}
+  Verify -->|Tidak| Reject["401 Unauthorized"]
+  Verify -->|Ya| Receipt["Simpan outstand_webhook_events"]
+  Receipt --> Job["Buat JOB-01 outstand.webhook.process"]
+  Job --> Ack["ACK 2xx ke Outstand"]
+
+  Cron["Railway Cron / JobRunner"] --> Claim["Claim JOB-01"]
+  Claim --> Processor["WebhookProcessor"]
+  Processor --> ACL["OutstandAdapter: Map Event"]
+  ACL --> Service["Publishing / Workspace Service"]
+  Service --> Update["Database Update"]
+  Update --> Notification["NotificationService"]
+```
+
+Event webhook MVP:
+
+- `post.published`;
+- `post.error`; dan
+- `account.token_expired`.
+
+Receipt harus tersimpan sebelum `2xx` dikirim agar event tidak hilang jika
+pemrosesan internal gagal.
+
+### Flow 5 — Background Jobs
+
+```mermaid
+flowchart LR
+  Cron["Railway Cron"] --> Route["POST /api/jobs/run"]
+  Route --> Secret{"X-Job-Secret Valid?"}
+  Secret -->|Tidak| Reject["401 Unauthorized"]
+  Secret -->|Ya| Runner["JobRunner"]
+  Runner --> Claim["SELECT FOR UPDATE SKIP LOCKED"]
+  Claim --> Handler["Jalankan Job Handler"]
+  Handler --> Result{"Hasil"}
+  Result -->|Sukses| Done["done"]
+  Result -->|Retryable| Retry["pending + scheduled_at baru"]
+  Result -->|Permanen| Failed["failed"]
+```
+
+Job utama:
+
+```mermaid
+flowchart TD
+  Registry["Background Job Registry"]
+  Registry --> Job1["JOB-01 outstand.webhook.process"]
+  Registry --> Job2["JOB-02 notification.post_status"]
+  Registry --> Job3["JOB-03 engagement.sync"]
+  Registry --> Job4["JOB-04 analytics.sync"]
+
+  Job1 --> Webhook["Process / Retry Durable Receipt"]
+  Job2 --> PostNotification["Notifikasi Hasil Publishing"]
+  Job3 --> Comments["Pull Komentar Setiap 30 Menit"]
+  Job4 --> Analytics["Pull Analytics Setiap 24 Jam"]
+```
+
+Railway Cron tidak menerbitkan post. Scheduling, delivery, platform rate limit,
+dan retry publishing tetap ditangani Outstand.
+
+### Flow 6 — Engagement Comment/Reply
+
+```mermaid
+flowchart TD
+  Cron["Railway Cron 30 Menit"] --> Sync["EngagementService.syncComments"]
+  Manual["Manual Refresh"] --> Sync
+  Sync --> Fetch["OutstandAdapter.fetchComments"]
+  Fetch --> Upsert["Upsert engagement_inbox_items"]
+  Upsert --> NewComment{"Ada Komentar Baru?"}
+  NewComment -->|Ya| Notify["Buat engagement_new Notification"]
+  NewComment -->|Tidak| Finish["Sync Selesai"]
+
+  Reply["User Membalas"] --> Action["Server Action"]
+  Action --> ReplyService["EngagementService.replyToComment"]
+  ReplyService --> ReplyACL["OutstandAdapter.replyToComment"]
+  ReplyACL --> Audit["Simpan engagement_replies"]
+```
+
+Engagement MVP hanya komentar dan reply. Direct Message, mention, dan webhook
+engagement tidak termasuk MVP.
+
+### Flow 7 — Notifikasi Realtime
+
+```mermaid
+flowchart LR
+  Source["Application Service / Background Job"] --> Notification["NotificationService"]
+  Notification --> Insert["INSERT notifications"]
+  Insert --> Realtime["Supabase Realtime"]
+  Realtime --> Browser["Browser: Badge / Toast"]
+```
+
+Supabase Realtime hanya menjadi saluran database-ke-browser. Calendar,
+Engagement list, dan Analytics tetap diperbarui melalui refresh atau data
+fetching biasa.
+
+### Flow 8 — Authentication dan Workspace
+
+```mermaid
+flowchart TD
+  AuthAction["Login / Register"] --> AuthRoute["Better Auth Route Handler"]
+  AuthRoute --> Cookie["HTTP-only Session Cookie"]
+
+  Request["Request Workspace"] --> Middleware["Middleware: Session + Slug"]
+  Middleware --> Membership["Resolve Membership + Role"]
+  Membership --> Permission["Application Service Permission Check"]
+  Permission --> Database["Prisma Repository"]
+  Database --> RLS["PostgreSQL RLS Defense-in-depth"]
+```
+
+### Flow 9 — Deployment dan Release
+
+```mermaid
+flowchart TD
+  Feature["feature/* atau fix/*"] --> PRStaging["Pull Request ke staging"]
+  PRStaging --> CIStaging["GitHub Actions CI"]
+  CIStaging --> GatesStaging["Install → Prisma Generate → Prisma Validate → Typecheck → Lint → Test"]
+  GatesStaging --> StagingPass{"Semua Gate Lulus?"}
+  StagingPass -->|Tidak| FixFeature["Perbaiki di Feature Branch"]
+  FixFeature --> PRStaging
+  StagingPass -->|Ya| MergeStaging["Merge ke staging"]
+
+  MergeStaging --> RailwayStaging["Railway Auto-deploy Staging"]
+  RailwayStaging --> MigrateStaging["prisma migrate deploy ke Supabase Staging"]
+  MigrateStaging --> DeployStaging["Build + Start web dan cron"]
+  DeployStaging --> SmokeStaging["Smoke Test Manual di Staging"]
+  SmokeStaging --> StagingReady{"Staging Siap?"}
+  StagingReady -->|Tidak| FixFeature
+  StagingReady -->|Ya| PRMain["Pull Request staging ke main"]
+
+  PRMain --> CIProduction["GitHub Actions CI"]
+  CIProduction --> GatesProduction["Quality Gates yang Sama"]
+  GatesProduction --> ProductionPass{"Semua Gate Lulus?"}
+  ProductionPass -->|Tidak| FixStaging["Perbaiki melalui Feature → Staging"]
+  FixStaging --> PRStaging
+  ProductionPass -->|Ya| MergeMain["Merge ke main"]
+
+  MergeMain --> RailwayProduction["Railway Auto-deploy Production"]
+  RailwayProduction --> MigrateProduction["prisma migrate deploy ke Supabase Production"]
+  MigrateProduction --> DeployProduction["Build + Start web dan cron"]
+  DeployProduction --> VerifyProduction["Health Check + Smoke Test"]
+  VerifyProduction --> ProductionHealthy{"Production Sehat?"}
+  ProductionHealthy -->|Ya| Release["Release Selesai"]
+  ProductionHealthy -->|Tidak| Rollback["Redeploy Railway Deployment Sebelumnya"]
+  Rollback --> ForwardFix["Forward-fix Kode / Migration"]
+  ForwardFix --> PRStaging
+```
+
+Pembagian tanggung jawab:
+
+- **GitHub Actions** hanya menjalankan quality gates dan tidak melakukan deploy;
+- **Railway** melakukan build, migration, start service, dan auto-deploy setelah
+  perubahan masuk ke branch environment;
+- branch `staging` dipetakan ke Railway + Supabase staging;
+- branch `main` dipetakan ke Railway + Supabase production;
+- migration production tidak dijalankan dari Pull Request;
+- preview deployment per Pull Request tidak digunakan pada MVP; dan
+- migration breaking harus memakai pola expand-and-contract agar rollback
+  aplikasi tetap aman.
+
+### Ringkasan Akhir
+
+```mermaid
+flowchart TD
+  Next["Next.js: Entry Point + UI Server"] --> Application["Application Service"]
+  Application --> Domain["Domain Business Rules"]
+  Application --> Prisma["Prisma: PostgreSQL CRUD"]
+  Application --> Supabase["Supabase: Storage + Realtime"]
+  Application --> Outstand["Outstand: Social Integration"]
+  Cron["Railway Cron"] --> Application
+  Auth["Better Auth"] --> Application
+```
+
+Status: **selaras dengan ADR-040 dan baseline terbaru; implementasi runtime
+detail tetap mengikuti task M8 di PROJECT_STATE.md**.
