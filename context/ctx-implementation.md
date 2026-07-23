@@ -57,6 +57,24 @@ ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
 
 ---
 
+## UI Components (ADR-041)
+
+- Astryx adalah fondasi component system permanen. Selama M8 gunakan neutral
+  theme bawaan; feature tidak menunggu design tokens final.
+- `src/components/ui/` berisi wrapper/re-export **selektif** untuk komponen
+  kritis, dipakai luas, default konsisten, atau adaptasi behavior produk.
+- Komponen Astryx sederhana yang hanya dipakai lokal boleh diimpor langsung
+  dari subpath package resmi.
+- Tailwind hanya untuk layout, wrapper, spacing, grid, flex, dan responsive page
+  composition. Jangan menggunakannya untuk menimpa internal component part
+  Astryx secara agresif.
+- Hindari canary, `swizzle`, dan authoring StyleX pada tahap awal.
+- Setelah designer masuk, nilai final `design-tokens.md` dipetakan ke Astryx
+  theme + Tailwind token bridge tanpa mengganti fondasi komponen.
+- Sebelum adopsi Astryx secara luas, pastikan smoke test ADR-041 telah lolos.
+
+---
+
 ## Aturan operasional
 
 1. **Entry points** (`app/`, Middleware, Route Handlers, Server Actions): wiring + auth guard tipis + panggil service. **Tanpa** business rules.
@@ -87,7 +105,9 @@ ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
 4. Jika menyentuh Outstand, baca ADR-040 dan checklist kontrak di
    `ctx-architecture.md`.
 5. Implement di `domains/<bc>/` + entry point tipis di `app/`.
-6. Jalankan checklist di `ctx-development.md`.
+6. Jika ada UI, ikuti boundary Astryx/Tailwind di atas dan UX Baseline melalui
+   `ctx-design.md`.
+7. Jalankan checklist di `ctx-development.md`.
 
 ---
 

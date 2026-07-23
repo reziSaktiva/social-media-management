@@ -1,22 +1,28 @@
 # Design Tokens
 
-Dokumen ini adalah **Source of Truth visual tokens** untuk implementasi UI di `apps/web` (Tailwind / CSS variables / shadcn).
+Dokumen ini adalah **Source of Truth visual tokens** untuk implementasi UI di
+`apps/web` (Astryx theme + Tailwind token bridge).
 
-Nilai token diisi **setelah design di-approve oleh Project Manager** — bukan dari folder `design/` sebagai acuan final, dan bukan dari screenshot.
+Nilai token final diisi **setelah feature selesai dan designer masuk**, lalu
+di-approve oleh Project Manager (ADR-041 mengamendemen urutan kerja ADR-038).
+Selama M8, implementasi feature memakai neutral theme bawaan Astryx dan tidak
+menunggu token final. Folder `design/` dan screenshot bukan acuan nilai final.
 
 | Field | Value |
 | ----- | ----- |
 | Status | **Draft — menunggu lock design** |
 | Lokasi SoT | Dokumen ini (ADR-038) |
-| Implementasi kode | `apps/web` (CSS variables / theme Tailwind) |
+| Implementasi kode | `apps/web` (Astryx theme + Tailwind token bridge) |
 | UX / struktur layar | Tetap di `../04-ux/` — **tidak** diganti dokumen ini |
 | Handoff designer | `../../design/` — ruang operasional; bukan SoT token |
 
 ---
 
-# Panduan PM — saat design sudah siap
+# Panduan PM — setelah feature selesai dan design sudah siap
 
-Ikuti checklist ini agar tidak bingung di mana mengisi apa.
+Checklist lock ini dijalankan setelah feature selesai dan designer masuk.
+Selama development feature, gunakan neutral theme Astryx; jangan mengisi nilai
+brand sementara atau memblokir implementasi layar karena tabel masih `TBD`.
 
 ## Langkah 1 — Review & approve di Figma
 
@@ -63,9 +69,9 @@ Engineering memetakan token → implementasi:
 
 | Token di dokumen ini | Target kode (contoh) |
 | -------------------- | -------------------- |
-| Brand / neutral / status | CSS variables di `apps/web` (mis. `globals.css`) |
-| Skala type / spacing | Tailwind theme / utility yang selaras |
-| Komponen UI | shadcn/ui memakai semantic token yang sama |
+| Brand / neutral / status | Astryx custom theme / CSS variables di `apps/web` |
+| Skala type / spacing | Astryx theme + Tailwind token bridge |
+| Komponen UI | Komponen Astryx dan wrapper selektif memakai semantic token yang sama |
 
 **Jangan** mengisi hex hanya di Figma atau hanya di screenshot tanpa update dokumen ini.
 
@@ -82,10 +88,10 @@ Engineering memetakan token → implementasi:
 | ID | Topik | Keputusan |
 | ---- | ----- | --------- |
 | DT-D01 | Lokasi SoT token | `product-discovery/06-engineering/design-tokens.md` |
-| DT-D02 | Kapan diisi | Setelah design di-approve PM — nilai di bawah tetap `TBD` sampai saat itu |
+| DT-D02 | Kapan diisi | Setelah feature selesai, designer masuk, dan design di-approve PM; selama M8 gunakan neutral theme Astryx |
 | DT-D03 | Hubungan dengan `design/` | Folder `design/` = handoff; token final **wajib** masuk dokumen ini |
 | DT-D04 | Hubungan dengan UX Baseline | `04-ux/` mengatur alur & zona fungsi; dokumen ini hanya visual tokens |
-| DT-D05 | Stack implementasi | Tailwind + shadcn/ui *(Planned di PROJECT_OVERVIEW)* — nama token semantic, bukan nama class Figma 1:1 |
+| DT-D05 | Stack implementasi | Astryx untuk komponen/theme + Tailwind khusus layout dan responsive composition (ADR-041) |
 
 ---
 
@@ -201,14 +207,18 @@ Minimal 2–3 motion disengaja setelah design lock — catat di sini jika design
 
 ---
 
-# Mapping implementasi (setelah Locked)
+# Mapping implementasi
 
 ```text
-design-tokens.md (SoT)
+M8 sebelum token Locked
         ↓
-apps/web — CSS variables / Tailwind theme
+Astryx neutral theme + Tailwind layout-only
+
+Setelah designer masuk dan design-tokens.md Locked
         ↓
-Komponen shadcn + layar KSP-01 … KSP-08
+apps/web — Astryx custom theme + Tailwind token bridge
+        ↓
+Komponen Astryx + wrapper selektif + layar KSP-01 … KSP-08
 ```
 
 Engineering **tidak** membaca folder `design/` sebagai sumber nilai token final.
@@ -218,8 +228,8 @@ Engineering **tidak** membaca folder `design/` sebagai sumber nilai token final.
 # Related Documents
 
 * `README.md` (folder Engineering)
-* `../../project-manager/DECISIONS.md` — ADR-038
-* `../../project-manager/PROJECT_OVERVIEW.md` — stack UI (Tailwind / shadcn Planned)
+* `../../project-manager/DECISIONS.md` — ADR-038, ADR-041
+* `../../project-manager/PROJECT_OVERVIEW.md` — Astryx + Tailwind layout-only
 * `../04-ux/` — UX Baseline (alur & layar)
 * `../02-product/roles-permissions.md` — status konten kanonikal
 * `../../design/README.md` — handoff designer (bukan SoT token)

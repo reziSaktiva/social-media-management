@@ -97,7 +97,7 @@ apps/web/
 ├── src/
 │   ├── app/                      ← Next.js App Router (routing & UI)
 │   ├── domains/                  ← Domain Logic (9 BC MVP; Billing post-MVP)
-│   ├── components/               ← UI Components
+│   ├── components/               ← Astryx UI + feature components
 │   ├── lib/                      ← Infrastructure Clients & Utilities
 │   └── middleware.ts             ← Auth guard + workspace context injection
 ├── public/                       ← Static assets
@@ -261,12 +261,22 @@ src/domains/[domain]/
 
 ```
 src/components/
-├── ui/                           ← shadcn/ui base components (Button, Input, Dialog, dll.)
+├── ui/                           ← wrapper/re-export Astryx secara selektif
 └── [feature]/                    ← Feature-specific components (co-located dengan domain penggunaannya)
 ```
 
 **Aturan:**
-- `ui/` berisi komponen primitif dari shadcn/ui — tidak boleh dimodifikasi langsung, extend via wrapper.
+- Astryx adalah fondasi component system permanen (ADR-041).
+- `ui/` bukan salinan seluruh library. Wrapper dibuat hanya untuk komponen
+  kritis, komponen yang dipakai luas, default aplikasi yang konsisten, atau
+  adaptasi behavior produk.
+- Komponen Astryx yang sederhana dan hanya dipakai lokal boleh diimpor langsung
+  dari subpath package resminya.
+- Tailwind hanya untuk layout, wrapper, spacing, grid, flex, dan responsive page
+  composition. Jangan memakai Tailwind untuk mengubah internal component part
+  Astryx secara agresif.
+- Gunakan neutral theme Astryx selama development feature. Hindari canary,
+  `swizzle`, dan authoring StyleX pada tahap awal.
 - Feature components tidak boleh berisi business logic — logika ada di domain services.
 
 ---

@@ -50,6 +50,7 @@ context/
 - Auth: **Better Auth** · ORM: **Prisma 7** · DB/Storage/Realtime: **Supabase**
 - Integrasi sosial: **Outstand** (via Anti-Corruption Layer), bukan SDK network langsung
 - Arsitektur: **Modular Monolith + DDD** · domain di `apps/web/src/domains/`
+- UI: **Astryx** (ADR-041) · neutral theme selama M8 · **Tailwind layout-only**
 - Deploy: **Railway** (web + cron) · CI: **GitHub Actions**
 
 Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineering/`.
@@ -66,6 +67,8 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
 8. Persona kanonikal: Raka, Maya, Sinta, Dimas, Lara.
 9. Bahasa komunikasi & dokumentasi project: **Bahasa Indonesia** (kecuali user meminta lain).
 10. Jangan commit / push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
+11. UI produk hanya memakai Astryx. Wrapper dibuat selektif; jangan memakai
+    canary atau `swizzle` Astryx pada tahap awal (ADR-041).
 
 ## Mode kerja saat ini
 
@@ -85,6 +88,7 @@ Lihat `Active Conversation Mode` di `PROJECT_STATE.md`.
 | Jobs / cron                  | `ctx-architecture`                           | `background-jobs.md`                                                                           |
 | Env / deploy / CI            | `ctx-technical-context`                      | `environment-management.md`, `deployment-infrastructure.md`, `cicd-pipeline.md`                |
 | Coding conventions / DX      | `ctx-development`                            | `dx-tooling.md`                                                                                |
+| UI component / styling       | `ctx-design` + `ctx-implementation`          | `monorepo-setup.md` + `design-tokens.md` + ADR-041                                             |
 | Desain / handoff UI          | `ctx-design`                                 | `design/README.md` + `04-ux/` (perubahan di `design/` tidak wajib masuk CHANGELOG development) |
 
 ## Setelah mengubah sesuatu
