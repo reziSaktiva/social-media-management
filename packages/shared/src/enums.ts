@@ -16,6 +16,12 @@ export enum MemberRole {
   Creator = "creator",
 }
 
+export enum MemberStatus {
+  Pending = "pending",
+  Active = "active",
+  Removed = "removed",
+}
+
 export enum SocialPlatform {
   Instagram = "instagram",
   Facebook = "facebook",
