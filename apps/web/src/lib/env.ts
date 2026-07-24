@@ -26,11 +26,14 @@ export type ServerEnv = {
   BETTER_AUTH_URL: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  BETTER_AUTH_API_KEY?: string;
+  BETTER_AUTH_API_URL?: string;
+  BETTER_AUTH_KV_URL?: string;
   OUTSTAND_API_KEY: string;
   OUTSTAND_WEBHOOK_SECRET: string;
   JOB_SECRET: string;
   NEXT_PUBLIC_SUPABASE_URL?: string;
-  NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
 };
 
 function missingRequired(): string[] {
@@ -68,15 +71,26 @@ export function getServerEnv(): ServerEnv {
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL ?? "",
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    BETTER_AUTH_API_KEY: process.env.BETTER_AUTH_API_KEY,
+    BETTER_AUTH_API_URL: process.env.BETTER_AUTH_API_URL,
+    BETTER_AUTH_KV_URL: process.env.BETTER_AUTH_KV_URL,
     OUTSTAND_API_KEY: process.env.OUTSTAND_API_KEY ?? "",
     OUTSTAND_WEBHOOK_SECRET: process.env.OUTSTAND_WEBHOOK_SECRET ?? "",
     JOB_SECRET: process.env.JOB_SECRET ?? "",
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   };
 }
 
 /** True for HTTPS staging/production; false for local HTTP (auth-strategy cookie Secure). */
 export function secureCookiesEnabled(): boolean {
   return process.env.NODE_ENV === "production";
+}
+
+/** True when Google OAuth client credentials are configured (AS-D05). */
+export function googleOAuthEnabled(): boolean {
+  return Boolean(
+    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
+  );
 }

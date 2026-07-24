@@ -4,6 +4,151 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-24 — M8: Workspace Onboarding (create-workspace flow)
+
+### Added
+
+* Onboarding Flow (First Login) dari `auth-architecture.md` diimplementasikan:
+  `proxy.ts` — auth guard pakai `getSessionCookie` (Better Auth, tanpa DB
+  call, cookie-presence check saja) untuk route terproteksi vs halaman auth
+  publik; root `src/app/page.tsx` — Server Component yang memanggil
+  `auth.api.getSession()` lalu redirect ke `/login`, `/{slug}/home`, atau
+  `/onboarding` sesuai status workspace user; `src/app/onboarding/` — halaman
+  create-workspace (1 field: nama, slug auto-generate) dengan Server Action
+  `createWorkspaceAction`.
+* `WorkspaceService` (BC-02) pertama kali diimplementasikan di
+  `src/domains/workspace/`: `createWorkspace` (validasi nama, generate slug
+  via value object `slugify`, retry suffix numerik saat slug bentrok, buat
+  `Workspace` + `WorkspaceMember` role Owner via transaksi Prisma) dan
+  `getDefaultWorkspaceSlugForUser` (dipakai orkestrasi redirect root/onboarding
+  — bukan bagian tabel kontrak `WorkspaceService` di `application-layer.md`,
+  ditambahkan untuk kebutuhan orkestrasi tanpa melanggar boundary).
+  Implementasi repository Prisma di `src/lib/repositories/workspace/`
+  (MS-D05 — repository implementation terpisah dari folder domain).
+* Hierarki error `ApplicationError` (`AuthorizationError`, `NotFoundError`,
+  `ValidationError`, `ConflictError`, `ExternalServiceError`) dari
+  "Error Handling Strategy" (`application-layer.md`) diimplementasikan di
+  `src/lib/utils/errors.ts` — infra bersama lintas domain, dipakai
+  `WorkspaceService` dan siap dipakai Application Service BC lain.
+* `MemberStatus` enum (`pending | active | removed`) ditambahkan ke
+  `packages/shared` — sudah didokumentasikan di `domain-model.md` tapi belum
+  ada di shared types.
+* Test Vitest baru: `slugify` (edge case aksen, simbol, panjang), dan
+  `WorkspaceService.createWorkspace` (validasi, retry-on-conflict, exhaustion)
+  pakai fake in-memory repository.
+* `apps/web/src/app/astryx-smoke.tsx` dihapus dari root route — tugasnya
+  sebagai smoke test ADR-041 sudah selesai; root `page.tsx` sekarang berisi
+  redirect logic produksi.
+
+### Fixed
+
+* Deteksi slug-conflict di `workspace.repository.ts` awalnya mengandalkan
+  `error.meta.target` (nama kolom) untuk mengenali `P2002` — dengan driver
+  adapter `@prisma/adapter-pg` (Prisma 7), `meta.target` tidak terisi
+  sehingga retry logic tidak pernah terpicu dan slug bentrok akan crash
+  alih-alih di-retry. Diverifikasi langsung dengan skrip terhadap database
+  Supabase Cloud nyata (bukan hanya unit test dengan fake repository) —
+  ditemukan lewat percobaan create-workspace kedua dengan nama sama. Fix:
+  deteksi pakai `error.code === "P2002" && error.meta?.modelName === "Workspace"`
+  (satu-satunya unique constraint pada `Workspace` selain PK adalah `slug`).
+
+---
+
+## 2026-07-24 — Better Auth Dash (official admin/monitoring plugin, optional)
+
+### Added
+
+* `@better-auth/infra` terpasang di `apps/web` — plugin `dash()` di
+  `apps/web/src/lib/better-auth/auth.ts`, aktif hanya jika
+  `BETTER_AUTH_API_KEY` terisi (pola sama dengan Google OAuth conditional).
+  Tanpa API key, plugin tidak dipasang sama sekali (`plugins: undefined`) —
+  tidak mengubah behavior auth existing.
+* Env var baru (opsional, EM-D04): `BETTER_AUTH_API_KEY`, `BETTER_AUTH_API_URL`,
+  `BETTER_AUTH_KV_URL` — dikatalogkan di `apps/web/.env.example` dan
+  `apps/web/src/lib/env.ts`. Nilai aktual diisi manual oleh Project Owner di
+  `.env.local` (bukan lewat agent).
+* Ini dashboard resmi dari tim Better Auth untuk monitoring/admin auth
+  server (bukan bagian dari `05-architecture/auth-architecture.md` atau
+  `06-engineering/auth-strategy.md` — kalau mau dipakai permanen di
+  production, disarankan dicatat lewat ADR terpisah agar konsisten dengan
+  aturan baseline).
+
+### Fixed
+
+* `GET /api/auth/dash/validate` 500 — `Failed to parse URL from /api/auth/jwks`.
+  Penyebab: `dash({ apiUrl: process.env.BETTER_AUTH_API_URL, ... })` selalu
+  mengirim key `apiUrl`/`kvUrl` walau env var-nya kosong; `@better-auth/infra`
+  men-spread raw options **setelah** default resolution-nya sendiri, jadi
+  `apiUrl: undefined` eksplisit menimpa default bawaan (`https://dash.better-auth.com`)
+  balik jadi `undefined` → JWKS self-check gagal parse URL relatif tanpa base.
+  Diverifikasi langsung dengan memanggil `dash()` secara terisolasi (bukan
+  tebakan). Fix: key `apiUrl`/`kvUrl` di-omit total (bukan diisi `undefined`)
+  saat env var-nya tidak diset.
+
+---
+
+## 2026-07-24 — M8: Auth Flows UI (Login, Register, Forgot/Reset Password)
+
+### Added
+
+* Implementasi 4 layar auth di `apps/web/src/app/(auth)/` — mengganti
+  placeholder scaffold M7: `login/`, `register/`, `forgot-password/`, dan
+  route baru `reset-password/` (dua-state form + halaman tautan tidak
+  valid). Layout bersama `(auth)/layout.tsx` (brand row + Center) mengikuti
+  referensi visual Claude Design (`templates/auth-*.html`, ADR-042
+  supplement Auth Flow).
+* `apps/web/src/lib/better-auth/client.ts` — Better Auth React client
+  (`createAuthClient`, tanpa `baseURL` eksplisit; default current origin).
+* `googleOAuthEnabled()` di `apps/web/src/lib/env.ts` — tombol Google OAuth
+  otomatis disembunyikan saat `GOOGLE_CLIENT_ID`/`SECRET` kosong.
+* `sendResetPassword` stub di `apps/web/src/lib/better-auth/auth.ts` — log
+  tautan reset ke server console; alur forgot/reset password jadi
+  end-to-end testable secara lokal tanpa provider email (AS-D04 masih
+  terbuka).
+* Halaman UI mengikuti workflow Astryx CLI wajib (`template --list`,
+  `component --dense` untuk Button/TextInput/Card/Banner/Divider/
+  CheckboxInput/dll.) sesuai `AGENTS.md`.
+
+### Verified
+
+* `bun run typecheck` dan `bun run lint` hijau.
+* Sign-up end-to-end diverifikasi via raw `fetch()` ke
+  `/api/auth/sign-up/email` (akun berhasil dibuat, token session valid).
+* Tampilan login & register dicek visual di browser — cocok dengan
+  referensi Claude Design.
+
+### Known Issue (terpisah, tidak menahan pass ini)
+
+* Uji interaksi form (klik submit) via tunnel ngrok tidak berhasil
+  memicu React `onSubmit` — seluruh halaman (bukan cuma form auth)
+  tidak ter-hydrate saat diakses lewat tunnel tersebut (tidak ada
+  React fiber di elemen manapun setelah >5 detik, walau `window.next`
+  sudah termuat, tanpa error console). Kemungkinan besar isu HMR/WebSocket
+  Turbopack lewat ngrok, bukan bug di kode auth — perlu diselidiki
+  terpisah sebelum uji interaksi form penuh di browser bisa diandalkan.
+
+---
+
+## 2026-07-24 — M8 Bootstrap: Supabase Cloud + DB Migrate + ADR-044
+
+### Added
+
+* Project Supabase Cloud `social-media-local` dibuat (region SEA) dan
+  `apps/web/.env.local` diisi (DB URL, Supabase platform, Better Auth).
+* Migrasi Prisma baru `20260724075859_rename_engagement_inbox_unique_index`
+  — menyamakan nama index `engagement_inbox_items_...` yang ter-truncate
+  Postgres (>63 karakter) dengan yang diharapkan `schema.prisma`.
+
+### Changed
+
+* Rename env var client-side Supabase: `NEXT_PUBLIC_SUPABASE_ANON_KEY` →
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (ADR-044) — mengikuti sistem API
+  key baru Supabase (publishable/secret menggantikan anon/service_role).
+  Diterapkan di `environment-management.md`, `apps/web/.env.example`,
+  `apps/web/src/lib/env.ts`, `apps/web/src/lib/supabase/client.ts`.
+
+---
+
 ## 2026-07-24 — Migrasi Next.js 16 Middleware → Proxy
 
 ### Changed

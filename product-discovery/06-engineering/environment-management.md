@@ -126,7 +126,7 @@ Lokasi file di monorepo (ditetapkan M7): **`apps/web/`** — `.env.example` (di 
 | Variable | Keterangan |
 |----------|------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | URL project — sama nilai dengan `SUPABASE_URL` tier terkait; dipakai browser client Realtime/Storage bila diperlukan |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon/public key — **bukan** service role; dilindungi RLS |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key (pengganti anon/public key pada sistem API key Supabase terbaru) — **bukan** service role; dilindungi RLS |
 
 Hanya prefix `NEXT_PUBLIC_` yang boleh dibaca di Client Components. Service role, DB URLs, auth secrets, Outstand secrets, dan `JOB_SECRET` **wajib** server-only.
 

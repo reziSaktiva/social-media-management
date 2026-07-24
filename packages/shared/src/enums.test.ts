@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { ContentFormat, ContentStatus, MemberRole } from "./enums";
+import {
+  ContentFormat,
+  ContentStatus,
+  MemberRole,
+  MemberStatus,
+} from "./enums";
 
 describe("@social/shared enums", () => {
   it("exposes canonical content statuses", () => {
@@ -10,6 +15,12 @@ describe("@social/shared enums", () => {
   it("exposes workspace member roles", () => {
     expect(MemberRole.Owner).toBe("owner");
     expect(MemberRole.Creator).toBe("creator");
+  });
+
+  it("exposes workspace member statuses", () => {
+    expect(MemberStatus.Pending).toBe("pending");
+    expect(MemberStatus.Active).toBe("active");
+    expect(MemberStatus.Removed).toBe("removed");
   });
 
   it("exposes content formats for publish targets", () => {

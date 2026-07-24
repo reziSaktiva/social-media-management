@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.10     |
+| Version      | 1.0.11     |
 | Status       | Active     |
 | Last Updated | 2026-07-24 |
 
@@ -171,13 +171,53 @@ Restricted Actions:
   berubah — auth guard + workspace context injection tetap sama. Referensi
   path di `monorepo-setup.md`, `database-orm.md`, `auth-strategy.md` sudah
   disesuaikan. Warning deprecation di `bun run dev` sudah hilang.
+* **M8 bootstrap — Supabase Cloud + DB migrate selesai:** project Supabase
+  Cloud `social-media-local` dibuat (region SEA), `apps/web/.env.local` diisi,
+  `bun run db:migrate` diterapkan — 4 migrasi (`init`, `add_content_format`,
+  `align_outstand_contract`, dan satu migrasi baru untuk menyamakan index
+  `engagement_inbox_items` yang ter-truncate Postgres) sukses; `prisma migrate
+  status` konfirmasi database up to date.
+* **ADR-044 — rename env var Supabase publishable key:**
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` di
+  `environment-management.md`, `.env.example`, `env.ts`, dan
+  `lib/supabase/client.ts`, mengikuti sistem API key baru Supabase (anon key
+  legacy dijadwalkan deprecated).
+* **M8 — Auth Flows UI selesai (Login, Register, Forgot/Reset Password):**
+  4 layar di `apps/web/src/app/(auth)/` (login, register, forgot-password,
+  reset-password baru) mengikuti referensi Claude Design (ADR-042 supplement
+  Auth Flow) dan workflow Astryx CLI wajib. Better Auth React client
+  (`lib/better-auth/client.ts`), `googleOAuthEnabled()` (tombol Google
+  disembunyikan otomatis bila env kosong), dan `sendResetPassword` stub
+  (log tautan reset ke console, testable lokal tanpa provider email AS-D04).
+  Typecheck/lint hijau; sign-up diverifikasi end-to-end via API. Verify-email
+  disengaja tidak dibangun dulu karena `requireEmailVerification` masih
+  nonaktif (AS-D04 belum ada provider).
+* **M8 — Workspace Onboarding selesai:** Onboarding Flow (First Login) dari
+  `auth-architecture.md` diimplementasikan end-to-end — `proxy.ts` (session
+  cookie guard via `getSessionCookie`, tanpa DB call), root `page.tsx`
+  (redirect `/login` / `/{slug}/home` / `/onboarding`), dan `/onboarding`
+  (form 1 field nama workspace + Server Action `createWorkspaceAction`).
+  `WorkspaceService` (BC-02) pertama kali diimplementasikan
+  (`createWorkspace` — validasi nama, slug auto-generate + retry suffix saat
+  bentrok, transaksi Prisma Workspace+WorkspaceMember Owner;
+  `getDefaultWorkspaceSlugForUser` untuk orkestrasi redirect) + repository
+  Prisma di `src/lib/repositories/workspace/` (MS-D05). Hierarki
+  `ApplicationError` (`application-layer.md`) diimplementasikan di
+  `src/lib/utils/errors.ts`. `MemberStatus` ditambahkan ke `packages/shared`.
+  Diverifikasi: typecheck/lint/test hijau, alur end-to-end lewat curl
+  (login → redirect `/onboarding` → create workspace di database Supabase
+  Cloud nyata → redirect `/{slug}/home`), dan proxy guard (unauthenticated →
+  `/login`, halaman auth publik tetap 200). Invite-teammate & connect-account
+  **tidak** termasuk scope ini — sudah ada Server Action & route Settings
+  terpisah.
 
 ---
 
 # In Progress
 
 * Tidak ada item alignment atau smoke test yang sedang dikerjakan. Fokus
-  berikutnya: M8 Development.
+  berikutnya: M8 Development — Publishing MVP (setelah workspace onboarding
+  selesai).
 * Template `design-tokens.md` sudah disiapkan (status Draft / TBD); nilai final
   diisi setelah feature selesai dan designer masuk (ADR-041 mengamendemen urutan
   kerja ADR-038).
@@ -187,7 +227,7 @@ Restricted Actions:
 
 # Next Tasks
 
-* **M8 — Development:** mulai fitur produk (auth flows UI, workspace onboarding, publishing MVP, dll.) sesuai baseline + `context/`.
+* **M8 — Development:** auth flows UI dan workspace onboarding selesai; lanjut fitur produk berikutnya (publishing MVP, dll.) sesuai baseline + `context/`.
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
   `post.published` / `post.error` / `account.token_expired` dengan
   durable-before-ACK, job retry internal, media upload working copy, serta
@@ -205,7 +245,6 @@ Restricted Actions:
   → Locked, lalu mirror ke Astryx theme + Tailwind token bridge (ADR-038,
   ADR-041).
 * (Opsional) Perkaya aturan coding di `context/ctx-development.md` saat konvensi baru muncul dari praktik M8.
-* Buat project Supabase Cloud `social-media-local` dan jalankan `bun run db:migrate` terhadap `.env.local`.
 * (Opsional) initial git commit — menunggu instruksi eksplisit.
 * (Opsional) pilih transactional email provider (AS-D04) saat butuh verification / password reset.
 
@@ -224,6 +263,15 @@ Restricted Actions:
   smoke test dan production build, tetapi risiko perubahan API tetap dikelola
   dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
   verifikasi ulang saat upgrade.
+* **Hydration gagal saat diakses lewat tunnel ngrok.** Saat uji halaman auth
+  lewat tunnel ngrok yang dipakai untuk `BETTER_AUTH_URL`, seluruh halaman
+  (bukan spesifik komponen auth) tidak ter-hydrate — tidak ada React fiber
+  di elemen manapun meski `window.next` termuat tanpa error console; klik
+  submit jatuh ke native HTML form-submit. Kemungkinan besar isu HMR/
+  WebSocket Turbopack lewat ngrok. Belum diselidiki lebih lanjut (di luar
+  scope auth flows UI); backend/API sendiri terverifikasi benar via raw
+  `fetch()`. Perlu ditelusuri sebelum uji interaksi form penuh di browser
+  lewat ngrok bisa diandalkan.
 
 ---
 
@@ -235,6 +283,11 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-044 — Rename env var client-side Supabase:
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+  mengikuti sistem API key baru Supabase (publishable/secret key
+  menggantikan anon/service_role secara bertahap); tidak ada perubahan
+  behavior (2026-07-24).
 * ADR-043 — API mobile-ready via Route Handler `/api/v1` (Next.js App
   Router) di atas Application Service yang sama dengan web; tidak ada
   backend terpisah. Better Auth Bearer plugin untuk auth mobile
