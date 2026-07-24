@@ -4,6 +4,20 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-24 — Developer Workflow Notes (diagram mermaid)
+
+### Added
+
+* `project-manager/DEVELOPER_WORKFLOW.md` — 3 flowchart mermaid: (1) alur
+  kerja project dari kebutuhan sampai kode, (2) alur pengguna auth →
+  workspace → connect account → publish (visualisasi UF-01/UF-05 +
+  auth-architecture.md), (3) siklus status konten per role
+  (roles-permissions.md). Bersifat visualisasi, bukan Source of Truth baru.
+* Didaftarkan di `project-manager/README.md` (Core Documents + folder
+  structure).
+
+---
+
 ## 2026-07-24 — Claude Design Menggantikan Figma (ADR-042)
 
 ### Added

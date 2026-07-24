@@ -56,6 +56,7 @@ social-media-management/
 │   ├── PROJECT_RULES.md
 │   ├── PROJECT_STATE.md
 │   ├── DECISIONS.md
+│   ├── DEVELOPER_WORKFLOW.md
 │   ├── CHANGELOG.md
 │   ├── CONVERSATIONS.md
 │   └── BRAINSTORM.md
@@ -83,6 +84,7 @@ social-media-management/
 | `PROJECT_RULES.md`          | Aturan dan prinsip kerja project.                                           |
 | `PROJECT_STATE.md`          | Status project saat ini, milestone, progress, dan next task.                |
 | `DECISIONS.md`              | Catatan seluruh keputusan penting beserta alasannya.                        |
+| `DEVELOPER_WORKFLOW.md`     | Alur kerja project & user flow inti sebagai diagram mermaid (visualisasi, bukan SoT). |
 | `CHANGELOG.md`              | Riwayat perubahan dokumentasi maupun implementasi.                          |
 | `CONVERSATIONS.md`          | Log percakapan penting antar sesi (diisi otomatis oleh AI).                 |
 | `BRAINSTORM.md`             | Bank ide dari sesi brainstorming (diisi otomatis oleh AI).                  |
