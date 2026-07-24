@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "engagement_inbox_items_workspace_id_connected_account_id_extern" RENAME TO "engagement_inbox_items_workspace_id_connected_account_id_ex_key";

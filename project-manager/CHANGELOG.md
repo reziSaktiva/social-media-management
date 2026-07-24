@@ -4,6 +4,26 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-24 — M8 Bootstrap: Supabase Cloud + DB Migrate + ADR-044
+
+### Added
+
+* Project Supabase Cloud `social-media-local` dibuat (region SEA) dan
+  `apps/web/.env.local` diisi (DB URL, Supabase platform, Better Auth).
+* Migrasi Prisma baru `20260724075859_rename_engagement_inbox_unique_index`
+  — menyamakan nama index `engagement_inbox_items_...` yang ter-truncate
+  Postgres (>63 karakter) dengan yang diharapkan `schema.prisma`.
+
+### Changed
+
+* Rename env var client-side Supabase: `NEXT_PUBLIC_SUPABASE_ANON_KEY` →
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (ADR-044) — mengikuti sistem API
+  key baru Supabase (publishable/secret menggantikan anon/service_role).
+  Diterapkan di `environment-management.md`, `apps/web/.env.example`,
+  `apps/web/src/lib/env.ts`, `apps/web/src/lib/supabase/client.ts`.
+
+---
+
 ## 2026-07-24 — Migrasi Next.js 16 Middleware → Proxy
 
 ### Changed

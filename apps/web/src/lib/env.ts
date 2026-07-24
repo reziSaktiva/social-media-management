@@ -30,7 +30,7 @@ export type ServerEnv = {
   OUTSTAND_WEBHOOK_SECRET: string;
   JOB_SECRET: string;
   NEXT_PUBLIC_SUPABASE_URL?: string;
-  NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
 };
 
 function missingRequired(): string[] {
@@ -72,7 +72,8 @@ export function getServerEnv(): ServerEnv {
     OUTSTAND_WEBHOOK_SECRET: process.env.OUTSTAND_WEBHOOK_SECRET ?? "",
     JOB_SECRET: process.env.JOB_SECRET ?? "",
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   };
 }
 

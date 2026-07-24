@@ -171,6 +171,17 @@ Restricted Actions:
   berubah — auth guard + workspace context injection tetap sama. Referensi
   path di `monorepo-setup.md`, `database-orm.md`, `auth-strategy.md` sudah
   disesuaikan. Warning deprecation di `bun run dev` sudah hilang.
+* **M8 bootstrap — Supabase Cloud + DB migrate selesai:** project Supabase
+  Cloud `social-media-local` dibuat (region SEA), `apps/web/.env.local` diisi,
+  `bun run db:migrate` diterapkan — 4 migrasi (`init`, `add_content_format`,
+  `align_outstand_contract`, dan satu migrasi baru untuk menyamakan index
+  `engagement_inbox_items` yang ter-truncate Postgres) sukses; `prisma migrate
+  status` konfirmasi database up to date.
+* **ADR-044 — rename env var Supabase publishable key:**
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` di
+  `environment-management.md`, `.env.example`, `env.ts`, dan
+  `lib/supabase/client.ts`, mengikuti sistem API key baru Supabase (anon key
+  legacy dijadwalkan deprecated).
 
 ---
 
@@ -205,7 +216,6 @@ Restricted Actions:
   → Locked, lalu mirror ke Astryx theme + Tailwind token bridge (ADR-038,
   ADR-041).
 * (Opsional) Perkaya aturan coding di `context/ctx-development.md` saat konvensi baru muncul dari praktik M8.
-* Buat project Supabase Cloud `social-media-local` dan jalankan `bun run db:migrate` terhadap `.env.local`.
 * (Opsional) initial git commit — menunggu instruksi eksplisit.
 * (Opsional) pilih transactional email provider (AS-D04) saat butuh verification / password reset.
 
@@ -235,6 +245,11 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-044 — Rename env var client-side Supabase:
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+  mengikuti sistem API key baru Supabase (publishable/secret key
+  menggantikan anon/service_role secara bertahap); tidak ada perubahan
+  behavior (2026-07-24).
 * ADR-043 — API mobile-ready via Route Handler `/api/v1` (Next.js App
   Router) di atas Application Service yang sama dengan web; tidak ada
   backend terpisah. Better Auth Bearer plugin untuk auth mobile
