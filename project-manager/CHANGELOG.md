@@ -4,6 +4,46 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-24 — Developer Workflow Notes (diagram mermaid)
+
+### Added
+
+* `project-manager/DEVELOPER_WORKFLOW.md` — 3 flowchart mermaid: (1) alur
+  kerja project dari kebutuhan sampai kode, (2) alur pengguna auth →
+  workspace → connect account → publish (visualisasi UF-01/UF-05 +
+  auth-architecture.md), (3) siklus status konten per role
+  (roles-permissions.md). Bersifat visualisasi, bukan Source of Truth baru.
+* Didaftarkan di `project-manager/README.md` (Core Documents + folder
+  structure).
+
+---
+
+## 2026-07-24 — Claude Design Menggantikan Figma (ADR-042)
+
+### Added
+
+* Project Claude Design baru `Social Media Management`
+  (`84aded99-bb23-49b1-be9f-dd8f21c6873e`) — token neutral interim
+  (`theme.json`/`styles.css`), foundations (color/type/layout), components
+  (buttons/forms/cards/navigation/table/dialog/status-chips), dan 8 layar
+  KSP-01–08 sebagai template, diakses lewat tool `DesignSync` bawaan Claude
+  Code.
+* ADR-042 di `DECISIONS.md` — Claude Design menggantikan Figma sebagai design
+  handoff tool; sinkronisasi dengan `product-discovery/` bersifat
+  manual/on-request, bukan otomatis.
+
+### Changed
+
+* `product-discovery/06-engineering/design-tokens.md` — seluruh referensi
+  Figma diganti Claude Design (Langkah 1 review, sumber token, catatan lock).
+* `design/README.md` — bagian baru "Claude Design (design system project)"
+  berisi pointer projectId dan cara akses; referensi Figma diganti.
+* `context/ctx-design.md` — menambah pointer Claude Design di tabel baca dulu
+  dan dua aturan operasional baru (butir 10–11) soal akses via `DesignSync`
+  dan sinkronisasi manual/on-request.
+
+---
+
 ## 2026-07-23 — Konfigurasi Dasar Claude Code
 
 ### Added

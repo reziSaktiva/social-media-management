@@ -4,9 +4,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.8      |
+| Version      | 1.0.9      |
 | Status       | Active     |
-| Last Updated | 2026-07-23 |
+| Last Updated | 2026-07-24 |
 
 ---
 
@@ -156,6 +156,10 @@ Restricted Actions:
   CSS cascade Tailwind, token bridge, dan halaman smoke terintegrasi. Button,
   Dialog, TextInput, Table, light/dark mode, CLI doctor, typecheck, lint, test,
   browser interaction, serta Next.js 16 production build sudah terverifikasi.
+* **ADR-042 — Claude Design menggantikan Figma:** project `Social Media
+  Management` dibuat di Claude Design (token neutral interim, foundations,
+  components, 8 layar KSP-01–08). Pointer di `design/README.md`; workflow di
+  `ctx-design.md`. Sinkronisasi manual/on-request via tool `DesignSync`.
 
 ---
 
@@ -216,6 +220,11 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-042 — Claude Design menggantikan Figma sebagai design handoff tool;
+  project `Social Media Management` (`84aded99-bb23-49b1-be9f-dd8f21c6873e`)
+  berisi token neutral, foundations, components, dan 8 layar KSP; sinkronisasi
+  dengan `product-discovery/` bersifat manual/on-request, bukan otomatis
+  (2026-07-24).
 * ADR-041 — Astryx menggantikan shadcn/ui sebagai fondasi komponen permanen;
   neutral theme dipakai selama feature development, Tailwind dibatasi ke
   layout, wrapper selektif, designer masuk setelah feature selesai, dan risiko

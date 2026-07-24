@@ -2,14 +2,14 @@
 
 Folder ini adalah **ruang kerja dokumentasi untuk tim designer** pada produk **Social Media Management**.
 
-Isinya merangkum keputusan produk & UX yang sudah ditetapkan, lalu menerjemahkannya menjadi panduan yang siap dipakai di Figma — tanpa menggantikan Source of Truth di `product-discovery/`.
+Isinya merangkum keputusan produk & UX yang sudah ditetapkan, lalu menerjemahkannya menjadi panduan visual di **Claude Design** — tanpa menggantikan Source of Truth di `product-discovery/`.
 
 ---
 
 # Purpose
 
 * Memberi onboarding cepat bagi designer yang baru masuk project.
-* Menjadi jembatan antara UX Planning Baseline dan pekerjaan visual di Figma.
+* Menjadi jembatan antara UX Planning Baseline dan pekerjaan visual di Claude Design.
 * Menjaga konsistensi: apa yang sudah diputuskan vs apa yang masih terbuka untuk eksplorasi visual.
 
 ---
@@ -18,10 +18,27 @@ Isinya merangkum keputusan produk & UX yang sudah ditetapkan, lalu menerjemahkan
 
 | Peran | Cara memakai folder ini |
 | ----- | ----------------------- |
-| Product Designer / UX Designer | Mulai dari PDF brief, atau `DESIGN_OVERVIEW.md` Bagian A |
-| UI Designer / Design System | Mulai dari PDF brief, atau `DESIGN_OVERVIEW.md` Bagian B |
-| Engineering (referensi) | Cek apakah wireframe/UI selaras dengan IA dan Key Screen Patterns |
+| Product Designer / UX Designer | Mulai dari PDF brief, atau `DESIGN_OVERVIEW.md` Bagian A, lalu buka project Claude Design |
+| UI Designer / Design System | Mulai dari PDF brief, atau `DESIGN_OVERVIEW.md` Bagian B, lalu buka project Claude Design |
+| Engineering (referensi) | Cek apakah wireframe/UI di Claude Design selaras dengan IA dan Key Screen Patterns |
 | Handoff eksternal | One-pager untuk ringkas; Brief PDF untuk detail lengkap |
+
+---
+
+# Claude Design (design system project)
+
+Sejak ADR-042, **Claude Design menggantikan Figma** sebagai tool handoff visual.
+
+| Field | Value |
+| ----- | ----- |
+| Project | `Social Media Management` |
+| Project ID | `84aded99-bb23-49b1-be9f-dd8f21c6873e` |
+| Akses | claude.ai/design (login akun yang sama dengan Claude Code) |
+| Isi | `theme.json`/`styles.css` (token neutral interim), `foundations/`, `components/`, `templates/` (8 layar KSP-01–08) |
+| Cara update | Lewat Claude Code, tool `DesignSync` (bukan MCP terpisah — kapabilitas native) |
+| Sinkronisasi | **Manual, on-request** — bukan otomatis. Minta Claude Code push/pull saat UX baseline atau desain berubah berarti (ADR-042) |
+
+Project lama bernama **"Modernist"** di akun yang sama **bukan** milik product ini — jangan gunakan sebagai referensi.
 
 ---
 
@@ -30,7 +47,7 @@ Isinya merangkum keputusan produk & UX yang sudah ditetapkan, lalu menerjemahkan
 **Termasuk:**
 
 * Ringkasan persona, prinsip UX, navigasi, layar kritis.
-* Blueprint fondasi design system untuk Figma (token, komponen, status visual).
+* Blueprint fondasi design system untuk Claude Design (token, komponen, status visual).
 * Daftar keputusan visual yang masih terbuka.
 
 **Tidak termasuk (tetap di tempat asalnya):**
@@ -77,7 +94,7 @@ node _build-brief-pdf.mjs
 
 Folder ini (`design/`) adalah **handoff operasional**, bukan SoT token atau UX. Setelah design di-approve, PM mengisi nilai final ke `design-tokens.md` (lihat panduan PM di dokumen tersebut).
 
-Jika desain Figma bertentangan dengan baseline UX / token yang sudah di-lock, **baseline + ADR yang menang** — kecuali perubahan disepakati lewat ADR.
+Jika desain Claude Design bertentangan dengan baseline UX / token yang sudah di-lock, **baseline + ADR yang menang** — kecuali perubahan disepakati lewat ADR.
 
 ---
 

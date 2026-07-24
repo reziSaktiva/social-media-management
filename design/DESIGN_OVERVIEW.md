@@ -4,38 +4,47 @@
 
 | Field        | Value                                              |
 | ------------ | -------------------------------------------------- |
-| Version      | 1.0.0                                              |
+| Version      | 1.1.0                                              |
 | Status       | Active                                             |
-| Last Updated | 2026-07-17                                         |
+| Last Updated | 2026-07-24                                         |
 | Audience     | Tim designer (Product / UX / UI / Design System)   |
 
 ---
 
 # Purpose
 
-Dokumen ini adalah **pintu masuk desain** untuk produk Social Media Management. Isinya dua bagian dalam satu file (siap digambar sebagai multi-frame di Figma):
+Dokumen ini adalah **pintu masuk desain** untuk produk Social Media Management. Isinya dua bagian dalam satu file, sudah direalisasikan sebagai project di **Claude Design** (ADR-042 — menggantikan Figma):
 
 | Bagian | Nama | Untuk apa |
 | ------ | ---- | --------- |
 | A | Product UX Map | Memahami produk, pengguna, navigasi, dan layar kritis sebelum menggambar UI |
-| B | Design System Blueprint | Membangun fondasi visual & komponen di Figma tanpa bertentangan dengan UX Baseline |
+| B | Design System Blueprint | Membangun fondasi visual & komponen di Claude Design tanpa bertentangan dengan UX Baseline |
 
 **Bukan Source of Truth.** Detail kanonikal tetap di `../product-discovery/04-ux/` (ADR-013) dan dokumen product terkait. Dokumen ini adalah ringkasan operasional untuk designer.
 
 ---
 
-# Cara Menggunakan di Figma
+# Cara Menggunakan di Claude Design
 
-Buat frame terpisah per konsep (disarankan minimal 4 frame):
+Bagian B dokumen ini **sudah direalisasikan** sebagai project Claude Design — bukan lagi sekadar rencana frame yang perlu digambar dari nol.
 
-| Frame | Nama disarankan | Sumber di dokumen ini |
-| ----- | --------------- | --------------------- |
-| 1 | `Design — Product & Personas` | Bagian A.1–A.2 |
-| 2 | `Design — IA & Navigation` | Bagian A.3–A.4 |
-| 3 | `Design — Key Screens Map` | Bagian A.5 |
-| 4 | `Design — Design System Foundations` | Bagian B |
+| Field | Value |
+| ----- | ----- |
+| Project | `Social Media Management` |
+| Project ID | `84aded99-bb23-49b1-be9f-dd8f21c6873e` |
+| Akses | claude.ai/design (login akun yang sama dengan Claude Code) |
+| Update terprogram | Lewat Claude Code, tool `DesignSync` — minta "sync ke Claude Design" di chat |
 
-Opsional: frame tambahan per layar kritis (KSP-01 s/d KSP-08) saat wireframe/hi-fi dimulai.
+Struktur yang sudah ada di project (padanan "frame" di Figma dulu):
+
+| Bagian dokumen ini | Sudah ada di Claude Design sebagai |
+| ------------------- | ----------------------------------- |
+| Bagian A.1–A.5 (Product UX Map) | Konteks kerja — tidak digambar ulang; jadi acuan saat mengisi `templates/` |
+| Bagian B.2 (Token Foundations) | `theme.json`, `styles.css`, `foundations/color.html`, `foundations/type.html`, `foundations/layout.html` |
+| Bagian B.3 (Component Inventory) | `components/buttons.html`, `status-chips.html`, `forms.html`, `cards.html`, `navigation.html`, `table.html`, `dialog.html` |
+| KSP-01 s/d KSP-08 | `templates/home.html`, `publish-calendar.html`, `publish-queue.html`, `publish-drafts.html`, `draft-editor.html`, `engage-inbox.html`, `analyze-dashboard.html`, `settings-connected-accounts.html` |
+
+Designer melanjutkan langsung di project itu — token saat ini masih **interim/neutral** (lihat `readme.md` project untuk rasionalnya), bukan brand final. Project lama bernama **"Modernist"** di akun yang sama bukan milik product ini — jangan dipakai sebagai referensi.
 
 ---
 
@@ -183,7 +192,7 @@ Workspace Settings (secondary)
 
 ## A.5 Key Screens Map (8 layar kritis)
 
-Gunakan sebagai backlog frame Figma. Detail fungsi & state: `../product-discovery/04-ux/key-screen-patterns.md`.
+Sudah direpresentasikan sebagai 8 halaman `templates/` di project Claude Design. Detail fungsi & state: `../product-discovery/04-ux/key-screen-patterns.md`.
 
 | ID | Layar | Pengguna utama | Prioritas desain |
 | -- | ----- | -------------- | ---------------- |
@@ -231,7 +240,7 @@ Detail langkah: `../product-discovery/04-ux/user-flows.md`.
 
 # Bagian B — Design System Blueprint
 
-Bagian ini adalah **kerangka design system** untuk Figma. Brand identity (nama final, warna primer, tipografi ekspresif) **belum ditetapkan sebagai baseline** — UX Planning sengaja tidak mendefinisikan visual. Designer mengisi token konkret di Figma, dengan constraint di bawah.
+Bagian ini adalah **kerangka design system**, sudah direalisasikan sebagai project Claude Design (lihat "Cara Menggunakan di Claude Design" di atas). Brand identity (nama final, warna primer, tipografi ekspresif) **belum ditetapkan sebagai baseline** — UX Planning sengaja tidak mendefinisikan visual. Designer melanjutkan mengisi token konkret di project Claude Design, dengan constraint di bawah.
 
 ## B.1 Visual Principles (diturunkan dari UX)
 
@@ -253,11 +262,11 @@ Bagian ini adalah **kerangka design system** untuk Figma. Brand identity (nama f
 
 ---
 
-## B.2 Token Foundations (isi di Figma)
+## B.2 Token Foundations (isi di Claude Design)
 
 ### B.2.1 Color — semantic slots (wajib ada)
 
-Tentukan nilai hex/HSL di Figma Variables; yang penting **slot-nya lengkap dan dipakai konsisten**:
+Tentukan nilai hex/HSL di `styles.css`/`theme.json` pada project Claude Design; yang penting **slot-nya lengkap dan dipakai konsisten**:
 
 | Token group | Slot contoh | Dipakai untuk |
 | ----------- | ----------- | ------------- |
@@ -277,7 +286,7 @@ Tentukan nilai hex/HSL di Figma Variables; yang penting **slot-nya lengkap dan d
 | `font/sans` | UI product (nav, list, form, captions) | Prioritas keterbacaan & angka tabular untuk waktu/jadwal |
 | `font/mono` *(opsional)* | ID teknis, debug — jarang di produk | Jangan untuk caption sosial |
 
-Skala disarankan di Figma: `xs · sm · md · lg · xl · 2xl` dengan line-height tetap. Caption di Draft Editor butuh nyaman untuk tulisan panjang.
+Skala sudah didraft di `foundations/type.html`: `xs · sm · md · lg · xl · 2xl · 3xl` dengan line-height tetap. Caption di Draft Editor butuh nyaman untuk tulisan panjang.
 
 ### B.2.3 Spacing, radius, elevation
 
@@ -300,7 +309,7 @@ Hindari parallax, glow pulse berulang, dan animasi yang menunda aksi publish.
 
 ---
 
-## B.3 Component Inventory (Figma library)
+## B.3 Component Inventory (Claude Design `components/`)
 
 Bangun library dengan prioritas berikut (P0 dulu):
 
@@ -344,7 +353,7 @@ Bangun library dengan prioritas berikut (P0 dulu):
 | Billing cards | Post-MVP untuk sebagian besar visual polish |
 | Data table kompleks | Hindari di MVP Analyze |
 
-**Catatan komponen:** Engineering merencanakan Tailwind + shadcn/ui. Design system Figma sebaiknya **semantically compatible** (Button, Dialog, Tabs, dll.) tanpa harus 1:1 nama class.
+**Catatan komponen:** Implementasi kode memakai Astryx + Tailwind layout-only (ADR-041). Design system di Claude Design sebaiknya **semantically compatible** (Button, Dialog, Tabs, dll.) tanpa harus 1:1 nama class.
 
 ---
 
@@ -372,7 +381,7 @@ Bangun library dengan prioritas berikut (P0 dulu):
 
 ## B.6 Open Decisions (untuk diisi designer)
 
-Keputusan berikut **belum ada di baseline** — putuskan di Figma lalu usulkan dicatat ke Project OS jika sudah final:
+Keputusan berikut **belum ada di baseline** — putuskan di Claude Design lalu usulkan dicatat ke Project OS jika sudah final:
 
 | ID | Topik | Pertanyaan |
 | -- | ----- | ---------- |
@@ -384,22 +393,23 @@ Keputusan berikut **belum ada di baseline** — putuskan di Figma lalu usulkan d
 | DS-O06 | Platform color usage | Seberapa kuat warna Instagram/X/dll. di Calendar? |
 | DS-O07 | Marketing site vs app | Satu sistem visual atau terpisah? *(di luar scope MVP app shell)* |
 
-Setelah DS-O01–O04 diputuskan, update token di Figma Variables dan tambahkan ringkasan singkat ke dokumen ini (atau ADR jika berdampak luas).
+Setelah DS-O01–O04 diputuskan, update token di `styles.css`/`theme.json` (project Claude Design) dan tambahkan ringkasan singkat ke dokumen ini (atau ADR jika berdampak luas).
 
 ---
 
-## B.7 Suggested Figma File Structure
+## B.7 Struktur Project Claude Design (sudah dibuat)
 
 ```text
-Social Media Management — Design
-├── 00 Cover & Changelog
-├── 01 Foundations (color, type, space, motion)
-├── 02 Components (P0 → P2)
-├── 03 Patterns (shell, status, AI inline, trust confirm)
-├── 04 Wireframes / Lo-fi (opsional)
-├── 05 UI — Key Screens (KSP-01 … KSP-08)
-└── 06 Explorations (parkir ide; bukan source of truth)
+Social Media Management (Claude Design project)
+├── theme.json, styles.css, readme.md, thumbnail.html
+├── foundations/  (color.html, type.html, layout.html)
+├── components/   (buttons, status-chips, forms, cards, navigation, table, dialog)
+└── templates/    (home, publish-calendar, publish-queue, publish-drafts,
+                    draft-editor, engage-inbox, analyze-dashboard,
+                    settings-connected-accounts — KSP-01 … KSP-08)
 ```
+
+Ini bukan lagi rencana ("suggested") — struktur ini sudah live di project Claude Design; lanjutkan langsung di sana.
 
 ---
 
