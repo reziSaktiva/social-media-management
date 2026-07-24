@@ -4,6 +4,81 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-24 — Better Auth Dash (official admin/monitoring plugin, optional)
+
+### Added
+
+* `@better-auth/infra` terpasang di `apps/web` — plugin `dash()` di
+  `apps/web/src/lib/better-auth/auth.ts`, aktif hanya jika
+  `BETTER_AUTH_API_KEY` terisi (pola sama dengan Google OAuth conditional).
+  Tanpa API key, plugin tidak dipasang sama sekali (`plugins: undefined`) —
+  tidak mengubah behavior auth existing.
+* Env var baru (opsional, EM-D04): `BETTER_AUTH_API_KEY`, `BETTER_AUTH_API_URL`,
+  `BETTER_AUTH_KV_URL` — dikatalogkan di `apps/web/.env.example` dan
+  `apps/web/src/lib/env.ts`. Nilai aktual diisi manual oleh Project Owner di
+  `.env.local` (bukan lewat agent).
+* Ini dashboard resmi dari tim Better Auth untuk monitoring/admin auth
+  server (bukan bagian dari `05-architecture/auth-architecture.md` atau
+  `06-engineering/auth-strategy.md` — kalau mau dipakai permanen di
+  production, disarankan dicatat lewat ADR terpisah agar konsisten dengan
+  aturan baseline).
+
+### Fixed
+
+* `GET /api/auth/dash/validate` 500 — `Failed to parse URL from /api/auth/jwks`.
+  Penyebab: `dash({ apiUrl: process.env.BETTER_AUTH_API_URL, ... })` selalu
+  mengirim key `apiUrl`/`kvUrl` walau env var-nya kosong; `@better-auth/infra`
+  men-spread raw options **setelah** default resolution-nya sendiri, jadi
+  `apiUrl: undefined` eksplisit menimpa default bawaan (`https://dash.better-auth.com`)
+  balik jadi `undefined` → JWKS self-check gagal parse URL relatif tanpa base.
+  Diverifikasi langsung dengan memanggil `dash()` secara terisolasi (bukan
+  tebakan). Fix: key `apiUrl`/`kvUrl` di-omit total (bukan diisi `undefined`)
+  saat env var-nya tidak diset.
+
+---
+
+## 2026-07-24 — M8: Auth Flows UI (Login, Register, Forgot/Reset Password)
+
+### Added
+
+* Implementasi 4 layar auth di `apps/web/src/app/(auth)/` — mengganti
+  placeholder scaffold M7: `login/`, `register/`, `forgot-password/`, dan
+  route baru `reset-password/` (dua-state form + halaman tautan tidak
+  valid). Layout bersama `(auth)/layout.tsx` (brand row + Center) mengikuti
+  referensi visual Claude Design (`templates/auth-*.html`, ADR-042
+  supplement Auth Flow).
+* `apps/web/src/lib/better-auth/client.ts` — Better Auth React client
+  (`createAuthClient`, tanpa `baseURL` eksplisit; default current origin).
+* `googleOAuthEnabled()` di `apps/web/src/lib/env.ts` — tombol Google OAuth
+  otomatis disembunyikan saat `GOOGLE_CLIENT_ID`/`SECRET` kosong.
+* `sendResetPassword` stub di `apps/web/src/lib/better-auth/auth.ts` — log
+  tautan reset ke server console; alur forgot/reset password jadi
+  end-to-end testable secara lokal tanpa provider email (AS-D04 masih
+  terbuka).
+* Halaman UI mengikuti workflow Astryx CLI wajib (`template --list`,
+  `component --dense` untuk Button/TextInput/Card/Banner/Divider/
+  CheckboxInput/dll.) sesuai `AGENTS.md`.
+
+### Verified
+
+* `bun run typecheck` dan `bun run lint` hijau.
+* Sign-up end-to-end diverifikasi via raw `fetch()` ke
+  `/api/auth/sign-up/email` (akun berhasil dibuat, token session valid).
+* Tampilan login & register dicek visual di browser — cocok dengan
+  referensi Claude Design.
+
+### Known Issue (terpisah, tidak menahan pass ini)
+
+* Uji interaksi form (klik submit) via tunnel ngrok tidak berhasil
+  memicu React `onSubmit` — seluruh halaman (bukan cuma form auth)
+  tidak ter-hydrate saat diakses lewat tunnel tersebut (tidak ada
+  React fiber di elemen manapun setelah >5 detik, walau `window.next`
+  sudah termuat, tanpa error console). Kemungkinan besar isu HMR/WebSocket
+  Turbopack lewat ngrok, bukan bug di kode auth — perlu diselidiki
+  terpisah sebelum uji interaksi form penuh di browser bisa diandalkan.
+
+---
+
 ## 2026-07-24 — M8 Bootstrap: Supabase Cloud + DB Migrate + ADR-044
 
 ### Added

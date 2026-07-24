@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.10     |
+| Version      | 1.0.11     |
 | Status       | Active     |
 | Last Updated | 2026-07-24 |
 
@@ -182,13 +182,24 @@ Restricted Actions:
   `environment-management.md`, `.env.example`, `env.ts`, dan
   `lib/supabase/client.ts`, mengikuti sistem API key baru Supabase (anon key
   legacy dijadwalkan deprecated).
+* **M8 — Auth Flows UI selesai (Login, Register, Forgot/Reset Password):**
+  4 layar di `apps/web/src/app/(auth)/` (login, register, forgot-password,
+  reset-password baru) mengikuti referensi Claude Design (ADR-042 supplement
+  Auth Flow) dan workflow Astryx CLI wajib. Better Auth React client
+  (`lib/better-auth/client.ts`), `googleOAuthEnabled()` (tombol Google
+  disembunyikan otomatis bila env kosong), dan `sendResetPassword` stub
+  (log tautan reset ke console, testable lokal tanpa provider email AS-D04).
+  Typecheck/lint hijau; sign-up diverifikasi end-to-end via API. Verify-email
+  disengaja tidak dibangun dulu karena `requireEmailVerification` masih
+  nonaktif (AS-D04 belum ada provider).
 
 ---
 
 # In Progress
 
 * Tidak ada item alignment atau smoke test yang sedang dikerjakan. Fokus
-  berikutnya: M8 Development.
+  berikutnya: M8 Development — lanjut ke workspace onboarding setelah auth
+  flows UI.
 * Template `design-tokens.md` sudah disiapkan (status Draft / TBD); nilai final
   diisi setelah feature selesai dan designer masuk (ADR-041 mengamendemen urutan
   kerja ADR-038).
@@ -198,7 +209,7 @@ Restricted Actions:
 
 # Next Tasks
 
-* **M8 — Development:** mulai fitur produk (auth flows UI, workspace onboarding, publishing MVP, dll.) sesuai baseline + `context/`.
+* **M8 — Development:** auth flows UI selesai; lanjut fitur produk berikutnya (workspace onboarding, publishing MVP, dll.) sesuai baseline + `context/`.
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
   `post.published` / `post.error` / `account.token_expired` dengan
   durable-before-ACK, job retry internal, media upload working copy, serta
@@ -234,6 +245,15 @@ Restricted Actions:
   smoke test dan production build, tetapi risiko perubahan API tetap dikelola
   dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
   verifikasi ulang saat upgrade.
+* **Hydration gagal saat diakses lewat tunnel ngrok.** Saat uji halaman auth
+  lewat tunnel ngrok yang dipakai untuk `BETTER_AUTH_URL`, seluruh halaman
+  (bukan spesifik komponen auth) tidak ter-hydrate — tidak ada React fiber
+  di elemen manapun meski `window.next` termuat tanpa error console; klik
+  submit jatuh ke native HTML form-submit. Kemungkinan besar isu HMR/
+  WebSocket Turbopack lewat ngrok. Belum diselidiki lebih lanjut (di luar
+  scope auth flows UI); backend/API sendiri terverifikasi benar via raw
+  `fetch()`. Perlu ditelusuri sebelum uji interaksi form penuh di browser
+  lewat ngrok bisa diandalkan.
 
 ---
 
