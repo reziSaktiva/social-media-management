@@ -44,6 +44,7 @@ Keputusan berikut sudah final dari Auth Architecture (ADR-024) dan menjadi input
 | AS-D03 | Supabase Realtime Auth | Better Auth menerbitkan JWT Supabase-compatible (HS256, di-sign dengan `SUPABASE_JWT_SECRET`) berisi `sub = userId` agar `auth.uid()` valid untuk RLS Realtime |
 | AS-D04 | Password Reset | Via email token Better Auth — membutuhkan transactional email provider (dependency terbuka, lihat bagian Dependency) |
 | AS-D05 | Google OAuth Redirect | Callback per environment: `{BETTER_AUTH_URL}/api/auth/callback/google` — URL berbeda untuk production & staging |
+| AS-D06 | Mobile Auth | Better Auth **Bearer plugin** untuk `/api/v1` (ADR-043) — `Authorization: Bearer <token>` menggantikan cookie session untuk request mobile; satu instance Better Auth & satu tabel session dengan web |
 
 ---
 
@@ -135,6 +136,59 @@ export const auth = betterAuth({
 Production : https://<production-domain>/api/auth/callback/google
 Staging    : https://staging.<domain>/api/auth/callback/google
 ```
+
+---
+
+# Mobile Auth — Bearer Plugin (AS-D06, ADR-043)
+
+Mobile client (iOS/Android, diimplementasikan setelah MVP web selesai)
+mengakses `/api/v1/...` (`application-layer.md` — "Route Handler v1 — Mobile
+Client") memakai **Better Auth Bearer plugin**, bukan cookie session.
+
+## Struktur Konfigurasi (Tambahan)
+
+```typescript
+// apps/web/src/lib/better-auth/auth.ts
+import { betterAuth } from "better-auth";
+import { bearer } from "better-auth/plugins";
+
+export const auth = betterAuth({
+  // ...konfigurasi dasar tetap sama (lihat "Struktur Konfigurasi" di atas)
+
+  plugins: [
+    bearer(), // Authorization: Bearer <token> untuk /api/v1 mobile client
+  ],
+
+  // Custom scheme mobile wajib didaftarkan eksplisit — bukan wildcard longgar
+  trustedOrigins: [
+    process.env.BETTER_AUTH_URL!,
+    // contoh Expo dev client — sesuaikan scheme aplikasi mobile sebenarnya:
+    // "exp://192.168.*.*:*/*",
+  ],
+
+  rateLimit: {
+    enabled: true,
+    customRules: {
+      "/api/auth/sign-in/email": { window: 60, max: 5 },
+      "/api/auth/sign-up/email": { window: 60, max: 3 },
+    },
+  },
+});
+```
+
+## Aturan
+
+| Aspek | Keputusan |
+|-------|-----------|
+| Mekanisme | `Authorization: Bearer <token>` — token opaque, tervalidasi ke tabel `identity_sessions` yang sama dengan web (AS-D02 tidak berubah) |
+| Penyimpanan token di device | Wajib Keychain (iOS) / Keystore atau EncryptedSharedPreferences (Android) — **tidak boleh** di storage polos tanpa enkripsi. Requirement ke tim mobile, bukan konfigurasi backend, tapi wajib dicatat sebagai syarat rilis |
+| Workspace context | Tidak ada cookie "active workspace" seperti Middleware web — `workspaceId` wajib eksplisit di path/header tiap request; authorization tetap di Application Service (AU-D05, tidak ada shortcut untuk mobile) |
+| `trustedOrigins` | Custom scheme mobile (mis. Expo `exp://...`) didaftarkan eksplisit per app, tidak memakai wildcard longgar yang bisa menerima origin tak dikenal |
+| Rate limit endpoint auth | `customRules` memperketat `/api/auth/sign-in/email` dan `/api/auth/sign-up/email` dari default umum — `/api/v1` memperluas attack surface yang sebelumnya lebih tersembunyi di balik Server Actions |
+| Session expiry mobile | Menyusul default 7 hari (sama dengan web) kecuali diputuskan lain saat implementasi — device fisik yang hilang/dicuri adalah risiko nyata untuk sesi berumur panjang, evaluasi ulang sebelum rilis endpoint mobile pertama |
+| CORS | Tidak diaktifkan untuk kebutuhan ini — CORS adalah mekanisme browser, tidak relevan untuk native HTTP client memakai Bearer token |
+| CSRF | Tidak relevan untuk endpoint Bearer-only — Bearer token tidak auto-attached seperti cookie, sehingga bebas dari kelas serangan CSRF yang berlaku untuk endpoint cookie-based |
+| Audit trail | `databaseHooks.session.create`/`delete` dapat dipakai mencatat device/IP saat sesi mobile dibuat/dicabut — pola sama dapat dipakai untuk audit auth events secara umum |
 
 ---
 
@@ -240,7 +294,8 @@ Sampai provider dipilih:
 | Service role key | Hanya di server (env var), tidak pernah dikirim ke browser |
 | Supabase JWT (Realtime) | Berumur pendek, scope minimal (`sub`, `role`, `exp`), hanya untuk channel Realtime |
 | Secret rotation | `BETTER_AUTH_SECRET` dan `SUPABASE_JWT_SECRET` dapat dirotasi per environment tanpa memengaruhi environment lain (DI-D03) |
-| Brute force | Rate limiting Better Auth bawaan pada endpoint auth |
+| Brute force | Rate limiting Better Auth dengan `customRules` eksplisit per endpoint sensitif (`sign-in`, `sign-up`) — lihat "Mobile Auth — Bearer Plugin" (AS-D06) untuk konfigurasi konkret, berlaku juga untuk web |
+| Bearer token mobile | Token disimpan di secure device storage (Keychain/Keystore), revocable via database session yang sama dengan web; tidak rentan CSRF karena tidak auto-attached seperti cookie (AS-D06, ADR-043) |
 
 ---
 
@@ -253,6 +308,7 @@ Sampai provider dipilih:
 | AS-D03 | Better Auth menerbitkan JWT Supabase-compatible untuk Realtime | Menyediakan `auth.uid()` bagi RLS Realtime tanpa memindahkan seluruh auth ke Supabase Auth | Pindah ke Supabase Auth (bertentangan ADR-024); polling manual (menghapus manfaat Realtime) |
 | AS-D04 | Password reset & email verification via transactional email (provider TBD) | Memisahkan pilihan email provider dari keputusan auth core; auth tidak terblok | Hardcode satu provider sekarang (keputusan prematur di luar scope) |
 | AS-D05 | OAuth client & redirect URI terpisah per environment | Isolasi kredensial; callback URL berbeda antara prod & staging | Satu OAuth client dipakai bersama (redirect URI campur, rawan salah routing) |
+| AS-D06 | Better Auth Bearer plugin untuk auth mobile `/api/v1` | Mempertahankan satu sistem auth (satu secret, satu tabel session, satu tempat revoke) alih-alih membangun auth kedua khusus mobile; Bearer bebas CSRF dan tetap revocable (ADR-043) | API Key plugin sebagai auth login mobile (cocok programmatic access, bukan interactive login); backend auth terpisah untuk mobile (duplikasi sistem) |
 
 ---
 
@@ -266,4 +322,5 @@ Sampai provider dipilih:
 * `../../product-discovery/05-architecture/auth-architecture.md` — desain auth (ADR-024), Middleware, RBAC
 * `../../product-discovery/05-architecture/database-strategy.md` — DB-D04, DB-D05, RLS `app.current_user_id`
 * `../../product-discovery/05-architecture/realtime-strategy.md` — RLS subscription `auth.uid()` pada `notifications`
-* `../../project-manager/DECISIONS.md` — ADR-024, ADR-030
+* `../05-architecture/application-layer.md` — Route Handler v1 mobile client (AL-D08, ADR-043)
+* `../../project-manager/DECISIONS.md` — ADR-024, ADR-030, ADR-043
