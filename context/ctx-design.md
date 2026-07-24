@@ -10,12 +10,13 @@ Product/roles/persona → `ctx-business.md`.
 
 ### Design (handoff & visual)
 
-| Dokumen                                                            | Kapan                                    |
-| ------------------------------------------------------------------ | ---------------------------------------- |
-| [`../design/README.md`](../design/README.md)                       | Orientasi folder design                  |
-| [`../design/DESIGN_OVERVIEW.md`](../design/DESIGN_OVERVIEW.md)     | Product UX Map + Design System Blueprint |
-| [`../design/DESIGN_BRIEF.md`](../design/DESIGN_BRIEF.md)           | Brief lengkap                            |
-| [`../design/DESIGN_ONEPAGER.html`](../design/DESIGN_ONEPAGER.html) | Ringkas untuk handoff                    |
+| Dokumen                                                                         | Kapan                                                               |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| [`../design/README.md`](../design/README.md)                                    | Orientasi folder design                                             |
+| [`../design/DESIGN_OVERVIEW.md`](../design/DESIGN_OVERVIEW.md)                  | Product UX Map + Design System Blueprint                            |
+| [`../design/DESIGN_BRIEF.md`](../design/DESIGN_BRIEF.md)                        | Brief lengkap                                                       |
+| [`../design/DESIGN_ONEPAGER.html`](../design/DESIGN_ONEPAGER.html)              | Ringkas untuk handoff                                               |
+| Claude Design — project `Social Media Management` (lihat `../design/README.md`) | Referensi visual foundations/components/8 layar KSP-01–08 (ADR-042) |
 
 ### UX Planning Baseline — `04-ux/`
 
@@ -45,6 +46,16 @@ Product/roles/persona → `ctx-business.md`.
    Astryx dan jangan mengarang custom brand hex.
 9. Astryx adalah fondasi komponen permanen. Tailwind hanya untuk layout dan
    responsive composition; wrapper di `components/ui/` dibuat selektif.
+10. **Claude Design** (bukan Figma) adalah design handoff tool project ini
+    (ADR-042) — project `Social Media Management`, pointer lengkap di
+    `../design/README.md`. Diakses lewat tool `DesignSync` bawaan Claude Code
+    (native, bukan MCP terpisah, tidak perlu setup tambahan).
+11. Sinkronisasi antara baseline (`04-ux/`, `design-tokens.md`) dan project
+    Claude Design bersifat **manual/on-request** — dijalankan saat diminta
+    eksplisit, bukan checklist wajib di setiap sesi kerja UI (beda dengan
+    workflow Astryx CLI di `AGENTS.md` yang wajib tiap task). Push saat UX
+    baseline berubah berarti; review sebelum menerima perubahan dari sisi
+    Claude Design (baseline + ADR tetap menang, lihat butir 7).
 
 ---
 
@@ -57,7 +68,7 @@ Product/roles/persona → `ctx-business.md`.
 | Sidebar, navigasi, workspace switch      | `navigation-patterns.md`                               |
 | Pola layar editor, inbox, analytics      | `key-screen-patterns.md`                               |
 | Content Format (Post/Reel/Story/Pin)     | `key-screen-patterns.md` (KSP-05-F11) + ADR-039        |
-| Brief / handoff designer                 | `design/DESIGN_OVERVIEW.md` + brief                    |
+| Brief / handoff designer                 | `design/DESIGN_OVERVIEW.md` + brief + Claude Design    |
 | Font, warna, neutral, status (SoT)       | `../product-discovery/06-engineering/design-tokens.md` |
 | Komponen UI / styling                    | `monorepo-setup.md` + ADR-041                          |
 

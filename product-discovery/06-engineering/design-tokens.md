@@ -24,7 +24,12 @@ Checklist lock ini dijalankan setelah feature selesai dan designer masuk.
 Selama development feature, gunakan neutral theme Astryx; jangan mengisi nilai
 brand sementara atau memblokir implementasi layar karena tabel masih `TBD`.
 
-## Langkah 1 — Review & approve di Figma
+## Langkah 1 — Review & approve di Claude Design
+
+Claude Design menggantikan Figma sebagai design handoff tool (ADR-042) — project
+`Social Media Management` (projectId `84aded99-bb23-49b1-be9f-dd8f21c6873e`),
+diakses lewat tool `DesignSync` bawaan Claude Code. Lihat `../../design/README.md`
+untuk pointer lengkap.
 
 Pastikan hasil design selaras dengan UX Baseline (`../04-ux/`):
 
@@ -34,11 +39,11 @@ Pastikan hasil design selaras dengan UX Baseline (`../04-ux/`):
 * AI hanya inline di Draft Editor
 * 6 content status + `Failed` jelas terbaca
 
-Jika Figma mengubah alur/IA, **hentikan** — diskusikan dulu (perlu update UX + ADR). Jangan “mengunci token” dari desain yang bertentangan dengan UX.
+Jika Claude Design mengubah alur/IA, **hentikan** — diskusikan dulu (perlu update UX + ADR). Jangan “mengunci token” dari desain yang bertentangan dengan UX. Sinkronisasi antara baseline ini dan project Claude Design bersifat manual/on-request (ADR-042) — bukan otomatis.
 
 ## Langkah 2 — Isi tabel token di dokumen ini
 
-Salin nilai final dari Figma Variables / style guide ke tabel di bawah:
+Salin nilai final dari Claude Design (theme.json / styles.css) atau style guide ke tabel di bawah:
 
 1. Typography (font display + UI)
 2. Color — brand (primary, secondary, …)
@@ -55,7 +60,7 @@ Ganti setiap `TBD` dengan nilai konkret (hex/HSL atau nama font). Isi kolom **Ca
 Di metadata atas:
 
 * Status → **Locked — siap implementasi**
-* Catat tanggal approve + link Figma file/page (opsional, di Related)
+* Catat tanggal approve + link project Claude Design (opsional, di Related)
 
 ## Langkah 4 — Catat di Project OS
 
@@ -73,13 +78,13 @@ Engineering memetakan token → implementasi:
 | Skala type / spacing | Astryx theme + Tailwind token bridge |
 | Komponen UI | Komponen Astryx dan wrapper selektif memakai semantic token yang sama |
 
-**Jangan** mengisi hex hanya di Figma atau hanya di screenshot tanpa update dokumen ini.
+**Jangan** mengisi hex hanya di Claude Design atau hanya di screenshot tanpa update dokumen ini.
 
 ## Yang tidak dilakukan
 
 * Menjadikan PDF brief / `design/DESIGN_OVERVIEW.md` sebagai SoT warna/font
 * Menempel banyak screenshot ke `04-ux/` sebagai pengganti token
-* Mengubah IA/nav di Figma lalu menganggap repo otomatis ikut
+* Mengubah IA/nav di Claude Design lalu menganggap repo otomatis ikut
 
 ---
 
@@ -103,7 +108,7 @@ Engineering memetakan token → implementasi:
 | `font/sans` | UI produk (nav, list, form, caption) | `TBD` | Prioritas keterbacaan; angka tabular untuk waktu/jadwal disarankan |
 | `font/mono` | Opsional — ID teknis | `TBD` atau tidak dipakai | Jangan untuk caption sosial |
 
-**Skala type (Figma → kode):** `xs · sm · md · lg · xl · 2xl` — nilai size/line-height konkret: `TBD` setelah design lock.
+**Skala type (Claude Design → kode):** `xs · sm · md · lg · xl · 2xl` — nilai size/line-height konkret: `TBD` setelah design lock.
 
 ---
 
