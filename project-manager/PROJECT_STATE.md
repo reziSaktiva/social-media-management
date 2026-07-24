@@ -192,14 +192,32 @@ Restricted Actions:
   Typecheck/lint hijau; sign-up diverifikasi end-to-end via API. Verify-email
   disengaja tidak dibangun dulu karena `requireEmailVerification` masih
   nonaktif (AS-D04 belum ada provider).
+* **M8 — Workspace Onboarding selesai:** Onboarding Flow (First Login) dari
+  `auth-architecture.md` diimplementasikan end-to-end — `proxy.ts` (session
+  cookie guard via `getSessionCookie`, tanpa DB call), root `page.tsx`
+  (redirect `/login` / `/{slug}/home` / `/onboarding`), dan `/onboarding`
+  (form 1 field nama workspace + Server Action `createWorkspaceAction`).
+  `WorkspaceService` (BC-02) pertama kali diimplementasikan
+  (`createWorkspace` — validasi nama, slug auto-generate + retry suffix saat
+  bentrok, transaksi Prisma Workspace+WorkspaceMember Owner;
+  `getDefaultWorkspaceSlugForUser` untuk orkestrasi redirect) + repository
+  Prisma di `src/lib/repositories/workspace/` (MS-D05). Hierarki
+  `ApplicationError` (`application-layer.md`) diimplementasikan di
+  `src/lib/utils/errors.ts`. `MemberStatus` ditambahkan ke `packages/shared`.
+  Diverifikasi: typecheck/lint/test hijau, alur end-to-end lewat curl
+  (login → redirect `/onboarding` → create workspace di database Supabase
+  Cloud nyata → redirect `/{slug}/home`), dan proxy guard (unauthenticated →
+  `/login`, halaman auth publik tetap 200). Invite-teammate & connect-account
+  **tidak** termasuk scope ini — sudah ada Server Action & route Settings
+  terpisah.
 
 ---
 
 # In Progress
 
 * Tidak ada item alignment atau smoke test yang sedang dikerjakan. Fokus
-  berikutnya: M8 Development — lanjut ke workspace onboarding setelah auth
-  flows UI.
+  berikutnya: M8 Development — Publishing MVP (setelah workspace onboarding
+  selesai).
 * Template `design-tokens.md` sudah disiapkan (status Draft / TBD); nilai final
   diisi setelah feature selesai dan designer masuk (ADR-041 mengamendemen urutan
   kerja ADR-038).
@@ -209,7 +227,7 @@ Restricted Actions:
 
 # Next Tasks
 
-* **M8 — Development:** auth flows UI selesai; lanjut fitur produk berikutnya (workspace onboarding, publishing MVP, dll.) sesuai baseline + `context/`.
+* **M8 — Development:** auth flows UI dan workspace onboarding selesai; lanjut fitur produk berikutnya (publishing MVP, dll.) sesuai baseline + `context/`.
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
   `post.published` / `post.error` / `account.token_expired` dengan
   durable-before-ACK, job retry internal, media upload working copy, serta

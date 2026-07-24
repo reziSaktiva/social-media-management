@@ -4,6 +4,56 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-24 — M8: Workspace Onboarding (create-workspace flow)
+
+### Added
+
+* Onboarding Flow (First Login) dari `auth-architecture.md` diimplementasikan:
+  `proxy.ts` — auth guard pakai `getSessionCookie` (Better Auth, tanpa DB
+  call, cookie-presence check saja) untuk route terproteksi vs halaman auth
+  publik; root `src/app/page.tsx` — Server Component yang memanggil
+  `auth.api.getSession()` lalu redirect ke `/login`, `/{slug}/home`, atau
+  `/onboarding` sesuai status workspace user; `src/app/onboarding/` — halaman
+  create-workspace (1 field: nama, slug auto-generate) dengan Server Action
+  `createWorkspaceAction`.
+* `WorkspaceService` (BC-02) pertama kali diimplementasikan di
+  `src/domains/workspace/`: `createWorkspace` (validasi nama, generate slug
+  via value object `slugify`, retry suffix numerik saat slug bentrok, buat
+  `Workspace` + `WorkspaceMember` role Owner via transaksi Prisma) dan
+  `getDefaultWorkspaceSlugForUser` (dipakai orkestrasi redirect root/onboarding
+  — bukan bagian tabel kontrak `WorkspaceService` di `application-layer.md`,
+  ditambahkan untuk kebutuhan orkestrasi tanpa melanggar boundary).
+  Implementasi repository Prisma di `src/lib/repositories/workspace/`
+  (MS-D05 — repository implementation terpisah dari folder domain).
+* Hierarki error `ApplicationError` (`AuthorizationError`, `NotFoundError`,
+  `ValidationError`, `ConflictError`, `ExternalServiceError`) dari
+  "Error Handling Strategy" (`application-layer.md`) diimplementasikan di
+  `src/lib/utils/errors.ts` — infra bersama lintas domain, dipakai
+  `WorkspaceService` dan siap dipakai Application Service BC lain.
+* `MemberStatus` enum (`pending | active | removed`) ditambahkan ke
+  `packages/shared` — sudah didokumentasikan di `domain-model.md` tapi belum
+  ada di shared types.
+* Test Vitest baru: `slugify` (edge case aksen, simbol, panjang), dan
+  `WorkspaceService.createWorkspace` (validasi, retry-on-conflict, exhaustion)
+  pakai fake in-memory repository.
+* `apps/web/src/app/astryx-smoke.tsx` dihapus dari root route — tugasnya
+  sebagai smoke test ADR-041 sudah selesai; root `page.tsx` sekarang berisi
+  redirect logic produksi.
+
+### Fixed
+
+* Deteksi slug-conflict di `workspace.repository.ts` awalnya mengandalkan
+  `error.meta.target` (nama kolom) untuk mengenali `P2002` — dengan driver
+  adapter `@prisma/adapter-pg` (Prisma 7), `meta.target` tidak terisi
+  sehingga retry logic tidak pernah terpicu dan slug bentrok akan crash
+  alih-alih di-retry. Diverifikasi langsung dengan skrip terhadap database
+  Supabase Cloud nyata (bukan hanya unit test dengan fake repository) —
+  ditemukan lewat percobaan create-workspace kedua dengan nama sama. Fix:
+  deteksi pakai `error.code === "P2002" && error.meta?.modelName === "Workspace"`
+  (satu-satunya unique constraint pada `Workspace` selain PK adalah `slug`).
+
+---
+
 ## 2026-07-24 — Better Auth Dash (official admin/monitoring plugin, optional)
 
 ### Added
