@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.9      |
+| Version      | 1.0.10     |
 | Status       | Active     |
 | Last Updated | 2026-07-24 |
 
@@ -160,6 +160,11 @@ Restricted Actions:
   Management` dibuat di Claude Design (token neutral interim, foundations,
   components, 8 layar KSP-01–08). Pointer di `design/README.md`; workflow di
   `ctx-design.md`. Sinkronisasi manual/on-request via tool `DesignSync`.
+* **ADR-043 — API mobile-ready alignment selesai:** `application-layer.md`
+  (Route Handler v1 — Mobile Client, AL-D08) dan `auth-strategy.md` (Bearer
+  plugin, AS-D06) sudah diselaraskan; `auth-architecture.md` diperjelas
+  (AU-D11). Ini menyelesaikan alignment dokumentasi, bukan implementasi
+  runtime endpoint `/api/v1`.
 
 ---
 
@@ -184,6 +189,11 @@ Restricted Actions:
 * **Operasional X:** Project Owner mengonfigurasi kredensial BYOK X secara
   manual di dashboard Outstand; aplikasi tidak membuat form atau secret store X.
 * **Publishing MVP:** Draft Editor harus mengimplementasi Content Format Selector per akun (ADR-039) — jangan ship New Post tanpa Post/Reel/Story (IG/FB) dan Pin (Pinterest).
+* **API mobile (ADR-043):** siapkan skema `apps/web/app/api/v1/...` dan
+  konfigurasi Better Auth Bearer plugin (`trustedOrigins`,
+  `rateLimit.customRules`) mendahului M8 web berjalan jauh. Endpoint mobile
+  aktual (WorkspaceService → PublishingService → EngagementService →
+  NotificationService) dikerjakan setelah MVP web selesai — bukan sekarang.
 * **Setelah feature selesai dan design UI di-approve:** isi nilai di
   `product-discovery/06-engineering/design-tokens.md` (ganti `TBD`), ubah status
   → Locked, lalu mirror ke Astryx theme + Tailwind token bridge (ADR-038,
@@ -220,6 +230,15 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-043 — API mobile-ready via Route Handler `/api/v1` (Next.js App
+  Router) di atas Application Service yang sama dengan web; tidak ada
+  backend terpisah. Better Auth Bearer plugin untuk auth mobile
+  (menggantikan cookie session), workspace context eksplisit per
+  path/header, versioning `/api/v1`→`/api/v2` untuk breaking change, dan 4
+  syarat keamanan wajib (secure device storage, `trustedOrigins` custom
+  scheme, keputusan session expiry mobile, `rateLimit.customRules` per
+  endpoint). Fondasi disiapkan sebelum M8 berjalan jauh; endpoint mobile
+  aktual dikerjakan setelah MVP web selesai (2026-07-24).
 * ADR-042 — Claude Design menggantikan Figma sebagai design handoff tool;
   project `Social Media Management` (`84aded99-bb23-49b1-be9f-dd8f21c6873e`)
   berisi token neutral, foundations, components, dan 8 layar KSP; sinkronisasi
