@@ -4,6 +4,26 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-24 — Migrasi Next.js 16 Middleware → Proxy
+
+### Changed
+
+* `apps/web/src/middleware.ts` di-rename menjadi `apps/web/src/proxy.ts`;
+  fungsi `middleware` di-rename menjadi `proxy`. Mengikuti file convention
+  resmi Next.js 16 (https://nextjs.org/docs/messages/middleware-to-proxy);
+  `config.matcher` dan behavior auth guard tidak berubah.
+* Komentar pointer di `apps/web/src/lib/supabase/middleware.ts` diperbarui
+  ke `src/proxy.ts` (nama file lib ini sendiri tidak berubah — bukan file
+  convention Next.js).
+* `product-discovery/06-engineering/monorepo-setup.md` — folder tree dan
+  wording disesuaikan ke `proxy.ts`/"Proxy".
+* `product-discovery/06-engineering/auth-strategy.md` — Related Documents
+  update path ke `src/proxy.ts`.
+* `PROJECT_STATE.md` — Known Issue deprecation warning dihapus, dicatat
+  sebagai selesai di Completed.
+
+---
+
 ## 2026-07-24 — API Mobile-Ready via Route Handler + Bearer Auth (ADR-043)
 
 ### Added

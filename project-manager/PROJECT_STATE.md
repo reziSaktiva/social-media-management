@@ -165,6 +165,12 @@ Restricted Actions:
   plugin, AS-D06) sudah diselaraskan; `auth-architecture.md` diperjelas
   (AU-D11). Ini menyelesaikan alignment dokumentasi, bukan implementasi
   runtime endpoint `/api/v1`.
+* **Migrasi Next.js 16 middleware → Proxy selesai:** `apps/web/src/middleware.ts`
+  di-rename menjadi `src/proxy.ts` (fungsi `middleware` → `proxy`), sesuai
+  https://nextjs.org/docs/messages/middleware-to-proxy. Behavior tidak
+  berubah — auth guard + workspace context injection tetap sama. Referensi
+  path di `monorepo-setup.md`, `database-orm.md`, `auth-strategy.md` sudah
+  disesuaikan. Warning deprecation di `bun run dev` sudah hilang.
 
 ---
 
@@ -208,7 +214,6 @@ Restricted Actions:
 # Known Issues
 
 * **Dependency terbuka — Transactional Email Provider.** Password reset & email verification (Better Auth) membutuhkan email provider yang belum ditetapkan (kandidat: Resend, Postmark, AWS SES, SMTP Supabase). Dicatat di `auth-strategy.md` (AS-D04). `requireEmailVerification` dinonaktifkan sementara di skeleton. Tidak memblokir M8 awal.
-* **Next.js 16 middleware deprecation warning.** Baseline masih memakai `middleware.ts`; evaluasi migrasi ke `proxy` belakangan jika Next menstabilkan API pengganti — tidak memblokir.
 * **Belum ada commit awal.** Repo sudah `git init` (branch `main`); working tree belum di-commit — commit awal menunggu instruksi eksplisit.
 * **RLS SQL policies** belum digenerate di migrasi awal — ditambahkan saat jalur server set `app.current_user_id` diimplementasi (DO-D06).
 * **Runtime ADR-040 belum diimplementasikan.** Alignment dokumentasi dan

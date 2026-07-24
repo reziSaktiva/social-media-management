@@ -316,7 +316,7 @@ Sampai provider dipilih:
 
 * `README.md` — scope dan workflow Engineering Planning
 * `deployment-infrastructure.md` — environment topology, cookie `Secure`, `BETTER_AUTH_URL` per env
-* `monorepo-setup.md` — lokasi `src/lib/better-auth/auth.ts` dan `src/middleware.ts`
+* `monorepo-setup.md` — lokasi `src/lib/better-auth/auth.ts` dan `src/proxy.ts` (Next.js 16 Proxy, dulu `middleware.ts`)
 * `database-orm.md` — Prisma ORM, Prisma adapter Better Auth, migration `identity_*`, pooling
 * `environment-management.md` — detail env var auth & secret (ADR-033)
 * `../../product-discovery/05-architecture/auth-architecture.md` — desain auth (ADR-024), Middleware, RBAC
