@@ -4,6 +4,52 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-24 — Migrasi Next.js 16 Middleware → Proxy
+
+### Changed
+
+* `apps/web/src/middleware.ts` di-rename menjadi `apps/web/src/proxy.ts`;
+  fungsi `middleware` di-rename menjadi `proxy`. Mengikuti file convention
+  resmi Next.js 16 (https://nextjs.org/docs/messages/middleware-to-proxy);
+  `config.matcher` dan behavior auth guard tidak berubah.
+* Komentar pointer di `apps/web/src/lib/supabase/middleware.ts` diperbarui
+  ke `src/proxy.ts` (nama file lib ini sendiri tidak berubah — bukan file
+  convention Next.js).
+* `product-discovery/06-engineering/monorepo-setup.md` — folder tree dan
+  wording disesuaikan ke `proxy.ts`/"Proxy".
+* `product-discovery/06-engineering/auth-strategy.md` — Related Documents
+  update path ke `src/proxy.ts`.
+* `PROJECT_STATE.md` — Known Issue deprecation warning dihapus, dicatat
+  sebagai selesai di Completed.
+
+---
+
+## 2026-07-24 — API Mobile-Ready via Route Handler + Bearer Auth (ADR-043)
+
+### Added
+
+* ADR-043 di `DECISIONS.md` — Route Handler `/api/v1` (Next.js App Router)
+  sebagai API mobile-ready di atas Application Service yang sama dengan web;
+  tidak ada backend terpisah (Hono/Express). Better Auth Bearer plugin
+  sebagai mekanisme auth mobile, menggantikan cookie session.
+* `TEMP-project-owner-questions.md` — section 8: ringkasan diskusi keputusan
+  ini beserta pertanyaan Project Owner dan assessment keamanan Bearer token.
+
+### Changed
+
+* `product-discovery/05-architecture/application-layer.md` — section baru
+  "Route Handler v1 — Mobile Client" (pola entry point, workspace context
+  eksplisit, versioning); Decision Log AL-D08.
+* `product-discovery/06-engineering/auth-strategy.md` — section baru "Mobile
+  Auth — Bearer Plugin" (konfigurasi, `trustedOrigins` custom scheme,
+  `rateLimit.customRules` endpoint sensitif); Decision Log AS-D06; update
+  tabel Security Considerations (brute force, Bearer token mobile).
+* `product-discovery/05-architecture/auth-architecture.md` — perjelas baris
+  Post-MVP "API key untuk programmatic access" agar tidak tumpang tindih
+  dengan Bearer plugin mobile; Decision Log AU-D11.
+
+---
+
 ## 2026-07-24 — Developer Workflow Notes (diagram mermaid)
 
 ### Added

@@ -1642,3 +1642,132 @@ flowchart TD
 
 Status: **selaras dengan ADR-040 dan baseline terbaru; implementasi runtime
 detail tetap mengikuti task M8 di PROJECT_STATE.md**.
+
+---
+
+## 8. Backend untuk Mobile Client dan Keamanan Bearer Auth
+
+> **Status keputusan (2026-07-24): Selesai — ADR-043.** Project Owner
+> menyetujui Route Handler `/api/v1` sebagai API mobile-ready di atas
+> Application Service yang sama dengan web, dan Better Auth Bearer plugin
+> sebagai mekanisme auth mobile. Keputusan dipindahkan ke ADR-043; update
+> baseline `application-layer.md` dan `auth-strategy.md` sudah dikerjakan.
+
+### Pertanyaan
+
+1. "Untuk BE saya sih inginnya dapat digunakan juga untuk Mobile, bagaimana
+   menurutmu?"
+2. "Kalau dari sisi keamanannya gimana — apakah route API dan auth kita
+   (baik untuk web maupun mobile) sudah cukup aman?"
+
+### Konteks Baseline Sebelum Diskusi
+
+Mobile app sudah tercatat di `product-discovery/02-product/future-roadmap.md`
+(section "Mobile Experience") dan eksplisit **di luar scope MVP**
+(`mvp-definition.md`, `product-scope.md`). Belum ada arsitektur teknis untuk
+itu — baseline hanya mendefinisikan Next.js App Router (Server Component,
+Server Action, Route Handler, Middleware) sebagai satu-satunya Entry Point
+(`application-layer.md`, AL-D01–AL-D04), tanpa pernah membahas reusability-nya
+untuk client selain web.
+
+### Kenapa Server Actions Tidak Bisa Dipakai Mobile
+
+Server Actions adalah mekanisme RPC internal Next.js — ID action berubah
+setiap build/deploy dan tidak didesain untuk dipanggil dari luar aplikasi
+Next.js. Mobile app **wajib** lewat Route Handler (kontrak REST/JSON stabil),
+bukan Server Action.
+
+### Kenapa Tidak Perlu BE Terpisah (Hono, dll.)
+
+Karena `application-layer.md` (AL-D02) sudah mewajibkan seluruh business logic
+berada di Application Service, bukan di Entry Point, menambah Route Handler
+untuk mobile **tidak memerlukan penulisan ulang domain logic** — cukup entry
+point tipis baru yang memanggil Application Service yang sama persis dipakai
+Server Actions untuk web (`PublishingService`, `WorkspaceService`,
+`EngagementService`, dst).
+
+### Rekomendasi Arsitektur
+
+```text
+Struktur endpoint : apps/web/app/api/v1/... (Route Handler, versioned)
+Prioritas domain  : WorkspaceService (fondasi context) → PublishingService
+                    → EngagementService → NotificationService
+                    (mengikuti roadmap "Mobile Publishing, Mobile Inbox")
+Auth mobile       : Better Auth Bearer plugin — Authorization: Bearer <token>
+                    menggantikan cookie session; token disimpan di
+                    Keychain (iOS) / Keystore (Android)
+Workspace context : eksplisit di path/header tiap request (bukan cookie
+                    "active workspace" seperti web)
+Versioning        : /api/v1 sekarang; breaking change wajib /api/v2, tidak
+                    boleh mengubah kontrak v1 yang sudah dipakai mobile
+CORS              : tidak diperlukan untuk native app + Bearer token (CORS
+                    mekanisme browser); direvisit jika ada public API
+                    berbasis browser/pihak ketiga di masa depan
+Timing            : bukan MVP sekarang, tapi fondasi (skema /api/v1, Bearer
+                    plugin) disiapkan sebelum M8 development berjalan jauh
+```
+
+### Assessment Keamanan Bearer Token untuk Mobile
+
+**Kesimpulan: aman untuk dikunci** — pola standar industri untuk mobile OAuth
+client — dengan syarat 4 hal berikut masuk sebagai requirement eksplisit,
+bukan diasumsikan otomatis:
+
+1. **Penyimpanan token di device** — wajib Keychain/Keystore/EncryptedSharedPreferences,
+   bukan storage polos tanpa enkripsi.
+2. **`trustedOrigins` untuk custom scheme mobile** — perlu didaftarkan
+   eksplisit (mis. `exp://192.168.*.*:*/*` untuk Expo), bukan wildcard
+   sembarangan.
+3. **Session expiry untuk mobile** — perlu diputuskan apakah tetap 7 hari
+   (AS-D02 existing) atau lebih pendek + refresh mechanism, karena device
+   fisik bisa dicuri.
+4. **Rate limiting per-endpoint** — Better Auth mendukung `customRules` per
+   endpoint (mis. sign-in 5 request/menit), bukan cuma default umum — dipakai
+   untuk memperketat endpoint auth yang sekarang jadi lebih exposed via
+   `/api/v1`.
+
+**Keuntungan dibanding cookie session:**
+
+- Tidak ada risiko CSRF (Bearer token tidak auto-attached seperti cookie).
+- Tetap revocable karena database session (AS-D02 existing) dipertahankan,
+  bukan diganti JWT stateless.
+- `databaseHooks.session.create/delete` Better Auth bisa dipakai untuk audit
+  log auth events (device/IP saat sesi dibuat/dicabut) — menutup sebagian gap
+  "audit log = Post-MVP" yang pernah dibahas di section keamanan sebelumnya.
+
+**Gap yang tetap terbuka, di luar kendali baseline backend:**
+
+- Device/session management UI ("lihat & cabut sesi lain") — perlu masuk
+  scope produk, bukan cuma backend.
+- Certificate pinning — opsional, pertimbangan hardening pasca-MVP.
+- Workspace-scoping per request tetap mengandalkan disiplin existing
+  (AL-D02/ADR-024) — tidak menambah risiko baru, tapi jadi lebih kritis
+  karena request sekarang datang dari client yang tidak kita kontrol UI-nya.
+
+### Dampak terhadap Baseline
+
+- `application-layer.md` — tambah pola "Route Handler v1 untuk mobile client"
+  di samping pola existing (webhook eksternal); Decision Log AL-D08.
+- `auth-strategy.md` — tambah Bearer plugin sebagai mekanisme auth mobile,
+  rate limit `customRules`, `trustedOrigins` custom scheme; Decision Log
+  AS-D06; update tabel Security Considerations.
+- `auth-architecture.md` — perjelas baris Post-MVP "API key untuk
+  programmatic access" (beda dari Bearer user-login mobile); Decision Log
+  AU-D11.
+- `project-manager/DECISIONS.md` — ADR-043.
+- `PROJECT_STATE.md` — Recent Decisions.
+
+### Kesimpulan Final
+
+```text
+Tidak ada BE terpisah (Hono, dll.)
+Route Handler /api/v1 di atas Application Service yang sama dengan web
+Better Auth Bearer plugin untuk auth mobile
+Workspace context eksplisit per request (path/header)
+4 syarat keamanan wajib: secure device storage, trustedOrigins custom
+scheme, keputusan session expiry mobile, rate limit customRules per endpoint
+```
+
+Status diskusi: **selesai — dipindahkan ke ADR-043 dan baseline terkait;
+implementasi runtime endpoint `/api/v1` tetap task M8, dijadwalkan setelah
+MVP web selesai.**

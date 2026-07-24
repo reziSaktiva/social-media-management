@@ -99,7 +99,7 @@ apps/web/
 │   ├── domains/                  ← Domain Logic (9 BC MVP; Billing post-MVP)
 │   ├── components/               ← Astryx UI + feature components
 │   ├── lib/                      ← Infrastructure Clients & Utilities
-│   └── middleware.ts             ← Auth guard + workspace context injection
+│   └── proxy.ts                  ← Auth guard + workspace context injection (Next.js 16 "Proxy", dulu middleware.ts)
 ├── public/                       ← Static assets
 ├── next.config.ts
 ├── package.json
@@ -290,7 +290,7 @@ src/lib/
 ├── supabase/
 │   ├── client.ts                 ← Supabase browser client (Realtime)
 │   ├── server.ts                 ← Supabase server client (Storage; bukan CRUD domain)
-│   └── middleware.ts             ← Supabase client untuk Middleware (jika diperlukan)
+│   └── middleware.ts             ← Supabase client untuk Proxy (jika diperlukan; nama file lib ini tetap "middleware.ts", tidak mengikuti rename file convention src/proxy.ts)
 ├── better-auth/
 │   └── auth.ts                   ← Better Auth instance & config (Prisma adapter)
 ├── outstand/

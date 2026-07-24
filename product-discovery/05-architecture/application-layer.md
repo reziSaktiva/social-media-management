@@ -231,11 +231,53 @@ External System / Browser Fetch
 - Webhook resmi Outstand (`post.published`, `post.error`, `account.token_expired`).
 - Health check endpoint.
 - File download endpoint (jika diperlukan).
+- **API mobile-ready** (`/api/v1/...`, ADR-043) — kontrak REST/JSON versioned untuk mobile client, dibahas di bagian "Route Handler v1 — Mobile Client" di bawah.
 
 **Aturan:**
 - Webhook Route Handler membaca raw body, memvalidasi HMAC atas bytes tersebut, lalu memanggil ingestion Application Service untuk persist receipt idempoten dan enqueue JOB-01 sebelum ACK `2xx`.
 - Route Handler tidak boleh langsung mengakses database — termasuk receipt webhook; wajib melalui Application Service/repository sistem.
 - Route Handler bukan pengganti Server Actions untuk mutasi dari UI.
+
+---
+
+## Route Handler v1 — Mobile Client (ADR-043)
+
+Next.js App Router tetap satu-satunya runtime API — **tidak ada backend
+terpisah** (Hono, dll.) untuk melayani mobile client. Mobile diekspos lewat
+Route Handler versioned yang memanggil Application Service yang sama dipakai
+Server Actions untuk web.
+
+```
+Mobile App (iOS/Android)
+  └── Authorization: Bearer <token>
+       └── Route Handler (apps/web/app/api/v1/...)
+            └── memanggil ApplicationService.xxx(...) — sama dengan Server Action
+                 └── ...
+```
+
+**Kenapa bukan Server Actions untuk mobile:** Server Actions adalah mekanisme
+RPC internal Next.js — ID action berubah tiap build/deploy dan tidak didesain
+dipanggil dari luar aplikasi Next.js. Mobile client wajib lewat kontrak
+REST/JSON stabil (Route Handler), bukan Server Action.
+
+**Aturan tambahan khusus `/api/v1`:**
+- **Auth**: Better Auth Bearer plugin (`Authorization: Bearer <token>`)
+  menggantikan cookie session — lihat `auth-strategy.md` untuk konfigurasi.
+  Satu instance Better Auth, satu tabel session dengan web (AS-D02 tidak
+  berubah).
+- **Workspace context**: karena tidak ada cookie "active workspace" seperti
+  Middleware web, `workspaceId` wajib eksplisit di path atau header tiap
+  request (mis. `/api/v1/workspaces/:workspaceId/...`). Route Handler tetap
+  memanggil Application Service untuk authorization check granular — tidak
+  ada shortcut otorisasi khusus mobile.
+- **Versioning**: breaking change wajib naik ke `/api/v2`; kontrak `/api/v1`
+  yang sudah dipakai mobile app tidak boleh diubah secara breaking.
+- **Prioritas domain diekspos** (mengikuti `future-roadmap.md` — "Mobile
+  Publishing, Mobile Inbox"): `WorkspaceService` → `PublishingService` →
+  `EngagementService` → `NotificationService`.
+- **Timing**: fondasi (skema `/api/v1`, konfigurasi Bearer) disiapkan
+  mendahului M8, endpoint mobile aktual diimplementasikan setelah MVP web
+  selesai (bukan bagian MVP — `mvp-definition.md`, `product-scope.md`).
 
 ---
 
@@ -505,6 +547,7 @@ Untuk MVP, tidak semua service method di atas diimplementasikan. Prioritas imple
 | AL-D05 | Webhook Route Handler hanya verify raw HMAC → durable receipt → enqueue → ACK | Menjamin event tidak hilang dan menjaga entry point tetap tipis |
 | AL-D06 | Engagement sync melalui JOB-03/manual refresh; bukan Route Handler webhook | Kontrak resmi Outstand tidak menyediakan webhook Engagement MVP |
 | AL-D07 | ADR-040 | AL-D05–D06 mengamandemen contoh dan kontrak service lama |
+| AL-D08 | Route Handler `/api/v1` sebagai API mobile-ready di atas Application Service yang sama dengan web; tidak ada BE terpisah | Server Actions tidak stabil lintas build untuk client eksternal; Application Service sudah framework-agnostic (AL-D02) sehingga entry point mobile murah ditambahkan (ADR-043) | Backend terpisah (Hono/Express) — duplikasi business logic; mobile memanggil Server Actions langsung — tidak stabil/tidak didukung |
 
 ---
 
@@ -518,4 +561,5 @@ Untuk MVP, tidak semua service method di atas diimplementasikan. Prioritas imple
 * `auth-architecture.md` — Better Auth dan otorisasi granular dalam Application Service
 * `../02-product/mvp-definition.md` — scope MVP yang menentukan method mana yang diimplementasikan
 * `../02-product/roles-permissions.md` — role dan permission yang menjadi constraint authorization
-* `../../project-manager/DECISIONS.md` — ADR-001 s/d ADR-015, AL-D01 s/d AL-D04
+* `../../project-manager/DECISIONS.md` — ADR-001 s/d ADR-015, AL-D01 s/d AL-D04, ADR-043 (AL-D08)
+* `../06-engineering/auth-strategy.md` — Better Auth Bearer plugin, konfigurasi auth mobile (AS-D06)

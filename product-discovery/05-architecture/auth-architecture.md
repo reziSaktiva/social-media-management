@@ -378,7 +378,7 @@ Login berhasil
 | SSO/SAML | Tinggi | Low (enterprise) |
 | Two-Factor Authentication (2FA) | Medium | Medium |
 | Audit log untuk auth events | Low | Medium |
-| API key untuk programmatic access | Medium | Low |
+| API key untuk programmatic access (machine-to-machine, bukan login user interaktif — beda dari Bearer plugin mobile ADR-043) | Medium | Low |
 
 ---
 
@@ -396,6 +396,7 @@ Login berhasil
 | AU-D08 | HMAC webhook diverifikasi atas raw body dan receipt durable sebelum ACK | Menjaga autentisitas sekaligus mencegah kehilangan event |
 | AU-D09 | Secret BYOK X berada di dashboard Outstand, bukan aplikasi | Mengurangi exposure secret platform dan selaras ADR-040 |
 | AU-D10 | ADR-040 | AU-D08–D09 mengamandemen boundary proteksi integrasi |
+| AU-D11 | Better Auth Bearer plugin sebagai mekanisme auth mobile client, di atas Route Handler `/api/v1` (ADR-043) | Server Actions tidak stabil lintas build untuk client eksternal; Bearer mempertahankan RBAC di Application Service (AU-D05) tanpa jalur otorisasi kedua khusus mobile |
 
 ---
 
@@ -406,4 +407,5 @@ Login berhasil
 * `application-layer.md` — Middleware strategy dan Application Service authorization pattern
 * `../../02-product/roles-permissions.md` — Permission matrix lengkap per role
 * `realtime-strategy.md` — Session diperlukan sebelum Supabase Realtime subscription
-* `../../project-manager/DECISIONS.md` — ADR-024
+* `../06-engineering/auth-strategy.md` — konfigurasi Better Auth Bearer plugin untuk mobile (AS-D06)
+* `../../project-manager/DECISIONS.md` — ADR-024, ADR-043

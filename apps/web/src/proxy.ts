@@ -4,8 +4,11 @@ import { NextResponse } from "next/server";
 /**
  * Auth guard + workspace context injection — skeleton for M7 auth bootstrap.
  * /api/auth/* and /api/jobs/* are bypassed (monorepo-setup.md).
+ *
+ * Renamed from `middleware` per Next.js 16 file convention
+ * (https://nextjs.org/docs/messages/middleware-to-proxy) — behavior unchanged.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
