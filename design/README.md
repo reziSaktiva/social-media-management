@@ -34,7 +34,7 @@ Sejak ADR-042, **Claude Design menggantikan Figma** sebagai tool handoff visual.
 | Project | `Social Media Management` |
 | Project ID | `84aded99-bb23-49b1-be9f-dd8f21c6873e` |
 | Akses | claude.ai/design (login akun yang sama dengan Claude Code) |
-| Isi | `theme.json`/`styles.css` (token neutral interim), `foundations/`, `components/`, `templates/` (8 layar KSP-01–08) |
+| Isi | `theme.json`/`styles.css` (token neutral interim), `foundations/`, `components/`, `templates/` (8 layar KSP-01–08 + suplemen Auth Flow: login, register, verify email, forgot/reset password) |
 | Cara update | Lewat Claude Code, tool `DesignSync` (bukan MCP terpisah — kapabilitas native) |
 | Sinkronisasi | **Manual, on-request** — bukan otomatis. Minta Claude Code push/pull saat UX baseline atau desain berubah berarti (ADR-042) |
 

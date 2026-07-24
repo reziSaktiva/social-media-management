@@ -4,7 +4,7 @@
 
 | Field        | Value                                              |
 | ------------ | -------------------------------------------------- |
-| Version      | 1.1.0                                              |
+| Version      | 1.2.0                                              |
 | Status       | Active                                             |
 | Last Updated | 2026-07-24                                         |
 | Audience     | Tim designer (Product / UX / UI / Design System)   |
@@ -43,6 +43,7 @@ Struktur yang sudah ada di project (padanan "frame" di Figma dulu):
 | Bagian B.2 (Token Foundations) | `theme.json`, `styles.css`, `foundations/color.html`, `foundations/type.html`, `foundations/layout.html` |
 | Bagian B.3 (Component Inventory) | `components/buttons.html`, `status-chips.html`, `forms.html`, `cards.html`, `navigation.html`, `table.html`, `dialog.html` |
 | KSP-01 s/d KSP-08 | `templates/home.html`, `publish-calendar.html`, `publish-queue.html`, `publish-drafts.html`, `draft-editor.html`, `engage-inbox.html`, `analyze-dashboard.html`, `settings-connected-accounts.html` |
+| Auth Flow *(suplemen, di luar 8 KSP)* | `templates/auth-login.html`, `auth-register.html`, `auth-verify-email.html`, `auth-forgot-password.html`, `auth-reset-password.html` |
 
 Designer melanjutkan langsung di project itu — token saat ini masih **interim/neutral** (lihat `readme.md` project untuk rasionalnya), bukan brand final. Project lama bernama **"Modernist"** di akun yang sama bukan milik product ini — jangan dipakai sebagai referensi.
 
@@ -204,6 +205,10 @@ Sudah direpresentasikan sebagai 8 halaman `templates/` di project Claude Design.
 | KSP-06 | Engage — Comments Inbox | Raka | Triage komentar; last sync; manual refresh; badge setelah sync; thread + reply |
 | KSP-07 | Analyze — Dashboard | Maya + Raka | Snapshot, bukan BI kompleks |
 | KSP-08 | Connected Accounts | Raka / Maya | Connect / reconnect / disconnect jelas |
+
+## A.5.1 Auth Flow (suplemen, di luar 8 KSP)
+
+Sebelum masuk ke app shell, M8 butuh 5 layar pre-session yang **tidak** termasuk 8 KSP ADR-042: Login, Register, Verifikasi Email, Lupa Password (2 state: sebelum/setelah kirim), dan Reset Password. Sumber alur: `auth-strategy.md` (AS-D01–AS-D06) dan `auth-architecture.md` (alur registrasi, login, onboarding pasca-login). Google OAuth ditampilkan sebagai opsi login/register selain email+password (AU-D07). Layar-layar ini memakai token & komponen yang sama (card, field, button) tanpa sidebar — lihat `templates/auth-*.html`.
 
 ### Content status (bahasa visual wajib)
 
@@ -406,7 +411,10 @@ Social Media Management (Claude Design project)
 ├── components/   (buttons, status-chips, forms, cards, navigation, table, dialog)
 └── templates/    (home, publish-calendar, publish-queue, publish-drafts,
                     draft-editor, engage-inbox, analyze-dashboard,
-                    settings-connected-accounts — KSP-01 … KSP-08)
+                    settings-connected-accounts — KSP-01 … KSP-08;
+                    auth-login, auth-register, auth-verify-email,
+                    auth-forgot-password, auth-reset-password — suplemen
+                    Auth Flow, lihat A.5.1)
 ```
 
 Ini bukan lagi rencana ("suggested") — struktur ini sudah live di project Claude Design; lanjutkan langsung di sana.
