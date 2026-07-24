@@ -1,15 +1,27 @@
+"use client";
+
+import { useParams, useRouter } from "next/navigation";
+
+import { Button } from "@astryxdesign/core/Button";
+import { EmptyState } from "@astryxdesign/core/EmptyState";
+
 export default function Page() {
+  const router = useRouter();
+  const params = useParams<{ slug: string }>();
+
   return (
     <main className="flex min-h-screen items-center justify-center p-8">
-      <div className="space-y-2 text-center">
-        <p className="text-sm uppercase tracking-wide text-zinc-500">
-          Scaffold
-        </p>
-        <h1 className="text-2xl font-semibold text-zinc-900">Drafts</h1>
-        <p className="text-sm text-zinc-600">
-          Placeholder — implementasi fitur di M8.
-        </p>
-      </div>
+      <EmptyState
+        title="Belum ada draft"
+        description="Draft yang belum terjadwal akan muncul di sini."
+        actions={
+          <Button
+            label="+ New Post"
+            variant="primary"
+            onClick={() => router.push(`/${params.slug}/publish/drafts/new`)}
+          />
+        }
+      />
     </main>
   );
 }

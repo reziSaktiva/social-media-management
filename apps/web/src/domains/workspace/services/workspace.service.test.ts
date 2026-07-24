@@ -19,6 +19,7 @@ function createFakeRepository(
       slug,
     }),
     findAnyMembershipSlugByUserId: async () => null,
+    findBySlug: async () => null,
     ...overrides,
   };
 }
@@ -123,5 +124,28 @@ describe("WorkspaceService.getDefaultWorkspaceSlugForUser", () => {
     await expect(service.getDefaultWorkspaceSlugForUser(USER_ID)).resolves.toBe(
       "acme",
     );
+  });
+});
+
+describe("WorkspaceService.getWorkspaceBySlug", () => {
+  it("delegates to the repository", async () => {
+    const record: WorkspaceRecord = {
+      id: asWorkspaceId("workspace-1"),
+      name: "Acme",
+      slug: "acme",
+    };
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findBySlug: async () => record,
+      }),
+    );
+
+    await expect(service.getWorkspaceBySlug("acme")).resolves.toEqual(record);
+  });
+
+  it("returns null when no workspace matches the slug", async () => {
+    const service = new WorkspaceService(createFakeRepository());
+
+    await expect(service.getWorkspaceBySlug("missing")).resolves.toBeNull();
   });
 });
