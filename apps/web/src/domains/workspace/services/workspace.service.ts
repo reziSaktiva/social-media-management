@@ -59,4 +59,8 @@ export class WorkspaceService {
   async getDefaultWorkspaceSlugForUser(userId: UserId): Promise<string | null> {
     return this.repository.findAnyMembershipSlugByUserId(userId);
   }
+
+  async getWorkspaceBySlug(slug: string): Promise<WorkspaceRecord | null> {
+    return this.repository.findBySlug(slug);
+  }
 }

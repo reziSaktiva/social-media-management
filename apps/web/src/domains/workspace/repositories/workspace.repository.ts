@@ -15,4 +15,6 @@ export interface IWorkspaceRepository {
   }): Promise<WorkspaceRecord>;
 
   findAnyMembershipSlugByUserId(userId: UserId): Promise<string | null>;
+
+  findBySlug(slug: string): Promise<WorkspaceRecord | null>;
 }
