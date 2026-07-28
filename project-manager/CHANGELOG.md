@@ -39,9 +39,44 @@ lanjutan menemukan pola yang sama berulang di 4 titik: root workspace
 
 ### Note
 
-Ini murni perubahan dokumentasi baseline. **Implementasi kode (pindah
-folder route, update `app/page.tsx` redirect target) belum dijalankan** —
-menunggu instruksi eksplisit user. Lihat `PROJECT_STATE.md` → Next Tasks.
+Dokumentasi baseline diselaraskan lebih dulu; implementasi kode menyusul
+di entri di bawah setelah go-ahead eksplisit dari user.
+
+---
+
+## 2026-07-28 — ADR-046: Implementasi routing default view
+
+Branch `feat/adr-046-routing-default-view` (dari `feat/m8-publishing-draft-persistence`).
+
+### Changed
+
+* `apps/web/src/app/[slug]/home/page.tsx` → `apps/web/src/app/[slug]/page.tsx`
+* `apps/web/src/app/[slug]/publish/calendar/page.tsx` → `.../publish/page.tsx`
+* `apps/web/src/app/[slug]/publish/calendar/[postId]/page.tsx` → `.../publish/[postId]/page.tsx`
+* `apps/web/src/app/[slug]/engage/inbox/page.tsx` → `.../engage/page.tsx`
+* `apps/web/src/app/[slug]/settings/general/page.tsx` → `.../settings/page.tsx`
+* Redirect target `/${slug}/home` → `/${slug}` di `app/page.tsx`,
+  `onboarding/actions.ts`, `onboarding/page.tsx`.
+* `WorkspaceSideNav` — href Home ke root workspace; `isSelected` Home pakai
+  exact match pathname (bukan `startsWith`, karena semua route lain juga
+  diawali `/${slug}` — `startsWith` akan membuat Home permanen ter-highlight).
+
+### Verified
+
+* `bun run typecheck`, `bun run lint`, `bun run test` — hijau (21/21 test).
+* Live via ngrok tunnel dengan akun test (Raka Pratama): `/insvire`,
+  `/insvire/publish`, `/insvire/engage`, `/insvire/settings` semua render
+  default view langsung tanpa 404; sidebar highlight benar per section.
+  `/insvire/engage/inbox` dan `/insvire/settings/general` (path lama)
+  terkonfirmasi 404 bersih.
+
+### Known Issue Ditemukan
+
+* `/publish/calendar` (path lama) **tidak** 404 — tertangkap oleh
+  `publish/[postId]` (memperlakukan `"calendar"` sebagai ID), merender
+  placeholder Draft Editor. Dicatat di `PROJECT_STATE.md` → Known Issues;
+  bukan regresi baru (karakteristik placeholder `[postId]` yang belum wired
+  ke data asli), akan otomatis teratasi saat lookup by ID diimplementasikan.
 
 ---
 
