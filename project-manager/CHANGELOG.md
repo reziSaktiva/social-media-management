@@ -4,6 +4,49 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-28 — ADR-046 (Publish): revert interim ke `/publish/calendar`
+
+Verifikasi live ADR-046 menemukan `/publish/calendar` (path lama) tidak
+404 — malah tertangkap `publish/[postId]` (memperlakukan `"calendar"`
+sebagai ID) dan merender placeholder salah. Atas instruksi user, bagian
+Publish di-revert sementara sambil menunggu diskusi lanjutan soal bentuk
+akhir `publish/page.tsx`.
+
+### Changed (kode)
+
+* `publish/[postId]/` → `publish/calendar/[postId]/`; `publish/page.tsx`
+  (isi Calendar) → `publish/calendar/page.tsx`.
+* `publish/page.tsx` (baru) — cuma `redirect(`/${slug}/publish/calendar`)`.
+* Home, Engage, Settings **tidak diubah** — tetap final sesuai ADR-046.
+
+### Changed (dokumentasi)
+
+* `DECISIONS.md` — ADR-046 ditambah section "Catatan Tambahan (2026-07-28,
+  belum final)" mencatat temuan collision + revert interim; poin Decision
+  asli tidak dihapus/ditulis ulang, tetap jadi catatan historis apa yang
+  awalnya diputuskan.
+* `monorepo-setup.md` — route tree `publish/` disesuaikan (`calendar/`
+  kembali jadi folder), Aturan Routing dan MS-D09 mencatat Publish sebagai
+  pengecualian sementara.
+* `application-layer.md` — Contoh 3 disesuaikan kembali ke
+  `/publish/calendar`.
+* `PROJECT_STATE.md` — Known Issues, Completed, dan Next Tasks diperbarui;
+  next task baru: lanjutkan diskusi bentuk final `publish/page.tsx` di
+  sesi berikutnya.
+
+### Verified
+
+* `bun run typecheck`, `bun run lint`, `bun run test` — hijau.
+* Live via ngrok tunnel: `/insvire/publish` redirect ke
+  `/insvire/publish/calendar`, render "Content Calendar", sidebar Publish
+  tetap ter-highlight.
+
+### Status
+
+**Belum final.** Ditunda ke sesi berikutnya atas permintaan user.
+
+---
+
 ## 2026-07-28 — ADR-046: Routing convention, default view render di root path
 
 Diskusi berawal dari temuan bahwa klik "Publish"/"Engage" di sidebar 404

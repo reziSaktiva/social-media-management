@@ -131,9 +131,11 @@ src/app/
 │   │
 │   ├── publish/
 │   │   ├── layout.tsx            ← Publish sub-nav (Calendar / Queue / Drafts / History)
-│   │   ├── page.tsx              ← Content Calendar (default tab; IA-D04, ADR-046)
-│   │   ├── [postId]/
-│   │   │   └── page.tsx          ← Draft Editor (buka dari Calendar)
+│   │   ├── page.tsx              ← Redirect ke /publish/calendar (interim, lihat ADR-046 Catatan Tambahan — belum final)
+│   │   ├── calendar/
+│   │   │   ├── page.tsx          ← Content Calendar (default tab; IA-D04)
+│   │   │   └── [postId]/
+│   │   │       └── page.tsx      ← Draft Editor (buka dari Calendar)
 │   │   ├── queue/
 │   │   │   ├── page.tsx          ← Queue Management
 │   │   │   └── [postId]/
@@ -198,15 +200,19 @@ src/app/
 - `/api/auth/*` dan `/api/jobs/*` di-bypass dari session Middleware — auth sendiri dilindungi Better Auth; job runner dilindungi header `X-Job-Secret` (lihat `auth-architecture.md`, `deployment-infrastructure.md`).
 - `/api/webhooks/outstand` wajib membaca raw body sebelum parsing. Route memanggil WebhookIngestion Application Service untuk menulis `outstand_webhook_events` idempoten dan enqueue `outstand.webhook.process`; business processing tidak berjalan inline.
 - `billing/` ada di routing MVP tapi halaman menampilkan placeholder — implementasi Post-MVP.
-- Section dengan default/single view (Home, Publish → Calendar, Engage →
-  Inbox, Settings → General) merender langsung di `page.tsx` pada root
-  path section-nya — bukan named child segment terpisah (`/home`,
-  `/calendar`, `/inbox`, `/general` tidak ada sebagai path). Sub-screen
-  non-default tetap punya segment eksplisit (`queue`, `drafts`, `history`,
-  `connected-accounts`, `members`, `roles`, `billing`). Segment yang hanya
-  berfungsi sebagai container (`layout.tsx` tanpa `page.tsx` sendiri, atau
-  tanpa keduanya) tidak boleh dibiarkan — setiap section wajib punya
-  `page.tsx` di root path-nya (ADR-046).
+- Section dengan default/single view (Home, Engage → Inbox, Settings →
+  General) merender langsung di `page.tsx` pada root path section-nya —
+  bukan named child segment terpisah (`/home`, `/inbox`, `/general` tidak
+  ada sebagai path). Sub-screen non-default tetap punya segment eksplisit
+  (`queue`, `drafts`, `history`, `connected-accounts`, `members`, `roles`,
+  `billing`). Segment yang hanya berfungsi sebagai container (`layout.tsx`
+  tanpa `page.tsx` sendiri, atau tanpa keduanya) tidak boleh dibiarkan —
+  setiap section wajib punya `page.tsx` di root path-nya (ADR-046).
+- **Pengecualian sementara — Publish:** `/publish` masih redirect ke
+  `/publish/calendar` (bukan render langsung), karena `calendar/` perlu
+  tetap ada sebagai folder statis untuk mencegah `publish/[postId]`
+  menangkap path lama secara salah. Ini interim, belum final — lihat
+  ADR-046 Catatan Tambahan di `DECISIONS.md`.
 
 ---
 
@@ -464,7 +470,7 @@ import { something } from '@/domains/workspace';  // di dalam packages/shared/
 | MS-D06 | Outstand webhook route hanya ingestion; processor berjalan sebagai JOB-01 | Durable-before-ACK dan retry internal tidak bercampur dengan HTTP delivery vendor |
 | MS-D07 | `src/lib/outstand/` menjadi lokasi implementasi ACL | Semua kontrak vendor, termasuk upload media dan comments/replies, terisolasi dari domain |
 | MS-D08 | ADR-040 | MS-D06–D07 mengamandemen detail route/infrastructure Engineering Baseline |
-| MS-D09 | Default/single view section render langsung di root path (`page.tsx`), bukan named child segment (`/home`, `/publish/calendar`, `/engage/inbox`, `/settings/general` dihapus) | Menutup celah 404 sistemik di root section + selaras pola navigasi profesional (GitHub, Vercel, Notion) | Redirect ke default child; shared component dua URL — lihat ADR-046 |
+| MS-D09 | Default/single view section render langsung di root path (`page.tsx`), bukan named child segment (`/home`, `/engage/inbox`, `/settings/general` dihapus). Publish jadi pengecualian sementara — `/publish` redirect ke `/publish/calendar` (`calendar/` tetap ada), belum final | Menutup celah 404 sistemik di root section + selaras pola navigasi profesional (GitHub, Vercel, Notion); Publish di-revert sementara karena `publish/[postId]` menangkap `/publish/calendar` secara salah | Redirect ke default child; shared component dua URL — lihat ADR-046 (+ Catatan Tambahan) |
 
 ---
 

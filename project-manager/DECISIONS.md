@@ -2047,3 +2047,26 @@ Accepted
   dibangun — ditolak; root section tetap 404 kalau diakses langsung tanpa
   melalui klik sidebar dulu, dan tidak ada dokumen yang pernah menugaskan
   siapa yang harus menutup gap ini.
+
+### Catatan Tambahan (2026-07-28, belum final)
+
+Implementasi live menemukan masalah yang tidak diantisipasi poin Decision
+di atas: karena `publish/` juga punya sibling route dinamis
+(`publish/[postId]`, dipakai Draft Editor dari Calendar/Queue/Drafts/
+History), menghapus folder statis `calendar/` membuat `/publish/calendar`
+(path lama) **tertangkap oleh `[postId]`** — bukan 404, tapi merender
+placeholder Draft Editor dengan `postId = "calendar"`. Home, Engage,
+Settings tidak punya masalah ini karena tidak ada sibling route dinamis di
+level root mereka.
+
+Sebagai penanganan **sementara**, khusus bagian Publish dari ADR-046
+di-revert: `calendar/` (+ `calendar/[postId]`) dihidupkan lagi sebagai
+folder statis, dan `publish/page.tsx` sekarang redirect ke
+`/publish/calendar` — bukan merender Calendar langsung di root seperti
+poin Decision #1 di atas. **Ini bukan keputusan final** — pembahasan
+tentang bentuk akhir `publish/page.tsx` (tetap redirect permanen, validasi
+format ID di `[postId]` lalu kembali ke pola root-render, atau pendekatan
+lain) ditunda ke sesi berikutnya atas permintaan user. Poin Decision #1
+untuk Home, Engage, Settings **tidak berubah** dan tetap berlaku penuh.
+ADR ini akan diperbarui (atau diikuti ADR baru) begitu keputusan final
+untuk Publish diambil.

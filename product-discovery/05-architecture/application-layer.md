@@ -425,7 +425,7 @@ Outstand API kirim POST /api/webhooks/outstand
 ## Contoh 3: Load Halaman Calendar
 
 ```
-User navigasi ke /[workspace]/publish  ← Calendar adalah default view root Publish (ADR-046)
+User navigasi ke /[workspace]/publish/calendar  ← Calendar; /publish sendiri redirect ke sini untuk sekarang (interim, ADR-046 Catatan Tambahan)
   │
   ├─ [Middleware]
   │    ├─ Verifikasi session (Better Auth)

@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.15     |
+| Version      | 1.0.16     |
 | Status       | Active     |
 | Last Updated | 2026-07-28 |
 
@@ -252,17 +252,22 @@ Restricted Actions:
   mock notice) — diverifikasi via browser (ngrok tunnel) dan cek langsung
   row di Supabase. "Schedule" tetap mock sampai `OutstandAdapter`/kredensial
   Outstand siap (di luar scope ini).
-* **ADR-046 — implementasi routing selesai:** `[slug]/home` → `[slug]`,
-  `publish/calendar` → `publish` (+ `calendar/[postId]` → `publish/[postId]`),
-  `engage/inbox` → `engage`, `settings/general` → `settings`. Redirect target
-  di `app/page.tsx`, `onboarding/actions.ts`, `onboarding/page.tsx` diupdate
-  dari `/${slug}/home` → `/${slug}`. `WorkspaceSideNav` — href Home ke root
-  workspace, `isSelected` Home pakai exact match (bukan `startsWith`, karena
-  semua route lain juga diawali `/${slug}`). Diverifikasi live via ngrok
-  tunnel (akun test Raka Pratama): `/insvire`, `/insvire/publish`,
-  `/insvire/engage`, `/insvire/settings` semua render langsung tanpa 404;
-  `/insvire/engage/inbox` dan `/insvire/settings/general` (path lama)
-  terkonfirmasi 404 bersih. typecheck/lint/test hijau.
+* **ADR-046 — implementasi routing (Home/Engage/Settings selesai; Publish
+  interim, lihat Known Issues):** `[slug]/home` → `[slug]`, `engage/inbox` →
+  `engage`, `settings/general` → `settings` — ketiganya render langsung di
+  root, final. Redirect target di `app/page.tsx`, `onboarding/actions.ts`,
+  `onboarding/page.tsx` diupdate dari `/${slug}/home` → `/${slug}`.
+  `WorkspaceSideNav` — href Home ke root workspace, `isSelected` Home pakai
+  exact match (bukan `startsWith`, karena semua route lain juga diawali
+  `/${slug}`). Publish sempat ikut pola yang sama (`publish/calendar` →
+  `publish`), tapi ditemukan `/publish/calendar` tertangkap salah oleh
+  `publish/[postId]` — di-revert jadi `publish/page.tsx` redirect ke
+  `/publish/calendar` (`calendar/` dihidupkan lagi). Diverifikasi live via
+  ngrok tunnel (akun test Raka Pratama): `/insvire`, `/insvire/publish`
+  (redirect ke `/insvire/publish/calendar`), `/insvire/engage`,
+  `/insvire/settings` semua bekerja tanpa 404; `/insvire/engage/inbox` dan
+  `/insvire/settings/general` (path lama) terkonfirmasi 404 bersih.
+  typecheck/lint/test hijau di setiap tahap.
 
 ---
 
@@ -280,6 +285,11 @@ Restricted Actions:
 
 # Next Tasks
 
+* **Lanjutkan diskusi bentuk final `publish/page.tsx` (ADR-046 addendum).**
+  Saat ini cuma redirect interim ke `/publish/calendar`. Perlu diputuskan:
+  tetap redirect permanen, atau ada pendekatan lain — lalu amandemen
+  ADR-046 dan `monorepo-setup.md` mengikuti keputusan final. Ditunda ke
+  sesi berikutnya atas permintaan user (2026-07-28).
 * **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (mock), dan persistensi "Save as Draft" selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
 * **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (`/publish/drafts/new`) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
@@ -316,19 +326,20 @@ Restricted Actions:
   smoke test dan production build, tetapi risiko perubahan API tetap dikelola
   dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
   verifikasi ulang saat upgrade.
-* **`/publish/[literal string]` tertangkap oleh route `[postId]`, bukan 404.**
-  Setelah ADR-046, `/publish` tidak lagi punya folder statis `calendar/` —
-  jadi path lama `/publish/calendar` sekarang dicocokkan ke
-  `publish/[postId]/page.tsx` (memperlakukan `"calendar"` sebagai nilai
-  `postId`) dan merender placeholder "Draft Editor (Calendar)", bukan 404.
-  Ditemukan saat verifikasi live. Ini bukan regresi baru — placeholder
-  `[postId]` di seluruh app (`queue`, `drafts`, `history`) juga menerima
-  string apa pun sebagai ID karena belum wired ke data asli; begitu
-  `PublishingService` benar-benar melakukan lookup by ID (lanjutan
-  Publishing MVP), ID yang tidak valid akan otomatis dapat respons
-  not-found dari domain layer. `/engage/inbox` dan `/settings/general`
-  tidak punya masalah ini — keduanya 404 bersih karena tidak ada sibling
-  dynamic segment di section tersebut.
+* **Publish belum final — `page.tsx` di folder `publish` masih interim.**
+  Temuan `/publish/calendar` tertangkap oleh `publish/[postId]` (memperlakukan
+  `"calendar"` sebagai `postId`, merender placeholder salah, bukan 404) sudah
+  ditutup **sementara** dengan revert: `calendar/` (+ `calendar/[postId]`)
+  dihidupkan lagi sebagai folder statis, dan `publish/page.tsx` sekarang
+  cuma redirect ke `/publish/calendar` — bukan lagi merender Calendar
+  langsung di root seperti keputusan awal ADR-046. Diverifikasi live
+  (redirect bekerja, sidebar highlight benar, typecheck/lint/test hijau).
+  **Ini keputusan interim**, bukan final — masih ada diskusi lanjutan yang
+  tertunda soal bentuk akhir `publish/page.tsx` (redirect permanen? konten
+  baru? sesuatu yang lain?). ADR-046 belum diamandemen resmi untuk bagian
+  Publish ini; lihat catatan tambahan di `DECISIONS.md`. Home, Engage,
+  Settings **tidak terdampak** — tetap sesuai ADR-046 semula (render
+  langsung di root, tanpa redirect).
 * **Hydration gagal saat diakses lewat tunnel ngrok.** Saat uji halaman auth
   lewat tunnel ngrok yang dipakai untuk `BETTER_AUTH_URL`, seluruh halaman
   (bukan spesifik komponen auth) tidak ter-hydrate — tidak ada React fiber
