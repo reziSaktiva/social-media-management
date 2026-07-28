@@ -24,6 +24,8 @@ import { VStack } from "@astryxdesign/core/VStack";
 
 import { ContentFormat, SocialPlatform } from "@social/shared";
 
+import { saveDraftAction } from "./actions";
+
 type MockAccountStatus = "active" | "disconnected";
 
 interface MockAccount {
@@ -124,7 +126,11 @@ export default function NewDraftPage() {
   const [scheduleDate, setScheduleDate] = useState<string | undefined>();
   const [scheduleTime, setScheduleTime] = useState<string | undefined>();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [mockNotice, setMockNotice] = useState<string | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [notice, setNotice] = useState<{
+    status: "success" | "info";
+    title: string;
+  } | null>(null);
 
   const selectedAccounts = useMemo(
     () =>
@@ -152,19 +158,28 @@ export default function NewDraftPage() {
     });
   }
 
-  function handleSaveDraft() {
-    setStatus("draft");
-    setMockNotice(
-      "Draft disimpan (mock) — belum tersambung ke database. Persistensi nyata menyusul.",
-    );
+  async function handleSaveDraft() {
+    setIsSavingDraft(true);
+    try {
+      const result = await saveDraftAction(slug, caption);
+      setStatus("draft");
+      setNotice({
+        status: "success",
+        title: `Draft tersimpan (ID: ${result.postId}).`,
+      });
+    } finally {
+      setIsSavingDraft(false);
+    }
   }
 
   function handleConfirmSchedule() {
     setIsConfirmOpen(false);
     setStatus("scheduled");
-    setMockNotice(
-      "Jadwal dikonfirmasi (mock) — publish sebenarnya menunggu OUTSTAND_API_KEY & OUTSTAND_WEBHOOK_SECRET.",
-    );
+    setNotice({
+      status: "info",
+      title:
+        "Jadwal dikonfirmasi (mock) — publish sebenarnya menunggu OUTSTAND_API_KEY & OUTSTAND_WEBHOOK_SECRET.",
+    });
   }
 
   return (
@@ -181,7 +196,7 @@ export default function NewDraftPage() {
         />
       </HStack>
 
-      {mockNotice ? <Banner status="info" title={mockNotice} /> : null}
+      {notice ? <Banner status={notice.status} title={notice.title} /> : null}
 
       <HStack gap={6} align="start" wrap="wrap">
         <VStack gap={4} width="100%" maxWidth={560}>
@@ -321,6 +336,7 @@ export default function NewDraftPage() {
               label="Save as Draft"
               variant="secondary"
               onClick={handleSaveDraft}
+              isLoading={isSavingDraft}
             />
             <Button
               label="Schedule"
