@@ -4,9 +4,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.11     |
+| Version      | 1.0.12     |
 | Status       | Active     |
-| Last Updated | 2026-07-24 |
+| Last Updated | 2026-07-28 |
 
 ---
 
@@ -14,17 +14,17 @@
 
 | Item              | Value                            |
 | ----------------- | -------------------------------- |
-| Current Phase     | Phase 5 — Repository & Bootstrap |
-| Current Milestone | M7 — Repository & Bootstrap      |
+| Current Phase     | Phase 6 — Implementation      |
+| Current Milestone | M8 — Development               |
 | Current Sprint    | Sprint 5                         |
-| Overall Progress  | 100% (M7)                        |
-| Project Status    | M7 Complete — siap M8            |
+| Overall Progress  | M7 100% · M8 in progress         |
+| Project Status    | M8 berjalan — Publishing MVP (mock) |
 
 ---
 
 # Current Focus
 
-M7 Repository & Bootstrap **selesai**. Siap M8 Development.
+M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
 
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
 * `AGENTS.md` di root sudah ada; skill resmi vendor yang relevan (Prisma,
@@ -36,6 +36,9 @@ M7 Repository & Bootstrap **selesai**. Siap M8 Development.
   Overview, AGENTS, dan AI Context sudah memakai Astryx permanen, neutral theme
   M8, Tailwind layout-only, wrapper selektif, serta exact pin Beta. Instalasi
   dan smoke test Next.js 16 juga sudah selesai.
+* Fokus M8 saat ini: Auth Flows, Workspace Onboarding, App Shell, dan Draft
+  Editor (mock data) sudah selesai; lanjut ke persistensi nyata Publishing
+  MVP + integrasi Outstand (ADR-040).
 
 ---
 
@@ -43,7 +46,7 @@ M7 Repository & Bootstrap **selesai**. Siap M8 Development.
 
 Current Mode: Ready for Development
 
-Current Phase: Phase 5 complete → siap Phase 6 / M8 Development
+Current Phase: Phase 6 / M8 Development berjalan
 
 Current Objective:
 - Memulai implementasi fitur produk sesuai Architecture & Engineering Baseline
@@ -74,7 +77,7 @@ Restricted Actions:
 | M5 — System Architecture     | ✅ Completed    |
 | M6 — Engineering Planning    | ✅ Completed    |
 | M7 — Repository & Bootstrap  | ✅ Completed    |
-| M8 — Development             | ⏳ Pending      |
+| M8 — Development             | 🟡 In Progress  |
 | M9 — Testing & Release       | ⏳ Pending      |
 
 ---
@@ -158,8 +161,17 @@ Restricted Actions:
   browser interaction, serta Next.js 16 production build sudah terverifikasi.
 * **ADR-042 — Claude Design menggantikan Figma:** project `Social Media
   Management` dibuat di Claude Design (token neutral interim, foundations,
-  components, 8 layar KSP-01–08). Pointer di `design/README.md`; workflow di
-  `ctx-design.md`. Sinkronisasi manual/on-request via tool `DesignSync`.
+  components, 8 layar KSP-01–08). Workflow di `ctx-design.md`. Sinkronisasi
+  manual/on-request via tool `DesignSync`. Pointer project sekarang di
+  `context/ctx-design.md` — folder `design/` sudah dihapus (ADR-045).
+* **ADR-045 — Hapus folder `design/`:** paket handoff designer (`README.md`,
+  `DESIGN_OVERVIEW.md`, `DESIGN_BRIEF.md`, `DESIGN_ONEPAGER.html`, 2 PDF,
+  `_build-brief-pdf.mjs`) dihapus dari repo karena belum ada designer aktif
+  yang memakainya. Pointer project Claude Design dipindah ke
+  `context/ctx-design.md`. Tidak mengubah SoT token (`design-tokens.md`,
+  ADR-038) maupun status Claude Design sebagai handoff tool (ADR-042) — hanya
+  mencabut keberadaan folder `design/` itu sendiri. ~14 dokumen lain yang
+  merujuk `design/` diperbarui mengikuti keputusan ini.
 * **ADR-043 — API mobile-ready alignment selesai:** `application-layer.md`
   (Route Handler v1 — Mobile Client, AL-D08) dan `auth-strategy.md` (Bearer
   plugin, AS-D06) sudah diselaraskan; `auth-architecture.md` diperjelas
@@ -210,31 +222,51 @@ Restricted Actions:
   `/login`, halaman auth publik tetap 200). Invite-teammate & connect-account
   **tidak** termasuk scope ini — sudah ada Server Action & route Settings
   terpisah.
+* **M8 — Workspace App Shell selesai:** layout `[slug]` diganti dari
+  placeholder kosong menjadi `AppShell` + `SideNav` persisten (Home/Publish/
+  Engage/Analyze/Start Page) sesuai `navigation-patterns.md`. Sidebar header
+  menampilkan nama workspace aktif (`WorkspaceService.getWorkspaceBySlug` +
+  `IWorkspaceRepository.findBySlug` baru), footer berisi user dropdown dengan
+  Profile dan Logout (`authClient.signOut`) — menutup gap sebelumnya belum ada
+  jalan logout dari UI.
+* **M8 — Draft Editor (mock data) selesai:** `/publish/drafts/new` (KSP-05)
+  diimplementasikan — Caption Editor, Account Selector, Content Format
+  Selector per akun sesuai matriks ADR-039 (IG/FB: Post/Reel/Story;
+  Pinterest: Pin + title/link; platform lain: Post), Schedule Picker, dan
+  Confirmation Summary dialog sebelum scheduling. Connected accounts masih
+  mock data — `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` belum tersedia,
+  sehingga Save as Draft / Schedule hanya menampilkan notice mock, belum
+  persist ke database. Halaman placeholder Drafts kini link ke editor ini
+  via CTA New Post. Persistensi nyata + integrasi `OutstandAdapter` adalah
+  follow-up ADR-040.
+* Dev config: `next.config.ts` — `allowedDevOrigins` menambahkan hostname
+  tunnel ngrok untuk uji lokal (nilai efemeral, perlu diupdate manual saat
+  domain tunnel berubah).
 
 ---
 
 # In Progress
 
-* Tidak ada item alignment atau smoke test yang sedang dikerjakan. Fokus
-  berikutnya: M8 Development — Publishing MVP (setelah workspace onboarding
-  selesai).
+* **Publishing MVP — persistensi nyata:** Draft Editor UI (mock data) sudah
+  selesai; task berikutnya adalah menyambungkan Save as Draft / Schedule ke
+  database nyata (bukan lagi mock notice) dan integrasi `OutstandAdapter`
+  (ADR-040).
 * Template `design-tokens.md` sudah disiapkan (status Draft / TBD); nilai final
   diisi setelah feature selesai dan designer masuk (ADR-041 mengamendemen urutan
   kerja ADR-038).
-* ADR-039 dikunci: Content Format MVP terdokumentasi di Product/UX/Architecture + enum `ContentFormat` + migrasi Prisma; UI Draft Editor belum diimplementasi.
 
 ---
 
 # Next Tasks
 
-* **M8 — Development:** auth flows UI dan workspace onboarding selesai; lanjut fitur produk berikutnya (publishing MVP, dll.) sesuai baseline + `context/`.
+* **M8 — Development:** auth flows UI, workspace onboarding, App Shell, dan Draft Editor (mock) selesai; lanjut ke persistensi nyata Publishing MVP sesuai baseline + `context/`.
+* **Publishing MVP — persistensi nyata:** sambungkan Draft Editor (`/publish/drafts/new`) ke database — `PublishingService`, tabel draft/post, dan status transition — menggantikan mock notice saat ini.
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
   `post.published` / `post.error` / `account.token_expired` dengan
   durable-before-ACK, job retry internal, media upload working copy, serta
   engagement comment/reply sync 30 menit + manual refresh.
 * **Operasional X:** Project Owner mengonfigurasi kredensial BYOK X secara
   manual di dashboard Outstand; aplikasi tidak membuat form atau secret store X.
-* **Publishing MVP:** Draft Editor harus mengimplementasi Content Format Selector per akun (ADR-039) — jangan ship New Post tanpa Post/Reel/Story (IG/FB) dan Pin (Pinterest).
 * **API mobile (ADR-043):** siapkan skema `apps/web/app/api/v1/...` dan
   konfigurasi Better Auth Bearer plugin (`trustedOrigins`,
   `rateLimit.customRules`) mendahului M8 web berjalan jauh. Endpoint mobile
@@ -283,6 +315,10 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-045 — Hapus folder `design/` (belum ada designer aktif); pointer
+  project Claude Design dipindah ke `context/ctx-design.md`. Tidak mengubah
+  ADR-038 (SoT token) maupun ADR-042 (Claude Design sebagai handoff tool) —
+  hanya mencabut keberadaan folder itu sendiri (2026-07-28).
 * ADR-044 — Rename env var client-side Supabase:
   `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
   mengikuti sistem API key baru Supabase (publishable/secret key
@@ -316,7 +352,7 @@ Tidak ada blocker saat ini.
 * ADR-038 + ADR-041 — SoT design tokens tetap di
   `product-discovery/06-engineering/design-tokens.md`; neutral theme Astryx
   dipakai selama M8 dan nilai final diisi setelah feature selesai serta designer
-  masuk; `design/` bukan SoT token.
+  masuk; folder `design/` sudah dihapus (ADR-045), tidak pernah jadi SoT token.
 * ADR-037 — Perluasan aditif `SocialPlatform`: Threads & Pinterest ditambah; Twitter/X & LinkedIn tetap. Daftar resmi: Instagram, Facebook, Twitter/X, LinkedIn, TikTok, YouTube, Threads, Pinterest (2026-07-21).
 * AI Context — opsi A: pertahankan 8 `ctx-*.md`; Product+User di `ctx-business`; UX di `ctx-design`; coding rules di `ctx-development` + pola fitur di `ctx-implementation` (2026-07-17).
 * M7 — Prisma **7.x**: URL di `prisma.config.ts` (`DIRECT_URL`) + runtime adapter (`DATABASE_URL`); semantik DO-D04 tetap (2026-07-17).

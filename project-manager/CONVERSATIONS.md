@@ -18,6 +18,37 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-07-28 — Folder `design/` dihapus — bukan acuan AI/engineering
+
+**Phase:** M8 Development
+
+**Summary:** Audit sinkronisasi dokumentasi menemukan `design/` punya 4
+inkonsistensi kecil (version mismatch, section ketinggalan). User bertanya
+lebih dalam: apakah `design/` benar-benar dibutuhkan untuk mengerjakan UI?
+Ditelusuri lewat `context/ctx-design.md` sendiri — jawabannya tidak; SoT UI
+yang benar-benar dipakai AI adalah `04-ux/` (alur), `design-tokens.md`
+(token), dan Astryx CLI lokal (komponen). `design/` cuma paket handoff untuk
+designer manusia yang belum join project. Karena menganggur tanpa dipakai,
+disepakati dihapus dengan versi ringan: pindahkan pointer Claude Design yang
+masih berguna, baru hapus sisanya.
+
+**Key Insight / Decision:** ADR-045 — hapus folder `design/` seluruhnya;
+pointer project Claude Design (project ID, akses, `DesignSync`) dipindah ke
+`context/ctx-design.md`. Tidak mengubah ADR-038 (SoT token tetap
+`design-tokens.md`) maupun ADR-042 (Claude Design tetap handoff tool) — hanya
+mencabut keberadaan folder `design/` itu sendiri. Saat designer benar-benar
+join, paket handoff disusun ulang dari `04-ux/` + `design-tokens.md`.
+
+**Impact:** `DECISIONS.md` (ADR-045), `context/ctx-design.md` (ditulis
+ulang), `PROJECT_STATE.md`, `CHANGELOG.md`, dan 10 dokumen lain yang tadinya
+merujuk `design/` (`AGENTS.md`, `context/README.md`,
+`context/ctx-technical-context.md`, `PROJECT_OVERVIEW.md`, `README.md`,
+`DEVELOPER_WORKFLOW.md`, `.agents/skills/project-os-navigator/SKILL.md`,
+`product-discovery/README.md`, `06-engineering/README.md`,
+`06-engineering/design-tokens.md`, `04-ux/README.md`).
+
+---
+
 ## 2026-07-23 — Astryx sebagai fondasi UI permanen
 
 **Phase:** M7 complete → siap M8 Development

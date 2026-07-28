@@ -165,8 +165,7 @@ Perubahan progress UX Planning harus diperbarui pada:
 
 # Related Documents
 
-* `../../design/README.md` — ruang dokumentasi tim designer
-* `../../design/DESIGN_OVERVIEW.md` — ringkasan Product UX Map + Design System Blueprint
+* `../../context/ctx-design.md` — pointer Claude Design project (folder `design/` dihapus, ADR-045)
 * `../README.md`
 * `../01-business/README.md`
 * `../01-business/product-vision.md`

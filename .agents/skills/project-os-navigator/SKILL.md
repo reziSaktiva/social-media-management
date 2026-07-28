@@ -200,9 +200,6 @@ social-media-management/
 │   ├── CHANGELOG.md         → Riwayat perubahan ← update setiap sesi
 │   ├── CONVERSATIONS.md     → Log diskusi penting ← update jika ada insight
 │   └── BRAINSTORM.md        → Bank ide ← update dari sesi brainstorm
-├── design/                  → Dokumentasi operasional untuk tim designer
-│   ├── README.md
-│   └── DESIGN_OVERVIEW.md   → Product UX Map + Design System Blueprint
 └── product-discovery/       → Source of Truth produk: business s/d engineering
     ├── README.md
     ├── 01-business/         → Business Discovery

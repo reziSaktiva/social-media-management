@@ -154,7 +154,6 @@ Berbeda dengan section lain di dokumen ini, section ini **boleh bertambah** seir
 * Setiap inkonsistensi yang ditemukan AI harus disebutkan secara eksplisit ke user, bukan didiamkan atau diperbaiki secara diam-diam.
 * Lebih menyukai struktur dokumentasi yang rapi dan tidak ambigu dibandingkan kecepatan — good documentation dianggap lebih penting daripada langsung coding.
 * Terbuka mendiskusikan ulang keputusan dokumentasi (governance, klasifikasi dokumen) jika ditemukan potensi inkonsistensi jangka panjang.
-* Perubahan di folder `design/` (brief, PDF handoff, artefak untuk designer) **tidak** dicatat di `CHANGELOG.md` maupun `PROJECT_STATE.md` — itu ruang operasional desain, bukan bagian dari tracking development.
 
 **Cara Menambah Entry Baru:**
 
@@ -168,8 +167,7 @@ Jika sesi kerja mengungkap preferensi baru (misal: gaya review kode, cara approv
 → PROJECT_STATE.md
 → PROJECT_RULES.md
 → DECISIONS.md
-→ ../design/README.md
-→ ../design/DESIGN_OVERVIEW.md
+→ ../context/ctx-design.md
 → ../product-discovery/README.md
 → ../product-discovery/01-business/README.md
 → ../product-discovery/02-product/README.md

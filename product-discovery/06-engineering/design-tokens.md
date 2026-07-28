@@ -6,7 +6,9 @@ Dokumen ini adalah **Source of Truth visual tokens** untuk implementasi UI di
 Nilai token final diisi **setelah feature selesai dan designer masuk**, lalu
 di-approve oleh Project Manager (ADR-041 mengamendemen urutan kerja ADR-038).
 Selama M8, implementasi feature memakai neutral theme bawaan Astryx dan tidak
-menunggu token final. Folder `design/` dan screenshot bukan acuan nilai final.
+menunggu token final. Screenshot bukan acuan nilai final; folder `design/`
+(paket handoff designer) sudah dihapus karena belum ada designer aktif
+(ADR-045).
 
 | Field | Value |
 | ----- | ----- |
@@ -14,7 +16,7 @@ menunggu token final. Folder `design/` dan screenshot bukan acuan nilai final.
 | Lokasi SoT | Dokumen ini (ADR-038) |
 | Implementasi kode | `apps/web` (Astryx theme + Tailwind token bridge) |
 | UX / struktur layar | Tetap di `../04-ux/` — **tidak** diganti dokumen ini |
-| Handoff designer | `../../design/` — ruang operasional; bukan SoT token |
+| Handoff designer | Belum ada paket (folder `design/` dihapus, ADR-045); pointer Claude Design di `../../context/ctx-design.md` |
 
 ---
 
@@ -28,8 +30,8 @@ brand sementara atau memblokir implementasi layar karena tabel masih `TBD`.
 
 Claude Design menggantikan Figma sebagai design handoff tool (ADR-042) — project
 `Social Media Management` (projectId `84aded99-bb23-49b1-be9f-dd8f21c6873e`),
-diakses lewat tool `DesignSync` bawaan Claude Code. Lihat `../../design/README.md`
-untuk pointer lengkap.
+diakses lewat tool `DesignSync` bawaan Claude Code. Lihat
+`../../context/ctx-design.md` untuk pointer lengkap.
 
 Pastikan hasil design selaras dengan UX Baseline (`../04-ux/`):
 
@@ -82,7 +84,7 @@ Engineering memetakan token → implementasi:
 
 ## Yang tidak dilakukan
 
-* Menjadikan PDF brief / `design/DESIGN_OVERVIEW.md` sebagai SoT warna/font
+* Menjadikan PDF brief atau dokumen desain lain sebagai SoT warna/font
 * Menempel banyak screenshot ke `04-ux/` sebagai pengganti token
 * Mengubah IA/nav di Claude Design lalu menganggap repo otomatis ikut
 
@@ -94,7 +96,7 @@ Engineering memetakan token → implementasi:
 | ---- | ----- | --------- |
 | DT-D01 | Lokasi SoT token | `product-discovery/06-engineering/design-tokens.md` |
 | DT-D02 | Kapan diisi | Setelah feature selesai, designer masuk, dan design di-approve PM; selama M8 gunakan neutral theme Astryx |
-| DT-D03 | Hubungan dengan `design/` | Folder `design/` = handoff; token final **wajib** masuk dokumen ini |
+| DT-D03 | Hubungan dengan handoff designer | Belum ada folder `design/` (dihapus, ADR-045); token final tetap **wajib** masuk dokumen ini |
 | DT-D04 | Hubungan dengan UX Baseline | `04-ux/` mengatur alur & zona fungsi; dokumen ini hanya visual tokens |
 | DT-D05 | Stack implementasi | Astryx untuk komponen/theme + Tailwind khusus layout dan responsive composition (ADR-041) |
 
@@ -226,7 +228,8 @@ apps/web — Astryx custom theme + Tailwind token bridge
 Komponen Astryx + wrapper selektif + layar KSP-01 … KSP-08
 ```
 
-Engineering **tidak** membaca folder `design/` sebagai sumber nilai token final.
+Engineering **tidak** membaca paket handoff designer sebagai sumber nilai
+token final (folder `design/` sudah dihapus, ADR-045).
 
 ---
 
@@ -237,4 +240,4 @@ Engineering **tidak** membaca folder `design/` sebagai sumber nilai token final.
 * `../../project-manager/PROJECT_OVERVIEW.md` — Astryx + Tailwind layout-only
 * `../04-ux/` — UX Baseline (alur & layar)
 * `../02-product/roles-permissions.md` — status konten kanonikal
-* `../../design/README.md` — handoff designer (bukan SoT token)
+* `../../context/ctx-design.md` — pointer Claude Design (folder `design/` dihapus, ADR-045)

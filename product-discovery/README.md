@@ -56,7 +56,10 @@ product-discovery/
 └── 06-engineering/
 ```
 
-Ringkasan operasional untuk tim designer (bukan pengganti folder ini) ada di `../design/` — mulai dari `../design/DESIGN_OVERVIEW.md`.
+Folder ringkasan operasional untuk tim designer (`design/`) sudah dihapus —
+belum ada designer aktif di project (ADR-045). Pointer Claude Design ada di
+`../context/ctx-design.md`; saat designer join, paket handoff disusun ulang
+dari folder ini (`04-ux/` + `06-engineering/design-tokens.md`).
 
 ---
 

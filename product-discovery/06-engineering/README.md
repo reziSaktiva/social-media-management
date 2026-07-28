@@ -38,7 +38,9 @@ Topik yang termasuk dalam scope:
 
 Topik berikut **tidak dibahas** pada folder ini:
 
-* Wireframe detail, eksplorasi Figma, dan brief handoff designer (ada di `../../design/` — bukan SoT token)
+* Wireframe detail, eksplorasi visual, dan brief handoff designer — folder
+  `design/` sudah dihapus (ADR-045), pointer Claude Design ada di
+  `../../context/ctx-design.md`
 * Product Scope dan Feature Priority (sudah di 02-product)
 * System Architecture high-level (ada di 05-architecture)
 * Implementasi kode (ada di fase Development)
