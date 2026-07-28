@@ -4,6 +4,76 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-28 — ADR-046: Routing convention, default view render di root path
+
+Diskusi berawal dari temuan bahwa klik "Publish"/"Engage" di sidebar 404
+karena parent segment (`layout.tsx`) tidak punya `page.tsx` sendiri. Audit
+lanjutan menemukan pola yang sama berulang di 4 titik: root workspace
+(`/{slug}`), `/publish`, `/engage`, `/settings` — semuanya cuma punya
+`layout.tsx` (atau tidak punya apa-apa) di root, tanpa `page.tsx`/redirect.
+
+### Added
+
+* ADR-046 di `DECISIONS.md` — default/single view section (Home,
+  Publish→Calendar, Engage→Inbox, Settings→General) merender langsung di
+  `page.tsx` root path section, bukan named child segment. Menghapus
+  `/home`, `/publish/calendar`, `/engage/inbox`, `/settings/general` dari
+  routing structure secara permanen (bukan redirect kompatibilitas — belum
+  ada internal link yang bergantung padanya, dikonfirmasi lewat audit grep
+  menyeluruh terhadap kode dan dokumentasi).
+
+### Changed
+
+* `product-discovery/06-engineering/monorepo-setup.md` — App Router route
+  tree diperbarui (hapus `home/`, `calendar/`, `inbox/`, `general/` sebagai
+  folder terpisah; `calendar/[postId]` → `[postId]` sejajar dengan
+  `queue/drafts/history`); tambah aturan routing baru + MS-D09 di Decision
+  Log.
+* `product-discovery/05-architecture/application-layer.md` — Contoh 3
+  ("Load Halaman Calendar") diperbarui dari `/[workspace]/publish/calendar`
+  menjadi `/[workspace]/publish`.
+* `information-architecture.md` dan `navigation-patterns.md` **tidak
+  diubah** — dikonfirmasi tidak menyebut literal URL path sama sekali,
+  hanya struktur tab/screen konseptual yang tidak terdampak keputusan ini
+  (IA-D04 Calendar sebagai default tab tetap berlaku).
+
+### Note
+
+Ini murni perubahan dokumentasi baseline. **Implementasi kode (pindah
+folder route, update `app/page.tsx` redirect target) belum dijalankan** —
+menunggu instruksi eksplisit user. Lihat `PROJECT_STATE.md` → Next Tasks.
+
+---
+
+## 2026-07-28 — Publishing MVP: persistensi nyata "Save as Draft"
+
+### Added
+
+* `PublishingService.saveDraft()` — domain layer baru di
+  `apps/web/src/domains/publishing/services/`, diuji unit dengan fake
+  repository (pola sama dengan `WorkspaceService`).
+* `publishingRepository.createDraft()` — implementasi Prisma untuk
+  `IPublishingRepository` di `apps/web/src/lib/repositories/publishing/`.
+* `saveDraftAction` di `/publish/drafts/new/actions.ts` — resolve session +
+  workspace by slug, lalu delegasikan ke `PublishingService.saveDraft()`.
+
+### Changed
+
+* Draft Editor (`/publish/drafts/new`) — tombol "Save as Draft" kini
+  memanggil persistensi nyata (bukan lagi mock notice); mendapat post ID
+  asli di success banner. Diverifikasi via browser (ngrok tunnel) dan cek
+  langsung row di Supabase. "Schedule" tetap mock — menunggu
+  `OutstandAdapter`/kredensial Outstand (ADR-040).
+
+### Fixed
+
+* `PROJECT_STATE.md` — section **In Progress** dan **Next Tasks** masih
+  menyebut persistensi Publishing MVP sebagai belum dimulai, padahal
+  implementasi di atas sudah selesai dan ter-commit. Dipindahkan ke
+  **Completed**; sisa scope ("Schedule" + `OutstandAdapter`) disesuaikan.
+
+---
+
 ## 2026-07-28 — Hapus folder `design/` (ADR-045)
 
 Diskusi menemukan bahwa `design/` bukan acuan AI/engineering (SoT UI yang

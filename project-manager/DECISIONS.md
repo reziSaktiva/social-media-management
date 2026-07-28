@@ -1965,3 +1965,85 @@ Accepted
 * Rename folder jadi `design/` → arsip terpisah (mis. `.archive/design/`)
   daripada hapus — ditolak; menambah lokasi baru untuk dirawat tanpa
   menyelesaikan akar masalah (tidak ada yang memakai).
+
+---
+
+## Decision ADR-046
+
+### Title
+
+Routing Convention — Default View Section Render di Root Path (Hapus `/home`, `/publish/calendar`, `/engage/inbox`, `/settings/general`)
+
+### Status
+
+Accepted
+
+### Date
+
+2026-07-28
+
+### Decision
+
+1. Section yang punya **satu default/single view** merender langsung di
+   `page.tsx` pada root path section itu sendiri — bukan di named child
+   segment terpisah. Konkretnya:
+   * `/{slug}` (root workspace) langsung merender **Home** — segment
+     `/{slug}/home` **dihapus**. `app/page.tsx` (root redirect) mengarah ke
+     `/${slug}` (bukan lagi `/${slug}/home`).
+   * `/{slug}/publish` langsung merender **Calendar** (default tab per
+     IA-D04/NP-D06) — segment `/publish/calendar` **dihapus**. Detail route
+     `calendar/[postId]` pindah menjadi `/publish/[postId]`.
+   * `/{slug}/engage` langsung merender **Inbox** (satu-satunya layar Engage
+     per `navigation-patterns.md`) — segment `/engage/inbox` **dihapus**.
+   * `/{slug}/settings` langsung merender **General** (tab pertama Settings)
+     — segment `/settings/general` **dihapus**.
+2. Sub-screen **non-default** tetap punya segment eksplisit seperti
+   sekarang: `/publish/queue`, `/publish/drafts`, `/publish/history`,
+   `/settings/connected-accounts`, `/settings/members`, `/settings/roles`,
+   `/settings/billing`. Tidak berubah.
+3. Path lama (`/home`, `/publish/calendar`, `/engage/inbox`,
+   `/settings/general`) **tidak** dipertahankan sebagai redirect
+   kompatibilitas — fitur ini masih tahap M8 Development, belum pernah
+   dirilis ke user eksternal, dan audit codebase + dokumentasi (grep
+   menyeluruh) mengonfirmasi belum ada internal link yang hardcode ke
+   path-path tersebut. Tidak ada broken-link risk nyata.
+4. Aturan umum baru untuk routing App Router project ini: **segment yang
+   hanya berfungsi sebagai container (punya `layout.tsx` tapi tanpa
+   `page.tsx` sendiri, atau tanpa keduanya) tidak boleh dibiarkan begitu
+   saja** — setiap section wajib punya `page.tsx` di root path-nya sendiri,
+   baik berupa default view (kasus di atas) maupun konten asli section
+   tersebut.
+
+### Reason
+
+* Konsisten dengan pola navigasi profesional yang sudah dipraktikkan luas
+  (GitHub repo → tab **Code** default tanpa segment URL; Vercel/Notion →
+  root workspace langsung render konten, bukan `/workspace/home`) —
+  dibanding pola sebelumnya yang membuat root section jadi 404 kalau
+  diakses langsung.
+* Menutup celah 404 sistemik yang ditemukan sekaligus di 4 titik:
+  `/{slug}`, `/{slug}/publish`, `/{slug}/engage`, `/{slug}/settings` —
+  semuanya cuma punya `layout.tsx` (atau bahkan tidak punya apa-apa) di root
+  tanpa `page.tsx`/redirect, sehingga langsung 404 saat diakses.
+* IA-D04/NP-D06 sudah menetapkan Calendar sebagai default Publish secara
+  **tetap** (dijustifikasi khusus untuk persona Raka & Maya), bukan
+  sesuatu yang direncanakan berubah per role/preferensi — jadi tidak ada
+  kehilangan fleksibilitas nyata dari mem-fix default view langsung di
+  root path section.
+* URL jadi lebih pendek dan bersih — selaras dengan keinginan menghindari
+  path yang tidak perlu panjang seperti `/{slug}/home`.
+
+### Alternatives Considered
+
+* **Redirect ke default child** (root section melempar redirect ke
+  `/publish/calendar`, dst., URL berubah di address bar) — ditolak;
+  menambah satu HTTP roundtrip dan tetap mengubah URL bar, padahal tujuan
+  awal justru menyederhanakan URL.
+* **Shared component, dua URL** (root section dan child route sama-sama
+  render komponen yang sama, tanpa redirect) — ditolak; menciptakan dua
+  "canonical URL" untuk konten identik, berisiko membingungkan untuk
+  internal linking dan analytics di kemudian hari.
+* **Biarkan sebagai container 404** sampai ada in-page tab-switcher yang
+  dibangun — ditolak; root section tetap 404 kalau diakses langsung tanpa
+  melalui klik sidebar dulu, dan tidak ada dokumen yang pernah menugaskan
+  siapa yang harus menutup gap ini.
