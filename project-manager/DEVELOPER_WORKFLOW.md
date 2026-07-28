@@ -144,4 +144,4 @@ menunggu di antrean sampai akun reconnect.
 * `../product-discovery/04-ux/user-flows.md` — flow lengkap (UF-01 s/d UF-06)
 * `../product-discovery/02-product/roles-permissions.md` — roles & content status
 * `../product-discovery/05-architecture/auth-architecture.md` — auth & session detail
-* `../design/README.md` — pointer Claude Design project
+* `../context/ctx-design.md` — pointer Claude Design project (ADR-045)

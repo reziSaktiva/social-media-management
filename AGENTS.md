@@ -15,6 +15,7 @@ Dokumen ini **bukan** Source of Truth produk. Ia mengarahkan agent ke dokumen ya
 | Keputusan (ADR)                  | `project-manager/DECISIONS.md`             |
 | Produk & engineering             | `product-discovery/`                       |
 | Orientasi arsitektur (ringkas)   | `project-manager/ARCHITECTURE_OVERVIEW.md` |
+| Alur kerja developer (mermaid)   | `project-manager/DEVELOPER_WORKFLOW.md`    |
 | AI Context (ringkas, per domain) | `context/`                                 |
 
 ## Wajib di awal sesi
@@ -39,7 +40,7 @@ context/
 ├── ctx-technical-context.md   ← Stack, env, Prisma, Better Auth, deploy/CI
 ├── ctx-development.md         ← DX, script, lint/test, aturan coding
 ├── ctx-implementation.md      ← Pola implementasi di apps/web & domains/
-└── ctx-design.md              ← design/ + pointer UX (04-ux)
+└── ctx-design.md              ← pointer UX (04-ux) + Claude Design (ADR-045)
 ```
 
 **Aturan:** file `context/ctx-*.md` adalah **indeks + aturan operasional untuk agent** — menunjuk ke baseline, bukan menyalin ulang isi `product-discovery/` atau `project-manager/`. Jika konflik, baseline + ADR menang.
@@ -98,17 +99,17 @@ fase aktif di file ini.
 
 ## Mapping task → baca dulu
 
-| Jenis task                   | Context dulu                                 | Baseline minimal                                                                               |
-| ---------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Fitur / use-case             | `ctx-domain` + `ctx-implementation`          | BC di `05-architecture/` + UX di `04-ux/` (+ `ctx-business` untuk roles/MVP)                   |
-| Schema / migrasi             | `ctx-architecture` + `ctx-technical-context` | `database-strategy.md` + `database-orm.md` + `apps/web/prisma/schema.prisma`                   |
-| Auth / session               | `ctx-architecture` + `ctx-technical-context` | `auth-architecture.md` + `auth-strategy.md`                                                    |
-| Outstand / webhook / publish | `ctx-architecture`                           | `integration-layer.md`                                                                         |
-| Jobs / cron                  | `ctx-architecture`                           | `background-jobs.md`                                                                           |
-| Env / deploy / CI            | `ctx-technical-context`                      | `environment-management.md`, `deployment-infrastructure.md`, `cicd-pipeline.md`                |
-| Coding conventions / DX      | `ctx-development`                            | `dx-tooling.md`                                                                                |
-| UI component / styling       | `ctx-design` + `ctx-implementation`          | `monorepo-setup.md` + `design-tokens.md` + ADR-041                                             |
-| Desain / handoff UI          | `ctx-design`                                 | `design/README.md` + `04-ux/` (perubahan di `design/` tidak wajib masuk CHANGELOG development) |
+| Jenis task                   | Context dulu                                 | Baseline minimal                                                                |
+| ---------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------- |
+| Fitur / use-case             | `ctx-domain` + `ctx-implementation`          | BC di `05-architecture/` + UX di `04-ux/` (+ `ctx-business` untuk roles/MVP)    |
+| Schema / migrasi             | `ctx-architecture` + `ctx-technical-context` | `database-strategy.md` + `database-orm.md` + `apps/web/prisma/schema.prisma`    |
+| Auth / session               | `ctx-architecture` + `ctx-technical-context` | `auth-architecture.md` + `auth-strategy.md`                                     |
+| Outstand / webhook / publish | `ctx-architecture`                           | `integration-layer.md`                                                          |
+| Jobs / cron                  | `ctx-architecture`                           | `background-jobs.md`                                                            |
+| Env / deploy / CI            | `ctx-technical-context`                      | `environment-management.md`, `deployment-infrastructure.md`, `cicd-pipeline.md` |
+| Coding conventions / DX      | `ctx-development`                            | `dx-tooling.md`                                                                 |
+| UI component / styling       | `ctx-design` + `ctx-implementation`          | `monorepo-setup.md` + `design-tokens.md` + ADR-041                              |
+| Desain / handoff UI          | `ctx-design`                                 | `04-ux/` + pointer Claude Design (folder `design/` dihapus, ADR-045)            |
 
 ## Setelah mengubah sesuatu
 
@@ -122,3 +123,4 @@ fase aktif di file ini.
 - Root setup: `README.md`
 - Skills: `.agents/skills/`
 - AI Context index: `context/README.md`
+- Alur kerja developer (mermaid): `project-manager/DEVELOPER_WORKFLOW.md`

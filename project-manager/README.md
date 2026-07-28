@@ -60,9 +60,6 @@ social-media-management/
 │   ├── CHANGELOG.md
 │   ├── CONVERSATIONS.md
 │   └── BRAINSTORM.md
-├── design/                   → dokumentasi operasional untuk tim designer
-│   ├── README.md
-│   └── DESIGN_OVERVIEW.md
 └── product-discovery/        → pengetahuan produk (business s/d engineering)
     ├── README.md
     ├── 01-business/

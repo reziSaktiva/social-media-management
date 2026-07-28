@@ -62,9 +62,9 @@ Implementasi di repo:
 5. CI wajib: install → prisma generate/validate → typecheck → lint → test.
 6. Email transactional provider masih terbuka (AS-D04) — jangan hardcode provider baru tanpa keputusan.
 7. Jangan ubah Engineering Baseline tanpa ADR.
-8. Design tokens: SoT di `design-tokens.md` — **bukan** di folder `design/`.
-   Selama M8 gunakan neutral theme Astryx dan jangan hardcode custom brand hex.
-   Nilai final di-lock setelah feature selesai dan designer masuk.
+8. Design tokens: SoT di `design-tokens.md` (folder `design/` sudah dihapus,
+   ADR-045). Selama M8 gunakan neutral theme Astryx dan jangan hardcode custom
+   brand hex. Nilai final di-lock setelah feature selesai dan designer masuk.
 9. Outstand/X (**ADR-040**): Project Owner mengatur BYOK X secara manual di
    dashboard Outstand. Jangan menambah env var, form, tabel, atau secret store
    aplikasi untuk Client ID/Client Secret X.

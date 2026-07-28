@@ -217,7 +217,7 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 |-------|------|-----------|
 | `id` | `uuid PK DEFAULT gen_random_uuid()` | Connected Account ID |
 | `workspace_id` | `uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE` | |
-| `platform` | `text NOT NULL` | `instagram \| facebook \| twitter \| linkedin \| tiktok \| youtube` |
+| `platform` | `text NOT NULL` | `instagram \| facebook \| twitter \| linkedin \| tiktok \| youtube \| threads \| pinterest` |
 | `outstand_account_id` | `text NOT NULL` | ID dari Outstand API (external reference) |
 | `handle` | `text NOT NULL` | Nama akun (@handle atau nama page) |
 | `status` | `text NOT NULL DEFAULT 'active'` | `active \| disconnected \| error` |

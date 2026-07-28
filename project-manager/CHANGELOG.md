@@ -4,6 +4,111 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-28 — Hapus folder `design/` (ADR-045)
+
+Diskusi menemukan bahwa `design/` bukan acuan AI/engineering (SoT UI yang
+benar-benar dipakai: `04-ux/` + `design-tokens.md` + Astryx CLI, dikonfirmasi
+lewat `context/ctx-design.md`), dan belum ada designer aktif yang memakai
+paket handoff-nya. Diputuskan hapus dengan versi ringan — pindahkan pointer
+Claude Design, baru hapus sisanya.
+
+### Removed
+
+* Folder `design/` seluruhnya: `README.md`, `DESIGN_OVERVIEW.md`,
+  `DESIGN_BRIEF.md`, `DESIGN_ONEPAGER.html`,
+  `Design-Brief-Social-Media-Management.pdf`,
+  `Design-One-Pager-Social-Media-Management.pdf`, `_build-brief-pdf.mjs`.
+
+### Added
+
+* ADR-045 di `DECISIONS.md` — mencatat penghapusan, alasan, dan alternatif
+  yang dipertimbangkan; menegaskan tidak mengubah ADR-038 (SoT token) maupun
+  ADR-042 (Claude Design sebagai handoff tool).
+* `context/ctx-design.md` ditulis ulang — sekarang murni pointer ke UX
+  Baseline (`04-ux/`) dan project Claude Design (project ID, akses,
+  `DesignSync`), tanpa referensi ke file `design/` yang sudah tidak ada.
+
+### Changed
+
+* Referensi ke `design/` diperbarui/dihapus di 12 dokumen lain: `AGENTS.md`,
+  `context/README.md`, `context/ctx-technical-context.md`,
+  `project-manager/PROJECT_OVERVIEW.md`, `PROJECT_STATE.md`, `README.md`,
+  `DEVELOPER_WORKFLOW.md`, `.agents/skills/project-os-navigator/SKILL.md`,
+  `product-discovery/README.md`,
+  `product-discovery/06-engineering/README.md`,
+  `product-discovery/06-engineering/design-tokens.md`,
+  `product-discovery/04-ux/README.md` — semua diarahkan ke
+  `context/ctx-design.md` sebagai pointer baru.
+
+---
+
+## 2026-07-28 — Audit sinkronisasi dokumentasi lintas folder
+
+Hasil audit menyeluruh (project-manager/, context/, product-discovery/, design/, vs kode aktual) menemukan 4 inkonsistensi struktural; semuanya diperbaiki di sesi ini.
+
+### Fixed
+
+* `AGENTS.md` (root) — tabel Source of Truth dan section "Related" belum
+  mencantumkan `project-manager/DEVELOPER_WORKFLOW.md`, meski file itu sudah
+  didaftarkan sebagai Core Document di `project-manager/README.md`. Agent
+  yang strictly mengikuti AGENTS.md tidak akan menemukan file ini. Ditambahkan
+  ke kedua section.
+* `product-discovery/05-architecture/database-strategy.md` — kolom
+  `workspace_connected_accounts.platform` masih mendaftar
+  `instagram | facebook | twitter | linkedin | tiktok | youtube` saja,
+  belum menyertakan `threads` dan `pinterest` yang ditambahkan ADR-037.
+  Dokumen sibling-nya (`domain-model.md`) sudah benar; `database-strategy.md`
+  kelewat saat sinkronisasi ADR-037. Diperbaiki agar konsisten.
+* `design/DESIGN_BRIEF.md` — version metadata internal tidak konsisten
+  (header `v1.1.0` vs footer `v1.0.0`, sisa dari commit `f658175` yang bump
+  header tapi lupa footer). Diselaraskan jadi `v1.2.0` (menyamai
+  `design/DESIGN_OVERVIEW.md` yang sudah di `v1.2.0` sejak commit `b1f9e6c`).
+* `design/DESIGN_BRIEF.md` — belum menyertakan section **A.5.1 Auth Flow
+  (suplemen, di luar 8 KSP)** yang sudah ada di `DESIGN_OVERVIEW.md` sejak
+  commit `b1f9e6c` (5 layar pre-session: login, register, verify-email,
+  forgot/reset password). Commit tersebut hanya mengubah `DESIGN_OVERVIEW.md`
+  + `design/README.md`, tidak menyentuh `DESIGN_BRIEF.md` — padahal Brief
+  seharusnya mirror Overview (per `design/README.md`). Section A.5.1 beserta
+  referensi `templates/auth-*.html` di tabel struktur Claude Design dan B.7
+  ditambahkan agar Brief (sumber PDF handoff resmi) tidak stale dibanding
+  Overview.
+
+---
+
+## 2026-07-28 — Sinkronisasi PROJECT_STATE.md dengan kondisi repo (M8)
+
+### Fixed
+
+* `PROJECT_STATE.md` belum mencatat 4 commit M8 yang sudah merge (PR #15,
+  2026-07-24): Workspace App Shell (SideNav + logout), `getWorkspaceBySlug`,
+  Draft Editor mock data, dan config `allowedDevOrigins` ngrok. Status
+  ditulis ulang: Current Status → M8 In Progress, Milestone Progress M8 →
+  🟡 In Progress, section "In Progress" yang menyebut "UI Draft Editor belum
+  diimplementasi" dihapus (sudah ada, mock data) dan diganti fokus baru:
+  persistensi nyata + integrasi `OutstandAdapter`.
+
+### Added
+
+* **M8 — Workspace App Shell:** layout `[slug]` diganti dari placeholder
+  kosong menjadi `AppShell` + `SideNav` persisten (Home/Publish/Engage/
+  Analyze/Start Page) sesuai `navigation-patterns.md`. Sidebar header
+  menampilkan nama workspace aktif via `WorkspaceService.getWorkspaceBySlug`
+  (+ `IWorkspaceRepository.findBySlug` baru), footer berisi user dropdown
+  dengan Profile dan Logout (`authClient.signOut`).
+* **M8 — Draft Editor (mock data):** `/publish/drafts/new` (KSP-05) —
+  Caption Editor, Account Selector, Content Format Selector per akun sesuai
+  matriks ADR-039 (IG/FB: Post/Reel/Story; Pinterest: Pin + title/link;
+  platform lain: Post), Schedule Picker, dan Confirmation Summary dialog.
+  Connected accounts masih mock data (`OUTSTAND_API_KEY`/
+  `OUTSTAND_WEBHOOK_SECRET` belum tersedia) — Save as Draft / Schedule hanya
+  menampilkan notice mock, belum persist. Halaman placeholder Drafts kini
+  link ke editor ini via CTA New Post. Persistensi nyata + integrasi
+  `OutstandAdapter` adalah follow-up ADR-040.
+* Dev config: `next.config.ts` — `allowedDevOrigins` menambahkan hostname
+  tunnel ngrok untuk uji lokal (nilai efemeral).
+
+---
+
 ## 2026-07-24 — M8: Workspace Onboarding (create-workspace flow)
 
 ### Added
