@@ -16,5 +16,5 @@ export default async function RootPage() {
     asUserId(session.user.id),
   );
 
-  redirect(slug ? `/${slug}/home` : "/onboarding");
+  redirect(slug ? `/${slug}` : "/onboarding");
 }

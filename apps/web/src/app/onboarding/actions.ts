@@ -31,5 +31,5 @@ export async function createWorkspaceAction(
     throw error;
   }
 
-  redirect(`/${workspace.slug}/home`);
+  redirect(`/${workspace.slug}`);
 }
