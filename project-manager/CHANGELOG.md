@@ -4,6 +4,49 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-29 — Design-sync: kode `apps/web` disamakan dengan Claude Design
+
+Arah kebalikan dari ADR-051 (yang menyamakan Claude Design ke Astryx) — kali
+ini kode yang sudah diimplementasikan di M8 disamakan visual/struktur-nya ke
+referensi Claude Design. Murni visual/structural, tidak menambah business
+logic baru (Publish Now/AI Caption Assist sengaja tidak ditambahkan, sesuai
+Next Tasks terpisah).
+
+### Changed
+
+* **Draft Editor** (`[slug]/publish/drafts/new/page.tsx`) — Card wrapper di
+  4 section (Caption/Media/Account Selector/Schedule) dihapus, mengikuti
+  referensi KSP-05 yang tidak card-wrap section form (Card = dashboard
+  widget/settings group, bukan section form, per aturan Astryx sendiri).
+  Tombol "+ Tambah Media" (disabled) diganti `FileInput` asli
+  (`mode="dropzone"`, `isDisabled` + `disabledMessage`) — component swap
+  yang benar, bukan re-design. Date+Time Schedule disejajarkan satu baris.
+  Action bar (Save as Draft/Schedule) dibuat full-width sejajar via
+  `StackItem size="fill"`. Label back button → "Kembali ke Drafts".
+* **Publish tabbar baru** (`[slug]/publish/publish-tabbar.tsx` + update
+  `publish/layout.tsx`) — shared `TabList`/`Tab` (Calendar/Queue/Drafts/
+  History) di atas semua sub-route Publish, `Tab href` otomatis pakai
+  Next.js `Link` (LinkProvider sudah global). 3 tab lain (Calendar/Queue/
+  History) tetap placeholder, tidak ada logic baru ditambahkan.
+* **Drafts List** (`[slug]/publish/drafts/page.tsx`) — page-head
+  ("Publish" / "Draft yang belum terjadwal") + `EmptyState` dibungkus
+  `Card`, sesuai komposisi KSP-04. Data tetap kosong/mock — tidak
+  menambah fetch draft asli (di luar scope design-sync).
+* **Sidebar** (`workspace-side-nav.tsx`) — `IconButton` 🔔 "Notifikasi"
+  ditambahkan di footer sebelum user dropdown, link ke
+  `/account/notifications` (placeholder yang sudah ada), tanpa
+  unread-count real (Notification domain belum diimplementasi).
+* **Auth screens** (Login/Register/Forgot/Reset Password) — dibandingkan
+  detail ke referensi, sudah selaras; tidak ada perubahan kode.
+
+Diverifikasi: `bun run typecheck` & `bun run lint` hijau; browser check
+end-to-end lewat tunnel ngrok (akun test baru) — tabbar navigasi antar
+tab, Draft Editor (FileInput dropzone + disabledMessage tampil benar,
+"Save as Draft" tetap persist ke database nyata tanpa regresi), sidebar
+notifikasi (navigasi ke `/account/notifications` terkonfirmasi).
+
+---
+
 ## 2026-07-29 — Claude Design: 3 gap Critical Function vs 04-ux baseline diperbaiki
 
 Lanjutan audit sinkronisasi (entri di bawah) — user meminta perbaikan
