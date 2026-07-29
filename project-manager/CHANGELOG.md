@@ -4,6 +4,146 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-29 — Claude Design: 3 gap Critical Function vs 04-ux baseline diperbaiki
+
+Lanjutan audit sinkronisasi (entri di bawah) — user meminta perbaikan
+langsung ke Claude Design untuk 3 gap yang ditemukan, tanpa mengubah
+baseline (baseline sudah benar, implementasi yang tertinggal).
+
+### Fixed
+
+* **KSP-01-F05 (Home)** — `home.html`: card/list-row diberi class
+  semantik (`.home-schedule`, `.home-activity`, `.home-engagement`,
+  `.home-analytics`); `AppPrototype.dc.html` diberi handler route() baru
+  supaya klik item mengarah ke Draft Editor / Calendar / Engage /
+  Analyze sesuai peta deep-link di baseline.
+* **KSP-03-F05 (Queue)** — `publish-queue.html`: tombol ↑/↓ ditambahkan
+  di tiap `queue-row`; `AppPrototype.dc.html` menukar posisi DOM baris
+  dengan tetangganya saat tombol diklik + toast konfirmasi.
+* **KSP-06-F02 (Engage)** — `engage-inbox.html`: 3 select filter (Semua
+  Akun / Semua Platform / Semua Status) ditambahkan di atas
+  `inbox-shell`, tiap `thread-item` diberi `data-platform`/`data-status`;
+  `AppPrototype.dc.html` menambahkan `applyEngageFilter()` (dipanggil
+  saat `change` pada select manapun) yang menyembunyikan thread tidak
+  cocok dan menampilkan empty state _"Tidak ada interaksi untuk filter
+  ini"_ (persis wording State Handling KSP-06) saat hasil kosong.
+
+Diverifikasi visual (tampilan statis) di scratchpad sebelum push; logika
+interaktif App Prototype (format `.dc.html` khusus Claude Design) diverifikasi
+lewat review kode karena runtime-nya butuh environment Claude Design asli.
+
+Detail lengkap temuan: entri CHANGELOG di bawah ("Audit sinkronisasi
+Claude Design vs 04-ux baseline").
+
+---
+
+## 2026-07-29 — Audit sinkronisasi Claude Design vs 04-ux baseline
+
+Diminta user untuk cek apakah project Claude Design masih selaras dengan
+`key-screen-patterns.md` dan `navigation-patterns.md` (04-ux baseline)
+setelah rewrite fidelitas Astryx (ADR-051). Dibaca ulang kedua dokumen
+baseline secara penuh dan dibandingkan terhadap setiap Critical Function
+KSP-01–08, label status, struktur sidebar, dan tab bar.
+
+### Findings
+
+* Tidak ada regresi dari rewrite ADR-051 — perubahan token/komponen murni
+  visual, seluruh zona fungsional dan label status baseline masih utuh.
+* 3 gap fungsional pre-existing (bukan disebabkan sesi ADR-051) ditemukan
+  dan dicatat di `PROJECT_STATE.md` Known Issues: KSP-01-F05 (Home deep
+  link belum di-wire), KSP-03-F05 (Queue reorder belum ada), KSP-06-F02
+  (filter Engage tidak ada sama sekali).
+
+Tidak ada perubahan pada file Claude Design maupun baseline — audit ini
+murni pencatatan gap untuk task selanjutnya.
+
+---
+
+## 2026-07-29 — Claude Design: migrasi templates/ selesai, legacy alias dihapus total (ADR-051 addendum)
+
+Lanjutan ADR-051: 13 layar (8 KSP + 5 Auth) + App Prototype
+(`AppPrototype.dc.html`) ditulis ulang — setiap embedded `<style>`/inline
+style yang masih memakai nama token lama (`--color-text-muted`,
+`--radius-md`, `--color-accent-tint`, `--color-surface-subtle`, dst.)
+diganti ke token Astryx asli langsung.
+
+### Fixed
+
+* `thumbnail.html` — ditemukan rusak sejak push pertama ADR-051:
+  mereferensikan `--status-failed-bg`/`--status-published-bg`, token yang
+  sudah dihapus total dari sistem baru (diganti sistem varian `Badge`),
+  bukan dialiaskan. Diperbaiki ke `--color-error`/`--color-success`.
+* Alias singkatan `--text-xs`/`--text-sm`/`--text-lg` (bukan nama token
+  Astryx asli, dibuat sendiri saat penulisan ulang pertama) ternyata masih
+  dipakai aktif di banyak file — diganti ke nama token asli
+  (`--font-size-sm`/`--font-size-lg`) di seluruh project.
+
+### Changed
+
+* `styles.css` — blok "Legacy aliases" dihapus total (dikonfirmasi tidak
+  ada lagi referensi ke nama lama di file manapun). Tidak ada satu pun
+  nama token buatan sendiri yang tersisa di project ini.
+* `readme.md` — bagian yang menjelaskan bridge legacy alias dan status
+  "templates/ belum bermigrasi" diperbarui untuk mencerminkan migrasi
+  yang sudah selesai penuh.
+
+Detail lengkap: `DECISIONS.md` ADR-051 (addendum).
+
+---
+
+## 2026-07-29 — Claude Design: foundations + component library ditulis ulang mengikuti fidelitas Astryx (ADR-051)
+
+User meminta seluruh komponen di project Claude Design memakai komponen
+yang disediakan Astryx (astryx.atmeta.com/components) — bukan CSS buatan
+tangan yang cuma mirip. Cara kerja yang diinginkan: dokumentasi → Design
+System (Claude Design) merancang berdasar dokumentasi itu → implementasi
+berkaca ke Design System. Karena Claude Design adalah kanvas HTML/CSS
+statis (tidak bisa menjalankan React/StyleX asli), setiap nilai visual
+ditulis ulang sebagai replika presisi dari `@astryxdesign/core@0.1.8` +
+`@astryxdesign/theme-neutral@0.1.8` (versi exact pin yang sama dengan
+`apps/web`) — diverifikasi via `bunx astryx docs <topic>` dan swizzle
+sementara (source dibaca lalu dihapus segera, tidak pernah disimpan,
+sesuai larangan swizzle ADR-041).
+
+### Changed
+
+* Project Claude Design (`Social Media Management`) — 13 file ditulis
+  ulang: `styles.css`, `theme.json`, `readme.md`, `foundations/color.html`,
+  `foundations/type.html`, `foundations/layout.html`,
+  `components/buttons.html`, `components/cards.html`,
+  `components/dialog.html`, `components/forms.html`,
+  `components/navigation.html`, `components/status-chips.html`,
+  `components/table.html`.
+* Accent berubah dari placeholder rekaan (`#48517A`, slate-blue) ke accent
+  neutral theme Astryx asli (`#262626`, near-black) — tetap placeholder
+  brand (ADR-038/ADR-041), sekarang placeholder yang nyata, bukan rekaan.
+* 6 status konten (draft/review/ready/scheduled/published/failed)
+  dipetakan ke varian `Badge` asli (neutral/warning/info/purple/success/
+  error) — `scheduled` memakai tag kategori "purple" karena Astryx cuma
+  punya 5 varian semantik, bukan 6.
+* `AppShell` dipetakan ke `variant="section"` (bukan "elevated") supaya
+  arah hairline-divider produk ini tetap terjaga dengan varian asli yang
+  benar-benar ada.
+* Setiap file component library sekarang mencantumkan anotasi eksplisit
+  komponen + props Astryx asli yang direplikasi (mis. `<Button
+  variant="primary" size="md">`), supaya implementasi di `apps/web`
+  tinggal pasang komponen asli.
+* `styles.css` — token lama (`--color-bg`, `--space-4`, `--radius-md`, dst.)
+  dipertahankan sebagai "legacy alias" ke token Astryx asli, supaya
+  `templates/` (belum bermigrasi) tetap render tanpa rusak.
+* Ditemukan version drift: situs live `astryx.atmeta.com` menunjukkan
+  v0.1.9, sementara `apps/web` mengunci v0.1.8 — CLI lokal dipakai sebagai
+  sumber final (AGENTS.md #12), bukan situs live.
+
+### Not done (scope terpisah)
+
+* `templates/` (8 KSP + 5 Auth + App Prototype) belum bermigrasi ke token
+  Astryx asli — masih pakai page-pattern class lama + legacy alias.
+
+Detail lengkap: `DECISIONS.md` ADR-051.
+
+---
+
 ## 2026-07-29 — Astryx agent docs resmi menggantikan workflow manual di AGENTS.md
 
 Ditemukan saat user menanyakan apakah "Workflow Astryx wajib" di `AGENTS.md`
