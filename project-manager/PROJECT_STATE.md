@@ -4,9 +4,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.12     |
+| Version      | 1.0.17     |
 | Status       | Active     |
-| Last Updated | 2026-07-28 |
+| Last Updated | 2026-07-29 |
 
 ---
 
@@ -36,9 +36,9 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
   Overview, AGENTS, dan AI Context sudah memakai Astryx permanen, neutral theme
   M8, Tailwind layout-only, wrapper selektif, serta exact pin Beta. Instalasi
   dan smoke test Next.js 16 juga sudah selesai.
-* Fokus M8 saat ini: Auth Flows, Workspace Onboarding, App Shell, dan Draft
-  Editor (mock data) sudah selesai; lanjut ke persistensi nyata Publishing
-  MVP + integrasi Outstand (ADR-040).
+* Fokus M8 saat ini: Auth Flows, Workspace Onboarding, App Shell, Draft
+  Editor (mock data), dan persistensi nyata "Save as Draft" sudah selesai;
+  lanjut ke persistensi "Schedule" + integrasi Outstand (ADR-040).
 
 ---
 
@@ -242,14 +242,53 @@ Restricted Actions:
 * Dev config: `next.config.ts` — `allowedDevOrigins` menambahkan hostname
   tunnel ngrok untuk uji lokal (nilai efemeral, perlu diupdate manual saat
   domain tunnel berubah).
+* **M8 — Publishing MVP: persistensi nyata "Save as Draft" selesai:**
+  `PublishingService.saveDraft()` (domain layer, diuji unit dengan fake
+  repository) + `publishingRepository.createDraft()` (implementasi Prisma
+  untuk `IPublishingRepository`, pola sama dengan `lib/repositories/
+  workspace`) + `saveDraftAction` di `/publish/drafts/new` yang me-resolve
+  session + workspace by slug lalu memanggil `PublishingService`. Tombol
+  "Save as Draft" di Draft Editor kini persist ke database nyata (bukan
+  mock notice) — diverifikasi via browser (ngrok tunnel) dan cek langsung
+  row di Supabase. "Schedule" tetap mock sampai `OutstandAdapter`/kredensial
+  Outstand siap (di luar scope ini).
+* **ADR-046 — implementasi routing (Home/Engage/Settings & Publish, semua
+  final):** `[slug]/home` → `[slug]`, `engage/inbox` → `engage`,
+  `settings/general` → `settings` — ketiganya render langsung di root,
+  final. Redirect target di `app/page.tsx`, `onboarding/actions.ts`,
+  `onboarding/page.tsx` diupdate dari `/${slug}/home` → `/${slug}`.
+  `WorkspaceSideNav` — href Home ke root workspace, `isSelected` Home pakai
+  exact match (bukan `startsWith`, karena semua route lain juga diawali
+  `/${slug}`). Publish sempat ikut pola yang sama (`publish/calendar` →
+  `publish`), tapi ditemukan `/publish/calendar` tertangkap salah oleh
+  `publish/[postId]` — di-revert jadi `publish/page.tsx` redirect ke
+  `/publish/calendar` (`calendar/` dihidupkan lagi). Diverifikasi live via
+  ngrok tunnel (akun test Raka Pratama): `/insvire`, `/insvire/publish`
+  (redirect ke `/insvire/publish/calendar`), `/insvire/engage`,
+  `/insvire/settings` semua bekerja tanpa 404; `/insvire/engage/inbox` dan
+  `/insvire/settings/general` (path lama) terkonfirmasi 404 bersih.
+  typecheck/lint/test hijau di setiap tahap.
+* **ADR-046 Amandemen Final (2026-07-29) — bentuk final `/publish`
+  diputuskan:** state interim di atas diformalkan sebagai keputusan
+  **permanen**, bukan sekadar sementara. `/{slug}/publish` tetap redirect
+  ke `/{slug}/publish/calendar`; `calendar/` (+ `calendar/[postId]`) tetap
+  jadi folder statis. Publish dikecualikan permanen dari pola root-render
+  ADR-046 karena satu-satunya section dengan sibling route dinamis
+  (`[postId]`) di level root. Dua alternatif dipertimbangkan dan ditolak:
+  root-render + rename `[postId]` ke path lain, dan root-render +
+  `[postId]` sebagai intercepting/parallel route (modal) — keduanya
+  menambah kompleksitas tanpa manfaat sepadan. Tidak ada perubahan kode;
+  hanya dokumentasi (`DECISIONS.md`, `monorepo-setup.md`,
+  `application-layer.md`) yang disinkronkan. Tidak ada task lanjutan yang
+  menggantung untuk topik ini.
 
 ---
 
 # In Progress
 
-* **Publishing MVP — persistensi nyata:** Draft Editor UI (mock data) sudah
-  selesai; task berikutnya adalah menyambungkan Save as Draft / Schedule ke
-  database nyata (bukan lagi mock notice) dan integrasi `OutstandAdapter`
+* **Publishing MVP — sisa persistensi nyata:** "Save as Draft" sudah persist
+  ke database; task berikutnya adalah menyambungkan "Schedule" ke database
+  nyata (status transition draft → scheduled) dan integrasi `OutstandAdapter`
   (ADR-040).
 * Template `design-tokens.md` sudah disiapkan (status Draft / TBD); nilai final
   diisi setelah feature selesai dan designer masuk (ADR-041 mengamendemen urutan
@@ -259,8 +298,8 @@ Restricted Actions:
 
 # Next Tasks
 
-* **M8 — Development:** auth flows UI, workspace onboarding, App Shell, dan Draft Editor (mock) selesai; lanjut ke persistensi nyata Publishing MVP sesuai baseline + `context/`.
-* **Publishing MVP — persistensi nyata:** sambungkan Draft Editor (`/publish/drafts/new`) ke database — `PublishingService`, tabel draft/post, dan status transition — menggantikan mock notice saat ini.
+* **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (mock), dan persistensi "Save as Draft" selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
+* **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (`/publish/drafts/new`) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
   `post.published` / `post.error` / `account.token_expired` dengan
   durable-before-ACK, job retry internal, media upload working copy, serta
@@ -315,6 +354,24 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-046 Amandemen Final — bentuk final `/publish` diputuskan: redirect
+  **permanen** ke `/publish/calendar` (`calendar/` tetap folder statis
+  permanen). Publish dikecualikan permanen dari pola root-render ADR-046
+  karena satu-satunya section dengan sibling route dinamis (`[postId]`) di
+  root — root-render di sana akan menangkap path lama secara salah.
+  Alternatif root-render + rename `[postId]`, dan root-render +
+  intercepting route, ditolak (kompleksitas tidak sepadan). Tidak ada
+  perubahan kode, hanya memformalkan interim jadi final (2026-07-29).
+* ADR-046 — Routing convention: default/single view section (Home,
+  Publish→Calendar, Engage→Inbox, Settings→General) render langsung di
+  `page.tsx` root path section, bukan named child segment. Menghapus
+  `/home`, `/publish/calendar`, `/engage/inbox`, `/settings/general` dari
+  routing structure. Menutup celah 404 sistemik yang ditemukan di root
+  workspace + 3 section sekaligus. Dokumentasi (`monorepo-setup.md`,
+  `application-layer.md`) sudah diselaraskan; **implementasi kode selesai**
+  di branch `feat/adr-046-routing-default-view` dan diverifikasi live lewat
+  ngrok tunnel (2026-07-28). Publish kemudian dikecualikan permanen — lihat
+  ADR-046 Amandemen Final (2026-07-29) di atas.
 * ADR-045 — Hapus folder `design/` (belum ada designer aktif); pointer
   project Claude Design dipindah ke `context/ctx-design.md`. Tidak mengubah
   ADR-038 (SoT token) maupun ADR-042 (Claude Design sebagai handoff tool) —

@@ -4,6 +4,193 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-29 — ADR-046 Amandemen Final: `/publish` redirect permanen
+
+User memutuskan bentuk akhir `/publish` (pertanyaan yang ditunda dari sesi
+2026-07-28): formalkan state interim sebagai **final**, bukan sekadar
+sementara. Tidak ada perubahan kode — hanya dokumentasi, karena kode sudah
+dalam bentuk yang diputuskan sejak revert 2026-07-28.
+
+### Keputusan
+
+* `/{slug}/publish` **permanen** redirect ke `/{slug}/publish/calendar`;
+  `calendar/` (+ `calendar/[postId]`) **permanen** jadi folder statis.
+* Publish dikecualikan **permanen** dari pola root-render ADR-046 —
+  satu-satunya section dengan sibling route dinamis (`[postId]`) di root,
+  sehingga root-render di sana akan menangkap path lama secara salah.
+* Alternatif yang dipertimbangkan dan ditolak: root-render + rename
+  `[postId]` ke path lain (mis. `/publish/post/[postId]`); root-render +
+  `[postId]` sebagai intercepting/parallel route (modal). Keduanya
+  menambah kompleksitas nyata untuk manfaat kosmetik (satu redirect lebih
+  sedikit).
+
+### Changed (dokumentasi)
+
+* `DECISIONS.md` — ADR-046 ditambah section "Amandemen Final
+  (2026-07-29)"; baris Publish di poin Decision #1 ditandai superseded;
+  "Catatan Tambahan (2026-07-28)" ditandai interim/sudah diamandemen.
+* `monorepo-setup.md` — route tree, Aturan Routing, dan MS-D09 diperbarui:
+  "pengecualian sementara" → "pengecualian permanen".
+* `application-layer.md` — Contoh 3: "interim" → "permanen".
+* `PROJECT_STATE.md` — Known Issues (item Publish belum final dihapus),
+  Completed (entry baru), Next Tasks (item diskusi lanjutan dihapus —
+  tidak ada lagi yang menggantung), Recent Decisions diperbarui.
+
+### Verified
+
+* Tidak ada perubahan kode — verifikasi live 2026-07-28 (ngrok tunnel,
+  akun test Raka Pratama) tetap berlaku untuk keputusan final ini.
+
+---
+
+## 2026-07-28 — ADR-046 (Publish): revert interim ke `/publish/calendar`
+
+Verifikasi live ADR-046 menemukan `/publish/calendar` (path lama) tidak
+404 — malah tertangkap `publish/[postId]` (memperlakukan `"calendar"`
+sebagai ID) dan merender placeholder salah. Atas instruksi user, bagian
+Publish di-revert sementara sambil menunggu diskusi lanjutan soal bentuk
+akhir `publish/page.tsx`.
+
+### Changed (kode)
+
+* `publish/[postId]/` → `publish/calendar/[postId]/`; `publish/page.tsx`
+  (isi Calendar) → `publish/calendar/page.tsx`.
+* `publish/page.tsx` (baru) — cuma `redirect(`/${slug}/publish/calendar`)`.
+* Home, Engage, Settings **tidak diubah** — tetap final sesuai ADR-046.
+
+### Changed (dokumentasi)
+
+* `DECISIONS.md` — ADR-046 ditambah section "Catatan Tambahan (2026-07-28,
+  belum final)" mencatat temuan collision + revert interim; poin Decision
+  asli tidak dihapus/ditulis ulang, tetap jadi catatan historis apa yang
+  awalnya diputuskan.
+* `monorepo-setup.md` — route tree `publish/` disesuaikan (`calendar/`
+  kembali jadi folder), Aturan Routing dan MS-D09 mencatat Publish sebagai
+  pengecualian sementara.
+* `application-layer.md` — Contoh 3 disesuaikan kembali ke
+  `/publish/calendar`.
+* `PROJECT_STATE.md` — Known Issues, Completed, dan Next Tasks diperbarui;
+  next task baru: lanjutkan diskusi bentuk final `publish/page.tsx` di
+  sesi berikutnya.
+
+### Verified
+
+* `bun run typecheck`, `bun run lint`, `bun run test` — hijau.
+* Live via ngrok tunnel: `/insvire/publish` redirect ke
+  `/insvire/publish/calendar`, render "Content Calendar", sidebar Publish
+  tetap ter-highlight.
+
+### Status
+
+**Belum final.** Ditunda ke sesi berikutnya atas permintaan user.
+
+---
+
+## 2026-07-28 — ADR-046: Routing convention, default view render di root path
+
+Diskusi berawal dari temuan bahwa klik "Publish"/"Engage" di sidebar 404
+karena parent segment (`layout.tsx`) tidak punya `page.tsx` sendiri. Audit
+lanjutan menemukan pola yang sama berulang di 4 titik: root workspace
+(`/{slug}`), `/publish`, `/engage`, `/settings` — semuanya cuma punya
+`layout.tsx` (atau tidak punya apa-apa) di root, tanpa `page.tsx`/redirect.
+
+### Added
+
+* ADR-046 di `DECISIONS.md` — default/single view section (Home,
+  Publish→Calendar, Engage→Inbox, Settings→General) merender langsung di
+  `page.tsx` root path section, bukan named child segment. Menghapus
+  `/home`, `/publish/calendar`, `/engage/inbox`, `/settings/general` dari
+  routing structure secara permanen (bukan redirect kompatibilitas — belum
+  ada internal link yang bergantung padanya, dikonfirmasi lewat audit grep
+  menyeluruh terhadap kode dan dokumentasi).
+
+### Changed
+
+* `product-discovery/06-engineering/monorepo-setup.md` — App Router route
+  tree diperbarui (hapus `home/`, `calendar/`, `inbox/`, `general/` sebagai
+  folder terpisah; `calendar/[postId]` → `[postId]` sejajar dengan
+  `queue/drafts/history`); tambah aturan routing baru + MS-D09 di Decision
+  Log.
+* `product-discovery/05-architecture/application-layer.md` — Contoh 3
+  ("Load Halaman Calendar") diperbarui dari `/[workspace]/publish/calendar`
+  menjadi `/[workspace]/publish`.
+* `information-architecture.md` dan `navigation-patterns.md` **tidak
+  diubah** — dikonfirmasi tidak menyebut literal URL path sama sekali,
+  hanya struktur tab/screen konseptual yang tidak terdampak keputusan ini
+  (IA-D04 Calendar sebagai default tab tetap berlaku).
+
+### Note
+
+Dokumentasi baseline diselaraskan lebih dulu; implementasi kode menyusul
+di entri di bawah setelah go-ahead eksplisit dari user.
+
+---
+
+## 2026-07-28 — ADR-046: Implementasi routing default view
+
+Branch `feat/adr-046-routing-default-view` (dari `feat/m8-publishing-draft-persistence`).
+
+### Changed
+
+* `apps/web/src/app/[slug]/home/page.tsx` → `apps/web/src/app/[slug]/page.tsx`
+* `apps/web/src/app/[slug]/publish/calendar/page.tsx` → `.../publish/page.tsx`
+* `apps/web/src/app/[slug]/publish/calendar/[postId]/page.tsx` → `.../publish/[postId]/page.tsx`
+* `apps/web/src/app/[slug]/engage/inbox/page.tsx` → `.../engage/page.tsx`
+* `apps/web/src/app/[slug]/settings/general/page.tsx` → `.../settings/page.tsx`
+* Redirect target `/${slug}/home` → `/${slug}` di `app/page.tsx`,
+  `onboarding/actions.ts`, `onboarding/page.tsx`.
+* `WorkspaceSideNav` — href Home ke root workspace; `isSelected` Home pakai
+  exact match pathname (bukan `startsWith`, karena semua route lain juga
+  diawali `/${slug}` — `startsWith` akan membuat Home permanen ter-highlight).
+
+### Verified
+
+* `bun run typecheck`, `bun run lint`, `bun run test` — hijau (21/21 test).
+* Live via ngrok tunnel dengan akun test (Raka Pratama): `/insvire`,
+  `/insvire/publish`, `/insvire/engage`, `/insvire/settings` semua render
+  default view langsung tanpa 404; sidebar highlight benar per section.
+  `/insvire/engage/inbox` dan `/insvire/settings/general` (path lama)
+  terkonfirmasi 404 bersih.
+
+### Known Issue Ditemukan
+
+* `/publish/calendar` (path lama) **tidak** 404 — tertangkap oleh
+  `publish/[postId]` (memperlakukan `"calendar"` sebagai ID), merender
+  placeholder Draft Editor. Dicatat di `PROJECT_STATE.md` → Known Issues;
+  bukan regresi baru (karakteristik placeholder `[postId]` yang belum wired
+  ke data asli), akan otomatis teratasi saat lookup by ID diimplementasikan.
+
+---
+
+## 2026-07-28 — Publishing MVP: persistensi nyata "Save as Draft"
+
+### Added
+
+* `PublishingService.saveDraft()` — domain layer baru di
+  `apps/web/src/domains/publishing/services/`, diuji unit dengan fake
+  repository (pola sama dengan `WorkspaceService`).
+* `publishingRepository.createDraft()` — implementasi Prisma untuk
+  `IPublishingRepository` di `apps/web/src/lib/repositories/publishing/`.
+* `saveDraftAction` di `/publish/drafts/new/actions.ts` — resolve session +
+  workspace by slug, lalu delegasikan ke `PublishingService.saveDraft()`.
+
+### Changed
+
+* Draft Editor (`/publish/drafts/new`) — tombol "Save as Draft" kini
+  memanggil persistensi nyata (bukan lagi mock notice); mendapat post ID
+  asli di success banner. Diverifikasi via browser (ngrok tunnel) dan cek
+  langsung row di Supabase. "Schedule" tetap mock — menunggu
+  `OutstandAdapter`/kredensial Outstand (ADR-040).
+
+### Fixed
+
+* `PROJECT_STATE.md` — section **In Progress** dan **Next Tasks** masih
+  menyebut persistensi Publishing MVP sebagai belum dimulai, padahal
+  implementasi di atas sudah selesai dan ter-commit. Dipindahkan ke
+  **Completed**; sisa scope ("Schedule" + `OutstandAdapter`) disesuaikan.
+
+---
+
 ## 2026-07-28 — Hapus folder `design/` (ADR-045)
 
 Diskusi menemukan bahwa `design/` bukan acuan AI/engineering (SoT UI yang

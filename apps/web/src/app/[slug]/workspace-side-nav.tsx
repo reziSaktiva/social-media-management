@@ -13,7 +13,7 @@ import {
 import { authClient } from "@/lib/better-auth/client";
 
 const NAV_ITEMS = [
-  { label: "Home", path: "home" },
+  { label: "Home", path: "" },
   { label: "Publish", path: "publish" },
   { label: "Engage", path: "engage" },
   { label: "Analyze", path: "analyze" },
@@ -45,7 +45,7 @@ export function WorkspaceSideNav({
       header={
         <SideNavHeading
           heading={workspaceName}
-          headingHref={`/${slug}/home`}
+          headingHref={`/${slug}`}
           superheading="Workspace"
         />
       }
@@ -69,13 +69,16 @@ export function WorkspaceSideNav({
     >
       <SideNavSection title="Menu">
         {NAV_ITEMS.map((item) => {
-          const href = `/${slug}/${item.path}`;
+          const href = item.path ? `/${slug}/${item.path}` : `/${slug}`;
+          const isSelected = item.path
+            ? pathname.startsWith(href)
+            : pathname === href;
           return (
             <SideNavItem
-              key={item.path}
+              key={item.label}
               label={item.label}
               href={href}
-              isSelected={pathname.startsWith(href)}
+              isSelected={isSelected}
             />
           );
         })}
