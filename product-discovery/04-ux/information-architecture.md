@@ -137,13 +137,14 @@ Publish
 │       ├── Account Selector  — pilih akun tujuan
 │       ├── Content Format    — Post / Reel / Story / Pin per akun (ADR-039)
 │       ├── Schedule Picker   — tentukan waktu publish
+│       ├── Publish Now       — publish langsung tanpa jadwal, Owner/Admin/Manager (ADR-047)
 │       └── Status Indicator  — draft / in review / ready to schedule / scheduled / published / failed
 └── History                   — riwayat konten yang telah dipublish
     └── Post Detail           — detail posting + performa dasar
 ```
 
 **Pengguna utama:** Raka (eksekusi publishing harian).
-**Catatan:** AI Caption Assistance berada di dalam Draft Editor — bukan layar terpisah. Content Format Selector mengikuti matriks platform (IG/FB: Post·Reel·Story; Pinterest: Pin; TikTok & lainnya: Post).
+**Catatan:** AI Caption Assistance berada di dalam Draft Editor — bukan layar terpisah. Content Format Selector mengikuti matriks platform (IG/FB: Post·Reel·Story; Pinterest: Pin; TikTok & lainnya: Post). Publish Now tersedia berdampingan dengan Schedule Picker untuk role Owner/Admin/Manager — Creator tidak melihat aksi ini (ADR-047, `roles-permissions.md`).
 
 ---
 
@@ -241,6 +242,7 @@ Tabel berikut memetakan fitur MVP (Must Have) ke layar spesifik dalam IA.
 | Content Draft | Publish → Drafts → Draft Editor |
 | Content Format Selection (ADR-039) | Publish → Draft Editor → Content Format per akun |
 | Schedule Post | Publish → Draft Editor → Schedule Picker |
+| Publish Now (ADR-047) | Publish → Draft Editor → Publish Now Action |
 | Calendar View | Publish → Calendar |
 | Queue Management | Publish → Queue |
 | Publishing History | Publish → History |

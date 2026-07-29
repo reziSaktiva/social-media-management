@@ -134,7 +134,7 @@ Creator adalah anggota tim yang berfokus pada pembuatan konten. Role ini cocok u
 | Ubah role member | ✅ | ✅ (kecuali Owner) | ❌ | ❌ |
 | Tambah/hapus connected accounts | ✅ | ✅ | ❌ | ❌ |
 | Buat/edit konten | ✅ | ✅ | ✅ | ✅ (milik sendiri) |
-| Jadwalkan/publish konten | ✅ | ✅ | ✅ | ❌ |
+| Jadwalkan/publish konten (termasuk Publish Now, ADR-047) | ✅ | ✅ | ✅ | ❌ |
 | Akses Analytics penuh | ✅ | ✅ | ✅ | 👁 ringkasan |
 | Kelola Engagement Comments Inbox | ✅ | ✅ | ✅ | ❌ |
 | Baca Audit Logs | ✅ | ✅ | ❌ | ❌ |
@@ -172,6 +172,7 @@ Tabel berikut mendefinisikan siapa yang dapat memicu setiap transisi status kont
 | `In Review` → `Ready to Schedule` | ✅ | ✅ | ✅ | ❌ | — |
 | `Ready to Schedule` → `Scheduled` | ✅ | ✅ | ✅ | ❌ | — |
 | `Draft` → `Scheduled` (skip review) | ✅ | ✅ | ✅ | ❌ | — |
+| `Draft` → `Published` (**Publish Now**, skip jadwal) | ✅ | ✅ | ✅ | ❌ | — |
 | `Scheduled` → `Draft` (tarik jadwal) | ✅ | ✅ | ✅ | ❌ | — |
 | `Scheduled` → `Published` | — | — | — | — | ✅ otomatis |
 | `Scheduled` → `Failed` | — | — | — | — | ✅ otomatis |
@@ -181,6 +182,7 @@ Tabel berikut mendefinisikan siapa yang dapat memicu setiap transisi status kont
 - Semua transisi yang memerlukan `Manager` ke atas membutuhkan login dengan role tersebut — bukan pemeriksaan manual.
 - `Creator` tidak dapat menjadwalkan atau mempublish konten secara langsung; mereka hanya bisa menandai konten sebagai `In Review` dan menunggu tindakan Manager/Admin/Owner.
 - Transisi `Scheduled → Published` dan `Scheduled → Failed` sepenuhnya otomatis oleh sistem — tidak ada user action yang diperlukan.
+- **Publish Now (ADR-047):** `Draft → Published` langsung (melewati `In Review`/`Ready to Schedule`/`Scheduled`) dibatasi ke role yang **sama persis** dengan Schedule (Owner/Admin/Manager) — bukan tingkat akses baru yang lebih ketat. Ini konsisten dengan baris "Jadwalkan/publish konten" di tabel ringkasan hak akses di atas, yang memang selalu menyatukan Schedule dan Publish dalam satu tingkat akses yang sama. Publish Now lebih berisiko daripada Schedule (langsung tayang, tanpa jeda `cancelSchedule` untuk koreksi) sehingga UI wajib menampilkan konfirmasi eksplisit sebelum eksekusi (selaras UXP-06).
 
 ---
 
@@ -218,4 +220,4 @@ Dokumen ini dapat ditelusuri ke User Discovery Baseline v1.0 melalui pemetaan pe
 * `../04-ux/information-architecture.md`
 * `../04-ux/user-flows.md`
 * `../04-ux/key-screen-patterns.md`
-* `../../project-manager/DECISIONS.md` — ADR-008 (Product Baseline), ADR-012 (addendum ini)
+* `../../project-manager/DECISIONS.md` — ADR-008 (Product Baseline), ADR-012 (addendum ini), ADR-047 (Publish Now)

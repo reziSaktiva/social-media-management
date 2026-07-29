@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.17     |
+| Version      | 1.0.18     |
 | Status       | Active     |
 | Last Updated | 2026-07-29 |
 
@@ -281,6 +281,31 @@ Restricted Actions:
   hanya dokumentasi (`DECISIONS.md`, `monorepo-setup.md`,
   `application-layer.md`) yang disinkronkan. Tidak ada task lanjutan yang
   menggantung untuk topik ini.
+* **App Prototype Claude Design — fix navigasi back Draft Editor +
+  role switcher:** ditemukan tombol "Kembali ke Calendar" di Draft Editor
+  selalu paksa balik ke Calendar walau dibuka dari Queue/Drafts —
+  bertentangan `navigation-patterns.md` (NP-D02). Diperbaiki jadi
+  stack-aware (balik ke asal sebenarnya) + label ikut menyesuaikan. Role
+  switcher baru (Owner/Admin/Manager/Creator, dipetakan ke persona
+  Dimas/Maya/Raka/Sinta) ditambahkan di toolbar prototype, mendemokan
+  pembatasan akses per role dari `roles-permissions.md` di 4 layar: Draft
+  Editor (Schedule vs Kirim untuk Review), Engage (lock untuk Creator),
+  Connected Accounts (read-only untuk Manager/Creator), Analyze Dashboard
+  (detail disembunyikan untuk Creator). Owner dan Admin saat ini identik
+  secara visual di prototype (beda asli ada di layar Settings lain yang
+  belum jadi bagian 8 KSP screen).
+* **ADR-047 — Publish Now diangkat jadi fitur UX resmi:** audit
+  konsistensi (dipicu saat kerja App Prototype) menemukan
+  `application-layer.md` sudah menyebut method `publishNow` tapi UX
+  Baseline (`key-screen-patterns.md`) dan `roles-permissions.md` sama
+  sekali tidak mengenal konsep ini. Diputuskan: Publish Now jadi fitur
+  resmi (KSP-05-F12, bullet baru di `mvp-definition.md`), akses dibatasi
+  **identik** dengan Schedule (Owner/Admin/Manager, bukan Creator) —
+  konsisten dengan pola akses konten yang sudah ada, bukan tingkat akses
+  baru. Baris transisi `Draft → Published (Publish Now)` ditambahkan ke
+  tabel transisi status. Dokumentasi baseline sudah diselaraskan;
+  **implementasi kode dan App Prototype belum berjalan** — lihat Next
+  Tasks.
 
 ---
 
@@ -300,6 +325,7 @@ Restricted Actions:
 
 * **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (mock), dan persistensi "Save as Draft" selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
 * **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (`/publish/drafts/new`) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
+* **Publish Now (ADR-047) — implementasi menyusul, belum ada di kode maupun App Prototype:** `PublishingService.publishNow()` (RBAC Owner/Admin/Manager, validasi `ContentFormat` ADR-039, panggil `OutstandAdapter`) + tombol "Publish Now" di Draft Editor (KSP-05-F12) berdampingan dengan Schedule; App Prototype Claude Design juga perlu ditambahkan tombolnya (role switcher yang sudah ada tinggal dipakai untuk membatasi visibility Creator).
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
   `post.published` / `post.error` / `account.token_expired` dengan
   durable-before-ACK, job retry internal, media upload working copy, serta
@@ -354,6 +380,14 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-047 — Publish Now diangkat jadi fitur UX resmi: `Draft → Published`
+  langsung tanpa jadwal, akses dibatasi identik dengan Schedule
+  (Owner/Admin/Manager, bukan Creator) — konsisten dengan pola akses
+  konten yang sudah ada di `roles-permissions.md`, bukan tingkat akses
+  baru. KSP-05 dapat function ID baru (KSP-05-F12). Ditemukan saat audit
+  konsistensi App Prototype: `application-layer.md` sudah menyebut method
+  `publishNow` tanpa desain UX resmi. Dokumentasi baseline diselaraskan;
+  implementasi kode + App Prototype masih task terpisah (2026-07-29).
 * ADR-046 Amandemen Final — bentuk final `/publish` diputuskan: redirect
   **permanen** ke `/publish/calendar` (`calendar/` tetap folder statis
   permanen). Publish dikecualikan permanen dari pola root-render ADR-046

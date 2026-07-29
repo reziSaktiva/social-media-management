@@ -48,6 +48,9 @@ Kemampuan berikut wajib tersedia pada MVP.
   * Pinterest: **Pin** (judul, destination link, board)
   * Platform lain yang didukung: format `post` sebagai default
 * Menjadwalkan posting.
+* Mempublikasikan konten secara langsung tanpa penjadwalan (**Publish Now**) —
+  dibatasi ke role yang sama dengan Schedule: Owner, Admin, Manager (bukan
+  Creator), lihat `roles-permissions.md` (ADR-047).
 * Melihat kalender publikasi.
 * Mengelola antrean (queue) posting.
 * Melihat riwayat publikasi.

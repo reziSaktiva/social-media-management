@@ -365,6 +365,7 @@ Draft Editor adalah **layar kerja terpenting** dalam produk. Raka menulis, melen
 | KSP-05-F09 | Schedule Action | Eksekusi penjadwalan setelah pengguna konfirmasi | UXP-04 |
 | KSP-05-F10 | Kembali ke Sub-Screen Asal | Tombol Back / Close mengembalikan ke Calendar / Queue / Drafts tanpa kehilangan state | UXP-03 |
 | KSP-05-F11 | Content Format Selector | Pilih format publikasi **per akun terpilih** sesuai platform (ADR-039): IG/FB → Post / Reel / Story; Pinterest → Pin (+ field pin); TikTok & lainnya → Post (tanpa radio Reel/Story) | UXP-01, UXP-03 |
+| KSP-05-F12 | Publish Now Action | Eksekusi publish langsung tanpa jadwal (skip Schedule Picker) — tersedia berdampingan dengan Schedule Action di action bar, hanya untuk role Owner/Admin/Manager (ADR-047); tidak muncul untuk Creator | UXP-04, UXP-06 |
 
 ---
 

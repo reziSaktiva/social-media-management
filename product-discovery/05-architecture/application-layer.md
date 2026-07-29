@@ -469,7 +469,7 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 | `updateDraft` | Server Action | Edit konten draft (caption, media, targets, `contentFormat`, `platformOptions`) |
 | `schedulePosts` | Server Action | Jadwalkan satu atau beberapa post — wajib validasi matriks `ContentFormat` per target (ADR-039) sebelum memanggil Outstand |
 | `cancelSchedule` | Server Action | Batalkan jadwal, kembali ke draft |
-| `publishNow` | Server Action | Publish langsung tanpa jadwal |
+| `publishNow` | Server Action | Publish langsung tanpa jadwal (KSP-05-F12, ADR-047) — RBAC sama dengan `schedulePosts` (Owner/Admin/Manager, bukan Creator); validasi matriks `ContentFormat` per target (ADR-039) tetap wajib sebelum memanggil Outstand |
 | `deletePost` | Server Action | Soft delete post |
 | `getScheduledPosts` | Server Component | Load post untuk Calendar view |
 | `getDraftPosts` | Server Component | Load post untuk Draft list |
