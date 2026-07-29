@@ -4,9 +4,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.16     |
+| Version      | 1.0.17     |
 | Status       | Active     |
-| Last Updated | 2026-07-28 |
+| Last Updated | 2026-07-29 |
 
 ---
 
@@ -252,10 +252,10 @@ Restricted Actions:
   mock notice) — diverifikasi via browser (ngrok tunnel) dan cek langsung
   row di Supabase. "Schedule" tetap mock sampai `OutstandAdapter`/kredensial
   Outstand siap (di luar scope ini).
-* **ADR-046 — implementasi routing (Home/Engage/Settings selesai; Publish
-  interim, lihat Known Issues):** `[slug]/home` → `[slug]`, `engage/inbox` →
-  `engage`, `settings/general` → `settings` — ketiganya render langsung di
-  root, final. Redirect target di `app/page.tsx`, `onboarding/actions.ts`,
+* **ADR-046 — implementasi routing (Home/Engage/Settings & Publish, semua
+  final):** `[slug]/home` → `[slug]`, `engage/inbox` → `engage`,
+  `settings/general` → `settings` — ketiganya render langsung di root,
+  final. Redirect target di `app/page.tsx`, `onboarding/actions.ts`,
   `onboarding/page.tsx` diupdate dari `/${slug}/home` → `/${slug}`.
   `WorkspaceSideNav` — href Home ke root workspace, `isSelected` Home pakai
   exact match (bukan `startsWith`, karena semua route lain juga diawali
@@ -268,6 +268,19 @@ Restricted Actions:
   `/insvire/settings` semua bekerja tanpa 404; `/insvire/engage/inbox` dan
   `/insvire/settings/general` (path lama) terkonfirmasi 404 bersih.
   typecheck/lint/test hijau di setiap tahap.
+* **ADR-046 Amandemen Final (2026-07-29) — bentuk final `/publish`
+  diputuskan:** state interim di atas diformalkan sebagai keputusan
+  **permanen**, bukan sekadar sementara. `/{slug}/publish` tetap redirect
+  ke `/{slug}/publish/calendar`; `calendar/` (+ `calendar/[postId]`) tetap
+  jadi folder statis. Publish dikecualikan permanen dari pola root-render
+  ADR-046 karena satu-satunya section dengan sibling route dinamis
+  (`[postId]`) di level root. Dua alternatif dipertimbangkan dan ditolak:
+  root-render + rename `[postId]` ke path lain, dan root-render +
+  `[postId]` sebagai intercepting/parallel route (modal) — keduanya
+  menambah kompleksitas tanpa manfaat sepadan. Tidak ada perubahan kode;
+  hanya dokumentasi (`DECISIONS.md`, `monorepo-setup.md`,
+  `application-layer.md`) yang disinkronkan. Tidak ada task lanjutan yang
+  menggantung untuk topik ini.
 
 ---
 
@@ -285,11 +298,6 @@ Restricted Actions:
 
 # Next Tasks
 
-* **Lanjutkan diskusi bentuk final `publish/page.tsx` (ADR-046 addendum).**
-  Saat ini cuma redirect interim ke `/publish/calendar`. Perlu diputuskan:
-  tetap redirect permanen, atau ada pendekatan lain — lalu amandemen
-  ADR-046 dan `monorepo-setup.md` mengikuti keputusan final. Ditunda ke
-  sesi berikutnya atas permintaan user (2026-07-28).
 * **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (mock), dan persistensi "Save as Draft" selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
 * **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (`/publish/drafts/new`) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
@@ -326,20 +334,6 @@ Restricted Actions:
   smoke test dan production build, tetapi risiko perubahan API tetap dikelola
   dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
   verifikasi ulang saat upgrade.
-* **Publish belum final — `page.tsx` di folder `publish` masih interim.**
-  Temuan `/publish/calendar` tertangkap oleh `publish/[postId]` (memperlakukan
-  `"calendar"` sebagai `postId`, merender placeholder salah, bukan 404) sudah
-  ditutup **sementara** dengan revert: `calendar/` (+ `calendar/[postId]`)
-  dihidupkan lagi sebagai folder statis, dan `publish/page.tsx` sekarang
-  cuma redirect ke `/publish/calendar` — bukan lagi merender Calendar
-  langsung di root seperti keputusan awal ADR-046. Diverifikasi live
-  (redirect bekerja, sidebar highlight benar, typecheck/lint/test hijau).
-  **Ini keputusan interim**, bukan final — masih ada diskusi lanjutan yang
-  tertunda soal bentuk akhir `publish/page.tsx` (redirect permanen? konten
-  baru? sesuatu yang lain?). ADR-046 belum diamandemen resmi untuk bagian
-  Publish ini; lihat catatan tambahan di `DECISIONS.md`. Home, Engage,
-  Settings **tidak terdampak** — tetap sesuai ADR-046 semula (render
-  langsung di root, tanpa redirect).
 * **Hydration gagal saat diakses lewat tunnel ngrok.** Saat uji halaman auth
   lewat tunnel ngrok yang dipakai untuk `BETTER_AUTH_URL`, seluruh halaman
   (bukan spesifik komponen auth) tidak ter-hydrate — tidak ada React fiber
@@ -360,6 +354,14 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-046 Amandemen Final — bentuk final `/publish` diputuskan: redirect
+  **permanen** ke `/publish/calendar` (`calendar/` tetap folder statis
+  permanen). Publish dikecualikan permanen dari pola root-render ADR-046
+  karena satu-satunya section dengan sibling route dinamis (`[postId]`) di
+  root — root-render di sana akan menangkap path lama secara salah.
+  Alternatif root-render + rename `[postId]`, dan root-render +
+  intercepting route, ditolak (kompleksitas tidak sepadan). Tidak ada
+  perubahan kode, hanya memformalkan interim jadi final (2026-07-29).
 * ADR-046 — Routing convention: default/single view section (Home,
   Publish→Calendar, Engage→Inbox, Settings→General) render langsung di
   `page.tsx` root path section, bukan named child segment. Menghapus
@@ -368,7 +370,8 @@ Tidak ada blocker saat ini.
   workspace + 3 section sekaligus. Dokumentasi (`monorepo-setup.md`,
   `application-layer.md`) sudah diselaraskan; **implementasi kode selesai**
   di branch `feat/adr-046-routing-default-view` dan diverifikasi live lewat
-  ngrok tunnel (2026-07-28).
+  ngrok tunnel (2026-07-28). Publish kemudian dikecualikan permanen — lihat
+  ADR-046 Amandemen Final (2026-07-29) di atas.
 * ADR-045 — Hapus folder `design/` (belum ada designer aktif); pointer
   project Claude Design dipindah ke `context/ctx-design.md`. Tidak mengubah
   ADR-038 (SoT token) maupun ADR-042 (Claude Design sebagai handoff tool) —

@@ -4,6 +4,45 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-29 — ADR-046 Amandemen Final: `/publish` redirect permanen
+
+User memutuskan bentuk akhir `/publish` (pertanyaan yang ditunda dari sesi
+2026-07-28): formalkan state interim sebagai **final**, bukan sekadar
+sementara. Tidak ada perubahan kode — hanya dokumentasi, karena kode sudah
+dalam bentuk yang diputuskan sejak revert 2026-07-28.
+
+### Keputusan
+
+* `/{slug}/publish` **permanen** redirect ke `/{slug}/publish/calendar`;
+  `calendar/` (+ `calendar/[postId]`) **permanen** jadi folder statis.
+* Publish dikecualikan **permanen** dari pola root-render ADR-046 —
+  satu-satunya section dengan sibling route dinamis (`[postId]`) di root,
+  sehingga root-render di sana akan menangkap path lama secara salah.
+* Alternatif yang dipertimbangkan dan ditolak: root-render + rename
+  `[postId]` ke path lain (mis. `/publish/post/[postId]`); root-render +
+  `[postId]` sebagai intercepting/parallel route (modal). Keduanya
+  menambah kompleksitas nyata untuk manfaat kosmetik (satu redirect lebih
+  sedikit).
+
+### Changed (dokumentasi)
+
+* `DECISIONS.md` — ADR-046 ditambah section "Amandemen Final
+  (2026-07-29)"; baris Publish di poin Decision #1 ditandai superseded;
+  "Catatan Tambahan (2026-07-28)" ditandai interim/sudah diamandemen.
+* `monorepo-setup.md` — route tree, Aturan Routing, dan MS-D09 diperbarui:
+  "pengecualian sementara" → "pengecualian permanen".
+* `application-layer.md` — Contoh 3: "interim" → "permanen".
+* `PROJECT_STATE.md` — Known Issues (item Publish belum final dihapus),
+  Completed (entry baru), Next Tasks (item diskusi lanjutan dihapus —
+  tidak ada lagi yang menggantung), Recent Decisions diperbarui.
+
+### Verified
+
+* Tidak ada perubahan kode — verifikasi live 2026-07-28 (ngrok tunnel,
+  akun test Raka Pratama) tetap berlaku untuk keputusan final ini.
+
+---
+
 ## 2026-07-28 — ADR-046 (Publish): revert interim ke `/publish/calendar`
 
 Verifikasi live ADR-046 menemukan `/publish/calendar` (path lama) tidak

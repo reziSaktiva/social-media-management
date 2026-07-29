@@ -425,7 +425,7 @@ Outstand API kirim POST /api/webhooks/outstand
 ## Contoh 3: Load Halaman Calendar
 
 ```
-User navigasi ke /[workspace]/publish/calendar  ← Calendar; /publish sendiri redirect ke sini untuk sekarang (interim, ADR-046 Catatan Tambahan)
+User navigasi ke /[workspace]/publish/calendar  ← Calendar; /publish sendiri redirect permanen ke sini (ADR-046 Amandemen Final, pengecualian permanen)
   │
   ├─ [Middleware]
   │    ├─ Verifikasi session (Better Auth)

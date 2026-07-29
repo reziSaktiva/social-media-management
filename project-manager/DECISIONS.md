@@ -1992,7 +1992,9 @@ Accepted
      `/${slug}` (bukan lagi `/${slug}/home`).
    * `/{slug}/publish` langsung merender **Calendar** (default tab per
      IA-D04/NP-D06) — segment `/publish/calendar` **dihapus**. Detail route
-     `calendar/[postId]` pindah menjadi `/publish/[postId]`.
+     `calendar/[postId]` pindah menjadi `/publish/[postId]`. **Superseded**
+     untuk Publish oleh amandemen final 2026-07-29 di bawah — lihat
+     "Amandemen Final (2026-07-29)".
    * `/{slug}/engage` langsung merender **Inbox** (satu-satunya layar Engage
      per `navigation-patterns.md`) — segment `/engage/inbox` **dihapus**.
    * `/{slug}/settings` langsung merender **General** (tab pertama Settings)
@@ -2048,7 +2050,7 @@ Accepted
   melalui klik sidebar dulu, dan tidak ada dokumen yang pernah menugaskan
   siapa yang harus menutup gap ini.
 
-### Catatan Tambahan (2026-07-28, belum final)
+### Catatan Tambahan (2026-07-28, interim — lihat Amandemen Final di bawah)
 
 Implementasi live menemukan masalah yang tidak diantisipasi poin Decision
 di atas: karena `publish/` juga punya sibling route dinamis
@@ -2059,14 +2061,49 @@ placeholder Draft Editor dengan `postId = "calendar"`. Home, Engage,
 Settings tidak punya masalah ini karena tidak ada sibling route dinamis di
 level root mereka.
 
-Sebagai penanganan **sementara**, khusus bagian Publish dari ADR-046
-di-revert: `calendar/` (+ `calendar/[postId]`) dihidupkan lagi sebagai
-folder statis, dan `publish/page.tsx` sekarang redirect ke
+Sebagai penanganan sementara (saat itu), khusus bagian Publish dari
+ADR-046 di-revert: `calendar/` (+ `calendar/[postId]`) dihidupkan lagi
+sebagai folder statis, dan `publish/page.tsx` redirect ke
 `/publish/calendar` — bukan merender Calendar langsung di root seperti
-poin Decision #1 di atas. **Ini bukan keputusan final** — pembahasan
-tentang bentuk akhir `publish/page.tsx` (tetap redirect permanen, validasi
-format ID di `[postId]` lalu kembali ke pola root-render, atau pendekatan
-lain) ditunda ke sesi berikutnya atas permintaan user. Poin Decision #1
-untuk Home, Engage, Settings **tidak berubah** dan tetap berlaku penuh.
-ADR ini akan diperbarui (atau diikuti ADR baru) begitu keputusan final
-untuk Publish diambil.
+poin Decision #1 di atas. Poin Decision #1 untuk Home, Engage, Settings
+**tidak berubah** dan tetap berlaku penuh.
+
+### Amandemen Final (2026-07-29) — Publish Dikecualikan Permanen dari Root-Render
+
+**Keputusan final:** state interim di atas **diformalkan sebagai final**,
+bukan sekadar sementara. `/{slug}/publish` **tetap** redirect ke
+`/{slug}/publish/calendar`; `calendar/` (+ `calendar/[postId]`) **tetap**
+jadi folder statis permanen. Poin Decision #1 baris Publish (render
+langsung di root, `[postId]` pindah ke `/publish/[postId]`) **tidak
+pernah dijalankan** dan tidak akan dijalankan.
+
+**Alasan:**
+
+* Publish adalah **satu-satunya** section dengan sibling route dinamis
+  (`[postId]`) langsung di level root section — Home, Engage, Settings
+  tidak punya kasus ini. Memaksakan pola root-render di sini berarti
+  memindahkan `[postId]` ke path lain atau mengubahnya jadi intercepting
+  route, keduanya menambah kompleksitas nyata untuk manfaat yang kecil
+  (menghilangkan satu HTTP redirect).
+* Redirect permanen sudah terverifikasi live (ngrok tunnel, akun test Raka
+  Pratama) tanpa masalah — tidak ada broken link, sidebar highlight benar,
+  typecheck/lint/test hijau.
+* Konsistensi murni dengan Home/Engage/Settings bukan tujuan itu sendiri;
+  ADR-046 tujuan utamanya menutup celah 404 sistemik — itu sudah tercapai
+  untuk Publish lewat redirect yang jelas (bukan 404, bukan mismatch
+  `[postId]`).
+
+**Alternatif yang dipertimbangkan (ditolak):**
+
+* **Root-render + rename `[postId]` ke path lain** (mis.
+  `/publish/post/[postId]`) — ditolak; menambah kerja rename + update
+  semua link ke detail post, untuk manfaat kosmetik (satu redirect lebih
+  sedikit) yang tidak sepadan.
+* **Root-render + `[postId]` jadi intercepting/parallel route (modal)** —
+  ditolak untuk saat ini; effort paling besar (mengubah UX post detail
+  dari full page ke modal), di luar scope keputusan routing murni.
+
+**Dampak:** `/publish` adalah pengecualian **permanen** dan terdokumentasi
+dari pola ADR-046 poin #1, bukan penyimpangan sementara yang menunggu
+keputusan lanjutan. Tidak ada task lanjutan yang menggantung untuk topik
+ini.

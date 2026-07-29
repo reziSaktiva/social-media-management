@@ -131,7 +131,7 @@ src/app/
 │   │
 │   ├── publish/
 │   │   ├── layout.tsx            ← Publish sub-nav (Calendar / Queue / Drafts / History)
-│   │   ├── page.tsx              ← Redirect ke /publish/calendar (interim, lihat ADR-046 Catatan Tambahan — belum final)
+│   │   ├── page.tsx              ← Redirect permanen ke /publish/calendar (ADR-046 Amandemen Final — pengecualian permanen)
 │   │   ├── calendar/
 │   │   │   ├── page.tsx          ← Content Calendar (default tab; IA-D04)
 │   │   │   └── [postId]/
@@ -208,11 +208,11 @@ src/app/
   `billing`). Segment yang hanya berfungsi sebagai container (`layout.tsx`
   tanpa `page.tsx` sendiri, atau tanpa keduanya) tidak boleh dibiarkan —
   setiap section wajib punya `page.tsx` di root path-nya (ADR-046).
-- **Pengecualian sementara — Publish:** `/publish` masih redirect ke
-  `/publish/calendar` (bukan render langsung), karena `calendar/` perlu
-  tetap ada sebagai folder statis untuk mencegah `publish/[postId]`
-  menangkap path lama secara salah. Ini interim, belum final — lihat
-  ADR-046 Catatan Tambahan di `DECISIONS.md`.
+- **Pengecualian permanen — Publish:** `/publish` redirect ke
+  `/publish/calendar` (bukan render langsung), karena `calendar/` tetap
+  ada sebagai folder statis untuk mencegah `publish/[postId]` menangkap
+  path lama secara salah. Ini keputusan final, bukan interim — lihat
+  ADR-046 Amandemen Final (2026-07-29) di `DECISIONS.md`.
 
 ---
 
@@ -470,7 +470,7 @@ import { something } from '@/domains/workspace';  // di dalam packages/shared/
 | MS-D06 | Outstand webhook route hanya ingestion; processor berjalan sebagai JOB-01 | Durable-before-ACK dan retry internal tidak bercampur dengan HTTP delivery vendor |
 | MS-D07 | `src/lib/outstand/` menjadi lokasi implementasi ACL | Semua kontrak vendor, termasuk upload media dan comments/replies, terisolasi dari domain |
 | MS-D08 | ADR-040 | MS-D06–D07 mengamandemen detail route/infrastructure Engineering Baseline |
-| MS-D09 | Default/single view section render langsung di root path (`page.tsx`), bukan named child segment (`/home`, `/engage/inbox`, `/settings/general` dihapus). Publish jadi pengecualian sementara — `/publish` redirect ke `/publish/calendar` (`calendar/` tetap ada), belum final | Menutup celah 404 sistemik di root section + selaras pola navigasi profesional (GitHub, Vercel, Notion); Publish di-revert sementara karena `publish/[postId]` menangkap `/publish/calendar` secara salah | Redirect ke default child; shared component dua URL — lihat ADR-046 (+ Catatan Tambahan) |
+| MS-D09 | Default/single view section render langsung di root path (`page.tsx`), bukan named child segment (`/home`, `/engage/inbox`, `/settings/general` dihapus). Publish jadi pengecualian **permanen** — `/publish` redirect ke `/publish/calendar` (`calendar/` tetap ada sebagai folder statis) | Menutup celah 404 sistemik di root section + selaras pola navigasi profesional (GitHub, Vercel, Notion); Publish dikecualikan permanen karena satu-satunya section dengan sibling route dinamis (`[postId]`) di root — root-render di sana akan menangkap `/publish/calendar` secara salah | Redirect ke default child; shared component dua URL; root-render + rename `[postId]`; root-render + intercepting route — lihat ADR-046 (+ Amandemen Final 2026-07-29) |
 
 ---
 
