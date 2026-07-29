@@ -4,6 +4,55 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-29 — Astryx agent docs resmi menggantikan workflow manual di AGENTS.md
+
+Ditemukan saat user menanyakan apakah "Workflow Astryx wajib" di `AGENTS.md`
+sesuai dokumentasi resmi Astryx (astryx.atmeta.com/docs/working-with-ai):
+section tersebut ternyata tulisan manual (dibuat saat ADR-041) yang meniru
+konsep dokumentasi resmi, bukan output CLI asli — berpotensi salah/basi
+dibanding command resmi `astryx init --features agents`. User meminta
+diganti dengan yang resmi.
+
+### Changed
+
+* `apps/web/.claude/CLAUDE.md` — **baru**, di-generate via
+  `bunx astryx init --features agents --agent claude` (dijalankan dari
+  `apps/web`). Berisi component index (153 komponen), workflow discovery
+  resmi (`astryx build` → `template` → `component`), aturan styling/token,
+  CLI reference — semua ditarik otomatis dari `@astryxdesign/cli` v0.1.8
+  yang ter-pin. Diberi marker `<!-- ASTRYX:START/END -->` sehingga bisa
+  di-regenerate in-place setelah upgrade Astryx.
+* `AGENTS.md` — section "Workflow Astryx wajib" (4 langkah manual) dan
+  aturan keras #12 diganti: sekarang menunjuk ke
+  `apps/web/.claude/CLAUDE.md` sebagai sumber resmi, bukan menyalin ulang
+  langkah CLI secara manual. Baris "UI component / styling" di tabel
+  mapping task ditambahkan referensi file ini.
+* `DEVELOPER_WORKFLOW.md` — node diagram mermaid yang menyebut
+  `template --list → component --dense` (langkah lama) diupdate menjadi
+  pointer ke `apps/web/.claude/CLAUDE.md`.
+
+---
+
+## 2026-07-29 — MCP server Astryx (`xds`) ditambahkan
+
+Susulan dari perubahan agent docs resmi di atas — user memutuskan lanjut
+setup MCP server setelah trade-off (CLI lokal ter-pin vs server live)
+dijelaskan.
+
+### Changed
+
+* `.mcp.json` — **baru** di root repo, mendaftarkan server `xds`
+  (`https://astryx.atmeta.com/mcp`) sesuai konfigurasi resmi dari
+  dokumentasi Astryx. Meng-expose tool `search(query)` dan `get(name)`
+  untuk pencarian/lookup komponen tanpa shell out ke CLI.
+* `AGENTS.md` — catatan baru di section "Workflow Astryx wajib": MCP
+  boleh dipakai untuk exploration/pencarian awal, tapi keputusan final
+  props/API tetap harus diverifikasi lewat CLI lokal v0.1.8 yang ter-pin
+  — karena server MCP menunjuk ke versi live yang bisa beda dari versi
+  ter-install (Astryx masih Beta).
+
+---
+
 ## 2026-07-29 — ADR-050: method service Transfer Ownership & Delete Workspace
 
 Menutup gap yang ditemukan ADR-049: `deleteWorkspace` dan

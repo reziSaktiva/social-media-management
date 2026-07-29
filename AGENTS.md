@@ -70,26 +70,36 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
 10. Jangan commit / push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
 11. UI produk hanya memakai Astryx. Wrapper dibuat selektif; jangan memakai
     canary atau `swizzle` Astryx pada tahap awal (ADR-041).
-12. Sebelum menulis atau mengubah UI Astryx, baca dokumentasi dari CLI lokal
-    yang versinya terkunci. Jangan menebak nama komponen, props, atau pola
-    styling.
+12. Sebelum menulis atau mengubah UI Astryx, baca `apps/web/.claude/CLAUDE.md`
+    (agent docs resmi, lihat bawah) dan/atau jalankan CLI lokal yang versinya
+    terkunci. Jangan menebak nama komponen, props, atau pola styling.
 
 ## Workflow Astryx wajib
 
-Untuk setiap task UI di `apps/web`, jalankan dari root repository:
+Agent docs resmi Astryx ada di `apps/web/.claude/CLAUDE.md` — **auto-generated**
+oleh CLI resmi (`bunx astryx init --features agents --agent claude`, dijalankan
+dari `apps/web`), bukan tulisan manual. Isinya: workflow discovery
+(`astryx build` → `astryx template` → `astryx component`), aturan styling/token,
+dan CLI reference — semua ditarik dari `@astryxdesign/cli` v0.1.8 yang ter-pin
+di proyek ini.
 
-1. `bun run --cwd apps/web astryx -- template --list` — cari pola halaman yang
-   paling dekat.
-2. `bun run --cwd apps/web astryx -- template <name> --skeleton` — pelajari
-   struktur layout bila ada template relevan.
-3. `bun run --cwd apps/web astryx -- component <Name> --dense` — baca API setiap
-   komponen yang akan dipakai.
-4. Untuk styling atau token, baca
-   `bun run --cwd apps/web astryx -- docs styling --dense` dan
-   `bun run --cwd apps/web astryx -- docs tokens --dense`.
+Untuk setiap task UI di `apps/web`: baca `apps/web/.claude/CLAUDE.md` dulu,
+lalu jalankan command CLI yang disebut di sana lewat
+`bun run --cwd apps/web astryx -- <cmd>`.
 
-CLI lokal adalah referensi utama karena sesuai exact version yang terpasang.
-Jangan mengganti langkah ini dengan asumsi model atau dokumentasi versi lain.
+**Setelah upgrade `@astryxdesign/core`/`cli`:** jalankan ulang
+`bunx astryx init --features agents --agent claude` di `apps/web` untuk
+regenerate file ini in-place (jangan edit manual — akan tertimpa saat
+regenerate berikutnya).
+
+**MCP server (`xds`, dikonfigurasi di `.mcp.json` root):** tersedia untuk
+pencarian cepat (`search`) dan lookup dokumentasi (`get`) tanpa shell out ke
+CLI. Server ini menunjuk ke versi live `astryx.atmeta.com`, **bisa berbeda**
+dari `@astryxdesign/cli` v0.1.8 yang ter-pin di `apps/web` (Astryx masih
+Beta). Untuk exploration/pencarian awal, MCP boleh dipakai; untuk keputusan
+final props/API yang dipakai di kode, tetap verifikasi lewat CLI lokal
+(`astryx component <Name> --dense`) supaya konsisten dengan versi yang
+benar-benar ter-install.
 
 ## Mode kerja
 
@@ -99,17 +109,17 @@ fase aktif di file ini.
 
 ## Mapping task → baca dulu
 
-| Jenis task                   | Context dulu                                 | Baseline minimal                                                                |
-| ---------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------- |
-| Fitur / use-case             | `ctx-domain` + `ctx-implementation`          | BC di `05-architecture/` + UX di `04-ux/` (+ `ctx-business` untuk roles/MVP)    |
-| Schema / migrasi             | `ctx-architecture` + `ctx-technical-context` | `database-strategy.md` + `database-orm.md` + `apps/web/prisma/schema.prisma`    |
-| Auth / session               | `ctx-architecture` + `ctx-technical-context` | `auth-architecture.md` + `auth-strategy.md`                                     |
-| Outstand / webhook / publish | `ctx-architecture`                           | `integration-layer.md`                                                          |
-| Jobs / cron                  | `ctx-architecture`                           | `background-jobs.md`                                                            |
-| Env / deploy / CI            | `ctx-technical-context`                      | `environment-management.md`, `deployment-infrastructure.md`, `cicd-pipeline.md` |
-| Coding conventions / DX      | `ctx-development`                            | `dx-tooling.md`                                                                 |
-| UI component / styling       | `ctx-design` + `ctx-implementation`          | `monorepo-setup.md` + `design-tokens.md` + ADR-041                              |
-| Desain / handoff UI          | `ctx-design`                                 | `04-ux/` + pointer Claude Design (folder `design/` dihapus, ADR-045)            |
+| Jenis task                   | Context dulu                                 | Baseline minimal                                                                  |
+| ---------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------- |
+| Fitur / use-case             | `ctx-domain` + `ctx-implementation`          | BC di `05-architecture/` + UX di `04-ux/` (+ `ctx-business` untuk roles/MVP)      |
+| Schema / migrasi             | `ctx-architecture` + `ctx-technical-context` | `database-strategy.md` + `database-orm.md` + `apps/web/prisma/schema.prisma`      |
+| Auth / session               | `ctx-architecture` + `ctx-technical-context` | `auth-architecture.md` + `auth-strategy.md`                                       |
+| Outstand / webhook / publish | `ctx-architecture`                           | `integration-layer.md`                                                            |
+| Jobs / cron                  | `ctx-architecture`                           | `background-jobs.md`                                                              |
+| Env / deploy / CI            | `ctx-technical-context`                      | `environment-management.md`, `deployment-infrastructure.md`, `cicd-pipeline.md`   |
+| Coding conventions / DX      | `ctx-development`                            | `dx-tooling.md`                                                                   |
+| UI component / styling       | `ctx-design` + `ctx-implementation`          | `apps/web/.claude/CLAUDE.md` + `monorepo-setup.md` + `design-tokens.md` + ADR-041 |
+| Desain / handoff UI          | `ctx-design`                                 | `04-ux/` + pointer Claude Design (folder `design/` dihapus, ADR-045)              |
 
 ## Setelah mengubah sesuatu
 

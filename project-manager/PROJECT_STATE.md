@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.21     |
+| Version      | 1.0.23     |
 | Status       | Active     |
 | Last Updated | 2026-07-29 |
 
@@ -349,6 +349,20 @@ Restricted Actions:
   `database-strategy.md`), 2 `NotificationType` baru. Method service
   sekarang lengkap — **UI/screen Workspace Settings → General masih
   belum dirancang**, jadi implementasi tetap menunggu.
+* **Astryx agent docs resmi menggantikan workflow manual:** ditemukan
+  section "Workflow Astryx wajib" di `AGENTS.md` adalah tulisan manual
+  (dibuat saat ADR-041), bukan output CLI resmi. Digenerate ulang via
+  `astryx init --features agents --agent claude` → `apps/web/.claude/
+  CLAUDE.md` (component index 153 komponen, workflow `build → template →
+  component`, aturan styling/token, semua ditarik dari CLI v0.1.8
+  ter-pin, regenerate in-place setelah upgrade). `AGENTS.md` (rule #12 +
+  section workflow + mapping table) dan `DEVELOPER_WORKFLOW.md`
+  diperbarui untuk menunjuk ke file ini.
+* **MCP server Astryx (`xds`) ditambahkan:** `.mcp.json` baru di root,
+  menunjuk ke `https://astryx.atmeta.com/mcp` — expose `search`/`get` untuk
+  lookup komponen tanpa shell out ke CLI. `AGENTS.md` diberi catatan:
+  MCP untuk exploration, CLI lokal v0.1.8 tetap jadi sumber final karena
+  server MCP menunjuk versi live yang bisa beda dari yang ter-pin.
 
 ---
 
