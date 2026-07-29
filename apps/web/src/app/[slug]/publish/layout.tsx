@@ -1,8 +1,20 @@
-export default function Layout({ children }: { children: React.ReactNode }) {
+import { VStack } from "@astryxdesign/core/VStack";
+
+import { PublishTabbar } from "./publish-tabbar";
+
+export default async function Layout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+
   return (
-    <div data-layout="publish">
-      {/* publish layout shell — sidebar/nav di M8 */}
+    <VStack gap={4}>
+      <PublishTabbar slug={slug} />
       {children}
-    </div>
+    </VStack>
   );
 }

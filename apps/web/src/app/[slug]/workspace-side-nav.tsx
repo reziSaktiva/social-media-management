@@ -3,6 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
+import { HStack } from "@astryxdesign/core/HStack";
+import { IconButton } from "@astryxdesign/core/IconButton";
 import {
   SideNav,
   SideNavHeading,
@@ -50,21 +52,29 @@ export function WorkspaceSideNav({
         />
       }
       footer={
-        <DropdownMenu
-          button={{
-            label: userName || userEmail,
-            variant: "ghost",
-            width: "100%",
-          }}
-          items={[
-            {
-              label: "Profile",
-              onClick: () => router.push("/account/profile"),
-            },
-            { type: "divider" },
-            { label: "Logout", onClick: handleLogout },
-          ]}
-        />
+        <HStack gap={2} align="center" justify="between" width="100%">
+          <IconButton
+            label="Notifikasi"
+            icon={<span aria-hidden>🔔</span>}
+            variant="ghost"
+            tooltip="Notifikasi"
+            onClick={() => router.push("/account/notifications")}
+          />
+          <DropdownMenu
+            button={{
+              label: userName || userEmail,
+              variant: "ghost",
+            }}
+            items={[
+              {
+                label: "Profile",
+                onClick: () => router.push("/account/profile"),
+              },
+              { type: "divider" },
+              { label: "Logout", onClick: handleLogout },
+            ]}
+          />
+        </HStack>
       }
     >
       <SideNavSection title="Menu">

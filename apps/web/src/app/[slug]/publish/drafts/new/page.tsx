@@ -6,16 +6,17 @@ import { useParams, useRouter } from "next/navigation";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
-import { Card } from "@astryxdesign/core/Card";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { DateInput } from "@astryxdesign/core/DateInput";
 import { Dialog } from "@astryxdesign/core/Dialog";
 import { DialogHeader } from "@astryxdesign/core/Dialog";
 import { Divider } from "@astryxdesign/core/Divider";
+import { FileInput } from "@astryxdesign/core/FileInput";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Link } from "@astryxdesign/core/Link";
 import { RadioList, RadioListItem } from "@astryxdesign/core/RadioList";
+import { StackItem } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { TextInput } from "@astryxdesign/core/TextInput";
@@ -186,7 +187,7 @@ export default function NewDraftPage() {
     <VStack gap={4}>
       <HStack justify="between" align="center">
         <Button
-          label="Kembali"
+          label="Kembali ke Drafts"
           variant="ghost"
           onClick={() => router.push(`/${slug}/publish/drafts`)}
         />
@@ -199,125 +200,123 @@ export default function NewDraftPage() {
       {notice ? <Banner status={notice.status} title={notice.title} /> : null}
 
       <HStack gap={6} align="start" wrap="wrap">
-        <VStack gap={4} width="100%" maxWidth={560}>
-          <Card padding={4}>
-            <VStack gap={3}>
-              <Heading level={2}>Caption</Heading>
-              <TextArea
-                label="Caption"
-                isLabelHidden
-                value={caption}
-                onChange={setCaption}
-                placeholder="Tulis caption di sini..."
-                description="AI Caption Assist belum termasuk revisi ini."
-              />
-            </VStack>
-          </Card>
+        <VStack gap={5} width="100%" maxWidth={560}>
+          <VStack gap={3}>
+            <Heading level={2}>Caption</Heading>
+            <TextArea
+              label="Caption"
+              isLabelHidden
+              value={caption}
+              onChange={setCaption}
+              placeholder="Tulis caption di sini..."
+              description="AI Caption Assist belum termasuk revisi ini."
+            />
+          </VStack>
 
-          <Card padding={4}>
-            <VStack gap={3}>
-              <Heading level={2}>Media Attachment</Heading>
-              <Button label="+ Tambah Media" variant="secondary" isDisabled />
-              <Text type="supporting">
-                Lampiran media akan tersedia setelah OutstandAdapter Media API
-                siap.
-              </Text>
-            </VStack>
-          </Card>
+          <VStack gap={3}>
+            <Heading level={2}>Media</Heading>
+            <FileInput
+              label="Media"
+              isLabelHidden
+              mode="dropzone"
+              value={null}
+              onChange={() => undefined}
+              isDisabled
+              disabledMessage="Lampiran media akan tersedia setelah OutstandAdapter Media API siap."
+            />
+          </VStack>
         </VStack>
 
         <VStack gap={4} width="100%" maxWidth={380}>
-          <Card padding={4}>
-            <VStack gap={3}>
-              <Heading level={2}>Account Selector</Heading>
-              {MOCK_ACCOUNTS.map((account) => {
-                const isChecked = selectedAccountIds.includes(account.id);
-                const formats = getSelectableFormats(account.platform);
-                const currentFormat = formatByAccount[account.id];
+          <VStack gap={3}>
+            <Heading level={2}>Account Selector</Heading>
+            {MOCK_ACCOUNTS.map((account) => {
+              const isChecked = selectedAccountIds.includes(account.id);
+              const formats = getSelectableFormats(account.platform);
+              const currentFormat = formatByAccount[account.id];
 
-                return (
-                  <VStack key={account.id} gap={2}>
-                    <HStack justify="between" align="center">
-                      <CheckboxInput
-                        label={`${PLATFORM_LABEL[account.platform]} ${account.handle}`}
-                        value={isChecked}
-                        onChange={(checked) => toggleAccount(account, checked)}
-                      />
-                      {account.status === "disconnected" ? (
-                        <Badge label="Disconnected" variant="warning" />
-                      ) : null}
-                    </HStack>
-
+              return (
+                <VStack key={account.id} gap={2}>
+                  <HStack justify="between" align="center">
+                    <CheckboxInput
+                      label={`${PLATFORM_LABEL[account.platform]} ${account.handle}`}
+                      value={isChecked}
+                      onChange={(checked) => toggleAccount(account, checked)}
+                    />
                     {account.status === "disconnected" ? (
-                      <Text type="supporting">
-                        Akun ini terputus —{" "}
-                        <Link href={`/${slug}/settings/connected-accounts`}>
-                          Reconnect
-                        </Link>
-                        .
-                      </Text>
+                      <Badge label="Disconnected" variant="warning" />
                     ) : null}
+                  </HStack>
 
-                    {isChecked && formats ? (
-                      <RadioList
-                        label="Content Format"
-                        isLabelHidden
-                        orientation="horizontal"
-                        value={
-                          currentFormat ?? getDefaultFormat(account.platform)
-                        }
-                        onChange={(value) =>
-                          setFormatByAccount((prev) => ({
-                            ...prev,
-                            [account.id]: value as ContentFormat,
-                          }))
-                        }
-                      >
-                        {formats.map((format) => (
-                          <RadioListItem
-                            key={format}
-                            label={FORMAT_LABEL[format]}
-                            value={format}
-                          />
-                        ))}
-                      </RadioList>
-                    ) : null}
+                  {account.status === "disconnected" ? (
+                    <Text type="supporting">
+                      Akun ini terputus —{" "}
+                      <Link href={`/${slug}/settings/connected-accounts`}>
+                        Reconnect
+                      </Link>
+                      .
+                    </Text>
+                  ) : null}
 
-                    {isChecked &&
-                    account.platform === SocialPlatform.Pinterest ? (
-                      <VStack gap={2}>
-                        <Text type="supporting">Format: Pin</Text>
-                        <TextInput
-                          label="Pin Title"
-                          value={pinTitle}
-                          onChange={setPinTitle}
-                          isOptional
+                  {isChecked && formats ? (
+                    <RadioList
+                      label="Content Format"
+                      isLabelHidden
+                      orientation="horizontal"
+                      value={
+                        currentFormat ?? getDefaultFormat(account.platform)
+                      }
+                      onChange={(value) =>
+                        setFormatByAccount((prev) => ({
+                          ...prev,
+                          [account.id]: value as ContentFormat,
+                        }))
+                      }
+                    >
+                      {formats.map((format) => (
+                        <RadioListItem
+                          key={format}
+                          label={FORMAT_LABEL[format]}
+                          value={format}
                         />
-                        <TextInput
-                          label="Destination Link"
-                          value={pinLink}
-                          onChange={setPinLink}
-                          isOptional
-                        />
-                      </VStack>
-                    ) : null}
+                      ))}
+                    </RadioList>
+                  ) : null}
 
-                    {isChecked &&
-                    !formats &&
-                    account.platform !== SocialPlatform.Pinterest ? (
-                      <Text type="supporting">Format: Post</Text>
-                    ) : null}
+                  {isChecked &&
+                  account.platform === SocialPlatform.Pinterest ? (
+                    <VStack gap={2}>
+                      <Text type="supporting">Format: Pin</Text>
+                      <TextInput
+                        label="Pin Title"
+                        value={pinTitle}
+                        onChange={setPinTitle}
+                        isOptional
+                      />
+                      <TextInput
+                        label="Destination Link"
+                        value={pinLink}
+                        onChange={setPinLink}
+                        isOptional
+                      />
+                    </VStack>
+                  ) : null}
 
-                    <Divider />
-                  </VStack>
-                );
-              })}
-            </VStack>
-          </Card>
+                  {isChecked &&
+                  !formats &&
+                  account.platform !== SocialPlatform.Pinterest ? (
+                    <Text type="supporting">Format: Post</Text>
+                  ) : null}
 
-          <Card padding={4}>
-            <VStack gap={3}>
-              <Heading level={2}>Schedule Picker</Heading>
+                  <Divider />
+                </VStack>
+              );
+            })}
+          </VStack>
+
+          <VStack gap={3}>
+            <Heading level={2}>Schedule Picker</Heading>
+            <HStack gap={2}>
               <DateInput
                 label="Tanggal"
                 value={scheduleDate as never}
@@ -328,22 +327,28 @@ export default function NewDraftPage() {
                 value={scheduleTime as never}
                 onChange={(value) => setScheduleTime(value)}
               />
-            </VStack>
-          </Card>
+            </HStack>
+          </VStack>
 
-          <HStack gap={3} justify="end">
-            <Button
-              label="Save as Draft"
-              variant="secondary"
-              onClick={handleSaveDraft}
-              isLoading={isSavingDraft}
-            />
-            <Button
-              label="Schedule"
-              variant="primary"
-              isDisabled={!isReadyToSchedule}
-              onClick={() => setIsConfirmOpen(true)}
-            />
+          <HStack gap={2} width="100%">
+            <StackItem size="fill">
+              <Button
+                label="Save as Draft"
+                variant="secondary"
+                width="100%"
+                onClick={handleSaveDraft}
+                isLoading={isSavingDraft}
+              />
+            </StackItem>
+            <StackItem size="fill">
+              <Button
+                label="Schedule"
+                variant="primary"
+                width="100%"
+                isDisabled={!isReadyToSchedule}
+                onClick={() => setIsConfirmOpen(true)}
+              />
+            </StackItem>
           </HStack>
         </VStack>
       </HStack>

@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.25     |
+| Version      | 1.0.26     |
 | Status       | Active     |
 | Last Updated | 2026-07-29 |
 
@@ -405,6 +405,19 @@ Restricted Actions:
   `data-platform`/`data-status` per thread, filtering client-side via
   `applyEngageFilter()` di App Prototype (termasuk empty-state "Tidak
   ada interaksi untuk filter ini" sesuai State Handling KSP-06).
+* **Design-sync: kode `apps/web` disamakan dengan Claude Design (arah
+  kebalikan ADR-051) selesai:** Draft Editor (Card wrapper section form
+  dihapus, `FileInput` dropzone asli menggantikan tombol disabled, Schedule
+  Date+Time sejajar, action bar full-width via `StackItem`), Publish tabbar
+  baru (`publish-tabbar.tsx`, shared di `publish/layout.tsx`, tidak
+  menyentuh logic 3 placeholder tab lain), Drafts List (page-head + Card
+  wrap), Sidebar (`IconButton` notifikasi ke `/account/notifications`).
+  Auth screens (Login/Register/Forgot/Reset) diperiksa detail — sudah
+  selaras, tidak ada perubahan kode. Murni visual/structural — Publish Now
+  dan AI Caption Assist sengaja tidak ditambahkan (tunggu ADR-047 & AI
+  Assistant domain). Diverifikasi typecheck/lint hijau + browser end-to-end
+  lewat tunnel ngrok (tabbar, FileInput disabled state, "Save as Draft"
+  tetap persist tanpa regresi, notifikasi navigasi benar).
 
 ---
 
