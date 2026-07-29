@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.23     |
+| Version      | 1.0.25     |
 | Status       | Active     |
 | Last Updated | 2026-07-29 |
 
@@ -363,6 +363,34 @@ Restricted Actions:
   lookup komponen tanpa shell out ke CLI. `AGENTS.md` diberi catatan:
   MCP untuk exploration, CLI lokal v0.1.8 tetap jadi sumber final karena
   server MCP menunjuk versi live yang bisa beda dari yang ter-pin.
+* **ADR-051 — Claude Design: kebijakan fidelitas Astryx (foundations +
+  component library) selesai:** `foundations/` (color, type, layout) dan
+  `components/` (buttons, cards, dialog, forms, navigation, status-chips,
+  table) di project Claude Design ditulis ulang total — setiap warna,
+  radius, shadow, spacing, ukuran, dan tipografi sekarang disalin langsung
+  dari `@astryxdesign/core@0.1.8` + `@astryxdesign/theme-neutral@0.1.8`
+  (bukan CSS buatan tangan), diverifikasi via `bunx astryx docs <topic>`
+  dan swizzle sementara (dihapus segera setelah dibaca). Tiap file
+  component library mencantumkan anotasi komponen+props Astryx asli yang
+  direplikasi. Accent berubah dari placeholder rekaan (#48517A) ke accent
+  neutral theme asli (#262626, near-black; tetap placeholder brand per
+  ADR-038/041). 6 status konten dipetakan ke varian `Badge` asli
+  (neutral/warning/info/purple/success/error). `AppShell` dipetakan ke
+  `variant="section"` untuk mempertahankan arah hairline-divider yang
+  sudah ada. Diverifikasi visual via browser (server statis sementara,
+  dihapus setelah verifikasi) sebelum push ke Claude Design via
+  `DesignSync`.
+* **ADR-051 lanjutan — migrasi `templates/` selesai:** 13 layar (8 KSP + 5
+  Auth) dan App Prototype ditulis ulang mengikuti token Astryx asli
+  langsung (tanpa alias). Ditemukan `thumbnail.html` sempat rusak sejak
+  push pertama ADR-051 — mereferensikan `--status-failed-bg`/
+  `--status-published-bg` yang sudah dihapus dari sistem token baru —
+  sudah diperbaiki ke `--color-error`/`--color-success`. Ditemukan juga
+  alias singkatan `--text-xs/-sm/-lg` (bukan nama token Astryx asli)
+  masih dipakai aktif di banyak file — diganti ke nama asli
+  (`--font-size-sm`/`--font-size-lg`) di seluruh project, baru kemudian
+  seluruh blok "Legacy aliases" di `styles.css` dihapus total — tidak ada
+  lagi nama token buatan sendiri di project ini.
 
 ---
 
@@ -440,6 +468,18 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-051 — Claude Design: kebijakan fidelitas Astryx (foundations +
+  component library + templates, selesai penuh): setiap nilai visual di
+  seluruh project (13 file foundations/component library + 13 layar +
+  App Prototype) disalin dari `@astryxdesign/core@0.1.8` +
+  `@astryxdesign/theme-neutral@0.1.8` asli (bukan buatan tangan),
+  dianotasikan ke komponen+props Astryx yang direplikasi. Accent berubah
+  ke accent neutral theme asli (near-black). Status konten dipetakan ke
+  varian `Badge` asli. `AppShell variant="section"` dipilih untuk
+  mempertahankan arah hairline-divider. Blok "Legacy aliases" di
+  `styles.css` sudah dihapus total — tidak ada lagi nama token buatan
+  sendiri. `thumbnail.html` yang sempat rusak (referensi token yang sudah
+  dihapus) sudah diperbaiki (2026-07-29).
 * ADR-050 — Transfer Ownership & Delete Workspace, method service
   ditambahkan: `deleteWorkspace` (Owner, cascade DB, Tier 1) sederhana
   tanpa ambiguitas. `transferOwnership` jadi proses **dua langkah** —
