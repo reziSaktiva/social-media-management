@@ -18,6 +18,43 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-07-29 — Astryx agent docs & MCP server: manual vs resmi, project-scoped vs global
+
+**Phase:** M8 Development
+
+**Summary:** User menanyakan apakah "Workflow Astryx wajib" di `AGENTS.md`
+sesuai dokumentasi resmi Astryx atau cuma buatan AI — jawabannya buatan
+manual (ADR-041), bukan output CLI. Diganti dengan agent docs resmi
+(`apps/web/.claude/CLAUDE.md`, hasil `astryx init --features agents --agent
+claude`). Dilanjutkan setup MCP server Astryx (`xds`) khusus project ini
+(bukan global) via `.mcp.json` di root repo — sempat gagal terdeteksi cukup
+lama karena dua sebab: (1) field `"type": "url"` dari contoh dokumentasi
+Astryx ternyata tidak valid untuk Claude Code (harus `"http"`/`"sse"`/`"ws"`),
+dan (2) sesi/chat yang sudah berjalan tidak re-scan `.mcp.json` — butuh
+sesi/chat baru. Proses troubleshooting juga menemukan app punya 3 UI
+berbeda yang mirip tapi tidak sama: Directory/Connectors (marketplace
+publik, bukan untuk custom server), "Local MCP servers" → Edit Config
+(untuk `claude_desktop_config.json` **global**, bukan project), dan `/mcp`
+command bawaan (yang benar-benar baca `.mcp.json` project). Setelah field
+`type` diperbaiki, server akhirnya connect di background pada sesi yang
+sudah berjalan (tidak butuh dialog approval eksplisit seperti dugaan awal).
+
+**Key Insight / Decision:** (1) Selalu bedakan config **project-scoped**
+(`.mcp.json` di root repo, ikut di-commit, khusus project) vs **global**
+(`claude_desktop_config.json` di `~/Library/Application Support/Claude/`,
+berlaku semua project) sebelum menambah MCP server — user secara eksplisit
+memilih project-scoped supaya tidak "bocor" ke project lain. (2) Contoh
+config dari dokumentasi vendor pihak ketiga (Astryx) tidak selalu cocok
+1:1 dengan schema Claude Code — field `type` wajib divalidasi lewat
+dokumentasi resmi Claude Code (`code.claude.com/docs/en/mcp`), bukan
+disalin mentah.
+
+**Impact:** `AGENTS.md`, `apps/web/.claude/CLAUDE.md` (baru), `.mcp.json`
+(baru), `DEVELOPER_WORKFLOW.md`, `CHANGELOG.md`, `PROJECT_STATE.md` — sudah
+diupdate dan di-commit di branch `docs/astryx-agent-docs-and-mcp`.
+
+---
+
 ## 2026-07-28 — Folder `design/` dihapus — bukan acuan AI/engineering
 
 **Phase:** M8 Development
