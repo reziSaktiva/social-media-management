@@ -4,6 +4,61 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-29 — Claude Design: 3 gap Critical Function vs 04-ux baseline diperbaiki
+
+Lanjutan audit sinkronisasi (entri di bawah) — user meminta perbaikan
+langsung ke Claude Design untuk 3 gap yang ditemukan, tanpa mengubah
+baseline (baseline sudah benar, implementasi yang tertinggal).
+
+### Fixed
+
+* **KSP-01-F05 (Home)** — `home.html`: card/list-row diberi class
+  semantik (`.home-schedule`, `.home-activity`, `.home-engagement`,
+  `.home-analytics`); `AppPrototype.dc.html` diberi handler route() baru
+  supaya klik item mengarah ke Draft Editor / Calendar / Engage /
+  Analyze sesuai peta deep-link di baseline.
+* **KSP-03-F05 (Queue)** — `publish-queue.html`: tombol ↑/↓ ditambahkan
+  di tiap `queue-row`; `AppPrototype.dc.html` menukar posisi DOM baris
+  dengan tetangganya saat tombol diklik + toast konfirmasi.
+* **KSP-06-F02 (Engage)** — `engage-inbox.html`: 3 select filter (Semua
+  Akun / Semua Platform / Semua Status) ditambahkan di atas
+  `inbox-shell`, tiap `thread-item` diberi `data-platform`/`data-status`;
+  `AppPrototype.dc.html` menambahkan `applyEngageFilter()` (dipanggil
+  saat `change` pada select manapun) yang menyembunyikan thread tidak
+  cocok dan menampilkan empty state _"Tidak ada interaksi untuk filter
+  ini"_ (persis wording State Handling KSP-06) saat hasil kosong.
+
+Diverifikasi visual (tampilan statis) di scratchpad sebelum push; logika
+interaktif App Prototype (format `.dc.html` khusus Claude Design) diverifikasi
+lewat review kode karena runtime-nya butuh environment Claude Design asli.
+
+Detail lengkap temuan: entri CHANGELOG di bawah ("Audit sinkronisasi
+Claude Design vs 04-ux baseline").
+
+---
+
+## 2026-07-29 — Audit sinkronisasi Claude Design vs 04-ux baseline
+
+Diminta user untuk cek apakah project Claude Design masih selaras dengan
+`key-screen-patterns.md` dan `navigation-patterns.md` (04-ux baseline)
+setelah rewrite fidelitas Astryx (ADR-051). Dibaca ulang kedua dokumen
+baseline secara penuh dan dibandingkan terhadap setiap Critical Function
+KSP-01–08, label status, struktur sidebar, dan tab bar.
+
+### Findings
+
+* Tidak ada regresi dari rewrite ADR-051 — perubahan token/komponen murni
+  visual, seluruh zona fungsional dan label status baseline masih utuh.
+* 3 gap fungsional pre-existing (bukan disebabkan sesi ADR-051) ditemukan
+  dan dicatat di `PROJECT_STATE.md` Known Issues: KSP-01-F05 (Home deep
+  link belum di-wire), KSP-03-F05 (Queue reorder belum ada), KSP-06-F02
+  (filter Engage tidak ada sama sekali).
+
+Tidak ada perubahan pada file Claude Design maupun baseline — audit ini
+murni pencatatan gap untuk task selanjutnya.
+
+---
+
 ## 2026-07-29 — Claude Design: migrasi templates/ selesai, legacy alias dihapus total (ADR-051 addendum)
 
 Lanjutan ADR-051: 13 layar (8 KSP + 5 Auth) + App Prototype

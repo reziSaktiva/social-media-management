@@ -391,6 +391,20 @@ Restricted Actions:
   (`--font-size-sm`/`--font-size-lg`) di seluruh project, baru kemudian
   seluruh blok "Legacy aliases" di `styles.css` dihapus total — tidak ada
   lagi nama token buatan sendiri di project ini.
+* **Claude Design — 3 gap Critical Function vs 04-ux baseline
+  diperbaiki:** ditemukan saat audit sinkronisasi (lihat entri di atas),
+  langsung diimplementasikan di Claude Design atas permintaan user.
+  **KSP-01-F05** — item Today's Schedule/Recent Activity di-wire ke
+  Draft Editor/Calendar, Engagement Snapshot ke Engage, Analytics
+  Snapshot ke Analyze (class semantik baru `.home-schedule`/
+  `.home-activity`/`.home-engagement`/`.home-analytics` + handler baru
+  di `AppPrototype.dc.html`). **KSP-03-F05** — tombol reorder ↑/↓ di
+  tiap `queue-row` (`publish-queue.html`), menukar posisi DOM dengan
+  baris tetangga saat diklik. **KSP-06-F02** — 3 select filter (Akun/
+  Platform/Status) ditambahkan di `engage-inbox.html` dengan
+  `data-platform`/`data-status` per thread, filtering client-side via
+  `applyEngageFilter()` di App Prototype (termasuk empty-state "Tidak
+  ada interaksi untuk filter ini" sesuai State Handling KSP-06).
 
 ---
 
