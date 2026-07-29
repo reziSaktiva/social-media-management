@@ -4,6 +4,70 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-29 — Audit Safety Check/Double Confirmation seluruh aksi; ADR-048 Disconnect Confirmation
+
+Lanjutan diskusi ADR-047 (Publish Now): user bertanya apakah setiap aksi
+di produk melewati Safety Check/Double Confirmation. Audit menyeluruh
+atas seluruh dokumen `product-discovery/` untuk memetakan setiap aksi
+(publish, draft, akun, member, workspace, logout, dll.) terhadap ada/
+tidaknya spesifikasi konfirmasi.
+
+### Temuan
+
+* Hanya **1 pola konfirmasi** yang terdokumentasi di seluruh produk:
+  Confirmation Summary (KSP-05-F06), dipakai Schedule dan (sejak
+  ADR-047) Publish Now.
+* **Logout** tidak melewati Safety Check sama sekali — cuma disebut
+  sebagai satu baris di User Menu (`navigation-patterns.md`), tanpa
+  mention konfirmasi apa pun.
+* Kalimat usang: `key-screen-patterns.md` sempat mengklaim Schedule
+  sebagai *"satu-satunya momen"* konfirmasi eksplisit — sudah tidak
+  akurat sejak ADR-047 menambahkan Publish Now. Diperbaiki jadi
+  "satu-satunya **pola**" (masih akurat — cuma ada 1 pola, dipakai 2
+  aksi).
+* 4 aksi berisiko/destruktif — **Disconnect Account, Remove Member,
+  Transfer Ownership, Delete Workspace** — sama sekali tidak punya
+  spesifikasi konfirmasi. Dari keempatnya, hanya Disconnect Account yang
+  sudah punya screen nyata (KSP-08); tiga lainnya belum pernah dirancang
+  sebagai layar sama sekali (Workspace Settings → Members/General di
+  luar 8 KSP).
+
+### ADR-048 — Disconnect Account wajib dialog konfirmasi
+
+* Fungsi baru **KSP-08-F07 (Disconnect Confirmation)** — dialog
+  peringatan ringkas (bukan Confirmation Summary) sebelum eksekusi,
+  mengingatkan bahwa post terjadwal untuk akun tersebut tetap di antrean
+  (KSP-D09), tidak otomatis dibatalkan.
+* Pola baru "Pola: Disconnect Flow" + baris Decision Log **KSP-D14** di
+  `key-screen-patterns.md`.
+* Tidak ada perubahan RBAC — akses Disconnect tetap Owner/Admin sesuai
+  `roles-permissions.md` yang sudah ada; hanya ditambah catatan silang.
+* Remove Member, Transfer Ownership, Delete Workspace **sengaja ditunda**
+  — screen-nya belum pernah dirancang, perlu inisiatif desain terpisah
+  sebelum pola konfirmasinya bisa diputuskan.
+
+### Changed (dokumentasi)
+
+* `key-screen-patterns.md` — KSP-08-F05 diperjelas, KSP-08-F07 baru,
+  "Pola: Disconnect Flow" baru, KSP-D14 baru, kalimat "satu-satunya
+  momen" diperbaiki, KSP-D05 disinkronkan.
+* `roles-permissions.md` — baris "Tambah/hapus connected accounts" diberi
+  catatan silang ke ADR-048; Related Documents diperbarui.
+* `DECISIONS.md` — ADR-048 baru.
+* `PROJECT_STATE.md` — Completed, Next Tasks (3 entry: Publish Now,
+  Disconnect Confirmation, dan catatan ditunda untuk Remove
+  Member/Transfer Ownership/Delete Workspace), Recent Decisions.
+
+### Belum dikerjakan (task terpisah)
+
+* Implementasi dialog Disconnect Confirmation di App Prototype
+  (`settings-connected-accounts.html`) dan di kode nyata.
+* Desain layar Workspace Settings → Members/General/Billing (prasyarat
+  sebelum Remove Member/Transfer Ownership/Delete Workspace bisa dapat
+  pola konfirmasi).
+
+---
+
 ## 2026-07-29 — App Prototype: fix navigasi back + role switcher; ADR-047 Publish Now
 
 Dua pekerjaan berurutan di sesi yang sama.

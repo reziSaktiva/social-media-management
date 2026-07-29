@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.18     |
+| Version      | 1.0.19     |
 | Status       | Active     |
 | Last Updated | 2026-07-29 |
 
@@ -306,6 +306,22 @@ Restricted Actions:
   tabel transisi status. Dokumentasi baseline sudah diselaraskan;
   **implementasi kode dan App Prototype belum berjalan** — lihat Next
   Tasks.
+* **Audit Safety Check / Double Confirmation seluruh aksi produk:**
+  dipicu diskusi Publish Now, ditemukan cuma 1 pola konfirmasi
+  terdokumentasi (Confirmation Summary, Schedule/Publish Now) dari
+  belasan aksi yang ada. Ditemukan juga kalimat usang di
+  `key-screen-patterns.md` yang mengklaim Schedule sebagai "satu-satunya
+  momen" konfirmasi — sudah diperbaiki jadi "satu-satunya pola" mengingat
+  sekarang dipakai 2 aksi.
+* **ADR-048 — Disconnect Account wajib dialog konfirmasi:** dari audit di
+  atas, Disconnect Account (KSP-08-F05) ternyata sama sekali tidak punya
+  spesifikasi konfirmasi walau screen-nya sudah ada (beda dari Remove
+  Member/Transfer Ownership/Delete Workspace yang screen-nya belum
+  pernah dirancang). Fungsi baru KSP-08-F07 (Disconnect Confirmation) +
+  "Pola: Disconnect Flow" + KSP-D14 ditambahkan — dialog peringatan
+  ringkas (bukan Confirmation Summary), mengingatkan post terjadwal tetap
+  di antrean (KSP-D09). Tidak ada perubahan RBAC. Implementasi App
+  Prototype dan kode belum berjalan.
 
 ---
 
@@ -325,7 +341,9 @@ Restricted Actions:
 
 * **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (mock), dan persistensi "Save as Draft" selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
 * **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (`/publish/drafts/new`) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
-* **Publish Now (ADR-047) — implementasi menyusul, belum ada di kode maupun App Prototype:** `PublishingService.publishNow()` (RBAC Owner/Admin/Manager, validasi `ContentFormat` ADR-039, panggil `OutstandAdapter`) + tombol "Publish Now" di Draft Editor (KSP-05-F12) berdampingan dengan Schedule; App Prototype Claude Design juga perlu ditambahkan tombolnya (role switcher yang sudah ada tinggal dipakai untuk membatasi visibility Creator).
+* **Publish Now (ADR-047) — implementasi menyusul, belum ada di kode maupun App Prototype:** `PublishingService.publishNow()` (RBAC Owner/Admin/Manager, validasi `ContentFormat` ADR-039, panggil `OutstandAdapter`) + tombol "Publish Now" di Draft Editor (KSP-05-F12) berdampingan dengan Schedule + dialog Confirmation Summary variannya (UXP-04); App Prototype Claude Design juga perlu ditambahkan tombolnya (role switcher yang sudah ada tinggal dipakai untuk membatasi visibility Creator).
+* **Disconnect Confirmation (ADR-048) — implementasi menyusul:** dialog konfirmasi (KSP-08-F07) di `settings-connected-accounts.html` App Prototype + `disconnectAccount` di kode nyata (RBAC Owner/Admin, belum ada perubahan RBAC — tinggal tambah gate konfirmasi sebelum memanggil service).
+* **(Ditunda, scope terpisah) Remove Member, Transfer Ownership, Delete Workspace:** ditemukan saat audit Safety Check tidak punya spesifikasi UX/konfirmasi sama sekali — screen Workspace Settings → Members/General belum pernah dirancang (di luar 8 KSP). Perlu sesi terpisah untuk merancang layar sebelum pola konfirmasinya bisa diputuskan.
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
   `post.published` / `post.error` / `account.token_expired` dengan
   durable-before-ACK, job retry internal, media upload working copy, serta
@@ -380,6 +398,14 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-048 — Disconnect Account wajib dialog konfirmasi: fungsi baru
+  KSP-08-F07 (Disconnect Confirmation) — peringatan ringkas sebelum
+  eksekusi, mengingatkan post terjadwal tetap di antrean (KSP-D09).
+  Ditemukan saat audit Safety Check/Double Confirmation seluruh aksi
+  produk (dipicu diskusi Publish Now). Tidak ada perubahan RBAC. Remove
+  Member/Transfer Ownership/Delete Workspace sengaja tidak disentuh —
+  screen-nya belum pernah dirancang, ditunda ke inisiatif terpisah
+  (2026-07-29).
 * ADR-047 — Publish Now diangkat jadi fitur UX resmi: `Draft → Published`
   langsung tanpa jadwal, akses dibatasi identik dengan Schedule
   (Owner/Admin/Manager, bukan Creator) — konsisten dengan pola akses

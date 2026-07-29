@@ -444,9 +444,9 @@ Klik tautan **Reconnect** membawa pengguna ke KSP-08.
 
 ---
 
-### Pola: Confirmation Summary sebelum Schedule
+### Pola: Confirmation Summary sebelum Schedule / Publish Now
 
-Sebelum tombol Schedule dieksekusi, pengguna melihat ringkasan konfirmasi:
+Sebelum tombol Schedule **atau Publish Now** (KSP-05-F12, ADR-047) dieksekusi, pengguna melihat ringkasan konfirmasi:
 
 ```
 Konfirmasi Jadwal:
@@ -460,7 +460,9 @@ Konfirmasi Jadwal:
   [Batal]   [Konfirmasi & Jadwalkan]
 ```
 
-Ini adalah satu-satunya momen di mana pengguna diminta konfirmasi eksplisit sebelum data diproses. (UXP-04). Format per akun wajib terlihat agar tidak salah jadwalkan Story/Reel.
+Untuk Publish Now, baris "Waktu" berubah jadi "Sekarang" dan tombol menjadi "Konfirmasi & Publish" — struktur ringkasan tetap sama, hanya menegaskan bahwa aksi ini tayang langsung tanpa jeda koreksi seperti `cancelSchedule` pada Schedule.
+
+Confirmation Summary ini adalah pola konfirmasi **paling lengkap** yang didokumentasikan di produk — dipakai khusus untuk dua aksi yang mempublikasikan konten: Schedule dan Publish Now (UXP-04). Disconnect Account punya pola konfirmasi sendiri yang lebih ringkas (KSP-08-F07, ADR-048) karena bukan aksi publish. Aksi lain (Save as Draft, Remove Member, Transfer Ownership, Delete Workspace, dll.) masih belum memiliki spesifikasi konfirmasi apa pun. Format per akun wajib terlihat agar tidak salah jadwalkan Story/Reel.
 
 ---
 
@@ -697,8 +699,9 @@ Layar ini adalah satu-satunya tempat pengguna mengelola koneksi akun media sosia
 | KSP-08-F02 | Status Koneksi per Akun | Status tiap akun: Active, Disconnected, Expired | UXP-04 |
 | KSP-08-F03 | Connect Account | CTA untuk menambah akun baru — memulai alur pemilihan platform dan OAuth | UXP-04 |
 | KSP-08-F04 | Reconnect | Tombol Reconnect pada akun berstatus Disconnected — memulai ulang alur OAuth untuk akun tersebut | UXP-04 |
-| KSP-08-F05 | Disconnect / Remove | Pengguna dapat melepas koneksi akun yang tidak diperlukan | UXP-03 |
+| KSP-08-F05 | Disconnect / Remove | Pengguna dapat melepas koneksi akun yang tidak diperlukan — wajib melalui Disconnect Confirmation (KSP-08-F07, ADR-048) sebelum eksekusi | UXP-03, UXP-04 |
 | KSP-08-F06 | Platform Selector | Daftar platform yang tersedia saat menambah akun baru | UXP-03 |
+| KSP-08-F07 | Disconnect Confirmation | Dialog konfirmasi sebelum akun benar-benar diputus — menampilkan peringatan bahwa post terjadwal untuk akun ini tetap di antrean (KSP-D09), bukan otomatis dibatalkan (ADR-048) | UXP-04 |
 
 ---
 
@@ -747,6 +750,32 @@ Langkah antara klik "Connect" dan halaman OAuth platform harus seminimal mungkin
 
 ---
 
+### Pola: Disconnect Flow (ADR-048)
+
+```
+[Disconnect] diklik
+    ↓
+Dialog Disconnect Confirmation:
+
+  Putuskan koneksi Instagram @brandname?
+
+  Post yang sudah terjadwal untuk akun ini akan tetap di antrean —
+  tidak otomatis dibatalkan. Post baru tidak bisa dijadwalkan ke akun
+  ini sampai disambungkan kembali.
+
+  [Batal]   [Putuskan Koneksi]
+    ↓
+Klik "Putuskan Koneksi" → akun berubah status Disconnected
+```
+
+Disconnect hanya tersedia untuk role Owner/Admin (`roles-permissions.md`
+— "Tambah/hapus connected accounts"). Dialog ini **tidak** memakai pola
+Confirmation Summary (KSP-05-F06) — cukup peringatan singkat + dua
+tombol, karena aksi ini bukan mempublikasikan konten dan tidak
+memerlukan ringkasan multi-field.
+
+---
+
 ### Pola: Reconnect Flow
 
 ```
@@ -789,7 +818,7 @@ Keputusan desain yang dibuat dalam dokumen ini.
 | KSP-D02 | Draft Editor memiliki dua zona: kiri (Caption + Media) dan kanan (Account, Schedule, Actions) | Pemisahan ini memungkinkan Raka fokus menulis di kiri sambil konfigurasi publish di kanan — alur linear dari kiri ke kanan | UXP-01, UXP-03 |
 | KSP-D03 | AI Assist tampil sebagai trigger di dalam Caption Editor, bukan panel terpisah yang dibuka secara sengaja | AI paling berguna saat muncul tepat di momen penulisan, bukan sebagai destinasi navigasi (UXP-05, I-06) | UXP-05 |
 | KSP-D04 | Account Selector menampilkan akun Disconnected — tidak disembunyikan | Pengguna harus melihat masalah di titik keputusan, bukan setelah post gagal | UXP-04 |
-| KSP-D05 | Confirmation summary muncul sebelum tombol Schedule dieksekusi | Membangun kepercayaan bahwa konten akan terbit ke akun dan waktu yang benar (UXP-04) | UXP-04 |
+| KSP-D05 | Confirmation summary muncul sebelum tombol Schedule **atau Publish Now** dieksekusi (ADR-047) | Membangun kepercayaan bahwa konten akan terbit ke akun dan waktu yang benar (UXP-04) | UXP-04 |
 | KSP-D06 | Engage Inbox menggunakan master-detail (thread list + thread detail di panel kanan) | Volume triage tinggi; pengguna perlu berpindah thread tanpa full-page navigation (NP-D03) | UXP-03 |
 | KSP-D07 | Analytics Dashboard menampilkan Summary Row sebagai zona teratas | Maya membaca angka agregat pertama — bukan tabel detail yang mengharuskan scanning panjang | UXP-02, UXP-03 |
 | KSP-D08 | Empty state Analytics menampilkan dua CTA, bukan angka nol atau grafik kosong | Angka nol atau grafik tanpa data misleading dan tidak membantu; CTA mengarahkan ke aksi yang bermakna (UXD-03) | UXP-03 |
@@ -798,6 +827,7 @@ Keputusan desain yang dibuat dalam dokumen ini.
 | KSP-D11 | Start Page tidak masuk daftar 8 layar kritis | Start Page bukan bagian dari siklus kerja harian (UXP-01: Draft → Schedule → Publish → Engage → Review). Start Page adalah fitur konfigurasi yang diakses sesekali — bukan setiap sesi kerja. Polanya sederhana: form pengaturan + preview publik. Tidak ada pola koordinasi tim atau alur multi-langkah yang perlu didokumentasikan mendalam di fase ini. | UXP-01, UXP-03 |
 | KSP-D12 | Content Format Selector per akun di Draft Editor (bukan satu toggle global) | Format bergantung platform (IG/FB vs TikTok vs Pinterest); multi-account posting membutuhkan format independen per `PostTarget` (ADR-039) | UXP-01, UXP-03 |
 | KSP-D13 | Engage Inbox hanya memuat komentar/reply dan menampilkan last sync + Manual Refresh | Kontrak resmi Outstand mendukung comment pull/reply, bukan unified DM/mention atau webhook engagement; periodic pull 30 menit perlu ekspektasi freshness yang terlihat (ADR-040) | UXP-03, UXP-06 |
+| KSP-D14 | Disconnect Account wajib melalui dialog konfirmasi ringkas (bukan Confirmation Summary KSP-05-F06), bukan eksekusi langsung (ADR-048) | Ditemukan saat audit dokumentasi bahwa Disconnect tidak punya spesifikasi konfirmasi sama sekali padahal berdampak (post terjadwal tetap jalan tanpa akun aktif); level konfirmasi cukup peringatan + dua tombol karena bukan aksi publish konten | UXP-04 |
 
 ---
 

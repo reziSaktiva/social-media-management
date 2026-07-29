@@ -132,7 +132,7 @@ Creator adalah anggota tim yang berfokus pada pembuatan konten. Role ini cocok u
 | Kelola workspace settings | ✅ | ✅ | ❌ | ❌ |
 | Undang/hapus member | ✅ | ✅ | Creator saja | ❌ |
 | Ubah role member | ✅ | ✅ (kecuali Owner) | ❌ | ❌ |
-| Tambah/hapus connected accounts | ✅ | ✅ | ❌ | ❌ |
+| Tambah/hapus connected accounts (hapus wajib lewat Disconnect Confirmation, ADR-048) | ✅ | ✅ | ❌ | ❌ |
 | Buat/edit konten | ✅ | ✅ | ✅ | ✅ (milik sendiri) |
 | Jadwalkan/publish konten (termasuk Publish Now, ADR-047) | ✅ | ✅ | ✅ | ❌ |
 | Akses Analytics penuh | ✅ | ✅ | ✅ | 👁 ringkasan |
@@ -220,4 +220,4 @@ Dokumen ini dapat ditelusuri ke User Discovery Baseline v1.0 melalui pemetaan pe
 * `../04-ux/information-architecture.md`
 * `../04-ux/user-flows.md`
 * `../04-ux/key-screen-patterns.md`
-* `../../project-manager/DECISIONS.md` — ADR-008 (Product Baseline), ADR-012 (addendum ini), ADR-047 (Publish Now)
+* `../../project-manager/DECISIONS.md` — ADR-008 (Product Baseline), ADR-012 (addendum ini), ADR-047 (Publish Now), ADR-048 (Disconnect Confirmation)
