@@ -4,6 +4,111 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-29 — ADR-050: method service Transfer Ownership & Delete Workspace
+
+Menutup gap yang ditemukan ADR-049: `deleteWorkspace` dan
+`transferOwnership` sama sekali tidak punya method service. User meminta
+gap ini diperbaiki langsung, bukan ditunda sampai screen dirancang.
+
+### Temuan & keputusan
+
+* `deleteWorkspace` — tidak ada ambiguitas (skema DB sudah `ON DELETE
+  CASCADE` di semua tabel `workspace_id`). Ditambahkan langsung: Owner
+  saja, wajib konfirmasi Tier 1.
+* `transferOwnership` — ternyata punya fork nyata yang belum pernah
+  diputuskan di dokumen manapun: langsung vs butuh persetujuan target.
+  User memilih **butuh persetujuan** — proses dua langkah:
+  * `transferOwnership(targetMemberId)` — Owner memicu, isi
+    `pendingOwnerTransferTo`, kirim notifikasi. Belum menukar role.
+  * `acceptOwnershipTransfer()` — Admin target menerima, role baru
+    bertukar, `pendingOwnerTransferTo` dikosongkan.
+  * Pola ini meniru `inviteMember`/`acceptInvite` yang sudah ada di
+    dokumen yang sama — bukan pola baru yang asing.
+
+### Changed (dokumentasi)
+
+* `application-layer.md` — 3 method baru di `WorkspaceService`
+  (`transferOwnership`, `acceptOwnershipTransfer`, `deleteWorkspace`);
+  catatan gap ADR-049 sebelumnya dihapus (sudah resolved).
+* `domain-model.md` — field baru `Workspace.pendingOwnerTransferTo`; 2
+  `NotificationType` baru (`ownership_transfer_requested`,
+  `ownership_transfer_resolved`); DM-D11.
+* `database-strategy.md` — kolom baru `pending_owner_transfer_to` di
+  `workspaces`.
+* `roles-permissions.md` — klarifikasi alur dua langkah + Related
+  Documents.
+* `DECISIONS.md` — ADR-050 baru.
+* `PROJECT_STATE.md` — Completed, Next Tasks (disederhanakan — screen
+  jadi satu-satunya blocker tersisa), Recent Decisions.
+
+### Belum dikerjakan (task terpisah)
+
+* Screen Workspace Settings → General/Members (di luar 8 KSP) — masih
+  satu-satunya yang menghalangi implementasi Transfer Ownership/Delete
+  Workspace/Remove Member di kode maupun App Prototype.
+
+---
+
+## 2026-07-29 — ADR-049: kebijakan Safety Check / Double Confirmation lintas produk
+
+Lanjutan audit ADR-047/ADR-048: user meminta penilaian eksplisit — dari
+seluruh aksi yang teridentifikasi, mana yang **seharusnya** wajib
+Safety Check / Double Confirmation, berdasarkan kerangka reversibilitas +
+blast radius.
+
+### Kerangka & klasifikasi
+
+* **Kriteria wajib:** irreversibel/mahal dibatalkan, ATAU blast radius
+  besar (dampak melampaui data milik pengguna sendiri).
+* **Tier 1** (konfirmasi diperkuat): Transfer Ownership, Delete/Hapus
+  Workspace.
+* **Tier 2** (dialog standar, pola Disconnect Confirmation): Delete Post,
+  Delete Media, Remove Member, Update Member Role, Cancel Schedule,
+  **Logout**.
+* **Tidak wajib** (reversibel/frekuensi tinggi — UXP-03): Save as Draft,
+  Kirim ke Review, Mark as Done, Reply komentar, Connect Account,
+  Reconnect, Remove Link.
+* User memindahkan **Logout** dari rekomendasi awal ("tidak perlu",
+  karena reversibel penuh) ke **Tier 2** — dicatat sebagai keputusan
+  eksplisit di ADR-049, bukan rekomendasi yang diikuti begitu saja.
+
+### Temuan tambahan
+
+* `deleteWorkspace` dan `transferOwnership` (dua aksi Tier 1) **belum
+  punya method service sama sekali** di `application-layer.md` —
+  screen pemicunya (Workspace Settings → General) belum pernah
+  dirancang. Dicatat sebagai gap terpisah, bukan diperbaiki sekarang
+  (menghindari menebak kontrak API tanpa desain layar).
+
+### Changed (dokumentasi)
+
+* `key-screen-patterns.md` — bagian baru "Pola Lintas Layar — Safety
+  Check / Double Confirmation": kriteria, tabel tier, klasifikasi
+  lengkap 17 aksi, catatan implementasi.
+* `navigation-patterns.md` — NP-D10 baru (Logout wajib Tier 2) + catatan
+  di bagian User Settings.
+* `ux-principles.md` — bullet baru di UXP-04 menautkan ke kebijakan ini
+  (bukan UXP baru — exit criteria dokumen membatasi ke 7 prinsip
+  bertelusur insight I-01–I-08).
+* `roles-permissions.md` — cross-reference tier di baris Hapus
+  Workspace, Transfer Ownership, Undang/hapus member, Ubah role member.
+* `application-layer.md` — cross-reference tier di `removeMember`,
+  `updateMemberRole`, `cancelSchedule`, `deletePost`, `deleteMedia`,
+  `disconnectAccount`; catatan gap `deleteWorkspace`/`transferOwnership`.
+* `DECISIONS.md` — ADR-049 baru.
+* `PROJECT_STATE.md` — Completed, Next Tasks (2 entry baru), Recent
+  Decisions.
+
+### Belum dikerjakan (task terpisah)
+
+* Implementasi seluruh aksi Tier 1/Tier 2 yang baru diklasifikasikan
+  (Cancel Schedule, Delete Post, Delete Media, Update Member Role,
+  Logout) — baik di kode maupun App Prototype.
+* Desain layar Workspace Settings → General/Members + method service
+  `deleteWorkspace`/`transferOwnership` (prasyarat Tier 1).
+
+---
+
 ## 2026-07-29 — Audit Safety Check/Double Confirmation seluruh aksi; ADR-048 Disconnect Confirmation
 
 Lanjutan diskusi ADR-047 (Publish Now): user bertanya apakah setiap aksi

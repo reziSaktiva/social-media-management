@@ -151,6 +151,7 @@ Workspace adalah **root context** — seluruh data domain lain terikat ke `Works
 - `name: string`
 - `slug: string` — URL identifier unik
 - `ownerId: UserId` — referensi ke Identity BC
+- `pendingOwnerTransferTo: UserId?` — diisi saat Owner memicu `transferOwnership`; dikosongkan lagi setelah target menerima (`acceptOwnershipTransfer`) atau proses dibatalkan (ADR-050)
 - `plan: WorkspacePlan` — `free | pro | (post-MVP: team)`
 - `createdAt: Date`
 
@@ -516,7 +517,7 @@ Mengelola notifikasi in-app untuk pengguna. Notification adalah supporting domai
 - `id: NotificationId`
 - `workspaceId: WorkspaceId`
 - `userId: UserId` — penerima notifikasi
-- `type: NotificationType` — `post_published | post_failed | account_reconnect_required | engagement_new | member_invited | ...`
+- `type: NotificationType` — `post_published | post_failed | account_reconnect_required | engagement_new | member_invited | ownership_transfer_requested | ownership_transfer_resolved | ...`
 - `title: string`
 - `body: string`
 - `isRead: boolean`
@@ -880,6 +881,7 @@ Tabel berikut memetakan Bounded Context ke modul yang didefinisikan di Product B
 | DM-D08 | Engagement MVP hanya `comment` + `Reply`, diisi melalui pull | Selaras kontrak Outstand; DM/mention dan webhook Engagement tidak tersedia untuk MVP | Mempertahankan tipe yang tidak dapat dipenuhi provider |
 | DM-D09 | Media original tetap di Supabase; metadata working copy Outstand opsional | Memisahkan ownership aset dari artefak publishing provider | Menjadikan URL Outstand source of truth |
 | DM-D10 | ADR-040 | DM-D08–D09 dan status reconnect akun mengamandemen model lama |
+| DM-D11 | Transfer Ownership dua langkah: `pendingOwnerTransferTo` di `Workspace`, bukan swap `ownerId` langsung | Admin target harus `acceptOwnershipTransfer` dulu sebelum role benar-benar bertukar — mencegah Owner lama memaksakan tanggung jawab (termasuk billing) ke Admin yang belum siap (ADR-050) | Swap `ownerId` langsung tanpa persetujuan (lebih sederhana, tapi ditolak — lihat ADR-050) |
 
 ---
 

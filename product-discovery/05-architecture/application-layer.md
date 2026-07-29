@@ -455,11 +455,14 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 | `updateWorkspace` | Server Action | Update nama, slug, atau brand settings |
 | `inviteMember` | Server Action | Kirim undangan ke email |
 | `acceptInvite` | Server Action | Terima undangan, aktivasi membership |
-| `removeMember` | Server Action | Hapus member dari workspace |
-| `updateMemberRole` | Server Action | Ubah role member |
+| `removeMember` | Server Action | Hapus member dari workspace — wajib dialog konfirmasi Tier 2 sebelum eksekusi (ADR-049) |
+| `updateMemberRole` | Server Action | Ubah role member — wajib dialog konfirmasi Tier 2 sebelum eksekusi (ADR-049) |
 | `getMember` | Internal (dipanggil service lain) | Ambil data member + role untuk auth check |
 | `connectAccount` | Server Action | Hubungkan akun media sosial via Outstand |
-| `disconnectAccount` | Server Action | Putus koneksi akun media sosial |
+| `disconnectAccount` | Server Action | Putus koneksi akun media sosial — wajib Disconnect Confirmation (KSP-08-F07, ADR-048) |
+| `transferOwnership` | Server Action | Owner memicu transfer kepemilikan ke Admin lain — set `pendingOwnerTransferTo`, kirim notifikasi (`ownership_transfer_requested`); **tidak** langsung menukar role. RBAC: Owner saja, target harus Admin aktif. Wajib konfirmasi Tier 1 (ketik nama workspace, ADR-049) sebelum memicu (ADR-050) |
+| `acceptOwnershipTransfer` | Server Action | Admin target menerima transfer — role Owner lama dan Admin target bertukar dalam satu transaksi, `pendingOwnerTransferTo` dikosongkan, notifikasi (`ownership_transfer_resolved`) ke Owner lama. RBAC: hanya user yang jadi target `pendingOwnerTransferTo` (ADR-050) |
+| `deleteWorkspace` | Server Action | Hapus workspace beserta seluruh data terkait — cascade mengikuti `ON DELETE CASCADE` per `workspace_id` (`database-strategy.md`). RBAC: Owner saja. Wajib konfirmasi Tier 1 (ketik nama workspace, ADR-049) sebelum eksekusi (ADR-050) |
 
 ## PublishingService
 
@@ -468,9 +471,9 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 | `createDraft` | Server Action | Buat draft post baru |
 | `updateDraft` | Server Action | Edit konten draft (caption, media, targets, `contentFormat`, `platformOptions`) |
 | `schedulePosts` | Server Action | Jadwalkan satu atau beberapa post — wajib validasi matriks `ContentFormat` per target (ADR-039) sebelum memanggil Outstand |
-| `cancelSchedule` | Server Action | Batalkan jadwal, kembali ke draft |
+| `cancelSchedule` | Server Action | Batalkan jadwal, kembali ke draft — wajib dialog konfirmasi Tier 2 sebelum eksekusi, simetris dengan konfirmasi Schedule (ADR-049) |
 | `publishNow` | Server Action | Publish langsung tanpa jadwal (KSP-05-F12, ADR-047) — RBAC sama dengan `schedulePosts` (Owner/Admin/Manager, bukan Creator); validasi matriks `ContentFormat` per target (ADR-039) tetap wajib sebelum memanggil Outstand |
-| `deletePost` | Server Action | Soft delete post |
+| `deletePost` | Server Action | Soft delete post — wajib dialog konfirmasi Tier 2 sebelum eksekusi (ADR-049), meski soft delete di DB (DB-D03) |
 | `getScheduledPosts` | Server Component | Load post untuk Calendar view |
 | `getDraftPosts` | Server Component | Load post untuk Draft list |
 | `applyTargetOutcomes` | JOB-01 internal | Setelah `post.published`/`post.error`, baca outcome Outstand per akun lalu update setiap `PostTarget` secara independen; notifikasi internal boleh `post_published`/`post_failed` |
@@ -508,7 +511,7 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 | `uploadMedia` | Server Action | Upload file ke Supabase Storage + simpan metadata |
 | `createOutstandWorkingCopy` | Internal Publishing flow | Request upload URL → PUT → confirm; kembalikan URL Outstand untuk publish |
 | `getMediaLibrary` | Server Component | Load daftar media workspace |
-| `deleteMedia` | Server Action | Hapus file dan metadata |
+| `deleteMedia` | Server Action | Hapus file dan metadata — wajib dialog konfirmasi Tier 2 sebelum eksekusi (ADR-049); hard delete, tidak ada `deleted_at` |
 
 ## NotificationService
 

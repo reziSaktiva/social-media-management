@@ -80,6 +80,7 @@ Pengguna harus percaya bahwa konten akan terbit ke akun yang benar, pada waktu y
 - Status konten (draft / scheduled / published / failed) harus selalu terlihat.
 - Error atau kegagalan publish harus ditampilkan dengan jelas dan memberikan jalur pemulihan yang obvious.
 - Jangan membiarkan pengguna dalam keadaan "tidak tahu apakah ini sudah publish atau belum".
+- Kebijakan Safety Check / Double Confirmation lintas produk (kapan sebuah aksi wajib dialog konfirmasi, berdasarkan reversibilitas dan blast radius) didokumentasikan sebagai pola lintas layar di `key-screen-patterns.md` (ADR-049) — merupakan penerapan langsung prinsip ini di luar konteks publish murni.
 
 ---
 

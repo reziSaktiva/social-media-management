@@ -186,6 +186,7 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 | `name` | `text NOT NULL` | Nama workspace |
 | `slug` | `text NOT NULL UNIQUE` | URL identifier unik |
 | `owner_id` | `uuid NOT NULL` | Referensi ke `identity_user.id` |
+| `pending_owner_transfer_to` | `uuid` | Referensi ke `identity_user.id`; diisi saat `transferOwnership` dipicu, dikosongkan setelah `acceptOwnershipTransfer` atau dibatalkan (ADR-050) |
 | `plan` | `text NOT NULL DEFAULT 'free'` | `free \| pro` |
 | `brand_name` | `text` | BrandSettings: nama brand |
 | `brand_tone` | `text` | BrandSettings: panduan tone of voice |

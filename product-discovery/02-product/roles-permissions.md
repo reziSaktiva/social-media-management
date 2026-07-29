@@ -25,7 +25,10 @@ Pemilik workspace. Role ini dipegang oleh orang yang mendaftarkan workspace ke p
 **Karakteristik:**
 - Hanya ada satu Owner per workspace.
 - Owner tidak bisa dihapus oleh Admin atau Member lain.
-- Ownership bisa ditransfer ke Admin lain.
+- Ownership bisa ditransfer ke Admin lain — proses **dua langkah**: Owner
+  memicu transfer, Admin target harus menerima (`acceptOwnershipTransfer`)
+  sebelum role benar-benar bertukar; bukan swap langsung sepihak
+  (ADR-050).
 
 **Hak Akses:**
 
@@ -126,12 +129,12 @@ Creator adalah anggota tim yang berfokus pada pembuatan konten. Role ini cocok u
 
 | Kemampuan | Owner | Admin | Manager | Creator |
 | --------- | ----- | ----- | ------- | ------- |
-| Hapus workspace | ✅ | ❌ | ❌ | ❌ |
-| Transfer ownership | ✅ | ❌ | ❌ | ❌ |
+| Hapus workspace (wajib konfirmasi Tier 1, ADR-049) | ✅ | ❌ | ❌ | ❌ |
+| Transfer ownership (wajib konfirmasi Tier 1, ADR-049) | ✅ | ❌ | ❌ | ❌ |
 | Kelola billing | ✅ | 👁 | ❌ | ❌ |
 | Kelola workspace settings | ✅ | ✅ | ❌ | ❌ |
-| Undang/hapus member | ✅ | ✅ | Creator saja | ❌ |
-| Ubah role member | ✅ | ✅ (kecuali Owner) | ❌ | ❌ |
+| Undang/hapus member (hapus wajib konfirmasi Tier 2, ADR-049) | ✅ | ✅ | Creator saja | ❌ |
+| Ubah role member (wajib konfirmasi Tier 2, ADR-049) | ✅ | ✅ (kecuali Owner) | ❌ | ❌ |
 | Tambah/hapus connected accounts (hapus wajib lewat Disconnect Confirmation, ADR-048) | ✅ | ✅ | ❌ | ❌ |
 | Buat/edit konten | ✅ | ✅ | ✅ | ✅ (milik sendiri) |
 | Jadwalkan/publish konten (termasuk Publish Now, ADR-047) | ✅ | ✅ | ✅ | ❌ |
@@ -220,4 +223,4 @@ Dokumen ini dapat ditelusuri ke User Discovery Baseline v1.0 melalui pemetaan pe
 * `../04-ux/information-architecture.md`
 * `../04-ux/user-flows.md`
 * `../04-ux/key-screen-patterns.md`
-* `../../project-manager/DECISIONS.md` — ADR-008 (Product Baseline), ADR-012 (addendum ini), ADR-047 (Publish Now), ADR-048 (Disconnect Confirmation)
+* `../../project-manager/DECISIONS.md` — ADR-008 (Product Baseline), ADR-012 (addendum ini), ADR-047 (Publish Now), ADR-048 (Disconnect Confirmation), ADR-049 (Safety Check / Double Confirmation), ADR-050 (Transfer Ownership & Delete Workspace)

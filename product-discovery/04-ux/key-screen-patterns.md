@@ -808,6 +808,59 @@ Post terjadwal **tidak otomatis dibatalkan** ketika akun disconnect. Mereka teta
 
 ---
 
+# Pola Lintas Layar — Safety Check / Double Confirmation (ADR-049)
+
+Kebijakan ini berlaku di seluruh produk, tidak terikat ke satu KSP tertentu. Disusun dari audit menyeluruh (2026-07-29) atas setiap aksi yang ada di baseline — dipicu diskusi Publish Now (ADR-047) dan Disconnect Account (ADR-048) — untuk menentukan aksi mana yang wajib melalui dialog konfirmasi sebelum eksekusi.
+
+## Kriteria
+
+Sebuah aksi **wajib** melalui Safety Check / Double Confirmation jika memenuhi salah satu:
+
+1. **Irreversibel atau mahal untuk dibatalkan** — tidak ada jalur "undo" yang wajar bagi pengguna.
+2. **Blast radius besar** — dampaknya melampaui data milik pengguna sendiri (memengaruhi tim, workspace, atau konten yang sudah dijanjikan ke publik).
+
+Aksi yang reversibel, low-stakes, atau berfrekuensi tinggi (bagian dari alur kerja inti harian) **sengaja tidak** diberi konfirmasi tambahan — menambahkannya akan jadi friksi yang melanggar UXP-03 (Simplisitas Adalah Quality Bar).
+
+## Tingkatan (Tier)
+
+| Tier | Pola UI | Kapan dipakai |
+| --- | --- | --- |
+| **Tier 1** | Konfirmasi diperkuat (mis. ketik nama/kata kunci workspace untuk konfirmasi) | Aksi katastropik: menghancurkan seluruh workspace atau menyerahkan kendali penuh, tidak ada jalan kembali sepihak |
+| **Tier 2** | Dialog konfirmasi standar (peringatan singkat + tombol Batal/Konfirmasi) — pola sama seperti Disconnect Confirmation (KSP-08-F07, ADR-048) | Aksi merusak/mahal dibatalkan, tapi dampaknya tidak sebesar Tier 1 |
+| **Tidak wajib** | Tanpa dialog tambahan | Reversibel, low-stakes, atau frekuensi tinggi — konfirmasi jadi friksi tanpa manfaat |
+
+## Klasifikasi Lengkap
+
+| Aksi | Tier | Alasan |
+| --- | --- | --- |
+| Transfer Ownership | Tier 1 | Menyerahkan kendali penuh workspace; Owner lama tidak bisa membatalkan sepihak |
+| Delete/Hapus Workspace | Tier 1 | Menghancurkan seluruh data workspace sekaligus — paling katastropik di produk |
+| Schedule | Tier 2 (sudah ada) | Confirmation Summary — KSP-05-F06/F09 |
+| Publish Now | Tier 2 (sudah ada) | Confirmation Summary varian — KSP-05-F12 (ADR-047) |
+| Disconnect Account | Tier 2 (sudah ada) | Disconnect Confirmation — KSP-08-F07 (ADR-048) |
+| Delete Post | Tier 2 | Terasa permanen bagi pengguna meski soft delete di DB (`database-strategy.md` DB-D03) |
+| Delete Media | Tier 2 | Hard delete beneran (tanpa `deleted_at`); media bisa dipakai ulang lintas draft |
+| Remove Member | Tier 2 | Mengeluarkan rekan kerja dari workspace; perlu diundang ulang jika keliru |
+| Update Member Role | Tier 2 | Terutama saat menurunkan akses — berdampak langsung ke apa yang bisa dikerjakan orang lain |
+| Cancel Schedule | Tier 2 | Argumen simetri dengan Schedule (UXP-04) — membatalkan komitmen publish yang sudah dikonfirmasi sebelumnya |
+| **Logout** | **Tier 2** | Keputusan produk (2026-07-29): melindungi dari interupsi pekerjaan yang belum tersimpan, walau aksi ini sendiri reversibel (beda dari rekomendasi awal — lihat Alternatives di ADR-049) |
+| Save as Draft | Tidak wajib | Reversibel, low-stakes |
+| Kirim ke Review (Creator) | Tidak wajib | Reversibel — bisa kembali ke Draft |
+| Mark as Done (Engage) | Tidak wajib | Reversibel, low-stakes |
+| Reply/Kirim komentar (Engage) | Tidak wajib | Frekuensi tinggi — bagian dari alur kerja inti harian (UXP-03) |
+| Connect Account | Tidak wajib | Sudah ada consent OAuth dari provider |
+| Reconnect | Tidak wajib | Sudah ada consent OAuth dari provider |
+| Remove Link (Start Page) | Tidak wajib | Dampak kecil, gampang ditambah balik |
+
+## Catatan Implementasi
+
+* Schedule, Publish Now, dan Disconnect Account sudah punya screen resmi dan sudah diimplementasikan sebagai KSP function ID tersendiri.
+* Delete Post, Delete Media, dan Cancel Schedule punya screen tempat bernaung (Draft Editor/Media Library) tapi entry point UI untuk aksi spesifik ini **belum dirancang** — klasifikasi tier di atas berlaku begitu entry point-nya dibuat, bukan keputusan yang menunggu lagi.
+* Remove Member, Update Member Role, Transfer Ownership, dan Delete Workspace **belum punya screen sama sekali** (Workspace Settings → Members/General di luar 8 KSP) — klasifikasi tier di atas jadi acuan wajib begitu screen tersebut dirancang.
+* Logout sudah punya entry point (User Menu dropdown, `navigation-patterns.md`) — implementasi dialog konfirmasinya adalah task terpisah.
+
+---
+
 # Decision Log
 
 Keputusan desain yang dibuat dalam dokumen ini.
