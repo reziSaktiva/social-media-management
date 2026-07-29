@@ -160,6 +160,8 @@ User Avatar → User Menu (dropdown)
 
 User Menu muncul sebagai dropdown kecil — akses ke halaman User Settings dilakukan dari sini. Ini bukan layar kerja harian sehingga tidak memerlukan slot di primary nav.
 
+**Logout wajib melalui dialog konfirmasi (Tier 2)** — lihat kebijakan Safety Check / Double Confirmation di `key-screen-patterns.md` (ADR-049).
+
 ---
 
 # In-Section Navigation Pattern
@@ -363,6 +365,7 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | NP-D07 | Workspace Selector sebagai entry point ke Workspace Settings | Workspace Settings bukan akses harian; tidak perlu slot di primary nav (IA-D05) | UXP-03 |
 | NP-D08 | Notifications Panel sebagai overlay, bukan pengganti Main Content Area | Pengguna harus bisa menutup panel dan kembali ke pekerjaan tanpa kehilangan state | NP-P02 |
 | NP-D09 | New Post CTA tersedia langsung dari Calendar dan Queue, bukan hanya dari Drafts | Raka sering menemukan gap jadwal saat melihat Calendar atau Queue — memaksanya berpindah ke tab Drafts dulu menambah friction yang tidak perlu. CTA langsung di titik penemuan kebutuhan selaras dengan alur siklus kerja (UXP-01) | UXP-01, UXP-03 |
+| NP-D10 | Logout wajib melalui dialog konfirmasi (Tier 2) | Melindungi dari interupsi pekerjaan yang belum tersimpan, walau aksi Logout sendiri reversibel — bagian dari kebijakan Safety Check/Double Confirmation lintas produk (ADR-049, `key-screen-patterns.md`) | UXP-04 |
 
 ---
 

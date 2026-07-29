@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.17     |
+| Version      | 1.0.21     |
 | Status       | Active     |
 | Last Updated | 2026-07-29 |
 
@@ -281,6 +281,74 @@ Restricted Actions:
   hanya dokumentasi (`DECISIONS.md`, `monorepo-setup.md`,
   `application-layer.md`) yang disinkronkan. Tidak ada task lanjutan yang
   menggantung untuk topik ini.
+* **App Prototype Claude Design — fix navigasi back Draft Editor +
+  role switcher:** ditemukan tombol "Kembali ke Calendar" di Draft Editor
+  selalu paksa balik ke Calendar walau dibuka dari Queue/Drafts —
+  bertentangan `navigation-patterns.md` (NP-D02). Diperbaiki jadi
+  stack-aware (balik ke asal sebenarnya) + label ikut menyesuaikan. Role
+  switcher baru (Owner/Admin/Manager/Creator, dipetakan ke persona
+  Dimas/Maya/Raka/Sinta) ditambahkan di toolbar prototype, mendemokan
+  pembatasan akses per role dari `roles-permissions.md` di 4 layar: Draft
+  Editor (Schedule vs Kirim untuk Review), Engage (lock untuk Creator),
+  Connected Accounts (read-only untuk Manager/Creator), Analyze Dashboard
+  (detail disembunyikan untuk Creator). Owner dan Admin saat ini identik
+  secara visual di prototype (beda asli ada di layar Settings lain yang
+  belum jadi bagian 8 KSP screen).
+* **ADR-047 — Publish Now diangkat jadi fitur UX resmi:** audit
+  konsistensi (dipicu saat kerja App Prototype) menemukan
+  `application-layer.md` sudah menyebut method `publishNow` tapi UX
+  Baseline (`key-screen-patterns.md`) dan `roles-permissions.md` sama
+  sekali tidak mengenal konsep ini. Diputuskan: Publish Now jadi fitur
+  resmi (KSP-05-F12, bullet baru di `mvp-definition.md`), akses dibatasi
+  **identik** dengan Schedule (Owner/Admin/Manager, bukan Creator) —
+  konsisten dengan pola akses konten yang sudah ada, bukan tingkat akses
+  baru. Baris transisi `Draft → Published (Publish Now)` ditambahkan ke
+  tabel transisi status. Dokumentasi baseline sudah diselaraskan;
+  **implementasi kode dan App Prototype belum berjalan** — lihat Next
+  Tasks.
+* **Audit Safety Check / Double Confirmation seluruh aksi produk:**
+  dipicu diskusi Publish Now, ditemukan cuma 1 pola konfirmasi
+  terdokumentasi (Confirmation Summary, Schedule/Publish Now) dari
+  belasan aksi yang ada. Ditemukan juga kalimat usang di
+  `key-screen-patterns.md` yang mengklaim Schedule sebagai "satu-satunya
+  momen" konfirmasi — sudah diperbaiki jadi "satu-satunya pola" mengingat
+  sekarang dipakai 2 aksi.
+* **ADR-048 — Disconnect Account wajib dialog konfirmasi:** dari audit di
+  atas, Disconnect Account (KSP-08-F05) ternyata sama sekali tidak punya
+  spesifikasi konfirmasi walau screen-nya sudah ada (beda dari Remove
+  Member/Transfer Ownership/Delete Workspace yang screen-nya belum
+  pernah dirancang). Fungsi baru KSP-08-F07 (Disconnect Confirmation) +
+  "Pola: Disconnect Flow" + KSP-D14 ditambahkan — dialog peringatan
+  ringkas (bukan Confirmation Summary), mengingatkan post terjadwal tetap
+  di antrean (KSP-D09). Tidak ada perubahan RBAC. Implementasi App
+  Prototype dan kode belum berjalan.
+* **ADR-049 — Safety Check / Double Confirmation, kebijakan lintas
+  produk:** kerangka resmi (kriteria: irreversibel/mahal dibatalkan +
+  blast radius besar) + 2 tier (Tier 1: konfirmasi diperkuat — Transfer
+  Ownership, Delete Workspace; Tier 2: dialog standar — Delete Post,
+  Delete Media, Remove Member, Update Member Role, Cancel Schedule,
+  **Logout**). Diklasifikasikan sebagai pola lintas layar baru di
+  `key-screen-patterns.md`, bukan UXP baru (ux-principles.md membatasi
+  diri ke 7 prinsip bertelusur insight). Logout dipindah user ke Tier 2
+  (beda dari rekomendasi awal). Ditemukan juga: `deleteWorkspace` dan
+  `transferOwnership` **belum punya method service sama sekali** di
+  `application-layer.md` — gap terpisah (diselesaikan di ADR-050 di
+  bawah). Implementasi belum berjalan untuk seluruh aksi yang baru
+  diklasifikasikan (kecuali 3 yang sudah ada: Schedule, Publish Now,
+  Disconnect Account).
+* **ADR-050 — Transfer Ownership & Delete Workspace, method service
+  ditambahkan:** `deleteWorkspace` (Owner saja, cascade sesuai constraint
+  DB yang sudah ada, konfirmasi Tier 1) ditambahkan langsung tanpa
+  ambiguitas. `transferOwnership` ternyata punya fork nyata yang belum
+  pernah diputuskan (langsung vs butuh persetujuan target) — user
+  memilih **dua langkah**: `transferOwnership` (Owner memicu, set
+  `pendingOwnerTransferTo`, kirim notifikasi) + `acceptOwnershipTransfer`
+  (Admin target menerima, baru role bertukar), mirip pola
+  `inviteMember`/`acceptInvite` yang sudah ada. Field baru
+  `Workspace.pendingOwnerTransferTo` (`domain-model.md` DM-D11,
+  `database-strategy.md`), 2 `NotificationType` baru. Method service
+  sekarang lengkap — **UI/screen Workspace Settings → General masih
+  belum dirancang**, jadi implementasi tetap menunggu.
 
 ---
 
@@ -300,6 +368,10 @@ Restricted Actions:
 
 * **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (mock), dan persistensi "Save as Draft" selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
 * **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (`/publish/drafts/new`) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
+* **Publish Now (ADR-047) — implementasi menyusul, belum ada di kode maupun App Prototype:** `PublishingService.publishNow()` (RBAC Owner/Admin/Manager, validasi `ContentFormat` ADR-039, panggil `OutstandAdapter`) + tombol "Publish Now" di Draft Editor (KSP-05-F12) berdampingan dengan Schedule + dialog Confirmation Summary variannya (UXP-04); App Prototype Claude Design juga perlu ditambahkan tombolnya (role switcher yang sudah ada tinggal dipakai untuk membatasi visibility Creator).
+* **Disconnect Confirmation (ADR-048) — implementasi menyusul:** dialog konfirmasi (KSP-08-F07) di `settings-connected-accounts.html` App Prototype + `disconnectAccount` di kode nyata (RBAC Owner/Admin, belum ada perubahan RBAC — tinggal tambah gate konfirmasi sebelum memanggil service).
+* **(Ditunda, scope terpisah) Remove Member, Transfer Ownership, Delete Workspace:** tier konfirmasi sudah diputuskan (ADR-049) dan method service `deleteWorkspace`/`transferOwnership`/`acceptOwnershipTransfer` sudah lengkap di `application-layer.md` (ADR-050) — yang masih kurang cuma **screen Workspace Settings → Members/General** (di luar 8 KSP), belum pernah dirancang. Perlu sesi terpisah untuk merancang layar sebelum implementasi kode/App Prototype bisa mulai.
+* **Implementasi Safety Check Tier 2 yang tersisa (ADR-049):** Cancel Schedule, Delete Post, Delete Media, Update Member Role, Logout — semua sudah diklasifikasikan wajib dialog konfirmasi tapi belum ada satu pun yang diimplementasikan di kode atau App Prototype.
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
   `post.published` / `post.error` / `account.token_expired` dengan
   durable-before-ACK, job retry internal, media upload working copy, serta
@@ -354,6 +426,39 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-050 — Transfer Ownership & Delete Workspace, method service
+  ditambahkan: `deleteWorkspace` (Owner, cascade DB, Tier 1) sederhana
+  tanpa ambiguitas. `transferOwnership` jadi proses **dua langkah** —
+  Owner memicu, Admin target harus `acceptOwnershipTransfer` sebelum
+  role bertukar (mirip `inviteMember`/`acceptInvite`) — user menolak opsi
+  "langsung tanpa persetujuan" demi keamanan tambahan. Field baru
+  `Workspace.pendingOwnerTransferTo` + 2 NotificationType baru. UI/screen
+  masih belum dirancang — ADR ini menyelesaikan kontrak arsitektur saja
+  (2026-07-29).
+* ADR-049 — Safety Check / Double Confirmation, kebijakan lintas produk:
+  kriteria (irreversibel/mahal dibatalkan + blast radius besar), 2 tier
+  (Tier 1: Transfer Ownership, Delete Workspace; Tier 2: Delete
+  Post/Media, Remove Member, Update Role, Cancel Schedule, Logout).
+  Didokumentasikan sebagai pola lintas layar di `key-screen-patterns.md`,
+  bukan UXP baru. Logout dipindah ke Tier 2 atas keputusan user (beda
+  dari rekomendasi awal). `deleteWorkspace`/`transferOwnership` ditemukan
+  belum punya method service — gap terpisah (2026-07-29).
+* ADR-048 — Disconnect Account wajib dialog konfirmasi: fungsi baru
+  KSP-08-F07 (Disconnect Confirmation) — peringatan ringkas sebelum
+  eksekusi, mengingatkan post terjadwal tetap di antrean (KSP-D09).
+  Ditemukan saat audit Safety Check/Double Confirmation seluruh aksi
+  produk (dipicu diskusi Publish Now). Tidak ada perubahan RBAC. Remove
+  Member/Transfer Ownership/Delete Workspace sengaja tidak disentuh —
+  screen-nya belum pernah dirancang, ditunda ke inisiatif terpisah
+  (2026-07-29).
+* ADR-047 — Publish Now diangkat jadi fitur UX resmi: `Draft → Published`
+  langsung tanpa jadwal, akses dibatasi identik dengan Schedule
+  (Owner/Admin/Manager, bukan Creator) — konsisten dengan pola akses
+  konten yang sudah ada di `roles-permissions.md`, bukan tingkat akses
+  baru. KSP-05 dapat function ID baru (KSP-05-F12). Ditemukan saat audit
+  konsistensi App Prototype: `application-layer.md` sudah menyebut method
+  `publishNow` tanpa desain UX resmi. Dokumentasi baseline diselaraskan;
+  implementasi kode + App Prototype masih task terpisah (2026-07-29).
 * ADR-046 Amandemen Final — bentuk final `/publish` diputuskan: redirect
   **permanen** ke `/publish/calendar` (`calendar/` tetap folder statis
   permanen). Publish dikecualikan permanen dari pola root-render ADR-046

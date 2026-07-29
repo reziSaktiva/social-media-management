@@ -2107,3 +2107,369 @@ pernah dijalankan** dan tidak akan dijalankan.
 dari pola ADR-046 poin #1, bukan penyimpangan sementara yang menunggu
 keputusan lanjutan. Tidak ada task lanjutan yang menggantung untuk topik
 ini.
+
+---
+
+## Decision ADR-047
+
+### Title
+
+Publish Now — Fitur Resmi Publish Langsung Tanpa Jadwal
+
+### Status
+
+Accepted
+
+### Date
+
+2026-07-29
+
+### Context
+
+Audit konsistensi dokumentasi (dipicu saat memperbarui App Prototype Claude
+Design) menemukan `application-layer.md` sudah menyebut method
+`publishNow` ("Publish langsung tanpa jadwal") di tabel `PublishingService`
+— tetapi UX Baseline (`key-screen-patterns.md` KSP-05) dan
+`roles-permissions.md` (tabel transisi status) sama sekali tidak memiliki
+konsep ini. KSP-05 hanya mendefinisikan "Schedule Action" (KSP-05-F09), dan
+tabel transisi status hanya mengenal `Scheduled → Published` sebagai
+transisi otomatis sistem — tidak ada jalur `Draft → Published` langsung.
+
+### Decision
+
+1. **Publish Now diangkat menjadi fitur UX resmi**, bukan sekadar method
+   arsitektur yang menggantung tanpa desain UI:
+   * `key-screen-patterns.md` — KSP-05 mendapat function ID baru
+     **KSP-05-F12 (Publish Now Action)**: eksekusi publish langsung tanpa
+     jadwal, tombol tersedia berdampingan dengan Schedule Action di action
+     bar Draft Editor.
+   * `mvp-definition.md` — bullet baru di bagian Publishing Must Have.
+   * `information-architecture.md` — Publish Now ditambahkan ke hierarki
+     layar Draft Editor dan tabel pemetaan fitur MVP.
+2. **Akses Publish Now dibatasi identik dengan Schedule**: Owner, Admin,
+   Manager — **bukan** tingkat akses baru yang lebih ketat, dan **bukan**
+   dibuka lebih lebar dari Schedule. Creator tidak melihat/tidak bisa
+   memicu aksi ini.
+   * `roles-permissions.md` — baris baru di tabel transisi status:
+     `Draft → Published (Publish Now, skip jadwal)`: Owner ✅, Admin ✅,
+     Manager ✅, Creator ❌, Sistem —. Baris ringkasan "Jadwalkan/publish
+     konten" diberi catatan eksplisit bahwa ini mencakup Publish Now.
+3. `application-layer.md` — baris `publishNow` diperjelas: merujuk
+   KSP-05-F12, RBAC sama dengan `schedulePosts`, dan tetap wajib validasi
+   matriks `ContentFormat` per target (ADR-039) sebelum memanggil Outstand.
+4. UI wajib menampilkan **konfirmasi eksplisit** sebelum eksekusi Publish
+   Now (selaras **UXP-04** — *"Konfirmasi akun dan jadwal harus jelas dan
+   tidak bisa diabaikan sebelum publish"*) — karena aksi ini langsung
+   tayang tanpa jeda koreksi seperti `cancelSchedule` pada Schedule biasa.
+   UXP-06 (Status Jelas, Proses Ringan) justru prinsip yang membenarkan
+   aksi *lain* yang reversibel (Save as Draft, Kirim untuk Review) **tidak**
+   memerlukan konfirmasi tambahan — bukan dasar syarat konfirmasi di sini.
+
+### Reason
+
+* Pola akses yang **sudah ada** di `roles-permissions.md` selalu
+  menyatukan Schedule dan Publish dalam satu tingkat akses yang sama
+  (baris ringkasan "Jadwalkan/publish konten"; transisi
+  `Ready to Schedule → Scheduled` dan `Draft → Scheduled (skip review)`
+  sama-sama Owner/Admin/Manager, Creator ❌) — menyamakan Publish Now ke
+  tingkat akses ini konsisten dengan pola yang sudah berlaku, bukan aturan
+  baru yang asing.
+* Membiarkan `publishNow` hanya disebut di layer arsitektur tanpa desain
+  UX resmi berisiko diimplementasikan tanpa RBAC yang jelas, atau
+  terlewat sepenuhnya karena tidak ada di KSP manapun.
+
+### Alternatives Considered
+
+* **Hapus `publishNow` dari `application-layer.md`** (turunkan arsitektur
+  ke level UX yang sudah ada, publish langsung cukup lewat Schedule
+  Picker dengan waktu = sekarang) — awalnya direkomendasikan sebagai opsi
+  paling minim perubahan, **ditolak** oleh user: Publish Now dianggap
+  cukup bernilai untuk diangkat jadi fitur resmi dengan tombol
+  tersendiri, bukan disamarkan sebagai kasus khusus Schedule.
+* **Akses lebih ketat — hanya Owner dan Admin** (mengecualikan Manager,
+  dengan alasan Publish Now lebih berisiko/tanpa jeda koreksi dibanding
+  Schedule) — **ditolak**; akan menciptakan tingkat akses baru untuk aksi
+  konten yang belum pernah ada sebelumnya di `roles-permissions.md`
+  (semua aksi konten selama ini konsisten Owner/Admin/Manager vs
+  Creator). Konsistensi dengan pola yang ada dinilai lebih penting
+  daripada mitigasi risiko tambahan untuk kasus ini.
+
+### Impact
+
+* Dokumentasi baseline (`mvp-definition.md`, `key-screen-patterns.md`,
+  `information-architecture.md`, `roles-permissions.md`,
+  `application-layer.md`) sudah diselaraskan pada tanggal keputusan ini.
+* **Implementasi belum berjalan** — baik di kode (`PublishingService`
+  belum punya `publishNow` nyata, baru nama method di dokumen arsitektur)
+  maupun di App Prototype Claude Design (Draft Editor baru punya
+  Save as Draft + Schedule). Keduanya adalah task lanjutan terpisah,
+  bukan bagian dari ADR ini.
+
+---
+
+## Decision ADR-048
+
+### Title
+
+Disconnect Account — Wajib Melalui Dialog Konfirmasi
+
+### Status
+
+Accepted
+
+### Date
+
+2026-07-29
+
+### Context
+
+Audit menyeluruh atas seluruh aksi produk (dipicu diskusi Safety Check /
+Double Confirmation untuk Publish Now, ADR-047) menemukan bahwa
+**Disconnect Account** (KSP-08-F05) sama sekali tidak punya spesifikasi
+konfirmasi di `key-screen-patterns.md` — hanya "pengguna dapat melepas
+koneksi akun". Ini berbeda dari kasus Remove Member/Transfer
+Ownership/Delete Workspace (yang screen-nya sendiri belum pernah
+dirancang) karena Disconnect Account **sudah** punya screen resmi
+(KSP-08, salah satu dari 8 KSP) dan sudah diimplementasikan di App
+Prototype Claude Design (`settings-connected-accounts.html`) — jadi gap
+ini langsung actionable tanpa perlu merancang layar baru.
+
+### Decision
+
+1. Disconnect Account **wajib** menampilkan dialog konfirmasi sebelum
+   eksekusi — fungsi baru **KSP-08-F07 (Disconnect Confirmation)**.
+2. Dialog ini **bukan** varian dari Confirmation Summary (KSP-05-F06,
+   dipakai Schedule/Publish Now) — cukup peringatan singkat + dua tombol
+   (`Batal` / `Putuskan Koneksi`), karena Disconnect bukan aksi
+   mempublikasikan konten dan tidak perlu ringkasan multi-field.
+3. Isi dialog wajib mengingatkan konsekuensi yang sudah didokumentasikan
+   di KSP-D09: post yang sudah terjadwal untuk akun ini **tetap di
+   antrean**, tidak otomatis dibatalkan.
+4. Tidak ada perubahan RBAC — akses Disconnect tetap Owner/Admin saja,
+   sesuai `roles-permissions.md` yang sudah ada ("Tambah/hapus connected
+   accounts").
+5. `key-screen-patterns.md` — pola baru "Pola: Disconnect Flow" + baris
+   Decision Log KSP-D14.
+
+### Reason
+
+* UXP-04 (Publishing Trust) berlaku juga di sini secara tidak langsung:
+  memutus akun yang punya post terjadwal aktif adalah aksi yang bisa
+  mengejutkan pengguna kalau dieksekusi tanpa peringatan — walau bukan
+  aksi publish itu sendiri.
+* Disconnect Account adalah satu-satunya dari 4 aksi berisiko yang
+  ditemukan saat audit (bersama Remove Member, Transfer Ownership, Delete
+  Workspace) yang sudah punya screen nyata — jadi bisa diselesaikan
+  sekarang tanpa menunggu desain layar Workspace Settings lain yang lebih
+  besar scope-nya.
+
+### Alternatives Considered
+
+* **Pakai pola Confirmation Summary yang sama seperti Schedule/Publish
+  Now** — ditolak; Disconnect tidak punya data multi-field (caption,
+  akun, waktu) untuk diringkas — dialog peringatan sederhana sudah cukup
+  dan tidak menambah friksi yang tidak perlu (UXP-03).
+* **Tidak menambah apa pun, biarkan sebagai gap terdokumentasi** —
+  ditolak; user secara eksplisit meminta gap ini diperbaiki begitu
+  ditemukan saat audit, bukan sekadar dicatat.
+
+### Impact
+
+* `key-screen-patterns.md`, `roles-permissions.md` sudah diselaraskan.
+* Remove Member, Transfer Ownership, dan Delete Workspace **sengaja tidak
+  disentuh** oleh ADR ini — screen-nya belum pernah dirancang, ditunda ke
+  inisiatif terpisah (lihat diskusi sesi 2026-07-29).
+* Implementasi App Prototype (dialog Disconnect Confirmation di
+  `settings-connected-accounts.html` + `AppPrototype.dc.html`) dan kode
+  nyata belum berjalan — task lanjutan terpisah.
+
+---
+
+## Decision ADR-049
+
+### Title
+
+Safety Check / Double Confirmation — Kebijakan Lintas Produk
+
+### Status
+
+Accepted
+
+### Date
+
+2026-07-29
+
+### Context
+
+Setelah ADR-047 (Publish Now) dan ADR-048 (Disconnect Account), user
+meminta audit menyeluruh: dari seluruh aksi yang ada di baseline
+(publish, draft, akun, member, workspace, logout), mana saja yang
+**seharusnya** wajib melalui Safety Check / Double Confirmation —
+bukan cuma yang kebetulan sudah punya, tapi berdasarkan penilaian risiko
+yang konsisten. Sebelum ini, ada 1 pola konfirmasi (Confirmation Summary)
+dipakai untuk 2 aksi (Schedule, Publish Now) + 1 pola baru (Disconnect
+Confirmation) — tanpa kerangka eksplisit yang bisa dipakai menilai
+belasan aksi lain.
+
+### Decision
+
+1. **Kriteria wajib konfirmasi** ditetapkan sebagai kerangka resmi:
+   * **Irreversibel/mahal dibatalkan** — tidak ada jalur "undo" yang wajar.
+   * **Blast radius besar** — dampak melampaui data milik pengguna sendiri
+     (tim, workspace, atau komitmen publik).
+2. **Dua tingkatan (tier)**:
+   * **Tier 1** (konfirmasi diperkuat, mis. ketik nama untuk konfirmasi):
+     Transfer Ownership, Delete/Hapus Workspace.
+   * **Tier 2** (dialog standar, pola sama dengan Disconnect Confirmation):
+     Delete Post, Delete Media, Remove Member, Update Member Role, Cancel
+     Schedule, **Logout**.
+   * **Tidak wajib**: Save as Draft, Kirim ke Review, Mark as Done, Reply
+     komentar, Connect Account, Reconnect, Remove Link (Start Page).
+3. Diklasifikasikan dan didokumentasikan sebagai pola lintas layar baru
+   di `key-screen-patterns.md` (bukan UXP baru — lihat Alternatives),
+   dengan cross-reference di `navigation-patterns.md` (NP-D10, Logout),
+   `roles-permissions.md`, dan `application-layer.md`.
+
+### Reason
+
+* Kerangka reversibilitas + blast radius konsisten dengan cara Publish
+  Now (ADR-047) dan Disconnect Account (ADR-048) sudah dinilai
+  sebelumnya — bukan kriteria baru yang asing, melainkan generalisasi
+  dari pola yang sudah dipakai dua kali.
+* Tanpa kerangka eksplisit, keputusan "aksi X butuh konfirmasi atau
+  tidak" akan diputuskan ad-hoc per kasus (seperti yang terjadi pada
+  Publish Now dan Disconnect Account) — menciptakan risiko inkonsistensi
+  di layar-layar yang belum dirancang.
+* UXP-03 (Simplisitas) secara eksplisit jadi penyeimbang: aksi
+  reversibel/frekuensi tinggi (Reply komentar, Save as Draft) sengaja
+  **tidak** diberi konfirmasi tambahan — mencegah kerangka ini
+  disalahgunakan untuk menambah friksi di semua tempat.
+
+### Alternatives Considered
+
+* **Logout tidak perlu konfirmasi** (rekomendasi awal — reversibel penuh,
+  aksi paling sering dipakai di seluruh app, tanpa risiko kehilangan
+  data) — **ditolak oleh user**: Logout dipindah ke Tier 2. Alasan
+  eksplisit user tidak dicatat secara rinci; kemungkinan besar melindungi
+  dari interupsi pekerjaan yang belum tersimpan saat logout tidak
+  sengaja diklik.
+* **Tambahkan sebagai UXP-08 baru** (bukan pola lintas layar di
+  `key-screen-patterns.md`) — ditolak; `ux-principles.md` secara
+  eksplisit membatasi diri ke 7 prinsip yang masing-masing tertelusur ke
+  insight User Discovery (I-01–I-08) sebagai Exit Criteria — Safety Check
+  adalah penerapan kebijakan, bukan insight pengguna baru. Sebagai
+  gantinya ditambahkan sebagai bullet implikasi desain di bawah UXP-04.
+* **Bangun langsung method service `deleteWorkspace`/`transferOwnership`
+  di `application-layer.md`** — ditolak untuk sesi ini; kedua method ini
+  belum ada sama sekali dan screen pemicunya (Workspace Settings →
+  General) belum dirancang — menambahkannya sekarang berarti menebak
+  kontrak API tanpa desain layar, di luar scope audit dokumentasi.
+
+### Impact
+
+* `key-screen-patterns.md` — bagian baru "Pola Lintas Layar — Safety
+  Check / Double Confirmation" (kriteria, tier, klasifikasi lengkap 17
+  aksi, catatan implementasi).
+* `navigation-patterns.md` — NP-D10 baru (Logout wajib Tier 2).
+* `roles-permissions.md`, `application-layer.md` — cross-reference tier
+  ditambahkan ke baris yang relevan (Hapus Workspace, Transfer Ownership,
+  Remove Member, Update Role, Cancel Schedule, Delete Post, Delete
+  Media).
+* `application-layer.md` mencatat eksplisit bahwa `deleteWorkspace` dan
+  `transferOwnership` **belum punya method service** — gap arsitektur
+  terpisah dari ADR ini, ditunda sampai screen Workspace Settings →
+  General dirancang.
+* **Implementasi belum berjalan** di kode maupun App Prototype untuk
+  seluruh aksi Tier 1/Tier 2 yang baru diklasifikasikan di sini (kecuali
+  Schedule, Publish Now, Disconnect Account yang sudah ada sebelumnya).
+
+---
+
+## Decision ADR-050
+
+### Title
+
+Transfer Ownership & Delete Workspace — Method Service dan Alur Transfer
+
+### Status
+
+Accepted
+
+### Date
+
+2026-07-29
+
+### Context
+
+ADR-049 menemukan `deleteWorkspace` dan `transferOwnership` — dua aksi
+Tier 1 — sama sekali tidak punya method service di `application-layer.md`,
+dan sengaja tidak ditambahkan saat itu karena screen pemicunya (Workspace
+Settings → General) belum dirancang. User meminta gap ini diperbaiki.
+Menelusuri lebih lanjut, `deleteWorkspace` ternyata tidak punya ambiguitas
+berarti (skema DB sudah `ON DELETE CASCADE` di setiap tabel `workspace_id`
+— perilaku cascade sudah implisit jelas). Tapi `transferOwnership` punya
+satu fork nyata yang belum pernah diputuskan di dokumen manapun:
+`roles-permissions.md` hanya menyebut *"Ownership bisa ditransfer ke
+Admin lain"* tanpa menjelaskan apakah prosesnya langsung (Owner memilih,
+selesai) atau butuh persetujuan Admin target.
+
+### Decision
+
+1. **Transfer Ownership adalah proses dua langkah** (bukan swap
+   langsung):
+   * `transferOwnership(targetMemberId)` — Owner memicu, RBAC Owner
+     saja, target harus Admin aktif. Mengisi `Workspace.
+     pendingOwnerTransferTo`, mengirim notifikasi
+     `ownership_transfer_requested` ke target. **Tidak** langsung
+     menukar role.
+   * `acceptOwnershipTransfer()` — Admin target menerima. RBAC: hanya
+     user yang cocok dengan `pendingOwnerTransferTo`. Role Owner lama
+     dan Admin target bertukar dalam satu transaksi;
+     `pendingOwnerTransferTo` dikosongkan; notifikasi
+     `ownership_transfer_resolved` ke Owner lama.
+   * Kedua method wajib konfirmasi **Tier 1** (ADR-049) sebelum
+     dipicu/diterima — pola "ketik nama workspace untuk konfirmasi".
+2. **`deleteWorkspace`** ditambahkan sebagai method sederhana: Owner
+   saja, wajib konfirmasi Tier 1, cascade mengikuti constraint DB yang
+   sudah ada — tidak ada logika tambahan yang perlu didesain.
+3. Model data: `Workspace.pendingOwnerTransferTo: UserId?`
+   (`domain-model.md` DM-D11) + kolom `pending_owner_transfer_to`
+   (`database-strategy.md`) + dua `NotificationType` baru
+   (`ownership_transfer_requested`, `ownership_transfer_resolved`,
+   `domain-model.md`).
+
+### Reason
+
+* Transfer kepemilikan berarti memindahkan tanggung jawab penuh
+  (termasuk billing) ke orang lain — memaksakannya secara sepihak tanpa
+  persetujuan berisiko membebani Admin yang belum siap/tidak setuju.
+  Pola ini konsisten dengan `inviteMember` + `acceptInvite` yang sudah
+  ada di dokumen yang sama (undang dulu, baru aktif setelah diterima) —
+  bukan pola baru yang asing bagi arsitektur ini.
+* `deleteWorkspace` tidak butuh keputusan tambahan karena kontraknya
+  sudah sepenuhnya implisit dari skema DB (`DB-D03`, `ON DELETE CASCADE`)
+  — menambahkan method-nya sekarang tidak berarti menebak apa pun.
+
+### Alternatives Considered
+
+* **Transfer langsung tanpa persetujuan** (Owner pilih Admin, konfirmasi
+  Tier 1, role langsung bertukar) — sempat direkomendasikan sebagai opsi
+  paling sederhana (konsisten dengan Update Member Role yang juga
+  langsung), **ditolak oleh user** demi keamanan tambahan: Admin target
+  harus punya kesempatan menolak sebelum menanggung kepemilikan penuh.
+* **Tunda dulu sampai screen Workspace Settings dirancang** (keputusan
+  ADR-049 sebelumnya) — dibatalkan atas permintaan user; method service
+  bisa didefinisikan di level arsitektur tanpa menunggu UI, mengikuti
+  pola method lain di `WorkspaceService` yang juga tidak semuanya
+  punya KSP screen (mis. `inviteMember`, `removeMember`).
+
+### Impact
+
+* `application-layer.md` — 3 method baru di `WorkspaceService`.
+* `domain-model.md` — field baru `pendingOwnerTransferTo`, 2
+  `NotificationType` baru, DM-D11.
+* `database-strategy.md` — kolom baru `pending_owner_transfer_to`.
+* `roles-permissions.md` — klarifikasi alur dua langkah.
+* **UI/screen Workspace Settings → General masih belum dirancang** —
+  method service ini siap dipakai begitu screen-nya ada; ADR ini
+  menyelesaikan kontrak arsitektur, bukan implementasi UI.
