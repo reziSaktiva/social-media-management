@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.28     |
+| Version      | 1.0.29     |
 | Status       | Active     |
 | Last Updated | 2026-07-30 |
 
@@ -37,8 +37,9 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
   M8, Tailwind layout-only, wrapper selektif, serta exact pin Beta. Instalasi
   dan smoke test Next.js 16 juga sudah selesai.
 * Fokus M8 saat ini: Auth Flows, Workspace Onboarding, App Shell, Draft
-  Editor (mock data), dan persistensi nyata "Save as Draft" sudah selesai;
-  lanjut ke persistensi "Schedule" + integrasi Outstand (ADR-040).
+  Editor (kini modal fullscreen, ADR-052), persistensi nyata "Save as
+  Draft"/"Edit Draft", dan Drafts List data asli sudah selesai; lanjut ke
+  persistensi "Schedule" + integrasi Outstand (ADR-040).
 
 ---
 
@@ -418,38 +419,42 @@ Restricted Actions:
   Assistant domain). Diverifikasi typecheck/lint hijau + browser end-to-end
   lewat tunnel ngrok (tabbar, FileInput disabled state, "Save as Draft"
   tetap persist tanpa regresi, notifikasi navigasi benar).
+* **ADR-052 Tahap 3 — implementasi kode Draft Editor sebagai modal
+  selesai:** New Post & Edit Draft kini `Dialog variant="fullscreen"` +
+  `Layout` (header/content/footer, pola `DialogFullscreenDialog` Astryx) di
+  `apps/web/src/app/[slug]/publish/_draft-editor/` (`context.tsx` — React
+  Context `DraftEditorProvider`/`useDraftEditor`, `modal.tsx`, `actions.ts`,
+  `status-badge.ts`), dipasang di `publish/layout.tsx` supaya modal
+  tampil di atas Calendar/Queue/Drafts manapun tanpa navigasi URL (NP-D11).
+  Route lama dihapus total: `drafts/new/`, `[postId]/` di
+  `calendar`/`queue`/`drafts` — **tidak** termasuk `history/[postId]`
+  (di luar scope, sesuai ADR-052). Domain `publishing` diperluas:
+  `listDrafts`, `getDraftById`, `updateDraft` (+ `updatedAt` di
+  `PublishingPostRecord`) — Drafts List (`/publish/drafts`) sekarang
+  menampilkan data asli dari database (bukan `EmptyState` statis lagi),
+  tiap row klik membuka Edit Draft dengan caption ter-isi dari server.
+  Resume Unfinished Post (KSP-05-F13, localStorage, New Post saja)
+  berfungsi nyata. **Penyimpangan sengaja dari mockup Claude Design:**
+  tombol "Publish Now" di footer **tidak** ikut diimplementasikan — ADR-047
+  mendokumentasikannya sebagai task terpisah yang belum disetujui untuk
+  dikerjakan; footer tetap 2 tombol (Save as Draft, Schedule) sama seperti
+  sebelumnya. Toggle Fullscreen/Standard di Claude Design juga sengaja
+  tidak ikut ke kode (murni alat banding internal, bukan bagian keputusan
+  final — default Fullscreen sudah dikunci). Diverifikasi end-to-end via
+  browser lewat tunnel ngrok (akun test Raka Pratama): New Post → Save as
+  Draft → close → draft muncul di list → klik row → Edit Draft dengan data
+  server → edit + save → update di tempat (tidak duplikat) → Resume
+  Unfinished Post dialog muncul benar saat New Post kosong sebelumnya
+  ditutup tanpa disimpan. `bun run typecheck`/`lint`/`test` (26 test)
+  hijau. Ditemukan & diperbaiki di tengah verifikasi: Drafts List tidak
+  ter-refresh otomatis setelah modal ditutup (Server Component page tidak
+  tahu ada perubahan) — ditambahkan `router.refresh()` setelah Save as
+  Draft berhasil.
 
 ---
 
 # In Progress
 
-* **ADR-052 — Draft Editor jadi Modal (New Post & Edit Draft):** dokumentasi
-  selesai (`navigation-patterns.md` NP-D11 mengoverride NP-D02,
-  `key-screen-patterns.md` KSP-05-F10 reword + KSP-05-F13 baru untuk Resume
-  Unfinished Post New Post). Design System (Claude Design) di
-  `templates/draft-editor.html` + App Prototype (`AppPrototype.dc.html`) —
-  Draft Editor kini overlay (bukan lagi `SCREENS` entry ber-route), Resume
-  Unfinished Post berfungsi nyata via `localStorage` browser. **Variant
-  Dialog belum final** — user mengecek langsung di Claude Design dan
-  menemukan modal terasa seperti halaman biasa (animasi buka hilang, sudah
-  diperbaiki; fullscreen juga memang sengaja tanpa backdrop gelap terlihat,
-  by design bukan bug). Ada **toggle Fullscreen/Standard di dalam header
-  dialog** (sejajar status chip, sebelah kiri tombol Close — **bukan**
-  kontrol eksternal) supaya tim bisa bandingkan langsung sebelum memutuskan
-  yang dipakai di `apps/web`. **Default dikembalikan ke Fullscreen** (layout
-  yang sudah di-approve Tahap 2) setelah sempat salah diset ke Standard —
-  dikoreksi karena user tidak pernah minta layout defaultnya berubah.
-  **Bug Media/Account Selector tampil polos di App Prototype — diperbaiki:**
-  root cause CSS-nya (`.editor-grid`, `.media-drop`, `.media-thumb`,
-  `.acc-row`, `.fmt-row`, `.reconnect-link`, `.sched-row`, `.ai-trigger`)
-  cuma ada di `<style>` lokal `templates/draft-editor.html`, tidak ikut
-  ter-inject saat markup dipindah ke document screen lain di App
-  Prototype — dipindah ke `styles.css` bersama. Bug terpisah: `.media-thumb`
-  (kotak preview media) sempat hilang total dari markup App Prototype —
-  ditambahkan kembali. Diverifikasi via simulasi injeksi lokal (sebelum/
-  sesudah fix). Implementasi kode **belum berjalan** — menunggu aba-aba
-  user untuk Tahap 3, dan keputusan final variant (fullscreen vs standard)
-  sebelum/saat itu dimulai.
 * **Publishing MVP — sisa persistensi nyata:** "Save as Draft" sudah persist
   ke database; task berikutnya adalah menyambungkan "Schedule" ke database
   nyata (status transition draft → scheduled) dan integrasi `OutstandAdapter`
@@ -462,13 +467,8 @@ Restricted Actions:
 
 # Next Tasks
 
-* **ADR-052 — Implementasi kode:** menunggu aba-aba eksplisit user (Tahap 3)
-  — reusable modal component, Context state di `publish/layout.tsx`,
-  `getDraftById` di domain `publishing`, dan penghapusan route lama
-  (`drafts/new/`, `[postId]/` di `calendar`/`queue`/`drafts` — **tidak**
-  termasuk `history/[postId]` yang di luar scope, lihat ADR-052).
-* **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (mock), dan persistensi "Save as Draft" selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
-* **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (`/publish/drafts/new`) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
+* **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (kini modal, ADR-052), persistensi "Save as Draft"/"Edit Draft", dan Drafts List data asli selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
+* **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (modal New Post/Edit Draft) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
 * **Publish Now (ADR-047) — implementasi menyusul, belum ada di kode maupun App Prototype:** `PublishingService.publishNow()` (RBAC Owner/Admin/Manager, validasi `ContentFormat` ADR-039, panggil `OutstandAdapter`) + tombol "Publish Now" di Draft Editor (KSP-05-F12) berdampingan dengan Schedule + dialog Confirmation Summary variannya (UXP-04); App Prototype Claude Design juga perlu ditambahkan tombolnya (role switcher yang sudah ada tinggal dipakai untuk membatasi visibility Creator).
 * **Disconnect Confirmation (ADR-048) — implementasi menyusul:** dialog konfirmasi (KSP-08-F07) di `settings-connected-accounts.html` App Prototype + `disconnectAccount` di kode nyata (RBAC Owner/Admin, belum ada perubahan RBAC — tinggal tambah gate konfirmasi sebelum memanggil service).
 * **(Ditunda, scope terpisah) Remove Member, Transfer Ownership, Delete Workspace:** tier konfirmasi sudah diputuskan (ADR-049) dan method service `deleteWorkspace`/`transferOwnership`/`acceptOwnershipTransfer` sudah lengkap di `application-layer.md` (ADR-050) — yang masih kurang cuma **screen Workspace Settings → Members/General** (di luar 8 KSP), belum pernah dirancang. Perlu sesi terpisah untuk merancang layar sebelum implementasi kode/App Prototype bisa mulai.

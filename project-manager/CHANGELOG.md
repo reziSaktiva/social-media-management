@@ -4,6 +4,116 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-30 — ADR-052 Tahap 3: implementasi kode Draft Editor sebagai modal
+
+### Added
+
+* `apps/web/src/app/[slug]/publish/_draft-editor/` — `context.tsx`
+  (`DraftEditorProvider`/`useDraftEditor`, state New Post/Edit Draft/Resume
+  Unfinished Post), `modal.tsx` (`Dialog variant="fullscreen"` + `Layout`,
+  pola `DialogFullscreenDialog` Astryx), `actions.ts` (`saveDraftAction`,
+  `updateDraftAction`, `getDraftAction`), `status-badge.ts` (mapping
+  `ContentStatus` → label/`Badge` variant sesuai `components/status-chips.html`
+  Claude Design).
+* `apps/web/src/app/[slug]/publish/drafts/drafts-list.tsx` — Drafts List
+  data asli (`List`/`ListItem` di dalam `Card`), tiap row klik membuka
+  Edit Draft.
+* `apps/web/src/lib/utils/format-relative-time.ts` — format waktu relatif
+  Bahasa Indonesia ("2 jam lalu", "kemarin", dst).
+* Domain `publishing`: `PublishingService.listDrafts`/`getDraftById`/
+  `updateDraft` + `IPublishingRepository.listDrafts`/`findDraftById`/
+  `updateDraftCaption` (+ `updatedAt` di `PublishingPostRecord`), unit test
+  baru untuk ketiganya.
+
+### Changed
+
+* `apps/web/src/app/[slug]/publish/layout.tsx` — dibungkus
+  `DraftEditorProvider` + render `DraftEditorModal`, supaya modal tampil di
+  atas Calendar/Queue/Drafts manapun tanpa navigasi URL (NP-D11).
+* `apps/web/src/app/[slug]/publish/drafts/page.tsx` — jadi async Server
+  Component yang fetch draft asli via `PublishingService.listDrafts`,
+  menggantikan `EmptyState` statis.
+* `apps/web/src/lib/repositories/publishing/publishing.repository.ts` —
+  implementasi Prisma untuk 3 method baru + helper `mapPost`.
+
+### Removed
+
+* Route lama Draft Editor (digantikan modal, ADR-052): `publish/drafts/new/`,
+  `publish/drafts/[postId]/`, `publish/calendar/[postId]/`,
+  `publish/queue/[postId]/`. **Tidak** menyentuh `publish/history/[postId]/`
+  (di luar scope ADR-052).
+
+### Notes
+
+* Sengaja tidak mengikuti mockup Claude Design 100%: tombol "Publish Now" di
+  footer modal tidak ikut diimplementasikan (ADR-047 — task terpisah, belum
+  disetujui untuk dikerjakan sesi ini); footer tetap 2 tombol (Save as
+  Draft, Schedule). Toggle Fullscreen/Standard di Claude Design juga sengaja
+  tidak ikut ke kode (alat banding internal, bukan keputusan final).
+* Diverifikasi end-to-end via browser (tunnel ngrok, akun test Raka
+  Pratama): New Post → Save as Draft → close → muncul di list → Edit Draft
+  dari list (data server) → update in-place (tidak duplikat) → Resume
+  Unfinished Post dialog. `bun run typecheck`/`lint`/`test` hijau.
+* Bug ditemukan & diperbaiki saat verifikasi: Drafts List tidak refresh
+  otomatis setelah modal ditutup (Server Component tidak tahu ada
+  perubahan) — ditambahkan `router.refresh()` setelah Save as Draft
+  berhasil.
+
+---
+
+## 2026-07-30 — Aturan sebutan user: "King Rezi"
+
+Permintaan eksplisit user (membuka kembali file peran subagent yang
+sebelumnya di-chmod read-only, sesuai prosedur di `.claude/agents/README.md`).
+
+### Changed
+
+* `AGENTS.md` — aturan keras #14 baru: panggil user "King Rezi" di seluruh
+  komunikasi/output teks, berlaku untuk AI utama dan seluruh subagent.
+* Ketujuh file `.claude/agents/*.md` — section baru "Sebutan user" di tiap
+  file, chmod dibuka (644) untuk edit lalu dikunci kembali (444).
+
+---
+
+## 2026-07-30 — 7 subagent kerja ditambahkan (`.claude/agents/`)
+
+Dibuat atas permintaan user untuk memungkinkan delegasi kerja ke beberapa
+subagent Claude Code secara paralel, dengan nama custom per peran.
+
+### Added
+
+* `.claude/agents/prabowo-feature-engineer.md` — implementasi fitur produk
+  (entry → service → domain → repo), tidak terikat milestone tertentu.
+* `.claude/agents/mark-ui-engineer.md` — UI/komponen Astryx di `apps/web`.
+* `.claude/agents/neymar-product-designer.md` — kerja di Claude Design
+  (`DesignSync`), wajib baca skill `claude-design-scope-discipline`.
+* `.claude/agents/elon-backend-engineer.md` — integrasi Outstand (ACL),
+  webhook, background jobs, schema Prisma.
+* `.claude/agents/ridwan-architecture-reviewer.md` — review kepatuhan
+  boundary DDD, read-only (tools dibatasi, tanpa Edit/Write).
+* `.claude/agents/najwa-qa-engineer.md` — QA (Vitest + verifikasi browser
+  end-to-end).
+* `.claude/agents/gibran-project-manager.md` — update
+  `PROJECT_STATE.md`/`DECISIONS.md`/`CHANGELOG.md`, selalu dipanggil
+  terakhir dan sekuensial (bukan paralel) untuk mencegah konflik status.
+* `.claude/agents/README.md` — panduan pemakaian + aturan orkestrasi
+  paralel/sekuensial antar subagent.
+
+### Changed
+
+* `PROJECT_RULES.md` — `.claude/agents/*.md` (kecuali `README.md`-nya)
+  ditambahkan ke klasifikasi Static Reference; perubahan hanya atas
+  permintaan eksplisit user.
+* `AGENTS.md` — section baru "Subagent kerja (`.claude/agents/`)", pointer
+  ke `.claude/agents/README.md`.
+
+### Governance
+
+* Ketujuh file peran di-chmod read-only (444) sebagai pengaman teknis
+  supaya tidak berubah tanpa sengaja saat sesi kerja berjalan.
+
+---
+
 ## 2026-07-30 — ADR-052: skill "Claude Design — Scope Discipline" ditambahkan (governance)
 
 Retrospektif atas insiden default toggle Fullscreen/Standard yang diam-diam
