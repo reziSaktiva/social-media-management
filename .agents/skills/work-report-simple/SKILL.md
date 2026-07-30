@@ -29,16 +29,24 @@ Otomatis setelah:
 
 Gunakan struktur berikut, dengan bahasa conversational dan analoginya bila perlu:
 
-### 1. Apa yang Sudah Dikerjakan
+### 1. Dikerjakan oleh (WAJIB, baris paling atas laporan)
+Sebutkan nama persona yang mengerjakan — nama subagent kalau dikerjakan lewat
+subagent bernama di `.claude/agents/` (mis. "Prabowo Feature Engineer", "Elon
+Backend Engineer"), atau **"AI utama"** kalau dikerjakan langsung tanpa
+delegasi ke subagent tertentu. Kalau beberapa subagent terlibat dalam satu
+sesi, sebutkan semuanya (mis. "Elon Backend Engineer + Ridwan Architecture
+Reviewer").
+
+### 2. Apa yang Sudah Dikerjakan
 2–4 kalimat. Jelaskan pekerjaan yang selesai seperti sedang bercerita kepada orang yang tidak tahu konteks teknisnya. Gunakan analogi bila membantu.
 
-### 2. Isi / Poin Utama
+### 3. Isi / Poin Utama
 Jelaskan poin-poin kunci dari hasil pekerjaan. Gunakan bullet points atau tabel sederhana. Setiap poin harus bisa dipahami tanpa harus membuka file-nya.
 
-### 3. Mengapa Ini Penting
+### 4. Mengapa Ini Penting
 Satu atau dua kalimat tentang dampaknya terhadap project atau pekerjaan berikutnya.
 
-### 4. Pekerjaan Berikutnya
+### 5. Pekerjaan Berikutnya
 Sebutkan task selanjutnya secara singkat dan jelas.
 
 ---
@@ -51,6 +59,7 @@ Sebutkan task selanjutnya secara singkat dan jelas.
 - Tone: hangat, profesional, langsung ke inti — tidak kaku, tidak bertele-tele.
 - Panjang laporan proporsional dengan ukuran pekerjaan. Pekerjaan kecil → laporan singkat. Pekerjaan besar → laporan lebih detail, tetapi tetap ringkas.
 - Jangan ucapkan "Saya menggunakan skill X" atau sebutkan nama skill. Langsung laporkan hasil kerjanya.
+- Baris "Dikerjakan oleh" tetap wajib ada meski laporan sangat singkat.
 
 ---
 
@@ -61,6 +70,8 @@ Sebutkan task selanjutnya secara singkat dan jelas.
 ---
 
 `information-architecture.md` selesai. Berikut ringkasan apa yang dibuat:
+
+**Dikerjakan oleh:** AI utama
 
 **Apa yang dikerjakan:**
 Saya membuat "denah aplikasi" — dokumen yang menentukan menu apa saja yang ada, halaman apa yang ada di dalam setiap menu, dan dari mana masing-masing pengguna masuk ke aplikasi.
@@ -84,6 +95,8 @@ Ini adalah fondasi sebelum kita merancang alur kerja pengguna dan tampilan layar
 ---
 
 `docker-compose.yml` selesai. Berikut ringkasan apa yang dibuat:
+
+**Dikerjakan oleh:** Elon Backend Engineer
 
 **Apa yang dikerjakan:**
 Saya membuat file "resep" yang memberitahu Docker bagaimana cara menjalankan seluruh komponen aplikasi sekaligus — database, backend, dan frontend — cukup dengan satu perintah.

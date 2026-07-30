@@ -45,6 +45,15 @@ context/
 
 **Aturan:** file `context/ctx-*.md` adalah **indeks + aturan operasional untuk agent** — menunjuk ke baseline, bukan menyalin ulang isi `product-discovery/` atau `project-manager/`. Jika konflik, baseline + ADR menang.
 
+## Subagent kerja (`.claude/agents/`)
+
+7 subagent kerja (Prabowo Feature Engineer, Mark UI Engineer, Neymar Product
+Designer, Elon Backend Engineer, Ridwan Architecture Reviewer, Najwa QA
+Engineer, Gibran Project Manager) didefinisikan di `.claude/agents/*.md` —
+diklasifikasikan **Static Reference** (`PROJECT_RULES.md`), read-only (chmod
+444), hanya diubah atas permintaan eksplisit user. Panduan pemakaian + aturan
+orkestrasi paralel/sekuensial ada di `.claude/agents/README.md`.
+
 ## Stack & layout (ingat cepat)
 
 - Runtime: **Bun** · App: **Next.js** (`apps/web`) · Shared: `packages/shared`
@@ -78,6 +87,9 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
     baca `.claude/skills/claude-design-scope-discipline/SKILL.md`. Jangan
     mengubah default/state yang sudah disetujui user sebagai efek samping
     fitur baru — insiden nyata di ADR-052.
+14. Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output
+    teks — bukan "user", "Anda", atau nama lain. Berlaku untuk AI utama dan
+    seluruh subagent di `.claude/agents/`.
 
 ## Workflow Astryx wajib
 

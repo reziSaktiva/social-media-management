@@ -61,6 +61,27 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-30 — Skill "work-report-simple": tambah byline "Dikerjakan oleh"
+
+Permintaan eksplisit user: setiap laporan kerja harus menyebutkan siapa
+(persona/subagent) yang mengerjakannya.
+
+### Changed
+
+* `.agents/skills/work-report-simple/SKILL.md` (sinkron otomatis dengan
+  `.claude/skills/work-report-simple/SKILL.md`) — section baru "1. Dikerjakan
+  oleh" (wajib, baris paling atas laporan): nama subagent kalau dikerjakan
+  lewat subagent bernama di `.claude/agents/`, atau "AI utama" kalau tanpa
+  delegasi. Section lain digeser jadi 2–5. Aturan gaya bahasa + kedua contoh
+  output diperbarui mengikuti format baru.
+* `.claude/agents/ridwan-architecture-reviewer.md` dan
+  `.claude/agents/najwa-qa-engineer.md` — section baru "Cara melapor",
+  referensi eksplisit ke `work-report-simple` (sebelumnya cuma
+  `gibran-project-manager.md` yang punya pointer ini). Chmod dibuka (644)
+  untuk edit, dikunci kembali (444).
+
+---
+
 ## 2026-07-30 — Aturan sebutan user: "King Rezi"
 
 Permintaan eksplisit user (membuka kembali file peran subagent yang

@@ -80,6 +80,9 @@ Termasuk:
 * `PROJECT_RULES.md`
 * Skill/navigator file (`SKILL.md`)
 * Dokumen baseline yang sudah ditetapkan pada setiap fase `product-discovery/`
+* Definisi subagent (`.claude/agents/*.md`, kecuali `.claude/agents/README.md`
+  yang tetap README biasa) — perubahan hanya atas permintaan eksplisit user,
+  bukan inisiatif AI (lihat `.claude/agents/README.md`)
 
 **Living Document**
 
