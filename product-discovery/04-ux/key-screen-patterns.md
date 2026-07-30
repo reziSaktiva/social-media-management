@@ -339,7 +339,7 @@ Drafts adalah tempat Raka menyimpan dan mengakses konten yang belum terjadwal �
 
 | Field | Value |
 | ----- | ----- |
-| Path IA | `Publish → Drafts → Draft Editor` |
+| Path IA | `Publish → Drafts → Draft Editor` (dibuka sebagai modal, bukan route terpisah — ADR-052). Variant Dialog belum final — lihat Catatan di bawah |
 | Pengguna Utama | Raka |
 | Entry Points | New Post; Klik item dari Calendar / Queue / Drafts |
 | UX Principles | UXP-01, UXP-03, UXP-04, UXP-05, UXP-06 |
@@ -347,6 +347,14 @@ Drafts adalah tempat Raka menyimpan dan mengakses konten yang belum terjadwal �
 ### Tujuan
 
 Draft Editor adalah **layar kerja terpenting** dalam produk. Raka menulis, melengkapi, dan menjadwalkan konten dari layar ini. Semua kebutuhan untuk menyelesaikan satu konten tersedia di sini tanpa berpindah layar.
+
+**Catatan (ADR-052):** Draft Editor sekarang dibuka sebagai modal di atas sub-screen Publish manapun yang aktif — bukan panel/layar penuh dengan route sendiri (mengoverride NP-D02, lihat NP-D11 di `navigation-patterns.md`). Berlaku untuk New Post dan Edit Draft.
+
+**Variant Dialog belum difinalkan** — sedang dibandingkan langsung di Claude Design lewat toggle di header modal (sejajar status chip, sebelah kiri tombol Close):
+- **`fullscreen` (default saat ini):** menutupi seluruh viewport — sidebar navigasi & Calendar/Queue/Drafts tertutup total selama modal terbuka. Trade-off yang disadari dan diterima demi kecepatan alur kerja, tapi berarti modal ini tidak punya backdrop gelap terlihat (tidak ada apa-apa di belakang untuk digelapkan).
+- **`standard` (alternatif):** card besar mengambang dengan backdrop gelap — layar di belakang (termasuk sidebar) tetap terlihat, redup.
+
+Keputusan final ditentukan sebelum implementasi kode (Tahap 3) dimulai; baseline ini akan diperbarui begitu variant final dipilih.
 
 ---
 
@@ -363,9 +371,10 @@ Draft Editor adalah **layar kerja terpenting** dalam produk. Raka menulis, melen
 | KSP-05-F07 | Status Indicator | Status draft saat ini: Draft, In Review, Ready to Schedule, Scheduled, Published, Failed — selalu terlihat | UXP-06 |
 | KSP-05-F08 | Save as Draft | Simpan progres tanpa menjadwalkan | UXP-01 |
 | KSP-05-F09 | Schedule Action | Eksekusi penjadwalan setelah pengguna konfirmasi | UXP-04 |
-| KSP-05-F10 | Kembali ke Sub-Screen Asal | Tombol Back / Close mengembalikan ke Calendar / Queue / Drafts tanpa kehilangan state | UXP-03 |
+| KSP-05-F10 | Tutup Modal | Tombol Close di header modal menutup Draft Editor, kembali ke sub-screen asal (Calendar / Queue / Drafts) tanpa navigasi URL. Untuk **New Post**, state form yang belum disimpan tetap ada via localStorage (lihat KSP-05-F13). Untuk **Edit Draft**, tidak ada mekanisme resume — perubahan yang belum disimpan hilang saat modal ditutup (ADR-052) | UXP-03 |
 | KSP-05-F11 | Content Format Selector | Pilih format publikasi **per akun terpilih** sesuai platform (ADR-039): IG/FB → Post / Reel / Story; Pinterest → Pin (+ field pin); TikTok & lainnya → Post (tanpa radio Reel/Story) | UXP-01, UXP-03 |
 | KSP-05-F12 | Publish Now Action | Eksekusi publish langsung tanpa jadwal (skip Schedule Picker) — tersedia berdampingan dengan Schedule Action di action bar, hanya untuk role Owner/Admin/Manager (ADR-047); tidak muncul untuk Creator | UXP-04, UXP-06 |
+| KSP-05-F13 | Resume Unfinished Post (New Post saja) | Saat modal **New Post** dibuka dan ditemukan state belum-tersimpan di localStorage dari sesi sebelumnya, tampilkan dialog konfirmasi "Resume unfinished post?" dengan dua pilihan: **Resume** (lanjutkan isi form dari state tersimpan) atau **Mulai Baru** (buang state lama, form kosong). **Tidak berlaku untuk Edit Draft** — draft existing selalu dibuka dengan data dari server, tanpa cek localStorage (ADR-052) | UXP-03, UXP-04 |
 
 ---
 
@@ -373,9 +382,11 @@ Draft Editor adalah **layar kerja terpenting** dalam produk. Raka menulis, melen
 
 Draft Editor dibagi menjadi dua area utama:
 
+Layout di bawah ini kini dirender di dalam modal (ADR-052, default `variant="fullscreen"`, alternatif `variant="standard"` masih dibandingkan — lihat Catatan di Identitas) — bukan halaman route sendiri. Header modal menampilkan judul, status chip, toggle variant, dan tombol Close, bukan "← Kembali".
+
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  [← Kembali]                      Status: [Draft ▼]    │
+│  Draft Editor              [✕ Close]  Status: [Draft ▼] │
 ├────────────────────────────┬────────────────────────────┤
 │  CAPTION EDITOR            │  KONFIGURASI               │
 │                            │                            │
@@ -423,7 +434,7 @@ Caption Editor kosong atau terfokus
     → Raka mengedit seperlunya
 ```
 
-Panel AI tidak membawa Raka keluar dari Draft Editor. Sidebar navigasi tetap terlihat. (UXP-05)
+Panel AI tidak membawa Raka keluar dari Draft Editor — tetap muncul inline/drawer di dalam modal yang sama. Catatan (ADR-052): pada variant `fullscreen` (default saat ini), sidebar navigasi **tertutup total** selama modal terbuka (trade-off yang disadari, lihat NP-D11) — berbeda dari versi sebelumnya di mana sidebar tetap terlihat. Pada variant `standard` (alternatif, masih dibandingkan), sidebar dan layar di belakang tetap terlihat, redup di balik backdrop. (UXP-05)
 
 ---
 
@@ -472,6 +483,8 @@ Confirmation Summary ini adalah pola konfirmasi **paling lengkap** yang didokume
 | ----- | -------- |
 | Draft baru (kosong) | Caption Editor terfokus; Account Selector belum dipilih; Content Format belum relevan sampai akun dipilih; Schedule Picker kosong |
 | Draft ada konten | Caption terisi, media terlampir (jika ada), akun + format per akun, dan waktu terisi |
+| Unsaved New Post ditemukan di localStorage saat modal dibuka | Sebelum form dirender, tampilkan dialog "Resume unfinished post?" (KSP-05-F13) — Resume mengisi form dari state tersimpan, Mulai Baru menghapus state dan membuka form kosong. Khusus New Post, tidak berlaku untuk Edit Draft (ADR-052) |
+| Edit Draft dibuka | Form terisi dari data server (`caption`/`status`/`createdAt`) tanpa cek localStorage. **Batasan saat ini:** karena `saveDraft` baru menulis `caption` ke DB, Account Selector & Schedule Picker tampil kosong/default sampai persistensi field tersebut diperluas (di luar scope ADR-052) |
 | Format tidak valid untuk platform | Selector menolak opsi; Schedule diblok sampai format/media/`platformOptions` valid (ADR-039) |
 | Status Scheduled | Status Indicator menampilkan "Scheduled"; aksi berubah: Edit Schedule / Unschedule |
 | Status Published | Status Indicator menampilkan "Published"; layar read-only dengan opsi lihat di platform |

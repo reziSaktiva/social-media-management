@@ -228,9 +228,9 @@ Publish → Drafts    → [klik item]  → Draft Editor (item X)
 Publish → Drafts    → [New Post]   → Draft Editor (item baru)
 ```
 
-**Transisi:** Draft Editor ditampilkan sebagai **panel atau layar penuh dalam section Publish** — bukan sebagai modal overlay di atas Calendar. Sidebar tetap terlihat sehingga pengguna dapat keluar dari Publish jika diperlukan.
+**Transisi:** Draft Editor ditampilkan sebagai **modal overlay fullscreen** di atas Publish (menutupi Calendar/Queue/Drafts sepenuhnya, termasuk sidebar) — bukan lagi panel/layar penuh terpisah dalam section Publish (ADR-052, mengoverride NP-D02 versi awal).
 
-**Kembali:** Tombol "Back" atau "Close" di Draft Editor mengembalikan pengguna ke sub-screen asal (Calendar / Queue / Drafts).
+**Kembali:** Tombol "Close" di header modal menutup modal dan mengembalikan tampilan ke sub-screen asal (Calendar / Queue / Drafts) tanpa navigasi URL — bukan lagi "Back" ke route terpisah, karena Draft Editor tidak lagi punya route sendiri.
 
 ---
 
@@ -249,9 +249,9 @@ Publish → Queue     → [New Post]  → Draft Editor (item baru)
 - Raka melihat Calendar dan menemukan gap jadwal di hari tertentu → klik New Post langsung dari Calendar untuk mengisi gap tersebut.
 - Raka memindai Queue dan ingin menambah konten ke antrean tanpa berganti tab.
 
-**Transisi:** Identik dengan New Post dari Drafts — Draft Editor kosong dibuka dalam section Publish. Sub-screen asal (Calendar atau Queue) menjadi tujuan tombol Back.
+**Transisi:** Identik dengan New Post dari Drafts — Draft Editor (modal fullscreen) kosong terbuka di atas sub-screen manapun yang sedang aktif. Sub-screen asal (Calendar, Queue, atau Drafts) tetap sama begitu modal ditutup — tidak ada navigasi URL yang perlu di-track.
 
-**Kembali:** Tombol "Back" atau "Close" di Draft Editor mengembalikan ke Calendar atau Queue (sesuai sub-screen asal).
+**Kembali:** Tombol "Close" di header modal menutup Draft Editor; tampilan kembali ke Calendar atau Queue (sesuai sub-screen asal) tanpa perpindahan route.
 
 ---
 
@@ -346,7 +346,7 @@ Ketika pengguna tiba di section baru melalui cross-section navigation (misalnya 
 
 **Alasan:** Terlalu kompleks untuk ditangani di level navigasi tanpa history stack yang jelas. Pengguna menggunakan sidebar untuk navigasi kembali.
 
-**Pengecualian:** Draft Editor selalu memiliki tombol kembali ke sub-screen asal di dalam section Publish — karena perpindahan ini bersifat drill-down dalam section yang sama.
+**Pengecualian:** Draft Editor (modal fullscreen, ADR-052) selalu memiliki tombol Close yang mengembalikan tampilan ke sub-screen asal di dalam section Publish — karena modal dibuka di atas sub-screen yang sama, bukan drill-down lintas route.
 
 ---
 
@@ -357,7 +357,7 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | ID | Keputusan | Alasan | Prinsip |
 | -- | --------- | ------ | ------- |
 | NP-D01 | Model navigasi: Persistent Sidebar | Web app; sidebar memberikan akses cepat antar section tanpa kehilangan konteks | UXP-01, NP-P01 |
-| NP-D02 | Draft Editor ditampilkan sebagai panel/layar penuh dalam Publish, bukan modal overlay | Modal menutupi Calendar/Queue; pengguna kehilangan konteks jadwal saat mengedit | NP-P02, UXP-04 |
+| NP-D02 | ~~Draft Editor ditampilkan sebagai panel/layar penuh dalam Publish, bukan modal overlay~~ — **Dioverride oleh NP-D11 (ADR-052)** | Alasan asli: modal menutupi Calendar/Queue, pengguna kehilangan konteks jadwal saat mengedit. Trade-off ini kemudian disadari & diterima demi kecepatan alur kerja — lihat NP-D11 | NP-P02, UXP-04 |
 | NP-D03 | Thread Inbox: inline expansion, bukan layar baru | Volume triage tinggi; pengguna perlu berpindah thread dengan cepat tanpa full-page nav | UXP-03, NP-P03 |
 | NP-D04 | Notification badge hanya pada Engage | Hanya Engage yang memerlukan respons segera; badge di semua section menambah noise | UXP-03, UXP-07 |
 | NP-D05 | Tidak ada redirect otomatis setelah cross-section navigation | State layar asal mungkin sudah berubah; redirect otomatis menciptakan kebingungan | NP-P02 |
@@ -366,6 +366,7 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | NP-D08 | Notifications Panel sebagai overlay, bukan pengganti Main Content Area | Pengguna harus bisa menutup panel dan kembali ke pekerjaan tanpa kehilangan state | NP-P02 |
 | NP-D09 | New Post CTA tersedia langsung dari Calendar dan Queue, bukan hanya dari Drafts | Raka sering menemukan gap jadwal saat melihat Calendar atau Queue — memaksanya berpindah ke tab Drafts dulu menambah friction yang tidak perlu. CTA langsung di titik penemuan kebutuhan selaras dengan alur siklus kerja (UXP-01) | UXP-01, UXP-03 |
 | NP-D10 | Logout wajib melalui dialog konfirmasi (Tier 2) | Melindungi dari interupsi pekerjaan yang belum tersimpan, walau aksi Logout sendiri reversibel — bagian dari kebijakan Safety Check/Double Confirmation lintas produk (ADR-049, `key-screen-patterns.md`) | UXP-04 |
+| NP-D11 | Draft Editor (New Post & Edit Draft) jadi **modal overlay fullscreen**, mengoverride NP-D02 | Ingin New Post/Edit Draft terasa lebih cepat/ringan tanpa pindah halaman, konsisten pola tools lain — trade-off kehilangan konteks visual Calendar/Queue (alasan asli NP-D02) diterima sadar demi kecepatan alur kerja. Route lama dihapus total (modal-only, tanpa deep-link URL). Resume unsaved state (localStorage) hanya untuk New Post, tidak untuk Edit Draft (ADR-052) | NP-P02, UXP-04 |
 
 ---
 
@@ -375,8 +376,8 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | ------- | ---- | -------- |
 | Berpindah section (Home, Publish, dll.) | Klik sidebar item | Ganti konten Main Content Area |
 | Berpindah sub-screen dalam Publish | Klik tab (Calendar / Queue / Drafts / History) | Ganti konten dalam section Publish |
-| Buka item dari Calendar / Queue / Drafts | Klik item | Buka Draft Editor (panel/fullscreen dalam Publish) |
-| Buat post baru dari Calendar atau Queue | Klik CTA "New Post" | Buka Draft Editor kosong; Back kembali ke sub-screen asal |
+| Buka item dari Calendar / Queue / Drafts | Klik item | Buka Draft Editor sebagai modal overlay fullscreen (ADR-052/NP-D11) |
+| Buat post baru dari Calendar atau Queue | Klik CTA "New Post" | Buka Draft Editor (modal) kosong; Close menutup modal kembali ke sub-screen asal tanpa navigasi URL |
 | Buka thread dari Inbox | Klik thread | Expand inline panel kanan dalam Inbox |
 | Akses Workspace Settings | Klik Workspace Selector → dropdown | Navigasi ke Workspace Settings |
 | Akses User Settings | Klik User Avatar → dropdown | Navigasi ke User Settings |

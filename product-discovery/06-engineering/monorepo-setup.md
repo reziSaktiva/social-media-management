@@ -130,24 +130,18 @@ src/app/
 │   ├── page.tsx                  ← Home — Today's Schedule, Recent Activity, Snapshots (root workspace; ADR-046)
 │   │
 │   ├── publish/
-│   │   ├── layout.tsx            ← Publish sub-nav (Calendar / Queue / Drafts / History)
+│   │   ├── layout.tsx            ← Publish sub-nav (Calendar / Queue / Drafts / History); tempat modal state Draft Editor dipasang (ADR-052)
 │   │   ├── page.tsx              ← Redirect permanen ke /publish/calendar (ADR-046 Amandemen Final — pengecualian permanen)
 │   │   ├── calendar/
-│   │   │   ├── page.tsx          ← Content Calendar (default tab; IA-D04)
-│   │   │   └── [postId]/
-│   │   │       └── page.tsx      ← Draft Editor (buka dari Calendar)
+│   │   │   └── page.tsx          ← Content Calendar (default tab; IA-D04)
 │   │   ├── queue/
-│   │   │   ├── page.tsx          ← Queue Management
-│   │   │   └── [postId]/
-│   │   │       └── page.tsx      ← Draft Editor (buka dari Queue)
+│   │   │   └── page.tsx          ← Queue Management
 │   │   ├── drafts/
-│   │   │   ├── page.tsx          ← Daftar Drafts
-│   │   │   └── [postId]/
-│   │   │       └── page.tsx      ← Draft Editor
+│   │   │   └── page.tsx          ← Daftar Drafts
 │   │   └── history/
 │   │       ├── page.tsx          ← Published History
 │   │       └── [postId]/
-│   │           └── page.tsx      ← Post Detail
+│   │           └── page.tsx      ← Post Detail (layar terpisah, KSP-D10 — TIDAK termasuk ADR-052)
 │   │
 │   ├── engage/
 │   │   └── page.tsx              ← Engagement Inbox (satu-satunya layar Engage; ADR-046)

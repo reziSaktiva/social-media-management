@@ -4,6 +4,224 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-30 — ADR-052: perbaikan CSS Draft Editor tidak ter-inject + media-thumb hilang
+
+User melaporkan Media (drop zone) dan Account Selector (pilihan akun sosial
+media) tampil berubah/polos, tidak sesuai tampilan awal — terutama lewat
+App Prototype. Ditemukan dua root cause: (1) CSS page-specific Draft Editor
+hanya ada di `<style>` lokal `templates/draft-editor.html`, tidak ikut
+ter-inject saat markup-nya dipindah ke document screen lain di App
+Prototype (yang cuma link `../styles.css`, tanpa style lokal tambahan);
+(2) `<div class="media-thumb">` (kotak preview media) hilang total dari
+markup App Prototype sejak rewrite pertamanya — bug terpisah dari soal CSS.
+
+### Changed (Claude Design project)
+
+* `styles.css` — class Draft Editor (`.editor-grid`, `.ai-trigger`,
+  `.media-drop`, `.media-thumb`, `.acc-row`(`.disconnected`),
+  `.acc-row-top`, `.fmt-row` (+`label`), `.reconnect-link`, `.sched-row`)
+  dipindah ke sini (section "App patterns"), nilai px dipertahankan persis
+  sama dengan versi lama — tidak ada pergeseran visual.
+* `templates/draft-editor.html` — `<style>` lokal dihapus total, sekarang
+  murni mengandalkan `../styles.css`.
+* `templates/app-prototype/AppPrototype.dc.html` — `<div
+  class="media-thumb">preview media 4:3</div>` ditambahkan kembali ke
+  `buildDraftEditorMarkup`, posisi sama seperti template statis.
+* `readme.md` — aturan baru "setiap class page-specific wajib di
+  `styles.css`, tidak boleh `<style>` lokal per halaman" ditambahkan ke
+  "How to use this"/"Do"/"Don't"/"Files" supaya pola bug ini tidak terulang
+  untuk screen lain.
+
+### Verification
+
+* Dibuat simulasi lokal: document HTML terpisah yang hanya link
+  `../styles.css` (meniru `publish-drafts.html`), markup Draft Editor
+  di-inject via JS persis seperti App Prototype. Terkonfirmasi: sebelum
+  fix Media/Account Selector polos tanpa styling; setelah fix, render
+  benar. `templates/draft-editor.html` standalone juga dicek tetap benar
+  tanpa `<style>` lokal.
+
+---
+
+## 2026-07-30 — ADR-052: koreksi default toggle + posisi dipindah ke header
+
+Koreksi atas entri Tahap sebelumnya — user menegaskan tidak pernah meminta
+layout Draft Editor berubah, hanya toggle untuk membandingkan; membuat
+"Standard" jadi default tanpa sadar mengubah tampilan yang sudah di-approve
+Tahap 2 (Fullscreen). User juga meminta posisi toggle dipindah ke dalam
+dialog (sejajar status chip, kiri tombol Close), bukan tombol eksternal.
+
+### Changed (Claude Design project)
+
+* `templates/draft-editor.html` — default variant dikembalikan ke
+  **Fullscreen**; tombol toggle floating (pojok kiri bawah) dihapus,
+  digantikan tombol kecil di dalam `.dialog-fs-header`/`.dialog-lg` header,
+  di antara chip status dan tombol Close.
+* `templates/app-prototype/AppPrototype.dc.html` — default `dialogVariant`
+  dikembalikan ke `'fullscreen'`; tombol toggle toolbar dihapus, digantikan
+  tombol `data-proto="draft-toggle-variant"` di dalam
+  `buildDraftEditorMarkup` (header dialog, posisi sama seperti template
+  statis). Method `toggleDraftEditorVariant(doc)` menggantikan
+  `toggleDialogVariant()` lama — dipicu lewat `route()` langsung (sudah
+  punya akses `doc`), bukan lewat lookup `this._frame` terpisah.
+* `readme.md` — section "Draft Editor — Dialog variant still being
+  compared" dan "How to Demo" diperbarui: posisi toggle (di dalam header,
+  bukan toolbar/floating), default Fullscreen (bukan Standard).
+
+### Verification
+
+* Diverifikasi visual di browser lokal sebelum push: kedua varian (default
+  Fullscreen, toggle ke Standard) render benar, toggle di posisi baru
+  (dalam header, sejajar chip, kiri Close) berfungsi di kedua file.
+
+---
+
+## 2026-07-30 — ADR-052: perbaikan animasi Dialog + toggle Standard/Fullscreen
+
+User mengecek langsung di Claude Design dan melaporkan New Post/Edit Draft
+belum terasa memakai komponen Dialog/Modal (terlihat seperti halaman
+biasa). Ditemukan animasi buka Dialog hilang di implementasi sebelumnya
+(bug nyata, diperbaiki) — fullscreen juga memang sengaja tanpa backdrop
+gelap terlihat (Astryx by design, bukan bug). Solusi: toggle Standard/
+Fullscreen supaya tim bisa bandingkan langsung, default Standard.
+
+### Changed (Claude Design project)
+
+* `styles.css` — animasi masuk (`@keyframes dialog-enter`, fade + scale-in
+  ~300ms) ditambahkan ke `.dialog`, `.dialog-fs`, dan `.dialog-lg`
+  sekaligus, mereplikasi animasi asli Astryx Dialog (diverifikasi via
+  `astryx swizzle Dialog` sementara — dibaca, dihapus segera, ADR-041).
+  Class baru `.dialog-lg-backdrop` + `.dialog-lg` (varian "standard" besar
+  — card `min(960px, 94vw)` + backdrop gelap, menggunakan ulang
+  `.dialog-fs-header/-title/-actions/-body/-footer` yang sudah ada).
+* `templates/draft-editor.html` — tombol toggle "Variant: Standard/
+  Fullscreen" (pojok kiri bawah, di luar dialog — kontrol demo, bukan
+  bagian UI produk), default Standard.
+* `templates/app-prototype/AppPrototype.dc.html` — toggle yang sama di
+  toolbar ("Draft Editor: Standard/Fullscreen"), state `dialogVariant`
+  (default `'standard'`), live-switch overlay yang sedang terbuka tanpa
+  kehilangan caption yang sudah diketik.
+* `readme.md` — section baru "Draft Editor — Dialog variant still being
+  compared" menjelaskan trade-off fullscreen (sengaja tanpa backdrop) vs
+  standard (backdrop jelas, lebih mudah dikenali sebagai modal); catatan
+  "Don't ship both variants to apps/web" ditambahkan.
+
+### Impact
+
+* **ADR-052 di `DECISIONS.md` — keputusan "fullscreen" tidak lagi final.**
+  Ditandai eksplisit di Addendum baru: variant asli tetap didukung penuh,
+  tapi pilihan final (fullscreen vs standard) menunggu keputusan tim
+  setelah membandingkan langsung di Claude Design.
+* Tahap 3 (implementasi kode) tetap **tidak dimulai** — menunggu aba-aba
+  eksplisit user, dan keputusan variant final sebelum/saat itu dimulai.
+
+---
+
+## 2026-07-30 — ADR-052: App Prototype direwiring (gap Design System ditutup)
+
+Menutup gap yang dicatat di entri Tahap 2 sebelumnya — `AppPrototype.dc.html`
+(Claude Design) sekarang konsisten dengan `templates/draft-editor.html`.
+Tahap 3 (implementasi kode `apps/web`) masih menunggu aba-aba eksplisit user.
+
+### Changed (Claude Design project)
+
+* `templates/app-prototype/AppPrototype.dc.html` — Draft Editor dihapus dari
+  `SCREENS` (bukan lagi iframe-navigable route); di-inject sebagai overlay
+  `.dialog-fs` ke document layar aktif (Calendar/Queue/Drafts), pola yang
+  sama dengan dialog Schedule/Publish Now/Disconnect yang sudah ada
+  sebelumnya. Trigger (`+ New Post`, klik item Calendar/Queue, Home →
+  Today's Schedule) diarahkan ke method baru `triggerNewPost`/
+  `triggerEditDraft`.
+* **Resume Unfinished Post (New Post saja, KSP-05-F13) — interaktif nyata**
+  via `localStorage` browser: ketik caption di New Post → tutup dengan ✕ →
+  buka "+ New Post" lagi → dialog "Resume unfinished post?" muncul dengan
+  isi sebelumnya (pilihan Resume/Mulai Baru). Edit Draft sengaja tidak
+  punya mekanisme ini.
+* Role-based button visibility (Publish Now/Schedule↔"Kirim untuk Review")
+  dipindah dari logic berbasis `this.screen === 'draft-editor'` ke
+  diterapkan langsung pada overlay saat dirender.
+* Dropdown "Screen" toolbar: entri langsung "Draft Editor" diganti opsi
+  "KSP-05 · Draft Editor (modal preview)" (shortcut preview, melewati cek
+  Resume — didemokan lebih baik lewat tombol "+ New Post" sungguhan).
+* `readme.md` — "How to Demo" dan "Files" diperbarui mendeskripsikan
+  perilaku modal + langkah demo Resume Unfinished Post.
+
+### Verification
+
+* Skrip JS komponen diekstrak dan dicek `node --check` (syntax valid) —
+  framework `dc-runtime`/`<x-dc>` tidak bisa dijalankan penuh di luar Claude
+  Design untuk verifikasi visual end-to-end dari sesi ini.
+
+---
+
+## 2026-07-30 — ADR-052: Draft Editor jadi Modal (Design System)
+
+Tahap 2 dari ADR-052 — sinkronisasi ke project Claude Design (`Social Media
+Management`, ADR-042). Tahap 3 (implementasi kode `apps/web`) belum
+berjalan.
+
+### Changed (Claude Design project, bukan repo `product-discovery/`)
+
+* `templates/draft-editor.html` — ditulis ulang total: dari full-page
+  `.app-shell`/`.sidebar` menjadi modal `Dialog variant="fullscreen"`
+  (`.dialog-fs`). Header (title + status chip + Close icon button), body
+  (editor grid yang sudah ada, tidak berubah), footer (action bar) —
+  struktur mengikuti pola `Layout` + `DialogHeader` + `LayoutContent` +
+  `LayoutFooter` Astryx asli.
+* `components/dialog.html` — ditambah contoh kedua: dialog "Resume
+  unfinished post?" (`purpose="required"`, KSP-05-F13, khusus New Post).
+* `styles.css` — 6 kelas baru (`.dialog-fs` + `-header/-title/-actions/
+  -body/-footer`), nilai fullscreen (`100dvw`/`100dvh`, radius 0)
+  diverifikasi via `astryx swizzle Dialog` sementara (dibaca, dihapus
+  segera — ADR-041).
+* `readme.md` — tabel Components, section Direction/Do, dan daftar Files
+  diperbarui untuk mendokumentasikan pola modal baru.
+
+### Known gap
+
+* `templates/app-prototype/AppPrototype.dc.html` (interactive runner)
+  **belum** direwiring — Draft Editor di situ masih navigasi halaman
+  penuh, bukan modal. Dicatat eksplisit di `readme.md` project Claude
+  Design dan di `PROJECT_STATE.md` Next Tasks, bukan diabaikan diam-diam.
+
+---
+
+## 2026-07-30 — ADR-052: Draft Editor jadi Modal (dokumentasi)
+
+Tahap 1 (dokumentasi) dari perubahan New Post & Edit Draft menjadi modal
+reusable, bukan full-page route. Tahap 2 (Design System/Claude Design) dan
+Tahap 3 (implementasi kode) menyusul di sesi terpisah — belum ada kode yang
+diubah pada entri ini.
+
+### Added
+
+* **ADR-052** di `DECISIONS.md` — Draft Editor (New Post & Edit Draft) jadi
+  modal overlay fullscreen, mengoverride NP-D02. Resume unsaved state
+  (localStorage + dialog "Resume unfinished post?") hanya untuk New Post.
+  Route lama (`drafts/new`, `[postId]` di `calendar`/`queue`/`drafts`) akan
+  dihapus total saat implementasi (modal-only) — `history/[postId]`
+  ("Post Detail", layar terpisah, KSP-D10) tidak termasuk, di luar scope.
+* **KSP-05-F13** (Resume Unfinished Post, New Post saja) dan **NP-D11**
+  (override NP-D02) di `key-screen-patterns.md` / `navigation-patterns.md`.
+
+### Changed
+
+* `product-discovery/04-ux/navigation-patterns.md` — pola "Item → Editor"
+  dan "New Post CTA" direword dari panel/layar-penuh menjadi modal overlay;
+  Ringkasan Pola diperbarui; NP-D02 ditandai dioverride oleh NP-D11.
+* `product-discovery/04-ux/key-screen-patterns.md` — KSP-05 Identitas/
+  Tujuan diberi catatan modal; KSP-05-F10 direword jadi "Tutup Modal";
+  State Handling ditambah 2 baris (Resume New Post, batasan Edit Draft);
+  diagram Zona Fungsional diberi catatan modal.
+* `product-discovery/06-engineering/monorepo-setup.md` — diagram App Router
+  Publish diperbarui: `[postId]` di `calendar`/`queue`/`drafts` dihapus dari
+  diagram (digantikan modal); `history/[postId]` (Post Detail, KSP-D10)
+  dibiarkan apa adanya — di luar scope ADR-052.
+* `PROJECT_STATE.md` — entri ADR-052 di Recent Decisions, In Progress, dan
+  Next Tasks (Design System lalu implementasi kode).
+
+---
+
 ## 2026-07-29 — Design-sync: kode `apps/web` disamakan dengan Claude Design
 
 Arah kebalikan dari ADR-051 (yang menyamakan Claude Design ke Astryx) — kali

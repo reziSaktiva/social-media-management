@@ -354,3 +354,15 @@ Handler, adapter, job runner, sync runtime, dan UI tetap next task M8.
 
 **Impact:** `DECISIONS.md` ADR-036; `PROJECT_STATE.md` phase/milestone ke M7; navigator skill diselaraskan ke label Baseline.
 
+---
+
+## 2026-07-30 — Draft Editor jadi Modal Reusable (ADR-052) — Tahap Dokumentasi
+
+**Phase:** Phase 6 / M8 Development
+
+**Summary:** User meminta New Post & Edit Draft (KSP-05 Draft Editor) diubah dari full-page route menjadi modal reusable, supaya alur kerja terasa lebih cepat/ringan dan konsisten dengan pola aplikasi lain. Diskusi berlangsung bertahap: klarifikasi motivasi & trade-off lewat `AskUserQuestion`, lanjut ke plan mode (`EnterPlanMode`) untuk merancang detail teknis (state management, localStorage schema, penghapusan route). User mengoreksi scope plan sebelum eksekusi — dan secara eksplisit meminta urutan kerja bertahap: **dokumentasi dulu → Design System (Claude Design) → baru implementasi kode**. Sesi ini menyelesaikan tahap dokumentasi; audit konsistensi lanjutan menemukan `history/[postId]` (Post Detail, KSP-D10) sempat salah ikut disebut akan dihapus — dikoreksi sebelum lanjut ke Tahap 2.
+
+**Key Decision/Insight:** Trade-off NP-D02 asli (modal menutupi Calendar/Queue, kehilangan konteks jadwal) diterima sadar oleh user demi kecepatan alur kerja — bukan pelanggaran diam-diam, dicatat eksplisit di ADR-052/NP-D11. Resume unsaved state (localStorage + dialog "Resume unfinished post?") sengaja **dipersempit ke New Post saja**, tidak untuk Edit Draft, untuk membatasi kompleksitas awal. `history/[postId]` ("Post Detail") adalah layar terpisah yang sudah lama diputuskan (KSP-D10) sengaja tidak didalami — di luar scope ADR-052 sepenuhnya, berbeda dari `calendar`/`queue`/`drafts` yang labelnya "Draft Editor".
+
+**Impact:** ADR-052 baru di `DECISIONS.md` (+ catatan silang di ADR-046 yang dikoreksi: premis "Publish satu-satunya section dengan sibling `[postId]`" ternyata **tetap berlaku**, bukan batal). `navigation-patterns.md` (NP-D11), `key-screen-patterns.md` (KSP-05-F10 reword + KSP-05-F13 baru), `monorepo-setup.md` (diagram App Router), `PROJECT_STATE.md`, `CHANGELOG.md` semua diperbarui. Next: Tahap 2 — Design System (sinkronisasi mockup ke Claude Design).
+
