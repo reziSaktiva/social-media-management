@@ -50,6 +50,14 @@ Project lama bernama **"Modernist"** di akun yang sama **bukan** milik product i
 7. Persona di UI copy / contoh: Raka, Maya, Sinta, Dimas, Lara.
 8. Jangan mengarang IA, flow, atau pola navigasi baru yang bertentangan dengan `04-ux/` tanpa ADR / update baseline.
 9. Sinkronisasi antara baseline (`04-ux/`, `design-tokens.md`) dan project Claude Design bersifat **manual/on-request** — dijalankan saat diminta eksplisit, bukan checklist wajib di setiap sesi kerja UI (beda dengan workflow Astryx CLI di `AGENTS.md` yang wajib tiap task). Push saat UX baseline berubah berarti; review sebelum menerima perubahan dari sisi Claude Design (baseline + ADR tetap menang, lihat butir 1).
+10. **Scope discipline (wajib, insiden ADR-052):** sebelum mengubah apapun di
+    project Claude Design — terutama saat diminta menambah kontrol pembanding
+    (toggle/switch antar variant) — baca dan ikuti
+    `.claude/skills/claude-design-scope-discipline/SKILL.md`. Intinya: jangan
+    pernah mengubah default/state yang sudah disetujui user sebagai efek
+    samping fitur baru; kalau scope ambigu, tanya dulu; verifikasi selesai
+    mencakup "tidak ada side-effect tak diminta", bukan cuma "fitur baru
+    berfungsi".
 
 ---
 
@@ -79,3 +87,4 @@ di-lock dipetakan ke Astryx theme + Tailwind token bridge.
 - Stack / mirror token ke kode → `ctx-technical-context.md`
 - Project mode (wireframe boleh/tidak) → `ctx-project.md` + `PROJECT_STATE.md`
 - Keputusan penghapusan `design/` → `../project-manager/DECISIONS.md` (ADR-045)
+- Scope discipline saat mengubah Claude Design → `../.claude/skills/claude-design-scope-discipline/SKILL.md` (ADR-052)

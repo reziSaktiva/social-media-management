@@ -354,3 +354,27 @@ Handler, adapter, job runner, sync runtime, dan UI tetap next task M8.
 
 **Impact:** `DECISIONS.md` ADR-036; `PROJECT_STATE.md` phase/milestone ke M7; navigator skill diselaraskan ke label Baseline.
 
+---
+
+## 2026-07-30 — Draft Editor jadi Modal Reusable (ADR-052) — Tahap Dokumentasi
+
+**Phase:** Phase 6 / M8 Development
+
+**Summary:** User meminta New Post & Edit Draft (KSP-05 Draft Editor) diubah dari full-page route menjadi modal reusable, supaya alur kerja terasa lebih cepat/ringan dan konsisten dengan pola aplikasi lain. Diskusi berlangsung bertahap: klarifikasi motivasi & trade-off lewat `AskUserQuestion`, lanjut ke plan mode (`EnterPlanMode`) untuk merancang detail teknis (state management, localStorage schema, penghapusan route). User mengoreksi scope plan sebelum eksekusi — dan secara eksplisit meminta urutan kerja bertahap: **dokumentasi dulu → Design System (Claude Design) → baru implementasi kode**. Sesi ini menyelesaikan tahap dokumentasi; audit konsistensi lanjutan menemukan `history/[postId]` (Post Detail, KSP-D10) sempat salah ikut disebut akan dihapus — dikoreksi sebelum lanjut ke Tahap 2.
+
+**Key Decision/Insight:** Trade-off NP-D02 asli (modal menutupi Calendar/Queue, kehilangan konteks jadwal) diterima sadar oleh user demi kecepatan alur kerja — bukan pelanggaran diam-diam, dicatat eksplisit di ADR-052/NP-D11. Resume unsaved state (localStorage + dialog "Resume unfinished post?") sengaja **dipersempit ke New Post saja**, tidak untuk Edit Draft, untuk membatasi kompleksitas awal. `history/[postId]` ("Post Detail") adalah layar terpisah yang sudah lama diputuskan (KSP-D10) sengaja tidak didalami — di luar scope ADR-052 sepenuhnya, berbeda dari `calendar`/`queue`/`drafts` yang labelnya "Draft Editor".
+
+**Impact:** ADR-052 baru di `DECISIONS.md` (+ catatan silang di ADR-046 yang dikoreksi: premis "Publish satu-satunya section dengan sibling `[postId]`" ternyata **tetap berlaku**, bukan batal). `navigation-patterns.md` (NP-D11), `key-screen-patterns.md` (KSP-05-F10 reword + KSP-05-F13 baru), `monorepo-setup.md` (diagram App Router), `PROJECT_STATE.md`, `CHANGELOG.md` semua diperbarui. Next: Tahap 2 — Design System (sinkronisasi mockup ke Claude Design).
+
+---
+
+## 2026-07-30 — Retrospektif insiden Claude Design: default toggle berubah tanpa diminta
+
+**Phase:** Phase 6 / M8 Development
+
+**Summary:** User melaporkan (di sesi terpisah dari eksekusi awal) bahwa saat mengerjakan Tahap 2 ADR-052 di Claude Design, AI sempat membuat "kesalahan fatal": diminta menambah toggle pembanding Fullscreen/Standard, toggle-nya benar dan berfungsi, tapi AI diam-diam mengganti default tampilan ke Standard — mengubah layout Media/Account Selector yang tidak pernah diminta berubah. Insiden ini sebenarnya sudah pernah dikoreksi saat itu juga (addendum ADR-052 "Koreksi: default dikembalikan ke Fullscreen"), tapi baru sesi ini dijadikan aturan pencegahan permanen supaya tidak terulang di masa depan.
+
+**Key Decision/Insight:** Root cause bukan salah paham fitur, melainkan AI menganggap tugas selesai begitu "fitur baru berfungsi" tanpa memverifikasi efek samping pada state yang sudah disetujui. Solusi: skill baru `claude-design-scope-discipline` (bukan rule umum di `PROJECT_RULES.md`) — sengaja diskop ke `.claude/skills/` + `ctx-design.md` karena hanya Claude Code yang punya akses tool `DesignSync` untuk mengubah Claude Design; `AGENTS.md` tetap dapat satu baris pointer karena posisinya sebagai entry point wajib.
+
+**Impact:** `.claude/skills/claude-design-scope-discipline/SKILL.md` (baru), `context/ctx-design.md` (Aturan operasional #10), `AGENTS.md` (Aturan keras #13), `DECISIONS.md` (addendum ADR-052), `CHANGELOG.md` — semua diperbarui.
+

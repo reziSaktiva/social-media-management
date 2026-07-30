@@ -73,6 +73,11 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
 12. Sebelum menulis atau mengubah UI Astryx, baca `apps/web/.claude/CLAUDE.md`
     (agent docs resmi, lihat bawah) dan/atau jalankan CLI lokal yang versinya
     terkunci. Jangan menebak nama komponen, props, atau pola styling.
+13. Sebelum mengubah apapun di Claude Design (via `DesignSync`) atau
+    menambah kontrol pembanding (toggle/switch antar variant) di UI manapun,
+    baca `.claude/skills/claude-design-scope-discipline/SKILL.md`. Jangan
+    mengubah default/state yang sudah disetujui user sebagai efek samping
+    fitur baru — insiden nyata di ADR-052.
 
 ## Workflow Astryx wajib
 
