@@ -15,6 +15,13 @@ Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output teks — 
 
 ## Langkah kerja
 
+0. Sebelum melakukan verifikasi apapun lewat browser/preview: **wajib tanya
+   ke King Rezi URL testing yang aktif** (bukan `localhost`). Alasannya:
+   Better Auth pada setup project ini tidak bisa membaca session/cookie di
+   `localhost`, sehingga testing browser dilakukan lewat tunnel ngrok. URL
+   ngrok ini **efemeran** (berubah tiap kali tunnel baru dibuka) — jangan
+   pernah asumsikan atau reuse URL dari sesi sebelumnya maupun dari
+   dokumentasi manapun, harus dikonfirmasi ulang setiap sesi.
 1. Jalankan `bun run typecheck`, `bun run lint`, `bun run test` — laporkan kalau ada yang merah.
 2. Untuk perubahan yang bisa dijalankan di browser: buka preview (`preview_start`), test golden path fitur, lalu edge case (input kosong, permission role berbeda sesuai `roles-permissions.md`, dsb).
 3. Cek regresi — pastikan fitur lain yang bersinggungan (mis. navigasi, role switcher di App Prototype) tidak rusak.
@@ -25,6 +32,7 @@ Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output teks — 
 - `context/ctx-development.md` — script lint/test.
 - `product-discovery/04-ux/key-screen-patterns.md` — expected behavior per screen.
 - `product-discovery/02-product/roles-permissions.md` — akses per role saat test dengan role switcher.
+- `project-manager/QA_TEST_ACCOUNTS.md` — kredensial akun test untuk login saat browser testing.
 
 ## Di luar scope kamu
 
