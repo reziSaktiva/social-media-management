@@ -1,39 +1,27 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useParams, useRouter } from "next/navigation";
+import { PublishingService } from "@/domains/publishing";
+import { WorkspaceService } from "@/domains/workspace";
+import { publishingRepository } from "@/lib/repositories/publishing";
+import { workspaceRepository } from "@/lib/repositories/workspace";
 
-import { Button } from "@astryxdesign/core/Button";
-import { Card } from "@astryxdesign/core/Card";
-import { EmptyState } from "@astryxdesign/core/EmptyState";
-import { Heading } from "@astryxdesign/core/Heading";
-import { HStack } from "@astryxdesign/core/HStack";
-import { Text } from "@astryxdesign/core/Text";
-import { VStack } from "@astryxdesign/core/VStack";
+import { DraftsList } from "./drafts-list";
 
-export default function Page() {
-  const router = useRouter();
-  const params = useParams<{ slug: string }>();
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
 
-  return (
-    <VStack gap={4}>
-      <HStack justify="between" align="center">
-        <VStack gap={1}>
-          <Heading level={1}>Publish</Heading>
-          <Text type="supporting">Draft yang belum terjadwal</Text>
-        </VStack>
-        <Button
-          label="+ New Post"
-          variant="primary"
-          onClick={() => router.push(`/${params.slug}/publish/drafts/new`)}
-        />
-      </HStack>
+  const workspaceService = new WorkspaceService(workspaceRepository);
+  const workspace = await workspaceService.getWorkspaceBySlug(slug);
+  if (!workspace) {
+    redirect("/onboarding");
+  }
 
-      <Card padding={4}>
-        <EmptyState
-          title="Belum ada draft"
-          description="Draft yang belum terjadwal akan muncul di sini."
-        />
-      </Card>
-    </VStack>
-  );
+  const publishingService = new PublishingService(publishingRepository);
+  const drafts = await publishingService.listDrafts(workspace.id);
+
+  return <DraftsList drafts={drafts} />;
 }
