@@ -4,6 +4,33 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-30 — QA: aturan URL testing (ngrok) + akun test terdokumentasi
+
+Permintaan eksplisit user: Najwa QA Engineer sering butuh verifikasi browser,
+tapi project ini tidak bisa testing lewat `localhost` (Better Auth tidak bisa
+membaca session/cookie di setup ini), sehingga dipakai tunnel ngrok yang
+efemeran (URL berubah tiap sesi).
+
+### Added
+
+* `project-manager/QA_TEST_ACCOUNTS.md` — dokumen baru: alasan testing browser
+  pakai ngrok bukan `localhost`, catatan bahwa URL ngrok efemeran (harus
+  dikonfirmasi ulang tiap sesi, tidak boleh reuse dari dokumentasi manapun),
+  1 akun test yang sudah ada di database (Raka Pratama, Owner —
+  `raka.test@kopiselasar.com`), dan catatan penundaan akun Manager/Creator
+  sampai fitur invite member (`apps/web/src/app/[slug]/settings/members/
+  page.tsx`, masih scaffold placeholder) selesai diimplementasikan.
+
+### Changed
+
+* `.claude/agents/najwa-qa-engineer.md` — 2 aturan baru: (1) step 0 di
+  "Langkah kerja" — wajib tanya ke user URL testing aktif sebelum verifikasi
+  browser (bukan `localhost`), dengan alasan singkat (Better Auth + ngrok
+  efemeran); (2) pointer baru di "Referensi" ke
+  `project-manager/QA_TEST_ACCOUNTS.md` untuk kredensial akun test.
+
+---
+
 ## 2026-07-30 — ADR-052 Tahap 3: implementasi kode Draft Editor sebagai modal
 
 ### Added

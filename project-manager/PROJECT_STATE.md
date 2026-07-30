@@ -450,6 +450,14 @@ Restricted Actions:
   ter-refresh otomatis setelah modal ditutup (Server Component page tidak
   tahu ada perubahan) — ditambahkan `router.refresh()` setelah Save as
   Draft berhasil.
+* **QA: aturan URL testing (ngrok) + akun test terdokumentasi:** karena
+  Better Auth pada setup project ini tidak bisa membaca session/cookie di
+  `localhost`, testing browser dilakukan lewat tunnel ngrok yang efemeran.
+  `.claude/agents/najwa-qa-engineer.md` diberi aturan wajib tanya URL
+  testing aktif ke user setiap sesi (jangan reuse URL lama) + pointer ke
+  `project-manager/QA_TEST_ACCOUNTS.md` (dokumen baru) berisi 1 akun test
+  yang sudah ada (Raka Pratama, Owner). Akun Manager/Creator ditunda sampai
+  fitur invite member selesai — bukan dibuat via database hack.
 
 ---
 
