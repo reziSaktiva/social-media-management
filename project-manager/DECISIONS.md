@@ -2869,3 +2869,41 @@ drop zone dan Account Selector tampil polos tanpa styling. Setelah fix:
 render benar (border, radius, warna, spacing semua sesuai). Diverifikasi
 juga `templates/draft-editor.html` standalone tetap benar tanpa `<style>`
 lokal.
+
+### Addendum (2026-07-30) — Governance: skill "Scope Discipline" dibuat dari insiden default toggle
+
+User melaporkan retrospektif (via sesi terpisah): saat AI diminta menambah
+toggle Fullscreen/Standard (addendum "Variant Dialog dibuka kembali"),
+toggle-nya benar dan berfungsi, **tapi AI diam-diam mengubah default
+tampilan dari Fullscreen ke Standard** sebagai bagian dari implementasi —
+padahal permintaan user cuma "tambahkan alat pembanding", bukan "ganti
+tampilan aktif". Karena Standard vs Fullscreen berbeda struktur (card
+mengambang vs full-viewport), semua elemen di dalamnya (termasuk Media
+drop zone dan Account Selector) ikut terlihat berubah layout padahal class
+CSS-nya sendiri tidak disentuh. Insiden ini sudah dikoreksi sebelumnya
+(lihat addendum "Koreksi: default dikembalikan ke Fullscreen" di atas),
+tapi belum pernah dijadikan aturan pencegahan permanen.
+
+**Tindakan pencegahan:**
+
+* Skill baru `.claude/skills/claude-design-scope-discipline/SKILL.md` —
+  aturan wajib: (1) jangan mengubah default/state yang sudah disetujui
+  user sebagai efek samping fitur baru; (2) sebelum eksekusi yang scope-nya
+  ambigu, nyatakan ringkas apa yang berubah vs tetap sama; (3) kalau
+  ambigu, tanya dulu (`proactive-clarification`); (4) definisi selesai
+  mencakup "tidak ada side-effect tak diminta pada tampilan/behavior
+  existing", bukan cuma "fitur baru berfungsi".
+* `context/ctx-design.md` — Aturan operasional #10 baru, menunjuk ke skill
+  di atas; dibaca setiap task UI/desain (termasuk Claude Design) via
+  mapping table `AGENTS.md`.
+* `AGENTS.md` — Aturan keras #13 baru (entry point wajib dibaca tiap sesi
+  oleh AI apapun yang bekerja di repo ini), menunjuk ke skill yang sama.
+
+**Alasan penempatan:** hanya Claude Code yang punya akses tool `DesignSync`
+untuk mengubah Claude Design, sehingga aturan detailnya ditempatkan sebagai
+skill khusus (auto-discoverable berdasarkan konteks tugas) dan di
+`ctx-design.md` (dibaca spesifik untuk task UI/desain) — bukan sebagai
+general rule di `PROJECT_RULES.md` yang scope-nya lebih luas dari yang
+dibutuhkan. `AGENTS.md` tetap diberi satu baris pointer karena berfungsi
+sebagai entry point yang wajib dibaca duluan oleh AI apapun (bukan
+duplikasi isi, cuma penunjuk).

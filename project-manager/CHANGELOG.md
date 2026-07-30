@@ -4,6 +4,34 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-30 — ADR-052: skill "Claude Design — Scope Discipline" ditambahkan (governance)
+
+Retrospektif atas insiden default toggle Fullscreen/Standard yang diam-diam
+berubah (lihat addendum ADR-052 sebelumnya) menghasilkan aturan pencegahan
+permanen supaya kelas kesalahan yang sama (AI mengubah state/default yang
+sudah disetujui sebagai efek samping fitur baru) tidak terulang.
+
+### Added
+
+* `.claude/skills/claude-design-scope-discipline/SKILL.md` — skill baru:
+  kronologi insiden, aturan wajib (jangan ubah default sebagai efek
+  samping; nyatakan ringkas apa yang berubah vs tetap sama; tanya dulu
+  kalau ambigu; definisi selesai mencakup "tidak ada side-effect tak
+  diminta"), contoh salah/benar.
+
+### Changed
+
+* `context/ctx-design.md` — Aturan operasional #10 baru + entri Related
+  context, menunjuk ke skill di atas.
+* `AGENTS.md` — Aturan keras #13 baru, pointer ke skill yang sama (entry
+  point wajib dibaca tiap sesi).
+* `DECISIONS.md` — ADR-052 mendapat addendum baru mendokumentasikan
+  governance ini + alasan penempatan (skill khusus + `ctx-design.md`,
+  bukan `PROJECT_RULES.md` yang scope-nya lebih luas dari kebutuhan, karena
+  hanya Claude Code yang punya akses tool `DesignSync`).
+
+---
+
 ## 2026-07-30 — ADR-052: perbaikan CSS Draft Editor tidak ter-inject + media-thumb hilang
 
 User melaporkan Media (drop zone) dan Account Selector (pilihan akun sosial

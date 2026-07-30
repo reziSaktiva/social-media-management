@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.27     |
+| Version      | 1.0.28     |
 | Status       | Active     |
 | Last Updated | 2026-07-30 |
 
@@ -527,6 +527,7 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-052 addendum — Governance: skill `.claude/skills/claude-design-scope-discipline/SKILL.md` dibuat dari insiden retrospektif (AI diam-diam mengubah default Fullscreen→Standard saat menambah toggle pembanding, sudah dikoreksi saat itu juga, sekarang dijadikan aturan pencegahan permanen). Ditempatkan sebagai skill khusus + `ctx-design.md` (bukan `PROJECT_RULES.md` yang lebih luas dari kebutuhan) karena hanya Claude Code yang punya akses `DesignSync`; `AGENTS.md` dapat satu baris pointer sebagai entry point wajib (2026-07-30).
 * ADR-052 — Draft Editor (New Post & Edit Draft) jadi modal overlay
   fullscreen, mengoverride NP-D02: motivasi kecepatan alur kerja, trade-off
   kehilangan konteks Calendar/Queue diterima sadar oleh user. Route lama

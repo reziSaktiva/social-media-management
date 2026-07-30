@@ -366,3 +366,15 @@ Handler, adapter, job runner, sync runtime, dan UI tetap next task M8.
 
 **Impact:** ADR-052 baru di `DECISIONS.md` (+ catatan silang di ADR-046 yang dikoreksi: premis "Publish satu-satunya section dengan sibling `[postId]`" ternyata **tetap berlaku**, bukan batal). `navigation-patterns.md` (NP-D11), `key-screen-patterns.md` (KSP-05-F10 reword + KSP-05-F13 baru), `monorepo-setup.md` (diagram App Router), `PROJECT_STATE.md`, `CHANGELOG.md` semua diperbarui. Next: Tahap 2 — Design System (sinkronisasi mockup ke Claude Design).
 
+---
+
+## 2026-07-30 — Retrospektif insiden Claude Design: default toggle berubah tanpa diminta
+
+**Phase:** Phase 6 / M8 Development
+
+**Summary:** User melaporkan (di sesi terpisah dari eksekusi awal) bahwa saat mengerjakan Tahap 2 ADR-052 di Claude Design, AI sempat membuat "kesalahan fatal": diminta menambah toggle pembanding Fullscreen/Standard, toggle-nya benar dan berfungsi, tapi AI diam-diam mengganti default tampilan ke Standard — mengubah layout Media/Account Selector yang tidak pernah diminta berubah. Insiden ini sebenarnya sudah pernah dikoreksi saat itu juga (addendum ADR-052 "Koreksi: default dikembalikan ke Fullscreen"), tapi baru sesi ini dijadikan aturan pencegahan permanen supaya tidak terulang di masa depan.
+
+**Key Decision/Insight:** Root cause bukan salah paham fitur, melainkan AI menganggap tugas selesai begitu "fitur baru berfungsi" tanpa memverifikasi efek samping pada state yang sudah disetujui. Solusi: skill baru `claude-design-scope-discipline` (bukan rule umum di `PROJECT_RULES.md`) — sengaja diskop ke `.claude/skills/` + `ctx-design.md` karena hanya Claude Code yang punya akses tool `DesignSync` untuk mengubah Claude Design; `AGENTS.md` tetap dapat satu baris pointer karena posisinya sebagai entry point wajib.
+
+**Impact:** `.claude/skills/claude-design-scope-discipline/SKILL.md` (baru), `context/ctx-design.md` (Aturan operasional #10), `AGENTS.md` (Aturan keras #13), `DECISIONS.md` (addendum ADR-052), `CHANGELOG.md` — semua diperbarui.
+
