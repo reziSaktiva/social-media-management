@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.29     |
+| Version      | 1.0.30     |
 | Status       | Active     |
 | Last Updated | 2026-07-31 |
 
@@ -472,6 +472,24 @@ Restricted Actions:
   baseline UX (`navigation-patterns.md`, `key-screen-patterns.md`) sudah
   diselaraskan. **Implementasi kode `apps/web` belum berjalan** untuk
   kedua hal ini — menyusul di siklus implementasi berikutnya.
+* **ADR-055 — Light/Dark Mode Toggle diangkat jadi fitur resmi produk
+  (mengoverride "neutral theme selama M8", ADR-041):** diklarifikasi dulu
+  ke King Rezi (fitur resmi vs alat banding internal) — King Rezi memilih
+  fitur resmi. Toggle ditambahkan sebagai kontrol persisten di sidebar
+  footer (berdampingan user account dropdown), berlaku lintas seluruh
+  section. Default tetap Light saat load pertama; sengaja tidak dipersist
+  lintas full reload (menghindari flash tema salah sebelum ada keputusan
+  persistensi resmi). Tidak melanggar ADR-041 karena token dark mode sudah
+  native di Astryx (`@astryxdesign/theme-neutral@0.1.8`) — hanya meng-expose
+  mekanisme bawaan (`<Theme mode={mode}>`), bukan implementasi custom.
+  Diimplementasikan Claude Design (7 layar KSP + App Prototype,
+  `draft-editor.html` dikecualikan karena tidak ada sidebar) → kode
+  `apps/web` (`src/app/providers.tsx` `ThemeModeContext`/`useThemeMode` +
+  `workspace-side-nav.tsx` `IconButton` toggle) → QA browser end-to-end
+  (golden path lolos, konsistensi tema lintas navigasi SPA, reset ke Light
+  saat reload dikonfirmasi working as intended, tanpa regresi sidebar) →
+  review arsitektur (lolos, client component murni, tanpa import
+  domain/Prisma/Supabase/Outstand). Typecheck/lint/test (26 test) hijau.
 
 ---
 
@@ -503,6 +521,14 @@ Restricted Actions:
   implementasi Publish Now (ADR-047) berjalan — bukan task terpisah baru,
   cukup diselaraskan saat kedua task tersebut dikerjakan.
 * **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (modal New Post/Edit Draft) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
+* **Light/Dark Mode Toggle (ADR-055) — push `components/navigation.html` yang
+  tertunda:** file hasil edit sudah disiapkan lengkap di scratchpad
+  (dibuat sesi Neymar), tinggal di-push ke Claude Design saat tool
+  `DesignSync` aktif kembali (sempat nonaktif saat sesi kerja desain).
+* **Light/Dark Mode Toggle (ADR-055) — keputusan persistensi lintas
+  reload:** belum diputuskan apakah tema perlu dipersist (localStorage/
+  cookie) lintas full reload, atau sengaja tetap reset ke Light setiap
+  reload selamanya. Perlu diajukan ke King Rezi kalau relevan.
 * **Publish Now (ADR-047) — implementasi menyusul, belum ada di kode maupun App Prototype:** `PublishingService.publishNow()` (RBAC Owner/Admin/Manager, validasi `ContentFormat` ADR-039, panggil `OutstandAdapter`) + tombol "Publish Now" di Draft Editor (KSP-05-F12) berdampingan dengan Schedule + dialog Confirmation Summary variannya (UXP-04); App Prototype Claude Design juga perlu ditambahkan tombolnya (role switcher yang sudah ada tinggal dipakai untuk membatasi visibility Creator).
 * **Disconnect Confirmation (ADR-048) — implementasi menyusul:** dialog konfirmasi (KSP-08-F07) di `settings-connected-accounts.html` App Prototype + `disconnectAccount` di kode nyata (RBAC Owner/Admin, belum ada perubahan RBAC — tinggal tambah gate konfirmasi sebelum memanggil service).
 * **(Ditunda, scope terpisah) Remove Member, Transfer Ownership, Delete Workspace:** tier konfirmasi sudah diputuskan (ADR-049) dan method service `deleteWorkspace`/`transferOwnership`/`acceptOwnershipTransfer` sudah lengkap di `application-layer.md` (ADR-050) — yang masih kurang cuma **screen Workspace Settings → Members/General** (di luar 8 KSP), belum pernah dirancang. Perlu sesi terpisah untuk merancang layar sebelum implementasi kode/App Prototype bisa mulai.
@@ -553,6 +579,17 @@ Restricted Actions:
 
 ---
 
+* **Light/Dark Mode Toggle (ADR-055) — `components/navigation.html` belum
+  ter-push ke Claude Design.** File hasil edit sudah lengkap di scratchpad,
+  terblokir karena tool `DesignSync` sempat nonaktif di sesi kerja desain.
+  Tidak memblokir kode `apps/web` (sudah selesai dan lolos QA/review) —
+  hanya dokumen referensi komponen di Claude Design yang tertinggal.
+* **Light/Dark Mode Toggle (ADR-055) — persistensi tema lintas reload belum
+  diputuskan.** Saat ini tema selalu reset ke Light setiap full reload
+  (sengaja, bukan bug). Keputusan localStorage/cookie ditunda.
+
+---
+
 # Blockers
 
 Tidak ada blocker saat ini.
@@ -561,6 +598,17 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-055 — Light/Dark Mode Toggle diangkat jadi fitur resmi produk,
+  mengoverride "neutral theme selama M8" (ADR-041): diklarifikasi dulu ke
+  King Rezi (fitur resmi vs alat banding internal) — dipilih fitur resmi.
+  Kontrol persisten di sidebar footer, berlaku lintas seluruh section;
+  default Light saat load pertama; sengaja tidak dipersist lintas full
+  reload (belum ada keputusan persistensi resmi). Tidak melanggar ADR-041
+  karena token dark mode sudah native di Astryx
+  (`@astryxdesign/theme-neutral@0.1.8`) — murni meng-expose mekanisme
+  bawaan, bukan implementasi custom. Alur Neymar → Mark UI Engineer →
+  Najwa QA → Ridwan semua lolos. `components/navigation.html` di Claude
+  Design masih tertunda dipush (DesignSync sempat nonaktif) (2026-07-31).
 * ADR-054 — Draft Editor: redirect otomatis ke sub-screen tujuan setelah
   aksi terminal (Save as Draft → Drafts, Schedule → Queue, Publish Now →
   History/sementara Calendar), bukan kembali ke sub-screen asal seperti

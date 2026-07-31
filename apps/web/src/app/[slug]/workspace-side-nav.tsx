@@ -14,6 +14,8 @@ import {
 
 import { authClient } from "@/lib/better-auth/client";
 
+import { useThemeMode } from "../providers";
+
 const NAV_ITEMS = [
   { label: "Home", path: "" },
   { label: "Publish", path: "publish" },
@@ -35,6 +37,7 @@ export function WorkspaceSideNav({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { mode, toggleMode } = useThemeMode();
 
   async function handleLogout() {
     await authClient.signOut();
@@ -59,6 +62,17 @@ export function WorkspaceSideNav({
             variant="ghost"
             tooltip="Notifikasi"
             onClick={() => router.push("/account/notifications")}
+          />
+          <IconButton
+            label={
+              mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode"
+            }
+            icon={<span aria-hidden>{mode === "light" ? "🌙" : "☀️"}</span>}
+            variant="ghost"
+            tooltip={
+              mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode"
+            }
+            onClick={toggleMode}
           />
           <DropdownMenu
             button={{

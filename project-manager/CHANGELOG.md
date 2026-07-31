@@ -4,6 +4,53 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-31 — ADR-055: Light/Dark Mode Toggle diangkat jadi fitur resmi produk
+
+King Rezi meminta button switch light/dark; sebelum implementasi dimulai,
+diklarifikasikan dulu (via `AskUserQuestion`) apakah ini alat banding
+internal atau fitur resmi produk — King Rezi memilih **fitur resmi
+produk**, mengoverride baseline "neutral theme selama M8" (ADR-041). Alur
+kerja: Neymar (Claude Design) → Mark UI Engineer (kode `apps/web`) → Najwa
+QA (verifikasi browser) → Ridwan (review arsitektur) — semua selesai dan
+lolos.
+
+### Added
+
+* `DECISIONS.md` — ADR-055 baru: Toggle Light/Dark Mode sebagai kontrol
+  persisten di sidebar footer, berlaku lintas seluruh section; default
+  Light saat load pertama; sengaja tidak dipersist lintas full reload.
+  Alasan tidak melanggar ADR-041: token dark mode sudah native di Astryx
+  (`@astryxdesign/theme-neutral@0.1.8`), bukan implementasi custom.
+* Claude Design (project "Social Media Management") — toggle ditambahkan
+  di 7 layar KSP (Home, Publish Calendar/Queue/Drafts, Engage Inbox,
+  Analyze Dashboard, Settings Connected Accounts) + App Prototype.
+  `draft-editor.html` (KSP-05) dikecualikan — tidak ada sidebar (modal
+  fullscreen, ADR-052).
+* `apps/web/src/app/providers.tsx` — `ThemeModeContext`/`useThemeMode`.
+* `apps/web/src/app/[slug]/workspace-side-nav.tsx` — `IconButton` toggle di
+  sidebar footer, berdampingan user account dropdown.
+
+### Verification
+
+* Typecheck/lint/test (26 test) hijau.
+* QA end-to-end via browser (tunnel ngrok): golden path toggle lolos,
+  konsistensi tema lintas navigasi SPA, reset ke Light saat full reload
+  dikonfirmasi working as intended (bukan bug), tidak ada regresi sidebar.
+* Review arsitektur (Ridwan): lolos tanpa temuan — client component murni,
+  tidak ada import domain/Prisma/Supabase/Outstand, pola context konsisten
+  dengan `DraftEditorContext` yang sudah ada.
+
+### Belum selesai (dicatat, bukan ditutup)
+
+* `components/navigation.html` (dokumen referensi AppShell+SideNav di
+  Claude Design) belum ter-push — terblokir karena tool `DesignSync`
+  sempat nonaktif di sesi kerja desain. File hasil edit sudah disiapkan
+  lengkap di scratchpad, tinggal di-push saat `DesignSync` aktif kembali.
+* Persistensi tema lintas reload (localStorage/cookie) belum diputuskan —
+  sengaja ditunda.
+
+---
+
 ## 2026-07-31 — ADR-053 & ADR-054: Sidebar CTA "+ New Post" + redirect Draft Editor ke sub-screen tujuan
 
 ### Added
