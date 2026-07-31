@@ -50,6 +50,16 @@ Project lama bernama **"Modernist"** di akun yang sama **bukan** milik product i
 7. Persona di UI copy / contoh: Raka, Maya, Sinta, Dimas, Lara.
 8. Jangan mengarang IA, flow, atau pola navigasi baru yang bertentangan dengan `04-ux/` tanpa ADR / update baseline.
 9. Sinkronisasi antara baseline (`04-ux/`, `design-tokens.md`) dan project Claude Design bersifat **manual/on-request** — dijalankan saat diminta eksplisit, bukan checklist wajib di setiap sesi kerja UI (beda dengan workflow Astryx CLI di `AGENTS.md` yang wajib tiap task). Push saat UX baseline berubah berarti; review sebelum menerima perubahan dari sisi Claude Design (baseline + ADR tetap menang, lihat butir 1).
+   9a. **Wajib reminder proaktif (ADR-056):** setiap kali ada perubahan yang
+   berhubungan dengan UI/UX — baik di dokumen (`04-ux/`, `design-tokens.md`)
+   maupun di project Claude Design (via `DesignSync`) — AI **wajib** secara
+   eksplisit memberi tahu King Rezi bahwa kedua sisi berpotensi belum
+   sinkron, dan tanya apakah perlu diselaraskan sekarang. Untuk **token
+   nilai visual**, `design-tokens.md` dan Claude Design sekarang **co-equal**
+   (tidak ada yang wajib jadi penulis pertama, amandemen ADR-038). Untuk
+   **flow/fungsi layar**, `04-ux/` tetap SoT seperti butir 1 di atas —
+   reminder di sini artinya "cek apakah representasi Claude Design masih
+   sesuai", bukan mengubah siapa yang menang.
 10. **Scope discipline (wajib, insiden ADR-052):** sebelum mengubah apapun di
     project Claude Design — terutama saat diminta menambah kontrol pembanding
     (toggle/switch antar variant) — baca dan ikuti
@@ -90,3 +100,4 @@ Tailwind token bridge.
 - Project mode (wireframe boleh/tidak) → `ctx-project.md` + `PROJECT_STATE.md`
 - Keputusan penghapusan `design/` → `../project-manager/DECISIONS.md` (ADR-045)
 - Scope discipline saat mengubah Claude Design → `../.claude/skills/claude-design-scope-discipline/SKILL.md` (ADR-052)
+- Sync docs ↔ Claude Design + kewajiban reminder proaktif → `../project-manager/DECISIONS.md` (ADR-056)

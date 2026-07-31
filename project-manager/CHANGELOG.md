@@ -4,6 +4,40 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-31 — Diskusi lanjutan hasil audit: 3 keputusan terbuka diputuskan (ADR-056 + 2 next task)
+
+Melanjutkan diskusi dari audit dokumentasi sebelumnya (entri di bawah), 3 poin
+"belum diputuskan" dibahas dan diputuskan bersama King Rezi.
+
+### Added
+
+* `DECISIONS.md` — **ADR-056**: sinkronisasi UI/UX docs ↔ Claude Design.
+  Token visual jadi **co-equal** antara `design-tokens.md` dan Design System
+  Claude Design (amandemen ADR-038 poin 1 & 2). AI **wajib reminder
+  proaktif** setiap ada perubahan UI/UX di salah satu sisi (docs atau Claude
+  Design) — berlaku untuk token maupun flow/fungsi layar, meski untuk
+  flow/fungsi layar `04-ux/` tetap SoT (ADR-042 tidak berubah di sini).
+  Dipicu King Rezi mengaku sering lupa sync manual antara dua sisi.
+
+### Changed
+
+* `context/ctx-design.md` — aturan operasional #9a baru: kewajiban reminder
+  proaktif ADR-056, plus pointer di Related context.
+* `.claude/agents/neymar-product-designer.md` — section baru "Wajib
+  reminder proaktif (ADR-056)" (unlock `644` → edit → lock `444` lagi,
+  sesuai prosedur resmi di `.claude/agents/README.md`).
+* `project-manager/PROJECT_STATE.md`:
+  * Recent Decisions — ADR-056 ditambahkan.
+  * Next Tasks — persistensi tema Light/Dark (ADR-055) **sudah diputuskan**:
+    pakai **Cookie** (bukan localStorage), belum diimplementasikan.
+  * Next Tasks — Remove Member/Transfer Ownership/Delete Workspace:
+    pendekatan desain **sudah diputuskan** — desain minimal "Danger Zone"
+    dulu (bukan Members management penuh), sesi desain belum dimulai.
+  * Next Tasks — catatan design-tokens.md diperbarui mengikuti model
+    co-equal ADR-056 (bukan lagi "isi sekali setelah desain di-approve").
+
+---
+
 ## 2026-07-31 — Audit konsistensi dokumentasi menyeluruh (2 temuan diperbaiki)
 
 Dipicu permintaan King Rezi untuk cek dokumentasi menyeluruh. Ditemukan 2
