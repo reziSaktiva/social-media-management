@@ -1436,7 +1436,7 @@ Design Tokens — lokasi SoT & alur lock setelah design siap
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-056 (2026-07-31), ADR-057 (2026-07-31)
 
 ### Date
 
@@ -1603,7 +1603,7 @@ UI Component System — Astryx sebagai Fondasi Permanen dan Design-Later Workflo
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-057 (2026-07-31)
 
 ### Date
 
@@ -3129,3 +3129,163 @@ resmi produk — King Rezi memilih **fitur resmi produk**.
   `DesignSync` aktif kembali. Lihat Next Tasks di `PROJECT_STATE.md`.
 * **Belum diputuskan:** persistensi tema lintas reload (localStorage/cookie)
   — sengaja ditunda, dicatat sebagai open question/next task terpisah.
+
+---
+
+## Decision ADR-056
+
+### Title
+
+Sinkronisasi UI/UX Docs ↔ Claude Design — Status Co-equal untuk Token + AI Wajib Reminder Proaktif (Amandemen ADR-038, ADR-042)
+
+### Status
+
+Accepted
+
+### Date
+
+2026-07-31
+
+### Decision
+
+Dipicu diskusi King Rezi soal pengalaman kerja nyata: perubahan UI/UX kadang
+dimulai dari dokumentasi (`04-ux/`, `design-tokens.md`) lalu diikuti Claude
+Design, kadang sebaliknya — tanpa aturan arah yang jelas, sehingga berpotensi
+miss-match tanpa disadari (King Rezi mengaku sering lupa melakukan sync
+manual).
+
+1. **Nilai token visual** (warna, spacing, radius, font, dsb.) — `design-tokens.md`
+   dan Design System di project Claude Design "Social Media Management"
+   berstatus **co-equal (setara)**. Tidak ada yang wajib jadi "penulis
+   pertama". Ini mengamendemen ADR-038 poin 1 (yang menyatakan
+   `design-tokens.md` sebagai SoT tunggal) dan poin 2 (yang menyatakan nilai
+   diisi satu kali setelah desain di-approve) — token sekarang boleh
+   berevolusi iteratif dari kedua sisi sepanjang development, bukan diisi
+   sekali di akhir.
+2. **Alur, struktur, dan fungsi layar** (IA, navigasi, pola layar kritis) —
+   **tidak berubah**: `product-discovery/04-ux/` tetap Source of Truth,
+   Claude Design tetap representasi visual turunan (ADR-042 poin 2 & 5 tetap
+   berlaku, termasuk "baseline + ADR menang" saat konflik).
+3. **Kewajiban baru — AI wajib reminder proaktif:** setiap kali AI (Claude
+   Code, termasuk subagent Neymar Product Designer dan siapapun yang
+   mengedit `04-ux/`/`design-tokens.md`) melakukan atau mendeteksi perubahan
+   apapun yang berhubungan dengan UI/UX — baik di sisi dokumentasi maupun di
+   sisi project Claude Design "Social Media Management" (via `DesignSync`)
+   — AI **wajib** secara eksplisit memberi tahu King Rezi bahwa kedua sisi
+   berpotensi belum sinkron, dan menanyakan apakah perlu diselaraskan
+   sekarang. Ini berlaku untuk kedua kategori di atas (token maupun
+   flow/fungsi layar), bukan cuma token.
+4. Sinkronisasi teknis tetap **manual/on-request** (ADR-042 poin 3 tidak
+   berubah — tidak ada webhook/trigger otomatis). Yang berubah hanya
+   kewajiban AI untuk **mengingatkan**, bukan mekanisme sync itu sendiri.
+5. Tie-breaker saat ditemukan konflik nyata: untuk token (co-equal) — King
+   Rezi yang memutuskan versi mana yang benar, tidak ada resolusi otomatis;
+   untuk flow/fungsi layar — baseline `04-ux/` + ADR tetap menang (tidak
+   berubah dari ADR-042 poin 5).
+
+### Reason
+
+* Solo developer yang mengerjakan dokumentasi dan Claude Design sendiri
+  tanpa checklist eksplisit rentan lupa sisi mana yang perlu diselaraskan —
+  masalah ini sudah terjadi berulang kali secara ad hoc sebelum ADR ini.
+* Memaksa satu arah SoT tunggal untuk token (selalu docs dulu, atau selalu
+  Claude Design dulu) dianggap terlalu kaku untuk cara kerja aktual King
+  Rezi yang kadang lebih cepat iterasi visual langsung di Claude Design,
+  kadang lebih cepat menulis keputusan di docs dulu.
+* Reminder proaktif oleh AI adalah kompensasi paling murah secara teknis
+  (tidak perlu infra sync otomatis, sesuai batas teknis yang sudah disadari
+  di ADR-042 poin 3) sambil tetap menutup celah "lupa sync manual".
+* Flow/fungsi layar sengaja **tidak** dijadikan co-equal seperti token —
+  `04-ux/` sudah punya baseline matang (ADR-013) dan mengubah hierarkinya
+  berisiko menghilangkan traceability keputusan UX yang sudah lama berjalan
+  baik.
+
+### Alternatives Considered
+
+* Tetap SoT tunggal untuk token (docs dulu, ADR-038 asli) — ditolak; tidak
+  mencerminkan cara kerja aktual dan tetap mengandalkan disiplin manual yang
+  terbukti sering terlewat.
+* Claude Design jadi SoT token, docs jadi cerminan (kebalikan ADR-038
+  sepenuhnya) — ditolak; terlalu jauh dari niat awal ADR-038 (menjaga docs
+  sebagai acuan engineering yang bisa direview tanpa buka tool eksternal).
+* Sync otomatis penuh (webhook/polling) — ditolak; tidak ada infrastruktur
+  untuk itu (sudah dinyatakan di ADR-042), dan di luar scope solo developer
+  MVP.
+* Reminder hanya untuk token, tidak untuk flow/fungsi layar — ditolak; King
+  Rezi secara eksplisit meminta cakupan untuk **semua** perubahan UI/UX, bukan
+  cuma token.
+
+---
+
+## Decision ADR-057
+
+### Title
+
+Tidak Ada Designer Eksternal — Peran Desainer Digantikan Permanen oleh Claude Design / King Rezi (Amandemen ADR-038, ADR-041)
+
+### Status
+
+Accepted
+
+### Date
+
+2026-07-31
+
+### Decision
+
+Dipicu diskusi lanjutan soal design tokens (lihat ADR-056): King Rezi
+mengonfirmasi project ini **tidak akan pernah** merekrut atau menunggu
+designer eksternal bergabung — ini keputusan final, bukan status sementara.
+
+1. **Peran "desainer"** di seluruh baseline (ADR-038, ADR-041,
+   `design-tokens.md`, `context/ctx-design.md`, dan dokumen lain yang
+   menyebut "designer masuk"/"designer aktif"/"designer join") digantikan
+   **permanen** oleh King Rezi sendiri, bekerja langsung di project Claude
+   Design "Social Media Management" (ADR-042).
+2. **Gerbang "designer masuk" sebagai syarat lock token dihapus** —
+   mengamendemen ADR-038 (DT-D02) dan ADR-041 poin 2 & 7. Nilai token final
+   tidak lagi menunggu event "designer join"; token berkembang iteratif
+   co-equal antara `design-tokens.md` dan Claude Design (ADR-056), dan
+   dikunci (status → Locked) kapan pun King Rezi menganggap satu set token
+   sudah stabil — bukan menunggu approval pihak ketiga.
+3. Seluruh referensi "designer masuk"/"designer aktif"/"designer join" yang
+   masih berupa kalimat aktif (bukan catatan historis di `DECISIONS.md`/
+   `CHANGELOG.md`/`CONVERSATIONS.md` yang append-only) diperbarui mengikuti
+   keputusan ini: `product-discovery/06-engineering/design-tokens.md`,
+   `product-discovery/06-engineering/README.md`, `product-discovery/README.md`,
+   `context/ctx-design.md`, `context/ctx-technical-context.md`,
+   `context/ctx-implementation.md`, dan `PROJECT_STATE.md` (bagian aktif,
+   bukan entri historis di "Completed"/"Recent Decisions").
+4. Folder `design/` yang sudah dihapus (ADR-045) **tidak akan pernah dibuat
+   ulang** untuk menyambut designer eksternal — bila suatu saat kebutuhan
+   handoff formal muncul lagi, itu akan jadi keputusan baru dengan ADR
+   terpisah, bukan konsekuensi otomatis dari ADR ini.
+5. **Tidak berubah:** Astryx tetap fondasi komponen permanen (ADR-041 poin
+   1 & 4); `04-ux/` tetap SoT alur/fungsi layar (ADR-042 poin 2); mekanisme
+   sync co-equal + reminder proaktif token (ADR-056) tetap berlaku apa
+   adanya — ADR ini hanya menghapus asumsi "sebelum/sesudah designer masuk"
+   dari kalimat-kalimat yang masih memuatnya.
+
+### Reason
+
+* Project ini solo developer tanpa rencana rekrutmen designer — menunggu
+  event yang tidak akan pernah terjadi hanya menghasilkan status
+  "Draft/TBD menunggu lock design" yang salah merepresentasikan realita dan
+  berpotensi membuat token dianggap belum boleh dipakai serius.
+* ADR-051 sudah membuktikan Claude Design + King Rezi sendiri mampu
+  menghasilkan fidelitas visual tinggi (replikasi langsung dari
+  `@astryxdesign/core`/`theme-neutral`) — tidak ada gap kemampuan visual
+  yang perlu ditutup oleh designer eksternal.
+* ADR-056 sudah menyediakan mekanisme sinkronisasi co-equal + reminder
+  proaktif yang cukup untuk menjaga konsistensi token tanpa perlu gerbang
+  approval pihak ketiga tambahan.
+
+### Alternatives Considered
+
+* Tetap menyisakan opsi rekrut designer di masa depan (kebijakan default
+  sebelumnya, ADR-038/041) — ditolak eksplisit oleh King Rezi; menyisakan
+  ambiguitas yang sama seperti sebelum ADR ini dibuat.
+* Menghapus `design-tokens.md` sepenuhnya karena dianggap tidak perlu lagi
+  — ditolak; dokumen tetap berguna sebagai satu sisi dari model co-equal
+  ADR-056, cuma gerbang "designer masuk"-nya yang dihapus, bukan
+  dokumennya.

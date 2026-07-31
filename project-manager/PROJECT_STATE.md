@@ -500,8 +500,9 @@ Restricted Actions:
   nyata (status transition draft → scheduled) dan integrasi `OutstandAdapter`
   (ADR-040).
 * Template `design-tokens.md` sudah disiapkan (status Draft / TBD); nilai final
-  diisi setelah feature selesai dan designer masuk (ADR-041 mengamendemen urutan
-  kerja ADR-038).
+  berkembang iteratif co-equal dengan Claude Design (ADR-056) — tidak ada lagi
+  gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
+  (ADR-057, amandemen ADR-038 & ADR-041).
 
 ---
 
@@ -525,13 +526,14 @@ Restricted Actions:
   tertunda:** file hasil edit sudah disiapkan lengkap di scratchpad
   (dibuat sesi Neymar), tinggal di-push ke Claude Design saat tool
   `DesignSync` aktif kembali (sempat nonaktif saat sesi kerja desain).
-* **Light/Dark Mode Toggle (ADR-055) — keputusan persistensi lintas
-  reload:** belum diputuskan apakah tema perlu dipersist (localStorage/
-  cookie) lintas full reload, atau sengaja tetap reset ke Light setiap
-  reload selamanya. Perlu diajukan ke King Rezi kalau relevan.
+* **Light/Dark Mode Toggle (ADR-055) — persistensi lintas reload, sudah
+  diputuskan (2026-07-31):** pakai **Cookie** (bukan localStorage), supaya
+  server (RSC/Middleware) bisa baca preferensi sebelum render pertama —
+  konsisten dengan pola session cookie Better Auth yang sudah ada. Belum
+  diimplementasikan di kode — menyusul.
 * **Publish Now (ADR-047) — implementasi menyusul, belum ada di kode maupun App Prototype:** `PublishingService.publishNow()` (RBAC Owner/Admin/Manager, validasi `ContentFormat` ADR-039, panggil `OutstandAdapter`) + tombol "Publish Now" di Draft Editor (KSP-05-F12) berdampingan dengan Schedule + dialog Confirmation Summary variannya (UXP-04); App Prototype Claude Design juga perlu ditambahkan tombolnya (role switcher yang sudah ada tinggal dipakai untuk membatasi visibility Creator).
 * **Disconnect Confirmation (ADR-048) — implementasi menyusul:** dialog konfirmasi (KSP-08-F07) di `settings-connected-accounts.html` App Prototype + `disconnectAccount` di kode nyata (RBAC Owner/Admin, belum ada perubahan RBAC — tinggal tambah gate konfirmasi sebelum memanggil service).
-* **(Ditunda, scope terpisah) Remove Member, Transfer Ownership, Delete Workspace:** tier konfirmasi sudah diputuskan (ADR-049) dan method service `deleteWorkspace`/`transferOwnership`/`acceptOwnershipTransfer` sudah lengkap di `application-layer.md` (ADR-050) — yang masih kurang cuma **screen Workspace Settings → Members/General** (di luar 8 KSP), belum pernah dirancang. Perlu sesi terpisah untuk merancang layar sebelum implementasi kode/App Prototype bisa mulai.
+* **Remove Member, Transfer Ownership, Delete Workspace — pendekatan desain sudah diputuskan (2026-07-31):** tier konfirmasi sudah ada (ADR-049) dan method service `deleteWorkspace`/`transferOwnership`/`acceptOwnershipTransfer` sudah lengkap di `application-layer.md` (ADR-050). Screen Workspace Settings → Members/General (di luar 8 KSP) belum pernah dirancang — disepakati **desain minimal dulu**: cukup bagian "Danger Zone" untuk Transfer Ownership + Delete Workspace (General) dan Remove Member (Members), tanpa fitur manajemen anggota lengkap. Sesi desain (Neymar) belum dimulai.
 * **Implementasi Safety Check Tier 2 yang tersisa (ADR-049):** Cancel Schedule, Delete Post, Delete Media, Update Member Role, Logout — semua sudah diklasifikasikan wajib dialog konfirmasi tapi belum ada satu pun yang diimplementasikan di kode atau App Prototype.
 * **Outstand runtime (ADR-040):** implementasikan `OutstandAdapter`, webhook
   `post.published` / `post.error` / `account.token_expired` dengan
@@ -544,10 +546,15 @@ Restricted Actions:
   `rateLimit.customRules`) mendahului M8 web berjalan jauh. Endpoint mobile
   aktual (WorkspaceService → PublishingService → EngagementService →
   NotificationService) dikerjakan setelah MVP web selesai — bukan sekarang.
-* **Setelah feature selesai dan design UI di-approve:** isi nilai di
-  `product-discovery/06-engineering/design-tokens.md` (ganti `TBD`), ubah status
-  → Locked, lalu mirror ke Astryx theme + Tailwind token bridge (ADR-038,
-  ADR-041).
+* **Design tokens — evolusi iteratif (ADR-056 amendemen ADR-038; ADR-057:
+  tidak ada designer eksternal):** `design-tokens.md` dan Design System
+  Claude Design sekarang co-equal, boleh berubah dari kedua sisi kapan saja
+  (bukan lagi "isi sekali setelah desain di-approve"). AI wajib reminder
+  proaktif setiap ada perubahan UI/UX di salah satu sisi. Gerbang "menunggu
+  designer masuk" dihapus permanen — King Rezi sendiri berperan sebagai
+  desainer via Claude Design (ADR-057). Status → Locked tetap jadi penanda
+  final saat nilai sudah
+  stabil, baru dimirror ke Astryx theme + Tailwind token bridge (ADR-041).
 * (Opsional) Perkaya aturan coding di `context/ctx-development.md` saat konvensi baru muncul dari praktik M8.
 * (Opsional) initial git commit — menunggu instruksi eksplisit.
 * (Opsional) pilih transactional email provider (AS-D04) saat butuh verification / password reset.
@@ -598,6 +605,25 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-057 — Tidak ada designer eksternal, permanen (amandemen ADR-038,
+  ADR-041): peran "desainer" di seluruh baseline digantikan permanen oleh
+  King Rezi sendiri lewat project Claude Design. Gerbang "designer masuk"
+  sebagai syarat lock token dihapus — token dikunci kapan pun King Rezi
+  menganggap stabil (co-equal dengan ADR-056), bukan menunggu approval
+  pihak ketiga. Folder `design/` (dihapus ADR-045) tidak akan dibuat ulang.
+  7 file diperbarui untuk menghapus bahasa "designer masuk/aktif/join":
+  `design-tokens.md`, `06-engineering/README.md`, `product-discovery/README.md`,
+  `ctx-design.md`, `ctx-technical-context.md`, `ctx-implementation.md`,
+  `PROJECT_STATE.md` (2026-07-31).
+* ADR-056 — Sinkronisasi UI/UX Docs ↔ Claude Design: token visual
+  (`design-tokens.md` vs Design System Claude Design) jadi **co-equal**
+  (amandemen ADR-038), dan AI **wajib reminder proaktif** setiap kali ada
+  perubahan UI/UX di salah satu sisi (docs atau Claude Design) — berlaku
+  untuk token maupun flow/fungsi layar, bukan cuma token. Flow/fungsi layar
+  tetap `04-ux/` sebagai SoT (tidak berubah dari ADR-042). Sync teknis tetap
+  manual/on-request — yang baru cuma kewajiban AI mengingatkan, dipicu
+  King Rezi mengaku sering lupa sync manual. `context/ctx-design.md` dan
+  `.claude/agents/neymar-product-designer.md` sudah diperbarui (2026-07-31).
 * ADR-055 — Light/Dark Mode Toggle diangkat jadi fitur resmi produk,
   mengoverride "neutral theme selama M8" (ADR-041): diklarifikasi dulu ke
   King Rezi (fitur resmi vs alat banding internal) — dipilih fitur resmi.

@@ -25,6 +25,15 @@ Baca `.claude/skills/claude-design-scope-discipline/SKILL.md` — dibuat dari in
 
 Sinkronisasi antara Claude Design dan `product-discovery/`/`apps/web` bersifat manual/on-request (ADR-042), bukan otomatis — jangan asumsikan satu arah selalu benar, konfirmasi ke user arah sync yang dimaksud (Design→baseline, baseline→Design, atau Design→kode).
 
+**Wajib reminder proaktif (ADR-056):** setiap kali kamu mengubah apapun di
+Claude Design (token, foundations, component library, atau layar prototipe),
+**selalu** beri tahu King Rezi secara eksplisit bahwa perubahan ini berpotensi
+belum sinkron dengan `product-discovery/04-ux/` atau `design-tokens.md`, dan
+tanyakan apakah perlu diselaraskan sekarang. Untuk nilai token visual,
+`design-tokens.md` dan Claude Design berstatus co-equal (tidak ada yang wajib
+"benar duluan") — untuk flow/fungsi layar, `04-ux/` tetap SoT. Jangan
+diamkan potensi drift ini walau user tidak bertanya duluan.
+
 ## Di luar scope kamu
 
 - Menulis kode React di `apps/web` → serahkan ke Mark UI Engineer / Prabowo Feature Engineer.

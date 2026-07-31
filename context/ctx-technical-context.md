@@ -7,17 +7,17 @@ Bukan tempat pola folder domain atau aturan gaya kode (itu `ctx-implementation` 
 
 ## Baca dulu
 
-| Dokumen                                                                                            | Topik                                                                                   |
-| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [`../product-discovery/06-engineering/README.md`](../product-discovery/06-engineering/README.md)   | Indeks Engineering Baseline v1.0 (ADR-036)                                              |
-| [`monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)                       | Layout Hybrid Monorepo, Bun workspaces                                                  |
-| [`database-orm.md`](../product-discovery/06-engineering/database-orm.md)                           | Prisma 7, migrate, pooling, batas Supabase client (ADR-031)                             |
-| [`auth-strategy.md`](../product-discovery/06-engineering/auth-strategy.md)                         | Better Auth, Google OAuth, JWT Realtime (ADR-030)                                       |
-| [`environment-management.md`](../product-discovery/06-engineering/environment-management.md)       | Env vars, secrets, `social-media-local` (ADR-033)                                       |
-| [`deployment-infrastructure.md`](../product-discovery/06-engineering/deployment-infrastructure.md) | Railway + Supabase SEA (ADR-028, ADR-029)                                               |
-| [`cicd-pipeline.md`](../product-discovery/06-engineering/cicd-pipeline.md)                         | GitHub Actions gates, Railway CD (ADR-032)                                              |
-| [`dependency-strategy.md`](../product-discovery/06-engineering/dependency-strategy.md)             | Caret default + exact pin Astryx Beta, lockfile, `@social/shared` (ADR-035, ADR-041)    |
-| [`design-tokens.md`](../product-discovery/06-engineering/design-tokens.md)                         | SoT visual tokens — Draft/TBD selama M8; lock setelah designer masuk (ADR-038, ADR-041) |
+| Dokumen                                                                                            | Topik                                                                                                                             |
+| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| [`../product-discovery/06-engineering/README.md`](../product-discovery/06-engineering/README.md)   | Indeks Engineering Baseline v1.0 (ADR-036)                                                                                        |
+| [`monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)                       | Layout Hybrid Monorepo, Bun workspaces                                                                                            |
+| [`database-orm.md`](../product-discovery/06-engineering/database-orm.md)                           | Prisma 7, migrate, pooling, batas Supabase client (ADR-031)                                                                       |
+| [`auth-strategy.md`](../product-discovery/06-engineering/auth-strategy.md)                         | Better Auth, Google OAuth, JWT Realtime (ADR-030)                                                                                 |
+| [`environment-management.md`](../product-discovery/06-engineering/environment-management.md)       | Env vars, secrets, `social-media-local` (ADR-033)                                                                                 |
+| [`deployment-infrastructure.md`](../product-discovery/06-engineering/deployment-infrastructure.md) | Railway + Supabase SEA (ADR-028, ADR-029)                                                                                         |
+| [`cicd-pipeline.md`](../product-discovery/06-engineering/cicd-pipeline.md)                         | GitHub Actions gates, Railway CD (ADR-032)                                                                                        |
+| [`dependency-strategy.md`](../product-discovery/06-engineering/dependency-strategy.md)             | Caret default + exact pin Astryx Beta, lockfile, `@social/shared` (ADR-035, ADR-041)                                              |
+| [`design-tokens.md`](../product-discovery/06-engineering/design-tokens.md)                         | SoT visual tokens — co-equal dengan Claude Design, dikunci iteratif tanpa menunggu designer eksternal (ADR-038, ADR-056, ADR-057) |
 
 Implementasi di repo:
 
@@ -37,18 +37,18 @@ Implementasi di repo:
 
 ## Stack (ingat cepat)
 
-| Area                    | Pilihan                                                                                      |
-| ----------------------- | -------------------------------------------------------------------------------------------- |
-| Runtime / PM            | Bun                                                                                          |
-| App                     | Next.js (`apps/web`)                                                                         |
-| Auth                    | Better Auth (email/password + Google)                                                        |
-| ORM                     | Prisma **7.x** — migrate via `DIRECT_URL`, runtime via `@prisma/adapter-pg` + `DATABASE_URL` |
-| DB / Storage / Realtime | Supabase                                                                                     |
-| Social API              | Outstand (via ACL — lihat `ctx-architecture`)                                                |
-| Deploy                  | Railway (web + cron)                                                                         |
-| CI                      | GitHub Actions                                                                               |
-| UI Components           | Astryx — neutral theme selama M8; wrapper selektif (ADR-041)                                 |
-| Styling                 | Tailwind CSS — layout dan responsive composition saja                                        |
+| Area                    | Pilihan                                                                                                    |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Runtime / PM            | Bun                                                                                                        |
+| App                     | Next.js (`apps/web`)                                                                                       |
+| Auth                    | Better Auth (email/password + Google)                                                                      |
+| ORM                     | Prisma **7.x** — migrate via `DIRECT_URL`, runtime via `@prisma/adapter-pg` + `DATABASE_URL`               |
+| DB / Storage / Realtime | Supabase                                                                                                   |
+| Social API              | Outstand (via ACL — lihat `ctx-architecture`)                                                              |
+| Deploy                  | Railway (web + cron)                                                                                       |
+| CI                      | GitHub Actions                                                                                             |
+| UI Components           | Astryx — neutral theme selama M8; wrapper selektif (ADR-041); Light/Dark Mode Toggle fitur resmi (ADR-055) |
+| Styling                 | Tailwind CSS — layout dan responsive composition saja                                                      |
 
 ---
 
@@ -62,9 +62,14 @@ Implementasi di repo:
 5. CI wajib: install → prisma generate/validate → typecheck → lint → test.
 6. Email transactional provider masih terbuka (AS-D04) — jangan hardcode provider baru tanpa keputusan.
 7. Jangan ubah Engineering Baseline tanpa ADR.
-8. Design tokens: SoT di `design-tokens.md` (folder `design/` sudah dihapus,
-   ADR-045). Selama M8 gunakan neutral theme Astryx dan jangan hardcode custom
-   brand hex. Nilai final di-lock setelah feature selesai dan designer masuk.
+8. Design tokens: SoT di `design-tokens.md`, co-equal dengan Claude Design
+   (folder `design/` sudah dihapus dan tidak dibuat ulang, ADR-045, ADR-057
+   — tidak ada designer eksternal, permanen). Selama M8 gunakan neutral
+   theme Astryx dan jangan hardcode custom brand hex. Nilai final di-lock
+   iteratif kapan pun stabil (ADR-056), bukan menunggu event "designer
+   masuk". Light/Dark Mode Toggle (ADR-055) tetap berjalan di atas neutral
+   theme ini — bukan tema/token baru, murni expose mekanisme dark mode
+   bawaan Astryx.
 9. Outstand/X (**ADR-040**): Project Owner mengatur BYOK X secara manual di
    dashboard Outstand. Jangan menambah env var, form, tabel, atau secret store
    aplikasi untuk Client ID/Client Secret X.

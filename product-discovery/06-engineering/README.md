@@ -33,8 +33,9 @@ Topik yang termasuk dalam scope:
 * **UI Component System** — Astryx sebagai fondasi permanen, Tailwind
   layout-only, dan wrapper selektif (ADR-041).
 * **Design Tokens** — Source of Truth font, warna semantic, neutral, status,
-  spacing untuk implementasi UI (ADR-038, ADR-041); template tetap Draft/TBD
-  selama M8 dan nilai final diisi setelah feature selesai serta designer masuk.
+  spacing untuk implementasi UI (ADR-038, ADR-041); nilai final berkembang
+  iteratif co-equal dengan Claude Design, tidak menunggu designer eksternal
+  (ADR-056, ADR-057).
 
 Topik berikut **tidak dibahas** pada folder ini:
 
@@ -62,7 +63,8 @@ Topik berikut **tidak dibahas** pada folder ini:
   (ADR-035, ADR-041).
 * `design-tokens.md` — SoT visual tokens (font,
   brand/neutral/status/feedback colors, spacing); neutral theme Astryx dipakai
-  selama M8 dan template di-lock setelah designer masuk (ADR-038, ADR-041).
+  selama M8, nilai final di-lock iteratif co-equal dengan Claude Design,
+  tanpa menunggu designer eksternal (ADR-038, ADR-056, ADR-057).
 
 ---
 

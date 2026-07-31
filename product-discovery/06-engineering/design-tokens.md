@@ -3,28 +3,32 @@
 Dokumen ini adalah **Source of Truth visual tokens** untuk implementasi UI di
 `apps/web` (Astryx theme + Tailwind token bridge).
 
-Nilai token final diisi **setelah feature selesai dan designer masuk**, lalu
-di-approve oleh Project Manager (ADR-041 mengamendemen urutan kerja ADR-038).
-Selama M8, implementasi feature memakai neutral theme bawaan Astryx dan tidak
-menunggu token final. Screenshot bukan acuan nilai final; folder `design/`
-(paket handoff designer) sudah dihapus karena belum ada designer aktif
-(ADR-045).
+Nilai token final berkembang **iteratif dan co-equal** antara dokumen ini dan
+project Claude Design "Social Media Management" (ADR-056) — tidak ada lagi
+gerbang "menunggu designer masuk": project ini tidak akan merekrut designer
+eksternal, perannya digantikan permanen oleh King Rezi sendiri lewat Claude
+Design (ADR-057, amandemen ADR-038 & ADR-041). Selama M8, implementasi
+feature memakai neutral theme bawaan Astryx dan tidak menunggu token final.
+Screenshot bukan acuan nilai final; folder `design/` (paket handoff designer)
+sudah dihapus dan **tidak akan dibuat ulang** (ADR-045, ADR-057).
 
 | Field | Value |
 | ----- | ----- |
-| Status | **Draft — menunggu lock design** |
-| Lokasi SoT | Dokumen ini (ADR-038) |
+| Status | **Draft — berkembang iteratif bersama Claude Design (co-equal, ADR-056)** |
+| Lokasi SoT | Dokumen ini, co-equal dengan Claude Design untuk nilai token (ADR-038, ADR-056) |
 | Implementasi kode | `apps/web` (Astryx theme + Tailwind token bridge) |
 | UX / struktur layar | Tetap di `../04-ux/` — **tidak** diganti dokumen ini |
-| Handoff designer | Belum ada paket (folder `design/` dihapus, ADR-045); pointer Claude Design di `../../context/ctx-design.md` |
+| Peran desainer | Permanen digantikan King Rezi via Claude Design — tidak ada designer eksternal (ADR-057); pointer di `../../context/ctx-design.md` |
 
 ---
 
-# Panduan PM — setelah feature selesai dan design sudah siap
+# Panduan PM — mengunci satu set token
 
-Checklist lock ini dijalankan setelah feature selesai dan designer masuk.
-Selama development feature, gunakan neutral theme Astryx; jangan mengisi nilai
-brand sementara atau memblokir implementasi layar karena tabel masih `TBD`.
+Checklist lock ini dijalankan kapan pun King Rezi (berperan sebagai desainer
+via Claude Design) menganggap satu set token sudah stabil — **tidak ada**
+gerbang "designer eksternal masuk" (ADR-057). Selama development feature,
+gunakan neutral theme Astryx; jangan mengisi nilai brand sementara atau
+memblokir implementasi layar karena tabel masih `TBD`.
 
 ## Langkah 1 — Review & approve di Claude Design
 
@@ -95,8 +99,8 @@ Engineering memetakan token → implementasi:
 | ID | Topik | Keputusan |
 | ---- | ----- | --------- |
 | DT-D01 | Lokasi SoT token | `product-discovery/06-engineering/design-tokens.md` |
-| DT-D02 | Kapan diisi | Setelah feature selesai, designer masuk, dan design di-approve PM; selama M8 gunakan neutral theme Astryx |
-| DT-D03 | Hubungan dengan handoff designer | Belum ada folder `design/` (dihapus, ADR-045); token final tetap **wajib** masuk dokumen ini |
+| DT-D02 | Kapan diisi | Iteratif, co-equal dengan Claude Design (ADR-056); dikunci kapan pun King Rezi menganggap stabil — tidak ada gerbang "designer masuk" (ADR-057); selama M8 gunakan neutral theme Astryx |
+| DT-D03 | Hubungan dengan handoff designer | Tidak ada designer eksternal, permanen (ADR-057); folder `design/` dihapus dan tidak dibuat ulang (ADR-045); token final tetap **wajib** masuk dokumen ini |
 | DT-D04 | Hubungan dengan UX Baseline | `04-ux/` mengatur alur & zona fungsi; dokumen ini hanya visual tokens |
 | DT-D05 | Stack implementasi | Astryx untuk komponen/theme + Tailwind khusus layout dan responsive composition (ADR-041) |
 
@@ -221,7 +225,7 @@ M8 sebelum token Locked
         ↓
 Astryx neutral theme + Tailwind layout-only
 
-Setelah designer masuk dan design-tokens.md Locked
+Setelah design-tokens.md Locked (co-equal dengan Claude Design, ADR-056/057)
         ↓
 apps/web — Astryx custom theme + Tailwind token bridge
         ↓
@@ -229,14 +233,15 @@ Komponen Astryx + wrapper selektif + layar KSP-01 … KSP-08
 ```
 
 Engineering **tidak** membaca paket handoff designer sebagai sumber nilai
-token final (folder `design/` sudah dihapus, ADR-045).
+token final (folder `design/` sudah dihapus dan tidak akan dibuat ulang,
+ADR-045, ADR-057).
 
 ---
 
 # Related Documents
 
 * `README.md` (folder Engineering)
-* `../../project-manager/DECISIONS.md` — ADR-038, ADR-041
+* `../../project-manager/DECISIONS.md` — ADR-038, ADR-041, ADR-056, ADR-057
 * `../../project-manager/PROJECT_OVERVIEW.md` — Astryx + Tailwind layout-only
 * `../04-ux/` — UX Baseline (alur & layar)
 * `../02-product/roles-permissions.md` — status konten kanonikal

@@ -60,7 +60,10 @@ ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
 ## UI Components (ADR-041)
 
 - Astryx adalah fondasi component system permanen. Selama M8 gunakan neutral
-  theme bawaan; feature tidak menunggu design tokens final.
+  theme bawaan; feature tidak menunggu design tokens final. Light/Dark Mode
+  Toggle (ADR-055) adalah fitur resmi — bukan pengecualian, karena hanya
+  meng-expose mekanisme dark mode native Astryx via `ThemeModeContext`/
+  `useThemeMode` (`apps/web/src/app/providers.tsx`).
 - `src/components/ui/` berisi wrapper/re-export **selektif** untuk komponen
   kritis, dipakai luas, default konsisten, atau adaptasi behavior produk.
 - Komponen Astryx sederhana yang hanya dipakai lokal boleh diimpor langsung
@@ -69,8 +72,9 @@ ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
   composition. Jangan menggunakannya untuk menimpa internal component part
   Astryx secara agresif.
 - Hindari canary, `swizzle`, dan authoring StyleX pada tahap awal.
-- Setelah designer masuk, nilai final `design-tokens.md` dipetakan ke Astryx
-  theme + Tailwind token bridge tanpa mengganti fondasi komponen.
+- Nilai final `design-tokens.md` (co-equal dengan Claude Design, tidak
+  menunggu designer eksternal — ADR-056, ADR-057) dipetakan ke Astryx theme +
+  Tailwind token bridge tanpa mengganti fondasi komponen.
 - Sebelum adopsi Astryx secara luas, pastikan smoke test ADR-041 telah lolos.
 
 ---

@@ -4,6 +4,111 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-31 — ADR-057: Tidak ada designer eksternal, permanen (amandemen ADR-038, ADR-041)
+
+Kelanjutan diskusi ADR-056 (sync docs ↔ Claude Design): King Rezi
+mengonfirmasi project ini tidak akan pernah merekrut/menunggu designer
+eksternal — peran "desainer" digantikan permanen oleh King Rezi sendiri
+lewat project Claude Design.
+
+### Added
+
+* `DECISIONS.md` — **ADR-057**. Menghapus gerbang "designer masuk" sebagai
+  syarat lock token (amandemen ADR-038 DT-D02, ADR-041 poin 2 & 7). Status
+  field ADR-038 dan ADR-041 ditandai "Amended by ADR-057".
+
+### Changed
+
+Menghapus/menyesuaikan bahasa "designer masuk"/"designer aktif"/"designer
+join" yang masih berupa kalimat aktif (bukan catatan historis) di 7 file:
+
+* `product-discovery/06-engineering/design-tokens.md` — header, metadata,
+  panduan lock, DT-D02/DT-D03, diagram mapping implementasi, Related Documents.
+* `product-discovery/06-engineering/README.md` — 2 spot (Design Tokens summary).
+* `product-discovery/README.md` — catatan folder `design/`.
+* `context/ctx-design.md` — catatan ADR-045, aturan operasional token.
+* `context/ctx-technical-context.md` — tabel "Baca dulu", aturan operasional #8.
+* `context/ctx-implementation.md` — section UI Components.
+* `project-manager/PROJECT_STATE.md` — In Progress, Next Tasks, Recent Decisions.
+
+### Catatan governance
+
+* Entri historis di `DECISIONS.md` (teks ADR-038/041 asli), `CHANGELOG.md`
+  entri lama, dan `CONVERSATIONS.md` **tidak diedit** — append-only,
+  mencerminkan keputusan yang berlaku saat itu. Hanya `Status` field ADR-038/
+  ADR-041 yang ditambah anotasi "Amended by ADR-057".
+
+---
+
+## 2026-07-31 — Diskusi lanjutan hasil audit: 3 keputusan terbuka diputuskan (ADR-056 + 2 next task)
+
+Melanjutkan diskusi dari audit dokumentasi sebelumnya (entri di bawah), 3 poin
+"belum diputuskan" dibahas dan diputuskan bersama King Rezi.
+
+### Added
+
+* `DECISIONS.md` — **ADR-056**: sinkronisasi UI/UX docs ↔ Claude Design.
+  Token visual jadi **co-equal** antara `design-tokens.md` dan Design System
+  Claude Design (amandemen ADR-038 poin 1 & 2). AI **wajib reminder
+  proaktif** setiap ada perubahan UI/UX di salah satu sisi (docs atau Claude
+  Design) — berlaku untuk token maupun flow/fungsi layar, meski untuk
+  flow/fungsi layar `04-ux/` tetap SoT (ADR-042 tidak berubah di sini).
+  Dipicu King Rezi mengaku sering lupa sync manual antara dua sisi.
+
+### Changed
+
+* `context/ctx-design.md` — aturan operasional #9a baru: kewajiban reminder
+  proaktif ADR-056, plus pointer di Related context.
+* `.claude/agents/neymar-product-designer.md` — section baru "Wajib
+  reminder proaktif (ADR-056)" (unlock `644` → edit → lock `444` lagi,
+  sesuai prosedur resmi di `.claude/agents/README.md`).
+* `project-manager/PROJECT_STATE.md`:
+  * Recent Decisions — ADR-056 ditambahkan.
+  * Next Tasks — persistensi tema Light/Dark (ADR-055) **sudah diputuskan**:
+    pakai **Cookie** (bukan localStorage), belum diimplementasikan.
+  * Next Tasks — Remove Member/Transfer Ownership/Delete Workspace:
+    pendekatan desain **sudah diputuskan** — desain minimal "Danger Zone"
+    dulu (bukan Members management penuh), sesi desain belum dimulai.
+  * Next Tasks — catatan design-tokens.md diperbarui mengikuti model
+    co-equal ADR-056 (bukan lagi "isi sekali setelah desain di-approve").
+
+---
+
+## 2026-07-31 — Audit konsistensi dokumentasi menyeluruh (2 temuan diperbaiki)
+
+Dipicu permintaan King Rezi untuk cek dokumentasi menyeluruh. Ditemukan 2
+inkonsistensi nyata, keduanya sudah diperbaiki di sesi yang sama.
+
+### Fixed
+
+* **`context/ctx-design.md`, `context/ctx-implementation.md`,
+  `context/ctx-technical-context.md`** — ketiganya masih menginstruksikan
+  "gunakan neutral theme Astryx selama M8" tanpa qualifier, padahal ADR-055
+  (2026-07-31) sudah mengangkat Light/Dark Mode Toggle jadi fitur resmi dan
+  meng-override baseline itu. Ketiga file diberi catatan bahwa toggle tetap
+  berjalan di atas neutral theme (expose mekanisme dark mode bawaan Astryx,
+  bukan tema/token baru) — bukan pelanggaran, tapi perlu disebutkan supaya
+  agent berikutnya tidak salah kira dark mode belum ada.
+* **`.claude/agents/*.md`** (7 file peran subagent) — `AGENTS.md` dan
+  `.claude/agents/README.md` mengklaim file-file ini `chmod 444` (read-only)
+  sebagai pengaman teknis, tapi kenyataannya `644` (kemungkinan step chmod
+  444 terlewat setelah edit terakhir `najwa-qa-engineer.md`). Dikembalikan ke
+  `444`; `.claude/agents/README.md` sendiri sengaja tetap `644` sesuai
+  pengecualian di `PROJECT_RULES.md`.
+
+### Verified (tidak ada masalah, dicatat sebagai bukti audit)
+
+* Penomoran ADR-001 s/d ADR-055 di `DECISIONS.md` berurutan tanpa gap/duplikat.
+* Klaim status implementasi kode di `PROJECT_STATE.md` (ADR-052 modal, ADR-053/
+  054 belum di kode, ADR-055 sudah di kode) cocok dengan kode nyata di
+  `apps/web/src`.
+* Versi Astryx `0.1.8` konsisten di `apps/web/package.json`,
+  `apps/web/.claude/CLAUDE.md`, dan `PROJECT_OVERVIEW.md`.
+* Tidak ada README yang memuat status/progress — Document Type Classification
+  di `PROJECT_RULES.md` dipatuhi.
+
+---
+
 ## 2026-07-31 — ADR-055: Light/Dark Mode Toggle diangkat jadi fitur resmi produk
 
 King Rezi meminta button switch light/dark; sebelum implementasi dimulai,
