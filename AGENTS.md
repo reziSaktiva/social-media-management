@@ -67,29 +67,40 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
 
 ## Aturan keras (jangan dilanggar)
 
-1. Jangan ubah Architecture / Engineering / Product / Business baseline tanpa ADR baru di `DECISIONS.md`.
-2. Entry points (RSC, Server Actions, Route Handlers, Middleware) **tidak** boleh berisi business logic — hanya memanggil Application Service.
-3. Domain logic **tidak** mengimpor Prisma, Supabase client, atau HTTP client Outstand.
-4. Cross-domain: lewat public API module domain lain — bukan import implementasi lintas folder.
-5. Shared types hanya di `packages/shared` (ID, enum, value object) — tanpa business logic.
-6. Supabase JS client: **hanya** Realtime + Storage. CRUD lewat Prisma.
-7. Status progress (% / ✅ / phase aktif) **hanya** di `PROJECT_STATE.md` — jangan taruh di README atau baseline.
-8. Persona kanonikal: Raka, Maya, Sinta, Dimas, Lara.
-9. Bahasa komunikasi & dokumentasi project: **Bahasa Indonesia** (kecuali user meminta lain).
-10. Jangan commit / push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
-11. UI produk hanya memakai Astryx. Wrapper dibuat selektif; jangan memakai
+1. Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output
+   teks — bukan "user", "Anda", atau nama lain. Berlaku untuk AI utama dan
+   seluruh subagent di `.claude/agents/`.
+2. Biasakan menggunakan **"5 Magic Words"** dalam komunikasi/output teks:
+   tolong (please), maaf (sorry), terima kasih (thank you), permisi (excuse
+   me), dan silakan (please/go ahead). Berlaku untuk AI utama dan seluruh
+   subagent di `.claude/agents/`.
+3. Nama AI utama (main agent) di project ini adalah **"Jokowi"**. Setiap kali
+   dipanggil dengan nama tersebut, sediakan laporan singkat berisi:
+   (a) 3 pekerjaan terakhir yang sudah dikerjakan,
+   (b) seluruh task yang masih belum dikerjakan (Next Tasks / In Progress),
+   (c) pembahasan penting sebelumnya yang relevan,
+   dan jika ada, tutup dengan rekomendasi langkah berikutnya untuk diajukan
+   ke King Rezi.
+4. Jangan ubah Architecture / Engineering / Product / Business baseline tanpa ADR baru di `DECISIONS.md`.
+5. Entry points (RSC, Server Actions, Route Handlers, Middleware) **tidak** boleh berisi business logic — hanya memanggil Application Service.
+6. Domain logic **tidak** mengimpor Prisma, Supabase client, atau HTTP client Outstand.
+7. Cross-domain: lewat public API module domain lain — bukan import implementasi lintas folder.
+8. Shared types hanya di `packages/shared` (ID, enum, value object) — tanpa business logic.
+9. Supabase JS client: **hanya** Realtime + Storage. CRUD lewat Prisma.
+10. Status progress (% / ✅ / phase aktif) **hanya** di `PROJECT_STATE.md` — jangan taruh di README atau baseline.
+11. Persona kanonikal: Raka, Maya, Sinta, Dimas, Lara.
+12. Bahasa komunikasi & dokumentasi project: **Bahasa Indonesia** (kecuali user meminta lain).
+13. Jangan commit / push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
+14. UI produk hanya memakai Astryx. Wrapper dibuat selektif; jangan memakai
     canary atau `swizzle` Astryx pada tahap awal (ADR-041).
-12. Sebelum menulis atau mengubah UI Astryx, baca `apps/web/.claude/CLAUDE.md`
+15. Sebelum menulis atau mengubah UI Astryx, baca `apps/web/.claude/CLAUDE.md`
     (agent docs resmi, lihat bawah) dan/atau jalankan CLI lokal yang versinya
     terkunci. Jangan menebak nama komponen, props, atau pola styling.
-13. Sebelum mengubah apapun di Claude Design (via `DesignSync`) atau
+16. Sebelum mengubah apapun di Claude Design (via `DesignSync`) atau
     menambah kontrol pembanding (toggle/switch antar variant) di UI manapun,
     baca `.claude/skills/claude-design-scope-discipline/SKILL.md`. Jangan
     mengubah default/state yang sudah disetujui user sebagai efek samping
     fitur baru — insiden nyata di ADR-052.
-14. Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output
-    teks — bukan "user", "Anda", atau nama lain. Berlaku untuk AI utama dan
-    seluruh subagent di `.claude/agents/`.
 
 ## Workflow Astryx wajib
 

@@ -4,6 +4,42 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-31 — ADR-053 & ADR-054: Sidebar CTA "+ New Post" + redirect Draft Editor ke sub-screen tujuan
+
+### Added
+
+* `DECISIONS.md` — ADR-053 (Sidebar mendapat CTA "+ New Post" pinned di
+  bawah Workspace Selector, tersedia dari section manapun, melengkapi
+  CTA NP-D09 yang sudah ada di Calendar/Queue/Drafts) dan ADR-054 (Draft
+  Editor redirect otomatis ke sub-screen tujuan setelah aksi terminal:
+  Save as Draft → Drafts, Schedule → Queue, Publish Now → History/
+  sementara Calendar).
+* `product-discovery/04-ux/navigation-patterns.md` — zona CTA baru di
+  diagram sidebar, NP-D12 (CTA "+ New Post" pinned) dan NP-D13 (Pola
+  Redirect setelah Aksi Terminal Draft Editor) baru di Decision Log +
+  tabel Ringkasan Pola.
+* `product-discovery/04-ux/key-screen-patterns.md` — KSP-D15 baru di
+  Decision Log; KSP-05-F08/F09/F12 diberi catatan tujuan redirect.
+* Claude Design (project "Social Media Management") — CTA "+ New Post"
+  ditambahkan di 7 layar shell (`home.html`, `publish-calendar.html`,
+  `publish-queue.html`, `publish-drafts.html`, `engage-inbox.html`,
+  `analyze-dashboard.html`, `settings-connected-accounts.html`) +
+  `components/navigation.html` + class baru `.sidebar-cta` di
+  `styles.css`. `AppPrototype.dc.html` — `saveDraftFromEditor()` kini
+  redirect ke `publish-drafts`, handler `publishnow-confirm` diubah
+  destinasi dari `'home'` ke `'publish-calendar'`.
+
+### Notes
+
+* Implementasi kode `apps/web` untuk kedua perubahan ini **belum
+  berjalan** — menyusul di siklus implementasi berikutnya (lihat Next
+  Tasks di `PROJECT_STATE.md`).
+* Handler Schedule (`dialog-confirm` → `publish-queue`) di App Prototype
+  tidak berubah — perilaku ini sudah ada sejak file dibuat, ADR-054 baru
+  memformalkannya sebagai keputusan resmi.
+
+---
+
 ## 2026-07-30 — QA: aturan URL testing (ngrok) + akun test terdokumentasi
 
 Permintaan eksplisit user: Najwa QA Engineer sering butuh verifikasi browser,

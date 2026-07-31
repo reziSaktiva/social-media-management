@@ -57,7 +57,7 @@ Produk menggunakan model **Persistent Sidebar Navigation** untuk web.
 │  Workspace Selector                                  │
 ├─────────────────────────────────────────────────────┤
 │  [Sidebar]          │  [Main Content Area]           │
-│                     │                                │
+│  [+ New Post]       │                                │
 │  • Home             │  Konten layar aktif            │
 │  • Publish          │  berubah sesuai                │
 │  • Engage  [badge]  │  navigasi yang dipilih         │
@@ -89,6 +89,8 @@ Primary navigation terdiri dari dua zona vertikal:
 ┌──────────────────────┐
 │  Workspace Selector  │  ← selalu di atas
 ├──────────────────────┤
+│  [+ New Post]        │  ← CTA, pinned
+├──────────────────────┤
 │  Home                │
 │  Publish             │  ← navigation items
 │  Engage   [badge]    │
@@ -101,6 +103,8 @@ Primary navigation terdiri dari dua zona vertikal:
 ```
 
 **Zona atas:** Workspace Selector — menampilkan nama workspace aktif; klik membuka panel ganti workspace atau Workspace Settings.
+
+**Zona CTA:** Tombol "+ New Post" (primary, full-width) — pinned tepat di bawah Workspace Selector, di atas navigation items. Tersedia dari section manapun (Home, Publish, Engage, Analyze, Settings), bukan hanya saat pengguna sedang berada di Publish (NP-D12). Melengkapi, bukan menggantikan, CTA New Post yang sudah ada langsung di layar Calendar/Queue/Drafts (NP-D09) — keduanya membuka Draft Editor yang sama.
 
 **Zona tengah:** 5 navigation items — Home, Publish, Engage, Analyze, Start Page. Urutan mencerminkan alur nilai produk (UXP-07): Publishing reliability → Engagement triage → Analytics snapshot.
 
@@ -255,6 +259,24 @@ Publish → Queue     → [New Post]  → Draft Editor (item baru)
 
 ---
 
+## Pola: Redirect setelah Aksi Terminal Draft Editor
+
+Terjadi ketika pengguna menyelesaikan salah satu dari tiga aksi terminal di Draft Editor (Save as Draft, Schedule, Publish Now). Sidebar CTA "+ New Post" (NP-D12) membuat Draft Editor kini bisa dibuka dari section manapun — Home, Engage, Analyze, Settings — bukan hanya dari dalam Publish. Ketiga aksi ini **tidak** mengikuti pola "Kembali ke sub-screen asal" milik tombol Close (KSP-05-F10) — masing-masing mengarahkan pengguna ke sub-screen **tujuan**, tempat konten yang baru saja diproses sekarang berada:
+
+```
+[Section manapun] → Draft Editor → [Save as Draft]  → Publish → Drafts
+[Section manapun] → Draft Editor → [Schedule]        → Publish → Queue
+[Section manapun] → Draft Editor → [Publish Now]     → Publish → History
+                                                          (sementara: Calendar,
+                                                           sampai History dibangun — KSP-D10)
+```
+
+**Alasan:** Pengguna harus langsung melihat hasil aksinya di tempat yang relevan — bukan tertinggal di section asal (misalnya Home atau Analyze) yang sudah tidak berkaitan dengan konten yang baru dibuat. Ini melengkapi UXP-04 (Publishing Trust): kepercayaan datang dari melihat langsung bahwa aksi berhasil dan tahu ke mana harus mengecek statusnya.
+
+**Hubungan dengan NP-D05:** NP-D05 ("tidak ada redirect otomatis setelah cross-section navigation") berlaku untuk kasus tautan status error → Settings, bukan untuk aksi terminal form yang menghasilkan/mengubah konten. Pola ini didefinisikan terpisah (NP-D13) dan tidak mengubah NP-D05.
+
+---
+
 ## Pola: Thread Expansion
 
 Terjadi di Engage. Klik satu thread komentar membuka detail thread di dalam Inbox — tidak membuka layar baru.
@@ -364,9 +386,11 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | NP-D06 | Publish default ke tab Calendar | Calendar memberi overview jadwal terbaik untuk Raka dan Maya (IA-D04) | UXP-02, P-IA-02 |
 | NP-D07 | Workspace Selector sebagai entry point ke Workspace Settings | Workspace Settings bukan akses harian; tidak perlu slot di primary nav (IA-D05) | UXP-03 |
 | NP-D08 | Notifications Panel sebagai overlay, bukan pengganti Main Content Area | Pengguna harus bisa menutup panel dan kembali ke pekerjaan tanpa kehilangan state | NP-P02 |
-| NP-D09 | New Post CTA tersedia langsung dari Calendar dan Queue, bukan hanya dari Drafts | Raka sering menemukan gap jadwal saat melihat Calendar atau Queue — memaksanya berpindah ke tab Drafts dulu menambah friction yang tidak perlu. CTA langsung di titik penemuan kebutuhan selaras dengan alur siklus kerja (UXP-01) | UXP-01, UXP-03 |
+| NP-D09 | New Post CTA tersedia langsung dari Calendar dan Queue, bukan hanya dari Drafts. Sejak NP-D12, CTA yang sama juga tersedia di Sidebar — keduanya melengkapi, bukan saling menggantikan | Raka sering menemukan gap jadwal saat melihat Calendar atau Queue — memaksanya berpindah ke tab Drafts dulu menambah friction yang tidak perlu. CTA langsung di titik penemuan kebutuhan selaras dengan alur siklus kerja (UXP-01) | UXP-01, UXP-03 |
 | NP-D10 | Logout wajib melalui dialog konfirmasi (Tier 2) | Melindungi dari interupsi pekerjaan yang belum tersimpan, walau aksi Logout sendiri reversibel — bagian dari kebijakan Safety Check/Double Confirmation lintas produk (ADR-049, `key-screen-patterns.md`) | UXP-04 |
 | NP-D11 | Draft Editor (New Post & Edit Draft) jadi **modal overlay fullscreen**, mengoverride NP-D02 | Ingin New Post/Edit Draft terasa lebih cepat/ringan tanpa pindah halaman, konsisten pola tools lain — trade-off kehilangan konteks visual Calendar/Queue (alasan asli NP-D02) diterima sadar demi kecepatan alur kerja. Route lama dihapus total (modal-only, tanpa deep-link URL). Resume unsaved state (localStorage) hanya untuk New Post, tidak untuk Edit Draft (ADR-052) | NP-P02, UXP-04 |
+| NP-D12 | Sidebar mendapat CTA "+ New Post" pinned (di bawah Workspace Selector, di atas nav items), tersedia dari section manapun | Sebelumnya CTA New Post hanya ada di layar Calendar/Queue/Drafts (NP-D09) — pengguna di Home/Engage/Analyze harus pindah section dulu ke Publish untuk membuat post baru. Pola umum di tools sejenis (CTA utama di puncak sidebar) menghilangkan langkah ekstra ini (ADR-053) | UXP-01, NP-P01 |
+| NP-D13 | Setelah aksi terminal Draft Editor (Save as Draft / Schedule / Publish Now), pengguna diarahkan ke sub-screen **tujuan** (Drafts / Queue / History-sementara-Calendar) — bukan kembali ke sub-screen asal seperti tombol Close | Sidebar CTA (NP-D12) membuat Draft Editor bisa dibuka dari section manapun; pengguna perlu langsung melihat hasil aksinya di section Publish yang relevan, bukan tertinggal di section asal yang sudah tidak berkaitan dengan konten yang baru diproses (ADR-054). Tidak mengubah NP-D05 (kasus berbeda: link status error → Settings) | UXP-04 |
 
 ---
 
@@ -378,6 +402,8 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | Berpindah sub-screen dalam Publish | Klik tab (Calendar / Queue / Drafts / History) | Ganti konten dalam section Publish |
 | Buka item dari Calendar / Queue / Drafts | Klik item | Buka Draft Editor sebagai modal overlay fullscreen (ADR-052/NP-D11) |
 | Buat post baru dari Calendar atau Queue | Klik CTA "New Post" | Buka Draft Editor (modal) kosong; Close menutup modal kembali ke sub-screen asal tanpa navigasi URL |
+| Buat post baru dari section manapun | Klik CTA "+ New Post" di Sidebar | Buka Draft Editor (modal) kosong, sama seperti CTA di Calendar/Queue/Drafts (NP-D12) |
+| Selesaikan aksi terminal di Draft Editor | Klik Save as Draft / Schedule / Publish Now | Modal tertutup, redirect ke Publish → Drafts / Queue / History-sementara-Calendar (NP-D13) |
 | Buka thread dari Inbox | Klik thread | Expand inline panel kanan dalam Inbox |
 | Akses Workspace Settings | Klik Workspace Selector → dropdown | Navigasi ke Workspace Settings |
 | Akses User Settings | Klik User Avatar → dropdown | Navigasi ke User Settings |

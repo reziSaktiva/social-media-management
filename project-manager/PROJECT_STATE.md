@@ -6,7 +6,7 @@
 | ------------ | ---------- |
 | Version      | 1.0.29     |
 | Status       | Active     |
-| Last Updated | 2026-07-30 |
+| Last Updated | 2026-07-31 |
 
 ---
 
@@ -458,6 +458,20 @@ Restricted Actions:
   `project-manager/QA_TEST_ACCOUNTS.md` (dokumen baru) berisi 1 akun test
   yang sudah ada (Raka Pratama, Owner). Akun Manager/Creator ditunda sampai
   fitur invite member selesai — bukan dibuat via database hack.
+* **ADR-053 — Sidebar CTA "+ New Post" pinned + ADR-054 — redirect ke
+  sub-screen tujuan setelah aksi terminal Draft Editor:** sidebar
+  (`navigation-patterns.md` NP-D01) mendapat CTA "+ New Post" baru pinned
+  di bawah Workspace Selector, tersedia dari section manapun (bukan cuma
+  Calendar/Queue/Drafts). Karena Draft Editor kini bisa dibuka dari
+  section manapun, perilaku redirect setelah aksi terminal diformalkan:
+  Save as Draft → Drafts, Schedule → Queue (sudah begini sejak awal,
+  baru diformalkan), Publish Now → History (sementara: Calendar, karena
+  History belum jadi layar). Kedua perubahan sudah diimplementasikan di
+  Claude Design (7 layar shell + `components/navigation.html` +
+  `styles.css` untuk CTA; `AppPrototype.dc.html` untuk redirect) dan
+  baseline UX (`navigation-patterns.md`, `key-screen-patterns.md`) sudah
+  diselaraskan. **Implementasi kode `apps/web` belum berjalan** untuk
+  kedua hal ini — menyusul di siklus implementasi berikutnya.
 
 ---
 
@@ -476,6 +490,18 @@ Restricted Actions:
 # Next Tasks
 
 * **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (kini modal, ADR-052), persistensi "Save as Draft"/"Edit Draft", dan Drafts List data asli selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
+* **Sidebar CTA "+ New Post" (ADR-053) — implementasi kode menyusul:**
+  tambahkan CTA pinned di `WorkspaceSideNav`/`AppShell` (`apps/web`), di
+  bawah Workspace Selector dan di atas navigation items, membuka Draft
+  Editor (modal, ADR-052) dari section manapun. Sudah diimplementasikan
+  di Claude Design, belum di kode.
+* **Redirect Draft Editor ke sub-screen tujuan (ADR-054) — implementasi
+  kode menyusul:** Save as Draft → Drafts sudah sejalan dengan alur
+  existing; perlu dipastikan tetap konsisten begitu CTA sidebar (ADR-053)
+  aktif dari section manapun. Redirect Schedule → Queue dan Publish Now →
+  History/Calendar baru relevan setelah persistensi "Schedule" dan
+  implementasi Publish Now (ADR-047) berjalan — bukan task terpisah baru,
+  cukup diselaraskan saat kedua task tersebut dikerjakan.
 * **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (modal New Post/Edit Draft) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
 * **Publish Now (ADR-047) — implementasi menyusul, belum ada di kode maupun App Prototype:** `PublishingService.publishNow()` (RBAC Owner/Admin/Manager, validasi `ContentFormat` ADR-039, panggil `OutstandAdapter`) + tombol "Publish Now" di Draft Editor (KSP-05-F12) berdampingan dengan Schedule + dialog Confirmation Summary variannya (UXP-04); App Prototype Claude Design juga perlu ditambahkan tombolnya (role switcher yang sudah ada tinggal dipakai untuk membatasi visibility Creator).
 * **Disconnect Confirmation (ADR-048) — implementasi menyusul:** dialog konfirmasi (KSP-08-F07) di `settings-connected-accounts.html` App Prototype + `disconnectAccount` di kode nyata (RBAC Owner/Admin, belum ada perubahan RBAC — tinggal tambah gate konfirmasi sebelum memanggil service).
@@ -535,6 +561,20 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-054 — Draft Editor: redirect otomatis ke sub-screen tujuan setelah
+  aksi terminal (Save as Draft → Drafts, Schedule → Queue, Publish Now →
+  History/sementara Calendar), bukan kembali ke sub-screen asal seperti
+  tombol Close. Dipicu ADR-053 (Draft Editor kini bisa dibuka dari section
+  manapun, sehingga "kembali ke asal" tidak selalu relevan). Tidak
+  mengubah NP-D05 — didefinisikan sebagai pola terpisah (NP-D13). Sudah
+  diimplementasikan di Claude Design; implementasi kode `apps/web` belum
+  berjalan (2026-07-31).
+* ADR-053 — Sidebar mendapat CTA "+ New Post" pinned di bawah Workspace
+  Selector, tersedia dari section manapun (bukan cuma Calendar/Queue/
+  Drafts seperti CTA NP-D09 yang sudah ada dan tetap dipertahankan).
+  Mengikuti pola tools produktivitas sejenis (Linear, Notion, Slack).
+  Sudah diimplementasikan di 7 layar shell Claude Design + `styles.css`;
+  implementasi kode `apps/web` belum berjalan (2026-07-31).
 * ADR-052 addendum — Governance: skill `.claude/skills/claude-design-scope-discipline/SKILL.md` dibuat dari insiden retrospektif (AI diam-diam mengubah default Fullscreen→Standard saat menambah toggle pembanding, sudah dikoreksi saat itu juga, sekarang dijadikan aturan pencegahan permanen). Ditempatkan sebagai skill khusus + `ctx-design.md` (bukan `PROJECT_RULES.md` yang lebih luas dari kebutuhan) karena hanya Claude Code yang punya akses `DesignSync`; `AGENTS.md` dapat satu baris pointer sebagai entry point wajib (2026-07-30).
 * ADR-052 — Draft Editor (New Post & Edit Draft) jadi modal overlay
   fullscreen, mengoverride NP-D02: motivasi kecepatan alur kerja, trade-off
