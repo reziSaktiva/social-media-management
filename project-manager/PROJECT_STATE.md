@@ -492,20 +492,26 @@ Restricted Actions:
   domain/Prisma/Supabase/Outstand). Typecheck/lint/test (26 test) hijau.
 * **ADR-058 — Sidebar "Channels" (quick-glance daftar akun terhubung)
   diimplementasikan di Claude Design:** section baru ditambahkan di sidebar
-  (antara 5 nav item dan zona bawah), tiap baris menampilkan logo brand
-  platform (react-icons fa6, bukan Lucide — dikonfirmasi tidak punya logo
-  brand) + nama akun/handle + status badge (reuse Badge KSP-08). Default:
-  badge scheduled-posts count; hover: drag handle (reorder personal per
-  user) + tombol quick-compose "+" (Draft Editor, akun pre-selected) —
-  keduanya no-shift (ruang dicadangkan permanen di layout), direvisi
-  eksplisit setelah draf awal ternyata menggeser konten saat hover.
+  (antara 5 nav item dan zona bawah), tiap baris menampilkan avatar bulat
+  dengan badge kecil logo brand platform di-overlay (react-icons fa6,
+  bukan Lucide — dikonfirmasi tidak punya logo brand; restyle dari logo
+  platform polos, addendum sesi kedua) + nama akun/handle + status badge
+  (reuse Badge KSP-08). Default: badge scheduled-posts count; hover: drag
+  handle muncul di kiri baris (reorder personal per user, **shift-on-hover
+  — seluruh isi baris ikut bergeser**, override eksplisit King Rezi
+  terhadap keputusan awal "no-shift", addendum sesi kedua hari yang sama)
+  + tombol quick-compose "+" (Draft Editor, akun pre-selected) — swap
+  count↔tombol "+" ini **tetap no-shift/fixed-slot**, tidak ikut berubah.
   Diterapkan ke 7 layar KSP + swatch `components/navigation.html` via
   `DesignSync` (dikerjakan main agent langsung setelah subagent Neymar
   tidak bisa mengakses tool `DesignSync` di sesinya — keterbatasan
   lingkungan subagent, dicatat sebagai temuan). Baseline `navigation-
-  patterns.md` (NP-D14) dan `key-screen-patterns.md` (entry point KSP-05 &
-  KSP-08) sudah diselaraskan. **Implementasi kode `apps/web` belum
-  berjalan.**
+  patterns.md` (NP-D14, section "Channels (Sidebar)") dan
+  `key-screen-patterns.md` (entry point KSP-05 & KSP-08) sudah
+  diselaraskan dengan shift-on-hover. **Implementasi kode `apps/web` belum
+  berjalan.** Micro-offset tombol "+" (`top: 1px; left: -1px`) masih
+  dikonfirmasi King Rezi sendiri sebagai "kurang pas" — bukan pixel-perfect
+  final, lihat Next Tasks.
 
 ---
 
@@ -526,13 +532,20 @@ Restricted Actions:
 
 * **Sidebar "Channels" (ADR-058) — implementasi kode menyusul:** tambahkan
   section Channels di `WorkspaceSideNav`/`AppShell` (`apps/web`) sesuai
-  desain final di Claude Design (logo brand react-icons/fa6, nama akun,
-  status badge, scheduled count ↔ drag-handle/quick-compose no-shift
-  hover). Prasyarat: service `listConnectedAccounts` (belum ada, saat ini
-  Connected Accounts masih scaffold), skema tabel reorder personal per
-  user (baru), query scheduled-posts count lintas domain, dan konfirmasi
-  `react-icons` sebagai dependency runtime `apps/web` (`dependency-
-  strategy.md`).
+  desain final di Claude Design (avatar bulat + badge logo brand
+  react-icons/fa6 overlay, nama akun, status badge, scheduled count ↔
+  quick-compose "+" tetap no-shift/fixed-slot, drag-handle
+  **shift-on-hover** — seluruh isi baris ikut bergeser, addendum ADR-058
+  yang mengoverride keputusan awal "no-shift"). Prasyarat: service
+  `listConnectedAccounts` (belum ada, saat ini Connected Accounts masih
+  scaffold), skema tabel reorder personal per user (baru), query
+  scheduled-posts count lintas domain, dan konfirmasi `react-icons`
+  sebagai dependency runtime `apps/web` (`dependency-strategy.md`).
+  **Catatan terbuka:** posisi pixel tombol "+" di Claude Design saat ini
+  (`top: 1px; left: -1px` di atas `.channel-add`) sudah dikonfirmasi King
+  Rezi sendiri sebagai "kurang pas" — bukan source of truth pixel-perfect;
+  King Rezi akan menyesuaikan sendiri saat implementasi kode ini
+  berjalan, jangan disalin apa adanya sebagai nilai final.
 * **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (kini modal, ADR-052), persistensi "Save as Draft"/"Edit Draft", dan Drafts List data asli selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
 * **Sidebar CTA "+ New Post" (ADR-053) — implementasi kode menyusul:**
   tambahkan CTA pinned di `WorkspaceSideNav`/`AppShell` (`apps/web`), di
@@ -636,11 +649,20 @@ Tidak ada blocker saat ini.
   `react-icons` (fa6) — dipilih setelah `lucide-react` dikonfirmasi tidak
   punya logo brand media sosial. Default menampilkan scheduled-posts
   count; hover menampilkan drag-handle (reorder personal per user) +
-  tombol quick-compose (Draft Editor, akun pre-selected), keduanya
-  no-shift (revisi eksplisit King Rezi). Bukan pengganti KSP-08 Connected
-  Accounts (IA-D05 tidak berubah). Sudah di Claude Design (7 layar KSP +
-  swatch komponen); implementasi kode `apps/web` belum berjalan
-  (2026-07-31).
+  tombol quick-compose (Draft Editor, akun pre-selected). Bukan pengganti
+  KSP-08 Connected Accounts (IA-D05 tidak berubah). Sudah di Claude Design
+  (7 layar KSP + swatch komponen); implementasi kode `apps/web` belum
+  berjalan (2026-07-31).
+* ADR-058 addendum (sesi kedua, tanggal sama, 2026-07-31) — dua revisi
+  lanjutan atas referensi screenshot aplikasi lain: (1) leading element
+  baris default direstyle dari logo platform polos jadi avatar bulat +
+  badge logo brand overlay; (2) **override eksplisit King Rezi**: drag
+  handle yang sebelumnya "no-shift" kini **shift-on-hover** — muncul di
+  luar avatar dan mendorong seluruh isi baris bergeser ke kanan saat
+  hover (swap count↔"+" tetap no-shift, tidak berubah). Micro-offset
+  tombol "+" (`top: 1px; left: -1px`) masih dikonfirmasi King Rezi sebagai
+  belum final ("kurang pas") — disengaja tidak diiterasi lagi di Claude
+  Design, akan disesuaikan saat implementasi kode.
 * ADR-057 — Tidak ada designer eksternal, permanen (amandemen ADR-038,
   ADR-041): peran "desainer" di seluruh baseline digantikan permanen oleh
   King Rezi sendiri lewat project Claude Design. Gerbang "designer masuk"

@@ -3383,6 +3383,45 @@ harus masuk ke Workspace Settings.
      (fullwidth, dirancang untuk tombol besar "New Post") ke "+" biasa pada
      font-size 10px supaya proporsional di ukuran sekecil ini.
 
+10. **Addendum (sesi terpisah, tanggal sama, 2026-07-31) — restyle avatar,
+    override no-shift → shift-on-hover, catatan offset belum final:**
+    setelah King Rezi menunjukkan screenshot aplikasi lain sebagai
+    referensi, tiga perubahan lanjutan disepakati:
+    - **Restyle leading element baris default:** logo platform polos (flat
+      square icon, hasil poin 2 di atas) diganti **avatar bulat**
+      (placeholder inisial, treatment sama seperti `.ws-avatar`) dengan
+      **badge kecil logo brand platform** (`react-icons` fa6 —
+      `FaInstagram`/`FaFacebook`/`FaXTwitter`, warna brand tidak berubah)
+      di-overlay di pojok kanan-bawah avatar, mengikuti konvensi
+      story-ring badge. Badge angka scheduled-posts di sisi kanan baris
+      **tidak berubah**.
+    - **Override eksplisit poin 5 ("No-shift hover") → "shift-on-hover"
+      untuk drag handle:** King Rezi meminta pembalikan sebagian dari
+      keputusan poin 5 — drag-handle sekarang muncul di **paling kiri
+      baris, di luar ruang avatar** (bukan lagi di ruang cadangan
+      permanen di dalam row), dan saat hover **seluruh isi baris
+      (avatar+badge+nama) ikut bergeser ke kanan** (`margin-left`
+      animasi) untuk memberi ruang drag-handle. Ini keputusan baru yang
+      membalik status "wajib no-shift" khusus untuk drag-handle — alasan:
+      permintaan eksplisit King Rezi setelah melihat pola shift-on-hover
+      di aplikasi lain (screenshot referensi), bukan lagi dianggap masalah
+      interaksi seperti alasan awal poin 5. **Swap count ↔ tombol
+      quick-compose "+" di sisi kanan baris TIDAK berubah** — tetap
+      no-shift/fixed-slot seperti poin 4-5 aslinya, tidak pernah bergeser.
+    - **Micro-adjustment tombol "+" — belum final, dicatat sebagai known
+      imperfection:** posisi tombol quick-compose (`.channel-add`)
+      di-nudge `top: 1px; left: -1px` (menimpa `inset: 0` untuk sisi itu
+      saja) untuk koreksi optik glyph "+" 10px dari addendum poin 9. King
+      Rezi mengonfirmasi hasil ini masih **"kurang pas"**, tetapi memilih
+      **tidak** minta iterasi lanjutan di Claude Design sekarang — akan
+      disesuaikan sendiri saat implementasi kode nyata di `apps/web`.
+      Offset ini bukan blocker dan bukan pixel-perfect final; jangan
+      dianggap source of truth pasti saat implementasi kode dimulai.
+    - Status pekerjaan tidak berubah: masih visual-only di Claude Design
+      (7 layar KSP + `components/navigation.html` + App Prototype yang
+      iframe ke template sama). **Implementasi kode `apps/web` tetap
+      belum berjalan.**
+
 ### Reason
 
 * King Rezi ingin visibilitas cepat status channel + jalan pintas compose
@@ -3391,9 +3430,15 @@ harus masuk ke Workspace Settings.
 * Posisi antara nav item dan zona bawah dipilih (bukan sejajar nav item)
   supaya sidebar tetap merepresentasikan alur kerja (Publish→Engage→
   Analyze), bukan berubah jadi daftar entitas/fitur (P-IA-01).
-* No-shift hover adalah revisi eksplisit setelah draf awal (drag handle
-  pakai `display:none`) ternyata menggeser konten saat di-hover — bukan
-  preferensi kosmetik, King Rezi menyatakan ini sebagai syarat wajib.
+* No-shift hover (poin 5) adalah revisi eksplisit setelah draf awal (drag
+  handle pakai `display:none`) ternyata menggeser konten saat di-hover —
+  bukan preferensi kosmetik, King Rezi menyatakan ini sebagai syarat
+  wajib **pada saat itu**.
+* Shift-on-hover (poin 10, addendum) adalah pembalikan eksplisit
+  berikutnya dari syarat di atas, khusus untuk drag-handle — King Rezi
+  membandingkan dengan referensi screenshot aplikasi lain dan memilih
+  shift-on-hover sebagai pola akhir untuk elemen ini. Swap count↔"+"
+  tidak ikut berubah karena tidak ada masalah interaksi yang sama di sana.
 
 ### Alternatives Considered
 
