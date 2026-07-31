@@ -63,7 +63,9 @@ Produk menggunakan model **Persistent Sidebar Navigation** untuk web.
 │  • Engage  [badge]  │  navigasi yang dipilih         │
 │  • Analyze          │                                │
 │  • Start Page       │                                │
-│                     │                                │
+├─────────────────────┤                                │
+│  Channels           │                                │
+│  (quick-glance)      │                                │
 ├─────────────────────┤                                │
 │  Notifications      │                                │
 │  User Avatar        │                                │
@@ -97,6 +99,10 @@ Primary navigation terdiri dari dua zona vertikal:
 │  Analyze             │
 │  Start Page          │
 ├──────────────────────┤
+│  📷 @kopiselasar  8  │  ← Channels, quick-glance
+│  📘 Kopi Selasar  3  │     (scrollable independen)
+│  🐦 @kopiselasar  0  │
+├──────────────────────┤
 │  Notifications       │  ← utilitas
 │  User Avatar         │  ← selalu di bawah
 └──────────────────────┘
@@ -108,7 +114,9 @@ Primary navigation terdiri dari dua zona vertikal:
 
 **Zona tengah:** 5 navigation items — Home, Publish, Engage, Analyze, Start Page. Urutan mencerminkan alur nilai produk (UXP-07): Publishing reliability → Engagement triage → Analytics snapshot.
 
-**Zona bawah:** Notifications icon dan User Avatar — akses ke secondary navigation. Selalu tersedia tanpa scrolling.
+**Zona Channels:** Daftar akun media sosial terhubung (quick-glance), di bawah navigation items dan di atas zona utilitas (NP-D14). Lihat bagian "Channels (Sidebar)" di bawah untuk detail lengkap.
+
+**Zona bawah:** Notifications icon dan User Avatar — akses ke secondary navigation. Selalu tersedia tanpa scrolling — Channels di atasnya scroll independen supaya zona ini tidak pernah terdorong keluar layar walau akun terhubung banyak.
 
 ---
 
@@ -132,6 +140,36 @@ Workspace Selector
 ```
 
 Workspace Selector adalah titik masuk ke Workspace Settings — bukan item di primary nav. Ini sesuai dengan IA-D05 (Workspace Settings di luar primary nav).
+
+---
+
+## Channels (Sidebar)
+
+Daftar akun media sosial yang terhubung, ditampilkan sebagai quick-glance list — bukan pengganti `Workspace Settings → Connected Accounts` (KSP-08), yang tetap satu-satunya tempat Connect/Disconnect/Reconnect (IA-D05 tidak berubah).
+
+```
+Default (tidak di-hover):
+  📷 @kopiselasar          8     ← scheduled posts count
+                          Active
+
+Hover:
+  ⠿ 📷 @kopiselasar   [+]        ← drag handle + quick-compose
+                          Active
+```
+
+**Isi tiap baris:** logo brand platform (icon, bukan teks nama platform) + nama akun/handle (`@kopiselasar` atau nama halaman seperti `Kopi Selasar`, mengikuti konvensi KSP-08) + status badge (Active/Disconnected — Badge yang sama dengan KSP-08, tidak ada warna status baru).
+
+**State default:** badge angka menampilkan jumlah post **scheduled** (belum tayang) untuk akun tersebut.
+
+**State hover:** badge count digantikan tombol quick-compose "+" (membuka Draft Editor/KSP-05 kosong dengan akun ini otomatis ter-pre-select di Account Selector); drag handle muncul di kiri icon untuk reorder. Reorder ini **personal per user** — urutan tampilan bisa berbeda antar anggota tim, bukan urutan shared workspace.
+
+**No-shift hover (wajib):** baik drag handle maupun swap count↔tombol "+" tidak boleh menggeser icon/nama akun saat di-hover — ruang keduanya dicadangkan permanen di layout, bukan muncul/hilang begitu saja.
+
+**Klik channel berstatus Disconnected/Expired:** deep-link ke `Workspace Settings → Connected Accounts` — memperluas pola "Status Indicator → Settings" (lihat Contextual Navigation Pattern di bawah), bukan pola baru.
+
+**Scroll independen:** list ini scroll sendiri (tidak ikut men-scroll seluruh sidebar) supaya zona bawah (Notifications/User Avatar) tetap selalu terlihat walau akun terhubung banyak.
+
+Lihat NP-D14 di Decision Log untuk keputusan lengkap (ADR-058).
 
 ---
 
@@ -259,6 +297,24 @@ Publish → Queue     → [New Post]  → Draft Editor (item baru)
 
 ---
 
+## Pola: Quick Compose dari Channels Sidebar
+
+Terjadi ketika pengguna meng-hover satu channel di daftar "Channels" sidebar (NP-D14) dan ingin langsung membuat konten untuk akun tersebut tanpa membuka Account Selector secara manual.
+
+```
+[Section manapun] → Sidebar → Channels → hover channel → [+]  → Draft Editor (item baru, akun ini pre-selected)
+```
+
+**Trigger:** Tombol "+" muncul saat channel di-hover (menggantikan badge count), tersedia dari section manapun karena Channels selalu terlihat di sidebar.
+
+**Perbedaan dengan CTA "+ New Post" (NP-D09/NP-D12):** CTA sidebar/Calendar/Queue membuka Draft Editor kosong tanpa akun terpilih — Quick Compose dari Channels membuka Draft Editor dengan **Account Selector sudah otomatis memilih channel yang di-klik**, mempercepat alur "saya mau posting ke Instagram sekarang" tanpa langkah pilih akun manual.
+
+**Transisi:** Draft Editor (modal fullscreen, ADR-052) terbuka di atas sub-screen manapun yang sedang aktif — sama seperti New Post dari sidebar (NP-D12).
+
+**Kembali:** Tombol "Close" mengembalikan tampilan ke section/sub-screen asal tanpa navigasi URL.
+
+---
+
 ## Pola: Redirect setelah Aksi Terminal Draft Editor
 
 Terjadi ketika pengguna menyelesaikan salah satu dari tiga aksi terminal di Draft Editor (Save as Draft, Schedule, Publish Now). Sidebar CTA "+ New Post" (NP-D12) membuat Draft Editor kini bisa dibuka dari section manapun — Home, Engage, Analyze, Settings — bukan hanya dari dalam Publish. Ketiga aksi ini **tidak** mengikuti pola "Kembali ke sub-screen asal" milik tombol Close (KSP-05-F10) — masing-masing mengarahkan pengguna ke sub-screen **tujuan**, tempat konten yang baru saja diproses sekarang berada:
@@ -295,8 +351,8 @@ Engage → Inbox → [klik thread]  → Thread detail muncul di panel kanan / in
 Terjadi ketika pengguna menemukan status masalah di layar kerja dan perlu ke Settings untuk memperbaikinya.
 
 ```
-Calendar / Queue / Account Selector → status "Disconnected" atau "Failed"
-    → [klik indikator / pesan error]
+Calendar / Queue / Account Selector / Sidebar Channels → status "Disconnected" atau "Failed"
+    → [klik indikator / pesan error / channel row]
     → Workspace Settings → Connected Accounts
 ```
 
@@ -391,6 +447,7 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | NP-D11 | Draft Editor (New Post & Edit Draft) jadi **modal overlay fullscreen**, mengoverride NP-D02 | Ingin New Post/Edit Draft terasa lebih cepat/ringan tanpa pindah halaman, konsisten pola tools lain — trade-off kehilangan konteks visual Calendar/Queue (alasan asli NP-D02) diterima sadar demi kecepatan alur kerja. Route lama dihapus total (modal-only, tanpa deep-link URL). Resume unsaved state (localStorage) hanya untuk New Post, tidak untuk Edit Draft (ADR-052) | NP-P02, UXP-04 |
 | NP-D12 | Sidebar mendapat CTA "+ New Post" pinned (di bawah Workspace Selector, di atas nav items), tersedia dari section manapun | Sebelumnya CTA New Post hanya ada di layar Calendar/Queue/Drafts (NP-D09) — pengguna di Home/Engage/Analyze harus pindah section dulu ke Publish untuk membuat post baru. Pola umum di tools sejenis (CTA utama di puncak sidebar) menghilangkan langkah ekstra ini (ADR-053) | UXP-01, NP-P01 |
 | NP-D13 | Setelah aksi terminal Draft Editor (Save as Draft / Schedule / Publish Now), pengguna diarahkan ke sub-screen **tujuan** (Drafts / Queue / History-sementara-Calendar) — bukan kembali ke sub-screen asal seperti tombol Close | Sidebar CTA (NP-D12) membuat Draft Editor bisa dibuka dari section manapun; pengguna perlu langsung melihat hasil aksinya di section Publish yang relevan, bukan tertinggal di section asal yang sudah tidak berkaitan dengan konten yang baru diproses (ADR-054). Tidak mengubah NP-D05 (kasus berbeda: link status error → Settings) | UXP-04 |
+| NP-D14 | Sidebar mendapat section "Channels" — quick-glance daftar akun terhubung (icon brand + nama akun + status), antara navigation items dan zona bawah, scroll independen. Default: scheduled-posts count. Hover: drag handle (reorder personal per user) + tombol quick-compose "+" (buka Draft Editor, akun pre-selected) — keduanya no-shift (ruang dicadangkan permanen). Klik channel bermasalah → Settings (perluasan pola existing) | King Rezi ingin visibilitas status channel + jalan pintas compose per akun tanpa keluar dari layar kerja; posisi di luar 5 nav item menjaga sidebar tetap berbasis alur kerja, bukan daftar entitas (P-IA-01) (ADR-058) | UXP-01, UXP-04, NP-P01 |
 
 ---
 
@@ -409,6 +466,8 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | Akses User Settings | Klik User Avatar → dropdown | Navigasi ke User Settings |
 | Buka Notifications | Klik Notifications icon | Buka Notifications Panel (overlay) |
 | Error status → Settings | Klik indikator error / tautan aksi | Navigasi ke Workspace Settings → Connected Accounts |
+| Channel bermasalah di sidebar Channels → klik | Klik channel row (Disconnected/Expired) | Navigasi ke Workspace Settings → Connected Accounts |
+| Channel di sidebar Channels → hover lalu klik "+" | Klik tombol quick-compose | Buka Draft Editor (modal) kosong, akun ini otomatis ter-pre-select |
 | Empty state → aksi pertama | Klik CTA di empty state | Navigasi ke section / sub-screen terkait |
 
 ---

@@ -4,6 +4,63 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-31 — ADR-058: Sidebar "Channels" — quick-glance daftar akun terhubung
+
+King Rezi meminta section baru di sidebar untuk melihat status akun media
+sosial terhubung sekilas + jalan pintas compose per akun. Dikerjakan
+visual-first di Claude Design (bukan langsung ke kode), lewat beberapa
+putaran revisi (icon vs teks nama, sumber ikon Lucide vs react-icons,
+no-shift hover) sebelum bentuk finalnya dikunci ke baseline.
+
+### Added
+
+* `DECISIONS.md` — **ADR-058**. Section "Channels" ditambahkan di sidebar,
+  posisi antara 5 navigation item dan zona bawah (Notifications/Theme/
+  Avatar), scrollable independen. Tiap baris: logo brand platform +
+  nama akun/handle + status badge (reuse Badge KSP-08). Default: badge
+  scheduled-posts count. Hover: drag handle (reorder personal per user) +
+  tombol quick-compose "+" (buka Draft Editor, akun pre-selected) — ruang
+  keduanya dicadangkan permanen supaya tidak menggeser konten saat hover.
+  Icon brand pakai `react-icons` (fa6 set), dipilih setelah dikonfirmasi
+  `lucide-react` tidak menyediakan logo media sosial.
+* `navigation-patterns.md` — NP-D14 di Decision Log; section baru
+  "Channels (Sidebar)"; pola baru "Quick Compose dari Channels Sidebar";
+  update diagram sidebar (overview + detail); perluasan pola "Status
+  Indicator → Settings" untuk mencakup klik channel bermasalah; 2 baris
+  baru di tabel Ringkasan Pola.
+* `key-screen-patterns.md` — Entry Points KSP-05 (Quick Compose dari
+  Channels) dan KSP-08 (klik channel bermasalah di sidebar) diperluas;
+  catatan di KSP-08 menegaskan Channels sidebar bukan pengganti layar
+  Connected Accounts.
+
+### Implementasi
+
+* Claude Design: 7 layar KSP (semua yang punya sidebar) + swatch komponen
+  `components/navigation.html` sudah menampilkan Channels sesuai desain
+  final. **Implementasi kode `apps/web` belum berjalan** — menyusul di
+  siklus implementasi berikutnya (lihat PROJECT_STATE Next Tasks).
+* **Addendum (revisi lanjutan hari sama, ADR-058 poin 9):** status badge
+  (Active/Disconnected) diperbaiki dari full-width (bertabrakan visual
+  dengan tombol "+" saat hover) menjadi hug-content (`align-self:
+  flex-start`). Tombol "+" quick-compose diberi wiring nyata di
+  `AppPrototype.dc.html` — klik membuka Draft Editor dengan akun channel
+  tersebut otomatis ter-checklist, sengaja skip pengecekan Resume
+  Unfinished Post karena entry point ini terikat akun tertentu. Ditemukan
+  lagi: hover tombol "+" (`.icon-btn:hover`) menumpuk overlay kedua di atas
+  overlay hover baris (`.channel-row:hover`) — diperbaiki dengan
+  `.channel-add:hover { background-image: none; }` supaya cuma ada satu
+  highlight bersih per baris. Masih terlihat "menabrak" di screenshot
+  review berikutnya — diperkecil lagi ke 16×16px (lebih kecil dari size
+  token IconButton terkecil Astryx), glyph diganti dari "＋" fullwidth ke
+  "+" biasa pada 10px, sesuai permintaan eksplisit King Rezi.
+* Follow-up belum diputuskan: skema tabel reorder personal per user (baru,
+  terpisah dari `WorkspaceConnectedAccount`), query scheduled-posts count
+  lintas domain, dan status `react-icons` sebagai dependency runtime kalau
+  fitur ini lanjut ke kode (saat ini baru dipakai sebagai sumber ekstraksi
+  SVG statis di Claude Design, bukan dependency `apps/web`).
+
+---
+
 ## 2026-07-31 — ADR-057: Tidak ada designer eksternal, permanen (amandemen ADR-038, ADR-041)
 
 Kelanjutan diskusi ADR-056 (sync docs ↔ Claude Design): King Rezi
