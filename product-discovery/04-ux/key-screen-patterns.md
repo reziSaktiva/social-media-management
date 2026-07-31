@@ -341,7 +341,7 @@ Drafts adalah tempat Raka menyimpan dan mengakses konten yang belum terjadwal �
 | ----- | ----- |
 | Path IA | `Publish → Drafts → Draft Editor` (dibuka sebagai modal, bukan route terpisah — ADR-052). Variant Dialog belum final — lihat Catatan di bawah |
 | Pengguna Utama | Raka |
-| Entry Points | New Post; Klik item dari Calendar / Queue / Drafts |
+| Entry Points | New Post; Klik item dari Calendar / Queue / Drafts; Quick Compose dari Channels sidebar (akun otomatis pre-selected, NP-D14) |
 | UX Principles | UXP-01, UXP-03, UXP-04, UXP-05, UXP-06 |
 
 ### Tujuan
@@ -695,12 +695,14 @@ Tidak ada angka nol atau grafik kosong yang ditampilkan — lebih baik empty sta
 | ----- | ----- |
 | Path IA | `Workspace Settings → Connected Accounts` |
 | Pengguna Utama | Raka atau Maya (siapa yang memiliki akses Settings) |
-| Entry Points | Workspace Selector → Workspace Settings; Error indicator / Reconnect link dari Calendar, Queue, Account Selector |
+| Entry Points | Workspace Selector → Workspace Settings; Error indicator / Reconnect link dari Calendar, Queue, Account Selector; klik channel berstatus Disconnected/Expired di Channels sidebar (NP-D14) |
 | UX Principles | UXP-03, UXP-04 |
 
 ### Tujuan
 
 Layar ini adalah satu-satunya tempat pengguna mengelola koneksi akun media sosial — menambah akun baru, memeriksa status koneksi yang ada, dan menangani akun yang terputus.
+
+**Catatan (NP-D14):** daftar "Channels" di sidebar menampilkan quick-glance status + jalan pintas compose per akun dari section manapun, tapi **bukan pengganti** layar ini — Connect/Disconnect/Reconnect tetap eksklusif di sini.
 
 ---
 

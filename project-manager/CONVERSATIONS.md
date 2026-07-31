@@ -378,3 +378,17 @@ Handler, adapter, job runner, sync runtime, dan UI tetap next task M8.
 
 **Impact:** `.claude/skills/claude-design-scope-discipline/SKILL.md` (baru), `context/ctx-design.md` (Aturan operasional #10), `AGENTS.md` (Aturan keras #13), `DECISIONS.md` (addendum ADR-052), `CHANGELOG.md` — semua diperbarui.
 
+---
+
+## 2026-07-31 — Sidebar "Channels" + temuan: subagent tidak bisa akses tool `DesignSync`
+
+**Phase:** Phase 6 / M8 Development
+
+**Summary:** User meminta section baru "Channels" (daftar akun media sosial terhubung) di sidebar, dimulai dari diskusi posisi (dibandingkan opsi icon-strip vs mini-list, user pilih mini-list) lalu spesifikasi interaksi (drag reorder personal per user, tombol quick-compose, scheduled-posts count) sebelum dieksekusi ke Claude Design. Saat dijalankan lewat subagent Neymar (Product Designer), tool `DesignSync` **tidak bisa dimuat sama sekali** di sesi subagent (ToolSearch selalu "no match", dicoba ulang setelah dikonfirmasi tool tersedia di sesi utama — tetap gagal). Main agent kemudian memverifikasi sendiri bahwa `DesignSync` berfungsi normal di sesinya, dan atas persetujuan eksplisit user, mengerjakan seluruh perubahan Claude Design langsung dari sesi utama (menyimpang dari aturan keras `AGENTS.md` yang mewajibkan Neymar untuk pekerjaan ini, karena keterbatasan teknis, bukan pilihan).
+
+Selama eksekusi terjadi 2 putaran revisi dari user: (1) hapus teks nama platform, tampilkan logo saja — ternyata Lucide (permintaan awal) tidak punya logo brand media sosial, diganti `react-icons` (fa6) atas pilihan user, diverifikasi via `bun add react-icons` sementara di scratchpad lalu dihapus (bukan dependency baru); (2) nama akun (`@kopiselasar`) ternyata tidak boleh ikut dihapus (hanya nama platform), dan hover tidak boleh menggeser konten (drag-handle & swap count/tombol harus reserve-space, bukan `display:none`).
+
+**Key Decision/Insight:** Tool berbasis otorisasi login interaktif (`DesignSync`) tampaknya **tidak diteruskan ke sesi subagent** yang di-spawn lewat tool Agent — pola serupa catatan resmi soal MCP server terautentikasi yang absen di sesi headless. Ini kemungkinan berlaku juga untuk tool sejenis lain di masa depan; kalau subagent gagal memuat tool yang seharusnya tersedia, verifikasi dulu dari main agent sebelum menyimpulkan tool benar-benar tidak aktif. "No-shift hover" (ruang UI dicadangkan permanen, bukan `display:none`↔`flex`) dicatat sebagai syarat interaksi eksplisit, bukan preferensi kosmetik.
+
+**Impact:** `DECISIONS.md` (ADR-058 baru), `navigation-patterns.md` (NP-D14 + section "Channels (Sidebar)" + pola "Quick Compose dari Channels Sidebar" + perluasan "Status Indicator → Settings"), `key-screen-patterns.md` (entry point KSP-05 & KSP-08), `PROJECT_STATE.md`, `CHANGELOG.md` — semua diperbarui. Implementasi kode `apps/web` belum berjalan (Next Tasks).
+
