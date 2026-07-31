@@ -72,8 +72,9 @@ ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
   composition. Jangan menggunakannya untuk menimpa internal component part
   Astryx secara agresif.
 - Hindari canary, `swizzle`, dan authoring StyleX pada tahap awal.
-- Setelah designer masuk, nilai final `design-tokens.md` dipetakan ke Astryx
-  theme + Tailwind token bridge tanpa mengganti fondasi komponen.
+- Nilai final `design-tokens.md` (co-equal dengan Claude Design, tidak
+  menunggu designer eksternal — ADR-056, ADR-057) dipetakan ke Astryx theme +
+  Tailwind token bridge tanpa mengganti fondasi komponen.
 - Sebelum adopsi Astryx secara luas, pastikan smoke test ADR-041 telah lolos.
 
 ---

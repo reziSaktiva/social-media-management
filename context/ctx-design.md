@@ -3,12 +3,12 @@
 Pointer ke **Claude Design** (tool eksternal, live) dan ke **UX Planning
 Baseline** (`04-ux/`). Product/roles/persona → `ctx-business.md`.
 
-**Catatan (ADR-045):** folder `design/` (paket handoff untuk tim designer)
-sudah **dihapus** dari repo — belum ada designer aktif yang memakainya, jadi
-paket tersebut menganggur tanpa nilai. Pointer project Claude Design yang
-sebelumnya ada di `design/README.md` dipindah ke bagian "Claude Design" di
-bawah. Saat designer benar-benar join, susun ulang paket handoff dari
-`04-ux/` + `design-tokens.md` (bukan dari histori file yang sudah dihapus).
+**Catatan (ADR-045, ADR-057):** folder `design/` (paket handoff untuk tim
+designer) sudah **dihapus** dari repo dan **tidak akan dibuat ulang** —
+project ini tidak akan merekrut designer eksternal; perannya digantikan
+permanen oleh King Rezi sendiri lewat project Claude Design. Pointer project
+Claude Design yang sebelumnya ada di `design/README.md` dipindah ke bagian
+"Claude Design" di bawah.
 
 ---
 
@@ -87,8 +87,9 @@ Implementasi React mengikuti `ctx-implementation.md`. Gunakan Astryx neutral
 theme selama M8 (Light/Dark Mode Toggle ADR-055 tetap berlaku lintas seluruh
 section — lihat `IconButton` toggle di sidebar footer); komponen sederhana
 boleh diimpor langsung dan komponen kritis/luas memakai wrapper selektif.
-Setelah designer masuk, token yang sudah di-lock dipetakan ke Astryx theme +
-Tailwind token bridge.
+Token yang sudah di-lock (co-equal dengan Claude Design, tidak menunggu
+designer eksternal — ADR-056, ADR-057) dipetakan ke Astryx theme + Tailwind
+token bridge.
 
 ---
 
@@ -101,3 +102,4 @@ Tailwind token bridge.
 - Keputusan penghapusan `design/` → `../project-manager/DECISIONS.md` (ADR-045)
 - Scope discipline saat mengubah Claude Design → `../.claude/skills/claude-design-scope-discipline/SKILL.md` (ADR-052)
 - Sync docs ↔ Claude Design + kewajiban reminder proaktif → `../project-manager/DECISIONS.md` (ADR-056)
+- Tidak ada designer eksternal, permanen → `../project-manager/DECISIONS.md` (ADR-057)

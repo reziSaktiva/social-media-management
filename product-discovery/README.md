@@ -56,10 +56,11 @@ product-discovery/
 └── 06-engineering/
 ```
 
-Folder ringkasan operasional untuk tim designer (`design/`) sudah dihapus —
-belum ada designer aktif di project (ADR-045). Pointer Claude Design ada di
-`../context/ctx-design.md`; saat designer join, paket handoff disusun ulang
-dari folder ini (`04-ux/` + `06-engineering/design-tokens.md`).
+Folder ringkasan operasional untuk tim designer (`design/`) sudah dihapus dan
+**tidak akan dibuat ulang** — project ini tidak akan merekrut designer
+eksternal, perannya digantikan permanen oleh King Rezi sendiri lewat project
+Claude Design (ADR-045, ADR-057). Pointer Claude Design ada di
+`../context/ctx-design.md`.
 
 ---
 

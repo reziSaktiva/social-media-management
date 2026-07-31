@@ -500,8 +500,9 @@ Restricted Actions:
   nyata (status transition draft → scheduled) dan integrasi `OutstandAdapter`
   (ADR-040).
 * Template `design-tokens.md` sudah disiapkan (status Draft / TBD); nilai final
-  diisi setelah feature selesai dan designer masuk (ADR-041 mengamendemen urutan
-  kerja ADR-038).
+  berkembang iteratif co-equal dengan Claude Design (ADR-056) — tidak ada lagi
+  gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
+  (ADR-057, amandemen ADR-038 & ADR-041).
 
 ---
 
@@ -545,11 +546,14 @@ Restricted Actions:
   `rateLimit.customRules`) mendahului M8 web berjalan jauh. Endpoint mobile
   aktual (WorkspaceService → PublishingService → EngagementService →
   NotificationService) dikerjakan setelah MVP web selesai — bukan sekarang.
-* **Design tokens — evolusi iteratif (ADR-056 amendemen ADR-038):**
-  `design-tokens.md` dan Design System Claude Design sekarang co-equal, boleh
-  berubah dari kedua sisi kapan saja (bukan lagi "isi sekali setelah desain
-  di-approve"). AI wajib reminder proaktif setiap ada perubahan UI/UX di
-  salah satu sisi. Status → Locked tetap jadi penanda final saat nilai sudah
+* **Design tokens — evolusi iteratif (ADR-056 amendemen ADR-038; ADR-057:
+  tidak ada designer eksternal):** `design-tokens.md` dan Design System
+  Claude Design sekarang co-equal, boleh berubah dari kedua sisi kapan saja
+  (bukan lagi "isi sekali setelah desain di-approve"). AI wajib reminder
+  proaktif setiap ada perubahan UI/UX di salah satu sisi. Gerbang "menunggu
+  designer masuk" dihapus permanen — King Rezi sendiri berperan sebagai
+  desainer via Claude Design (ADR-057). Status → Locked tetap jadi penanda
+  final saat nilai sudah
   stabil, baru dimirror ke Astryx theme + Tailwind token bridge (ADR-041).
 * (Opsional) Perkaya aturan coding di `context/ctx-development.md` saat konvensi baru muncul dari praktik M8.
 * (Opsional) initial git commit — menunggu instruksi eksplisit.
@@ -601,6 +605,16 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-057 — Tidak ada designer eksternal, permanen (amandemen ADR-038,
+  ADR-041): peran "desainer" di seluruh baseline digantikan permanen oleh
+  King Rezi sendiri lewat project Claude Design. Gerbang "designer masuk"
+  sebagai syarat lock token dihapus — token dikunci kapan pun King Rezi
+  menganggap stabil (co-equal dengan ADR-056), bukan menunggu approval
+  pihak ketiga. Folder `design/` (dihapus ADR-045) tidak akan dibuat ulang.
+  7 file diperbarui untuk menghapus bahasa "designer masuk/aktif/join":
+  `design-tokens.md`, `06-engineering/README.md`, `product-discovery/README.md`,
+  `ctx-design.md`, `ctx-technical-context.md`, `ctx-implementation.md`,
+  `PROJECT_STATE.md` (2026-07-31).
 * ADR-056 — Sinkronisasi UI/UX Docs ↔ Claude Design: token visual
   (`design-tokens.md` vs Design System Claude Design) jadi **co-equal**
   (amandemen ADR-038), dan AI **wajib reminder proaktif** setiap kali ada

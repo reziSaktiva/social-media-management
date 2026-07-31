@@ -4,6 +4,42 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-31 — ADR-057: Tidak ada designer eksternal, permanen (amandemen ADR-038, ADR-041)
+
+Kelanjutan diskusi ADR-056 (sync docs ↔ Claude Design): King Rezi
+mengonfirmasi project ini tidak akan pernah merekrut/menunggu designer
+eksternal — peran "desainer" digantikan permanen oleh King Rezi sendiri
+lewat project Claude Design.
+
+### Added
+
+* `DECISIONS.md` — **ADR-057**. Menghapus gerbang "designer masuk" sebagai
+  syarat lock token (amandemen ADR-038 DT-D02, ADR-041 poin 2 & 7). Status
+  field ADR-038 dan ADR-041 ditandai "Amended by ADR-057".
+
+### Changed
+
+Menghapus/menyesuaikan bahasa "designer masuk"/"designer aktif"/"designer
+join" yang masih berupa kalimat aktif (bukan catatan historis) di 7 file:
+
+* `product-discovery/06-engineering/design-tokens.md` — header, metadata,
+  panduan lock, DT-D02/DT-D03, diagram mapping implementasi, Related Documents.
+* `product-discovery/06-engineering/README.md` — 2 spot (Design Tokens summary).
+* `product-discovery/README.md` — catatan folder `design/`.
+* `context/ctx-design.md` — catatan ADR-045, aturan operasional token.
+* `context/ctx-technical-context.md` — tabel "Baca dulu", aturan operasional #8.
+* `context/ctx-implementation.md` — section UI Components.
+* `project-manager/PROJECT_STATE.md` — In Progress, Next Tasks, Recent Decisions.
+
+### Catatan governance
+
+* Entri historis di `DECISIONS.md` (teks ADR-038/041 asli), `CHANGELOG.md`
+  entri lama, dan `CONVERSATIONS.md` **tidak diedit** — append-only,
+  mencerminkan keputusan yang berlaku saat itu. Hanya `Status` field ADR-038/
+  ADR-041 yang ditambah anotasi "Amended by ADR-057".
+
+---
+
 ## 2026-07-31 — Diskusi lanjutan hasil audit: 3 keputusan terbuka diputuskan (ADR-056 + 2 next task)
 
 Melanjutkan diskusi dari audit dokumentasi sebelumnya (entri di bawah), 3 poin
