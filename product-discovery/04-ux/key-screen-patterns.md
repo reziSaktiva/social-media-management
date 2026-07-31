@@ -369,11 +369,11 @@ Keputusan final ditentukan sebelum implementasi kode (Tahap 3) dimulai; baseline
 | KSP-05-F05 | Schedule Picker | Tentukan tanggal dan waktu publish | UXP-04 |
 | KSP-05-F06 | Confirmation Summary | Ringkasan: preview caption, akun tujuan, **format per akun**, waktu — ditampilkan sebelum Schedule dieksekusi | UXP-04 |
 | KSP-05-F07 | Status Indicator | Status draft saat ini: Draft, In Review, Ready to Schedule, Scheduled, Published, Failed — selalu terlihat | UXP-06 |
-| KSP-05-F08 | Save as Draft | Simpan progres tanpa menjadwalkan | UXP-01 |
-| KSP-05-F09 | Schedule Action | Eksekusi penjadwalan setelah pengguna konfirmasi | UXP-04 |
+| KSP-05-F08 | Save as Draft | Simpan progres tanpa menjadwalkan. Setelah tersimpan, modal ditutup dan pengguna diarahkan ke **Publish → Drafts** — terlepas dari section mana modal dibuka (ADR-054) | UXP-01 |
+| KSP-05-F09 | Schedule Action | Eksekusi penjadwalan setelah pengguna konfirmasi (Confirmation Summary, KSP-05-F06). Setelah berhasil, modal ditutup dan pengguna diarahkan ke **Publish → Queue** — terlepas dari section mana modal dibuka (ADR-054) | UXP-04 |
 | KSP-05-F10 | Tutup Modal | Tombol Close di header modal menutup Draft Editor, kembali ke sub-screen asal (Calendar / Queue / Drafts) tanpa navigasi URL. Untuk **New Post**, state form yang belum disimpan tetap ada via localStorage (lihat KSP-05-F13). Untuk **Edit Draft**, tidak ada mekanisme resume — perubahan yang belum disimpan hilang saat modal ditutup (ADR-052) | UXP-03 |
 | KSP-05-F11 | Content Format Selector | Pilih format publikasi **per akun terpilih** sesuai platform (ADR-039): IG/FB → Post / Reel / Story; Pinterest → Pin (+ field pin); TikTok & lainnya → Post (tanpa radio Reel/Story) | UXP-01, UXP-03 |
-| KSP-05-F12 | Publish Now Action | Eksekusi publish langsung tanpa jadwal (skip Schedule Picker) — tersedia berdampingan dengan Schedule Action di action bar, hanya untuk role Owner/Admin/Manager (ADR-047); tidak muncul untuk Creator | UXP-04, UXP-06 |
+| KSP-05-F12 | Publish Now Action | Eksekusi publish langsung tanpa jadwal (skip Schedule Picker) — tersedia berdampingan dengan Schedule Action di action bar, hanya untuk role Owner/Admin/Manager (ADR-047); tidak muncul untuk Creator. Setelah berhasil, modal ditutup dan pengguna diarahkan ke **Publish → History** — karena History belum jadi layar terdokumentasi (KSP-D10), tujuan sementara adalah **Publish → Calendar** sampai layar itu dibangun (ADR-054) | UXP-04, UXP-06 |
 | KSP-05-F13 | Resume Unfinished Post (New Post saja) | Saat modal **New Post** dibuka dan ditemukan state belum-tersimpan di localStorage dari sesi sebelumnya, tampilkan dialog konfirmasi "Resume unfinished post?" dengan dua pilihan: **Resume** (lanjutkan isi form dari state tersimpan) atau **Mulai Baru** (buang state lama, form kosong). **Tidak berlaku untuk Edit Draft** — draft existing selalu dibuka dengan data dari server, tanpa cek localStorage (ADR-052) | UXP-03, UXP-04 |
 
 ---
@@ -894,6 +894,7 @@ Keputusan desain yang dibuat dalam dokumen ini.
 | KSP-D12 | Content Format Selector per akun di Draft Editor (bukan satu toggle global) | Format bergantung platform (IG/FB vs TikTok vs Pinterest); multi-account posting membutuhkan format independen per `PostTarget` (ADR-039) | UXP-01, UXP-03 |
 | KSP-D13 | Engage Inbox hanya memuat komentar/reply dan menampilkan last sync + Manual Refresh | Kontrak resmi Outstand mendukung comment pull/reply, bukan unified DM/mention atau webhook engagement; periodic pull 30 menit perlu ekspektasi freshness yang terlihat (ADR-040) | UXP-03, UXP-06 |
 | KSP-D14 | Disconnect Account wajib melalui dialog konfirmasi ringkas (bukan Confirmation Summary KSP-05-F06), bukan eksekusi langsung (ADR-048) | Ditemukan saat audit dokumentasi bahwa Disconnect tidak punya spesifikasi konfirmasi sama sekali padahal berdampak (post terjadwal tetap jalan tanpa akun aktif); level konfirmasi cukup peringatan + dua tombol karena bukan aksi publish konten | UXP-04 |
+| KSP-D15 | Setelah Save as Draft / Schedule / Publish Now, modal ditutup dan pengguna diarahkan ke sub-screen **tujuan** (Drafts / Queue / History-sementara-Calendar) — bukan kembali ke sub-screen asal seperti tombol Close (KSP-05-F10) (ADR-054) | Sidebar kini punya CTA New Post yang bisa dibuka dari section manapun (ADR-053) — pengguna perlu langsung melihat hasil aksinya di section Publish yang relevan, bukan tertinggal di section asal yang sudah tidak berkaitan dengan konten yang baru dibuat | UXP-04 |
 
 ---
 

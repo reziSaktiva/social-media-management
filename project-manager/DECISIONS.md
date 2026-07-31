@@ -2907,3 +2907,142 @@ general rule di `PROJECT_RULES.md` yang scope-nya lebih luas dari yang
 dibutuhkan. `AGENTS.md` tetap diberi satu baris pointer karena berfungsi
 sebagai entry point yang wajib dibaca duluan oleh AI apapun (bukan
 duplikasi isi, cuma penunjuk).
+
+---
+
+## Decision ADR-053
+
+### Title
+
+Sidebar mendapat CTA "+ New Post" pinned, tersedia dari section manapun
+
+### Status
+
+Accepted
+
+### Date
+
+2026-07-31
+
+### Decision
+
+Sidebar (Persistent Sidebar Navigation, NP-D01 di `navigation-patterns.md`)
+mendapat satu zona baru — CTA "+ New Post" (primary, full-width) — dipin
+tepat di bawah Workspace Selector dan di atas navigation items (Home/
+Publish/Engage/Analyze/Start Page). Tersedia dari section manapun,
+melengkapi (bukan menggantikan) CTA "New Post" yang sudah ada di layar
+Calendar/Queue/Drafts (NP-D09).
+
+### Reason
+
+* User ingin New Post lebih cepat diakses dari section manapun (Home/
+  Engage/Analyze/Settings), bukan hanya saat sedang berada di dalam
+  Publish.
+* Pola umum di tools produktivitas sejenis (Linear "New Issue", Notion
+  "New Page", Slack compose) menaruh CTA utama di puncak sidebar — posisi
+  paling menonjol dan konsisten dengan ekspektasi pengguna.
+
+### Alternatives Considered
+
+* **CTA di sidebar-footer (bawah, dekat notifikasi/avatar)** — ditolak;
+  posisi bawah lazim untuk aksi sekunder, bukan CTA utama.
+* **CTA disisipkan di antara navigation items** — ditolak; beda semantik
+  (nav item = link berpindah section, CTA = aksi membuka form).
+
+### Impact
+
+* `product-discovery/04-ux/navigation-patterns.md` — diagram "Model
+  Navigasi Utama" dan "Struktur Sidebar" diperbarui menambah zona CTA;
+  NP-D09 diberi catatan silang; Decision Log dapat entri NP-D12 baru;
+  tabel Ringkasan Pola dapat baris baru. (Sudah dikerjakan langsung oleh
+  main agent, bukan task Gibran Project Manager.)
+* Claude Design (project "Social Media Management") — sudah
+  diimplementasikan tanggal ini di 7 layar shell (`home.html`,
+  `publish-calendar.html`, `publish-queue.html`, `publish-drafts.html`,
+  `engage-inbox.html`, `analyze-dashboard.html`,
+  `settings-connected-accounts.html`) + `components/navigation.html`
+  (file spec) + `styles.css` (class baru `.sidebar-cta`). Tombol "New
+  Post" yang sudah ada di Calendar/Queue/Drafts dipertahankan, tidak
+  dihapus.
+* Implementasi kode `apps/web` belum berjalan — menyusul di siklus
+  implementasi berikutnya.
+
+---
+
+## Decision ADR-054
+
+### Title
+
+Draft Editor — redirect otomatis ke sub-screen tujuan setelah aksi terminal
+(Save as Draft / Schedule / Publish Now)
+
+### Status
+
+Accepted
+
+### Date
+
+2026-07-31
+
+### Decision
+
+Setelah salah satu dari tiga aksi terminal Draft Editor dieksekusi,
+pengguna diarahkan ke sub-screen Publish yang menjadi tujuan konten —
+bukan kembali ke sub-screen asal seperti pola tombol Close (KSP-05-F10):
+
+* Save as Draft (KSP-05-F08) → Publish → Drafts
+* Schedule Action (KSP-05-F09), setelah Confirmation Summary dikonfirmasi
+  → Publish → Queue (perilaku ini sudah ada sejak awal di App Prototype,
+  tidak berubah — baru diformalkan sebagai keputusan resmi di ADR ini)
+* Publish Now (KSP-05-F12), setelah Confirmation Summary dikonfirmasi →
+  Publish → History; karena History belum jadi layar terdokumentasi
+  (KSP-D10), tujuan sementara adalah Publish → Calendar sampai layar itu
+  dibangun
+
+### Reason
+
+* Sidebar CTA baru (ADR-053) membuat Draft Editor kini bisa dibuka dari
+  section manapun (Home/Engage/Analyze/Settings), bukan cuma dari dalam
+  Publish — sehingga "kembali ke asal" tidak lagi selalu masuk akal
+  (misalnya asal = Analyze, tidak relevan menampilkan hasil Schedule di
+  sana).
+* Pengguna perlu langsung melihat hasil aksinya di section yang relevan —
+  mendukung UXP-04 (Publishing Trust): kepercayaan datang dari melihat
+  langsung bahwa aksi berhasil dan tahu ke mana harus mengecek statusnya.
+* Tidak mengubah NP-D05 ("tidak ada redirect otomatis setelah
+  cross-section navigation") — NP-D05 spesifik untuk kasus tautan status
+  error → Settings, bukan aksi terminal form yang menghasilkan/mengubah
+  konten. Didefinisikan sebagai pola terpisah (NP-D13).
+
+### Alternatives Considered
+
+* **Kembali ke sub-screen asal, sama seperti tombol Close (KSP-05-F10)**
+  — ditolak; user eksplisit ingin diarahkan ke tab tujuan konten supaya
+  hasil aksi langsung terlihat, bukan tertinggal di section yang mungkin
+  sudah tidak relevan.
+* **Publish Now tetap redirect ke Home (perilaku sebelumnya)** — ditolak;
+  digantikan Calendar sebagai stand-in sementara History.
+
+### Impact
+
+* `product-discovery/04-ux/navigation-patterns.md` — pattern baru "Pola:
+  Redirect setelah Aksi Terminal Draft Editor" ditambahkan di Contextual
+  Navigation Pattern; Decision Log dapat entri NP-D13 baru; tabel
+  Ringkasan Pola dapat baris baru. (Sudah dikerjakan langsung oleh main
+  agent, bukan task Gibran Project Manager.)
+* `product-discovery/04-ux/key-screen-patterns.md` — KSP-05-F08, F09, F12
+  diberi catatan tujuan redirect; Decision Log dapat entri KSP-D15 baru.
+  (Sudah dikerjakan langsung oleh main agent, bukan task Gibran Project
+  Manager.)
+* Claude Design (App Prototype,
+  `templates/app-prototype/AppPrototype.dc.html`) — sudah
+  diimplementasikan tanggal ini: fungsi `saveDraftFromEditor()` diubah
+  dari sekadar menutup modal menjadi `go('publish-drafts', ...)`; handler
+  `publishnow-confirm` diubah destinasi dari `'home'` ke
+  `'publish-calendar'`. Handler `dialog-confirm` (Schedule) sudah
+  mengarah ke `'publish-queue'` sejak file ini dibuat — tidak diubah,
+  hanya baru diformalkan sebagai keputusan resmi.
+* Implementasi kode `apps/web` belum berjalan — Schedule di kode nyata
+  masih mock (lihat "Publishing MVP" di `PROJECT_STATE.md`), Publish Now
+  belum ada implementasi kode sama sekali (ADR-047 masih menunggu
+  implementasi).
