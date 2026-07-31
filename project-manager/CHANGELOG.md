@@ -4,6 +4,41 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-31 — Audit konsistensi dokumentasi menyeluruh (2 temuan diperbaiki)
+
+Dipicu permintaan King Rezi untuk cek dokumentasi menyeluruh. Ditemukan 2
+inkonsistensi nyata, keduanya sudah diperbaiki di sesi yang sama.
+
+### Fixed
+
+* **`context/ctx-design.md`, `context/ctx-implementation.md`,
+  `context/ctx-technical-context.md`** — ketiganya masih menginstruksikan
+  "gunakan neutral theme Astryx selama M8" tanpa qualifier, padahal ADR-055
+  (2026-07-31) sudah mengangkat Light/Dark Mode Toggle jadi fitur resmi dan
+  meng-override baseline itu. Ketiga file diberi catatan bahwa toggle tetap
+  berjalan di atas neutral theme (expose mekanisme dark mode bawaan Astryx,
+  bukan tema/token baru) — bukan pelanggaran, tapi perlu disebutkan supaya
+  agent berikutnya tidak salah kira dark mode belum ada.
+* **`.claude/agents/*.md`** (7 file peran subagent) — `AGENTS.md` dan
+  `.claude/agents/README.md` mengklaim file-file ini `chmod 444` (read-only)
+  sebagai pengaman teknis, tapi kenyataannya `644` (kemungkinan step chmod
+  444 terlewat setelah edit terakhir `najwa-qa-engineer.md`). Dikembalikan ke
+  `444`; `.claude/agents/README.md` sendiri sengaja tetap `644` sesuai
+  pengecualian di `PROJECT_RULES.md`.
+
+### Verified (tidak ada masalah, dicatat sebagai bukti audit)
+
+* Penomoran ADR-001 s/d ADR-055 di `DECISIONS.md` berurutan tanpa gap/duplikat.
+* Klaim status implementasi kode di `PROJECT_STATE.md` (ADR-052 modal, ADR-053/
+  054 belum di kode, ADR-055 sudah di kode) cocok dengan kode nyata di
+  `apps/web/src`.
+* Versi Astryx `0.1.8` konsisten di `apps/web/package.json`,
+  `apps/web/.claude/CLAUDE.md`, dan `PROJECT_OVERVIEW.md`.
+* Tidak ada README yang memuat status/progress — Document Type Classification
+  di `PROJECT_RULES.md` dipatuhi.
+
+---
+
 ## 2026-07-31 — ADR-055: Light/Dark Mode Toggle diangkat jadi fitur resmi produk
 
 King Rezi meminta button switch light/dark; sebelum implementasi dimulai,

@@ -43,7 +43,7 @@ Project lama bernama **"Modernist"** di akun yang sama **bukan** milik product i
 
 1. `04-ux/` tetap **SoT** untuk alur, IA, dan fungsi layar — Claude Design hanya representasi visual yang diturunkan darinya, bukan pengganti.
 2. `design-tokens.md` (`../product-discovery/06-engineering/design-tokens.md`) tetap **SoT design tokens** (ADR-038, ADR-041) — bukan project Claude Design, bukan screenshot.
-3. Implementasi layar M8 **tidak menunggu** token final: gunakan neutral theme Astryx dan jangan mengarang custom brand hex.
+3. Implementasi layar M8 **tidak menunggu** token final: gunakan neutral theme Astryx dan jangan mengarang custom brand hex. Sejak ADR-055, Light/Dark Mode Toggle adalah fitur resmi (kontrol persisten di sidebar footer) — ini bukan pelanggaran neutral theme karena hanya meng-expose mekanisme dark mode bawaan `@astryxdesign/theme-neutral`, bukan tema/token baru.
 4. Astryx adalah fondasi komponen permanen. Tailwind hanya untuk layout dan responsive composition; wrapper di `components/ui/` dibuat selektif.
 5. Wireframe detail di fase M8: **terbatas** — hanya jika dibutuhkan untuk implementasi layar (lihat `PROJECT_STATE` Active Conversation Mode).
 6. Status konten & roles visual harus selaras `roles-permissions.md` (lihat `ctx-business.md`).
@@ -74,9 +74,11 @@ Project lama bernama **"Modernist"** di akun yang sama **bukan** milik product i
 | Komponen UI / styling                    | `monorepo-setup.md` + ADR-041 + Astryx CLI lokal       |
 
 Implementasi React mengikuti `ctx-implementation.md`. Gunakan Astryx neutral
-theme selama M8; komponen sederhana boleh diimpor langsung dan komponen
-kritis/luas memakai wrapper selektif. Setelah designer masuk, token yang sudah
-di-lock dipetakan ke Astryx theme + Tailwind token bridge.
+theme selama M8 (Light/Dark Mode Toggle ADR-055 tetap berlaku lintas seluruh
+section — lihat `IconButton` toggle di sidebar footer); komponen sederhana
+boleh diimpor langsung dan komponen kritis/luas memakai wrapper selektif.
+Setelah designer masuk, token yang sudah di-lock dipetakan ke Astryx theme +
+Tailwind token bridge.
 
 ---
 
