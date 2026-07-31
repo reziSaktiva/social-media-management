@@ -4,6 +4,58 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-31 — ADR-058 addendum: restyle avatar Channels + override no-shift → shift-on-hover
+
+Sesi kedua di tanggal yang sama, melanjutkan pekerjaan Claude Design ADR-058
+sebelumnya. King Rezi menunjukkan screenshot aplikasi lain sebagai referensi
+dan meminta dua perubahan visual/interaksi, plus satu catatan terbuka soal
+micro-offset tombol "+" yang belum final.
+
+### Added
+
+* `DECISIONS.md` — **ADR-058, addendum poin 10** (bukan ADR baru terpisah,
+  masih amandemen keputusan yang sama hari itu). Mendokumentasikan:
+  - Restyle leading element baris default Channels: logo platform polos
+    (flat square icon) → avatar bulat (placeholder inisial, treatment
+    sama seperti `.ws-avatar`) dengan badge kecil logo brand platform
+    (react-icons/fa6, warna brand tidak berubah) di-overlay di pojok
+    kanan-bawah avatar (konvensi story-ring badge). Badge count
+    scheduled-posts di kanan baris tidak berubah.
+  - **Override eksplisit poin 5 ("no-shift hover") → "shift-on-hover"**
+    untuk drag-handle: drag-handle kini muncul di paling kiri baris (di
+    luar avatar, bukan lagi di ruang cadangan permanen), dan saat hover
+    seluruh isi baris (avatar+badge+nama) ikut bergeser ke kanan
+    (`margin-left` animasi). Alasan: permintaan eksplisit King Rezi
+    setelah melihat referensi screenshot aplikasi lain — bukan lagi
+    dianggap masalah interaksi seperti alasan poin 5 sebelumnya. Swap
+    count↔tombol quick-compose "+" di sisi kanan baris **tidak berubah**
+    — tetap no-shift/fixed-slot.
+  - Catatan micro-adjustment tombol "+" (`.channel-add`, `top: 1px; left:
+    -1px` menimpa `inset: 0` untuk sisi itu) masih dikonfirmasi King Rezi
+    sebagai "kurang pas", tapi sengaja tidak diiterasi lagi di Claude
+    Design sekarang — akan disesuaikan sendiri saat implementasi kode
+    `apps/web`. Dicatat sebagai known imperfection, bukan final.
+* `navigation-patterns.md` — section "Channels (Sidebar)" (diagram + isi
+  baris + state hover) dan baris NP-D14 di Decision Log diperbarui: bahasa
+  "no-shift" untuk drag-handle diganti "shift-on-hover" (dengan penjelasan
+  override), sementara swap count↔"+" tetap ditandai no-shift/fixed-slot.
+  Isi baris juga diperbarui menyebut avatar+badge overlay, bukan lagi
+  logo platform polos.
+* `PROJECT_STATE.md` — bullet Completed ADR-058 dan Recent Decisions
+  diperbarui untuk mencerminkan restyle avatar + override shift-on-hover;
+  Next Tasks (implementasi kode `apps/web` untuk Channels) ditambahkan
+  catatan terbuka bahwa posisi pixel tombol "+" belum final — jangan
+  disalin sebagai source of truth pasti saat coding nanti.
+
+### Implementasi
+
+* Masih visual-only di Claude Design (7 layar KSP bersidebar +
+  `components/navigation.html` + App Prototype yang iframe ke template
+  yang sama). **Implementasi kode `apps/web` untuk Channels tetap belum
+  berjalan** — menyusul di siklus implementasi berikutnya.
+
+---
+
 ## 2026-07-31 — ADR-058: Sidebar "Channels" — quick-glance daftar akun terhubung
 
 King Rezi meminta section baru di sidebar untuk melihat status akun media

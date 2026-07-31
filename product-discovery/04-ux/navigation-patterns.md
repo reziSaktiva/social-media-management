@@ -149,27 +149,29 @@ Daftar akun media sosial yang terhubung, ditampilkan sebagai quick-glance list �
 
 ```
 Default (tidak di-hover):
-  📷 @kopiselasar          8     ← scheduled posts count
-                          Active
+  (●IG) @kopiselasar          8     ← avatar bulat + badge logo brand overlay; 8 = scheduled posts count
+                             Active
 
 Hover:
-  ⠿ 📷 @kopiselasar   [+]        ← drag handle + quick-compose
-                          Active
+  ⠿  (●IG) @kopiselasar   [+]       ← drag handle muncul di kiri (di luar avatar); seluruh isi baris bergeser ke kanan
+                             Active
 ```
 
-**Isi tiap baris:** logo brand platform (icon, bukan teks nama platform) + nama akun/handle (`@kopiselasar` atau nama halaman seperti `Kopi Selasar`, mengikuti konvensi KSP-08) + status badge (Active/Disconnected — Badge yang sama dengan KSP-08, tidak ada warna status baru).
+**Isi tiap baris:** avatar bulat (placeholder inisial, treatment sama seperti `.ws-avatar`) dengan badge kecil logo brand platform (`react-icons` fa6, warna brand tidak berubah) di-overlay di pojok kanan-bawah avatar (konvensi story-ring badge) — bukan lagi logo platform polos (flat square icon) — + nama akun/handle (`@kopiselasar` atau nama halaman seperti `Kopi Selasar`, mengikuti konvensi KSP-08) + status badge (Active/Disconnected — Badge yang sama dengan KSP-08, tidak ada warna status baru).
 
 **State default:** badge angka menampilkan jumlah post **scheduled** (belum tayang) untuk akun tersebut.
 
-**State hover:** badge count digantikan tombol quick-compose "+" (membuka Draft Editor/KSP-05 kosong dengan akun ini otomatis ter-pre-select di Account Selector); drag handle muncul di kiri icon untuk reorder. Reorder ini **personal per user** — urutan tampilan bisa berbeda antar anggota tim, bukan urutan shared workspace.
+**State hover:** badge count digantikan tombol quick-compose "+" (membuka Draft Editor/KSP-05 kosong dengan akun ini otomatis ter-pre-select di Account Selector); drag handle muncul di paling kiri baris (di luar avatar) untuk reorder. Reorder ini **personal per user** — urutan tampilan bisa berbeda antar anggota tim, bukan urutan shared workspace.
 
-**No-shift hover (wajib):** baik drag handle maupun swap count↔tombol "+" tidak boleh menggeser icon/nama akun saat di-hover — ruang keduanya dicadangkan permanen di layout, bukan muncul/hilang begitu saja.
+**Shift-on-hover untuk drag handle (revisi ADR-058, addendum):** drag handle muncul di luar ruang avatar, sehingga saat hover **seluruh isi baris (avatar+badge+nama) ikut bergeser ke kanan** (`margin-left` animasi) untuk memberi ruang — ini menggantikan keputusan awal "no-shift" (ruang dicadangkan permanen). Perubahan atas permintaan eksplisit King Rezi setelah melihat referensi screenshot aplikasi lain.
+
+**Swap count ↔ tombol "+" tetap no-shift:** berbeda dari drag handle di atas, slot count/tombol "+" di sisi kanan baris tetap **fixed-slot** — tidak pernah menggeser konten, hanya isinya yang berganti (count → "+") saat hover. Ini tidak berubah dari keputusan awal.
 
 **Klik channel berstatus Disconnected/Expired:** deep-link ke `Workspace Settings → Connected Accounts` — memperluas pola "Status Indicator → Settings" (lihat Contextual Navigation Pattern di bawah), bukan pola baru.
 
 **Scroll independen:** list ini scroll sendiri (tidak ikut men-scroll seluruh sidebar) supaya zona bawah (Notifications/User Avatar) tetap selalu terlihat walau akun terhubung banyak.
 
-Lihat NP-D14 di Decision Log untuk keputusan lengkap (ADR-058).
+Lihat NP-D14 di Decision Log untuk keputusan lengkap (ADR-058, termasuk addendum shift-on-hover).
 
 ---
 
@@ -447,7 +449,7 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | NP-D11 | Draft Editor (New Post & Edit Draft) jadi **modal overlay fullscreen**, mengoverride NP-D02 | Ingin New Post/Edit Draft terasa lebih cepat/ringan tanpa pindah halaman, konsisten pola tools lain — trade-off kehilangan konteks visual Calendar/Queue (alasan asli NP-D02) diterima sadar demi kecepatan alur kerja. Route lama dihapus total (modal-only, tanpa deep-link URL). Resume unsaved state (localStorage) hanya untuk New Post, tidak untuk Edit Draft (ADR-052) | NP-P02, UXP-04 |
 | NP-D12 | Sidebar mendapat CTA "+ New Post" pinned (di bawah Workspace Selector, di atas nav items), tersedia dari section manapun | Sebelumnya CTA New Post hanya ada di layar Calendar/Queue/Drafts (NP-D09) — pengguna di Home/Engage/Analyze harus pindah section dulu ke Publish untuk membuat post baru. Pola umum di tools sejenis (CTA utama di puncak sidebar) menghilangkan langkah ekstra ini (ADR-053) | UXP-01, NP-P01 |
 | NP-D13 | Setelah aksi terminal Draft Editor (Save as Draft / Schedule / Publish Now), pengguna diarahkan ke sub-screen **tujuan** (Drafts / Queue / History-sementara-Calendar) — bukan kembali ke sub-screen asal seperti tombol Close | Sidebar CTA (NP-D12) membuat Draft Editor bisa dibuka dari section manapun; pengguna perlu langsung melihat hasil aksinya di section Publish yang relevan, bukan tertinggal di section asal yang sudah tidak berkaitan dengan konten yang baru diproses (ADR-054). Tidak mengubah NP-D05 (kasus berbeda: link status error → Settings) | UXP-04 |
-| NP-D14 | Sidebar mendapat section "Channels" — quick-glance daftar akun terhubung (icon brand + nama akun + status), antara navigation items dan zona bawah, scroll independen. Default: scheduled-posts count. Hover: drag handle (reorder personal per user) + tombol quick-compose "+" (buka Draft Editor, akun pre-selected) — keduanya no-shift (ruang dicadangkan permanen). Klik channel bermasalah → Settings (perluasan pola existing) | King Rezi ingin visibilitas status channel + jalan pintas compose per akun tanpa keluar dari layar kerja; posisi di luar 5 nav item menjaga sidebar tetap berbasis alur kerja, bukan daftar entitas (P-IA-01) (ADR-058) | UXP-01, UXP-04, NP-P01 |
+| NP-D14 | Sidebar mendapat section "Channels" — quick-glance daftar akun terhubung (avatar bulat + badge logo brand overlay + nama akun + status), antara navigation items dan zona bawah, scroll independen. Default: scheduled-posts count. Hover: drag handle muncul di kiri baris (reorder personal per user, **shift-on-hover** — seluruh isi baris ikut bergeser, addendum ADR-058 mengoverride keputusan awal "no-shift") + tombol quick-compose "+" (buka Draft Editor, akun pre-selected — **tetap no-shift/fixed-slot**, tidak berubah). Klik channel bermasalah → Settings (perluasan pola existing) | King Rezi ingin visibilitas status channel + jalan pintas compose per akun tanpa keluar dari layar kerja; posisi di luar 5 nav item menjaga sidebar tetap berbasis alur kerja, bukan daftar entitas (P-IA-01); shift-on-hover drag handle dipilih ulang mengikuti referensi screenshot aplikasi lain atas permintaan eksplisit King Rezi (ADR-058) | UXP-01, UXP-04, NP-P01 |
 
 ---
 
