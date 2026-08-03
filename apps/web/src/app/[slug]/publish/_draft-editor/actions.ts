@@ -1,16 +1,19 @@
 "use server";
 
-import type { ContentFormat, SocialPlatform } from "@social/shared";
-import { asConnectedAccountId, asPostId, asUserId } from "@social/shared";
+import type { SocialPlatform } from "@social/shared";
+import { asPostId, asUserId } from "@social/shared";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { PublishingService, SchedulePostsUseCase } from "@/domains/publishing";
+import {
+  PublishingService,
+  resolveScheduleTargets,
+  SchedulePostsUseCase,
+} from "@/domains/publishing";
 import { WorkspaceService } from "@/domains/workspace";
 import { auth } from "@/lib/better-auth/auth";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { workspaceRepository } from "@/lib/repositories/workspace";
-import { ValidationError } from "@/lib/utils/errors";
 
 async function resolveWorkspaceAndSession(slug: string) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -146,28 +149,7 @@ export async function scheduleDraftAction(
   const connectedAccounts = await workspaceService.listConnectedAccounts(
     workspace.id,
   );
-  const connectedAccountById = new Map(
-    connectedAccounts.map((account) => [account.id, account]),
-  );
-
-  const targets = input.targets.map((target) => {
-    const account = connectedAccountById.get(
-      asConnectedAccountId(target.connectedAccountId),
-    );
-    if (!account) {
-      throw new ValidationError(
-        "Salah satu akun yang dipilih tidak ditemukan di daftar akun terhubung workspace ini.",
-      );
-    }
-
-    return {
-      connectedAccountId: account.id,
-      platform: account.platform,
-      contentFormat: target.contentFormat as ContentFormat,
-      platformOptions: target.platformOptions,
-      outstandAccountId: account.outstandAccountId,
-    };
-  });
+  const targets = resolveScheduleTargets(connectedAccounts, input.targets);
 
   const scheduled = await new SchedulePostsUseCase(
     publishingRepository,
