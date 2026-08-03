@@ -152,7 +152,7 @@ fase aktif di file ini.
 ## Setelah mengubah sesuatu
 
 - Update `project-manager/PROJECT_STATE.md` bila progress / next tasks berubah.
-- Catat di `project-manager/CHANGELOG.md`.
+- Catat di `project-manager/COMPLETE_TASK.md` (append entri baru saja — jangan baca isi lengkapnya kecuali diperintah eksplisit King Rezi).
 - Insight diskusi penting → `project-manager/CONVERSATIONS.md`.
 - Keputusan material → ADR di `project-manager/DECISIONS.md`.
 

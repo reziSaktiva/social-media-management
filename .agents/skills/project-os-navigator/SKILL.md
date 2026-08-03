@@ -7,13 +7,22 @@ description: Project OS navigator untuk Social Media Management project. Memandu
 
 Skill ini mendefinisikan cara AI berperilaku saat bekerja pada project Social Media Management. Ikuti panduan ini untuk setiap jenis interaksi.
 
-## Langkah Pertama: Load Context
+## Langkah Pertama: Load Context (Cascade 3 Tingkat)
 
-Sebelum merespons apapun, baca file-file berikut secara berurutan:
+Jangan langsung baca semua dokumen `project-manager/` secara penuh untuk setiap pesan — itu boros token untuk pertanyaan sederhana. Eskalasi bertahap, berhenti secepat mungkin begitu informasi sudah cukup untuk menjawab:
 
-1. `project-manager/PROJECT_STATE.md` — phase, milestone, dan progress saat ini
+**Tingkat 1 — Fakta cepat / lookup teknis** (stack, konvensi, boundary domain, pola implementasi, dsb — bukan soal status/keputusan):
+- Cukup baca `context/ctx-*.md` yang relevan (lihat `context/README.md` untuk peta file). Tidak perlu buka `project-manager/` sama sekali.
+
+**Tingkat 2 — Status / progress / pertanyaan umum** (fase sekarang, next task, kenapa satu keputusan diambil, dsb — bukan minta kerjaan):
+- Baca **section "Snapshot"** di paling atas `project-manager/PROJECT_STATE.md` (~15-20 baris — phase/milestone, active mode, top next tasks, top blocker). Jangan baca seluruh isi `PROJECT_STATE.md`.
+- Kalau pertanyaan menyebut ADR spesifik, buka **hanya** file `project-manager/decisions/ADR-XXX-*.md` itu (lihat indeksnya di `project-manager/DECISIONS.md`). Jangan baca seluruh isi folder `project-manager/decisions/`.
+
+**Tingkat 3 — Task nyata** (Pekerjaan Baru, Planning Change, Bug/Inkonsistensi — mode 3/4/5 di bawah): baca berurutan penuh:
+
+1. `project-manager/PROJECT_STATE.md` — seluruh file (phase, milestone, next tasks, known issues, blockers)
 2. `project-manager/PROJECT_RULES.md` — aturan dan prinsip project
-3. `project-manager/DECISIONS.md` — keputusan yang telah disepakati
+3. `project-manager/DECISIONS.md` — indeks ADR; buka file `project-manager/decisions/ADR-XXX-*.md` spesifik yang relevan dengan task ini
 4. `project-manager/PROJECT_OVERVIEW.md` — gambaran project
 
 Jika diskusi menyentuh domain spesifik, baca juga dokumen relevan dari:
@@ -94,9 +103,9 @@ Lihat `project-manager/PROJECT_RULES.md` bagian **Document Type Classification**
 4. Ikuti format dokumen yang konsisten dengan dokumen existing (lihat contoh di folder yang sama).
 5. Setelah selesai, update:
    - `project-manager/PROJECT_STATE.md` — progress dan next tasks
-   - `project-manager/CHANGELOG.md` — catat apa yang berubah/ditambahkan
+   - `project-manager/COMPLETE_TASK.md` — tambahkan entri baru di bagian atas (append; **jangan** baca entri lama di bawahnya, lihat peringatan di kepala file)
 
-**Format CHANGELOG.md entry:**
+**Format entri baru di COMPLETE_TASK.md:**
 ```
 ## [YYYY-MM-DD]
 ### Added
@@ -127,7 +136,7 @@ Lihat `project-manager/PROJECT_RULES.md` bagian **Document Type Classification**
 - Repository strategy
 - Domain / bounded context
 
-3. Buat ADR dengan format:
+3. Buat file ADR baru `project-manager/decisions/ADR-[NNN]-[slug-judul].md` (satu file per ADR, bukan lagi append inline ke `DECISIONS.md`) dengan format:
 
 ```
 ## Decision ADR-[NNN]
@@ -152,9 +161,11 @@ Accepted
 - [alternatif yang tidak dipilih]
 ```
 
+Lalu tambahkan satu baris ke tabel indeks di `project-manager/DECISIONS.md` (ADR# | Title | Status | Date | Ringkasan 1-baris | link file), di baris paling atas (indeks terurut terbaru-di-atas).
+
 4. Update dokumen yang terdampak.
-5. Update `PROJECT_STATE.md` — section Recent Decisions.
-6. Update `CHANGELOG.md`.
+5. Update `PROJECT_STATE.md` — section **Snapshot** (kalau relevan dengan next tasks/blocker) dan **Recent Decisions (Ringkasan)** (geser satu ADR terlama keluar dari daftar 5 kalau sudah penuh).
+6. Tambahkan entri baru di bagian atas `COMPLETE_TASK.md` (append; jangan baca isi lama).
 
 ---
 
@@ -166,7 +177,7 @@ Accepted
 1. Identifikasi dokumen mana yang terlibat dan apa yang bertentangan.
 2. Tentukan dokumen mana yang menjadi **Source of Truth** (biasanya baseline yang lebih awal atau yang sudah di-ADR).
 3. Perbaiki dokumen yang bertentangan agar selaras dengan Source of Truth.
-4. Catat perbaikan di `CHANGELOG.md` dengan section `### Fixed`.
+4. Catat perbaikan sebagai entri baru di bagian atas `COMPLETE_TASK.md` dengan section `### Fixed`.
 5. Jika bug mengindikasikan keputusan yang belum terdokumentasi, buat ADR.
 
 ---
@@ -196,8 +207,11 @@ social-media-management/
 │   ├── ARCHITECTURE_OVERVIEW.md → High-level architecture (blueprint Figma)
 │   ├── PROJECT_RULES.md     → Cara bekerja
 │   ├── PROJECT_STATE.md     → Progress saat ini ← update setiap ada perubahan
-│   ├── DECISIONS.md         → Keputusan penting ← update jika ada keputusan baru
-│   ├── CHANGELOG.md         → Riwayat perubahan ← update setiap sesi
+│   │                           (baca "Snapshot" dulu untuk lookup cepat)
+│   ├── DECISIONS.md         → Indeks ringkas ADR ← tambah 1 baris index per ADR baru
+│   ├── decisions/           → Satu file per ADR (ADR-XXX-slug.md) ← full text di sini
+│   ├── COMPLETE_TASK.md     → Riwayat lengkap task selesai ← append entri baru tiap
+│   │                           sesi, ⚠️ JANGAN dibaca AI kecuali diperintah eksplisit
 │   ├── CONVERSATIONS.md     → Log diskusi penting ← update jika ada insight
 │   └── BRAINSTORM.md        → Bank ide ← update dari sesi brainstorm
 └── product-discovery/       → Source of Truth produk: business s/d engineering

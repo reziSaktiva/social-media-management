@@ -1,16 +1,29 @@
 # PROJECT STATE
 
+## Snapshot
+
+* **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
+* **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
+* **Top Next Tasks:**
+  1. Sidebar "Channels" (ADR-058) — implementasi kode menyusul
+  2. Sidebar CTA "+ New Post" (ADR-053) — implementasi kode menyusul
+  3. Publish Now (ADR-047) — implementasi menyusul
+* **Blocker:** Tidak ada blocker aktif. Known issue teratas: dependency Transactional Email Provider belum ditetapkan (tidak memblokir M8 awal).
+* Detail penuh ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
+
+---
+
 ## Metadata
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.33     |
+| Version      | 1.0.35     |
 | Status       | Active     |
 | Last Updated | 2026-08-03 |
 
 ---
 
-# Current Status
+## Current Status
 
 | Item              | Value                            |
 | ----------------- | -------------------------------- |
@@ -22,7 +35,7 @@
 
 ---
 
-# Current Focus
+## Current Focus
 
 M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
 
@@ -44,7 +57,7 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
 
 ---
 
-# Active Conversation Mode
+## Active Conversation Mode
 
 Current Mode: Ready for Development
 
@@ -67,7 +80,7 @@ Restricted Actions:
 
 ---
 
-# Milestone Progress
+## Milestone Progress
 
 | Milestone                    | Status         |
 | ---------------------------- | -------------- |
@@ -84,504 +97,7 @@ Restricted Actions:
 
 ---
 
-# Completed
-
-* **AI Context — opsi A:** scaffold `context/` (`README.md` + 8 `ctx-*.md`) sebagai indeks + aturan operasional; Product/User di `ctx-business`, UX di `ctx-design`, coding rules di `ctx-development`, pola fitur di `ctx-implementation`. Update `AGENTS.md` + root `README.md`.
-* Membuat `AGENTS.md` di root — pintu masuk AI agent; merujuk Project OS, skills, aturan keras M8, dan struktur `context/`.
-* Memasang official agent skills di `.agents/skills/` + `skills-lock.json`
-  (Prisma, Better Auth, Vercel React, Supabase). Skill UI lama sudah dihapus
-  setelah Astryx ditetapkan sebagai fondasi.
-* Membuat `project-manager/ARCHITECTURE_OVERVIEW.md` — High-Level Architecture Overview sebagai blueprint Figma (System Context & Containers + Internal Layers & Domains).
-* Menentukan arah project.
-* Memilih Hybrid Monorepo sebagai strategi repository.
-* Memilih Bun sebagai JavaScript runtime.
-* Memilih Next.js sebagai framework utama.
-* Menentukan penggunaan Domain-Driven Design (DDD).
-* Menentukan penggunaan Modular Monolith Architecture.
-* Menentukan Outstand sebagai external integration provider.
-* Menetapkan Target Market:
-  Marketing Team (utama), Startup dan Digital Agency (sekunder).
-* Membuat dokumentasi dasar Project OS.
-* Menyelesaikan dokumentasi `product-discovery/01-business/`.
-* Menyelesaikan Business Review untuk `product-discovery/01-business/`.
-* Menetapkan `product-discovery/01-business/` sebagai Baseline v1.0 (ADR-007).
-* Menyelesaikan dokumentasi `product-discovery/02-product/`.
-* Menyelesaikan Product Review lintas dokumen pada `product-discovery/02-product/`.
-* Menambahkan `product-discovery/02-product/future-roadmap.md` untuk melengkapi artefak Product Planning.
-* Menetapkan `product-discovery/02-product/` sebagai Baseline v1.0 (ADR-008).
-* Menyelesaikan dokumentasi `product-discovery/03-user/` (9 dokumen).
-* Menyelesaikan User Discovery Review untuk `product-discovery/03-user/`.
-* Menetapkan `product-discovery/03-user/` sebagai Baseline v1.0 (ADR-009).
-* Menyelesaikan M1 — Discovery.
-* Menyelesaikan dokumentasi `product-discovery/04-ux/information-architecture.md`.
-* Menyelesaikan dokumentasi `product-discovery/04-ux/user-flows.md`.
-* Menyelesaikan dokumentasi `product-discovery/04-ux/navigation-patterns.md`.
-* Menyelesaikan dokumentasi `product-discovery/04-ux/key-screen-patterns.md`.
-* Membuat `product-discovery/02-product/roles-permissions.md` — definisi 4 roles (Owner, Admin, Manager, Creator), set status konten kanonikal, dan aturan transisi per role.
-* Mencatat ADR-012 di `DECISIONS.md` — addendum Product Baseline untuk dokumen roles-permissions.
-* Menyelesaikan UX Planning Review — semua 4 inkonsistensi (REVIEW-01 s/d REVIEW-04) telah diperbaiki.
-* Menetapkan `product-discovery/04-ux/` sebagai UX Planning Baseline v1.0 (ADR-013).
-* Menyelesaikan M4 — UX Planning.
-* Menyelesaikan dokumentasi `product-discovery/05-architecture/domain-model.md` — 10 bounded context, context map, shared types, dan domain boundary rules.
-* Menyelesaikan dokumentasi `product-discovery/05-architecture/database-strategy.md` — multi-tenancy RLS, 22 tabel untuk 10 BC, storage strategy, index strategy, dan soft delete strategy.
-* Menyelesaikan dokumentasi `product-discovery/05-architecture/application-layer.md` — 4-layer stack, Next.js entry point patterns, service contracts per BC, repository pattern, cross-domain communication, dan error handling strategy.
-* Menyelesaikan dokumentasi `product-discovery/05-architecture/integration-layer.md` — Anti-Corruption Layer (OutstandAdapter), ConnectedAccount OAuth flow, publishing flow, webhook handling, engagement sync, analytics sync, dan error handling strategy.
-* Menyelesaikan dokumentasi `product-discovery/05-architecture/background-jobs.md` — PostgreSQL job queue, Railway Cron, 4 job types (webhook retry, post notification, engagement sync, analytics sync), dan retry strategy.
-* Menyelesaikan dokumentasi `product-discovery/05-architecture/realtime-strategy.md` — Supabase Realtime untuk notifikasi in-app, manual refresh patterns, notification type registry, dan RLS subscription rules.
-* Menyelesaikan dokumentasi `product-discovery/05-architecture/auth-architecture.md` — Better Auth, HTTP-only session cookie, Middleware workspace context resolution, RBAC di Application Service, dan RLS defense-in-depth.
-* Menyelesaikan Architecture Review `product-discovery/05-architecture/` — 8 inkonsistensi ditemukan dan diperbaiki (ARCH-REVIEW-01 s/d ARCH-REVIEW-08), meliputi: nama tabel notification, klarifikasi RLS dual-context, penambahan `background_jobs` ke database-strategy, media signed URL, eliminasi circular dependency AI↔Publishing, perbaikan JOB-03, referensi `webhook_event_log`, dan konsistensi retry count.
-* Menetapkan `product-discovery/05-architecture/` sebagai System Architecture Baseline v1.0 (ADR-025).
-* Menyelesaikan M5 — System Architecture.
-* Menyelesaikan dokumentasi `product-discovery/06-engineering/deployment-infrastructure.md` — region Singapore/SEA, topologi Production + Staging, Supabase project terpisah per environment, arsitektur service Railway (web + cron), build/deploy pipeline, scaling, dan rollback strategy (ADR-028, ADR-029).
-* Menyelesaikan dokumentasi `product-discovery/06-engineering/auth-strategy.md` — konfigurasi Better Auth, provider (email/password + Google OAuth), session cookie, integrasi Supabase JWT dual-context untuk Realtime, dan konfigurasi per environment (ADR-030).
-* Menyelesaikan dokumentasi `product-discovery/06-engineering/database-orm.md` — Prisma sebagai ORM formal, batas Supabase client (Realtime/Storage), Prisma Migrate, Supavisor pooling, Better Auth Prisma adapter (ADR-031).
-* Menyelesaikan dokumentasi `product-discovery/06-engineering/cicd-pipeline.md` — GitHub Actions quality gates, promosi feature→staging→main, Railway CD, migrate on release (ADR-032).
-* Menyelesaikan dokumentasi `product-discovery/06-engineering/environment-management.md` — katalog env vars, secret native (Railway + `.env.local`), project Cloud `social-media-local` / staging / prod, rencana cloud→self-host (ADR-033).
-* Menyelesaikan dokumentasi `product-discovery/06-engineering/dx-tooling.md` — ESLint + Prettier, Lefthook + Vitest, script workspace & local setup (ADR-034).
-* Menyelesaikan dokumentasi `product-discovery/06-engineering/dependency-strategy.md` — caret ranges, lockfile root, penempatan dep, aturan shared package, update manual (ADR-035).
-* Menyelesaikan seluruh 8 dokumen M6 Engineering Planning.
-* Menyelesaikan Engineering Planning Review — 6 inkonsistensi ditemukan dan diperbaiki (ENG-REVIEW-01 s/d ENG-REVIEW-06).
-* Menetapkan `product-discovery/06-engineering/` sebagai Engineering Planning Baseline v1.0 (ADR-036).
-* Menyelesaikan M6 — Engineering Planning.
-* **M7 slice B — Monorepo inti:** root Bun Workspaces, `apps/web` (Next.js App Router + 9 domain modules + route placeholders), `packages/shared` (branded IDs, enums, value objects), root `README.md` / `.gitignore` / `tsconfig.json`; `bun run typecheck` & `bun run build` hijau.
-* Menetapkan lokasi env M7: `apps/web/.env.example` + `apps/web/.env.local` (EM-D04 dikunci di `environment-management.md`).
-* **M7 DX tooling:** ESLint + Prettier (root), Lefthook + lint-staged (`prepare`), Vitest di root + smoke test `@social/shared`; script root sesuai DX-D04; `git init` di root (branch `main`); verifikasi `lint` / `format:check` / `test` / `typecheck` hijau.
-* DX-D06 / DX-D07 dikunci di `dx-tooling.md` (Vitest config di root; Lefthook via `prepare`).
-* **M7 Prisma + Auth + env + CI (selesai):**
-  * `apps/web/prisma/schema.prisma` — identity_* (Better Auth) + tabel domain MVP + `background_jobs`; migrasi awal `20260717100000_init`.
-  * Prisma Client singleton (`src/lib/prisma/client.ts`); Prisma **7.x** — migrate via `prisma.config.ts` (`DIRECT_URL`), runtime via `@prisma/adapter-pg` (`DATABASE_URL`) (DO-D04).
-  * Better Auth skeleton (`src/lib/better-auth/auth.ts`) + route `/api/auth/[...all]`; JWT Realtime helper (AS-D03); Supabase client stubs (Realtime/Storage only).
-  * Env fail-fast (`src/lib/env.ts`) + `apps/web/.env.example` (EM-D04/EM-D05).
-  * `.github/workflows/ci.yml` — gates CI-D02 (install → prisma generate/validate → typecheck → lint → test).
-* **ADR-040 alignment selesai:** kontrak resmi Outstand sudah diselaraskan pada
-  Product/UX/Architecture/Engineering dan schema/migration. Ini menyelesaikan
-  alignment, bukan implementasi runtime.
-* **ADR-041 implementasi fondasi UI selesai:** Astryx Core, Neutral Theme, CLI,
-  dan StyleX dipasang dengan exact pin `0.1.8` / `0.19.0`; provider global,
-  CSS cascade Tailwind, token bridge, dan halaman smoke terintegrasi. Button,
-  Dialog, TextInput, Table, light/dark mode, CLI doctor, typecheck, lint, test,
-  browser interaction, serta Next.js 16 production build sudah terverifikasi.
-* **ADR-042 — Claude Design menggantikan Figma:** project `Social Media
-  Management` dibuat di Claude Design (token neutral interim, foundations,
-  components, 8 layar KSP-01–08). Workflow di `ctx-design.md`. Sinkronisasi
-  manual/on-request via tool `DesignSync`. Pointer project sekarang di
-  `context/ctx-design.md` — folder `design/` sudah dihapus (ADR-045).
-* **ADR-045 — Hapus folder `design/`:** paket handoff designer (`README.md`,
-  `DESIGN_OVERVIEW.md`, `DESIGN_BRIEF.md`, `DESIGN_ONEPAGER.html`, 2 PDF,
-  `_build-brief-pdf.mjs`) dihapus dari repo karena belum ada designer aktif
-  yang memakainya. Pointer project Claude Design dipindah ke
-  `context/ctx-design.md`. Tidak mengubah SoT token (`design-tokens.md`,
-  ADR-038) maupun status Claude Design sebagai handoff tool (ADR-042) — hanya
-  mencabut keberadaan folder `design/` itu sendiri. ~14 dokumen lain yang
-  merujuk `design/` diperbarui mengikuti keputusan ini.
-* **ADR-043 — API mobile-ready alignment selesai:** `application-layer.md`
-  (Route Handler v1 — Mobile Client, AL-D08) dan `auth-strategy.md` (Bearer
-  plugin, AS-D06) sudah diselaraskan; `auth-architecture.md` diperjelas
-  (AU-D11). Ini menyelesaikan alignment dokumentasi, bukan implementasi
-  runtime endpoint `/api/v1`.
-* **Migrasi Next.js 16 middleware → Proxy selesai:** `apps/web/src/middleware.ts`
-  di-rename menjadi `src/proxy.ts` (fungsi `middleware` → `proxy`), sesuai
-  https://nextjs.org/docs/messages/middleware-to-proxy. Behavior tidak
-  berubah — auth guard + workspace context injection tetap sama. Referensi
-  path di `monorepo-setup.md`, `database-orm.md`, `auth-strategy.md` sudah
-  disesuaikan. Warning deprecation di `bun run dev` sudah hilang.
-* **M8 bootstrap — Supabase Cloud + DB migrate selesai:** project Supabase
-  Cloud `social-media-local` dibuat (region SEA), `apps/web/.env.local` diisi,
-  `bun run db:migrate` diterapkan — 4 migrasi (`init`, `add_content_format`,
-  `align_outstand_contract`, dan satu migrasi baru untuk menyamakan index
-  `engagement_inbox_items` yang ter-truncate Postgres) sukses; `prisma migrate
-  status` konfirmasi database up to date.
-* **ADR-044 — rename env var Supabase publishable key:**
-  `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` di
-  `environment-management.md`, `.env.example`, `env.ts`, dan
-  `lib/supabase/client.ts`, mengikuti sistem API key baru Supabase (anon key
-  legacy dijadwalkan deprecated).
-* **M8 — Auth Flows UI selesai (Login, Register, Forgot/Reset Password):**
-  4 layar di `apps/web/src/app/(auth)/` (login, register, forgot-password,
-  reset-password baru) mengikuti referensi Claude Design (ADR-042 supplement
-  Auth Flow) dan workflow Astryx CLI wajib. Better Auth React client
-  (`lib/better-auth/client.ts`), `googleOAuthEnabled()` (tombol Google
-  disembunyikan otomatis bila env kosong), dan `sendResetPassword` stub
-  (log tautan reset ke console, testable lokal tanpa provider email AS-D04).
-  Typecheck/lint hijau; sign-up diverifikasi end-to-end via API. Verify-email
-  disengaja tidak dibangun dulu karena `requireEmailVerification` masih
-  nonaktif (AS-D04 belum ada provider).
-* **M8 — Workspace Onboarding selesai:** Onboarding Flow (First Login) dari
-  `auth-architecture.md` diimplementasikan end-to-end — `proxy.ts` (session
-  cookie guard via `getSessionCookie`, tanpa DB call), root `page.tsx`
-  (redirect `/login` / `/{slug}/home` / `/onboarding`), dan `/onboarding`
-  (form 1 field nama workspace + Server Action `createWorkspaceAction`).
-  `WorkspaceService` (BC-02) pertama kali diimplementasikan
-  (`createWorkspace` — validasi nama, slug auto-generate + retry suffix saat
-  bentrok, transaksi Prisma Workspace+WorkspaceMember Owner;
-  `getDefaultWorkspaceSlugForUser` untuk orkestrasi redirect) + repository
-  Prisma di `src/lib/repositories/workspace/` (MS-D05). Hierarki
-  `ApplicationError` (`application-layer.md`) diimplementasikan di
-  `src/lib/utils/errors.ts`. `MemberStatus` ditambahkan ke `packages/shared`.
-  Diverifikasi: typecheck/lint/test hijau, alur end-to-end lewat curl
-  (login → redirect `/onboarding` → create workspace di database Supabase
-  Cloud nyata → redirect `/{slug}/home`), dan proxy guard (unauthenticated →
-  `/login`, halaman auth publik tetap 200). Invite-teammate & connect-account
-  **tidak** termasuk scope ini — sudah ada Server Action & route Settings
-  terpisah.
-* **M8 — Workspace App Shell selesai:** layout `[slug]` diganti dari
-  placeholder kosong menjadi `AppShell` + `SideNav` persisten (Home/Publish/
-  Engage/Analyze/Start Page) sesuai `navigation-patterns.md`. Sidebar header
-  menampilkan nama workspace aktif (`WorkspaceService.getWorkspaceBySlug` +
-  `IWorkspaceRepository.findBySlug` baru), footer berisi user dropdown dengan
-  Profile dan Logout (`authClient.signOut`) — menutup gap sebelumnya belum ada
-  jalan logout dari UI.
-* **M8 — Draft Editor (mock data) selesai:** `/publish/drafts/new` (KSP-05)
-  diimplementasikan — Caption Editor, Account Selector, Content Format
-  Selector per akun sesuai matriks ADR-039 (IG/FB: Post/Reel/Story;
-  Pinterest: Pin + title/link; platform lain: Post), Schedule Picker, dan
-  Confirmation Summary dialog sebelum scheduling. Connected accounts masih
-  mock data — `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` belum tersedia,
-  sehingga Save as Draft / Schedule hanya menampilkan notice mock, belum
-  persist ke database. Halaman placeholder Drafts kini link ke editor ini
-  via CTA New Post. Persistensi nyata + integrasi `OutstandAdapter` adalah
-  follow-up ADR-040.
-* Dev config: `next.config.ts` — `allowedDevOrigins` menambahkan hostname
-  tunnel ngrok untuk uji lokal (nilai efemeral, perlu diupdate manual saat
-  domain tunnel berubah).
-* **M8 — Publishing MVP: persistensi nyata "Save as Draft" selesai:**
-  `PublishingService.saveDraft()` (domain layer, diuji unit dengan fake
-  repository) + `publishingRepository.createDraft()` (implementasi Prisma
-  untuk `IPublishingRepository`, pola sama dengan `lib/repositories/
-  workspace`) + `saveDraftAction` di `/publish/drafts/new` yang me-resolve
-  session + workspace by slug lalu memanggil `PublishingService`. Tombol
-  "Save as Draft" di Draft Editor kini persist ke database nyata (bukan
-  mock notice) — diverifikasi via browser (ngrok tunnel) dan cek langsung
-  row di Supabase. "Schedule" tetap mock sampai `OutstandAdapter`/kredensial
-  Outstand siap (di luar scope ini).
-* **ADR-046 — implementasi routing (Home/Engage/Settings & Publish, semua
-  final):** `[slug]/home` → `[slug]`, `engage/inbox` → `engage`,
-  `settings/general` → `settings` — ketiganya render langsung di root,
-  final. Redirect target di `app/page.tsx`, `onboarding/actions.ts`,
-  `onboarding/page.tsx` diupdate dari `/${slug}/home` → `/${slug}`.
-  `WorkspaceSideNav` — href Home ke root workspace, `isSelected` Home pakai
-  exact match (bukan `startsWith`, karena semua route lain juga diawali
-  `/${slug}`). Publish sempat ikut pola yang sama (`publish/calendar` →
-  `publish`), tapi ditemukan `/publish/calendar` tertangkap salah oleh
-  `publish/[postId]` — di-revert jadi `publish/page.tsx` redirect ke
-  `/publish/calendar` (`calendar/` dihidupkan lagi). Diverifikasi live via
-  ngrok tunnel (akun test Raka Pratama): `/insvire`, `/insvire/publish`
-  (redirect ke `/insvire/publish/calendar`), `/insvire/engage`,
-  `/insvire/settings` semua bekerja tanpa 404; `/insvire/engage/inbox` dan
-  `/insvire/settings/general` (path lama) terkonfirmasi 404 bersih.
-  typecheck/lint/test hijau di setiap tahap.
-* **ADR-046 Amandemen Final (2026-07-29) — bentuk final `/publish`
-  diputuskan:** state interim di atas diformalkan sebagai keputusan
-  **permanen**, bukan sekadar sementara. `/{slug}/publish` tetap redirect
-  ke `/{slug}/publish/calendar`; `calendar/` (+ `calendar/[postId]`) tetap
-  jadi folder statis. Publish dikecualikan permanen dari pola root-render
-  ADR-046 karena satu-satunya section dengan sibling route dinamis
-  (`[postId]`) di level root. Dua alternatif dipertimbangkan dan ditolak:
-  root-render + rename `[postId]` ke path lain, dan root-render +
-  `[postId]` sebagai intercepting/parallel route (modal) — keduanya
-  menambah kompleksitas tanpa manfaat sepadan. Tidak ada perubahan kode;
-  hanya dokumentasi (`DECISIONS.md`, `monorepo-setup.md`,
-  `application-layer.md`) yang disinkronkan. Tidak ada task lanjutan yang
-  menggantung untuk topik ini.
-* **App Prototype Claude Design — fix navigasi back Draft Editor +
-  role switcher:** ditemukan tombol "Kembali ke Calendar" di Draft Editor
-  selalu paksa balik ke Calendar walau dibuka dari Queue/Drafts —
-  bertentangan `navigation-patterns.md` (NP-D02). Diperbaiki jadi
-  stack-aware (balik ke asal sebenarnya) + label ikut menyesuaikan. Role
-  switcher baru (Owner/Admin/Manager/Creator, dipetakan ke persona
-  Dimas/Maya/Raka/Sinta) ditambahkan di toolbar prototype, mendemokan
-  pembatasan akses per role dari `roles-permissions.md` di 4 layar: Draft
-  Editor (Schedule vs Kirim untuk Review), Engage (lock untuk Creator),
-  Connected Accounts (read-only untuk Manager/Creator), Analyze Dashboard
-  (detail disembunyikan untuk Creator). Owner dan Admin saat ini identik
-  secara visual di prototype (beda asli ada di layar Settings lain yang
-  belum jadi bagian 8 KSP screen).
-* **ADR-047 — Publish Now diangkat jadi fitur UX resmi:** audit
-  konsistensi (dipicu saat kerja App Prototype) menemukan
-  `application-layer.md` sudah menyebut method `publishNow` tapi UX
-  Baseline (`key-screen-patterns.md`) dan `roles-permissions.md` sama
-  sekali tidak mengenal konsep ini. Diputuskan: Publish Now jadi fitur
-  resmi (KSP-05-F12, bullet baru di `mvp-definition.md`), akses dibatasi
-  **identik** dengan Schedule (Owner/Admin/Manager, bukan Creator) —
-  konsisten dengan pola akses konten yang sudah ada, bukan tingkat akses
-  baru. Baris transisi `Draft → Published (Publish Now)` ditambahkan ke
-  tabel transisi status. Dokumentasi baseline sudah diselaraskan;
-  **implementasi kode dan App Prototype belum berjalan** — lihat Next
-  Tasks.
-* **Audit Safety Check / Double Confirmation seluruh aksi produk:**
-  dipicu diskusi Publish Now, ditemukan cuma 1 pola konfirmasi
-  terdokumentasi (Confirmation Summary, Schedule/Publish Now) dari
-  belasan aksi yang ada. Ditemukan juga kalimat usang di
-  `key-screen-patterns.md` yang mengklaim Schedule sebagai "satu-satunya
-  momen" konfirmasi — sudah diperbaiki jadi "satu-satunya pola" mengingat
-  sekarang dipakai 2 aksi.
-* **ADR-048 — Disconnect Account wajib dialog konfirmasi:** dari audit di
-  atas, Disconnect Account (KSP-08-F05) ternyata sama sekali tidak punya
-  spesifikasi konfirmasi walau screen-nya sudah ada (beda dari Remove
-  Member/Transfer Ownership/Delete Workspace yang screen-nya belum
-  pernah dirancang). Fungsi baru KSP-08-F07 (Disconnect Confirmation) +
-  "Pola: Disconnect Flow" + KSP-D14 ditambahkan — dialog peringatan
-  ringkas (bukan Confirmation Summary), mengingatkan post terjadwal tetap
-  di antrean (KSP-D09). Tidak ada perubahan RBAC. Implementasi App
-  Prototype dan kode belum berjalan.
-* **ADR-049 — Safety Check / Double Confirmation, kebijakan lintas
-  produk:** kerangka resmi (kriteria: irreversibel/mahal dibatalkan +
-  blast radius besar) + 2 tier (Tier 1: konfirmasi diperkuat — Transfer
-  Ownership, Delete Workspace; Tier 2: dialog standar — Delete Post,
-  Delete Media, Remove Member, Update Member Role, Cancel Schedule,
-  **Logout**). Diklasifikasikan sebagai pola lintas layar baru di
-  `key-screen-patterns.md`, bukan UXP baru (ux-principles.md membatasi
-  diri ke 7 prinsip bertelusur insight). Logout dipindah user ke Tier 2
-  (beda dari rekomendasi awal). Ditemukan juga: `deleteWorkspace` dan
-  `transferOwnership` **belum punya method service sama sekali** di
-  `application-layer.md` — gap terpisah (diselesaikan di ADR-050 di
-  bawah). Implementasi belum berjalan untuk seluruh aksi yang baru
-  diklasifikasikan (kecuali 3 yang sudah ada: Schedule, Publish Now,
-  Disconnect Account).
-* **ADR-050 — Transfer Ownership & Delete Workspace, method service
-  ditambahkan:** `deleteWorkspace` (Owner saja, cascade sesuai constraint
-  DB yang sudah ada, konfirmasi Tier 1) ditambahkan langsung tanpa
-  ambiguitas. `transferOwnership` ternyata punya fork nyata yang belum
-  pernah diputuskan (langsung vs butuh persetujuan target) — user
-  memilih **dua langkah**: `transferOwnership` (Owner memicu, set
-  `pendingOwnerTransferTo`, kirim notifikasi) + `acceptOwnershipTransfer`
-  (Admin target menerima, baru role bertukar), mirip pola
-  `inviteMember`/`acceptInvite` yang sudah ada. Field baru
-  `Workspace.pendingOwnerTransferTo` (`domain-model.md` DM-D11,
-  `database-strategy.md`), 2 `NotificationType` baru. Method service
-  sekarang lengkap — **UI/screen Workspace Settings → General masih
-  belum dirancang**, jadi implementasi tetap menunggu.
-* **Astryx agent docs resmi menggantikan workflow manual:** ditemukan
-  section "Workflow Astryx wajib" di `AGENTS.md` adalah tulisan manual
-  (dibuat saat ADR-041), bukan output CLI resmi. Digenerate ulang via
-  `astryx init --features agents --agent claude` → `apps/web/.claude/
-  CLAUDE.md` (component index 153 komponen, workflow `build → template →
-  component`, aturan styling/token, semua ditarik dari CLI v0.1.8
-  ter-pin, regenerate in-place setelah upgrade). `AGENTS.md` (rule #12 +
-  section workflow + mapping table) dan `DEVELOPER_WORKFLOW.md`
-  diperbarui untuk menunjuk ke file ini.
-* **MCP server Astryx (`xds`) ditambahkan:** `.mcp.json` baru di root,
-  menunjuk ke `https://astryx.atmeta.com/mcp` — expose `search`/`get` untuk
-  lookup komponen tanpa shell out ke CLI. `AGENTS.md` diberi catatan:
-  MCP untuk exploration, CLI lokal v0.1.8 tetap jadi sumber final karena
-  server MCP menunjuk versi live yang bisa beda dari yang ter-pin.
-* **ADR-051 — Claude Design: kebijakan fidelitas Astryx (foundations +
-  component library) selesai:** `foundations/` (color, type, layout) dan
-  `components/` (buttons, cards, dialog, forms, navigation, status-chips,
-  table) di project Claude Design ditulis ulang total — setiap warna,
-  radius, shadow, spacing, ukuran, dan tipografi sekarang disalin langsung
-  dari `@astryxdesign/core@0.1.8` + `@astryxdesign/theme-neutral@0.1.8`
-  (bukan CSS buatan tangan), diverifikasi via `bunx astryx docs <topic>`
-  dan swizzle sementara (dihapus segera setelah dibaca). Tiap file
-  component library mencantumkan anotasi komponen+props Astryx asli yang
-  direplikasi. Accent berubah dari placeholder rekaan (#48517A) ke accent
-  neutral theme asli (#262626, near-black; tetap placeholder brand per
-  ADR-038/041). 6 status konten dipetakan ke varian `Badge` asli
-  (neutral/warning/info/purple/success/error). `AppShell` dipetakan ke
-  `variant="section"` untuk mempertahankan arah hairline-divider yang
-  sudah ada. Diverifikasi visual via browser (server statis sementara,
-  dihapus setelah verifikasi) sebelum push ke Claude Design via
-  `DesignSync`.
-* **ADR-051 lanjutan — migrasi `templates/` selesai:** 13 layar (8 KSP + 5
-  Auth) dan App Prototype ditulis ulang mengikuti token Astryx asli
-  langsung (tanpa alias). Ditemukan `thumbnail.html` sempat rusak sejak
-  push pertama ADR-051 — mereferensikan `--status-failed-bg`/
-  `--status-published-bg` yang sudah dihapus dari sistem token baru —
-  sudah diperbaiki ke `--color-error`/`--color-success`. Ditemukan juga
-  alias singkatan `--text-xs/-sm/-lg` (bukan nama token Astryx asli)
-  masih dipakai aktif di banyak file — diganti ke nama asli
-  (`--font-size-sm`/`--font-size-lg`) di seluruh project, baru kemudian
-  seluruh blok "Legacy aliases" di `styles.css` dihapus total — tidak ada
-  lagi nama token buatan sendiri di project ini.
-* **Claude Design — 3 gap Critical Function vs 04-ux baseline
-  diperbaiki:** ditemukan saat audit sinkronisasi (lihat entri di atas),
-  langsung diimplementasikan di Claude Design atas permintaan user.
-  **KSP-01-F05** — item Today's Schedule/Recent Activity di-wire ke
-  Draft Editor/Calendar, Engagement Snapshot ke Engage, Analytics
-  Snapshot ke Analyze (class semantik baru `.home-schedule`/
-  `.home-activity`/`.home-engagement`/`.home-analytics` + handler baru
-  di `AppPrototype.dc.html`). **KSP-03-F05** — tombol reorder ↑/↓ di
-  tiap `queue-row` (`publish-queue.html`), menukar posisi DOM dengan
-  baris tetangga saat diklik. **KSP-06-F02** — 3 select filter (Akun/
-  Platform/Status) ditambahkan di `engage-inbox.html` dengan
-  `data-platform`/`data-status` per thread, filtering client-side via
-  `applyEngageFilter()` di App Prototype (termasuk empty-state "Tidak
-  ada interaksi untuk filter ini" sesuai State Handling KSP-06).
-* **Design-sync: kode `apps/web` disamakan dengan Claude Design (arah
-  kebalikan ADR-051) selesai:** Draft Editor (Card wrapper section form
-  dihapus, `FileInput` dropzone asli menggantikan tombol disabled, Schedule
-  Date+Time sejajar, action bar full-width via `StackItem`), Publish tabbar
-  baru (`publish-tabbar.tsx`, shared di `publish/layout.tsx`, tidak
-  menyentuh logic 3 placeholder tab lain), Drafts List (page-head + Card
-  wrap), Sidebar (`IconButton` notifikasi ke `/account/notifications`).
-  Auth screens (Login/Register/Forgot/Reset) diperiksa detail — sudah
-  selaras, tidak ada perubahan kode. Murni visual/structural — Publish Now
-  dan AI Caption Assist sengaja tidak ditambahkan (tunggu ADR-047 & AI
-  Assistant domain). Diverifikasi typecheck/lint hijau + browser end-to-end
-  lewat tunnel ngrok (tabbar, FileInput disabled state, "Save as Draft"
-  tetap persist tanpa regresi, notifikasi navigasi benar).
-* **ADR-052 Tahap 3 — implementasi kode Draft Editor sebagai modal
-  selesai:** New Post & Edit Draft kini `Dialog variant="fullscreen"` +
-  `Layout` (header/content/footer, pola `DialogFullscreenDialog` Astryx) di
-  `apps/web/src/app/[slug]/publish/_draft-editor/` (`context.tsx` — React
-  Context `DraftEditorProvider`/`useDraftEditor`, `modal.tsx`, `actions.ts`,
-  `status-badge.ts`), dipasang di `publish/layout.tsx` supaya modal
-  tampil di atas Calendar/Queue/Drafts manapun tanpa navigasi URL (NP-D11).
-  Route lama dihapus total: `drafts/new/`, `[postId]/` di
-  `calendar`/`queue`/`drafts` — **tidak** termasuk `history/[postId]`
-  (di luar scope, sesuai ADR-052). Domain `publishing` diperluas:
-  `listDrafts`, `getDraftById`, `updateDraft` (+ `updatedAt` di
-  `PublishingPostRecord`) — Drafts List (`/publish/drafts`) sekarang
-  menampilkan data asli dari database (bukan `EmptyState` statis lagi),
-  tiap row klik membuka Edit Draft dengan caption ter-isi dari server.
-  Resume Unfinished Post (KSP-05-F13, localStorage, New Post saja)
-  berfungsi nyata. **Penyimpangan sengaja dari mockup Claude Design:**
-  tombol "Publish Now" di footer **tidak** ikut diimplementasikan — ADR-047
-  mendokumentasikannya sebagai task terpisah yang belum disetujui untuk
-  dikerjakan; footer tetap 2 tombol (Save as Draft, Schedule) sama seperti
-  sebelumnya. Toggle Fullscreen/Standard di Claude Design juga sengaja
-  tidak ikut ke kode (murni alat banding internal, bukan bagian keputusan
-  final — default Fullscreen sudah dikunci). Diverifikasi end-to-end via
-  browser lewat tunnel ngrok (akun test Raka Pratama): New Post → Save as
-  Draft → close → draft muncul di list → klik row → Edit Draft dengan data
-  server → edit + save → update di tempat (tidak duplikat) → Resume
-  Unfinished Post dialog muncul benar saat New Post kosong sebelumnya
-  ditutup tanpa disimpan. `bun run typecheck`/`lint`/`test` (26 test)
-  hijau. Ditemukan & diperbaiki di tengah verifikasi: Drafts List tidak
-  ter-refresh otomatis setelah modal ditutup (Server Component page tidak
-  tahu ada perubahan) — ditambahkan `router.refresh()` setelah Save as
-  Draft berhasil.
-* **QA: aturan URL testing (ngrok) + akun test terdokumentasi:** karena
-  Better Auth pada setup project ini tidak bisa membaca session/cookie di
-  `localhost`, testing browser dilakukan lewat tunnel ngrok yang efemeran.
-  `.claude/agents/najwa-qa-engineer.md` diberi aturan wajib tanya URL
-  testing aktif ke user setiap sesi (jangan reuse URL lama) + pointer ke
-  `project-manager/QA_TEST_ACCOUNTS.md` (dokumen baru) berisi 1 akun test
-  yang sudah ada (Raka Pratama, Owner). Akun Manager/Creator ditunda sampai
-  fitur invite member selesai — bukan dibuat via database hack.
-* **ADR-053 — Sidebar CTA "+ New Post" pinned + ADR-054 — redirect ke
-  sub-screen tujuan setelah aksi terminal Draft Editor:** sidebar
-  (`navigation-patterns.md` NP-D01) mendapat CTA "+ New Post" baru pinned
-  di bawah Workspace Selector, tersedia dari section manapun (bukan cuma
-  Calendar/Queue/Drafts). Karena Draft Editor kini bisa dibuka dari
-  section manapun, perilaku redirect setelah aksi terminal diformalkan:
-  Save as Draft → Drafts, Schedule → Queue (sudah begini sejak awal,
-  baru diformalkan), Publish Now → History (sementara: Calendar, karena
-  History belum jadi layar). Kedua perubahan sudah diimplementasikan di
-  Claude Design (7 layar shell + `components/navigation.html` +
-  `styles.css` untuk CTA; `AppPrototype.dc.html` untuk redirect) dan
-  baseline UX (`navigation-patterns.md`, `key-screen-patterns.md`) sudah
-  diselaraskan. **Implementasi kode `apps/web` belum berjalan** untuk
-  kedua hal ini — menyusul di siklus implementasi berikutnya.
-* **ADR-055 — Light/Dark Mode Toggle diangkat jadi fitur resmi produk
-  (mengoverride "neutral theme selama M8", ADR-041):** diklarifikasi dulu
-  ke King Rezi (fitur resmi vs alat banding internal) — King Rezi memilih
-  fitur resmi. Toggle ditambahkan sebagai kontrol persisten di sidebar
-  footer (berdampingan user account dropdown), berlaku lintas seluruh
-  section. Default tetap Light saat load pertama; sengaja tidak dipersist
-  lintas full reload (menghindari flash tema salah sebelum ada keputusan
-  persistensi resmi). Tidak melanggar ADR-041 karena token dark mode sudah
-  native di Astryx (`@astryxdesign/theme-neutral@0.1.8`) — hanya meng-expose
-  mekanisme bawaan (`<Theme mode={mode}>`), bukan implementasi custom.
-  Diimplementasikan Claude Design (7 layar KSP + App Prototype,
-  `draft-editor.html` dikecualikan karena tidak ada sidebar) → kode
-  `apps/web` (`src/app/providers.tsx` `ThemeModeContext`/`useThemeMode` +
-  `workspace-side-nav.tsx` `IconButton` toggle) → QA browser end-to-end
-  (golden path lolos, konsistensi tema lintas navigasi SPA, reset ke Light
-  saat reload dikonfirmasi working as intended, tanpa regresi sidebar) →
-  review arsitektur (lolos, client component murni, tanpa import
-  domain/Prisma/Supabase/Outstand). Typecheck/lint/test (26 test) hijau.
-* **ADR-058 — Sidebar "Channels" (quick-glance daftar akun terhubung)
-  diimplementasikan di Claude Design:** section baru ditambahkan di sidebar
-  (antara 5 nav item dan zona bawah), tiap baris menampilkan avatar bulat
-  dengan badge kecil logo brand platform di-overlay (react-icons fa6,
-  bukan Lucide — dikonfirmasi tidak punya logo brand; restyle dari logo
-  platform polos, addendum sesi kedua) + nama akun/handle + status badge
-  (reuse Badge KSP-08). Default: badge scheduled-posts count; hover: drag
-  handle muncul di kiri baris (reorder personal per user, **shift-on-hover
-  — seluruh isi baris ikut bergeser**, override eksplisit King Rezi
-  terhadap keputusan awal "no-shift", addendum sesi kedua hari yang sama)
-  + tombol quick-compose "+" (Draft Editor, akun pre-selected) — swap
-  count↔tombol "+" ini **tetap no-shift/fixed-slot**, tidak ikut berubah.
-  Diterapkan ke 7 layar KSP + swatch `components/navigation.html` via
-  `DesignSync` (dikerjakan main agent langsung setelah subagent Neymar
-  tidak bisa mengakses tool `DesignSync` di sesinya — keterbatasan
-  lingkungan subagent, dicatat sebagai temuan). Baseline `navigation-
-  patterns.md` (NP-D14, section "Channels (Sidebar)") dan
-  `key-screen-patterns.md` (entry point KSP-05 & KSP-08) sudah
-  diselaraskan dengan shift-on-hover. **Implementasi kode `apps/web` belum
-  berjalan.** Micro-offset tombol "+" (`top: 1px; left: -1px`) masih
-  dikonfirmasi King Rezi sendiri sebagai "kurang pas" — bukan pixel-perfect
-  final, lihat Next Tasks.
-* **Claude Design — bug fix Content Format Selector hilang di New Post +
-  penambahan akun mock TikTok & Pinterest (catch-up ADR-037/ADR-039):**
-  ditemukan `buildDraftEditorMarkup` (`templates/app-prototype/
-  AppPrototype.dc.html`) cabang New Post tidak menampilkan `.fmt-row`
-  (radio Post/Reel/Story) untuk Instagram & Facebook — padahal cabang Edit
-  Draft sudah benar dan dokumentasi internal `templates/draft-editor.html`
-  menyatakan keduanya seharusnya identik. Sudah diperbaiki (default radio
-  "Post" untuk New Post, bukan "Reel" seperti contoh Edit Draft; state Edit
-  Draft tidak diubah). Atas permintaan eksplisit King Rezi (dikonfirmasi
-  scope "semua tempat"), TikTok & Pinterest ditambahkan sebagai akun
-  terhubung mock baru (status Active) di sidebar "Channels" 7 layar
-  screen, `settings-connected-accounts.html`, dan Draft Editor "Akun
-  Tujuan" (kedua state New Post & Edit Draft) — TikTok: checkbox saja
-  tanpa format selector (ADR-039, Post-only); Pinterest: checkbox + 3
-  field baru (Title/Destination link/Board) menggantikan format selector
-  (ADR-039 poin 2). Class baru `.pin-fields` ditambahkan di `styles.css`.
-  Warna TikTok `#0d1013` (reuse), Pinterest `#e60023` (brand red resmi);
-  ikon SVG dari Font Awesome Free (fa-tiktok, fa-pinterest). **Tidak perlu
-  ADR baru** — TikTok & Pinterest sudah resmi jadi bagian baseline produk
-  lewat ADR-037 (8 platform resmi) dan ADR-039 (matriks Content Format per
-  platform); pekerjaan ini murni menyusulkan visual Claude Design mengikuti
-  kedua ADR tersebut. Sengaja di luar scope: dialog konfirmasi Schedule/
-  Publish Now di `AppPrototype.dc.html` masih hardcode ringkasan Instagram
-  & Facebook saja — tidak diperluas karena TikTok/Pinterest default
-  unchecked (tidak pernah masuk ke dialog itu). Dikerjakan langsung dari
-  sesi utama (bukan subagent Neymar) karena keterbatasan teknis `DesignSync`
-  tidak bisa dimuat di sesi subagent (2026-07-31).
-* **ADR-059 — Fake OutstandAdapter: persistensi nyata "Schedule" selesai:**
-  karena `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli belum tersedia,
-  dibangun `IOutstandAdapter`/`FakeOutstandAdapter`/`getOutstandAdapter()`
-  factory (`domains/publishing/adapters/`, `lib/adapters/outstand/`,
-  scope hanya `schedulePost`, instant always-success, auto-detect dari env
-  dengan throw loud kalau env terisi tapi real adapter belum ada) supaya
-  fitur Schedule bisa lanjut tanpa menunggu kredensial asli.
-  `SchedulePostsUseCase` baru (`domains/publishing/services/
-  schedule-posts.use-case.ts`) — validasi format ADR-039 server-side
-  (`content-format-matrix.ts`, sebelumnya cuma ada di client), persist
-  post+target (status transition draft/ready_to_schedule → scheduled),
-  panggil adapter per target dengan outcome per-target (try/catch
-  individual, tidak all-or-nothing). Guard ownership `connectedAccountId`
-  vs `workspaceId` + guard status ditegakkan atomik di
-  `IPublishingRepository.schedulePost` (transaksi Prisma, rollback total
-  bila salah satu guard gagal). Tombol "Schedule" di Draft Editor sekarang
-  benar-benar persist ke database (bukan mock notice client-side lagi) —
-  diverifikasi end-to-end sampai row `publishing_posts`/
-  `publishing_post_targets` di Supabase (`outstandJobId` format
-  `fake-<uuid>`). Sekaligus menambahkan `WorkspaceService.
-  listConnectedAccounts` (query real `WorkspaceConnectedAccount`, dipakai
-  Draft Editor Account Selector, menggantikan `MOCK_ACCOUNTS` hardcoded) +
-  seed script manual `apps/web/prisma/seed-connected-accounts.ts` (2 akun
-  mock Instagram/Facebook untuk dev/QA tanpa OAuth asli) — ini sekaligus
-  partial-progress prasyarat Sidebar "Channels" (ADR-058), lihat Next
-  Tasks. `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` di `env.ts` diubah
-  dari required jadi optional. **Bug ditemukan & diperbaiki dalam
-  proses:** dialog "Konfirmasi Jadwal" di `modal.tsx` sempat tidak bisa
-  terbuka — root cause Astryx melarang nested Dialog (dialog konfirmasi
-  bersarang di dalam Dialog fullscreen New Post/Edit Draft); diperbaiki
-  jadi satu Dialog dengan step konfirmasi inline (state `isConfirmStep`).
-  Diverifikasi: `bun run typecheck/lint/test` hijau di setiap tahap (31
-  test lolos), browser E2E via ngrok (akun test Raka Pratama, workspace
-  "insvire"), review arsitektur Ridwan (2 temuan awal — IDOR + type-safety
-  constructor — sudah ditutup dan di-re-check, tidak ada temuan baru).
-  Alur: Elon Backend Engineer → Prabowo Feature Engineer → Najwa QA
-  Engineer → Ridwan Architecture Reviewer, plus 1 siklus fix bug
-  (2026-08-03).
-
----
-
-# In Progress
+## In Progress
 
 * Template `design-tokens.md` sudah disiapkan (status Draft / TBD); nilai final
   berkembang iteratif co-equal dengan Claude Design (ADR-056) — tidak ada lagi
@@ -590,7 +106,7 @@ Restricted Actions:
 
 ---
 
-# Next Tasks
+## Next Tasks
 
 * **Sidebar "Channels" (ADR-058) — implementasi kode menyusul:** tambahkan
   section Channels di `WorkspaceSideNav`/`AppShell` (`apps/web`) sesuai
@@ -662,7 +178,7 @@ Restricted Actions:
 
 ---
 
-# Known Issues
+## Known Issues
 
 * **Dependency terbuka — Transactional Email Provider.** Password reset & email verification (Better Auth) membutuhkan email provider yang belum ditetapkan (kandidat: Resend, Postmark, AWS SES, SMTP Supabase). Dicatat di `auth-strategy.md` (AS-D04). `requireEmailVerification` dinonaktifkan sementara di skeleton. Tidak memblokir M8 awal.
 * **Belum ada commit awal.** Repo sudah `git init` (branch `main`); working tree belum di-commit — commit awal menunggu instruksi eksplisit.
@@ -688,9 +204,6 @@ Restricted Actions:
   scope auth flows UI); backend/API sendiri terverifikasi benar via raw
   `fetch()`. Perlu ditelusuri sebelum uji interaksi form penuh di browser
   lewat ngrok bisa diandalkan.
-
----
-
 * **Light/Dark Mode Toggle (ADR-055) — `components/navigation.html` belum
   ter-push ke Claude Design.** File hasil edit sudah lengkap di scratchpad,
   terblokir karena tool `DesignSync` sempat nonaktif di sesi kerja desain.
@@ -702,222 +215,37 @@ Restricted Actions:
 
 ---
 
-# Blockers
+## Blockers
 
 Tidak ada blocker saat ini.
 
 ---
 
-# Recent Decisions
+## Completed (Ringkasan)
 
-* ADR-059 — Fake OutstandAdapter — persistensi nyata "Schedule" tanpa
-  kredensial Outstand asli: scope hanya `schedulePost` (Engagement/
-  Analytics/`connectAccount` OAuth di luar scope, YAGNI); fidelitas instant
-  always-success; `getOutstandAdapter()` auto-detect dari env
-  (`OUTSTAND_API_KEY` kosong → Fake, terisi tapi real adapter belum ada
-  kodenya → throw loud, bukan silent fallback); `IOutstandAdapter`
-  didefinisikan di domain `publishing` dulu; precedent arsitektur baru
-  `SchedulePostsUseCase` terpisah dari `PublishingService` untuk operasi
-  yang butuh dependency tambahan (relevan lagi untuk `PublishNowUseCase`/
-  `CancelScheduleUseCase`); guard ownership `connectedAccountId` vs
-  `workspaceId` ditegakkan di level repository (transaksi Prisma), bukan
-  cuma Server Action (2026-08-03).
-* ADR-058 — Sidebar mendapat section "Channels": quick-glance daftar akun
-  media sosial terhubung, posisi antara 5 navigation item dan zona bawah
-  (Notifications/Theme/Avatar), scroll independen. Icon brand pakai
-  `react-icons` (fa6) — dipilih setelah `lucide-react` dikonfirmasi tidak
-  punya logo brand media sosial. Default menampilkan scheduled-posts
-  count; hover menampilkan drag-handle (reorder personal per user) +
-  tombol quick-compose (Draft Editor, akun pre-selected). Bukan pengganti
-  KSP-08 Connected Accounts (IA-D05 tidak berubah). Sudah di Claude Design
-  (7 layar KSP + swatch komponen); implementasi kode `apps/web` belum
-  berjalan (2026-07-31).
-* ADR-058 addendum (sesi kedua, tanggal sama, 2026-07-31) — dua revisi
-  lanjutan atas referensi screenshot aplikasi lain: (1) leading element
-  baris default direstyle dari logo platform polos jadi avatar bulat +
-  badge logo brand overlay; (2) **override eksplisit King Rezi**: drag
-  handle yang sebelumnya "no-shift" kini **shift-on-hover** — muncul di
-  luar avatar dan mendorong seluruh isi baris bergeser ke kanan saat
-  hover (swap count↔"+" tetap no-shift, tidak berubah). Micro-offset
-  tombol "+" (`top: 1px; left: -1px`) masih dikonfirmasi King Rezi sebagai
-  belum final ("kurang pas") — disengaja tidak diiterasi lagi di Claude
-  Design, akan disesuaikan saat implementasi kode.
-* ADR-057 — Tidak ada designer eksternal, permanen (amandemen ADR-038,
-  ADR-041): peran "desainer" di seluruh baseline digantikan permanen oleh
-  King Rezi sendiri lewat project Claude Design. Gerbang "designer masuk"
-  sebagai syarat lock token dihapus — token dikunci kapan pun King Rezi
-  menganggap stabil (co-equal dengan ADR-056), bukan menunggu approval
-  pihak ketiga. Folder `design/` (dihapus ADR-045) tidak akan dibuat ulang.
-  7 file diperbarui untuk menghapus bahasa "designer masuk/aktif/join":
-  `design-tokens.md`, `06-engineering/README.md`, `product-discovery/README.md`,
-  `ctx-design.md`, `ctx-technical-context.md`, `ctx-implementation.md`,
-  `PROJECT_STATE.md` (2026-07-31).
-* ADR-056 — Sinkronisasi UI/UX Docs ↔ Claude Design: token visual
-  (`design-tokens.md` vs Design System Claude Design) jadi **co-equal**
-  (amandemen ADR-038), dan AI **wajib reminder proaktif** setiap kali ada
-  perubahan UI/UX di salah satu sisi (docs atau Claude Design) — berlaku
-  untuk token maupun flow/fungsi layar, bukan cuma token. Flow/fungsi layar
-  tetap `04-ux/` sebagai SoT (tidak berubah dari ADR-042). Sync teknis tetap
-  manual/on-request — yang baru cuma kewajiban AI mengingatkan, dipicu
-  King Rezi mengaku sering lupa sync manual. `context/ctx-design.md` dan
-  `.claude/agents/neymar-product-designer.md` sudah diperbarui (2026-07-31).
-* ADR-055 — Light/Dark Mode Toggle diangkat jadi fitur resmi produk,
-  mengoverride "neutral theme selama M8" (ADR-041): diklarifikasi dulu ke
-  King Rezi (fitur resmi vs alat banding internal) — dipilih fitur resmi.
-  Kontrol persisten di sidebar footer, berlaku lintas seluruh section;
-  default Light saat load pertama; sengaja tidak dipersist lintas full
-  reload (belum ada keputusan persistensi resmi). Tidak melanggar ADR-041
-  karena token dark mode sudah native di Astryx
-  (`@astryxdesign/theme-neutral@0.1.8`) — murni meng-expose mekanisme
-  bawaan, bukan implementasi custom. Alur Neymar → Mark UI Engineer →
-  Najwa QA → Ridwan semua lolos. `components/navigation.html` di Claude
-  Design masih tertunda dipush (DesignSync sempat nonaktif) (2026-07-31).
-* ADR-054 — Draft Editor: redirect otomatis ke sub-screen tujuan setelah
-  aksi terminal (Save as Draft → Drafts, Schedule → Queue, Publish Now →
-  History/sementara Calendar), bukan kembali ke sub-screen asal seperti
-  tombol Close. Dipicu ADR-053 (Draft Editor kini bisa dibuka dari section
-  manapun, sehingga "kembali ke asal" tidak selalu relevan). Tidak
-  mengubah NP-D05 — didefinisikan sebagai pola terpisah (NP-D13). Sudah
-  diimplementasikan di Claude Design; implementasi kode `apps/web` belum
-  berjalan (2026-07-31).
-* ADR-053 — Sidebar mendapat CTA "+ New Post" pinned di bawah Workspace
-  Selector, tersedia dari section manapun (bukan cuma Calendar/Queue/
-  Drafts seperti CTA NP-D09 yang sudah ada dan tetap dipertahankan).
-  Mengikuti pola tools produktivitas sejenis (Linear, Notion, Slack).
-  Sudah diimplementasikan di 7 layar shell Claude Design + `styles.css`;
-  implementasi kode `apps/web` belum berjalan (2026-07-31).
-* ADR-052 addendum — Governance: skill `.claude/skills/claude-design-scope-discipline/SKILL.md` dibuat dari insiden retrospektif (AI diam-diam mengubah default Fullscreen→Standard saat menambah toggle pembanding, sudah dikoreksi saat itu juga, sekarang dijadikan aturan pencegahan permanen). Ditempatkan sebagai skill khusus + `ctx-design.md` (bukan `PROJECT_RULES.md` yang lebih luas dari kebutuhan) karena hanya Claude Code yang punya akses `DesignSync`; `AGENTS.md` dapat satu baris pointer sebagai entry point wajib (2026-07-30).
-* ADR-052 — Draft Editor (New Post & Edit Draft) jadi modal overlay
-  fullscreen, mengoverride NP-D02: motivasi kecepatan alur kerja, trade-off
-  kehilangan konteks Calendar/Queue diterima sadar oleh user. Route lama
-  dihapus total (modal-only), Context state biasa (bukan intercepting
-  route). Resume unsaved state (localStorage) **hanya untuk New Post**,
-  tidak untuk Edit Draft. Urutan kerja: dokumentasi (selesai) → Design
-  System → implementasi kode (2026-07-30).
-* ADR-051 — Claude Design: kebijakan fidelitas Astryx (foundations +
-  component library + templates, selesai penuh): setiap nilai visual di
-  seluruh project (13 file foundations/component library + 13 layar +
-  App Prototype) disalin dari `@astryxdesign/core@0.1.8` +
-  `@astryxdesign/theme-neutral@0.1.8` asli (bukan buatan tangan),
-  dianotasikan ke komponen+props Astryx yang direplikasi. Accent berubah
-  ke accent neutral theme asli (near-black). Status konten dipetakan ke
-  varian `Badge` asli. `AppShell variant="section"` dipilih untuk
-  mempertahankan arah hairline-divider. Blok "Legacy aliases" di
-  `styles.css` sudah dihapus total — tidak ada lagi nama token buatan
-  sendiri. `thumbnail.html` yang sempat rusak (referensi token yang sudah
-  dihapus) sudah diperbaiki (2026-07-29).
-* ADR-050 — Transfer Ownership & Delete Workspace, method service
-  ditambahkan: `deleteWorkspace` (Owner, cascade DB, Tier 1) sederhana
-  tanpa ambiguitas. `transferOwnership` jadi proses **dua langkah** —
-  Owner memicu, Admin target harus `acceptOwnershipTransfer` sebelum
-  role bertukar (mirip `inviteMember`/`acceptInvite`) — user menolak opsi
-  "langsung tanpa persetujuan" demi keamanan tambahan. Field baru
-  `Workspace.pendingOwnerTransferTo` + 2 NotificationType baru. UI/screen
-  masih belum dirancang — ADR ini menyelesaikan kontrak arsitektur saja
-  (2026-07-29).
-* ADR-049 — Safety Check / Double Confirmation, kebijakan lintas produk:
-  kriteria (irreversibel/mahal dibatalkan + blast radius besar), 2 tier
-  (Tier 1: Transfer Ownership, Delete Workspace; Tier 2: Delete
-  Post/Media, Remove Member, Update Role, Cancel Schedule, Logout).
-  Didokumentasikan sebagai pola lintas layar di `key-screen-patterns.md`,
-  bukan UXP baru. Logout dipindah ke Tier 2 atas keputusan user (beda
-  dari rekomendasi awal). `deleteWorkspace`/`transferOwnership` ditemukan
-  belum punya method service — gap terpisah (2026-07-29).
-* ADR-048 — Disconnect Account wajib dialog konfirmasi: fungsi baru
-  KSP-08-F07 (Disconnect Confirmation) — peringatan ringkas sebelum
-  eksekusi, mengingatkan post terjadwal tetap di antrean (KSP-D09).
-  Ditemukan saat audit Safety Check/Double Confirmation seluruh aksi
-  produk (dipicu diskusi Publish Now). Tidak ada perubahan RBAC. Remove
-  Member/Transfer Ownership/Delete Workspace sengaja tidak disentuh —
-  screen-nya belum pernah dirancang, ditunda ke inisiatif terpisah
-  (2026-07-29).
-* ADR-047 — Publish Now diangkat jadi fitur UX resmi: `Draft → Published`
-  langsung tanpa jadwal, akses dibatasi identik dengan Schedule
-  (Owner/Admin/Manager, bukan Creator) — konsisten dengan pola akses
-  konten yang sudah ada di `roles-permissions.md`, bukan tingkat akses
-  baru. KSP-05 dapat function ID baru (KSP-05-F12). Ditemukan saat audit
-  konsistensi App Prototype: `application-layer.md` sudah menyebut method
-  `publishNow` tanpa desain UX resmi. Dokumentasi baseline diselaraskan;
-  implementasi kode + App Prototype masih task terpisah (2026-07-29).
-* ADR-046 Amandemen Final — bentuk final `/publish` diputuskan: redirect
-  **permanen** ke `/publish/calendar` (`calendar/` tetap folder statis
-  permanen). Publish dikecualikan permanen dari pola root-render ADR-046
-  karena satu-satunya section dengan sibling route dinamis (`[postId]`) di
-  root — root-render di sana akan menangkap path lama secara salah.
-  Alternatif root-render + rename `[postId]`, dan root-render +
-  intercepting route, ditolak (kompleksitas tidak sepadan). Tidak ada
-  perubahan kode, hanya memformalkan interim jadi final (2026-07-29).
-* ADR-046 — Routing convention: default/single view section (Home,
-  Publish→Calendar, Engage→Inbox, Settings→General) render langsung di
-  `page.tsx` root path section, bukan named child segment. Menghapus
-  `/home`, `/publish/calendar`, `/engage/inbox`, `/settings/general` dari
-  routing structure. Menutup celah 404 sistemik yang ditemukan di root
-  workspace + 3 section sekaligus. Dokumentasi (`monorepo-setup.md`,
-  `application-layer.md`) sudah diselaraskan; **implementasi kode selesai**
-  di branch `feat/adr-046-routing-default-view` dan diverifikasi live lewat
-  ngrok tunnel (2026-07-28). Publish kemudian dikecualikan permanen — lihat
-  ADR-046 Amandemen Final (2026-07-29) di atas.
-* ADR-045 — Hapus folder `design/` (belum ada designer aktif); pointer
-  project Claude Design dipindah ke `context/ctx-design.md`. Tidak mengubah
-  ADR-038 (SoT token) maupun ADR-042 (Claude Design sebagai handoff tool) —
-  hanya mencabut keberadaan folder itu sendiri (2026-07-28).
-* ADR-044 — Rename env var client-side Supabase:
-  `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
-  mengikuti sistem API key baru Supabase (publishable/secret key
-  menggantikan anon/service_role secara bertahap); tidak ada perubahan
-  behavior (2026-07-24).
-* ADR-043 — API mobile-ready via Route Handler `/api/v1` (Next.js App
-  Router) di atas Application Service yang sama dengan web; tidak ada
-  backend terpisah. Better Auth Bearer plugin untuk auth mobile
-  (menggantikan cookie session), workspace context eksplisit per
-  path/header, versioning `/api/v1`→`/api/v2` untuk breaking change, dan 4
-  syarat keamanan wajib (secure device storage, `trustedOrigins` custom
-  scheme, keputusan session expiry mobile, `rateLimit.customRules` per
-  endpoint). Fondasi disiapkan sebelum M8 berjalan jauh; endpoint mobile
-  aktual dikerjakan setelah MVP web selesai (2026-07-24).
-* ADR-042 — Claude Design menggantikan Figma sebagai design handoff tool;
-  project `Social Media Management` (`84aded99-bb23-49b1-be9f-dd8f21c6873e`)
-  berisi token neutral, foundations, components, dan 8 layar KSP; sinkronisasi
-  dengan `product-discovery/` bersifat manual/on-request, bukan otomatis
-  (2026-07-24).
-* ADR-041 — Astryx menggantikan shadcn/ui sebagai fondasi komponen permanen;
-  neutral theme dipakai selama feature development, Tailwind dibatasi ke
-  layout, wrapper selektif, designer masuk setelah feature selesai, dan risiko
-  Beta diterima dengan exact pin + smoke test (2026-07-23).
-* ADR-040 — kontrak resmi Outstand: webhook
-  `post.published`/`post.error`/`account.token_expired`,
-  durable-before-ACK + retry internal, Engagement komentar/reply via sync 30
-  menit + manual refresh tanpa DM/webhook engagement, Supabase original +
-  Outstand media working copy, dan X BYOK manual di dashboard Outstand
-  (2026-07-23).
-* ADR-039 — Content Format (Post/Reel/Story/Pin) masuk MVP Publishing; format per `PostTarget`; matriks platform + Outstand ACL (2026-07-21).
-* ADR-038 + ADR-041 — SoT design tokens tetap di
-  `product-discovery/06-engineering/design-tokens.md`; neutral theme Astryx
-  dipakai selama M8 dan nilai final diisi setelah feature selesai serta designer
-  masuk; folder `design/` sudah dihapus (ADR-045), tidak pernah jadi SoT token.
-* ADR-037 — Perluasan aditif `SocialPlatform`: Threads & Pinterest ditambah; Twitter/X & LinkedIn tetap. Daftar resmi: Instagram, Facebook, Twitter/X, LinkedIn, TikTok, YouTube, Threads, Pinterest (2026-07-21).
-* AI Context — opsi A: pertahankan 8 `ctx-*.md`; Product+User di `ctx-business`; UX di `ctx-design`; coding rules di `ctx-development` + pola fitur di `ctx-implementation` (2026-07-17).
-* M7 — Prisma **7.x**: URL di `prisma.config.ts` (`DIRECT_URL`) + runtime adapter (`DATABASE_URL`); semantik DO-D04 tetap (2026-07-17).
-* M7 — DX-D06/DX-D07: Vitest di root; Lefthook via `prepare` (2026-07-17).
-* M7 — Lokasi env file: `apps/web/` (EM-D04 dikunci; Architecture README tidak mengatur lokasi env).
-* ADR-025 — System Architecture Baseline v1.0 ditetapkan: product-discovery/05-architecture/ (2026-07-15).
-* ADR-026 — Monorepo Workspace Layout: apps/web, packages/shared, domain modules di src/domains/ (2026-07-15).
-* ADR-027 — Amandemen ADR-014: pengecualian penamaan tabel aggregate root (`workspaces`, `notifications`) (2026-07-15).
-* ADR-028 — Deployment Region: Singapore/SEA, Railway + Supabase co-located (2026-07-17).
-* ADR-029 — Environment Topology: Production + Staging dengan Supabase project terisolasi (2026-07-17).
-* ADR-030 — Auth Implementation: Better Auth config + Supabase JWT integration untuk Realtime (2026-07-17).
-* ADR-031 — Database Access: Prisma sebagai ORM formal; amandemen ADR-017 (2026-07-17).
-* ADR-032 — CI/CD: GitHub Actions gates + Railway deploy + migrate on release (2026-07-17).
-* ADR-033 — Environment Management: Supabase Cloud-first, native secrets, project `social-media-local` (2026-07-17).
-* ADR-034 — DX Tooling: ESLint + Prettier, Lefthook + lint-staged, Vitest (2026-07-17).
-* ADR-035 — Dependency Strategy: caret ranges, manual updates, root lockfile rules (2026-07-17).
-* ADR-036 — Engineering Planning Baseline v1.0 ditetapkan: product-discovery/06-engineering/ (2026-07-17).
+Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
-Lihat `DECISIONS.md` untuk daftar selengkapnya.
+* **ADR-058** — Sidebar "Channels" (quick-glance daftar akun terhubung): selesai di Claude Design, implementasi kode `apps/web` menyusul.
+* **Claude Design** — bug fix Content Format Selector hilang di New Post + penambahan akun mock TikTok & Pinterest (catch-up ADR-037/ADR-039).
+* **ADR-059** — Fake OutstandAdapter: persistensi nyata "Schedule" selesai (kode + QA + review arsitektur Ridwan, tanpa temuan baru).
+* **ADR-060** — Dokumentasi Efficiency Restructuring: `DECISIONS.md` (3.564→69 baris) dipecah jadi file per-ADR + indeks, `PROJECT_STATE.md` (928→~260 baris) dapat Snapshot + heading rapi + trim duplikasi, skill navigator jadi cascade 3 tingkat.
+* **ADR-061** — Konsolidasi `CHANGELOG.md` + arsip jadi satu file `COMPLETE_TASK.md`, dengan peringatan keras: AI dilarang membaca isinya kecuali diperintah eksplisit.
 
 ---
 
-# Related Documents
+## Recent Decisions (Ringkasan)
+
+5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
+
+* **ADR-061** — Konsolidasi CHANGELOG jadi `COMPLETE_TASK.md` tunggal + larangan baca proaktif AI (amandemen ADR-060).
+* **ADR-060** — Dokumentasi Efficiency Restructuring: `DECISIONS.md` dipecah per-file + indeks, `PROJECT_STATE.md` dapat Snapshot + trim, skill navigator jadi cascade 3 tingkat.
+* **ADR-059** — Fake OutstandAdapter — persistensi nyata "Schedule" tanpa kredensial Outstand asli.
+* **ADR-058** — Sidebar mendapat section "Channels" (quick-glance daftar akun terhubung).
+* **ADR-057** — Tidak ada designer eksternal; peran desainer permanen digantikan Claude Design/King Rezi (amandemen ADR-038, ADR-041).
+
+---
+
+## Related Documents
 
 * PROJECT_OVERVIEW.md
 * ARCHITECTURE_OVERVIEW.md
