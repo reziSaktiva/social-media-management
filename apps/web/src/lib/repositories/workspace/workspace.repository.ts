@@ -1,4 +1,10 @@
-import { MemberRole, MemberStatus, asWorkspaceId } from "@social/shared";
+import {
+  asConnectedAccountId,
+  asWorkspaceId,
+  MemberRole,
+  MemberStatus,
+  type SocialPlatform,
+} from "@social/shared";
 import type { IWorkspaceRepository } from "@/domains/workspace";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma/client";
@@ -76,5 +82,21 @@ export const workspaceRepository: IWorkspaceRepository = {
       name: workspace.name,
       slug: workspace.slug,
     };
+  },
+
+  async listConnectedAccounts(workspaceId) {
+    const accounts = await prisma.workspaceConnectedAccount.findMany({
+      where: { workspaceId },
+      orderBy: { connectedAt: "asc" },
+    });
+
+    return accounts.map((account) => ({
+      id: asConnectedAccountId(account.id),
+      workspaceId: asWorkspaceId(account.workspaceId),
+      platform: account.platform as SocialPlatform,
+      outstandAccountId: account.outstandAccountId,
+      handle: account.handle,
+      status: account.status,
+    }));
   },
 };

@@ -1,7 +1,8 @@
-import type { UserId } from "@social/shared";
+import type { UserId, WorkspaceId } from "@social/shared";
 import { ConflictError, ValidationError } from "@/lib/utils/errors";
 import { slugify } from "../value-objects/slugify";
 import type {
+  ConnectedAccountRecord,
   IWorkspaceRepository,
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
@@ -62,5 +63,11 @@ export class WorkspaceService {
 
   async getWorkspaceBySlug(slug: string): Promise<WorkspaceRecord | null> {
     return this.repository.findBySlug(slug);
+  }
+
+  async listConnectedAccounts(
+    workspaceId: WorkspaceId,
+  ): Promise<ConnectedAccountRecord[]> {
+    return this.repository.listConnectedAccounts(workspaceId);
   }
 }
