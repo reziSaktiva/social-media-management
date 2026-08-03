@@ -34,3 +34,11 @@ export function asWorkspaceId(value: string): WorkspaceId {
 export function asPostId(value: string): PostId {
   return value as PostId;
 }
+
+export function asPostTargetId(value: string): PostTargetId {
+  return value as PostTargetId;
+}
+
+export function asConnectedAccountId(value: string): ConnectedAccountId {
+  return value as ConnectedAccountId;
+}
