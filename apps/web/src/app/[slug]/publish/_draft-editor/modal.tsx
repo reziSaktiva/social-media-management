@@ -27,7 +27,14 @@ import { ContentFormat, ContentStatus, SocialPlatform } from "@social/shared";
 
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 
-import { getDraftAction, saveDraftAction, updateDraftAction } from "./actions";
+import type { ConnectedAccountDto } from "./actions";
+import {
+  getConnectedAccountsAction,
+  getDraftAction,
+  saveDraftAction,
+  scheduleDraftAction,
+  updateDraftAction,
+} from "./actions";
 import type { UnsavedNewPost } from "./context";
 import { useDraftEditor } from "./context";
 import {
@@ -35,52 +42,12 @@ import {
   CONTENT_STATUS_LABEL,
 } from "./status-badge";
 
-type MockAccountStatus = "active" | "disconnected";
+/** Akun terhubung dari `WorkspaceConnectedAccount` (ADR-059) — bukan lagi mock. */
+type ConnectedAccount = ConnectedAccountDto;
 
-interface MockAccount {
-  id: string;
-  platform: SocialPlatform;
-  handle: string;
-  status: MockAccountStatus;
+function isAccountDisconnected(account: ConnectedAccount): boolean {
+  return account.status !== "active";
 }
-
-/**
- * Mock connected accounts — OUTSTAND_API_KEY/OUTSTAND_WEBHOOK_SECRET belum
- * tersedia, jadi Account Selector memakai data dummy sampai integrasi
- * Outstand nyata (ADR-040) siap. Bukan data dari database.
- */
-const MOCK_ACCOUNTS: MockAccount[] = [
-  {
-    id: "acc-ig",
-    platform: SocialPlatform.Instagram,
-    handle: "@brandname",
-    status: "active",
-  },
-  {
-    id: "acc-fb",
-    platform: SocialPlatform.Facebook,
-    handle: "@brandname",
-    status: "active",
-  },
-  {
-    id: "acc-tiktok",
-    platform: SocialPlatform.TikTok,
-    handle: "@brandname",
-    status: "active",
-  },
-  {
-    id: "acc-pin",
-    platform: SocialPlatform.Pinterest,
-    handle: "@brandname",
-    status: "active",
-  },
-  {
-    id: "acc-li",
-    platform: SocialPlatform.LinkedIn,
-    handle: "Company Page",
-    status: "disconnected",
-  },
-];
 
 const PLATFORM_LABEL: Record<SocialPlatform, string> = {
   [SocialPlatform.Instagram]: "Instagram",
@@ -205,12 +172,20 @@ function DraftEditorForm({
   const [pinLink, setPinLink] = useState("");
   const [scheduleDate, setScheduleDate] = useState<string | undefined>();
   const [scheduleTime, setScheduleTime] = useState<string | undefined>();
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  // A step *within* this same fullscreen Dialog — NOT a second nested
+  // Dialog. Astryx's own component docs explicitly disallow nesting Dialogs
+  // ("restructure the flow into steps within a single dialog instead");
+  // a previous version of this file did nest a confirm Dialog inside the
+  // fullscreen one, which QA found silently never opened in real usage.
+  const [isConfirmStep, setIsConfirmStep] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
   const [notice, setNotice] = useState<{
-    status: "success" | "info";
+    status: "success" | "info" | "error";
     title: string;
   } | null>(null);
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
 
   useEffect(() => {
     if (!isEdit) {
@@ -235,17 +210,40 @@ function DraftEditorForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch-once-per-mount by design (component remounts via `key` per session)
   }, []);
 
+  // Load connected accounts for the Account Selector — runs for both
+  // "create" and "edit" mode (unlike the draft-loading effect above, which
+  // is edit-only), since a brand-new post still needs real accounts to pick.
+  useEffect(() => {
+    let cancelled = false;
+    getConnectedAccountsAction(slug)
+      .then((result) => {
+        if (!cancelled) setAccounts(result);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setNotice({
+            status: "error",
+            title: "Gagal memuat daftar akun terhubung. Coba muat ulang.",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingAccounts(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch-once-per-mount by design (component remounts via `key` per session)
+  }, []);
+
   // Report the live snapshot on every render so the parent's Dialog
   // onOpenChange (Escape/backdrop/close-button) can decide what to persist
   // without needing this state lifted up.
   onLatestChange({ mode, caption, savedPostId });
 
   const selectedAccounts = useMemo(
-    () =>
-      MOCK_ACCOUNTS.filter((account) =>
-        selectedAccountIds.includes(account.id),
-      ),
-    [selectedAccountIds],
+    () => accounts.filter((account) => selectedAccountIds.includes(account.id)),
+    [accounts, selectedAccountIds],
   );
 
   const isReadyToSchedule =
@@ -254,7 +252,7 @@ function DraftEditorForm({
     Boolean(scheduleDate) &&
     Boolean(scheduleTime);
 
-  function toggleAccount(account: MockAccount, checked: boolean) {
+  function toggleAccount(account: ConnectedAccount, checked: boolean) {
     setSelectedAccountIds((prev) =>
       checked ? [...prev, account.id] : prev.filter((id) => id !== account.id),
     );
@@ -286,33 +284,99 @@ function DraftEditorForm({
     }
   }
 
-  function handleConfirmSchedule() {
-    setIsConfirmOpen(false);
-    setStatus(ContentStatus.Scheduled);
-    setNotice({
-      status: "info",
-      title:
-        "Jadwal dikonfirmasi (mock) — publish sebenarnya menunggu OUTSTAND_API_KEY & OUTSTAND_WEBHOOK_SECRET.",
-    });
+  async function handleConfirmSchedule() {
+    setIsScheduling(true);
+    try {
+      const scheduledAt = new Date(
+        `${scheduleDate}T${scheduleTime}`,
+      ).toISOString();
+
+      const result = await scheduleDraftAction(slug, {
+        postId: savedPostId,
+        caption,
+        scheduledAt,
+        targets: selectedAccounts.map((account) => ({
+          connectedAccountId: account.id,
+          contentFormat:
+            formatByAccount[account.id] ?? getDefaultFormat(account.platform),
+          platformOptions:
+            account.platform === SocialPlatform.Pinterest
+              ? { pinTitle, pinLink }
+              : undefined,
+        })),
+      });
+
+      setSavedPostId(result.postId);
+      setStatus(ContentStatus.Scheduled);
+      setIsConfirmStep(false);
+      setNotice({
+        status: "success",
+        title:
+          "Jadwal dikonfirmasi. Publish sesungguhnya masih lewat Fake OutstandAdapter (ADR-059) sampai kredensial Outstand asli tersedia.",
+      });
+      router.refresh();
+    } catch (error) {
+      setNotice({
+        status: "error",
+        title:
+          error instanceof Error
+            ? error.message
+            : "Gagal menjadwalkan post. Coba lagi.",
+      });
+    } finally {
+      setIsScheduling(false);
+    }
   }
 
   return (
-    <>
-      <Layout
-        header={
-          <DialogHeader
-            title={isEdit ? "Edit Draft" : "New Post"}
-            endContent={
+    <Layout
+      header={
+        <DialogHeader
+          title={
+            isConfirmStep
+              ? "Konfirmasi Jadwal"
+              : isEdit
+                ? "Edit Draft"
+                : "New Post"
+          }
+          endContent={
+            isConfirmStep ? undefined : (
               <Badge
                 label={CONTENT_STATUS_LABEL[status]}
                 variant={CONTENT_STATUS_BADGE_VARIANT[status]}
               />
-            }
-            onOpenChange={onOpenChange}
-          />
-        }
-        content={
-          <LayoutContent>
+            )
+          }
+          onOpenChange={onOpenChange}
+        />
+      }
+      content={
+        <LayoutContent>
+          {isConfirmStep ? (
+            <VStack gap={3}>
+              {notice?.status === "error" ? (
+                <Banner status="error" title={notice.title} />
+              ) : null}
+              <Text>Caption: {caption || "(kosong)"}</Text>
+              <VStack gap={1}>
+                <Text type="supporting">Akun:</Text>
+                {selectedAccounts.map((account) => (
+                  <Text key={account.id}>
+                    · {PLATFORM_LABEL[account.platform]} {account.handle} —{" "}
+                    {
+                      FORMAT_LABEL[
+                        formatByAccount[account.id] ??
+                          getDefaultFormat(account.platform)
+                      ]
+                    }
+                  </Text>
+                ))}
+              </VStack>
+              <Text>
+                Waktu: {scheduleDate ?? "-"} {scheduleTime ?? ""}
+              </Text>
+            </VStack>
+          ) : (
             <VStack gap={4}>
               {notice ? (
                 <Banner status={notice.status} title={notice.title} />
@@ -352,95 +416,109 @@ function DraftEditorForm({
                   <VStack gap={4} width="100%" maxWidth={380}>
                     <VStack gap={3}>
                       <Heading level={2}>Account Selector</Heading>
-                      {MOCK_ACCOUNTS.map((account) => {
-                        const isChecked = selectedAccountIds.includes(
-                          account.id,
-                        );
-                        const formats = getSelectableFormats(account.platform);
-                        const currentFormat = formatByAccount[account.id];
+                      {isLoadingAccounts ? (
+                        <Text type="supporting">Memuat akun terhubung…</Text>
+                      ) : accounts.length === 0 ? (
+                        <Text type="supporting">
+                          Belum ada akun terhubung untuk workspace ini.
+                        </Text>
+                      ) : (
+                        accounts.map((account) => {
+                          const isChecked = selectedAccountIds.includes(
+                            account.id,
+                          );
+                          const formats = getSelectableFormats(
+                            account.platform,
+                          );
+                          const currentFormat = formatByAccount[account.id];
+                          const isDisconnected = isAccountDisconnected(account);
 
-                        return (
-                          <VStack key={account.id} gap={2}>
-                            <HStack justify="between" align="center">
-                              <CheckboxInput
-                                label={`${PLATFORM_LABEL[account.platform]} ${account.handle}`}
-                                value={isChecked}
-                                onChange={(checked) =>
-                                  toggleAccount(account, checked)
-                                }
-                              />
-                              {account.status === "disconnected" ? (
-                                <Badge label="Disconnected" variant="warning" />
-                              ) : null}
-                            </HStack>
-
-                            {account.status === "disconnected" ? (
-                              <Text type="supporting">
-                                Akun ini terputus —{" "}
-                                <Link
-                                  href={`/${slug}/settings/connected-accounts`}
-                                >
-                                  Reconnect
-                                </Link>
-                                .
-                              </Text>
-                            ) : null}
-
-                            {isChecked && formats ? (
-                              <RadioList
-                                label="Content Format"
-                                isLabelHidden
-                                orientation="horizontal"
-                                value={
-                                  currentFormat ??
-                                  getDefaultFormat(account.platform)
-                                }
-                                onChange={(value) =>
-                                  setFormatByAccount((prev) => ({
-                                    ...prev,
-                                    [account.id]: value as ContentFormat,
-                                  }))
-                                }
-                              >
-                                {formats.map((format) => (
-                                  <RadioListItem
-                                    key={format}
-                                    label={FORMAT_LABEL[format]}
-                                    value={format}
+                          return (
+                            <VStack key={account.id} gap={2}>
+                              <HStack justify="between" align="center">
+                                <CheckboxInput
+                                  label={`${PLATFORM_LABEL[account.platform]} ${account.handle}`}
+                                  value={isChecked}
+                                  onChange={(checked) =>
+                                    toggleAccount(account, checked)
+                                  }
+                                />
+                                {isDisconnected ? (
+                                  <Badge
+                                    label="Disconnected"
+                                    variant="warning"
                                   />
-                                ))}
-                              </RadioList>
-                            ) : null}
+                                ) : null}
+                              </HStack>
 
-                            {isChecked &&
-                            account.platform === SocialPlatform.Pinterest ? (
-                              <VStack gap={2}>
-                                <Text type="supporting">Format: Pin</Text>
-                                <TextInput
-                                  label="Pin Title"
-                                  value={pinTitle}
-                                  onChange={setPinTitle}
-                                  isOptional
-                                />
-                                <TextInput
-                                  label="Destination Link"
-                                  value={pinLink}
-                                  onChange={setPinLink}
-                                  isOptional
-                                />
-                              </VStack>
-                            ) : null}
+                              {isDisconnected ? (
+                                <Text type="supporting">
+                                  Akun ini terputus —{" "}
+                                  <Link
+                                    href={`/${slug}/settings/connected-accounts`}
+                                  >
+                                    Reconnect
+                                  </Link>
+                                  .
+                                </Text>
+                              ) : null}
 
-                            {isChecked &&
-                            !formats &&
-                            account.platform !== SocialPlatform.Pinterest ? (
-                              <Text type="supporting">Format: Post</Text>
-                            ) : null}
+                              {isChecked && formats ? (
+                                <RadioList
+                                  label="Content Format"
+                                  isLabelHidden
+                                  orientation="horizontal"
+                                  value={
+                                    currentFormat ??
+                                    getDefaultFormat(account.platform)
+                                  }
+                                  onChange={(value) =>
+                                    setFormatByAccount((prev) => ({
+                                      ...prev,
+                                      [account.id]: value as ContentFormat,
+                                    }))
+                                  }
+                                >
+                                  {formats.map((format) => (
+                                    <RadioListItem
+                                      key={format}
+                                      label={FORMAT_LABEL[format]}
+                                      value={format}
+                                    />
+                                  ))}
+                                </RadioList>
+                              ) : null}
 
-                            <Divider />
-                          </VStack>
-                        );
-                      })}
+                              {isChecked &&
+                              account.platform === SocialPlatform.Pinterest ? (
+                                <VStack gap={2}>
+                                  <Text type="supporting">Format: Pin</Text>
+                                  <TextInput
+                                    label="Pin Title"
+                                    value={pinTitle}
+                                    onChange={setPinTitle}
+                                    isOptional
+                                  />
+                                  <TextInput
+                                    label="Destination Link"
+                                    value={pinLink}
+                                    onChange={setPinLink}
+                                    isOptional
+                                  />
+                                </VStack>
+                              ) : null}
+
+                              {isChecked &&
+                              !formats &&
+                              account.platform !== SocialPlatform.Pinterest ? (
+                                <Text type="supporting">Format: Post</Text>
+                              ) : null}
+
+                              <Divider />
+                            </VStack>
+                          );
+                        })
+                      )}
                     </VStack>
 
                     <VStack gap={3}>
@@ -462,11 +540,28 @@ function DraftEditorForm({
                 </HStack>
               )}
             </VStack>
-          </LayoutContent>
-        }
-        footer={
-          isLoadingDraft ? undefined : (
-            <LayoutFooter>
+          )}
+        </LayoutContent>
+      }
+      footer={
+        isLoadingDraft ? undefined : (
+          <LayoutFooter>
+            {isConfirmStep ? (
+              <HStack gap={3} justify="end" width="100%">
+                <Button
+                  label="Batal"
+                  variant="secondary"
+                  onClick={() => setIsConfirmStep(false)}
+                  isDisabled={isScheduling}
+                />
+                <Button
+                  label="Konfirmasi & Jadwalkan"
+                  variant="primary"
+                  onClick={handleConfirmSchedule}
+                  isLoading={isScheduling}
+                />
+              </HStack>
+            ) : (
               <HStack gap={2} width="100%">
                 <StackItem size="fill">
                   <Button
@@ -483,55 +578,15 @@ function DraftEditorForm({
                     variant="primary"
                     width="100%"
                     isDisabled={!isReadyToSchedule}
-                    onClick={() => setIsConfirmOpen(true)}
+                    onClick={() => setIsConfirmStep(true)}
                   />
                 </StackItem>
               </HStack>
-            </LayoutFooter>
-          )
-        }
-      />
-
-      <Dialog
-        isOpen={isConfirmOpen}
-        onOpenChange={setIsConfirmOpen}
-        purpose="form"
-      >
-        <DialogHeader title="Konfirmasi Jadwal" />
-        <VStack gap={3}>
-          <Text>Caption: {caption || "(kosong)"}</Text>
-          <VStack gap={1}>
-            <Text type="supporting">Akun:</Text>
-            {selectedAccounts.map((account) => (
-              <Text key={account.id}>
-                · {PLATFORM_LABEL[account.platform]} {account.handle} —{" "}
-                {
-                  FORMAT_LABEL[
-                    formatByAccount[account.id] ??
-                      getDefaultFormat(account.platform)
-                  ]
-                }
-              </Text>
-            ))}
-          </VStack>
-          <Text>
-            Waktu: {scheduleDate ?? "-"} {scheduleTime ?? ""}
-          </Text>
-          <HStack gap={3} justify="end">
-            <Button
-              label="Batal"
-              variant="secondary"
-              onClick={() => setIsConfirmOpen(false)}
-            />
-            <Button
-              label="Konfirmasi & Jadwalkan"
-              variant="primary"
-              onClick={handleConfirmSchedule}
-            />
-          </HStack>
-        </VStack>
-      </Dialog>
-    </>
+            )}
+          </LayoutFooter>
+        )
+      }
+    />
   );
 }
 
