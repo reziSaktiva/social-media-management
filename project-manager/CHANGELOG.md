@@ -4,6 +4,73 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-07-31 — Claude Design: fix Content Format Selector hilang di New Post + tambah akun mock TikTok & Pinterest (catch-up ADR-037/ADR-039)
+
+Dikerjakan langsung dari sesi utama (bukan subagent Neymar) karena
+keterbatasan teknis `DesignSync` tidak bisa dimuat di sesi subagent. Dua
+perubahan terpisah, keduanya murni di project Claude Design ("Social Media
+Management"), **bukan** di kode `apps/web`. Tidak ada ADR baru — TikTok &
+Pinterest sudah lebih dulu resmi jadi bagian baseline produk lewat ADR-037
+(daftar 8 platform resmi) dan ADR-039 (matriks Content Format per platform,
+termasuk aturan TikTok Post-only dan Pinterest pin+metadata); pekerjaan ini
+murni menyusulkan (catch-up) visual Claude Design mengikuti keputusan yang
+sudah ada di kedua ADR tersebut.
+
+### Fixed
+
+* `templates/app-prototype/AppPrototype.dc.html` (`buildDraftEditorMarkup`)
+  — cabang "New Post" (create) ternyata tidak menampilkan `.fmt-row` (radio
+  Post/Reel/Story) untuk akun Instagram & Facebook, padahal cabang "Edit
+  Draft" sudah benar dan dokumentasi internal `templates/draft-editor.html`
+  sendiri menyatakan New Post seharusnya identik dengan Edit Draft (cuma
+  kosong). New Post sekarang juga punya `.fmt-row`, default radio "Post"
+  terpilih untuk Instagram & Facebook (bukan "Reel" seperti contoh Edit
+  Draft, karena New Post tidak merepresentasikan draft yang sudah ada).
+  State Edit Draft tidak diubah sama sekali.
+
+### Added
+
+* Akun mock TikTok & Pinterest (status Active/Connected) ditambahkan atas
+  permintaan eksplisit King Rezi ("tambahkan juga tiktok dan pinterest pada
+  Design System agar lebih banyak", scope dikonfirmasi "semua tempat" lewat
+  `AskUserQuestion`):
+  * Sidebar "Channels" — 7 file screen template: `templates/home.html`,
+    `templates/publish-calendar.html`, `templates/publish-queue.html`,
+    `templates/publish-drafts.html`, `templates/engage-inbox.html`,
+    `templates/analyze-dashboard.html`,
+    `templates/settings-connected-accounts.html`. `templates/
+    draft-editor.html` sengaja tidak disentuh untuk bagian ini — tidak
+    punya sidebar sendiri (hanya dialog Draft Editor).
+  * `templates/settings-connected-accounts.html` — 2 baris baru di card
+    utama Connected Accounts.
+  * Draft Editor "Akun Tujuan" (`templates/draft-editor.html` dan
+    `templates/app-prototype/AppPrototype.dc.html`, kedua state New Post &
+    Edit Draft): TikTok = checkbox saja tanpa format selector (ADR-039,
+    TikTok Post-only, tanpa selector Reel/Story); Pinterest = checkbox + 3
+    field baru (Title/Destination link/Board) menggantikan format
+    selector, sesuai ADR-039 poin 2 (Pinterest = pin + metadata).
+  * `styles.css` — class baru `.pin-fields` untuk styling field Pinterest,
+    konsisten dengan pola `.fmt-row` yang sudah ada. Tidak ada token/warna
+    baru di luar itu.
+  * Detail mock: warna TikTok `#0d1013` (reuse dari mock Home/Calendar/
+    Queue sebelumnya), warna Pinterest `#e60023` (brand red resmi). Ikon
+    SVG dari paket resmi Font Awesome Free (fa-tiktok, fa-pinterest).
+
+### Notes
+
+* Sengaja di luar scope, tidak diubah: dialog konfirmasi Schedule/Publish
+  Now di `AppPrototype.dc.html` (`openScheduleDialog`/
+  `openPublishNowDialog`) masih hardcode hanya menampilkan ringkasan
+  Instagram & Facebook — tidak diperluas untuk TikTok/Pinterest karena
+  keduanya default unchecked (tidak pernah masuk ke dialog itu), konsisten
+  dengan behavior sebelumnya.
+* Implementasi kode `apps/web` untuk Channels TikTok/Pinterest tetap
+  mengikuti scope Next Tasks ADR-058 yang sudah ada (belum berjalan) —
+  entri ini tidak menambah task kode baru, murni menyusulkan mock Claude
+  Design.
+
+---
+
 ## 2026-07-31 — ADR-058 addendum: restyle avatar Channels + override no-shift → shift-on-hover
 
 Sesi kedua di tanggal yang sama, melanjutkan pekerjaan Claude Design ADR-058
