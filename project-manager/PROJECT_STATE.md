@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.31     |
+| Version      | 1.0.32     |
 | Status       | Active     |
 | Last Updated | 2026-07-31 |
 
@@ -512,6 +512,33 @@ Restricted Actions:
   berjalan.** Micro-offset tombol "+" (`top: 1px; left: -1px`) masih
   dikonfirmasi King Rezi sendiri sebagai "kurang pas" — bukan pixel-perfect
   final, lihat Next Tasks.
+* **Claude Design — bug fix Content Format Selector hilang di New Post +
+  penambahan akun mock TikTok & Pinterest (catch-up ADR-037/ADR-039):**
+  ditemukan `buildDraftEditorMarkup` (`templates/app-prototype/
+  AppPrototype.dc.html`) cabang New Post tidak menampilkan `.fmt-row`
+  (radio Post/Reel/Story) untuk Instagram & Facebook — padahal cabang Edit
+  Draft sudah benar dan dokumentasi internal `templates/draft-editor.html`
+  menyatakan keduanya seharusnya identik. Sudah diperbaiki (default radio
+  "Post" untuk New Post, bukan "Reel" seperti contoh Edit Draft; state Edit
+  Draft tidak diubah). Atas permintaan eksplisit King Rezi (dikonfirmasi
+  scope "semua tempat"), TikTok & Pinterest ditambahkan sebagai akun
+  terhubung mock baru (status Active) di sidebar "Channels" 7 layar
+  screen, `settings-connected-accounts.html`, dan Draft Editor "Akun
+  Tujuan" (kedua state New Post & Edit Draft) — TikTok: checkbox saja
+  tanpa format selector (ADR-039, Post-only); Pinterest: checkbox + 3
+  field baru (Title/Destination link/Board) menggantikan format selector
+  (ADR-039 poin 2). Class baru `.pin-fields` ditambahkan di `styles.css`.
+  Warna TikTok `#0d1013` (reuse), Pinterest `#e60023` (brand red resmi);
+  ikon SVG dari Font Awesome Free (fa-tiktok, fa-pinterest). **Tidak perlu
+  ADR baru** — TikTok & Pinterest sudah resmi jadi bagian baseline produk
+  lewat ADR-037 (8 platform resmi) dan ADR-039 (matriks Content Format per
+  platform); pekerjaan ini murni menyusulkan visual Claude Design mengikuti
+  kedua ADR tersebut. Sengaja di luar scope: dialog konfirmasi Schedule/
+  Publish Now di `AppPrototype.dc.html` masih hardcode ringkasan Instagram
+  & Facebook saja — tidak diperluas karena TikTok/Pinterest default
+  unchecked (tidak pernah masuk ke dialog itu). Dikerjakan langsung dari
+  sesi utama (bukan subagent Neymar) karena keterbatasan teknis `DesignSync`
+  tidak bisa dimuat di sesi subagent (2026-07-31).
 
 ---
 
