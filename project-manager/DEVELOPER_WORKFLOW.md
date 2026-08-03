@@ -38,7 +38,7 @@ flowchart TD
 
   K --> L[Kode di apps/web/src/domains/*<br/>DDD + Modular Monolith]
   L --> M{Progress atau keputusan berubah?}
-  M -->|Ya| N[Update PROJECT_STATE.md<br/>+ CHANGELOG.md]
+  M -->|Ya| N[Update PROJECT_STATE.md<br/>+ COMPLETE_TASK.md]
   M -->|Tidak| O[Selesai]
   N --> O[Selesai]
 ```

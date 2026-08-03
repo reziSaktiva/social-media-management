@@ -1,6 +1,60 @@
-# CHANGELOG
+# COMPLETE_TASK
+
+> ⚠️ **PERINGATAN KERAS — JANGAN BACA ISI FILE INI KECUALI DIPERINTAHKAN SECARA EKSPLISIT oleh King Rezi.**
+> File ini adalah riwayat lengkap seluruh task/perubahan yang sudah selesai sejak awal project (ribuan baris). Untuk status terkini, cukup baca section **Snapshot** di `PROJECT_STATE.md`. AI dilarang membuka/membaca isi lengkap file ini secara proaktif — hanya boleh dibaca saat King Rezi secara eksplisit meminta riwayat lengkap atau menyebut file ini.
+> **Pengecualian:** menambahkan entri baru di bagian atas (tepat di bawah `---` ini) setelah sesi kerja selesai tetap **wajib** — itu operasi tulis/append, bukan baca, dan tidak memerlukan membaca entri-entri lama di bawahnya.
 
 Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat pada dokumen ini.
+
+---
+
+## 2026-08-03 — ADR-061: Konsolidasi CHANGELOG jadi COMPLETE_TASK.md
+
+Susulan dari ADR-060: King Rezi minta `CHANGELOG.md` (root, entri M8+) dan arsip `changelog/CHANGELOG-pre-M8.md` digabung kembali jadi satu file historis tunggal, diberi peringatan keras larangan baca proaktif oleh AI.
+
+### Added
+
+* `project-manager/COMPLETE_TASK.md` — gabungan `CHANGELOG.md` + `changelog/CHANGELOG-pre-M8.md` (3.164 baris), reverse-chronological, dengan banner peringatan keras di kepala file.
+* ADR-061 di `project-manager/decisions/ADR-061-konsolidasi-changelog-jadi-complete-task.md`.
+
+### Changed
+
+* Seluruh referensi `CHANGELOG.md`/`changelog/` di `PROJECT_RULES.md`, `README.md`, `.agents/skills/project-os-navigator/SKILL.md`, `AGENTS.md`, `DEVELOPER_WORKFLOW.md`, `PROJECT_STATE.md` diperbarui ke `COMPLETE_TASK.md`.
+* `PROJECT_RULES.md` — guardrail rotasi milestone untuk `CHANGELOG.md` dicabut (tidak relevan lagi untuk file yang sengaja tidak dibaca AI secara rutin).
+
+### Removed
+
+* `project-manager/CHANGELOG.md` (root) dan folder `project-manager/changelog/` — digabung ke `COMPLETE_TASK.md`.
+
+### Decisions
+
+* ADR-061 dicatat di `project-manager/decisions/ADR-061-konsolidasi-changelog-jadi-complete-task.md`.
+
+---
+
+## 2026-08-03 — ADR-060: Dokumentasi Efficiency Restructuring
+
+King Rezi resah `PROJECT_STATE.md` terlalu panjang dan khawatir AI membaca seluruh isinya untuk pertanyaan sederhana — audit menemukan `DECISIONS.md` (149 KB, wajib dibaca penuh oleh skill navigator) sebagai kontributor pemborosan token terbesar, plus duplikasi nyata antara "Completed"/"Recent Decisions" di `PROJECT_STATE.md` dengan `CHANGELOG.md`/`DECISIONS.md`.
+
+### Added
+
+* `project-manager/decisions/` — 59 ADR lama (ADR-001–059) dipecah jadi satu file per ADR (`ADR-XXX-slug.md`), diekstrak otomatis via script dengan self-check byte-for-byte (tidak ada teks yang hilang/berubah) — plus `ADR-060-dokumentasi-efficiency-restructuring.md` (ADR ini sendiri).
+* `project-manager/changelog/CHANGELOG-pre-M8.md` — arsip 1.391 baris entri CHANGELOG pra-M8 (M0–M7).
+* Section **Snapshot** baru di paling atas `PROJECT_STATE.md` (~20 baris: phase/milestone, active mode, top next tasks, top blocker).
+* Section **Guardrail Ukuran Dokumen** baru di `PROJECT_RULES.md` — rolling window ≤10 item untuk ringkasan `PROJECT_STATE.md`, rotasi `CHANGELOG.md` maksimal milestone aktif + 1 sebelumnya, dicek tiap Definition of Done milestone.
+
+### Changed
+
+* `DECISIONS.md`: 3.564 → 69 baris — isi sekarang indeks ringkas (tabel ADR#/Title/Status/Date/Ringkasan/link file, terbaru-di-atas), full text ADR pindah ke `decisions/`.
+* `PROJECT_STATE.md`: 928 → ~260 baris — heading dirapikan jadi `##` konsisten, section "Completed"/"Recent Decisions" dipangkas ke 5 item terakhir + pointer ke `CHANGELOG.md`/`DECISIONS.md` (isi lengkap tidak hilang).
+* `CHANGELOG.md`: 3.135 → 1.746 baris (root) — entri pra-M8 pindah ke arsip, root kini fokus ke milestone aktif.
+* `.agents/skills/project-os-navigator/SKILL.md` — "Langkah Pertama: Load Context" diubah dari wajib-baca-4-file-penuh jadi cascade 3 tingkat (fakta cepat → snapshot status → baca penuh khusus task nyata); instruksi pembuatan ADR baru di mode "Planning Change" diperbarui ke konvensi per-file.
+* `PROJECT_RULES.md` — Document Type Classification: `decisions/ADR-*.md` dan `changelog/CHANGELOG-*.md` ditambahkan sebagai Append-Only.
+* `project-manager/README.md` — folder structure & Core Documents table disesuaikan dengan struktur baru.
+
+### Decisions
+
+* ADR-060 dicatat di `project-manager/decisions/ADR-060-dokumentasi-efficiency-restructuring.md`.
 
 ---
 

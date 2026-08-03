@@ -54,10 +54,11 @@ social-media-management/
 │   ├── PROJECT_OVERVIEW.md
 │   ├── ARCHITECTURE_OVERVIEW.md
 │   ├── PROJECT_RULES.md
-│   ├── PROJECT_STATE.md
-│   ├── DECISIONS.md
+│   ├── PROJECT_STATE.md      → baca section "Snapshot" dulu untuk lookup cepat
+│   ├── DECISIONS.md          → indeks ringkas ADR (full text di decisions/)
+│   ├── decisions/            → satu file per ADR (ADR-XXX-slug.md)
 │   ├── DEVELOPER_WORKFLOW.md
-│   ├── CHANGELOG.md
+│   ├── COMPLETE_TASK.md      → riwayat lengkap task selesai ⚠️ JANGAN dibaca AI kecuali diperintah
 │   ├── CONVERSATIONS.md
 │   └── BRAINSTORM.md
 └── product-discovery/        → pengetahuan produk (business s/d engineering)
@@ -79,10 +80,10 @@ social-media-management/
 | `PROJECT_OVERVIEW.md`       | Ringkasan project secara keseluruhan.                                       |
 | `ARCHITECTURE_OVERVIEW.md`  | High-level architecture untuk blueprint Figma (bukan SoT detail arsitektur). |
 | `PROJECT_RULES.md`          | Aturan dan prinsip kerja project.                                           |
-| `PROJECT_STATE.md`          | Status project saat ini, milestone, progress, dan next task.                |
-| `DECISIONS.md`              | Catatan seluruh keputusan penting beserta alasannya.                        |
+| `PROJECT_STATE.md`          | Status project saat ini, milestone, progress, dan next task. Section "Snapshot" di atas untuk lookup cepat tanpa baca penuh. |
+| `DECISIONS.md`              | Indeks ringkas seluruh ADR (tabel + link); full text tiap ADR ada di `decisions/ADR-XXX-slug.md`. |
 | `DEVELOPER_WORKFLOW.md`     | Alur kerja project & user flow inti sebagai diagram mermaid (visualisasi, bukan SoT). |
-| `CHANGELOG.md`              | Riwayat perubahan dokumentasi maupun implementasi.                          |
+| `COMPLETE_TASK.md`          | Riwayat lengkap seluruh task/perubahan sejak awal project. ⚠️ AI dilarang membaca isinya kecuali diperintah eksplisit King Rezi — cukup baca Snapshot di `PROJECT_STATE.md`. |
 | `CONVERSATIONS.md`          | Log percakapan penting antar sesi (diisi otomatis oleh AI).                 |
 | `BRAINSTORM.md`             | Bank ide dari sesi brainstorming (diisi otomatis oleh AI).                  |
 

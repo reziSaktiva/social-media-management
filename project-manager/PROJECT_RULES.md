@@ -70,7 +70,7 @@ Setiap dokumen dalam project memiliki tipe yang menentukan kapan dan bagaimana d
 
 Dokumen yang mendeskripsikan struktur, tujuan, scope, dan aturan. Tidak boleh berisi informasi yang berubah-ubah (status, progress, fase aktif).
 
-Hanya boleh diubah jika terjadi perubahan **struktural** — scope baru, dokumen baru, atau aturan baru — dan perubahan tersebut wajib dicatat di `CHANGELOG.md`.
+Hanya boleh diubah jika terjadi perubahan **struktural** — scope baru, dokumen baru, atau aturan baru — dan perubahan tersebut wajib dicatat di `COMPLETE_TASK.md`.
 
 Termasuk:
 
@@ -98,8 +98,9 @@ Dokumen yang hanya bertambah. Entri lama tidak boleh diedit atau dihapus.
 
 Termasuk:
 
-* `DECISIONS.md` — setiap ADR baru ditambahkan sebagai entri baru.
-* `CHANGELOG.md` — setiap perubahan dicatat sebagai entri baru.
+* `DECISIONS.md` — **indeks ringkas** ADR (tabel ADR#/Title/Status/Date/Ringkasan/link file), satu baris baru per ADR baru. Bukan lagi tempat full-text ADR (lihat `decisions/`).
+* `decisions/ADR-*.md` — satu file per ADR, isi lengkap (Title/Status/Date/Decision/Reason/Alternatives Considered). Entri lama tidak boleh diedit/dihapus, sama seperti induknya.
+* `COMPLETE_TASK.md` — riwayat lengkap seluruh task/perubahan sejak awal project, satu entri baru per sesi kerja (append di bagian atas). **Tidak boleh dibaca AI kecuali diperintahkan eksplisit oleh King Rezi** — lihat peringatan di kepala file. Menambah entri baru tetap wajib (operasi tulis, bukan baca).
 * `CONVERSATIONS.md` — setiap sesi dicatat sebagai entri baru.
 * `BRAINSTORM.md` — setiap ide baru dicatat sebagai entri baru.
 
@@ -107,7 +108,14 @@ Termasuk:
 
 * README **tidak boleh** memuat status (✅ ⏳ 🟡), progress (%), atau fase aktif.
 * Status folder, milestone, dan fase hanya boleh ditampilkan pada `PROJECT_STATE.md`.
-* Setiap perubahan struktural pada dokumen Static Reference wajib dicatat pada `CHANGELOG.md`.
+* Setiap perubahan struktural pada dokumen Static Reference wajib dicatat pada `COMPLETE_TASK.md`.
+
+## Guardrail Ukuran Dokumen (Living/Append-Only)
+
+Supaya `PROJECT_STATE.md` tidak kembali membengkak, dicek sebagai bagian **Definition of Done** setiap milestone selesai:
+
+* `PROJECT_STATE.md` section "Completed (Ringkasan)" dan "Recent Decisions (Ringkasan)" masing-masing dijaga ≤ ~10 item (rolling window item terbaru). Item yang tergeser keluar tetap utuh di `COMPLETE_TASK.md`/`DECISIONS.md` — tidak hilang, hanya tidak lagi tampil inline.
+* `COMPLETE_TASK.md` sengaja **tidak** dirotasi/diarsipkan (satu file historis penuh, by design — lihat ADR-061) karena AI memang dilarang membacanya kecuali diperintah; ukurannya boleh terus tumbuh tanpa jadi beban token.
 
 ---
 
@@ -196,6 +204,7 @@ Sebuah milestone dianggap selesai apabila:
 * Keputusan penting telah dicatat pada `DECISIONS.md`.
 * Tidak terdapat blocker yang belum diselesaikan.
 * `PROJECT_STATE.md` telah diperbarui.
+* Guardrail ukuran dokumen (lihat **Documentation Governance**) sudah dicek — rotasi ringkasan `PROJECT_STATE.md` kalau perlu.
 
 ---
 
@@ -206,5 +215,5 @@ Sebuah milestone dianggap selesai apabila:
 * `ARCHITECTURE_OVERVIEW.md`
 * `PROJECT_STATE.md`
 * `DECISIONS.md`
-* `CHANGELOG.md`
+* `COMPLETE_TASK.md`
 * `../product-discovery/README.md`
