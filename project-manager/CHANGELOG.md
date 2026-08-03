@@ -4,6 +4,83 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-03 — ADR-059: Fake OutstandAdapter — persistensi nyata "Schedule" tanpa kredensial Outstand asli
+
+King Rezi belum punya `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli dari
+Outstand, sehingga integrasi publishing sungguhan (ADR-040) tertahan. Next
+Tasks direorder: Fake/mock `OutstandAdapter` dibangun dulu supaya fitur
+"Schedule" di Draft Editor bisa lanjut dikerjakan dan diuji tanpa menunggu
+kredensial asli. Alur: Elon Backend Engineer → Prabowo Feature Engineer →
+Najwa QA Engineer → Ridwan Architecture Reviewer, plus 1 siklus fix bug —
+semua lolos verifikasi.
+
+### Added
+
+* `DECISIONS.md` — **ADR-059**: scope hanya method Publishing (`schedulePost`,
+  Engagement/Analytics/`connectAccount` OAuth di luar scope, YAGNI);
+  fidelitas instant always-success (tanpa simulasi delay/webhook/skenario
+  gagal); switch mechanism auto-detect dari env (`getOutstandAdapter()`
+  memakai Fake kalau `OUTSTAND_API_KEY` kosong, throw error jelas — bukan
+  silent fallback — kalau env terisi tapi real adapter belum ada kodenya);
+  `IOutstandAdapter` didefinisikan di domain `publishing` dulu (satu-satunya
+  pemakai saat ini); precedent arsitektur baru — `SchedulePostsUseCase`
+  terpisah dari `PublishingService` untuk operasi yang butuh dependency
+  tambahan (`IOutstandAdapter`) di luar `IPublishingRepository`, supaya
+  constructor tetap type-safe; guard ownership `connectedAccountId` vs
+  `workspaceId` ditegakkan di level repository (transaksi Prisma), bukan
+  cuma Server Action.
+* `IOutstandAdapter` / `FakeOutstandAdapter` / `getOutstandAdapter()` factory
+  (`domains/publishing/adapters/`, `lib/adapters/outstand/`).
+* `SchedulePostsUseCase`
+  (`domains/publishing/services/schedule-posts.use-case.ts`) — validasi
+  format ADR-039 server-side (`content-format-matrix.ts`, sebelumnya cuma
+  ada di client), persist post+target (status transition draft/
+  ready_to_schedule → scheduled), panggil adapter per target dengan outcome
+  per-target (try/catch individual, tidak all-or-nothing).
+* Guard ownership + guard status atomik baru di
+  `IPublishingRepository.schedulePost` (transaksi Prisma, rollback total
+  bila salah satu guard gagal).
+* `WorkspaceService.listConnectedAccounts` — query real
+  `WorkspaceConnectedAccount`, dipakai Draft Editor Account Selector
+  (menggantikan `MOCK_ACCOUNTS` hardcoded) — sekaligus partial-progress
+  prasyarat Sidebar "Channels" (ADR-058).
+* Seed script manual `apps/web/prisma/seed-connected-accounts.ts` — 2 akun
+  mock (Instagram/Facebook) untuk dev/QA tanpa OAuth asli.
+
+### Changed
+
+* `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` di `env.ts` diubah dari
+  required jadi optional.
+* Draft Editor "Schedule" button kini benar-benar persist ke database
+  (bukan mock notice client-side lagi) — diverifikasi end-to-end sampai row
+  `publishing_posts`/`publishing_post_targets` di Supabase (`outstandJobId`
+  format `fake-<uuid>`).
+
+### Fixed
+
+* Dialog "Konfirmasi Jadwal" di `modal.tsx` sempat tidak bisa terbuka — root
+  cause: Astryx melarang nested Dialog (dialog konfirmasi bersarang di
+  dalam Dialog fullscreen New Post/Edit Draft). Diperbaiki jadi satu Dialog
+  dengan step konfirmasi inline (state `isConfirmStep`).
+
+### Notes
+
+* Diverifikasi: `bun run typecheck/lint/test` hijau di setiap tahap (31 test
+  lolos), browser E2E via ngrok (akun test Raka Pratama, workspace
+  "insvire"), review arsitektur Ridwan (2 temuan awal — IDOR + type-safety
+  constructor — sudah ditutup dan di-re-check, tidak ada temuan baru).
+* Tidak termasuk scope ini, tetap di Next Tasks: `publishNow`/
+  `cancelSchedule` (ADR-047/ADR-049), `PublishingQueueSlot`, Engagement/
+  Analytics di `IOutstandAdapter`, media upload trio, dan implementasi UI
+  Sidebar "Channels" (ADR-058) — prasyarat `listConnectedAccounts`-nya saja
+  yang terpenuhi lewat entri ini.
+* `PROJECT_STATE.md` diperbarui: entri baru di Completed, baris "Publishing
+  MVP — sisa persistensi nyata: sambungkan Schedule..." dihapus dari In
+  Progress dan Next Tasks (sudah selesai), catatan prasyarat
+  `listConnectedAccounts` di baris Sidebar Channels (ADR-058) diperbarui.
+
+---
+
 ## 2026-07-31 — Claude Design: fix Content Format Selector hilang di New Post + tambah akun mock TikTok & Pinterest (catch-up ADR-037/ADR-039)
 
 Dikerjakan langsung dari sesi utama (bukan subagent Neymar) karena
