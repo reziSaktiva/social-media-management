@@ -4,6 +4,7 @@ import type { SocialPlatform } from "@social/shared";
 import { asPostId, asUserId } from "@social/shared";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import type { ScheduleTargetRequest } from "@/domains/publishing";
 import {
   PublishingService,
   resolveScheduleTargets,
@@ -101,11 +102,12 @@ export async function getConnectedAccountsAction(
   }));
 }
 
-export interface ScheduleDraftTargetInput {
-  connectedAccountId: string;
-  contentFormat: string;
-  platformOptions?: Record<string, unknown>;
-}
+/**
+ * Alias dari `ScheduleTargetRequest` domain publishing (bukan definisi
+ * terpisah) — actions.ts sebagai entry point reuse tipe dari domain,
+ * bukan sebaliknya.
+ */
+export type ScheduleDraftTargetInput = ScheduleTargetRequest;
 
 export interface ScheduleDraftInput {
   postId?: string;
@@ -129,26 +131,27 @@ export async function scheduleDraftAction(
   const { session, workspace } = await resolveWorkspaceAndSession(slug);
 
   const publishingService = new PublishingService(publishingRepository);
+  const workspaceService = new WorkspaceService(workspaceRepository);
 
   // Pastikan caption terbaru dari editor sudah persist sebelum dijadwalkan —
   // baik untuk "New Post" yang belum pernah di-save (belum ada postId)
   // maupun draft existing yang diedit tanpa klik "Save as Draft" dulu.
-  const post = input.postId
-    ? await publishingService.updateDraft({
-        workspaceId: workspace.id,
-        postId: asPostId(input.postId),
-        caption: input.caption,
-      })
-    : await publishingService.saveDraft({
-        workspaceId: workspace.id,
-        authorId: asUserId(session.user.id),
-        caption: input.caption,
-      });
-
-  const workspaceService = new WorkspaceService(workspaceRepository);
-  const connectedAccounts = await workspaceService.listConnectedAccounts(
-    workspace.id,
-  );
+  // Independen dari `listConnectedAccounts` di bawah — jalankan berbarengan
+  // lewat Promise.all daripada await berurutan.
+  const [post, connectedAccounts] = await Promise.all([
+    input.postId
+      ? publishingService.updateDraft({
+          workspaceId: workspace.id,
+          postId: asPostId(input.postId),
+          caption: input.caption,
+        })
+      : publishingService.saveDraft({
+          workspaceId: workspace.id,
+          authorId: asUserId(session.user.id),
+          caption: input.caption,
+        }),
+    workspaceService.listConnectedAccounts(workspace.id),
+  ]);
   const targets = resolveScheduleTargets(connectedAccounts, input.targets);
 
   const scheduled = await new SchedulePostsUseCase(

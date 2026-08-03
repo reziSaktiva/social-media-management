@@ -66,4 +66,38 @@ describe("resolveScheduleTargets", () => {
       ),
     ).toThrow(ValidationError);
   });
+
+  it("melempar ValidationError kalau contentFormat bukan value ContentFormat yang valid", () => {
+    const account = createConnectedAccount();
+
+    expect(() =>
+      resolveScheduleTargets(
+        [account],
+        [
+          {
+            connectedAccountId: account.id,
+            contentFormat: "carousel",
+          },
+        ],
+      ),
+    ).toThrow(ValidationError);
+  });
+
+  it("melempar error kalau contentFormat valid tapi tidak diizinkan untuk platform akun tersebut", () => {
+    const account = createConnectedAccount({
+      platform: SocialPlatform.Pinterest,
+    });
+
+    expect(() =>
+      resolveScheduleTargets(
+        [account],
+        [
+          {
+            connectedAccountId: account.id,
+            contentFormat: ContentFormat.Reel,
+          },
+        ],
+      ),
+    ).toThrow();
+  });
 });
