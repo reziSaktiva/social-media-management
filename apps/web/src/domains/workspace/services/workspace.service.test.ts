@@ -1,7 +1,13 @@
-import { asUserId, asWorkspaceId } from "@social/shared";
+import {
+  asConnectedAccountId,
+  asUserId,
+  asWorkspaceId,
+  SocialPlatform,
+} from "@social/shared";
 import { describe, expect, it } from "vitest";
 import { ConflictError, ValidationError } from "@/lib/utils/errors";
 import type {
+  ConnectedAccountRecord,
   IWorkspaceRepository,
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
@@ -20,6 +26,7 @@ function createFakeRepository(
     }),
     findAnyMembershipSlugByUserId: async () => null,
     findBySlug: async () => null,
+    listConnectedAccounts: async () => [],
     ...overrides,
   };
 }
@@ -147,5 +154,29 @@ describe("WorkspaceService.getWorkspaceBySlug", () => {
     const service = new WorkspaceService(createFakeRepository());
 
     await expect(service.getWorkspaceBySlug("missing")).resolves.toBeNull();
+  });
+});
+
+describe("WorkspaceService.listConnectedAccounts", () => {
+  it("delegates to the repository", async () => {
+    const accounts: ConnectedAccountRecord[] = [
+      {
+        id: asConnectedAccountId("conn-1"),
+        workspaceId: asWorkspaceId("workspace-1"),
+        platform: SocialPlatform.Instagram,
+        outstandAccountId: "mock-ig-001",
+        handle: "@insvire.demo",
+        status: "active",
+      },
+    ];
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listConnectedAccounts: async () => accounts,
+      }),
+    );
+
+    await expect(
+      service.listConnectedAccounts(asWorkspaceId("workspace-1")),
+    ).resolves.toBe(accounts);
   });
 });

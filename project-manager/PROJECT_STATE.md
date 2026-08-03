@@ -4,9 +4,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.32     |
+| Version      | 1.0.33     |
 | Status       | Active     |
-| Last Updated | 2026-07-31 |
+| Last Updated | 2026-08-03 |
 
 ---
 
@@ -18,7 +18,7 @@
 | Current Milestone | M8 — Development               |
 | Current Sprint    | Sprint 5                         |
 | Overall Progress  | M7 100% · M8 in progress         |
-| Project Status    | M8 berjalan — Publishing MVP (mock) |
+| Project Status    | M8 berjalan — Publishing MVP (persistensi nyata, Fake OutstandAdapter) |
 
 ---
 
@@ -38,8 +38,9 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
   dan smoke test Next.js 16 juga sudah selesai.
 * Fokus M8 saat ini: Auth Flows, Workspace Onboarding, App Shell, Draft
   Editor (kini modal fullscreen, ADR-052), persistensi nyata "Save as
-  Draft"/"Edit Draft", dan Drafts List data asli sudah selesai; lanjut ke
-  persistensi "Schedule" + integrasi Outstand (ADR-040).
+  Draft"/"Edit Draft", Drafts List data asli, dan persistensi nyata
+  "Schedule" via Fake OutstandAdapter (ADR-059) sudah selesai; lanjut ke
+  integrasi Outstand runtime asli (ADR-040) begitu kredensial tersedia.
 
 ---
 
@@ -539,15 +540,49 @@ Restricted Actions:
   unchecked (tidak pernah masuk ke dialog itu). Dikerjakan langsung dari
   sesi utama (bukan subagent Neymar) karena keterbatasan teknis `DesignSync`
   tidak bisa dimuat di sesi subagent (2026-07-31).
+* **ADR-059 — Fake OutstandAdapter: persistensi nyata "Schedule" selesai:**
+  karena `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli belum tersedia,
+  dibangun `IOutstandAdapter`/`FakeOutstandAdapter`/`getOutstandAdapter()`
+  factory (`domains/publishing/adapters/`, `lib/adapters/outstand/`,
+  scope hanya `schedulePost`, instant always-success, auto-detect dari env
+  dengan throw loud kalau env terisi tapi real adapter belum ada) supaya
+  fitur Schedule bisa lanjut tanpa menunggu kredensial asli.
+  `SchedulePostsUseCase` baru (`domains/publishing/services/
+  schedule-posts.use-case.ts`) — validasi format ADR-039 server-side
+  (`content-format-matrix.ts`, sebelumnya cuma ada di client), persist
+  post+target (status transition draft/ready_to_schedule → scheduled),
+  panggil adapter per target dengan outcome per-target (try/catch
+  individual, tidak all-or-nothing). Guard ownership `connectedAccountId`
+  vs `workspaceId` + guard status ditegakkan atomik di
+  `IPublishingRepository.schedulePost` (transaksi Prisma, rollback total
+  bila salah satu guard gagal). Tombol "Schedule" di Draft Editor sekarang
+  benar-benar persist ke database (bukan mock notice client-side lagi) —
+  diverifikasi end-to-end sampai row `publishing_posts`/
+  `publishing_post_targets` di Supabase (`outstandJobId` format
+  `fake-<uuid>`). Sekaligus menambahkan `WorkspaceService.
+  listConnectedAccounts` (query real `WorkspaceConnectedAccount`, dipakai
+  Draft Editor Account Selector, menggantikan `MOCK_ACCOUNTS` hardcoded) +
+  seed script manual `apps/web/prisma/seed-connected-accounts.ts` (2 akun
+  mock Instagram/Facebook untuk dev/QA tanpa OAuth asli) — ini sekaligus
+  partial-progress prasyarat Sidebar "Channels" (ADR-058), lihat Next
+  Tasks. `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` di `env.ts` diubah
+  dari required jadi optional. **Bug ditemukan & diperbaiki dalam
+  proses:** dialog "Konfirmasi Jadwal" di `modal.tsx` sempat tidak bisa
+  terbuka — root cause Astryx melarang nested Dialog (dialog konfirmasi
+  bersarang di dalam Dialog fullscreen New Post/Edit Draft); diperbaiki
+  jadi satu Dialog dengan step konfirmasi inline (state `isConfirmStep`).
+  Diverifikasi: `bun run typecheck/lint/test` hijau di setiap tahap (31
+  test lolos), browser E2E via ngrok (akun test Raka Pratama, workspace
+  "insvire"), review arsitektur Ridwan (2 temuan awal — IDOR + type-safety
+  constructor — sudah ditutup dan di-re-check, tidak ada temuan baru).
+  Alur: Elon Backend Engineer → Prabowo Feature Engineer → Najwa QA
+  Engineer → Ridwan Architecture Reviewer, plus 1 siklus fix bug
+  (2026-08-03).
 
 ---
 
 # In Progress
 
-* **Publishing MVP — sisa persistensi nyata:** "Save as Draft" sudah persist
-  ke database; task berikutnya adalah menyambungkan "Schedule" ke database
-  nyata (status transition draft → scheduled) dan integrasi `OutstandAdapter`
-  (ADR-040).
 * Template `design-tokens.md` sudah disiapkan (status Draft / TBD); nilai final
   berkembang iteratif co-equal dengan Claude Design (ADR-056) — tidak ada lagi
   gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
@@ -564,16 +599,18 @@ Restricted Actions:
   quick-compose "+" tetap no-shift/fixed-slot, drag-handle
   **shift-on-hover** — seluruh isi baris ikut bergeser, addendum ADR-058
   yang mengoverride keputusan awal "no-shift"). Prasyarat: service
-  `listConnectedAccounts` (belum ada, saat ini Connected Accounts masih
-  scaffold), skema tabel reorder personal per user (baru), query
-  scheduled-posts count lintas domain, dan konfirmasi `react-icons`
-  sebagai dependency runtime `apps/web` (`dependency-strategy.md`).
+  `listConnectedAccounts` **sudah ada** (dibuat sebagai bagian ADR-059,
+  `WorkspaceService.listConnectedAccounts`, query real
+  `WorkspaceConnectedAccount`) — sisa prasyarat yang belum terpenuhi:
+  skema tabel reorder personal per user (baru), query scheduled-posts
+  count lintas domain, dan konfirmasi `react-icons` sebagai dependency
+  runtime `apps/web` (`dependency-strategy.md`).
   **Catatan terbuka:** posisi pixel tombol "+" di Claude Design saat ini
   (`top: 1px; left: -1px` di atas `.channel-add`) sudah dikonfirmasi King
   Rezi sendiri sebagai "kurang pas" — bukan source of truth pixel-perfect;
   King Rezi akan menyesuaikan sendiri saat implementasi kode ini
   berjalan, jangan disalin apa adanya sebagai nilai final.
-* **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (kini modal, ADR-052), persistensi "Save as Draft"/"Edit Draft", dan Drafts List data asli selesai; lanjut ke persistensi "Schedule" + integrasi Outstand sesuai baseline + `context/`.
+* **M8 — Development:** auth flows UI, workspace onboarding, App Shell, Draft Editor (kini modal, ADR-052), persistensi "Save as Draft"/"Edit Draft", Drafts List data asli, dan persistensi nyata "Schedule" via Fake OutstandAdapter (ADR-059) selesai; lanjut ke integrasi Outstand runtime asli (ADR-040) begitu kredensial tersedia.
 * **Sidebar CTA "+ New Post" (ADR-053) — implementasi kode menyusul:**
   tambahkan CTA pinned di `WorkspaceSideNav`/`AppShell` (`apps/web`), di
   bawah Workspace Selector dan di atas navigation items, membuka Draft
@@ -586,7 +623,6 @@ Restricted Actions:
   History/Calendar baru relevan setelah persistensi "Schedule" dan
   implementasi Publish Now (ADR-047) berjalan — bukan task terpisah baru,
   cukup diselaraskan saat kedua task tersebut dikerjakan.
-* **Publishing MVP — sisa persistensi nyata:** sambungkan "Schedule" di Draft Editor (modal New Post/Edit Draft) ke database — status transition draft → scheduled — menggantikan mock notice saat ini.
 * **Light/Dark Mode Toggle (ADR-055) — push `components/navigation.html` yang
   tertunda:** file hasil edit sudah disiapkan lengkap di scratchpad
   (dibuat sesi Neymar), tinggal di-push ke Claude Design saat tool
@@ -634,7 +670,11 @@ Restricted Actions:
 * **Runtime ADR-040 belum diimplementasikan.** Alignment dokumentasi dan
   schema/migration sudah selesai, tetapi handler webhook, durable ingestion,
   retry internal, media upload Outstand, engagement sync/reply, dan reconnect
-  flow masih task M8.
+  flow masih task M8. `schedulePost` sendiri sudah bisa dipakai lewat
+  `FakeOutstandAdapter` (ADR-059) — `getOutstandAdapter()` akan beralih
+  otomatis ke real adapter begitu `OUTSTAND_API_KEY` diisi **dan** kode real
+  adapter sudah ditulis (kalau env terisi tapi kode belum ada, factory throw
+  error, bukan silent fallback ke Fake).
 * **Astryx masih Beta.** Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat
   smoke test dan production build, tetapi risiko perubahan API tetap dikelola
   dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
@@ -670,6 +710,18 @@ Tidak ada blocker saat ini.
 
 # Recent Decisions
 
+* ADR-059 — Fake OutstandAdapter — persistensi nyata "Schedule" tanpa
+  kredensial Outstand asli: scope hanya `schedulePost` (Engagement/
+  Analytics/`connectAccount` OAuth di luar scope, YAGNI); fidelitas instant
+  always-success; `getOutstandAdapter()` auto-detect dari env
+  (`OUTSTAND_API_KEY` kosong → Fake, terisi tapi real adapter belum ada
+  kodenya → throw loud, bukan silent fallback); `IOutstandAdapter`
+  didefinisikan di domain `publishing` dulu; precedent arsitektur baru
+  `SchedulePostsUseCase` terpisah dari `PublishingService` untuk operasi
+  yang butuh dependency tambahan (relevan lagi untuk `PublishNowUseCase`/
+  `CancelScheduleUseCase`); guard ownership `connectedAccountId` vs
+  `workspaceId` ditegakkan di level repository (transaksi Prisma), bukan
+  cuma Server Action (2026-08-03).
 * ADR-058 — Sidebar mendapat section "Channels": quick-glance daftar akun
   media sosial terhubung, posisi antara 5 navigation item dan zona bawah
   (Notifications/Theme/Avatar), scroll independen. Icon brand pakai

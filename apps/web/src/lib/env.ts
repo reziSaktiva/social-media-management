@@ -11,8 +11,6 @@ const REQUIRED_SERVER_VARS = [
   "SUPABASE_JWT_SECRET",
   "BETTER_AUTH_SECRET",
   "BETTER_AUTH_URL",
-  "OUTSTAND_API_KEY",
-  "OUTSTAND_WEBHOOK_SECRET",
   "JOB_SECRET",
 ] as const;
 
@@ -29,8 +27,9 @@ export type ServerEnv = {
   BETTER_AUTH_API_KEY?: string;
   BETTER_AUTH_API_URL?: string;
   BETTER_AUTH_KV_URL?: string;
-  OUTSTAND_API_KEY: string;
-  OUTSTAND_WEBHOOK_SECRET: string;
+  /** Optional (ADR-059) — kosong → Fake OutstandAdapter aktif otomatis. */
+  OUTSTAND_API_KEY?: string;
+  OUTSTAND_WEBHOOK_SECRET?: string;
   JOB_SECRET: string;
   NEXT_PUBLIC_SUPABASE_URL?: string;
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
@@ -74,8 +73,8 @@ export function getServerEnv(): ServerEnv {
     BETTER_AUTH_API_KEY: process.env.BETTER_AUTH_API_KEY,
     BETTER_AUTH_API_URL: process.env.BETTER_AUTH_API_URL,
     BETTER_AUTH_KV_URL: process.env.BETTER_AUTH_KV_URL,
-    OUTSTAND_API_KEY: process.env.OUTSTAND_API_KEY ?? "",
-    OUTSTAND_WEBHOOK_SECRET: process.env.OUTSTAND_WEBHOOK_SECRET ?? "",
+    OUTSTAND_API_KEY: process.env.OUTSTAND_API_KEY,
+    OUTSTAND_WEBHOOK_SECRET: process.env.OUTSTAND_WEBHOOK_SECRET,
     JOB_SECRET: process.env.JOB_SECRET ?? "",
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:

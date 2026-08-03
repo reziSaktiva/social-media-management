@@ -35,6 +35,8 @@ function createFakeRepository(
     listDrafts: async () => [],
     findDraftById: async () => null,
     updateDraftCaption: async () => null,
+    schedulePost: async () => null,
+    updateTargetOutcome: async () => undefined,
     ...overrides,
   };
 }
