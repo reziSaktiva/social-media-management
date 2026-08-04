@@ -8,6 +8,25 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-04 — T-011.1: render CTA "+ New Post" di sidebar
+
+Branch baru `feat/t-011-sidebar-cta-new-post`. Subtask pertama T-011 (ADR-053): menaruh CTA primary full-width di sidebar, tepat di bawah Workspace Selector dan di atas navigation items — supaya New Post bisa diakses dari section manapun, bukan hanya dari Publish.
+
+Acuan: ADR-053, `04-ux/navigation-patterns.md` (NP-D01), dan Claude Design `components/navigation.html` (`<div class="sidebar-cta"><button class="btn btn-primary btn-block">＋ New Post</button></div>`, berada tepat setelah `.ws-switch` dan sebelum `.nav`).
+
+### Changed
+
+* `apps/web/src/app/[slug]/workspace-side-nav.tsx` — menambahkan `Button` (`variant="primary"`, `width="100%"`, ikon `＋`, label `New Post`) pada slot `topContent` milik Astryx `SideNav`. Slot ini memang didokumentasikan sebagai "Content below the header, e.g., a create button" — posisinya persis di bawah header (Workspace Selector) dan di atas `children` (nav items), dan tidak ikut ter-scroll bersama `children`, jadi tetap *pinned* saat daftar Channels (T-012) nanti memanjang.
+
+### Notes
+
+* Tombol belum punya handler klik — wiring ke `DraftEditorProvider` adalah T-011.2. Saat ini provider hanya dipasang di `apps/web/src/app/[slug]/publish/layout.tsx`, sehingga belum bisa dipanggil dari section lain; itu justru inti pekerjaan T-011.2.
+
+### Verification
+
+* `bun run typecheck` bersih · `bun run lint` 0 error (85 warning, seluruhnya dari `.claude/worktrees/**`, pre-existing).
+* Verifikasi visual di browser **belum dilakukan** — sidebar hanya tampil setelah login, dan AI tidak memasukkan kredensial. Perlu dicek King Rezi saat login.
+
 ## 2026-08-04 — T-010 tuntas: persistensi cookie (T-010.2) + sync Claude Design (T-010.3)
 
 King Rezi memilih menyelesaikan T-010.2 lebih dulu sebelum masuk ke implementasi navbar (T-011/T-012), supaya acuan tema stabil. Sebelumnya tema selalu reset ke Light setiap full reload — disengaja, menunggu subtask ini.

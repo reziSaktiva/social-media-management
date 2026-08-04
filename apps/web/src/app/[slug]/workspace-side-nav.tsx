@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 
+import { Button } from "@astryxdesign/core/Button";
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { HStack } from "@astryxdesign/core/HStack";
 import { IconButton } from "@astryxdesign/core/IconButton";
@@ -52,6 +53,16 @@ export function WorkspaceSideNav({
           heading={workspaceName}
           headingHref={`/${slug}`}
           superheading="Workspace"
+        />
+      }
+      topContent={
+        // ADR-053: CTA pinned di bawah Workspace Selector, di atas nav items.
+        // Wiring ke DraftEditorProvider menyusul di T-011.2.
+        <Button
+          label="New Post"
+          variant="primary"
+          width="100%"
+          icon={<span aria-hidden>＋</span>}
         />
       }
       footer={
