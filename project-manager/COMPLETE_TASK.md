@@ -17,9 +17,14 @@ Judul subtask menyebut "verifikasi", tapi pemeriksaan terhadap ADR-054 menemukan
 1. Redirect Save as Draft yang ditambahkan saat tindak lanjut code review PR #37 tidak menutup editor lebih dulu — modal fullscreen tetap menutupi layar tujuan, sehingga "redirect" praktis tidak terlihat.
 2. Schedule masih memakai `router.refresh()`. Dari Home/Engage/Analyze itu tidak menampilkan apa pun, padahal ADR-054 menetapkan tujuannya Publish > Queue.
 
+### Added
+
+* `apps/web/src/app/[slug]/_draft-editor/terminal-destination.ts` — aturan destinasi ADR-054 diekstrak jadi fungsi murni (`resolveTerminalDestination`, `isAlreadyAtDestination`). Alasannya bukan kerapian: environment Vitest project ini `node` tanpa jsdom/testing-library, jadi tanpa ekstraksi ini aturan redirect sama sekali tidak bisa diuji otomatis dan verifikasinya bergantung penuh pada uji manual sambil login.
+* `apps/web/src/app/[slug]/_draft-editor/terminal-destination.test.ts` — 8 test: destinasi Save as Draft → Drafts, Schedule → Queue, slug tidak hardcode, destinasi tidak berubah mengikuti section asal, plus perilaku refresh-vs-push termasuk `pathname` `null`.
+
 ### Changed
 
-* `apps/web/src/app/[slug]/_draft-editor/modal.tsx` — helper baru `finishTerminalAction(destination)`: menutup editor (`close()`) lalu `router.push` ke tujuan, atau `router.refresh()` bila pengguna memang sudah berada di layar tujuan. Dipakai `handleSaveDraft` (→ Publish > Drafts) dan `handleConfirmSchedule` (→ Publish > Queue). Banner sukses pada kedua jalur dihapus karena editor keburu tertutup — umpan baliknya kini item yang muncul di layar tujuan, sesuai App Prototype di Claude Design. Banner error tetap ada.
+* `apps/web/src/app/[slug]/_draft-editor/modal.tsx` — helper baru `finishTerminalAction(action)`: menutup editor (`close()`) lalu `router.push` ke tujuan, atau `router.refresh()` bila pengguna memang sudah berada di layar tujuan. Dipakai `handleSaveDraft` (→ Publish > Drafts) dan `handleConfirmSchedule` (→ Publish > Queue). Banner sukses pada kedua jalur dihapus karena editor keburu tertutup — umpan baliknya kini item yang muncul di layar tujuan, sesuai App Prototype di Claude Design. Banner error tetap ada.
 
 ### Notes
 
@@ -28,8 +33,8 @@ Judul subtask menyebut "verifikasi", tapi pemeriksaan terhadap ADR-054 menemukan
 
 ### Verification
 
-* `bun run typecheck` bersih · `bun run lint` 0 error · `bun run test` 37 test / 7 file lolos.
-* Verifikasi browser **belum dilakukan** — butuh login. Karena itu T-011.3 belum dicentang dan T-011 tetap 🟡: legend `✅` mensyaratkan "selesai dan terverifikasi".
+* `bun run typecheck` bersih · `bun run lint` 0 error · `bun run test` **45 test / 8 file** lolos (naik dari 37/7 — 8 test baru untuk aturan destinasi).
+* Aturan destinasi ADR-054 kini terverifikasi otomatis. Yang **belum** terverifikasi dan tidak bisa diotomatiskan tanpa login: bahwa editor benar-benar tertutup dan halaman tujuan benar-benar tampil setelah aksi terminal. Karena itu T-011.3 belum dicentang dan T-011 tetap 🟡 — legend `✅` mensyaratkan "selesai dan terverifikasi".
 
 ## 2026-08-04 — T-011.1: render CTA "+ New Post" di sidebar
 

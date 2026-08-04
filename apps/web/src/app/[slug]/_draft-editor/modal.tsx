@@ -41,6 +41,11 @@ import {
   CONTENT_STATUS_BADGE_VARIANT,
   CONTENT_STATUS_LABEL,
 } from "./status-badge";
+import type { TerminalAction } from "./terminal-destination";
+import {
+  isAlreadyAtDestination,
+  resolveTerminalDestination,
+} from "./terminal-destination";
 
 /** Akun terhubung dari `WorkspaceConnectedAccount` (ADR-059) — bukan lagi mock. */
 type ConnectedAccount = ConnectedAccountDto;
@@ -271,9 +276,10 @@ function DraftEditorForm({
    * Close. Sejak CTA sidebar aktif (ADR-053) asalnya bisa Home/Engage/Analyze,
    * yang tidak menampilkan hasil aksi sama sekali.
    */
-  function finishTerminalAction(destination: string) {
+  function finishTerminalAction(action: TerminalAction) {
+    const destination = resolveTerminalDestination(slug, action);
     close();
-    if (pathname === destination) {
+    if (isAlreadyAtDestination(pathname, destination)) {
       router.refresh();
     } else {
       router.push(destination);
@@ -296,7 +302,7 @@ function DraftEditorForm({
       // Save as Draft → Publish > Drafts (ADR-054, T-031.1). Draft yang muncul
       // di daftar itulah umpan baliknya, menggantikan banner sukses yang tidak
       // akan sempat terbaca karena editor ditutup.
-      finishTerminalAction(`/${slug}/publish/drafts`);
+      finishTerminalAction("save-draft");
     } finally {
       setIsSavingDraft(false);
     }
@@ -331,7 +337,7 @@ function DraftEditorForm({
       // sampai T-032; tujuannya tetap dipakai karena ADR-054 sudah menetapkan
       // destinasi ini, dan mendarat di Queue lebih masuk akal daripada
       // tertinggal di Analyze/Home tanpa jejak aksi.
-      finishTerminalAction(`/${slug}/publish/queue`);
+      finishTerminalAction("schedule");
     } catch (error) {
       setNotice({
         status: "error",
