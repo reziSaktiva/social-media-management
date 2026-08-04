@@ -6,7 +6,6 @@ coverage
 bun.lock
 product-discovery
 project-manager
-design
-.agents
+.claude
 apps/web/next-env.d.ts
 apps/web/src/generated/**

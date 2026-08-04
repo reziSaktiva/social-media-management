@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.36     |
+| Version      | 1.0.38     |
 | Status       | Active     |
 | Last Updated | 2026-08-04 |
 
@@ -39,7 +39,12 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
 
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
 * `AGENTS.md` di root sudah ada; skill resmi vendor yang relevan (Prisma,
-  Better Auth, Vercel, Supabase) sudah terpasang di `.agents/skills/`.
+  Better Auth, Vercel, Supabase) sudah terpasang di `.claude/skills/` —
+  satu-satunya lokasi skill sejak ADR-064 (`.agents/skills/` dihapus).
+* Project dikerjakan di **dua tool**: Claude Code (utama) dan Cursor. Paritas
+  aset agent + dua pasang file kembar yang wajib dijaga sinkron (config MCP,
+  proteksi baca secret) didokumentasikan di section "Kompatibilitas tool"
+  pada `AGENTS.md` (ADR-064).
 * Alignment ADR-040 pada dokumentasi baseline dan schema/migration sudah
   selesai. Implementasi runtime Outstand tetap bagian M8 dan belum dinyatakan
   selesai (T-025 → T-026 → T-027).
@@ -164,11 +169,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **ADR-063** — Integrasi delegasi subagent ke alur kerja wajib (`AGENTS.md`, `SKILL.md`, `TASKS.md`) + pemetaan Domain → Subagent di `.claude/agents/README.md`, memperbaiki isu AI jarang mendelegasikan ke subagent.
 * **ADR-062** — Backlog task berjenjang: `TASKS.md` (indeks) + `tasks/` per release, 67 task ber-ID `T-NNN`, rolling wave v0.1–v0.3 detail, dan amandemen aturan lokasi status.
 * **ADR-058** — Sidebar "Channels" (quick-glance daftar akun terhubung): selesai di Claude Design, implementasi kode `apps/web` menyusul (T-012).
 * **Claude Design** — bug fix Content Format Selector hilang di New Post + penambahan akun mock TikTok & Pinterest (catch-up ADR-037/ADR-039).
 * **ADR-059** — Fake OutstandAdapter: persistensi nyata "Schedule" selesai (kode + QA + review arsitektur Ridwan, tanpa temuan baru).
-* **ADR-060 + ADR-061** — Dokumentasi Efficiency Restructuring: `DECISIONS.md` (3.564→69 baris) dipecah jadi file per-ADR + indeks, `PROJECT_STATE.md` (928→~260 baris) dapat Snapshot + trim duplikasi, skill navigator jadi cascade 3 tingkat, lalu `CHANGELOG.md` + arsip dikonsolidasi jadi `COMPLETE_TASK.md` dengan larangan baca proaktif AI.
 
 ---
 
@@ -176,11 +181,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-063** — Integrasi delegasi subagent ke alur kerja wajib + pemetaan Domain → Subagent (`.claude/agents/README.md`).
 * **ADR-062** — Backlog task berjenjang per release (`TASKS.md` + `tasks/`) + amandemen aturan "status hanya di `PROJECT_STATE.md`".
 * **ADR-061** — Konsolidasi CHANGELOG jadi `COMPLETE_TASK.md` tunggal + larangan baca proaktif AI (amandemen ADR-060).
 * **ADR-060** — Dokumentasi Efficiency Restructuring: `DECISIONS.md` dipecah per-file + indeks, `PROJECT_STATE.md` dapat Snapshot + trim, skill navigator jadi cascade 3 tingkat.
 * **ADR-059** — Fake OutstandAdapter — persistensi nyata "Schedule" tanpa kredensial Outstand asli.
-* **ADR-058** — Sidebar mendapat section "Channels" (quick-glance daftar akun terhubung).
 
 ---
 

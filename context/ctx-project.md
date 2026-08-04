@@ -15,7 +15,11 @@ Indeks operasional untuk **cara kerja project** (Project OS). Bukan salinan `pro
 | [`../project-manager/PROJECT_OVERVIEW.md`](../project-manager/PROJECT_OVERVIEW.md) | Orientasi singkat produk + preferensi kerja                                                                                     |
 | [`../AGENTS.md`](../AGENTS.md)                                                     | Pintu masuk agent + hard rules                                                                                                  |
 
-Skill wajib: [`.agents/skills/project-os-navigator/SKILL.md`](../.agents/skills/project-os-navigator/SKILL.md).
+Skill wajib: [`.claude/skills/project-os-navigator/SKILL.md`](../.claude/skills/project-os-navigator/SKILL.md).
+
+Sebelum mengeksekusi task implementasi kode, **wajib** evaluasi delegasi
+subagent lewat pemetaan Domain → Subagent di
+[`.claude/agents/README.md`](../.claude/agents/README.md) (ADR-063).
 
 ---
 
@@ -23,11 +27,12 @@ Skill wajib: [`.agents/skills/project-os-navigator/SKILL.md`](../.agents/skills/
 
 1. Status, progress (%), milestone aktif → **hanya** di `PROJECT_STATE.md`. **Pengecualian (ADR-062):** status per-task/subtask di `TASKS.md` + `tasks/vXX-*.md`.
 2. Keputusan material (scope, arsitektur, stack, BC) → ADR di `DECISIONS.md` sebelum mengubah baseline.
-3. Insight diskusi penting → `CONVERSATIONS.md`; ide spekulatif → `BRAINSTORM.md`.
-4. Setelah pekerjaan selesai → update status task di `tasks/vXX-*.md` **dan** hitungan di `TASKS.md` (dua-duanya bersamaan), lalu `PROJECT_STATE.md` bila phase/milestone/Known Issues berubah, lalu entri baru di `COMPLETE_TASK.md`. Jangan menyalin detail task ke `PROJECT_STATE.md`.
-5. Bahasa dokumentasi & komunikasi project: **Bahasa Indonesia** (kecuali diminta lain).
-6. Jangan commit/push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
-7. Untuk implementasi Outstand M8, ADR-040 mengamendemen kontrak lama. Baca
+3. Task implementasi kode → **evaluasi delegasi subagent dulu** (ADR-063), termasuk kemungkinan menjalankan beberapa subagent paralel untuk task/subtask independen. Jangan dilewati hanya karena biasa dikerjakan sendiri.
+4. Insight diskusi penting → `CONVERSATIONS.md`; ide spekulatif → `BRAINSTORM.md`.
+5. Setelah pekerjaan selesai → update status task di `tasks/vXX-*.md` **dan** hitungan di `TASKS.md` (dua-duanya bersamaan), lalu `PROJECT_STATE.md` bila phase/milestone/Known Issues berubah, lalu entri baru di `COMPLETE_TASK.md`. Jangan menyalin detail task ke `PROJECT_STATE.md`.
+6. Bahasa dokumentasi & komunikasi project: **Bahasa Indonesia** (kecuali diminta lain).
+7. Jangan commit/push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
+8. Untuk implementasi Outstand M8, ADR-040 mengamendemen kontrak lama. Baca
    `DECISIONS.md` + `ctx-architecture.md`; jangan menyimpulkan handler/job
    runtime sudah ada hanya karena alignment dokumentasi dan schema selesai.
 
@@ -35,10 +40,11 @@ Skill wajib: [`.agents/skills/project-os-navigator/SKILL.md`](../.agents/skills/
 
 ## Living vs static
 
-| Tipe             | File                                                   | Boleh memuat status/progress?            |
-| ---------------- | ------------------------------------------------------ | ---------------------------------------- |
-| Living           | `PROJECT_STATE.md`, `CHANGELOG.md`, `CONVERSATIONS.md` | Ya (khusus STATE untuk phase/%)          |
-| Static reference | README, overview, baseline `product-discovery/`        | Tidak — jangan taruh ✅/⏳/%/phase aktif |
+| Tipe             | File                                                                                   | Boleh memuat status/progress?                                 |
+| ---------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Living           | `PROJECT_STATE.md`, `TASKS.md` + `tasks/vXX-*.md` (ADR-062)                            | Ya (STATE: phase/milestone/%; TASKS: status per-task/subtask) |
+| Append-Only      | `DECISIONS.md` + `decisions/`, `COMPLETE_TASK.md`, `CONVERSATIONS.md`, `BRAINSTORM.md` | Hanya entri baru ditambahkan, entri lama tidak diedit         |
+| Static reference | README, overview, baseline `product-discovery/`, `SKILL.md`                            | Tidak — jangan taruh ✅/⏳/%/phase aktif                      |
 
 ---
 

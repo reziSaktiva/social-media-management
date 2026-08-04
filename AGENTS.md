@@ -23,10 +23,11 @@ Dokumen ini **bukan** Source of Truth produk. Ia mengarahkan agent ke dokumen ya
 
 1. Baca **Snapshot** di `project-manager/PROJECT_STATE.md` — phase, mode percakapan, fokus terdekat.
 2. Kalau akan mengerjakan task: buka `project-manager/TASKS.md` (indeks), lalu **hanya** file `tasks/vXX-*.md` yang memuat task itu. Ikuti field **Baca dulu** pada task tersebut sebagai daftar bacaan minimal.
-3. Ikuti skill project: `.agents/skills/project-os-navigator/SKILL.md`.
-4. Untuk keputusan yang belum ada di baseline: ikuti `.agents/skills/proactive-clarification/SKILL.md`.
-5. Setelah pekerjaan selesai: ikuti `.agents/skills/work-report-simple/SKILL.md`.
-6. Untuk konteks teknis per domain: buka file `context/ctx-*.md` yang relevan (lihat `context/README.md`).
+3. **Evaluasi delegasi subagent** (ADR-063) — kalau task itu scope implementasi kode: cek field **Domain**-nya terhadap pemetaan Domain → Subagent di `.claude/agents/README.md`, dan tentukan dikerjakan sendiri, satu subagent, atau beberapa subagent paralel (lihat poin di bawah kapan wajib paralel). Jangan lewati langkah ini hanya karena sudah biasa mengerjakan sendiri.
+4. Ikuti skill project: `.claude/skills/project-os-navigator/SKILL.md`.
+5. Untuk keputusan yang belum ada di baseline: ikuti `.claude/skills/proactive-clarification/SKILL.md`.
+6. Setelah pekerjaan selesai: ikuti `.claude/skills/work-report-simple/SKILL.md`.
+7. Untuk konteks teknis per domain: buka file `context/ctx-*.md` yang relevan (lihat `context/README.md`).
 
 ## AI Context layer (`context/`)
 
@@ -53,8 +54,74 @@ context/
 Designer, Elon Backend Engineer, Ridwan Architecture Reviewer, Najwa QA
 Engineer, Gibran Project Manager) didefinisikan di `.claude/agents/*.md` —
 diklasifikasikan **Static Reference** (`PROJECT_RULES.md`), read-only (chmod
-444), hanya diubah atas permintaan eksplisit user. Panduan pemakaian + aturan
-orkestrasi paralel/sekuensial ada di `.claude/agents/README.md`.
+444), hanya diubah atas permintaan eksplisit user. Panduan pemakaian, aturan
+orkestrasi paralel/sekuensial, dan pemetaan **Domain → Subagent** ada di
+`.claude/agents/README.md`.
+
+**Ini bukan referensi opsional.** Poin #3 di "Wajib di awal sesi" mewajibkan
+evaluasi delegasi subagent untuk setiap task implementasi kode — termasuk
+menjalankan beberapa subagent **paralel** kalau ada task/subtask independen
+yang bisa berjalan bersamaan (ADR-063, ditulis setelah audit menemukan AI
+jarang mendelegasikan karena langkah ini sebelumnya tidak terhubung ke
+alur kerja manapun).
+
+## Skills (`.claude/skills/`)
+
+**Satu-satunya folder skill di project ini adalah `.claude/skills/<nama>/`.**
+Folder `.agents/skills/` sempat ada (Cursor membacanya secara native, dan
+juga membaca `.claude/skills/` untuk kompatibilitas) tapi **sudah dihapus**
+per keputusan eksplisit King Rezi — supaya tidak ada dua salinan fisik yang
+bisa divergen. Claude Code hanya membaca `.claude/skills/`; Cursor tetap bisa
+membaca folder yang sama lewat jalur kompatibilitasnya.
+
+**Konsekuensi yang perlu diingat:** jalur kompatibilitas Cursor untuk
+`.claude/skills/` didokumentasikan sebagai fallback, bukan mekanisme native
+utama — kalau di masa depan pindah/menambah tool AI lain yang hanya comply
+ke standar terbuka [Agent Skills](https://agentskills.io) (lokasi native:
+`.agents/skills/`) tanpa special-case Claude, skill di sini berisiko tidak
+otomatis terbaca. Evaluasi ulang keputusan ini kalau situasi itu terjadi.
+
+Aturan untuk mencegah duplikasi/divergensi terulang:
+
+1. **Jangan buat ulang folder `.agents/skills/`** kecuali ada keputusan baru
+   yang eksplisit dari King Rezi untuk kembali memakainya.
+2. Skill vendor/third-party (Prisma, Supabase, Vercel, Better Auth, dst.)
+   biasanya dipasang lewat installer resmi (`npx skills add ...`) yang
+   **defaultnya menulis ke `.agents/skills/`** — kalau itu terjadi lagi,
+   pindahkan manual hasilnya ke `.claude/skills/<nama>` (bukan dibiarkan
+   berdampingan dengan folder lain), lalu hapus folder `.agents/skills/`
+   yang baru terbentuk itu.
+3. Edit/tambah skill custom project langsung di `.claude/skills/<nama>/`.
+
+## Kompatibilitas tool: Claude Code ↔ Cursor (ADR-064)
+
+Project ini dikerjakan di **dua tool**: Claude Code (utama) dan Cursor.
+Sebagian aset agent terbaca di keduanya, sebagian tidak — tabel ini menetapkan
+statusnya supaya tidak ada asumsi salah:
+
+| Aset                                   | Claude Code                                     | Cursor                                            |
+| -------------------------------------- | ----------------------------------------------- | ------------------------------------------------- |
+| `AGENTS.md` (pintu masuk + hard rules) | ✅ via `CLAUDE.md`                              | ✅ native                                         |
+| `.claude/skills/` (18 skill)           | ✅ satu-satunya lokasi                          | ✅ compatibility path                             |
+| `.claude/agents/` (7 subagent kerja)   | ✅                                              | ✅ compatibility path                             |
+| Config MCP (`xds` Astryx)              | ✅ `.mcp.json`                                  | ⚠️ `.cursor/mcp.json` — **file terpisah**         |
+| Proteksi baca secret                   | ✅ `.claude/settings.json` (`permissions.deny`) | ⚠️ `.cursorignore` — **file terpisah**            |
+| `.claude/launch.json` (preview server) | ✅                                              | ❌ tidak ada padanan — jalankan dev server manual |
+
+**Dua pasang file kembar yang WAJIB dijaga sinkron.** Config MCP dan proteksi
+secret tidak punya jalur kompatibilitas lintas tool — masing-masing tool hanya
+membaca formatnya sendiri, dan tidak bisa disatukan lewat symlink tanpa
+mengulang pola rapuh yang dibuang di ADR-064. Konsekuensinya:
+
+1. Menambah/mengubah MCP server → ubah **`.mcp.json` dan `.cursor/mcp.json`**
+   dalam perubahan yang sama. Formatnya identik (kunci `mcpServers`).
+2. Menambah/mengubah pola file rahasia → ubah **`permissions.deny` di
+   `.claude/settings.json` dan `.cursorignore`** dalam perubahan yang sama.
+   Kalau hanya satu yang diubah, salah satu tool kehilangan proteksinya
+   tanpa peringatan apa pun.
+
+Aturan lain (skill, subagent, hard rules, alur dokumentasi) berlaku identik di
+kedua tool — tidak ada instruksi khusus per-tool selain tabel di atas.
 
 ## Stack & layout (ingat cepat)
 
@@ -126,7 +193,9 @@ lalu jalankan command CLI yang disebut di sana lewat
 regenerate file ini in-place (jangan edit manual — akan tertimpa saat
 regenerate berikutnya).
 
-**MCP server (`xds`, dikonfigurasi di `.mcp.json` root):** tersedia untuk
+**MCP server (`xds`, dikonfigurasi di `.mcp.json` untuk Claude Code **dan**
+`.cursor/mcp.json` untuk Cursor — dua file kembar, jaga sinkron, lihat
+"Kompatibilitas tool"):** tersedia untuk
 pencarian cepat (`search`) dan lookup dokumentasi (`get`) tanpa shell out ke
 CLI. Server ini menunjuk ke versi live `astryx.atmeta.com`, **bisa berbeda**
 dari `@astryxdesign/cli` v0.1.8 yang ter-pin di `apps/web` (Astryx masih
@@ -169,6 +238,6 @@ fase aktif di file ini.
 ## Related
 
 - Root setup: `README.md`
-- Skills: `.agents/skills/`
+- Skills: `.claude/skills/`
 - AI Context index: `context/README.md`
 - Alur kerja developer (mermaid): `project-manager/DEVELOPER_WORKFLOW.md`

@@ -7,21 +7,21 @@ diklasifikasikan **Static Reference** (`project-manager/PROJECT_RULES.md`) —
 read-only (chmod 444) dan **hanya boleh diubah atas permintaan eksplisit
 user**, bukan inisiatif AI, karena scope dan batasannya sudah disepakati
 langsung dengan user. Perubahan struktural wajib dicatat di
-`../../project-manager/CHANGELOG.md`.
+`../../project-manager/COMPLETE_TASK.md`.
 
 ---
 
 ## Daftar subagent
 
-| File                              | Nama                         | Peran                                                       | Tools dibatasi?                                    |
-| --------------------------------- | ---------------------------- | ----------------------------------------------------------- | -------------------------------------------------- |
-| `prabowo-feature-engineer.md`     | Prabowo Feature Engineer     | Implementasi fitur (entry → service → domain → repo)        | Tidak (semua tools)                                |
-| `mark-ui-engineer.md`             | Mark UI Engineer             | UI/komponen Astryx di `apps/web`                            | Tidak                                              |
-| `neymar-product-designer.md`      | Neymar Product Designer      | Claude Design via `DesignSync`                              | Tidak                                              |
-| `elon-backend-engineer.md`        | Elon Backend Engineer        | Outstand ACL, webhook, background jobs, schema Prisma       | Tidak                                              |
-| `ridwan-architecture-reviewer.md` | Ridwan Architecture Reviewer | Review kepatuhan boundary DDD, read-only                    | Ya — `Read, Bash, Grep, Glob, ReportFindings`      |
-| `najwa-qa-engineer.md`            | Najwa QA Engineer            | Vitest + verifikasi browser end-to-end                      | Ya — `Read, Bash, Grep, Glob, mcp__Claude_Browser` |
-| `gibran-project-manager.md`       | Gibran Project Manager       | Update `PROJECT_STATE.md` / `DECISIONS.md` / `CHANGELOG.md` | Ya — `Read, Edit, Write, Bash, Grep, Glob`         |
+| File                              | Nama                         | Peran                                                                                   | Tools dibatasi?                                    |
+| --------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `prabowo-feature-engineer.md`     | Prabowo Feature Engineer     | Implementasi fitur (entry → service → domain → repo)                                    | Tidak (semua tools)                                |
+| `mark-ui-engineer.md`             | Mark UI Engineer             | UI/komponen Astryx di `apps/web`                                                        | Tidak                                              |
+| `neymar-product-designer.md`      | Neymar Product Designer      | Claude Design via `DesignSync`                                                          | Tidak                                              |
+| `elon-backend-engineer.md`        | Elon Backend Engineer        | Outstand ACL, webhook, background jobs, schema Prisma                                   | Tidak                                              |
+| `ridwan-architecture-reviewer.md` | Ridwan Architecture Reviewer | Review kepatuhan boundary DDD, read-only                                                | Ya — `Read, Bash, Grep, Glob, ReportFindings`      |
+| `najwa-qa-engineer.md`            | Najwa QA Engineer            | Vitest + verifikasi browser end-to-end                                                  | Ya — `Read, Bash, Grep, Glob, mcp__Claude_Browser` |
+| `gibran-project-manager.md`       | Gibran Project Manager       | Update `PROJECT_STATE.md` / `TASKS.md` / `tasks/` / `DECISIONS.md` / `COMPLETE_TASK.md` | Ya — `Read, Edit, Write, Bash, Grep, Glob`         |
 
 ---
 
@@ -49,11 +49,52 @@ masing-masing file. User juga bisa memaksa subagent tertentu secara eksplisit
      implementasi kalau review tidak diminta).
   3. **Gibran** (governance/docs) — **selalu paling akhir, sendirian**.
      Jangan dijalankan bersamaan dengan agent lain yang berpotensi menyentuh
-     `PROJECT_STATE.md` / `DECISIONS.md` / `CHANGELOG.md`, untuk mencegah
-     konflik/duplikasi status.
+     `PROJECT_STATE.md` / `TASKS.md` / `tasks/` / `DECISIONS.md` /
+     `COMPLETE_TASK.md`, untuk mencegah konflik/duplikasi status.
 - Kalau beberapa agent implementasi mengubah file yang berpotensi tumpang
   tindih, gunakan opsi `isolation: "worktree"` per agent supaya tidak saling
   menimpa.
+
+---
+
+## Kapan WAJIB dievaluasi (bukan opsional)
+
+Ini bukan sekadar referensi pasif — `AGENTS.md` ("Wajib di awal sesi") dan
+`.claude/skills/project-os-navigator/SKILL.md` (behavior "Pekerjaan Baru")
+mewajibkan AI berhenti di titik ini **sebelum** mulai implementasi kode:
+
+1. Task punya field **Domain** (di `tasks/vXX-*.md`) yang scope-nya
+   implementasi kode (bukan diskusi/dokumentasi murni)? → cek tabel
+   pemetaan di bawah.
+2. Ada **lebih dari satu task/subtask independen** (domain atau file
+   berbeda, tidak saling menyentuh) yang bisa dikerjakan bersamaan? → jalankan
+   subagent yang relevan secara paralel (lihat "Aturan orkestrasi" di atas)
+   alih-alih mengerjakannya sendiri satu per satu secara sekuensial.
+3. Kalau task match salah satu subagent dan tidak ada alasan kuat untuk
+   dikerjakan sendiri (mis. scope sangat kecil, 1-2 baris, atau murni
+   dokumentasi) → delegasikan lewat `Agent`/`Task` tool.
+
+## Pemetaan Domain → Subagent
+
+Field **Domain** tiap task di `tasks/vXX-*.md` bisa langsung dipetakan ke
+subagent implementasi berikut sebagai titik awal (bukan aturan kaku — cek
+juga `description` di frontmatter masing-masing file peran untuk keputusan
+akhir):
+
+| Domain (field task)                    | Subagent utama              | Catatan                                                                         |
+| -------------------------------------- | --------------------------- | ------------------------------------------------------------------------------- |
+| `identity`                             | Prabowo Feature Engineer    | Auth flows, session, konfigurasi Better Auth                                    |
+| `workspace`                            | Prabowo Feature Engineer    | Workspace, member, roles                                                        |
+| `publishing`                           | Prabowo Feature Engineer    | Draft, Schedule, Queue, Publish Now                                             |
+| `analytics`                            | Prabowo Feature Engineer    | Dashboard/metrics — logic; UI-nya lihat baris `UI`                              |
+| `integration`, `media`, `notification` | Elon Backend Engineer       | Outstand ACL, webhook, background jobs                                          |
+| `UI`                                   | Mark UI Engineer            | Komponen Astryx, styling, layout                                                |
+| `platform`, `DX`                       | — (biasanya tanpa subagent) | Tooling/config internal (CI, monorepo) — sering lebih cepat dikerjakan langsung |
+
+Domain gabungan (mis. `workspace · UI`) berarti **dua subagent bisa paralel**
+dalam satu giliran — satu untuk logic domain (Prabowo/Elon), satu untuk UI
+(Mark) — selama file yang disentuh tidak tumpang tindih (lihat "Aturan
+orkestrasi" di atas untuk kapan perlu `isolation: "worktree"`).
 
 ---
 
@@ -65,7 +106,7 @@ keliru, dst.):
 
 1. Konfirmasi eksplisit dari user dulu — jangan inisiatif sendiri.
 2. `chmod 644 <file>.md`, edit, lalu `chmod 444 <file>.md` lagi.
-3. Catat perubahan di `../../project-manager/CHANGELOG.md`.
+3. Catat perubahan di `../../project-manager/COMPLETE_TASK.md`.
 
 ---
 

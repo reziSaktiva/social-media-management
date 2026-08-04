@@ -11,7 +11,8 @@ Dokumen ini adalah **indeks**. Detail task ada di `tasks/`.
 1. Baca **indeks di halaman ini** untuk tahu release aktif dan ID task yang relevan.
 2. Buka **hanya satu file** `tasks/vXX-*.md` yang memuat task itu. Jangan menyapu seluruh folder `tasks/`.
 3. Buka dokumen yang disebut di field **Baca dulu** pada task tersebut — itu daftar bacaan minimal yang sudah dikurasi, jadi tidak perlu menebak atau menyisir `product-discovery/`.
-4. Setelah task selesai: ubah status di file release **dan** perbarui hitungan di indeks ini.
+4. **Kalau task ini scope implementasi kode:** cek field **Domain** terhadap pemetaan Domain → Subagent di [`.claude/agents/README.md`](../.claude/agents/README.md) sebelum eksekusi — evaluasi delegasi, termasuk kemungkinan menjalankan beberapa subagent paralel kalau ada task/subtask independen (ADR-063). Jangan default mengerjakan sendiri tanpa mengevaluasi ini.
+5. Setelah task selesai: ubah status di file release **dan** perbarui hitungan di indeks ini.
 
 Untuk mode percakapan aktif, Known Issues, dan Blockers → tetap ke [`PROJECT_STATE.md`](PROJECT_STATE.md).
 

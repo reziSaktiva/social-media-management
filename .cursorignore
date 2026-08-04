@@ -1,0 +1,13 @@
+# Padanan Cursor untuk permissions.deny di .claude/settings.json (ADR-064).
+# Claude Code memblokir baca file ini lewat settings.json; Cursor tidak membaca
+# file itu, jadi proteksi yang sama harus dideklarasikan di sini.
+# Kalau daftar di .claude/settings.json berubah, ubah file ini juga.
+
+.env
+.env.local
+.env.*.local
+apps/web/.env
+apps/web/.env.local
+apps/web/.env.*.local
+**/*.pem
+**/credentials*.json
