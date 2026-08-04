@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
@@ -157,6 +157,7 @@ function DraftEditorForm({
 }) {
   const { close, clearUnsavedNewPost } = useDraftEditor();
   const router = useRouter();
+  const pathname = usePathname();
 
   const isEdit = mode === "edit";
 
@@ -278,7 +279,16 @@ function DraftEditorForm({
       }
       setStatus(ContentStatus.Draft);
       setNotice({ status: "success", title: "Draft tersimpan." });
-      router.refresh();
+      // Save as Draft → Drafts (ADR-054, T-031.1). Sejak CTA sidebar aktif
+      // dari section manapun (ADR-053), `router.refresh()` saja tidak cukup:
+      // dari Home/Engage/Analyze ia hanya me-render ulang layar yang tidak
+      // menampilkan draft sama sekali.
+      const draftsPath = `/${slug}/publish/drafts`;
+      if (pathname === draftsPath) {
+        router.refresh();
+      } else {
+        router.push(draftsPath);
+      }
     } finally {
       setIsSavingDraft(false);
     }

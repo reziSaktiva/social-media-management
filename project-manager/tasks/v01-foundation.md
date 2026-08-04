@@ -137,7 +137,7 @@ karena butuh login — perlu dicek King Rezi saat login.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress                                               |
 | **Domain**    | UI                                                           |
 | **ADR**       | ADR-053                                                      |
 | **Depends**   | T-009 ✅ · T-020 ✅ (Draft Editor modal, v0.2)                  |
@@ -145,8 +145,8 @@ karena butuh login — perlu dicek King Rezi saat login.
 
 CTA primary full-width di bawah Workspace Selector, di atas navigation items — membuka Draft Editor modal dari section manapun. **Sudah diimplementasikan di Claude Design, belum di kode.**
 
-- [ ] **T-011.1** Render CTA di `WorkspaceSideNav` pada posisi yang sudah ditetapkan ADR-053: **di bawah Workspace Selector, di atas navigation items**, primary + full-width (varian Astryx-nya cek di Claude Design)
-- [ ] **T-011.2** Hubungkan ke `DraftEditorProvider` supaya bisa dibuka dari section manapun (bukan hanya `/publish`)
+- [x] **T-011.1** Render CTA di `WorkspaceSideNav` pada posisi yang sudah ditetapkan ADR-053: **di bawah Workspace Selector, di atas navigation items**, primary + full-width (varian Astryx-nya cek di Claude Design) — dipasang di slot `topContent` milik Astryx `SideNav` (`Button` primary, `width="100%"`); belum ada handler klik (menyusul di T-011.2)
+- [x] **T-011.2** Hubungkan ke `DraftEditorProvider` supaya bisa dibuka dari section manapun (bukan hanya `/publish`) — folder `_draft-editor/` dinaikkan dari `publish/` ke `[slug]/`, `DraftEditorProvider` + `DraftEditorModal` dipasang di `[slug]/layout.tsx`
 - [ ] **T-011.3** Verifikasi redirect terminal action tetap benar dari section non-publish (lihat T-031)
 
 ### T-012 · Sidebar section "Channels"
