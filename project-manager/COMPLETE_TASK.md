@@ -27,6 +27,26 @@ Acuan: ADR-053, `04-ux/navigation-patterns.md` (NP-D01), dan Claude Design `comp
 * `bun run typecheck` bersih · `bun run lint` 0 error (85 warning, seluruhnya dari `.claude/worktrees/**`, pre-existing).
 * Verifikasi visual di browser **belum dilakukan** — sidebar hanya tampil setelah login, dan AI tidak memasukkan kredensial. Perlu dicek King Rezi saat login.
 
+## 2026-08-04 — T-011.2: Draft Editor bisa dibuka dari section manapun
+
+Lanjutan langsung dari T-011.1 di branch yang sama (PR #37). Sebelumnya `DraftEditorProvider` hanya dipasang di `apps/web/src/app/[slug]/publish/layout.tsx`, jadi CTA di sidebar (yang hidup di `[slug]/layout.tsx`, satu level di atasnya) tidak mungkin memanggilnya.
+
+### Changed
+
+* **Folder `_draft-editor/` dipindahkan** dari `apps/web/src/app/[slug]/publish/_draft-editor/` ke `apps/web/src/app/[slug]/_draft-editor/` (`git mv`, 4 file: `actions.ts`, `context.tsx`, `modal.tsx`, `status-badge.ts`). Alasannya: Draft Editor sekarang bukan lagi milik section Publish — ia dipakai lintas section. Seluruh import internalnya memakai alias `@/`, jadi isi file tidak perlu diubah.
+* `apps/web/src/app/[slug]/layout.tsx` — membungkus `AppShell` dengan `DraftEditorProvider` dan merender `DraftEditorModal` di level workspace.
+* `apps/web/src/app/[slug]/publish/layout.tsx` — provider dan modal dilepas; tinggal `VStack` + `PublishTabbar`.
+* `apps/web/src/app/[slug]/workspace-side-nav.tsx` — CTA memanggil `openNewPost()` dari `useDraftEditor()`.
+* `apps/web/src/app/[slug]/publish/drafts/drafts-list.tsx` — path import disesuaikan (`../` → `../../`).
+* `apps/web/src/domains/publishing/content-format-matrix.ts` — komentar penunjuk path `modal.tsx` diperbarui.
+
+### Verification
+
+* `bun run typecheck` bersih · `bun run lint` 0 error · `bun run test` 37 test / 7 file lolos.
+* `bun run build` sukses — seluruh route ter-compile, termasuk `[slug]` dan `publish/*`. Ini yang memastikan pemindahan folder tidak meninggalkan import menggantung.
+* Catatan: log dev server sempat memuat error `Module not found` dan `useDraftEditor must be used within DraftEditorProvider`. Keduanya artefak HMR saat file dipindah/diedit sebagian, bukan bug — build bersih setelahnya. Kalau tab dev King Rezi masih menampilkan error itu, cukup hard reload.
+* Verifikasi visual (klik CTA dari Home/Engage/Analyze → modal terbuka) **belum dilakukan** — butuh login.
+
 ## 2026-08-04 — T-010 tuntas: persistensi cookie (T-010.2) + sync Claude Design (T-010.3)
 
 King Rezi memilih menyelesaikan T-010.2 lebih dulu sebelum masuk ke implementasi navbar (T-011/T-012), supaya acuan tema stabil. Sebelumnya tema selalu reset ke Light setiap full reload — disengaja, menunggu subtask ini.

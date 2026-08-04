@@ -17,6 +17,8 @@ import { authClient } from "@/lib/better-auth/client";
 
 import { useThemeMode } from "../providers";
 
+import { useDraftEditor } from "./_draft-editor/context";
+
 const NAV_ITEMS = [
   { label: "Home", path: "" },
   { label: "Publish", path: "publish" },
@@ -39,6 +41,7 @@ export function WorkspaceSideNav({
   const pathname = usePathname();
   const router = useRouter();
   const { mode, toggleMode } = useThemeMode();
+  const { openNewPost } = useDraftEditor();
 
   async function handleLogout() {
     await authClient.signOut();
@@ -57,12 +60,12 @@ export function WorkspaceSideNav({
       }
       topContent={
         // ADR-053: CTA pinned di bawah Workspace Selector, di atas nav items.
-        // Wiring ke DraftEditorProvider menyusul di T-011.2.
         <Button
           label="New Post"
           variant="primary"
           width="100%"
           icon={<span aria-hidden>＋</span>}
+          onClick={openNewPost}
         />
       }
       footer={

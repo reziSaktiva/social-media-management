@@ -4,7 +4,7 @@ import { PublishingDomainError } from "./errors";
 /**
  * Matriks Content Format per platform (ADR-039), mirror server-side dari
  * `getSelectableFormats`/`getDefaultFormat` di client
- * (`apps/web/src/app/[slug]/publish/_draft-editor/modal.tsx`). Jaga kedua
+ * (`apps/web/src/app/[slug]/_draft-editor/modal.tsx`). Jaga kedua
  * tempat ini konsisten kalau matriks berubah — client menentukan pilihan
  * yang ditampilkan, sini menegakkan aturan yang sama di server sebelum
  * persist/panggil adapter.

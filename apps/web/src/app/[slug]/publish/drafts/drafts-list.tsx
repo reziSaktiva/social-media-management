@@ -13,11 +13,11 @@ import { VStack } from "@astryxdesign/core/VStack";
 import type { PublishingPostRecord } from "@/domains/publishing";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 
-import { useDraftEditor } from "../_draft-editor/context";
+import { useDraftEditor } from "../../_draft-editor/context";
 import {
   CONTENT_STATUS_BADGE_VARIANT,
   CONTENT_STATUS_LABEL,
-} from "../_draft-editor/status-badge";
+} from "../../_draft-editor/status-badge";
 
 export function DraftsList({ drafts }: { drafts: PublishingPostRecord[] }) {
   const { openNewPost, openEditDraft } = useDraftEditor();
