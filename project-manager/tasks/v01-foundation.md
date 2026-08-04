@@ -147,7 +147,7 @@ CTA primary full-width di bawah Workspace Selector, di atas navigation items —
 
 - [x] **T-011.1** Render CTA di `WorkspaceSideNav` pada posisi yang sudah ditetapkan ADR-053: **di bawah Workspace Selector, di atas navigation items**, primary + full-width (varian Astryx-nya cek di Claude Design) — dipasang di slot `topContent` milik Astryx `SideNav` (`Button` primary, `width="100%"`); belum ada handler klik (menyusul di T-011.2)
 - [x] **T-011.2** Hubungkan ke `DraftEditorProvider` supaya bisa dibuka dari section manapun (bukan hanya `/publish`) — folder `_draft-editor/` dinaikkan dari `publish/` ke `[slug]/`, `DraftEditorProvider` + `DraftEditorModal` dipasang di `[slug]/layout.tsx`
-- [ ] **T-011.3** Verifikasi redirect terminal action tetap benar dari section non-publish (lihat T-031)
+- [ ] **T-011.3** Verifikasi redirect terminal action tetap benar dari section non-publish (lihat T-031) — implementasi selesai (`finishTerminalAction`: Save as Draft → Drafts, Schedule → Queue, editor ditutup lebih dulu); **verifikasi browser masih menunggu login King Rezi**, jadi belum dicentang
 
 ### T-012 · Sidebar section "Channels"
 

@@ -172,8 +172,8 @@ Belum ada di kode **maupun** di App Prototype Claude Design. Grep `publishNow` n
 Bukan task besar berdiri sendiri — cukup diselaraskan saat task tujuannya dikerjakan.
 
 - [x] **T-031.1** Save as Draft → Drafts (sudah sejalan dengan alur existing)
-- [ ] **T-031.2** Pastikan tetap konsisten begitu CTA sidebar (T-011) aktif dari section manapun
-- [ ] **T-031.3** Schedule → Queue (relevan setelah T-032)
+- [x] **T-031.2** Pastikan tetap konsisten begitu CTA sidebar (T-011) aktif dari section manapun — `finishTerminalAction` di `_draft-editor/modal.tsx` menutup editor lalu mengarahkan ke tujuan, dipakai seragam oleh Save as Draft dan Schedule
+- [x] **T-031.3** Schedule → Queue — dikerjakan lebih awal dari catatan "relevan setelah T-032": begitu CTA sidebar aktif, Schedule dari Home/Analyze meninggalkan pengguna tanpa jejak aksi, jadi destinasi ADR-054 dipakai walau layar Queue sendiri masih placeholder
 - [ ] **T-031.4** Publish Now → History/Calendar (relevan setelah T-029 + T-034)
 
 ---

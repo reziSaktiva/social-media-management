@@ -8,6 +8,29 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-04 — T-011.3: redirect aksi terminal dari section non-publish
+
+PR #37 sudah di-merge King Rezi sebelum T-011.3 dikerjakan, jadi subtask ini jalan di branch baru `feat/t-011-3-verifikasi-redirect-terminal-action`.
+
+Judul subtask menyebut "verifikasi", tapi pemeriksaan terhadap ADR-054 menemukan dua celah nyata, bukan sekadar hal yang perlu dicek:
+
+1. Redirect Save as Draft yang ditambahkan saat tindak lanjut code review PR #37 tidak menutup editor lebih dulu — modal fullscreen tetap menutupi layar tujuan, sehingga "redirect" praktis tidak terlihat.
+2. Schedule masih memakai `router.refresh()`. Dari Home/Engage/Analyze itu tidak menampilkan apa pun, padahal ADR-054 menetapkan tujuannya Publish > Queue.
+
+### Changed
+
+* `apps/web/src/app/[slug]/_draft-editor/modal.tsx` — helper baru `finishTerminalAction(destination)`: menutup editor (`close()`) lalu `router.push` ke tujuan, atau `router.refresh()` bila pengguna memang sudah berada di layar tujuan. Dipakai `handleSaveDraft` (→ Publish > Drafts) dan `handleConfirmSchedule` (→ Publish > Queue). Banner sukses pada kedua jalur dihapus karena editor keburu tertutup — umpan baliknya kini item yang muncul di layar tujuan, sesuai App Prototype di Claude Design. Banner error tetap ada.
+
+### Notes
+
+* **Penyimpangan yang disengaja:** `TASKS.md` mencatat T-031.3 (Schedule → Queue) "relevan setelah T-032", dan layar Queue memang masih placeholder. Catatan itu ditulis sebelum CTA sidebar ada. Karena ADR-054 sudah menetapkan destinasi dan mendarat di Queue lebih baik daripada tertinggal di Analyze tanpa jejak aksi, redirect ini tetap dipasang sekarang. Kalau King Rezi menilai sebaiknya menunggu T-032, bagian `handleConfirmSchedule` tinggal dikembalikan ke `router.refresh()`.
+* Publish Now (T-031.4) tidak disentuh — implementasinya memang belum ada (T-029).
+
+### Verification
+
+* `bun run typecheck` bersih · `bun run lint` 0 error · `bun run test` 37 test / 7 file lolos.
+* Verifikasi browser **belum dilakukan** — butuh login. Karena itu T-011.3 belum dicentang dan T-011 tetap 🟡: legend `✅` mensyaratkan "selesai dan terverifikasi".
+
 ## 2026-08-04 — T-011.1: render CTA "+ New Post" di sidebar
 
 Branch baru `feat/t-011-sidebar-cta-new-post`. Subtask pertama T-011 (ADR-053): menaruh CTA primary full-width di sidebar, tepat di bawah Workspace Selector dan di atas navigation items — supaya New Post bisa diakses dari section manapun, bukan hanya dari Publish.

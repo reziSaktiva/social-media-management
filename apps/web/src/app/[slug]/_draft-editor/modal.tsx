@@ -265,6 +265,21 @@ function DraftEditorForm({
     });
   }
 
+  /**
+   * Aksi terminal (ADR-054, NP-D13): tutup editor lalu antar pengguna ke
+   * sub-screen tujuan konten — bukan kembali ke section asal seperti tombol
+   * Close. Sejak CTA sidebar aktif (ADR-053) asalnya bisa Home/Engage/Analyze,
+   * yang tidak menampilkan hasil aksi sama sekali.
+   */
+  function finishTerminalAction(destination: string) {
+    close();
+    if (pathname === destination) {
+      router.refresh();
+    } else {
+      router.push(destination);
+    }
+  }
+
   async function handleSaveDraft() {
     setIsSavingDraft(true);
     try {
@@ -278,17 +293,10 @@ function DraftEditorForm({
         clearUnsavedNewPost();
       }
       setStatus(ContentStatus.Draft);
-      setNotice({ status: "success", title: "Draft tersimpan." });
-      // Save as Draft → Drafts (ADR-054, T-031.1). Sejak CTA sidebar aktif
-      // dari section manapun (ADR-053), `router.refresh()` saja tidak cukup:
-      // dari Home/Engage/Analyze ia hanya me-render ulang layar yang tidak
-      // menampilkan draft sama sekali.
-      const draftsPath = `/${slug}/publish/drafts`;
-      if (pathname === draftsPath) {
-        router.refresh();
-      } else {
-        router.push(draftsPath);
-      }
+      // Save as Draft → Publish > Drafts (ADR-054, T-031.1). Draft yang muncul
+      // di daftar itulah umpan baliknya, menggantikan banner sukses yang tidak
+      // akan sempat terbaca karena editor ditutup.
+      finishTerminalAction(`/${slug}/publish/drafts`);
     } finally {
       setIsSavingDraft(false);
     }
@@ -319,12 +327,11 @@ function DraftEditorForm({
       setSavedPostId(result.postId);
       setStatus(ContentStatus.Scheduled);
       setIsConfirmStep(false);
-      setNotice({
-        status: "success",
-        title:
-          "Jadwal dikonfirmasi. Publish sesungguhnya masih lewat Fake OutstandAdapter (ADR-059) sampai kredensial Outstand asli tersedia.",
-      });
-      router.refresh();
+      // Schedule → Publish > Queue (ADR-054). Queue sendiri masih placeholder
+      // sampai T-032; tujuannya tetap dipakai karena ADR-054 sudah menetapkan
+      // destinasi ini, dan mendarat di Queue lebih masuk akal daripada
+      // tertinggal di Analyze/Home tanpa jejak aksi.
+      finishTerminalAction(`/${slug}/publish/queue`);
     } catch (error) {
       setNotice({
         status: "error",
