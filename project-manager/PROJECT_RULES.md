@@ -86,11 +86,14 @@ Termasuk:
 
 **Living Document**
 
-Dokumen yang secara aktif diperbarui setiap sesi. Merupakan satu-satunya tempat yang boleh mencatat status, progress, dan fase aktif project.
+Dokumen yang secara aktif diperbarui setiap sesi — satu-satunya tipe dokumen yang boleh mencatat status dan progress.
 
 Termasuk:
 
-* `PROJECT_STATE.md` — satu-satunya source of truth untuk status dan progress.
+* `PROJECT_STATE.md` — source of truth untuk **phase, milestone (M0–M9), overall progress, Active Conversation Mode, Known Issues, dan Blockers**.
+* `TASKS.md` + `tasks/vXX-*.md` — source of truth untuk **status per-task dan per-subtask** (ADR-062). Backlog berjenjang release → task → subtask.
+
+Pembagiannya tegas: status *fase project* milik `PROJECT_STATE.md`, status *task* milik `TASKS.md`/`tasks/`. `PROJECT_STATE.md` hanya menyebut ID + judul singkat task dan menunjuk ke `TASKS.md` — detail task tidak diduplikasi.
 
 **Append-Only**
 
@@ -108,6 +111,7 @@ Termasuk:
 
 * README **tidak boleh** memuat status (✅ ⏳ 🟡), progress (%), atau fase aktif.
 * Status folder, milestone, dan fase hanya boleh ditampilkan pada `PROJECT_STATE.md`.
+* **Pengecualian tunggal (ADR-062):** status per-task dan per-subtask ditampilkan pada `TASKS.md` + `tasks/vXX-*.md`. Pengecualian ini **tidak** meluas ke phase, milestone, atau overall progress — ketiganya tetap eksklusif milik `PROJECT_STATE.md`, dan tetap terlarang di README maupun dokumen Static Reference lain.
 * Setiap perubahan struktural pada dokumen Static Reference wajib dicatat pada `COMPLETE_TASK.md`.
 
 ## Guardrail Ukuran Dokumen (Living/Append-Only)
@@ -116,6 +120,8 @@ Supaya `PROJECT_STATE.md` tidak kembali membengkak, dicek sebagai bagian **Defin
 
 * `PROJECT_STATE.md` section "Completed (Ringkasan)" dan "Recent Decisions (Ringkasan)" masing-masing dijaga ≤ ~10 item (rolling window item terbaru). Item yang tergeser keluar tetap utuh di `COMPLETE_TASK.md`/`DECISIONS.md` — tidak hilang, hanya tidak lagi tampil inline.
 * `COMPLETE_TASK.md` sengaja **tidak** dirotasi/diarsipkan (satu file historis penuh, by design — lihat ADR-061) karena AI memang dilarang membacanya kecuali diperintah; ukurannya boleh terus tumbuh tanpa jadi beban token.
+* `TASKS.md` dijaga tetap ringkas (indeks saja, target ≤ ~150 baris). Detail task **wajib** tinggal di `tasks/vXX-*.md`, dan AI hanya membuka file release yang sedang dikerjakan — bukan seluruh folder `tasks/` (ADR-062).
+* Task berstatus `✅ Done` di `tasks/*.md` diringkas jadi satu paragraf jejak tanpa checklist subtask, supaya file release tidak tumbuh oleh pekerjaan yang sudah selesai. Riwayat lengkap per sesi tetap di `COMPLETE_TASK.md`.
 
 ---
 
@@ -204,6 +210,7 @@ Sebuah milestone dianggap selesai apabila:
 * Keputusan penting telah dicatat pada `DECISIONS.md`.
 * Tidak terdapat blocker yang belum diselesaikan.
 * `PROJECT_STATE.md` telah diperbarui.
+* Status task di `TASKS.md` **dan** `tasks/vXX-*.md` telah diperbarui, dan hitungan di **Indeks release** + **Total** cocok dengan isi file release (ADR-062). Milestone tidak boleh dinyatakan selesai kalau backlog masih basi.
 * Guardrail ukuran dokumen (lihat **Documentation Governance**) sudah dicek — rotasi ringkasan `PROJECT_STATE.md` kalau perlu.
 
 ---

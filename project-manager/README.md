@@ -55,6 +55,8 @@ social-media-management/
 │   ├── ARCHITECTURE_OVERVIEW.md
 │   ├── PROJECT_RULES.md
 │   ├── PROJECT_STATE.md      → baca section "Snapshot" dulu untuk lookup cepat
+│   ├── TASKS.md              → indeks backlog task per release
+│   ├── tasks/                → satu file per release (vXX-*.md), detail task + subtask
 │   ├── DECISIONS.md          → indeks ringkas ADR (full text di decisions/)
 │   ├── decisions/            → satu file per ADR (ADR-XXX-slug.md)
 │   ├── DEVELOPER_WORKFLOW.md
@@ -80,7 +82,8 @@ social-media-management/
 | `PROJECT_OVERVIEW.md`       | Ringkasan project secara keseluruhan.                                       |
 | `ARCHITECTURE_OVERVIEW.md`  | High-level architecture untuk blueprint Figma (bukan SoT detail arsitektur). |
 | `PROJECT_RULES.md`          | Aturan dan prinsip kerja project.                                           |
-| `PROJECT_STATE.md`          | Status project saat ini, milestone, progress, dan next task. Section "Snapshot" di atas untuk lookup cepat tanpa baca penuh. |
+| `PROJECT_STATE.md`          | Phase, milestone, overall progress, Known Issues, dan Blockers. Section "Snapshot" di atas untuk lookup cepat tanpa baca penuh. Bukan tempat detail task. |
+| `TASKS.md`                  | Indeks backlog task berjenjang per release (v0.1 → v1.0) + peta release↔milestone; detail task + subtask ada di `tasks/vXX-*.md`. Source of truth status per-task (ADR-062). |
 | `DECISIONS.md`              | Indeks ringkas seluruh ADR (tabel + link); full text tiap ADR ada di `decisions/ADR-XXX-slug.md`. |
 | `DEVELOPER_WORKFLOW.md`     | Alur kerja project & user flow inti sebagai diagram mermaid (visualisasi, bukan SoT). |
 | `COMPLETE_TASK.md`          | Riwayat lengkap seluruh task/perubahan sejak awal project. ⚠️ AI dilarang membaca isinya kecuali diperintah eksplisit King Rezi — cukup baca Snapshot di `PROJECT_STATE.md`. |
