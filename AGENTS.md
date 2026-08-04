@@ -24,9 +24,9 @@ Dokumen ini **bukan** Source of Truth produk. Ia mengarahkan agent ke dokumen ya
 1. Baca **Snapshot** di `project-manager/PROJECT_STATE.md` — phase, mode percakapan, fokus terdekat.
 2. Kalau akan mengerjakan task: buka `project-manager/TASKS.md` (indeks), lalu **hanya** file `tasks/vXX-*.md` yang memuat task itu. Ikuti field **Baca dulu** pada task tersebut sebagai daftar bacaan minimal.
 3. **Evaluasi delegasi subagent** (ADR-063) — kalau task itu scope implementasi kode: cek field **Domain**-nya terhadap pemetaan Domain → Subagent di `.claude/agents/README.md`, dan tentukan dikerjakan sendiri, satu subagent, atau beberapa subagent paralel (lihat poin di bawah kapan wajib paralel). Jangan lewati langkah ini hanya karena sudah biasa mengerjakan sendiri.
-4. Ikuti skill project: `.agents/skills/project-os-navigator/SKILL.md`.
-5. Untuk keputusan yang belum ada di baseline: ikuti `.agents/skills/proactive-clarification/SKILL.md`.
-6. Setelah pekerjaan selesai: ikuti `.agents/skills/work-report-simple/SKILL.md`.
+4. Ikuti skill project: `.claude/skills/project-os-navigator/SKILL.md`.
+5. Untuk keputusan yang belum ada di baseline: ikuti `.claude/skills/proactive-clarification/SKILL.md`.
+6. Setelah pekerjaan selesai: ikuti `.claude/skills/work-report-simple/SKILL.md`.
 7. Untuk konteks teknis per domain: buka file `context/ctx-*.md` yang relevan (lihat `context/README.md`).
 
 ## AI Context layer (`context/`)
@@ -64,6 +64,34 @@ menjalankan beberapa subagent **paralel** kalau ada task/subtask independen
 yang bisa berjalan bersamaan (ADR-063, ditulis setelah audit menemukan AI
 jarang mendelegasikan karena langkah ini sebelumnya tidak terhubung ke
 alur kerja manapun).
+
+## Skills (`.claude/skills/`)
+
+**Satu-satunya folder skill di project ini adalah `.claude/skills/<nama>/`.**
+Folder `.agents/skills/` sempat ada (Cursor membacanya secara native, dan
+juga membaca `.claude/skills/` untuk kompatibilitas) tapi **sudah dihapus**
+per keputusan eksplisit King Rezi — supaya tidak ada dua salinan fisik yang
+bisa divergen. Claude Code hanya membaca `.claude/skills/`; Cursor tetap bisa
+membaca folder yang sama lewat jalur kompatibilitasnya.
+
+**Konsekuensi yang perlu diingat:** jalur kompatibilitas Cursor untuk
+`.claude/skills/` didokumentasikan sebagai fallback, bukan mekanisme native
+utama — kalau di masa depan pindah/menambah tool AI lain yang hanya comply
+ke standar terbuka [Agent Skills](https://agentskills.io) (lokasi native:
+`.agents/skills/`) tanpa special-case Claude, skill di sini berisiko tidak
+otomatis terbaca. Evaluasi ulang keputusan ini kalau situasi itu terjadi.
+
+Aturan untuk mencegah duplikasi/divergensi terulang:
+
+1. **Jangan buat ulang folder `.agents/skills/`** kecuali ada keputusan baru
+   yang eksplisit dari King Rezi untuk kembali memakainya.
+2. Skill vendor/third-party (Prisma, Supabase, Vercel, Better Auth, dst.)
+   biasanya dipasang lewat installer resmi (`npx skills add ...`) yang
+   **defaultnya menulis ke `.agents/skills/`** — kalau itu terjadi lagi,
+   pindahkan manual hasilnya ke `.claude/skills/<nama>` (bukan dibiarkan
+   berdampingan dengan folder lain), lalu hapus folder `.agents/skills/`
+   yang baru terbentuk itu.
+3. Edit/tambah skill custom project langsung di `.claude/skills/<nama>/`.
 
 ## Stack & layout (ingat cepat)
 
@@ -178,6 +206,6 @@ fase aktif di file ini.
 ## Related
 
 - Root setup: `README.md`
-- Skills: `.agents/skills/`
+- Skills: `.claude/skills/`
 - AI Context index: `context/README.md`
 - Alur kerja developer (mermaid): `project-manager/DEVELOPER_WORKFLOW.md`

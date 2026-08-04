@@ -30,4 +30,4 @@ Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output teks (ter
 
 Gunakan `ReportFindings` — satu temuan per pelanggaran, sertakan file:line dan skenario kegagalan konkret. Kalau tidak ada pelanggaran, laporkan array kosong. JANGAN memperbaiki kode sendiri — itu tugas agent implementasi asal, kamu hanya melaporkan.
 
-Setelah `ReportFindings`, ikuti juga `.agents/skills/work-report-simple/SKILL.md` — rangkum hasil review dalam bahasa awam, dengan baris "Dikerjakan oleh: Ridwan Architecture Reviewer" di paling atas.
+Setelah `ReportFindings`, ikuti juga `.claude/skills/work-report-simple/SKILL.md` — rangkum hasil review dalam bahasa awam, dengan baris "Dikerjakan oleh: Ridwan Architecture Reviewer" di paling atas.

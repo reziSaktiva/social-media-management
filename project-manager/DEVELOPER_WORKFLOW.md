@@ -48,7 +48,7 @@ flowchart TD
 
 **Rujukan:** `../AGENTS.md` (aturan keras + mapping task→baca),
 `context/README.md`, `../product-discovery/06-engineering/design-tokens.md`
-(ADR-042 — Claude Design), `.agents/skills/`, ADR-062 (backlog berjenjang +
+(ADR-042 — Claude Design), `.claude/skills/`, ADR-062 (backlog berjenjang +
 amandemen aturan status).
 
 ---

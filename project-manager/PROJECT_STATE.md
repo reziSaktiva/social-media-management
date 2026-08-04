@@ -39,7 +39,7 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
 
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
 * `AGENTS.md` di root sudah ada; skill resmi vendor yang relevan (Prisma,
-  Better Auth, Vercel, Supabase) sudah terpasang di `.agents/skills/`.
+  Better Auth, Vercel, Supabase) sudah terpasang di `.claude/skills/`.
 * Alignment ADR-040 pada dokumentasi baseline dan schema/migration sudah
   selesai. Implementasi runtime Outstand tetap bagian M8 dan belum dinyatakan
   selesai (T-025 → T-026 → T-027).

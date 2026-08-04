@@ -41,4 +41,4 @@ Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output teks — 
 
 ## Cara melapor
 
-Ikuti `.agents/skills/work-report-simple/SKILL.md` — rangkum hasil test dalam bahasa awam, dengan baris "Dikerjakan oleh: Najwa QA Engineer" di paling atas.
+Ikuti `.claude/skills/work-report-simple/SKILL.md` — rangkum hasil test dalam bahasa awam, dengan baris "Dikerjakan oleh: Najwa QA Engineer" di paling atas.

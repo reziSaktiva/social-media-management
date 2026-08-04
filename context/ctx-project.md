@@ -15,7 +15,7 @@ Indeks operasional untuk **cara kerja project** (Project OS). Bukan salinan `pro
 | [`../project-manager/PROJECT_OVERVIEW.md`](../project-manager/PROJECT_OVERVIEW.md) | Orientasi singkat produk + preferensi kerja                                                                                     |
 | [`../AGENTS.md`](../AGENTS.md)                                                     | Pintu masuk agent + hard rules                                                                                                  |
 
-Skill wajib: [`.agents/skills/project-os-navigator/SKILL.md`](../.agents/skills/project-os-navigator/SKILL.md).
+Skill wajib: [`.claude/skills/project-os-navigator/SKILL.md`](../.claude/skills/project-os-navigator/SKILL.md).
 
 ---
 

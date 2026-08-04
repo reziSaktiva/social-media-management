@@ -60,7 +60,7 @@ masing-masing file. User juga bisa memaksa subagent tertentu secara eksplisit
 ## Kapan WAJIB dievaluasi (bukan opsional)
 
 Ini bukan sekadar referensi pasif — `AGENTS.md` ("Wajib di awal sesi") dan
-`.agents/skills/project-os-navigator/SKILL.md` (behavior "Pekerjaan Baru")
+`.claude/skills/project-os-navigator/SKILL.md` (behavior "Pekerjaan Baru")
 mewajibkan AI berhenti di titik ini **sebelum** mulai implementasi kode:
 
 1. Task punya field **Domain** (di `tasks/vXX-*.md`) yang scope-nya
