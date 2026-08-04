@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import { LinkProvider } from "@astryxdesign/core/Link";
 import { Theme } from "@astryxdesign/core/theme";
@@ -45,15 +45,17 @@ export function Providers({
 }) {
   const [mode, setMode] = useState<ThemeMode>(initialMode);
 
+  // Persist only the committed mode, after render, so uncommitted/aborted
+  // state updates never write a theme cookie.
+  useEffect(() => {
+    persistThemeMode(mode);
+  }, [mode]);
+
   const themeModeValue = useMemo<ThemeModeContextValue>(
     () => ({
       mode,
       toggleMode: () =>
-        setMode((current) => {
-          const next = current === "light" ? "dark" : "light";
-          persistThemeMode(next);
-          return next;
-        }),
+        setMode((current) => (current === "light" ? "dark" : "light")),
     }),
     [mode],
   );

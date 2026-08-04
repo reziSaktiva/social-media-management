@@ -128,6 +128,11 @@ flash tema salah. Helper + fallback: `apps/web/src/lib/theme/theme-cookie.ts`.
 Sisi desain sudah selaras — toggle ada di `components/navigation.html` Claude
 Design, sama seperti yang sudah lebih dulu ada di `templates/`.
 
+Verifikasi: pemeriksaan otomatis (`typecheck`/`lint`/`test`) dan implementasi
+server-side (baca cookie di RSC sebelum render) sudah diverifikasi; alur UI
+(klik toggle di sidebar footer → cookie tertulis) belum diuji lewat browser
+karena butuh login — perlu dicek King Rezi saat login.
+
 ### T-011 · Sidebar CTA "+ New Post" (pinned)
 
 | Field         | Value                                                        |

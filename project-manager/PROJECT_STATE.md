@@ -134,6 +134,11 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
   ke real adapter begitu `OUTSTAND_API_KEY` diisi **dan** kode real adapter sudah
   ditulis (kalau env terisi tapi kode belum ada, factory throw error, bukan
   silent fallback ke Fake).
+* **Toggle Light/Dark (T-010) — alur UI belum diuji.** Pemeriksaan otomatis
+  (`typecheck`/`lint`/`test`) dan implementasi server-side (baca cookie di RSC
+  sebelum render) sudah diverifikasi; alur UI (klik toggle di sidebar footer →
+  cookie tertulis) belum diuji lewat browser karena butuh login — perlu dicek
+  King Rezi saat login.
 * **Astryx masih Beta.** Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat
   smoke test dan production build, tetapi risiko perubahan API tetap dikelola
   dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
