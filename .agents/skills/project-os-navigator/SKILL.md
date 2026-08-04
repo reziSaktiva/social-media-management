@@ -16,14 +16,19 @@ Jangan langsung baca semua dokumen `project-manager/` secara penuh untuk setiap 
 
 **Tingkat 2 — Status / progress / pertanyaan umum** (fase sekarang, next task, kenapa satu keputusan diambil, dsb — bukan minta kerjaan):
 - Baca **section "Snapshot"** di paling atas `project-manager/PROJECT_STATE.md` (~15-20 baris — phase/milestone, active mode, top next tasks, top blocker). Jangan baca seluruh isi `PROJECT_STATE.md`.
+- Kalau pertanyaan soal **task / rencana pengerjaan / apa yang berikutnya**, baca `project-manager/TASKS.md` (indeks, ~150 baris). Jangan membuka file di `project-manager/tasks/` kecuali memang butuh detail satu task tertentu.
 - Kalau pertanyaan menyebut ADR spesifik, buka **hanya** file `project-manager/decisions/ADR-XXX-*.md` itu (lihat indeksnya di `project-manager/DECISIONS.md`). Jangan baca seluruh isi folder `project-manager/decisions/`.
 
-**Tingkat 3 — Task nyata** (Pekerjaan Baru, Planning Change, Bug/Inkonsistensi — mode 3/4/5 di bawah): baca berurutan penuh:
+**Tingkat 3 — Task nyata** (Pekerjaan Baru, Planning Change, Bug/Inkonsistensi — mode 3/4/5 di bawah): baca berurutan:
 
-1. `project-manager/PROJECT_STATE.md` — seluruh file (phase, milestone, next tasks, known issues, blockers)
-2. `project-manager/PROJECT_RULES.md` — aturan dan prinsip project
-3. `project-manager/DECISIONS.md` — indeks ADR; buka file `project-manager/decisions/ADR-XXX-*.md` spesifik yang relevan dengan task ini
-4. `project-manager/PROJECT_OVERVIEW.md` — gambaran project
+1. `project-manager/TASKS.md` — indeks backlog; temukan ID task yang relevan
+2. `project-manager/tasks/vXX-*.md` — **hanya satu file** release yang memuat task itu. Lalu buka dokumen yang disebut di field **Baca dulu** pada task tersebut (itu daftar bacaan minimal yang sudah dikurasi — tidak perlu menyisir `product-discovery/`)
+3. `project-manager/PROJECT_STATE.md` — phase, milestone, Active Conversation Mode, Known Issues, blockers
+4. `project-manager/PROJECT_RULES.md` — aturan dan prinsip project
+5. `project-manager/DECISIONS.md` — indeks ADR; buka file `project-manager/decisions/ADR-XXX-*.md` spesifik yang relevan dengan task ini
+6. `project-manager/PROJECT_OVERVIEW.md` — gambaran project
+
+Kalau pekerjaannya belum punya ID task di backlog, itu sendiri sinyal: tanyakan ke King Rezi apakah perlu ditambahkan sebagai task baru lebih dulu.
 
 Jika diskusi menyentuh domain spesifik, baca juga dokumen relevan dari:
 - `product-discovery/01-business/` — Business Baseline v1.0
@@ -102,7 +107,9 @@ Lihat `project-manager/PROJECT_RULES.md` bagian **Document Type Classification**
 3. Baca dokumen baseline yang relevan sebelum membuat dokumen baru.
 4. Ikuti format dokumen yang konsisten dengan dokumen existing (lihat contoh di folder yang sama).
 5. Setelah selesai, update:
-   - `project-manager/PROJECT_STATE.md` — progress dan next tasks
+   - `project-manager/tasks/vXX-*.md` — centang subtask yang selesai + ubah status task
+   - `project-manager/TASKS.md` — perbarui hitungan di **Indeks release** + **Fokus sekarang** (wajib bersamaan dengan poin di atas, kalau tidak angka indeksnya jadi salah)
+   - `project-manager/PROJECT_STATE.md` — hanya bila phase / milestone / Known Issues / fokus terdekat berubah. **Jangan** menyalin detail task ke sini (ADR-062)
    - `project-manager/COMPLETE_TASK.md` — tambahkan entri baru di bagian atas (append; **jangan** baca entri lama di bawahnya, lihat peringatan di kepala file)
 
 **Format entri baru di COMPLETE_TASK.md:**
@@ -191,6 +198,8 @@ Lalu tambahkan satu baris ke tabel indeks di `project-manager/DECISIONS.md` (ADR
 - Selalu gunakan ID yang sudah ada (ADR-XXX, I-XX, A-XX, dll.) saat mereferensikan keputusan.
 - Jika ada gap antara dokumen dengan realita phase, tanyakan ke user sebelum asumsi.
 - Jangan memperbaiki inkonsistensi dokumen secara diam-diam — selalu sebutkan temuannya ke user (lihat **Proactive Consistency Check**).
+- Jangan menyalin detail task (subtask, dependency, catatan teknis) ke `PROJECT_STATE.md` — tempatnya di `tasks/vXX-*.md`. `PROJECT_STATE.md` hanya menyebut ID + judul singkat (ADR-062).
+- Jangan mendaur ulang ID task. Task yang dibatalkan ditandai `⏸️ Deferred` beserta alasannya, bukan dihapus.
 - Ikuti preferensi kerja yang tercatat di `project-manager/PROJECT_OVERVIEW.md` bagian **Developer Profile & Working Preferences**, dan tambahkan preferensi baru yang ditemukan ke sana.
 
 ---
@@ -206,8 +215,11 @@ social-media-management/
 │   ├── PROJECT_OVERVIEW.md  → Apa yang dibangun
 │   ├── ARCHITECTURE_OVERVIEW.md → High-level architecture (blueprint Figma)
 │   ├── PROJECT_RULES.md     → Cara bekerja
-│   ├── PROJECT_STATE.md     → Progress saat ini ← update setiap ada perubahan
-│   │                           (baca "Snapshot" dulu untuk lookup cepat)
+│   ├── PROJECT_STATE.md     → Phase, milestone, Known Issues ← update setiap ada
+│   │                           perubahan (baca "Snapshot" dulu untuk lookup cepat)
+│   ├── TASKS.md             → Indeks backlog task ← baca ini sebelum kerja
+│   ├── tasks/               → Satu file per release (vXX-*.md), detail task +
+│   │                           subtask ← buka HANYA file release yang dikerjakan
 │   ├── DECISIONS.md         → Indeks ringkas ADR ← tambah 1 baris index per ADR baru
 │   ├── decisions/           → Satu file per ADR (ADR-XXX-slug.md) ← full text di sini
 │   ├── COMPLETE_TASK.md     → Riwayat lengkap task selesai ← append entri baru tiap

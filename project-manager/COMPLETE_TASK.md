@@ -8,6 +8,35 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-03 — ADR-062: Backlog Task Berjenjang per Release
+
+King Rezi minta perencanaan task yang matang dari awal pengerjaan sampai task terakhir, dikelompokkan dan bersubtask, serta rapi dibaca baik oleh AI maupun manusia. Section `Next Tasks` di `PROJECT_STATE.md` sebelumnya flat list ~15 bullet prosa panjang tanpa hierarki, tanpa ID, tanpa dependency, dan sebagian terduplikasi dengan `Known Issues`.
+
+Keputusan diambil lewat 5 pertanyaan terstruktur ke King Rezi: struktur file (folder + indeks), kerangka grup (per release `v0.x`), lokasi status (amandemen aturan #10), granularitas subtask (satu subtask = satu unit kerja), dan kedalaman (rolling wave).
+
+Status faktual tiap task diverifikasi lewat inventarisasi kode `apps/web` — bukan dari `COMPLETE_TASK.md` (tetap tidak dibaca).
+
+### Added
+
+* `project-manager/TASKS.md` — indeks backlog: protokol baca untuk AI, legend status (⏳ 🟡 ✅ 🚫 ⏸️), aturan ID, indeks 7 release, fokus sekarang, daftar keputusan terbuka, aturan maintenance.
+* `project-manager/tasks/` — 7 file release: `v01-foundation.md`, `v02-publishing-mvp.md`, `v03-analytics-mvp.md`, `v04-engagement-mvp.md`, `v05-ai-assistant-mvp.md`, `v06-start-page-mvp.md`, `v10-public-launch.md`.
+* Total **67 task** (`T-001`–`T-088`, ID global tanpa kode release) dan **127 subtask** terdefinisi untuk v0.1–v0.3. Setiap task membawa field Status, Domain, ADR, Depends, dan **Baca dulu** (daftar bacaan baseline minimal).
+* ADR-062 di `project-manager/decisions/ADR-062-backlog-task-berjenjang-per-release-amandemen-aturan-status.md`.
+
+### Changed
+
+* `PROJECT_STATE.md` — section `Next Tasks` (69 baris prosa) diringkas jadi tabel pointer 5 baris + rantai blocker + daftar keputusan terbuka; `Snapshot` dan `In Progress` memakai ID task; `Known Issues` diberi referensi ID task dan detailnya tidak lagi diduplikasi. Version 1.0.35 → 1.0.36.
+* `PROJECT_RULES.md` — `TASKS.md` + `tasks/` diklasifikasikan **Living Document** (sebelumnya hanya `PROJECT_STATE.md`); Formatting Rules diberi pengecualian sempit untuk status per-task; guardrail ukuran ditambah aturan `TASKS.md` ≤ ~150 baris dan task `✅ Done` diringkas tanpa checklist.
+* `AGENTS.md` — tabel Source of Truth dipisah (status/phase vs backlog task); aturan keras #10 diamandemen dengan pengecualian ADR-062; "Wajib di awal sesi" menambah langkah baca `TASKS.md`; "Setelah mengubah sesuatu" menegaskan update dua tempat (file release + indeks).
+* `project-os-navigator/SKILL.md` — cascade Tingkat 2 & 3 memasukkan `TASKS.md`/`tasks/`; behavior "Pekerjaan Baru" menambah langkah update backlog; File Map dan Aturan Context diperbarui. (Catatan: `.claude/skills/project-os-navigator` adalah **symlink direktori** ke `.agents/skills/project-os-navigator` — dilacak git sebagai symlink, jadi sumbernya tunggal dan tidak ada risiko desync.)
+
+### Fixed
+
+* `PROJECT_STATE.md` — inkonsistensi internal: `Known Issues` menyatakan persistensi tema Light/Dark "belum diputuskan", padahal `Next Tasks` di file yang sama sudah mencatat keputusan **Cookie** per 2026-07-31. Diperbaiki jadi "sudah diputuskan, belum diimplementasikan" (T-010.2).
+* `PROJECT_STATE.md` — Known Issue stale dihapus: "Belum ada commit awal. Repo sudah `git init`; working tree belum di-commit". Faktanya repo sudah punya 136 commit dan PR #34 ter-merge. Entri `(Opsional) initial git commit` di `Next Tasks` juga hilang bersama restrukturisasi section itu.
+
+---
+
 ## 2026-08-03 — ADR-061: Konsolidasi CHANGELOG jadi COMPLETE_TASK.md
 
 Susulan dari ADR-060: King Rezi minta `CHANGELOG.md` (root, entri M8+) dan arsip `changelog/CHANGELOG-pre-M8.md` digabung kembali jadi satu file historis tunggal, diberi peringatan keras larangan baca proaktif oleh AI.

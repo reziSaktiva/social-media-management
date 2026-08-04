@@ -8,23 +8,25 @@ Dokumen ini **bukan** Source of Truth produk. Ia mengarahkan agent ke dokumen ya
 
 **Source of Truth:**
 
-| Area                             | Lokasi                                     |
-| -------------------------------- | ------------------------------------------ |
-| Status, phase, next tasks        | `project-manager/PROJECT_STATE.md`         |
-| Aturan kerja & governance        | `project-manager/PROJECT_RULES.md`         |
-| Keputusan (ADR)                  | `project-manager/DECISIONS.md`             |
-| Produk & engineering             | `product-discovery/`                       |
-| Orientasi arsitektur (ringkas)   | `project-manager/ARCHITECTURE_OVERVIEW.md` |
-| Alur kerja developer (mermaid)   | `project-manager/DEVELOPER_WORKFLOW.md`    |
-| AI Context (ringkas, per domain) | `context/`                                 |
+| Area                                | Lokasi                                     |
+| ----------------------------------- | ------------------------------------------ |
+| Status, phase, milestone, issue     | `project-manager/PROJECT_STATE.md`         |
+| Backlog task (release/task/subtask) | `project-manager/TASKS.md` + `tasks/`      |
+| Aturan kerja & governance           | `project-manager/PROJECT_RULES.md`         |
+| Keputusan (ADR)                     | `project-manager/DECISIONS.md`             |
+| Produk & engineering                | `product-discovery/`                       |
+| Orientasi arsitektur (ringkas)      | `project-manager/ARCHITECTURE_OVERVIEW.md` |
+| Alur kerja developer (mermaid)      | `project-manager/DEVELOPER_WORKFLOW.md`    |
+| AI Context (ringkas, per domain)    | `context/`                                 |
 
 ## Wajib di awal sesi
 
-1. Baca `project-manager/PROJECT_STATE.md` — phase, mode percakapan, next tasks.
-2. Ikuti skill project: `.agents/skills/project-os-navigator/SKILL.md`.
-3. Untuk keputusan yang belum ada di baseline: ikuti `.agents/skills/proactive-clarification/SKILL.md`.
-4. Setelah pekerjaan selesai: ikuti `.agents/skills/work-report-simple/SKILL.md`.
-5. Untuk task spesifik: buka file `context/ctx-*.md` yang relevan (lihat `context/README.md`).
+1. Baca **Snapshot** di `project-manager/PROJECT_STATE.md` — phase, mode percakapan, fokus terdekat.
+2. Kalau akan mengerjakan task: buka `project-manager/TASKS.md` (indeks), lalu **hanya** file `tasks/vXX-*.md` yang memuat task itu. Ikuti field **Baca dulu** pada task tersebut sebagai daftar bacaan minimal.
+3. Ikuti skill project: `.agents/skills/project-os-navigator/SKILL.md`.
+4. Untuk keputusan yang belum ada di baseline: ikuti `.agents/skills/proactive-clarification/SKILL.md`.
+5. Setelah pekerjaan selesai: ikuti `.agents/skills/work-report-simple/SKILL.md`.
+6. Untuk konteks teknis per domain: buka file `context/ctx-*.md` yang relevan (lihat `context/README.md`).
 
 ## AI Context layer (`context/`)
 
@@ -87,7 +89,11 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
 7. Cross-domain: lewat public API module domain lain — bukan import implementasi lintas folder.
 8. Shared types hanya di `packages/shared` (ID, enum, value object) — tanpa business logic.
 9. Supabase JS client: **hanya** Realtime + Storage. CRUD lewat Prisma.
-10. Status progress (% / ✅ / phase aktif) **hanya** di `PROJECT_STATE.md` — jangan taruh di README atau baseline.
+10. Status progress (% / ✅ / phase aktif / milestone) **hanya** di
+    `PROJECT_STATE.md` — jangan taruh di README atau baseline. **Satu
+    pengecualian (ADR-062):** status per-task dan per-subtask ada di
+    `project-manager/TASKS.md` + `tasks/vXX-*.md`. Pengecualian ini tidak
+    meluas ke phase/milestone/overall progress.
 11. Persona kanonikal: Raka, Maya, Sinta, Dimas, Lara.
 12. Bahasa komunikasi & dokumentasi project: **Bahasa Indonesia** (kecuali user meminta lain).
 13. Jangan commit / push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
@@ -151,7 +157,11 @@ fase aktif di file ini.
 
 ## Setelah mengubah sesuatu
 
-- Update `project-manager/PROJECT_STATE.md` bila progress / next tasks berubah.
+- Update status task di `project-manager/TASKS.md` **dan** file
+  `project-manager/tasks/vXX-*.md` terkait (dua-duanya, dalam perubahan yang
+  sama — kalau tidak, hitungan di indeks jadi salah).
+- Update `project-manager/PROJECT_STATE.md` bila phase / milestone / Known
+  Issues / fokus terdekat berubah. Jangan menyalin detail task ke sana.
 - Catat di `project-manager/COMPLETE_TASK.md` (append entri baru saja — jangan baca isi lengkapnya kecuali diperintah eksplisit King Rezi).
 - Insight diskusi penting → `project-manager/CONVERSATIONS.md`.
 - Keputusan material → ADR di `project-manager/DECISIONS.md`.
