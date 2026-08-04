@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.37     |
+| Version      | 1.0.38     |
 | Status       | Active     |
 | Last Updated | 2026-08-04 |
 
@@ -39,7 +39,12 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
 
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
 * `AGENTS.md` di root sudah ada; skill resmi vendor yang relevan (Prisma,
-  Better Auth, Vercel, Supabase) sudah terpasang di `.claude/skills/`.
+  Better Auth, Vercel, Supabase) sudah terpasang di `.claude/skills/` —
+  satu-satunya lokasi skill sejak ADR-064 (`.agents/skills/` dihapus).
+* Project dikerjakan di **dua tool**: Claude Code (utama) dan Cursor. Paritas
+  aset agent + dua pasang file kembar yang wajib dijaga sinkron (config MCP,
+  proteksi baca secret) didokumentasikan di section "Kompatibilitas tool"
+  pada `AGENTS.md` (ADR-064).
 * Alignment ADR-040 pada dokumentasi baseline dan schema/migration sudah
   selesai. Implementasi runtime Outstand tetap bagian M8 dan belum dinyatakan
   selesai (T-025 → T-026 → T-027).

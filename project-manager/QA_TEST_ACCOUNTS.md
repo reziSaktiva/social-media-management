@@ -16,7 +16,7 @@ browser dilakukan lewat **tunnel ngrok**, bukan `http://localhost:3000`.
 
 **URL ngrok bersifat efemeran** — berubah setiap kali tunnel baru dibuka.
 Jangan pernah pakai URL ngrok dari sesi sebelumnya atau dari dokumentasi
-manapun (termasuk `CHANGELOG.md`/`PROJECT_STATE.md` yang menyebut "tunnel
+manapun (termasuk `COMPLETE_TASK.md`/`PROJECT_STATE.md` yang menyebut "tunnel
 ngrok" tanpa URL eksplisit). **Wajib tanya ke user URL testing yang aktif
 di setiap sesi baru** sebelum mulai verifikasi browser.
 

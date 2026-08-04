@@ -8,6 +8,126 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-04 — ADR-064: Konsolidasi Skill ke `.claude/skills/` sebagai Sumber Tunggal
+
+**Konteks.** King Rezi menemukan skill project hidup di dua tempat sekaligus:
+`.agents/skills/` (14 skill vendor: Prisma, Supabase, Vercel, Better Auth) dan
+`.claude/skills/` (yang sebagian isinya berupa **symlink direktori** ke
+`.agents/skills/` untuk 3 skill custom). Dua salinan fisik tanpa mekanisme
+penjamin sinkronisasi = rawan divergen. King Rezi memutuskan menghapus
+`.agents/skills/` setelah memverifikasi lewat
+[dokumentasi Cursor](https://cursor.com/docs/skills) bahwa Cursor juga membaca
+`.claude/skills/`.
+
+**Perubahan (commit `d4fb2ab`, dikerjakan King Rezi + Cursor).**
+
+* `.agents/skills/` dihapus; 14 skill vendor dipindahkan **byte-identical**
+  (git mendeteksi `R100`) ke `.claude/skills/`.
+* 3 skill custom (`project-os-navigator`, `proactive-clarification`,
+  `work-report-simple`) yang tadinya symlink dibongkar jadi file nyata —
+  perbedaan terhadap versi lama hanya formatting whitespace prettier (padding
+  tabel + blank line), **nol kehilangan konten** (diverifikasi via `diff`
+  terhadap blob `HEAD~1`).
+* `AGENTS.md` mendapat section baru **"## Skills (`.claude/skills/`)"** berisi
+  aturan single-source + 3 guardrail anti-duplikasi + caveat bahwa
+  `.claude/skills/` di Cursor adalah compatibility path, bukan native.
+* Referensi `.agents/skills/` diperbarui ke `.claude/skills/` di `AGENTS.md`,
+  `context/ctx-project.md`, `project-manager/DEVELOPER_WORKFLOW.md`,
+  `project-manager/PROJECT_STATE.md`, `.claude/agents/README.md`.
+
+**Review + kelengkapan (sesi ini, Jokowi).** King Rezi minta review apakah
+skill masih berjalan baik dan tidak ada yang miss. Hasil verifikasi: 18 folder
+skill / 340 file tracked git, **nol symlink & nol broken symlink**, frontmatter
+semua valid (`name` == nama folder, `description` ada), dan seluruh 18 skill
+terbukti terbaca Claude Code di sesi ini. Klaim Cursor terkonfirmasi langsung
+dari dokumentasi resminya. Tiga gap governance ditutup di sesi ini:
+
+* **ADR-064** dibuat (`decisions/ADR-064-...md`) + didaftarkan di
+  `DECISIONS.md` — sebelumnya keputusan struktural ini hanya tercatat sebagai
+  prosa di `AGENTS.md`, tanpa ADR (preseden: ADR-045 untuk kasus hapus folder
+  `design/`).
+* Entri `COMPLETE_TASK.md` ini ditambahkan (sebelumnya belum ada untuk
+  perubahan `d4fb2ab`).
+* Dua stale worktree dihapus: `.claude/worktrees/status-pekerjaan-6ef926` dan
+  `.claude/worktrees/test-787c6a`. Keduanya masih membawa `.agents/skills/`
+  lengkap + `AGENTS.md` lama yang menunjuk ke `.agents/skills/` — risiko nyata
+  sesi AI membaca aturan lama dan menghidupkan ulang duplikasi. Diverifikasi
+  aman sebelum dihapus: tidak ada commit unik (`main..HEAD` kosong), dan
+  perubahan uncommitted-nya hanya noise formatting prettier pada file skill
+  vendor Vercel.
+
+**Efek samping yang ketahuan saat verifikasi akhir — dan diperbaiki.**
+`eslint.config.mjs` dan `.prettierignore` masih meng-ignore `.agents` (folder
+yang sudah dihapus) tapi **tidak** `.claude`. Akibatnya 90 file
+`.mjs`/`.ts`/`.js` skill vendor di `.claude/skills/` masuk cakupan lint &
+format: `bunx eslint .` menghasilkan **17 warning** dari kode vendor, dan
+`bun run format` (`prettier --write .`) akan menulis ulang file skill vendor
+sehingga drift dari upstream dan hash `skills-lock.json` tidak lagi match.
+Inilah penyebab tiga file `vercel-optimize/lib/gates/*` termodifikasi di kedua
+stale worktree — bukan pekerjaan nyata, tapi jejak `bun run format`. CI
+([`ci.yml`](../.github/workflows/ci.yml) menjalankan `bun run lint`) belum
+gagal karena semuanya warning, bukan error. Perbaikan: `.agents` → `.claude/**`
+di kedua ignore list, plus membersihkan entri `design/` yang sudah mati sejak
+ADR-045. Setelah perbaikan: `eslint .` **0 problem** (dari 17 warning) dan
+`prettier --check .` lolos seluruhnya. `lint-staged` tidak terdampak — pola-nya
+terbatas pada `apps/**`, `packages/**`, dan file root non-rekursif.
+
+**Audit paritas Claude Code ↔ Cursor (permintaan lanjutan King Rezi).**
+Diverifikasi ke dokumentasi resmi Cursor: `AGENTS.md`, `.claude/skills/`, dan
+`.claude/agents/` (7 subagent kerja) **terbaca di kedua tool** — dua yang
+terakhir lewat compatibility path, jadi aturan ADR-063 soal delegasi subagent
+tetap berlaku di Cursor. Dua aset ternyata **tidak** punya jalur
+kompatibilitas:
+
+* **Config MCP** — `.mcp.json` root adalah konvensi Claude Code, bukan bagian
+  spesifikasi MCP (spec hanya mengatur protokol, bukan lokasi config client).
+  Cursor hanya membaca `.cursor/mcp.json`. King Rezi memutuskan **membuat
+  duplikat** `.cursor/mcp.json` agar MCP Astryx (`xds`) aktif di Cursor juga.
+* **Proteksi baca secret** — `permissions.deny` di `.claude/settings.json`
+  tidak dibaca Cursor sama sekali. Dibuat `.cursorignore` sebagai padanannya
+  (`.env*`, `*.pem`, `credentials*.json`), lengkap dengan komentar pengingat
+  sinkronisasi.
+
+Kewajiban menjaga kedua pasang file kembar itu sinkron didokumentasikan di
+section baru **"## Kompatibilitas tool: Claude Code ↔ Cursor"** pada
+`AGENTS.md` (tabel paritas 6 aset + 2 aturan sinkronisasi), dan tercatat
+sebagai poin 9–10 ADR-064 — termasuk alasan kenapa duplikasi di sini
+**bukan** pelanggaran prinsip single-source poin 1: skill adalah konten prompt
+yang bisa hidup di satu lokasi yang dibaca kedua tool, sedangkan config MCP dan
+proteksi secret adalah deklarasi khusus-client.
+
+**Terverifikasi langsung oleh King Rezi (bukan lagi asumsi dokumentasi):**
+setelah `.cursor/mcp.json` dibuat, King Rezi membuka project di Cursor dan
+mengonfirmasi server `xds` aktif — sesuai prediksi dari dokumentasi resmi
+Cursor. Catatan risiko di ADR-064 diperbarui dari "belum diuji langsung" jadi
+terkonfirmasi.
+
+**Dokumentasi stale yang ikut dibereskan.**
+
+* `context/ctx-development.md` — checklist masih menyebut `CHANGELOG` yang
+  sudah dilebur ke `COMPLETE_TASK.md` (ADR-061); diganti sekaligus melengkapi
+  urutan update `TASKS.md` + `tasks/` (ADR-062).
+* `project-manager/QA_TEST_ACCOUNTS.md` — referensi `CHANGELOG.md` →
+  `COMPLETE_TASK.md`.
+* `context/ctx-project.md` — indeks Project OS sebelumnya **tidak menyebut
+  kewajiban evaluasi delegasi subagent sama sekali**, padahal itu inti ADR-063;
+  ditambahkan pointer ke `.claude/agents/README.md` + aturan operasional 2a.
+  (Persis pola akar masalah ADR-063: aturan ada, tapi tidak terhubung ke jalur
+  yang benar-benar dibaca AI.)
+* `AGENTS.md` — section "Workflow Astryx wajib" diperbarui: config MCP kini
+  menyebut kedua file.
+* `PROJECT_STATE.md` — Metadata version 1.0.37 → 1.0.38; Current Focus mencatat
+  `.claude/skills/` sebagai satu-satunya lokasi skill + project dikerjakan di
+  dua tool.
+
+**Catatan risiko yang diterima (detail di ADR-064).** `skills-lock.json` tidak
+menyimpan install path, jadi `npx skills add/update` berikutnya tetap menulis
+ke `.agents/skills/` — mitigasinya manual lewat aturan di `AGENTS.md`.
+`.agents/` sengaja **tidak** di-`.gitignore` supaya folder liar tetap terlihat
+di `git status`.
+
+---
+
 ## 2026-08-04 — ADR-063: Integrasi Delegasi Subagent ke Alur Kerja Wajib
 
 King Rezi melaporkan AI utama (Jokowi) jarang menggunakan 7 subagent kerja (`.claude/agents/`) semenjak restrukturisasi dokumentasi ADR-060–062, dan minta didiagnosis mengapa — harapannya subagent bisa mengerjakan beberapa task secara paralel.

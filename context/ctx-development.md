@@ -85,7 +85,9 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
 - [ ] Test relevan hijau (jika ada)
 - [ ] Jika menambah/meng-upgrade Astryx: smoke test UI + dark mode + Tailwind
       cascade layer + Next.js production build hijau
-- [ ] `PROJECT_STATE` / `CHANGELOG` diupdate jika progress project berubah
+- [ ] Status task diupdate di `TASKS.md` **dan** `tasks/vXX-*.md` (ADR-062),
+      `PROJECT_STATE.md` diupdate bila phase/milestone/Known Issues berubah,
+      lalu entri baru di `COMPLETE_TASK.md` (ADR-061)
 
 ---
 

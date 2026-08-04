@@ -93,6 +93,36 @@ Aturan untuk mencegah duplikasi/divergensi terulang:
    yang baru terbentuk itu.
 3. Edit/tambah skill custom project langsung di `.claude/skills/<nama>/`.
 
+## Kompatibilitas tool: Claude Code ↔ Cursor (ADR-064)
+
+Project ini dikerjakan di **dua tool**: Claude Code (utama) dan Cursor.
+Sebagian aset agent terbaca di keduanya, sebagian tidak — tabel ini menetapkan
+statusnya supaya tidak ada asumsi salah:
+
+| Aset                                   | Claude Code                                     | Cursor                                            |
+| -------------------------------------- | ----------------------------------------------- | ------------------------------------------------- |
+| `AGENTS.md` (pintu masuk + hard rules) | ✅ via `CLAUDE.md`                              | ✅ native                                         |
+| `.claude/skills/` (18 skill)           | ✅ satu-satunya lokasi                          | ✅ compatibility path                             |
+| `.claude/agents/` (7 subagent kerja)   | ✅                                              | ✅ compatibility path                             |
+| Config MCP (`xds` Astryx)              | ✅ `.mcp.json`                                  | ⚠️ `.cursor/mcp.json` — **file terpisah**         |
+| Proteksi baca secret                   | ✅ `.claude/settings.json` (`permissions.deny`) | ⚠️ `.cursorignore` — **file terpisah**            |
+| `.claude/launch.json` (preview server) | ✅                                              | ❌ tidak ada padanan — jalankan dev server manual |
+
+**Dua pasang file kembar yang WAJIB dijaga sinkron.** Config MCP dan proteksi
+secret tidak punya jalur kompatibilitas lintas tool — masing-masing tool hanya
+membaca formatnya sendiri, dan tidak bisa disatukan lewat symlink tanpa
+mengulang pola rapuh yang dibuang di ADR-064. Konsekuensinya:
+
+1. Menambah/mengubah MCP server → ubah **`.mcp.json` dan `.cursor/mcp.json`**
+   dalam perubahan yang sama. Formatnya identik (kunci `mcpServers`).
+2. Menambah/mengubah pola file rahasia → ubah **`permissions.deny` di
+   `.claude/settings.json` dan `.cursorignore`** dalam perubahan yang sama.
+   Kalau hanya satu yang diubah, salah satu tool kehilangan proteksinya
+   tanpa peringatan apa pun.
+
+Aturan lain (skill, subagent, hard rules, alur dokumentasi) berlaku identik di
+kedua tool — tidak ada instruksi khusus per-tool selain tabel di atas.
+
 ## Stack & layout (ingat cepat)
 
 - Runtime: **Bun** · App: **Next.js** (`apps/web`) · Shared: `packages/shared`
@@ -163,7 +193,9 @@ lalu jalankan command CLI yang disebut di sana lewat
 regenerate file ini in-place (jangan edit manual — akan tertimpa saat
 regenerate berikutnya).
 
-**MCP server (`xds`, dikonfigurasi di `.mcp.json` root):** tersedia untuk
+**MCP server (`xds`, dikonfigurasi di `.mcp.json` untuk Claude Code **dan**
+`.cursor/mcp.json` untuk Cursor — dua file kembar, jaga sinkron, lihat
+"Kompatibilitas tool"):** tersedia untuk
 pencarian cepat (`search`) dan lookup dokumentasi (`get`) tanpa shell out ke
 CLI. Server ini menunjuk ke versi live `astryx.atmeta.com`, **bisa berbeda**
 dari `@astryxdesign/cli` v0.1.8 yang ter-pin di `apps/web` (Astryx masih

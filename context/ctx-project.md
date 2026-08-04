@@ -17,17 +17,22 @@ Indeks operasional untuk **cara kerja project** (Project OS). Bukan salinan `pro
 
 Skill wajib: [`.claude/skills/project-os-navigator/SKILL.md`](../.claude/skills/project-os-navigator/SKILL.md).
 
+Sebelum mengeksekusi task implementasi kode, **wajib** evaluasi delegasi
+subagent lewat pemetaan Domain → Subagent di
+[`.claude/agents/README.md`](../.claude/agents/README.md) (ADR-063).
+
 ---
 
 ## Aturan operasional
 
 1. Status, progress (%), milestone aktif → **hanya** di `PROJECT_STATE.md`. **Pengecualian (ADR-062):** status per-task/subtask di `TASKS.md` + `tasks/vXX-*.md`.
 2. Keputusan material (scope, arsitektur, stack, BC) → ADR di `DECISIONS.md` sebelum mengubah baseline.
-3. Insight diskusi penting → `CONVERSATIONS.md`; ide spekulatif → `BRAINSTORM.md`.
-4. Setelah pekerjaan selesai → update status task di `tasks/vXX-*.md` **dan** hitungan di `TASKS.md` (dua-duanya bersamaan), lalu `PROJECT_STATE.md` bila phase/milestone/Known Issues berubah, lalu entri baru di `COMPLETE_TASK.md`. Jangan menyalin detail task ke `PROJECT_STATE.md`.
-5. Bahasa dokumentasi & komunikasi project: **Bahasa Indonesia** (kecuali diminta lain).
-6. Jangan commit/push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
-7. Untuk implementasi Outstand M8, ADR-040 mengamendemen kontrak lama. Baca
+3. Task implementasi kode → **evaluasi delegasi subagent dulu** (ADR-063), termasuk kemungkinan menjalankan beberapa subagent paralel untuk task/subtask independen. Jangan dilewati hanya karena biasa dikerjakan sendiri.
+4. Insight diskusi penting → `CONVERSATIONS.md`; ide spekulatif → `BRAINSTORM.md`.
+5. Setelah pekerjaan selesai → update status task di `tasks/vXX-*.md` **dan** hitungan di `TASKS.md` (dua-duanya bersamaan), lalu `PROJECT_STATE.md` bila phase/milestone/Known Issues berubah, lalu entri baru di `COMPLETE_TASK.md`. Jangan menyalin detail task ke `PROJECT_STATE.md`.
+6. Bahasa dokumentasi & komunikasi project: **Bahasa Indonesia** (kecuali diminta lain).
+7. Jangan commit/push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
+8. Untuk implementasi Outstand M8, ADR-040 mengamendemen kontrak lama. Baca
    `DECISIONS.md` + `ctx-architecture.md`; jangan menyimpulkan handler/job
    runtime sudah ada hanya karena alignment dokumentasi dan schema selesai.
 

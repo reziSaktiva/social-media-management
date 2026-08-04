@@ -25,8 +25,8 @@ const eslintConfig = defineConfig([
     "apps/web/src/generated/**",
     "product-discovery/**",
     "project-manager/**",
-    "design/**",
-    ".agents/**",
+    // Skill vendor/custom (ADR-064) — bukan kode project, jangan di-lint.
+    ".claude/**",
   ]),
 ]);
 
