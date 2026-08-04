@@ -119,21 +119,19 @@ Turunan `04-ux/navigation-patterns.md` (NP-D01 Persistent Sidebar) dan `04-ux/in
 
 ### T-010 · Light/Dark mode toggle
 
-| Field         | Value                                                          |
-| ------------- | -------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress                                                  |
-| **Domain**    | UI                                                             |
-| **ADR**       | ADR-055 (override "neutral theme selama M8" di ADR-041)        |
-| **Depends**   | T-009 ✅                                                        |
-| **Baca dulu** | `.claude/skills/claude-design-scope-discipline/SKILL.md` (wajib sebelum sentuh Claude Design) |
+`✅ Done` · **ADR** ADR-055 (override "neutral theme selama M8" di ADR-041)
 
-Toggle sudah jalan di kode dan lolos QA/review. Dua sisa pekerjaan:
+Toggle di sidebar footer + theme provider, persistensi lintas reload via cookie
+`theme` (non-httpOnly, `path=/`, `max-age` 1 tahun, `SameSite=Lax`) yang dibaca
+RSC di `apps/web/src/app/layout.tsx` sebelum render pertama sehingga tidak ada
+flash tema salah. Helper + fallback: `apps/web/src/lib/theme/theme-cookie.ts`.
+Sisi desain sudah selaras — toggle ada di `components/navigation.html` Claude
+Design, sama seperti yang sudah lebih dulu ada di `templates/`.
 
-- [x] **T-010.1** Toggle di sidebar footer + theme provider
-- [ ] **T-010.2** Persistensi lintas reload via **Cookie** (bukan localStorage) — sudah diputuskan 2026-07-31 supaya RSC/Middleware bisa baca preferensi sebelum render pertama, konsisten dengan pola session cookie Better Auth
-- [ ] **T-010.3** Push `components/navigation.html` ke Claude Design — file hasil edit sudah lengkap di scratchpad sesi Neymar, tertunda karena `DesignSync` sempat nonaktif
-
-> ⚠️ Saat ini tema reset ke Light setiap full reload — **disengaja**, bukan bug, sampai T-010.2 selesai.
+Verifikasi: pemeriksaan otomatis (`typecheck`/`lint`/`test`) dan implementasi
+server-side (baca cookie di RSC sebelum render) sudah diverifikasi; alur UI
+(klik toggle di sidebar footer → cookie tertulis) belum diuji lewat browser
+karena butuh login — perlu dicek King Rezi saat login.
 
 ### T-011 · Sidebar CTA "+ New Post" (pinned)
 
@@ -169,8 +167,6 @@ Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand o
 - [ ] **T-012.4** Render section + avatar bulat + badge logo brand `react-icons/fa6` overlay + status badge
 - [ ] **T-012.5** Scheduled count ↔ quick-compose "+" dengan fixed-slot (no-shift)
 - [ ] **T-012.6** Drag-handle shift-on-hover — seluruh isi baris ikut bergeser
-
-> ⚠️ Posisi pixel tombol "+" di Claude Design saat ini (`top: 1px; left: -1px` pada `.channel-add`) sudah dikonfirmasi King Rezi sendiri **kurang pas** — bukan source of truth pixel-perfect. King Rezi akan menyesuaikan sendiri saat implementasi. Jangan disalin apa adanya.
 
 ---
 

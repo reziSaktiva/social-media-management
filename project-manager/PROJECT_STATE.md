@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** T-012 Sidebar "Channels" · T-011 Sidebar CTA "+ New Post" · T-010 Light/Dark persistensi cookie (🟡) · T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** T-012 Sidebar "Channels" · T-011 Sidebar CTA "+ New Post" · T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** Tidak ada blocker aktif. Known issue teratas: dependency Transactional Email Provider belum ditetapkan (T-005, tidak memblokir M8 awal).
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 69 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -101,7 +101,6 @@ Restricted Actions:
 
 Task berstatus 🟡 — detail dan subtask ada di [`TASKS.md`](TASKS.md):
 
-* **T-010** Light/Dark mode toggle — kode sudah lolos QA/review; sisa: persistensi cookie + push `navigation.html` ke Claude Design.
 * **T-031** Redirect otomatis ke sub-screen tujuan (ADR-054) — Save as Draft sudah sejalan; sisanya menyusul bersama T-029/T-032/T-034.
 
 Catatan non-task: template `design-tokens.md` berstatus Draft / TBD; nilai final
@@ -135,6 +134,11 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
   ke real adapter begitu `OUTSTAND_API_KEY` diisi **dan** kode real adapter sudah
   ditulis (kalau env terisi tapi kode belum ada, factory throw error, bukan
   silent fallback ke Fake).
+* **Toggle Light/Dark (T-010) — alur UI belum diuji.** Pemeriksaan otomatis
+  (`typecheck`/`lint`/`test`) dan implementasi server-side (baca cookie di RSC
+  sebelum render) sudah diverifikasi; alur UI (klik toggle di sidebar footer →
+  cookie tertulis) belum diuji lewat browser karena butuh login — perlu dicek
+  King Rezi saat login.
 * **Astryx masih Beta.** Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat
   smoke test dan production build, tetapi risiko perubahan API tetap dikelola
   dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
@@ -147,16 +151,6 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
   lewat ngrok. Backend/API sendiri terverifikasi benar via raw `fetch()`. Perlu
   ditelusuri sebelum uji interaksi form penuh di browser lewat ngrok bisa
   diandalkan.
-* **Light/Dark Mode (ADR-055) — `components/navigation.html` belum ter-push ke
-  Claude Design** (→ T-010.3). File hasil edit sudah lengkap di scratchpad,
-  terblokir karena tool `DesignSync` sempat nonaktif di sesi kerja desain. Tidak
-  memblokir kode `apps/web` (sudah selesai dan lolos QA/review) — hanya dokumen
-  referensi komponen di Claude Design yang tertinggal.
-* **Light/Dark Mode (ADR-055) — tema masih reset ke Light setiap full reload**
-  (→ T-010.2). Perilaku ini **disengaja**, bukan bug. Mekanismenya sudah
-  diputuskan 2026-07-31: pakai **Cookie** (bukan localStorage) supaya
-  RSC/Middleware bisa membaca preferensi sebelum render pertama, konsisten dengan
-  pola session cookie Better Auth. Yang belum ada hanya implementasinya.
 
 ---
 

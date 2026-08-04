@@ -51,7 +51,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
-| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019 | 19   | 🟡 6 ✅ · 1 🟡 · 1 🚫 · 11 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
+| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019 | 19   | 🟡 7 ✅ · 1 🚫 · 11 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-037 | 18   | 🟡 5 ✅ · 1 🟡 · 12 ⏳       | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | ⏳ 0 / 6             | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
@@ -59,7 +59,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 
-**Total:** 69 task · 11 selesai · 134 subtask terdefinisi (v0.1–v0.3).
+**Total:** 69 task · 12 selesai · 134 subtask terdefinisi (v0.1–v0.3).
 
 Urutan release mengikuti [`release-roadmap.md`](../product-discovery/02-product/release-roadmap.md). Perubahan urutan atau ruang lingkup release wajib lewat ADR.
 
@@ -86,7 +86,6 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
 | **T-012** | Sidebar section "Channels"                      | ⏳      | ADR-058; `listConnectedAccounts` sudah ada, T-012.2 butuh v0.2 |
 | **T-011** | Sidebar CTA "+ New Post"                        | ⏳      | ADR-053; sudah ada di Claude Design, belum di kode   |
-| **T-010** | Light/Dark mode — persistensi cookie + push design | 🟡      | Dua subtask sisa                                     |
 | **T-029** | Publish Now                                     | ⏳      | ADR-047; butuh T-025 lebih dulu untuk jalur nyata    |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah             |
 
