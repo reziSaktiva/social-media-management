@@ -8,6 +8,37 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-04 — ADR-063: Integrasi Delegasi Subagent ke Alur Kerja Wajib
+
+King Rezi melaporkan AI utama (Jokowi) jarang menggunakan 7 subagent kerja (`.claude/agents/`) semenjak restrukturisasi dokumentasi ADR-060–062, dan minta didiagnosis mengapa — harapannya subagent bisa mengerjakan beberapa task secara paralel.
+
+Diagnosis (git log + perbandingan diff `SKILL.md`/`AGENTS.md` sebelum-sesudah ADR-060–062) menemukan akar masalah **struktural, bukan konten yang hilang**: panduan orkestrasi subagent (`.claude/agents/README.md`) sejak dibuat (30 Juli 2026) tidak pernah terhubung ke alur kerja operasional AI. `.agents/skills/project-os-navigator/SKILL.md` (behavior utama AI) tidak pernah menyebut subagent sama sekali baik versi lama maupun baru; subagent hanya disebut di satu section deskriptif berdiri sendiri di `AGENTS.md`. Field task di `tasks/vXX-*.md` juga tidak memetakan `Domain` ke subagent mana pun. ADR-060–062 memperparah secara relatif dengan memperpanjang cascade baca dokumen untuk task nyata tanpa satu pun titik yang mengarah ke evaluasi delegasi.
+
+### Added
+
+* `project-manager/decisions/ADR-063-integrasi-delegasi-subagent-ke-alur-kerja-wajib-pemetaan-domain-subagent.md`.
+* `.claude/agents/README.md` — section baru "Kapan WAJIB dievaluasi" + tabel **Pemetaan Domain → Subagent** (identity/workspace/publishing/analytics → Prabowo; integration/media/notification → Elon; UI → Mark; platform/DX → biasanya tanpa subagent).
+
+### Changed
+
+* `AGENTS.md` — "Wajib di awal sesi" mendapat langkah baru (poin 3): evaluasi delegasi subagent berdasarkan field Domain sebelum eksekusi kode. Section "Subagent kerja" ditegaskan bukan referensi opsional.
+* `.agents/skills/project-os-navigator/SKILL.md` — behavior "Pekerjaan Baru" mendapat sub-langkah 1a (evaluasi delegasi + kemungkinan paralel); cascade "Tingkat 3" ditambah pointer ke `.claude/agents/README.md` sebelum eksekusi. (Symlink `.claude/skills/project-os-navigator` ikut terupdate otomatis — sumber tunggal.)
+* `project-manager/TASKS.md` — "Cara pakai" mendapat langkah baru yang sama, supaya jalur masuk manapun (AGENTS.md, SKILL.md, atau langsung TASKS.md) konsisten.
+* `PROJECT_STATE.md` — Recent Decisions & Completed (Ringkasan) menambahkan ADR-063, menggeser entri terlama keluar dari daftar 5. Version 1.0.36 → 1.0.37.
+* `DECISIONS.md` — tambah 1 baris indeks ADR-063 di baris paling atas.
+
+### Fixed
+
+* `.claude/agents/README.md` (5 lokasi: header klasifikasi, deskripsi peran Gibran, aturan orkestrasi Gibran, dan cara mencatat perubahan) — referensi mati ke `project-manager/CHANGELOG.md` (dihapus/digabung ke `COMPLETE_TASK.md` sejak ADR-061, 3 Agustus) diperbaiki, sebagian ke `COMPLETE_TASK.md`, sebagian menambah `TASKS.md`/`tasks/` yang belum tercatat sejak ADR-062. Bukti konkret dokumentasi subagent tidak ikut disinkronkan saat dua restrukturisasi berturut-turut.
+* `context/ctx-project.md` — tabel "Living vs static" masih menulis `CHANGELOG.md` sebagai Living Document dan `CONVERSATIONS.md` salah diklasifikasi Living (seharusnya Append-Only per `PROJECT_RULES.md`). Diperbaiki jadi 3 tipe (Living: `PROJECT_STATE.md` + `TASKS.md`/`tasks/`; Append-Only: `DECISIONS.md`+`decisions/`, `COMPLETE_TASK.md`, `CONVERSATIONS.md`, `BRAINSTORM.md`; Static reference).
+* `.claude/agents/prabowo-feature-engineer.md` (role file, chmod 444, dibuka dengan konfirmasi eksplisit King Rezi) — instruksi "serahkan ke Gibran untuk update CHANGELOG.md" diperbaiki jadi `TASKS.md`/`tasks/`/`COMPLETE_TASK.md`, lalu di-chmod 444 kembali.
+
+### Decisions
+
+* ADR-063 dicatat di `project-manager/decisions/ADR-063-integrasi-delegasi-subagent-ke-alur-kerja-wajib-pemetaan-domain-subagent.md`.
+
+---
+
 ## 2026-08-04 (lanjutan) — T-011.3 & T-011 ditutup: QA browser oleh Najwa
 
 Melanjutkan entri T-011.3 di bawah (branch `feat/t-011-3-verifikasi-redirect-terminal-action`, HEAD `d7aa837`). Bagian yang sebelumnya belum bisa diotomatiskan — editor benar-benar tertutup dan layar tujuan tampil setelah aksi terminal — sudah diverifikasi manual oleh Najwa QA Engineer via browser (tunnel ngrok, akun test Raka Pratama/Owner).

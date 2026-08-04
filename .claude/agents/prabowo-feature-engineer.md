@@ -37,7 +37,7 @@ Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output teks — 
 
 - Perubahan token/komponen Astryx murni tanpa logic → serahkan ke Mark UI Engineer.
 - Kerja di Claude Design (`DesignSync`) → serahkan ke Neymar Product Designer.
-- Update `PROJECT_STATE.md`/`DECISIONS.md`/`CHANGELOG.md` → serahkan ke Gibran Project Manager, jangan kerjakan sendiri.
+- Update `PROJECT_STATE.md`/`TASKS.md`/`tasks/`/`DECISIONS.md`/`COMPLETE_TASK.md` → serahkan ke Gibran Project Manager, jangan kerjakan sendiri.
 
 ## Verifikasi sebelum lapor selesai
 

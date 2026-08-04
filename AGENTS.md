@@ -23,10 +23,11 @@ Dokumen ini **bukan** Source of Truth produk. Ia mengarahkan agent ke dokumen ya
 
 1. Baca **Snapshot** di `project-manager/PROJECT_STATE.md` — phase, mode percakapan, fokus terdekat.
 2. Kalau akan mengerjakan task: buka `project-manager/TASKS.md` (indeks), lalu **hanya** file `tasks/vXX-*.md` yang memuat task itu. Ikuti field **Baca dulu** pada task tersebut sebagai daftar bacaan minimal.
-3. Ikuti skill project: `.agents/skills/project-os-navigator/SKILL.md`.
-4. Untuk keputusan yang belum ada di baseline: ikuti `.agents/skills/proactive-clarification/SKILL.md`.
-5. Setelah pekerjaan selesai: ikuti `.agents/skills/work-report-simple/SKILL.md`.
-6. Untuk konteks teknis per domain: buka file `context/ctx-*.md` yang relevan (lihat `context/README.md`).
+3. **Evaluasi delegasi subagent** (ADR-063) — kalau task itu scope implementasi kode: cek field **Domain**-nya terhadap pemetaan Domain → Subagent di `.claude/agents/README.md`, dan tentukan dikerjakan sendiri, satu subagent, atau beberapa subagent paralel (lihat poin di bawah kapan wajib paralel). Jangan lewati langkah ini hanya karena sudah biasa mengerjakan sendiri.
+4. Ikuti skill project: `.agents/skills/project-os-navigator/SKILL.md`.
+5. Untuk keputusan yang belum ada di baseline: ikuti `.agents/skills/proactive-clarification/SKILL.md`.
+6. Setelah pekerjaan selesai: ikuti `.agents/skills/work-report-simple/SKILL.md`.
+7. Untuk konteks teknis per domain: buka file `context/ctx-*.md` yang relevan (lihat `context/README.md`).
 
 ## AI Context layer (`context/`)
 
@@ -53,8 +54,16 @@ context/
 Designer, Elon Backend Engineer, Ridwan Architecture Reviewer, Najwa QA
 Engineer, Gibran Project Manager) didefinisikan di `.claude/agents/*.md` —
 diklasifikasikan **Static Reference** (`PROJECT_RULES.md`), read-only (chmod
-444), hanya diubah atas permintaan eksplisit user. Panduan pemakaian + aturan
-orkestrasi paralel/sekuensial ada di `.claude/agents/README.md`.
+444), hanya diubah atas permintaan eksplisit user. Panduan pemakaian, aturan
+orkestrasi paralel/sekuensial, dan pemetaan **Domain → Subagent** ada di
+`.claude/agents/README.md`.
+
+**Ini bukan referensi opsional.** Poin #3 di "Wajib di awal sesi" mewajibkan
+evaluasi delegasi subagent untuk setiap task implementasi kode — termasuk
+menjalankan beberapa subagent **paralel** kalau ada task/subtask independen
+yang bisa berjalan bersamaan (ADR-063, ditulis setelah audit menemukan AI
+jarang mendelegasikan karena langkah ini sebelumnya tidak terhubung ke
+alur kerja manapun).
 
 ## Stack & layout (ingat cepat)
 

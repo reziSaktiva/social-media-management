@@ -30,6 +30,8 @@ Jangan langsung baca semua dokumen `project-manager/` secara penuh untuk setiap 
 
 Kalau pekerjaannya belum punya ID task di backlog, itu sendiri sinyal: tanyakan ke King Rezi apakah perlu ditambahkan sebagai task baru lebih dulu.
 
+Sebelum eksekusi (khusus mode 3/4/5 yang scope-nya implementasi kode): cek `.claude/agents/README.md` → pemetaan **Domain → Subagent** dan evaluasi delegasi (lihat behavior "Pekerjaan Baru" di bawah, poin 1a). Jangan asumsikan default-nya "kerjakan sendiri".
+
 Jika diskusi menyentuh domain spesifik, baca juga dokumen relevan dari:
 - `product-discovery/01-business/` — Business Baseline v1.0
 - `product-discovery/02-product/` — Product Baseline v1.0
@@ -103,6 +105,7 @@ Lihat `project-manager/PROJECT_RULES.md` bagian **Document Type Classification**
 
 **Steps:**
 1. Cek `PROJECT_STATE.md` — pastikan task ini sesuai phase aktif.
+   1a. **Kalau task ini scope implementasi kode** (bukan dokumentasi/diskusi): cek field **Domain** task di `tasks/vXX-*.md` terhadap pemetaan Domain → Subagent di `.claude/agents/README.md`. Tentukan salah satu — kerjakan sendiri (scope trivial/dokumentasi), delegasikan ke satu subagent, atau jalankan **beberapa subagent paralel** kalau ada task/subtask independen (domain/file berbeda) yang tidak saling menyentuh. Ini langkah wajib (ADR-063), bukan opsional.
 2. Cek `Active Conversation Mode` — pastikan action type diizinkan.
 3. Baca dokumen baseline yang relevan sebelum membuat dokumen baru.
 4. Ikuti format dokumen yang konsisten dengan dokumen existing (lihat contoh di folder yang sama).

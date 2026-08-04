@@ -35,10 +35,11 @@ Skill wajib: [`.agents/skills/project-os-navigator/SKILL.md`](../.agents/skills/
 
 ## Living vs static
 
-| Tipe             | File                                                   | Boleh memuat status/progress?            |
-| ---------------- | ------------------------------------------------------ | ---------------------------------------- |
-| Living           | `PROJECT_STATE.md`, `CHANGELOG.md`, `CONVERSATIONS.md` | Ya (khusus STATE untuk phase/%)          |
-| Static reference | README, overview, baseline `product-discovery/`        | Tidak — jangan taruh ✅/⏳/%/phase aktif |
+| Tipe             | File                                                                                   | Boleh memuat status/progress?                                 |
+| ---------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Living           | `PROJECT_STATE.md`, `TASKS.md` + `tasks/vXX-*.md` (ADR-062)                            | Ya (STATE: phase/milestone/%; TASKS: status per-task/subtask) |
+| Append-Only      | `DECISIONS.md` + `decisions/`, `COMPLETE_TASK.md`, `CONVERSATIONS.md`, `BRAINSTORM.md` | Hanya entri baru ditambahkan, entri lama tidak diedit         |
+| Static reference | README, overview, baseline `product-discovery/`, `SKILL.md`                            | Tidak — jangan taruh ✅/⏳/%/phase aktif                      |
 
 ---
 
