@@ -96,5 +96,5 @@ Verifikasi jalur staging → production: migrate-on-release, env var lengkap di 
 
 * Penomoran mulai T-080 (bukan T-070) supaya v0.6 punya ruang tumbuh.
 * **Definition of Done rilis ini:** produk siap digunakan secara umum.
-* **Yang sengaja di luar seluruh MVP (`mvp-definition.md` → Out of Scope):** White Label, Mobile Application, Browser Extension, Marketplace, Public API, Plugin System, Enterprise SSO, Advanced Workflow Automation, Multi Workspace Management. Endpoint mobile `/api/v1` (ADR-043) tetap **disiapkan skemanya** lebih awal, tapi endpoint aktualnya dikerjakan setelah MVP web selesai — bukan bagian rilis ini.
+* **Yang sengaja di luar seluruh MVP (`mvp-definition.md` → Out of Scope):** White Label, Mobile Application, Browser Extension, Marketplace, Public API, Plugin System, Enterprise SSO, Advanced Workflow Automation, Multi Workspace Management. Endpoint mobile aktual `/api/v1` (ADR-043) juga di luar MVP dan dikerjakan setelah MVP web selesai — **tapi skema route + konfigurasi Bearer plugin-nya punya task sendiri yang sengaja dikerjakan lebih awal: T-019 di v0.1.**
 * **Billing** (`feature-modules.md` → Supporting Modules) tidak muncul di rilis manapun di `release-roadmap.md` dan tidak ada di Must Have `mvp-definition.md`. Sengaja **tidak** dimasukkan ke backlog sampai ada keputusan eksplisit — jangan diasumsikan bagian v1.0.

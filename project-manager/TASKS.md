@@ -13,7 +13,16 @@ Dokumen ini adalah **indeks**. Detail task ada di `tasks/`.
 3. Buka dokumen yang disebut di field **Baca dulu** pada task tersebut — itu daftar bacaan minimal yang sudah dikurasi, jadi tidak perlu menebak atau menyisir `product-discovery/`.
 4. Setelah task selesai: ubah status di file release **dan** perbarui hitungan di indeks ini.
 
-Untuk fase/milestone project (M0–M9), mode percakapan aktif, Known Issues, dan Blockers → tetap ke [`PROJECT_STATE.md`](PROJECT_STATE.md). Dokumen ini hanya soal task.
+Untuk mode percakapan aktif, Known Issues, dan Blockers → tetap ke [`PROJECT_STATE.md`](PROJECT_STATE.md).
+
+**Peta release ↔ milestone.** Backlog memakai release `v0.x`, `PROJECT_STATE.md` memakai milestone `M0–M9`. Pemetaannya:
+
+| Milestone                | Release yang membentuknya | Status milestone |
+| ------------------------ | ------------------------- | ---------------- |
+| **M8** — Development     | v0.1 · v0.2 · v0.3 · v0.4 · v0.5 · v0.6 | aktif sekarang |
+| **M9** — Testing & Release | v1.0                    | belum mulai      |
+
+Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar ruang lingkup milestone" dan `Active Conversation Mode` yang hanya mengizinkan "Feature Implementation (M8)": **seluruh v0.1–v0.6 berada di dalam M8**, jadi task di rilis manapun dari v0.1 sampai v0.6 tidak melanggar scope milestone aktif. Yang di luar M8 hanya v1.0 (M9). Urutan pengerjaan tetap diatur oleh indeks release + `Depends`, bukan oleh milestone.
 
 ---
 
@@ -42,17 +51,19 @@ Untuk fase/milestone project (M0–M9), mode percakapan aktif, Known Issues, dan
 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
-| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-018 | 18   | 🟡 6 ✅ · 1 🟡 · 1 🚫 · 10 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
-| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-036 | 17   | 🟡 5 ✅ · 1 🟡 · 11 ⏳       | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
+| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019 | 19   | 🟡 6 ✅ · 1 🟡 · 1 🚫 · 11 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
+| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-037 | 18   | 🟡 5 ✅ · 1 🟡 · 12 ⏳       | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | ⏳ 0 / 6             | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 
-**Total:** 67 task · 11 selesai · 127 subtask terdefinisi (v0.1–v0.3).
+**Total:** 69 task · 11 selesai · 134 subtask terdefinisi (v0.1–v0.3).
 
 Urutan release mengikuti [`release-roadmap.md`](../product-discovery/02-product/release-roadmap.md). Perubahan urutan atau ruang lingkup release wajib lewat ADR.
+
+> ⚠️ **v0.1 dan v0.2 tidak sepenuhnya sekuensial.** Empat task v0.1 (T-012, T-013, T-015, T-016) punya subtask yang bergantung pada task v0.2 (T-025, T-026, T-036 + domain publishing), jadi v0.1 tidak bisa ditutup sebelum v0.2 berjalan. Rinciannya di Catatan Rilis [`tasks/v01-foundation.md`](tasks/v01-foundation.md).
 
 ---
 
@@ -69,14 +80,15 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 ## Fokus sekarang
 
-Diturunkan dari **Top Next Tasks** di [`PROJECT_STATE.md`](PROJECT_STATE.md) — kalau dua daftar ini berbeda, `PROJECT_STATE.md` yang menang.
+**Ini satu-satunya daftar fokus.** `PROJECT_STATE.md` hanya menyalin ID-nya di Snapshot dan menunjuk ke sini — jangan menulis daftar fokus versi ketiga di manapun. Kalau daftar ini berubah, perbarui juga baris `Top Next Tasks` di Snapshot `PROJECT_STATE.md` (hanya ID + judul singkat).
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
-| **T-012** | Sidebar section "Channels"                      | ⏳      | ADR-058; prasyarat `listConnectedAccounts` sudah ada |
+| **T-012** | Sidebar section "Channels"                      | ⏳      | ADR-058; `listConnectedAccounts` sudah ada, T-012.2 butuh v0.2 |
 | **T-011** | Sidebar CTA "+ New Post"                        | ⏳      | ADR-053; sudah ada di Claude Design, belum di kode   |
-| **T-029** | Publish Now                                     | ⏳      | ADR-047; butuh T-025 lebih dulu untuk jalur nyata    |
 | **T-010** | Light/Dark mode — persistensi cookie + push design | 🟡      | Dua subtask sisa                                     |
+| **T-029** | Publish Now                                     | ⏳      | ADR-047; butuh T-025 lebih dulu untuk jalur nyata    |
+| **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah             |
 
 **Rantai blocker terbesar:** T-025 (Real OutstandAdapter) → T-026 (webhook) → T-027 (job runner). Ketiganya mengunci sebagian besar v0.2, seluruh v0.3, dan seluruh v0.4. Menyelesaikan T-025 membuka lebih banyak pekerjaan daripada task lain manapun.
 
@@ -88,7 +100,7 @@ Task yang **menghasilkan ADR**, bukan sekadar mengikuti ADR. Semuanya menunggu k
 
 | Task      | Keputusan yang belum diambil                              | Menghambat                     |
 | --------- | --------------------------------------------------------- | ------------------------------ |
-| **T-005** | Transactional email provider (AS-D04)                     | Email verification, invite member |
+| **T-005** | Transactional email provider (AS-D04)                     | Email verification, invite member (T-007) |
 | **T-060** | Provider + model AI                                       | Seluruh v0.5                   |
 | **T-070** | Strategi route publik tanpa auth (+ custom domain?)       | Seluruh v0.6                   |
 | **T-032** | Semantik queue slot — slot waktu berulang vs urutan antrean | Queue management               |

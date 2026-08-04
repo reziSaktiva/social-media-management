@@ -142,12 +142,12 @@ Toggle sudah jalan di kode dan lolos QA/review. Dua sisa pekerjaan:
 | **Status**    | ⏳ Not Started                                                |
 | **Domain**    | UI                                                           |
 | **ADR**       | ADR-053                                                      |
-| **Depends**   | T-009 ✅, T-020 ✅ (Draft Editor modal)                        |
+| **Depends**   | T-009 ✅ · T-020 ✅ (Draft Editor modal, v0.2)                  |
 | **Baca dulu** | `04-ux/navigation-patterns.md` (NP-D01) · Claude Design → `components/navigation.html` |
 
 CTA primary full-width di bawah Workspace Selector, di atas navigation items — membuka Draft Editor modal dari section manapun. **Sudah diimplementasikan di Claude Design, belum di kode.**
 
-- [ ] **T-011.1** Render CTA di `WorkspaceSideNav` sesuai posisi & varian Astryx di Claude Design
+- [ ] **T-011.1** Render CTA di `WorkspaceSideNav` pada posisi yang sudah ditetapkan ADR-053: **di bawah Workspace Selector, di atas navigation items**, primary + full-width (varian Astryx-nya cek di Claude Design)
 - [ ] **T-011.2** Hubungkan ke `DraftEditorProvider` supaya bisa dibuka dari section manapun (bukan hanya `/publish`)
 - [ ] **T-011.3** Verifikasi redirect terminal action tetap benar dari section non-publish (lihat T-031)
 
@@ -158,15 +158,15 @@ CTA primary full-width di bawah Workspace Selector, di atas navigation items —
 | **Status**    | ⏳ Not Started                                                          |
 | **Domain**    | workspace · UI                                                         |
 | **ADR**       | ADR-058 (+ addendum drag-handle **shift-on-hover**, mengoverride keputusan awal "no-shift") |
-| **Depends**   | T-009 ✅ · `listConnectedAccounts` ✅ (sudah ada dari T-028)              |
+| **Depends**   | T-009 ✅ · `listConnectedAccounts` ✅ (dari T-028, v0.2) · T-012.2 butuh domain publishing (v0.2) |
 | **Baca dulu** | `04-ux/navigation-patterns.md` · Claude Design → `components/navigation.html` · `06-engineering/dependency-strategy.md` |
 
 Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand overlay, nama akun, status badge, scheduled count ↔ quick-compose "+" (no-shift/fixed-slot).
 
 - [ ] **T-012.1** Skema tabel reorder personal per user (tabel baru + migrasi)
 - [ ] **T-012.2** Query scheduled-posts count lintas domain (Publishing → Workspace, via public API domain)
-- [ ] **T-012.3** Konfirmasi `react-icons` sebagai dependency runtime `apps/web` di `dependency-strategy.md`
-- [ ] **T-012.4** Render section + avatar/badge brand + status badge
+- [ ] **T-012.3** Konfirmasi `react-icons` (subset **`react-icons/fa6`**) sebagai dependency runtime `apps/web` di `dependency-strategy.md`
+- [ ] **T-012.4** Render section + avatar bulat + badge logo brand `react-icons/fa6` overlay + status badge
 - [ ] **T-012.5** Scheduled count ↔ quick-compose "+" dengan fixed-slot (no-shift)
 - [ ] **T-012.6** Drag-handle shift-on-hover — seluruh isi baris ikut bergeser
 
@@ -188,7 +188,7 @@ Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand o
 
 OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Saat ini connected account **hanya bisa didapat lewat seed manual** (`apps/web/prisma/seed-connected-accounts.ts`) — ini blocker rantai untuk banyak fitur lain.
 
-- [ ] **T-013.1** `OutstandAdapter.connectAccount` — inisiasi redirect flow (butuh T-025)
+- [ ] **T-013.1** `OutstandAdapter.connectAccount` — inisiasi redirect flow (butuh **T-025**, v0.2 ⏳)
 - [ ] **T-013.2** Route Handler callback + persist `WorkspaceConnectedAccount`
 - [ ] **T-013.3** UI `/settings/connected-accounts` — daftar + tombol Connect per platform
 - [ ] **T-013.4** Operasional X: kredensial BYOK dikonfigurasi manual Project Owner di dashboard Outstand — **aplikasi tidak membuat form atau secret store X**
@@ -216,7 +216,7 @@ RBAC Owner/Admin — tidak ada perubahan RBAC, tinggal tambah gate konfirmasi se
 | **Status**    | ⏳ Not Started                                        |
 | **Domain**    | workspace · integration                              |
 | **ADR**       | ADR-040                                              |
-| **Depends**   | T-013, T-026 (webhook `account.token_expired`)       |
+| **Depends**   | T-013 · **T-026 (v0.2, ⏳)** webhook `account.token_expired` |
 | **Baca dulu** | `05-architecture/integration-layer.md`                |
 
 - [ ] **T-015.1** Tandai status akun expired saat webhook `account.token_expired` masuk
@@ -242,7 +242,7 @@ Semua route `/account/*` dan `/settings/*` masih placeholder "Scaffold — imple
 - [ ] **T-016.1** Layout `account/` + `settings/` (sidebar/nav internal)
 - [ ] **T-016.2** `/account/profile` — edit nama, avatar
 - [ ] **T-016.3** `/account/preferences`
-- [ ] **T-016.4** `/account/notifications` — preferensi notifikasi (butuh T-036)
+- [ ] **T-016.4** `/account/notifications` — preferensi notifikasi (butuh **T-036**, v0.2 ⏳)
 - [ ] **T-016.5** Dialog konfirmasi Logout (ADR-049 Tier 2)
 
 ---
@@ -257,7 +257,7 @@ Semua route `/account/*` dan `/settings/*` masih placeholder "Scaffold — imple
 | **Domain**    | platform                                           |
 | **ADR**       | ADR-015, ADR-033                                   |
 | **Depends**   | T-002 ✅                                            |
-| **Baca dulu** | `05-architecture/database-strategy.md` (DO-D06)     |
+| **Baca dulu** | `06-engineering/database-orm.md` (DO-D06) · `05-architecture/database-strategy.md` |
 
 Belum digenerate di migrasi awal — ditambahkan saat jalur server yang men-set `app.current_user_id` diimplementasi.
 
@@ -283,9 +283,35 @@ Saat halaman auth diakses lewat tunnel ngrok (dipakai untuk `BETTER_AUTH_URL`), 
 
 > Memblokir uji interaksi form penuh di browser lewat ngrok, bukan memblokir fitur.
 
+### T-019 · Skema API mobile `/api/v1` + Better Auth Bearer plugin
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | platform · identity                                          |
+| **ADR**       | ADR-043                                                      |
+| **Depends**   | T-003 ✅                                                      |
+| **Baca dulu** | `05-architecture/application-layer.md` · `06-engineering/auth-strategy.md` |
+
+**Dikerjakan lebih awal secara sengaja — mendahului M8 web berjalan jauh.** Yang disiapkan sekarang hanya **skema route + konfigurasi auth**, bukan endpoint mobile aktualnya (endpoint aktual dikerjakan setelah MVP web selesai, dan bukan bagian MVP — lihat `mvp-definition.md` → Out of Scope "Public API"/"Mobile Application").
+
+Alasan urgensinya: kalau jalur Bearer token baru dipasang setelah kode web matang, konfigurasi auth harus di-retrofit ke atas sesuatu yang sudah jalan — persis yang ADR-043 ingin dihindari.
+
+- [ ] **T-019.1** Siapkan struktur folder `apps/web/src/app/api/v1/...` (skema route, belum ada endpoint bisnis)
+- [ ] **T-019.2** Aktifkan Better Auth Bearer plugin + set `trustedOrigins`
+- [ ] **T-019.3** Konfigurasi `rateLimit.customRules` untuk jalur API
+- [ ] **T-019.4** Pastikan auth guard `proxy.ts` tidak mem-redirect request Bearer ke `/login` (saat ini hanya `/api/auth`, `/api/jobs`, `/api/health` yang di-bypass)
+
 ---
 
 ## Catatan Rilis
 
-* T-019 sengaja dikosongkan sebagai ruang penambahan task v0.1 tanpa menggeser penomoran rilis lain.
-* Definisi "Foundation selesai": semua task di rilis ini `✅ Done` **kecuali** yang secara sadar ditunda dengan alasan tercatat.
+* Nomor kosong v0.1 sudah terpakai semua (T-019 diisi task API mobile). Task v0.1 baru berikutnya memakai nomor global berikutnya yang belum pernah dipakai — jangan menggeser ID yang sudah ada.
+* **Definisi "Foundation selesai":** semua task di rilis ini `✅ Done` **kecuali** yang secara sadar ditunda dengan alasan tercatat — dan **kecuali empat task yang menunggu v0.2** (lihat di bawah).
+* **Task v0.1 yang tidak bisa ditutup sebelum v0.2 berjalan** (dependency lintas rilis, disengaja dan diketahui):
+  * **T-013** Connect account — subtask T-013.1 butuh T-025 (Real OutstandAdapter, v0.2).
+  * **T-015** Reconnect flow — butuh T-026 (webhook `account.token_expired`, v0.2).
+  * **T-016** Account settings — subtask T-016.4 butuh T-036 (notification, v0.2).
+  * **T-012** Sidebar Channels — subtask T-012.2 butuh query scheduled-posts count dari domain publishing (v0.2), meski `listConnectedAccounts` sendiri sudah ada.
+
+  Konsekuensinya: v0.1 dan v0.2 **tidak sepenuhnya sekuensial** — sisa v0.1 di atas selesai berbarengan atau setelah v0.2. Kalau di kemudian hari pemisahan ini terasa menyesatkan, pilihan yang lebih bersih adalah memindahkan Connect Account + Channels/CTA ke v0.2 lewat ADR baru (indeks release di `TASKS.md` adalah turunan `release-roadmap.md`, jadi perubahan ruang lingkup rilis wajib lewat ADR).

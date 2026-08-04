@@ -210,6 +210,7 @@ Sebuah milestone dianggap selesai apabila:
 * Keputusan penting telah dicatat pada `DECISIONS.md`.
 * Tidak terdapat blocker yang belum diselesaikan.
 * `PROJECT_STATE.md` telah diperbarui.
+* Status task di `TASKS.md` **dan** `tasks/vXX-*.md` telah diperbarui, dan hitungan di **Indeks release** + **Total** cocok dengan isi file release (ADR-062). Milestone tidak boleh dinyatakan selesai kalau backlog masih basi.
 * Guardrail ukuran dokumen (lihat **Documentation Governance**) sudah dicek — rotasi ringkasan `PROJECT_STATE.md` kalau perlu.
 
 ---

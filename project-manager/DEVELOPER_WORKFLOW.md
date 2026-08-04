@@ -37,15 +37,19 @@ flowchart TD
   I --> K
 
   K --> L[Kode di apps/web/src/domains/*<br/>DDD + Modular Monolith]
-  L --> M{Progress atau keputusan berubah?}
-  M -->|Ya| N[Update PROJECT_STATE.md<br/>+ COMPLETE_TASK.md]
-  M -->|Tidak| O[Selesai]
-  N --> O[Selesai]
+  L --> M[Update tasks/vXX-*.md<br/>+ hitungan di TASKS.md]
+  M --> N{Phase / milestone / Known Issues<br/>/ fokus terdekat berubah?}
+  N -->|Ya| P[Update PROJECT_STATE.md]
+  N -->|Tidak| Q[Skip PROJECT_STATE.md]
+  P --> R[Tambah entri baru<br/>di COMPLETE_TASK.md]
+  Q --> R
+  R --> O[Selesai]
 ```
 
 **Rujukan:** `../AGENTS.md` (aturan keras + mapping task→baca),
 `context/README.md`, `../product-discovery/06-engineering/design-tokens.md`
-(ADR-042 — Claude Design), `.agents/skills/`.
+(ADR-042 — Claude Design), `.agents/skills/`, ADR-062 (backlog berjenjang +
+amandemen aturan status).
 
 ---
 
@@ -139,7 +143,8 @@ menunggu di antrean sampai akun reconnect.
 
 * `../AGENTS.md` — pintu masuk agent, aturan keras
 * `../context/README.md` — indeks AI Context per domain
-* `PROJECT_STATE.md` — status & next task saat ini
+* `PROJECT_STATE.md` — phase, milestone, Known Issues, blockers
+* `TASKS.md` — indeks backlog task per release; detail + subtask di `tasks/vXX-*.md`
 * `DECISIONS.md` — seluruh ADR
 * `../product-discovery/04-ux/user-flows.md` — flow lengkap (UF-01 s/d UF-06)
 * `../product-discovery/02-product/roles-permissions.md` — roles & content status

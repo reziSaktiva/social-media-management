@@ -6,13 +6,14 @@ Indeks operasional untuk **cara kerja project** (Project OS). Bukan salinan `pro
 
 ## Baca dulu
 
-| Dokumen                                                                            | Kapan                                             |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------- |
-| [`../project-manager/PROJECT_STATE.md`](../project-manager/PROJECT_STATE.md)       | Setiap sesi — phase, mode, next tasks, blockers   |
-| [`../project-manager/PROJECT_RULES.md`](../project-manager/PROJECT_RULES.md)       | Governance, klasifikasi dokumen, AI collaboration |
-| [`../project-manager/DECISIONS.md`](../project-manager/DECISIONS.md)               | Sebelum mengubah keputusan material               |
-| [`../project-manager/PROJECT_OVERVIEW.md`](../project-manager/PROJECT_OVERVIEW.md) | Orientasi singkat produk + preferensi kerja       |
-| [`../AGENTS.md`](../AGENTS.md)                                                     | Pintu masuk agent + hard rules                    |
+| Dokumen                                                                            | Kapan                                                                                                                           |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| [`../project-manager/PROJECT_STATE.md`](../project-manager/PROJECT_STATE.md)       | Setiap sesi — phase, mode, Known Issues, blockers                                                                               |
+| [`../project-manager/TASKS.md`](../project-manager/TASKS.md)                       | Sebelum mengerjakan task — indeks backlog per release; detail di `tasks/vXX-*.md` (buka **hanya** file release yang dikerjakan) |
+| [`../project-manager/PROJECT_RULES.md`](../project-manager/PROJECT_RULES.md)       | Governance, klasifikasi dokumen, AI collaboration                                                                               |
+| [`../project-manager/DECISIONS.md`](../project-manager/DECISIONS.md)               | Sebelum mengubah keputusan material                                                                                             |
+| [`../project-manager/PROJECT_OVERVIEW.md`](../project-manager/PROJECT_OVERVIEW.md) | Orientasi singkat produk + preferensi kerja                                                                                     |
+| [`../AGENTS.md`](../AGENTS.md)                                                     | Pintu masuk agent + hard rules                                                                                                  |
 
 Skill wajib: [`.agents/skills/project-os-navigator/SKILL.md`](../.agents/skills/project-os-navigator/SKILL.md).
 
@@ -20,10 +21,10 @@ Skill wajib: [`.agents/skills/project-os-navigator/SKILL.md`](../.agents/skills/
 
 ## Aturan operasional
 
-1. Status, progress (%), milestone aktif → **hanya** di `PROJECT_STATE.md`.
+1. Status, progress (%), milestone aktif → **hanya** di `PROJECT_STATE.md`. **Pengecualian (ADR-062):** status per-task/subtask di `TASKS.md` + `tasks/vXX-*.md`.
 2. Keputusan material (scope, arsitektur, stack, BC) → ADR di `DECISIONS.md` sebelum mengubah baseline.
 3. Insight diskusi penting → `CONVERSATIONS.md`; ide spekulatif → `BRAINSTORM.md`.
-4. Setelah pekerjaan selesai → update `PROJECT_STATE.md` + `CHANGELOG.md` bila progress berubah.
+4. Setelah pekerjaan selesai → update status task di `tasks/vXX-*.md` **dan** hitungan di `TASKS.md` (dua-duanya bersamaan), lalu `PROJECT_STATE.md` bila phase/milestone/Known Issues berubah, lalu entri baru di `COMPLETE_TASK.md`. Jangan menyalin detail task ke `PROJECT_STATE.md`.
 5. Bahasa dokumentasi & komunikasi project: **Bahasa Indonesia** (kecuali diminta lain).
 6. Jangan commit/push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
 7. Untuk implementasi Outstand M8, ADR-040 mengamendemen kontrak lama. Baca

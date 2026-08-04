@@ -4,9 +4,9 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** T-012 Sidebar "Channels" · T-011 Sidebar CTA "+ New Post" · T-029 Publish Now · T-010 Light/Dark persistensi cookie (🟡)
+* **Top Next Tasks:** T-012 Sidebar "Channels" · T-011 Sidebar CTA "+ New Post" · T-010 Light/Dark persistensi cookie (🟡) · T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** Tidak ada blocker aktif. Known issue teratas: dependency Transactional Email Provider belum ditetapkan (T-005, tidak memblokir M8 awal).
-* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 67 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
+* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 69 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
 ---
@@ -17,7 +17,7 @@
 | ------------ | ---------- |
 | Version      | 1.0.36     |
 | Status       | Active     |
-| Last Updated | 2026-08-03 |
+| Last Updated | 2026-08-04 |
 
 ---
 
@@ -113,19 +113,11 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
 
 ## Next Tasks
 
-> Daftar lengkap 67 task (v0.1 → v1.0) beserta subtask, dependency, dan bacaan minimal per task ada di **[`TASKS.md`](TASKS.md)**. File ini hanya menyebut ID + judul singkat — **jangan duplikasi detail task ke sini** (ADR-062).
-
-Fokus terdekat:
-
-| ID        | Task                                               | Status | Release |
-| --------- | -------------------------------------------------- | ------ | ------- |
-| **T-012** | Sidebar section "Channels" (ADR-058)               | ⏳      | v0.1    |
-| **T-011** | Sidebar CTA "+ New Post" (ADR-053)                 | ⏳      | v0.1    |
-| **T-010** | Light/Dark — persistensi cookie + push design      | 🟡      | v0.1    |
-| **T-029** | Publish Now (ADR-047)                              | ⏳      | v0.2    |
-| **T-025** | Real OutstandAdapter (ADR-040)                     | ⏳      | v0.2    |
+> Daftar lengkap 69 task (v0.1 → v1.0) beserta subtask, dependency, dan bacaan minimal per task ada di **[`TASKS.md`](TASKS.md)** → section **Fokus sekarang**. Itu satu-satunya daftar fokus; di file ini cukup baris `Top Next Tasks` di Snapshot. **Jangan menulis ulang daftar task di sini** (ADR-062) — daftar ketiga akan langsung desync.
 
 **Rantai blocker terbesar:** T-025 → T-026 → T-027 (Real adapter → webhook → job runner). Ketiganya mengunci sebagian besar v0.2, seluruh v0.3, dan seluruh v0.4.
+
+**Catatan urutan rilis:** v0.1 dan v0.2 tidak sepenuhnya sekuensial — empat task v0.1 (T-012, T-013, T-015, T-016) punya subtask yang bergantung pada task v0.2. Rinciannya di Catatan Rilis `tasks/v01-foundation.md`.
 
 **Keputusan terbuka yang menunggu King Rezi:** T-005 (email provider), T-060 (provider AI), T-070 (strategi route publik), T-032 (semantik queue slot), T-081 (framework E2E), T-086 (tool observability), serta status Billing yang belum masuk release manapun. Rinciannya di `TASKS.md` → **Keputusan terbuka**.
 
@@ -182,8 +174,7 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 * **ADR-058** — Sidebar "Channels" (quick-glance daftar akun terhubung): selesai di Claude Design, implementasi kode `apps/web` menyusul (T-012).
 * **Claude Design** — bug fix Content Format Selector hilang di New Post + penambahan akun mock TikTok & Pinterest (catch-up ADR-037/ADR-039).
 * **ADR-059** — Fake OutstandAdapter: persistensi nyata "Schedule" selesai (kode + QA + review arsitektur Ridwan, tanpa temuan baru).
-* **ADR-060** — Dokumentasi Efficiency Restructuring: `DECISIONS.md` (3.564→69 baris) dipecah jadi file per-ADR + indeks, `PROJECT_STATE.md` (928→~260 baris) dapat Snapshot + heading rapi + trim duplikasi, skill navigator jadi cascade 3 tingkat.
-* **ADR-061** — Konsolidasi `CHANGELOG.md` + arsip jadi satu file `COMPLETE_TASK.md`, dengan peringatan keras: AI dilarang membaca isinya kecuali diperintah eksplisit.
+* **ADR-060 + ADR-061** — Dokumentasi Efficiency Restructuring: `DECISIONS.md` (3.564→69 baris) dipecah jadi file per-ADR + indeks, `PROJECT_STATE.md` (928→~260 baris) dapat Snapshot + trim duplikasi, skill navigator jadi cascade 3 tingkat, lalu `CHANGELOG.md` + arsip dikonsolidasi jadi `COMPLETE_TASK.md` dengan larangan baca proaktif AI.
 
 ---
 

@@ -8,7 +8,7 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
-## 2026-08-03 — ADR-062: Backlog Task Berjenjang per Release
+## 2026-08-04 — ADR-062: Backlog Task Berjenjang per Release
 
 King Rezi minta perencanaan task yang matang dari awal pengerjaan sampai task terakhir, dikelompokkan dan bersubtask, serta rapi dibaca baik oleh AI maupun manusia. Section `Next Tasks` di `PROJECT_STATE.md` sebelumnya flat list ~15 bullet prosa panjang tanpa hierarki, tanpa ID, tanpa dependency, dan sebagian terduplikasi dengan `Known Issues`.
 
@@ -34,6 +34,23 @@ Status faktual tiap task diverifikasi lewat inventarisasi kode `apps/web` — bu
 
 * `PROJECT_STATE.md` — inkonsistensi internal: `Known Issues` menyatakan persistensi tema Light/Dark "belum diputuskan", padahal `Next Tasks` di file yang sama sudah mencatat keputusan **Cookie** per 2026-07-31. Diperbaiki jadi "sudah diputuskan, belum diimplementasikan" (T-010.2).
 * `PROJECT_STATE.md` — Known Issue stale dihapus: "Belum ada commit awal. Repo sudah `git init`; working tree belum di-commit". Faktanya repo sudah punya 136 commit dan PR #34 ter-merge. Entri `(Opsional) initial git commit` di `Next Tasks` juga hilang bersama restrukturisasi section itu.
+
+### Fixed — hasil code review atas PR #35 (14 temuan, semua diterapkan)
+
+* **`.claude/agents/gibran-project-manager.md`** (Static Reference, diubah atas permintaan eksplisit King Rezi; chmod 444 dipulihkan) — aturan governance-nya masih memuat larangan yang persis dibatalkan ADR-062 ("`PROJECT_STATE.md` SATU-SATUNYA tempat status"), sehingga Gibran akan menulis balik detail task ke `Next Tasks` dan tidak pernah menyentuh `TASKS.md`. Ditambah pengecualian ADR-062, urutan update 4 langkah (tasks → TASKS.md → PROJECT_STATE → COMPLETE_TASK), dan referensi `CHANGELOG.md` yang stale sejak ADR-061 diganti `COMPLETE_TASK.md`.
+* **Dependency lintas rilis dibuat eksplisit** — empat task v0.1 (T-012, T-013, T-015, T-016) punya subtask yang bergantung pada task v0.2 (T-025, T-026, T-036), sehingga v0.1 tidak bisa ditutup sebelum v0.2 berjalan. Ditandai di field `Depends` masing-masing task, di Catatan Rilis v0.1, dan sebagai peringatan di `TASKS.md`. Definisi "Foundation selesai" diperbaiki.
+* **Duplikasi daftar fokus dihapus** — sebelumnya 3 tempat dengan 2 isi berbeda (Snapshot 4 task, tabel `Next Tasks` 5 task, `TASKS.md` 4 task). Sekarang `TASKS.md` → **Fokus sekarang** jadi satu-satunya daftar (5 task); tabel di `Next Tasks` dihapus, Snapshot hanya menyalin ID.
+* **T-019 baru** — task API mobile ADR-043 (`/api/v1` + Better Auth Bearer plugin) dipulihkan sebagai task ber-ID di v0.1; sebelumnya turun jadi catatan prosa tanpa ID di dalam bullet "di luar MVP" v1.0, padahal urgensinya eksplisit "mendahului M8 web berjalan jauh".
+* **T-037 baru** — task memperkaya `context/ctx-development.md` dipulihkan sebagai task ber-ID di v0.2; sebelumnya hilang tanpa ID maupun penanda `⏸️ Deferred`.
+* **Tanggal diperbaiki 2026-08-03 → 2026-08-04** di ADR-062, baris indeks `DECISIONS.md`, entri `COMPLETE_TASK.md` ini, dan `Last Updated` `PROJECT_STATE.md` — ketiga yang pertama Append-Only, jadi diperbaiki sebelum merge.
+* **Peta release ↔ milestone ditambahkan** di `TASKS.md`: M8 = v0.1–v0.6, M9 = v1.0. Sebelumnya tidak ada dokumen yang memetakan keduanya, sehingga aturan "hindari implementasi di luar milestone aktif" tidak bisa dievaluasi untuk task di rilis jauh.
+* **Pointer DO-D06 diperbaiki** — T-017 mengarah ke `05-architecture/database-strategy.md` padahal DO-D06 ada di `06-engineering/database-orm.md`.
+* **Jalur masuk paralel diperbarui** — `context/ctx-project.md`, `context/README.md`, `project-manager/README.md`, dan `DEVELOPER_WORKFLOW.md` sebelumnya tidak menyebut `TASKS.md`/`tasks/` dan masih menyatakan `PROJECT_STATE.md` sebagai tempat next task.
+* **Definition of Done `PROJECT_RULES.md`** ditambah syarat status task + hitungan indeks sudah cocok.
+* **`Completed (Ringkasan)` dirotasi kembali ke 5 item** (sebelumnya 6 di bawah header "~5 item terakhir").
+* **Detail spesifikasi yang tercecer dipulihkan** — subset `react-icons/fa6` (T-012.3/T-012.4) dan posisi CTA "di bawah Workspace Selector, di atas navigation items" (T-011.1).
+
+Hasil akhir backlog: **69 task · 134 subtask · 11 selesai** (dari 67/127/11).
 
 ---
 

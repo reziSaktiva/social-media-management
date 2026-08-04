@@ -271,7 +271,27 @@ Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai place
 
 ---
 
+## Developer Experience
+
+### T-037 · Perkaya aturan coding di `context/ctx-development.md`
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | DX                                                           |
+| **ADR**       | ADR-034                                                      |
+| **Depends**   | —                                                            |
+| **Baca dulu** | `06-engineering/dx-tooling.md` · `context/ctx-development.md` |
+
+Berjalan **kontinu** selama rilis ini, bukan sekali selesai: setiap kali konvensi baru muncul dari praktik nyata (bukan teori), catat ke `ctx-development.md` supaya lapisan konteks yang dibaca setiap agent tidak menjadi basi. Prioritas rendah — tidak memblokir rilis.
+
+- [ ] **T-037.1** Catat konvensi struktur repository: interface di `src/domains/*/repositories/`, implementasi Prisma di `src/lib/repositories/*/` — sudah konsisten di `workspace` + `publishing`, tapi belum tertulis sebagai aturan sehingga domain baru bisa menyimpang
+- [ ] **T-037.2** Catat konvensi penempatan use-case terpisah dari service (preseden: `schedule-posts.use-case.ts`)
+- [ ] **T-037.3** Catat konvensi test: service diuji dengan repository fake (preseden yang sudah ada di `publishing`/`workspace`)
+
+---
+
 ## Catatan Rilis
 
-* T-037–T-039 sengaja dikosongkan sebagai ruang penambahan task v0.2.
+* T-038–T-039 sengaja dikosongkan sebagai ruang penambahan task v0.2.
 * **Definition of Done rilis ini** (dari `release-roadmap.md`): pengguna dapat mengelola proses publikasi dari awal hingga selesai — draft → format per akun → schedule/publish → lihat queue/calendar → lihat hasil di history.
