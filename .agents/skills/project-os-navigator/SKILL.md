@@ -21,9 +21,9 @@ Jangan langsung baca semua dokumen `project-manager/` secara penuh untuk setiap 
 
 **Tingkat 3 — Task nyata** (Pekerjaan Baru, Planning Change, Bug/Inkonsistensi — mode 3/4/5 di bawah): baca berurutan:
 
-1. `project-manager/TASKS.md` — indeks backlog; temukan ID task yang relevan
-2. `project-manager/tasks/vXX-*.md` — **hanya satu file** release yang memuat task itu. Lalu buka dokumen yang disebut di field **Baca dulu** pada task tersebut (itu daftar bacaan minimal yang sudah dikurasi — tidak perlu menyisir `product-discovery/`)
-3. `project-manager/PROJECT_STATE.md` — phase, milestone, Active Conversation Mode, Known Issues, blockers
+1. `project-manager/PROJECT_STATE.md` — phase, milestone, Active Conversation Mode, Known Issues, blockers (baca Snapshot dulu supaya konteks ini tersedia sebelum memilih/merencanakan task)
+2. `project-manager/TASKS.md` — indeks backlog; temukan ID task yang relevan
+3. `project-manager/tasks/vXX-*.md` — **hanya satu file** release yang memuat task itu. Lalu buka dokumen yang disebut di field **Baca dulu** pada task tersebut (itu daftar bacaan minimal yang sudah dikurasi — tidak perlu menyisir `product-discovery/`)
 4. `project-manager/PROJECT_RULES.md` — aturan dan prinsip project
 5. `project-manager/DECISIONS.md` — indeks ADR; buka file `project-manager/decisions/ADR-XXX-*.md` spesifik yang relevan dengan task ini
 6. `project-manager/PROJECT_OVERVIEW.md` — gambaran project
