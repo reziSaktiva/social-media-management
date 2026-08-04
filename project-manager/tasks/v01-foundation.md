@@ -163,8 +163,6 @@ Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand o
 - [ ] **T-012.5** Scheduled count ↔ quick-compose "+" dengan fixed-slot (no-shift)
 - [ ] **T-012.6** Drag-handle shift-on-hover — seluruh isi baris ikut bergeser
 
-> ⚠️ Posisi pixel tombol "+" di Claude Design saat ini (`top: 1px; left: -1px` pada `.channel-add`) sudah dikonfirmasi King Rezi sendiri **kurang pas** — bukan source of truth pixel-perfect. King Rezi akan menyesuaikan sendiri saat implementasi. Jangan disalin apa adanya.
-
 ---
 
 ## Social Account Connection
