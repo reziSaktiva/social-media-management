@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** T-012 Sidebar "Channels" · T-011 Sidebar CTA "+ New Post" · T-010 Light/Dark push design (🟡) · T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** T-012 Sidebar "Channels" · T-011 Sidebar CTA "+ New Post" · T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** Tidak ada blocker aktif. Known issue teratas: dependency Transactional Email Provider belum ditetapkan (T-005, tidak memblokir M8 awal).
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 69 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -101,7 +101,6 @@ Restricted Actions:
 
 Task berstatus 🟡 — detail dan subtask ada di [`TASKS.md`](TASKS.md):
 
-* **T-010** Light/Dark mode toggle — kode sudah lolos QA/review, persistensi cookie selesai; sisa: push `navigation.html` ke Claude Design.
 * **T-031** Redirect otomatis ke sub-screen tujuan (ADR-054) — Save as Draft sudah sejalan; sisanya menyusul bersama T-029/T-032/T-034.
 
 Catatan non-task: template `design-tokens.md` berstatus Draft / TBD; nilai final
@@ -147,11 +146,6 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
   lewat ngrok. Backend/API sendiri terverifikasi benar via raw `fetch()`. Perlu
   ditelusuri sebelum uji interaksi form penuh di browser lewat ngrok bisa
   diandalkan.
-* **Light/Dark Mode (ADR-055) — `components/navigation.html` belum ter-push ke
-  Claude Design** (→ T-010.3). File hasil edit sudah lengkap di scratchpad,
-  terblokir karena tool `DesignSync` sempat nonaktif di sesi kerja desain. Tidak
-  memblokir kode `apps/web` (sudah selesai dan lolos QA/review) — hanya dokumen
-  referensi komponen di Claude Design yang tertinggal.
 
 ---
 

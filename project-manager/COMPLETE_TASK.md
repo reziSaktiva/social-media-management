@@ -8,7 +8,7 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
-## 2026-08-04 — T-010.2: Persistensi tema Light/Dark via Cookie
+## 2026-08-04 — T-010 tuntas: persistensi cookie (T-010.2) + sync Claude Design (T-010.3)
 
 King Rezi memilih menyelesaikan T-010.2 lebih dulu sebelum masuk ke implementasi navbar (T-011/T-012), supaya acuan tema stabil. Sebelumnya tema selalu reset ke Light setiap full reload — disengaja, menunggu subtask ini.
 
@@ -33,7 +33,36 @@ Mekanisme sesuai keputusan 2026-07-31: **Cookie**, bukan localStorage, supaya RS
 ### Notes
 
 * Root layout kini dynamic karena memanggil `cookies()`. Dampaknya nihil — seluruh route sudah dynamic lewat session Better Auth.
-* T-010 tetap 🟡 In Progress: sisa T-010.3 (push `components/navigation.html` ke Claude Design).
+
+### T-010.3 — sync toggle ke Claude Design (`components/navigation.html`)
+
+Rencana asli task ini "push file hasil edit dari scratchpad sesi Neymar apa adanya" **dibatalkan setelah verifikasi** — kalau dijalankan, justru akan merusak pekerjaan King Rezi.
+
+Temuan saat membandingkan tiga versi file:
+
+| Versi | Toggle 🌙 | Channels |
+| --- | --- | --- |
+| Scratchpad A (31 Jul 11:05) | ada | 0 baris |
+| Scratchpad B (31 Jul 16:48) | tidak ada | 3 baris |
+| **Remote Claude Design** | tidak ada | **5 baris** (+ TikTok, Pinterest) |
+
+Remote ternyata **lebih baru** dari kedua scratchpad — King Rezi mengonfirmasi langsung di sesi ini bahwa perbaikan Channels (termasuk TikTok/Pinterest dan posisi tombol "+") dikerjakan sendiri oleh King Rezi. Push file B apa adanya akan menghapus dua channel itu.
+
+Yang dilakukan sebagai gantinya — perubahan minimal di atas isi remote:
+
+* Menambah **satu baris** tombol toggle di `sidebar-footer`, di antara bel notifikasi dan menu akun, dengan markup identik dengan yang sudah live di `templates/` (`data-proto="theme-toggle"`, `aria-label="Ganti ke Dark Mode"`, `margin-left:auto` pindah ke tombol toggle).
+* File dibangun **secara mekanis** lewat script, bukan diketik ulang, supaya nol risiko salah transkripsi path SVG milik King Rezi. Indentasi baris TikTok/Pinterest direproduksi persis seperti remote agar diff benar-benar hanya satu baris.
+* Tidak menyertakan script wiring toggle — `components/navigation.html` adalah kartu showcase statis (tombol 🔔 dan akun juga tidak interaktif di sana), berbeda dari `templates/` yang memang prototipe interaktif. Ini mengikuti versi Neymar sendiri untuk file yang sama.
+* `styles.css` dan seluruh file lain **tidak disentuh**.
+
+Verifikasi: read-back setelah push mengonfirmasi kelima channel utuh beserta count/status/drag-handle/tombol "+", note tidak berubah, dan toggle berada di posisi yang benar.
+
+Koreksi dalam sesi ini: push pertama tanpa sengaja menggeser indentasi tag `<div class="channels">` dan penutupnya sejauh 4 spasi (whitespace, tanpa efek visual). Terdeteksi saat read-back, langsung diperbaiki dan di-push ulang.
+
+### Notes tambahan
+
+* Klaim dokumen bahwa "file hasil edit sudah lengkap di scratchpad" ternyata menyesatkan — file itu justru tertinggal dari remote. Pelajaran: verifikasi kondisi remote dulu sebelum push, jangan percaya deskripsi task begitu saja.
+* T-010 kini **✅ Done** seluruhnya.
 
 ---
 

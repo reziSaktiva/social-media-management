@@ -119,27 +119,14 @@ Turunan `04-ux/navigation-patterns.md` (NP-D01 Persistent Sidebar) dan `04-ux/in
 
 ### T-010 · Light/Dark mode toggle
 
-| Field         | Value                                                          |
-| ------------- | -------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress                                                  |
-| **Domain**    | UI                                                             |
-| **ADR**       | ADR-055 (override "neutral theme selama M8" di ADR-041)        |
-| **Depends**   | T-009 ✅                                                        |
-| **Baca dulu** | `.claude/skills/claude-design-scope-discipline/SKILL.md` (wajib sebelum sentuh Claude Design) |
+`✅ Done` · **ADR** ADR-055 (override "neutral theme selama M8" di ADR-041)
 
-Toggle sudah jalan di kode dan lolos QA/review. Sisa satu pekerjaan:
-
-- [x] **T-010.1** Toggle di sidebar footer + theme provider
-- [x] **T-010.2** Persistensi lintas reload via **Cookie** (bukan localStorage) — sudah diputuskan 2026-07-31 supaya RSC/Middleware bisa baca preferensi sebelum render pertama, konsisten dengan pola session cookie Better Auth
-- [ ] **T-010.3** Push `components/navigation.html` ke Claude Design — file hasil edit sudah lengkap di scratchpad sesi Neymar, tertunda karena `DesignSync` sempat nonaktif
-
-Implementasi T-010.2: cookie `theme` (non-httpOnly, `path=/`, `max-age` 1 tahun,
-`SameSite=Lax`) ditulis client saat toggle, dibaca RSC di
-`apps/web/src/app/layout.tsx` lalu diteruskan sebagai `initialMode` ke
-`Providers`. Helper + fallback ada di `apps/web/src/lib/theme/theme-cookie.ts`.
-Nilai cookie yang tidak dikenal jatuh ke Light. Root layout jadi dynamic karena
-memanggil `cookies()` — dampaknya nihil, seluruh route sudah dynamic lewat
-session Better Auth.
+Toggle di sidebar footer + theme provider, persistensi lintas reload via cookie
+`theme` (non-httpOnly, `path=/`, `max-age` 1 tahun, `SameSite=Lax`) yang dibaca
+RSC di `apps/web/src/app/layout.tsx` sebelum render pertama sehingga tidak ada
+flash tema salah. Helper + fallback: `apps/web/src/lib/theme/theme-cookie.ts`.
+Sisi desain sudah selaras — toggle ada di `components/navigation.html` Claude
+Design, sama seperti yang sudah lebih dulu ada di `templates/`.
 
 ### T-011 · Sidebar CTA "+ New Post" (pinned)
 
