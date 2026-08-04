@@ -8,6 +8,35 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-04 — T-010.2: Persistensi tema Light/Dark via Cookie
+
+King Rezi memilih menyelesaikan T-010.2 lebih dulu sebelum masuk ke implementasi navbar (T-011/T-012), supaya acuan tema stabil. Sebelumnya tema selalu reset ke Light setiap full reload — disengaja, menunggu subtask ini.
+
+Mekanisme sesuai keputusan 2026-07-31: **Cookie**, bukan localStorage, supaya RSC bisa membaca preferensi sebelum render pertama (menghilangkan flash tema salah), konsisten dengan pola session cookie Better Auth.
+
+### Added
+
+* `apps/web/src/lib/theme/theme-cookie.ts` — konstanta `THEME_COOKIE_NAME` (`theme`), `THEME_COOKIE_MAX_AGE` (1 tahun), `DEFAULT_THEME_MODE` (`light`), tipe `ThemeMode`, dan `parseThemeMode()` yang menjatuhkan nilai tak dikenal ke default.
+* `apps/web/src/lib/theme/theme-cookie.test.ts` — 2 test untuk `parseThemeMode` (nilai valid + fallback `undefined`/`null`/`""`/`"Dark"`/`"bogus"`).
+
+### Changed
+
+* `apps/web/src/app/layout.tsx` — jadi `async`, membaca cookie `theme` lewat `cookies()` dari `next/headers` dan meneruskannya sebagai `initialMode` ke `Providers`.
+* `apps/web/src/app/providers.tsx` — `Providers` menerima prop `initialMode` (default `light`) sebagai state awal; `toggleMode` menulis cookie `theme` (non-httpOnly, `path=/`, `max-age` 1 tahun, `SameSite=Lax`) lewat `document.cookie`. Komentar lama "default is always light … for the current session" diganti penjelasan sumber `initialMode`.
+
+### Verification
+
+* `bun run typecheck` bersih · `bun run lint` 0 error · `bun run test` 37 test / 7 file lolos.
+* Browser (dev server yang sudah berjalan di `localhost:3000`): cookie `theme=dark` → reload → `data-theme="dark"` **ada di HTML respons server**, bukan ditambal client — inilah bukti tidak ada flash. Arah sebaliknya (`theme=light`) dan cookie tak valid (`bogus` → Light) juga terverifikasi. Console bersih, tanpa hydration mismatch.
+* Batas verifikasi: toggle-nya sendiri ada di sidebar footer yang butuh login, jadi jalur "klik toggle → cookie tertulis" belum diuji lewat UI — hanya kode dan sisi baca-nya yang terverifikasi. Perlu dicek King Rezi saat login.
+
+### Notes
+
+* Root layout kini dynamic karena memanggil `cookies()`. Dampaknya nihil — seluruh route sudah dynamic lewat session Better Auth.
+* T-010 tetap 🟡 In Progress: sisa T-010.3 (push `components/navigation.html` ke Claude Design).
+
+---
+
 ## 2026-08-04 — ADR-062: Backlog Task Berjenjang per Release
 
 King Rezi minta perencanaan task yang matang dari awal pengerjaan sampai task terakhir, dikelompokkan dan bersubtask, serta rapi dibaca baik oleh AI maupun manusia. Section `Next Tasks` di `PROJECT_STATE.md` sebelumnya flat list ~15 bullet prosa panjang tanpa hierarki, tanpa ID, tanpa dependency, dan sebagian terduplikasi dengan `Known Issues`.

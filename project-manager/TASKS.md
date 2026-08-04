@@ -86,7 +86,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
 | **T-012** | Sidebar section "Channels"                      | ⏳      | ADR-058; `listConnectedAccounts` sudah ada, T-012.2 butuh v0.2 |
 | **T-011** | Sidebar CTA "+ New Post"                        | ⏳      | ADR-053; sudah ada di Claude Design, belum di kode   |
-| **T-010** | Light/Dark mode — persistensi cookie + push design | 🟡      | Dua subtask sisa                                     |
+| **T-010** | Light/Dark mode — push design ke Claude Design  | 🟡      | Sisa T-010.3 saja; persistensi cookie sudah selesai  |
 | **T-029** | Publish Now                                     | ⏳      | ADR-047; butuh T-025 lebih dulu untuk jalur nyata    |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah             |
 

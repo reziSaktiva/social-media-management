@@ -127,13 +127,19 @@ Turunan `04-ux/navigation-patterns.md` (NP-D01 Persistent Sidebar) dan `04-ux/in
 | **Depends**   | T-009 ✅                                                        |
 | **Baca dulu** | `.claude/skills/claude-design-scope-discipline/SKILL.md` (wajib sebelum sentuh Claude Design) |
 
-Toggle sudah jalan di kode dan lolos QA/review. Dua sisa pekerjaan:
+Toggle sudah jalan di kode dan lolos QA/review. Sisa satu pekerjaan:
 
 - [x] **T-010.1** Toggle di sidebar footer + theme provider
-- [ ] **T-010.2** Persistensi lintas reload via **Cookie** (bukan localStorage) — sudah diputuskan 2026-07-31 supaya RSC/Middleware bisa baca preferensi sebelum render pertama, konsisten dengan pola session cookie Better Auth
+- [x] **T-010.2** Persistensi lintas reload via **Cookie** (bukan localStorage) — sudah diputuskan 2026-07-31 supaya RSC/Middleware bisa baca preferensi sebelum render pertama, konsisten dengan pola session cookie Better Auth
 - [ ] **T-010.3** Push `components/navigation.html` ke Claude Design — file hasil edit sudah lengkap di scratchpad sesi Neymar, tertunda karena `DesignSync` sempat nonaktif
 
-> ⚠️ Saat ini tema reset ke Light setiap full reload — **disengaja**, bukan bug, sampai T-010.2 selesai.
+Implementasi T-010.2: cookie `theme` (non-httpOnly, `path=/`, `max-age` 1 tahun,
+`SameSite=Lax`) ditulis client saat toggle, dibaca RSC di
+`apps/web/src/app/layout.tsx` lalu diteruskan sebagai `initialMode` ke
+`Providers`. Helper + fallback ada di `apps/web/src/lib/theme/theme-cookie.ts`.
+Nilai cookie yang tidak dikenal jatuh ke Light. Root layout jadi dynamic karena
+memanggil `cookies()` — dampaknya nihil, seluruh route sudah dynamic lewat
+session Better Auth.
 
 ### T-011 · Sidebar CTA "+ New Post" (pinned)
 

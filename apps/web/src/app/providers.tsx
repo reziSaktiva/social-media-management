@@ -7,16 +7,21 @@ import { Theme } from "@astryxdesign/core/theme";
 import { neutralTheme } from "@astryxdesign/theme-neutral/built";
 import Link from "next/link";
 
-type ThemeMode = "light" | "dark";
+import {
+  DEFAULT_THEME_MODE,
+  THEME_COOKIE_MAX_AGE,
+  THEME_COOKIE_NAME,
+  type ThemeMode,
+} from "@/lib/theme/theme-cookie";
 
 type ThemeModeContextValue = {
   mode: ThemeMode;
   toggleMode: () => void;
 };
 
-// Default is always "light" on first render (server + client) so there is
-// no hydration mismatch and no flash of the wrong theme. The toggle only
-// lets the user move to dark for the current session.
+// `initialMode` berasal dari cookie yang dibaca RSC di root layout, jadi
+// server dan client merender mode yang sama — tidak ada hydration mismatch
+// dan tidak ada flash tema salah saat reload (ADR-055).
 const ThemeModeContext = createContext<ThemeModeContextValue | null>(null);
 
 export function useThemeMode(): ThemeModeContextValue {
@@ -27,14 +32,28 @@ export function useThemeMode(): ThemeModeContextValue {
   return context;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>("light");
+function persistThemeMode(mode: ThemeMode) {
+  document.cookie = `${THEME_COOKIE_NAME}=${mode}; path=/; max-age=${THEME_COOKIE_MAX_AGE}; samesite=lax`;
+}
+
+export function Providers({
+  children,
+  initialMode = DEFAULT_THEME_MODE,
+}: {
+  children: React.ReactNode;
+  initialMode?: ThemeMode;
+}) {
+  const [mode, setMode] = useState<ThemeMode>(initialMode);
 
   const themeModeValue = useMemo<ThemeModeContextValue>(
     () => ({
       mode,
       toggleMode: () =>
-        setMode((current) => (current === "light" ? "dark" : "light")),
+        setMode((current) => {
+          const next = current === "light" ? "dark" : "light";
+          persistThemeMode(next);
+          return next;
+        }),
     }),
     [mode],
   );
