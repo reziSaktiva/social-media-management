@@ -135,19 +135,9 @@ karena butuh login — perlu dicek King Rezi saat login.
 
 ### T-011 · Sidebar CTA "+ New Post" (pinned)
 
-| Field         | Value                                                        |
-| ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress                                               |
-| **Domain**    | UI                                                           |
-| **ADR**       | ADR-053                                                      |
-| **Depends**   | T-009 ✅ · T-020 ✅ (Draft Editor modal, v0.2)                  |
-| **Baca dulu** | `04-ux/navigation-patterns.md` (NP-D01) · Claude Design → `components/navigation.html` |
+`✅ Done` · **ADR** ADR-053
 
-CTA primary full-width di bawah Workspace Selector, di atas navigation items — membuka Draft Editor modal dari section manapun. **Sudah diimplementasikan di Claude Design, belum di kode.**
-
-- [x] **T-011.1** Render CTA di `WorkspaceSideNav` pada posisi yang sudah ditetapkan ADR-053: **di bawah Workspace Selector, di atas navigation items**, primary + full-width (varian Astryx-nya cek di Claude Design) — dipasang di slot `topContent` milik Astryx `SideNav` (`Button` primary, `width="100%"`); belum ada handler klik (menyusul di T-011.2)
-- [x] **T-011.2** Hubungkan ke `DraftEditorProvider` supaya bisa dibuka dari section manapun (bukan hanya `/publish`) — folder `_draft-editor/` dinaikkan dari `publish/` ke `[slug]/`, `DraftEditorProvider` + `DraftEditorModal` dipasang di `[slug]/layout.tsx`
-- [ ] **T-011.3** Verifikasi redirect terminal action tetap benar dari section non-publish (lihat T-031) — implementasi selesai (`finishTerminalAction`: Save as Draft → Drafts, Schedule → Queue, editor ditutup lebih dulu); aturan destinasi sudah tertutup 8 unit test (`terminal-destination.test.ts`); **sisa verifikasi browser menunggu login King Rezi** — bahwa editor benar-benar tertutup dan layar tujuan tampil — jadi belum dicentang
+CTA primary full-width di `WorkspaceSideNav`, di slot `topContent` (di bawah Workspace Selector, di atas navigation items), membuka Draft Editor modal dari section manapun — `DraftEditorProvider` + `DraftEditorModal` dinaikkan ke `[slug]/layout.tsx` supaya tidak terikat ke section Publish saja. Redirect aksi terminal (Save as Draft → Drafts, Schedule → Queue, editor ditutup lebih dulu — ADR-054) tertutup 8 unit test (`terminal-destination.test.ts`) dan terverifikasi via browser oleh Najwa QA Engineer: golden path dari section non-publish (Home, Engage) dan edge case "sudah di destinasi" lulus, tanpa regresi navigasi sidebar.
 
 ### T-012 · Sidebar section "Channels"
 

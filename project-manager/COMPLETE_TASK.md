@@ -8,6 +8,26 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-04 (lanjutan) — T-011.3 & T-011 ditutup: QA browser oleh Najwa
+
+Melanjutkan entri T-011.3 di bawah (branch `feat/t-011-3-verifikasi-redirect-terminal-action`, HEAD `d7aa837`). Bagian yang sebelumnya belum bisa diotomatiskan — editor benar-benar tertutup dan layar tujuan tampil setelah aksi terminal — sudah diverifikasi manual oleh Najwa QA Engineer via browser (tunnel ngrok, akun test Raka Pratama/Owner).
+
+### Verification
+
+* `bun run typecheck`/`lint`/`test` tetap hijau (45/45 test, 8 file) di titik verifikasi.
+* Golden path via browser, semua **PASSED**:
+  * Save as Draft dari Home (non-publish) → modal tertutup dulu → redirect `/[slug]/publish/drafts`, draft baru muncul di listing.
+  * Schedule dari Engage (non-publish) → dialog konfirmasi ADR-049 tampil → setelah konfirmasi, modal tertutup → redirect `/[slug]/publish/queue`. (Queue masih placeholder — tercatat di T-032, bukan temuan baru.)
+  * Edge case "sudah di destinasi" (buka New Post dari `/publish/drafts` sendiri, Save as Draft) → tetap di URL yang sama via `router.refresh()`, draft baru tetap tersimpan — sesuai `isAlreadyAtDestination`.
+  * Regresi: navigasi sidebar dan CTA "+ New Post" (T-011.1/T-011.2) normal dari seluruh section yang dicoba.
+* Tidak ada bug/regresi baru ditemukan. Satu catatan non-blocking: overlay hydration error dev saat akses lewat ngrok — sudah tercatat sebagai T-018, tidak menghambat fungsionalitas.
+
+### Status
+
+* **T-011.3** dicentang selesai di `tasks/v01-foundation.md`.
+* **T-011** (Sidebar CTA "+ New Post") ditutup `✅ Done` — ketiga subtask (T-011.1, T-011.2, T-011.3) selesai dan terverifikasi. Section T-011 dirapikan jadi paragraf ringkas tanpa checklist, mengikuti konvensi task selesai di file release.
+* Indeks `TASKS.md`: v0.1 8 ✅ (dari 7), Total 13 selesai (dari 12). "Fokus sekarang" dan `PROJECT_STATE.md` Top Next Tasks diperbarui — T-011 dihapus dari daftar fokus.
+
 ## 2026-08-04 — T-011.3: redirect aksi terminal dari section non-publish
 
 PR #37 sudah di-merge King Rezi sebelum T-011.3 dikerjakan, jadi subtask ini jalan di branch baru `feat/t-011-3-verifikasi-redirect-terminal-action`.
