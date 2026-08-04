@@ -15,7 +15,7 @@
 
 `✅ Done` · **ADR** ADR-052 (override NP-D02)
 
-Modal overlay fullscreen (`Dialog variant="fullscreen"`) menggantikan full-page route: caption, account selector, format per akun, Pinterest title/link, schedule date/time, confirm step in-dialog, ResumeDialog untuk draft belum tersimpan. Kode: `apps/web/src/app/[slug]/publish/_draft-editor/modal.tsx`.
+Modal overlay fullscreen (`Dialog variant="fullscreen"`) menggantikan full-page route: caption, account selector, format per akun, Pinterest title/link, schedule date/time, confirm step in-dialog, ResumeDialog untuk draft belum tersimpan. Kode: `apps/web/src/app/[slug]/_draft-editor/modal.tsx`.
 
 ### T-021 · Persistensi "Save as Draft" / "Edit Draft"
 
