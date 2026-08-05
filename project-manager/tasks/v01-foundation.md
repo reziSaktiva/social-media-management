@@ -143,7 +143,7 @@ CTA primary full-width di `WorkspaceSideNav`, di slot `topContent` (di bawah Wor
 
 | Field         | Value                                                                  |
 | ------------- | ---------------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress — T-012.3/4/5/6 selesai (T-012.5/6 sebagian, lihat catatan); T-012.1/2 masih deferred |
+| **Status**    | 🟡 In Progress — T-012.3/4/5/6 selesai (T-012.5/6 sebagian, lihat catatan); T-012.1/2 masih deferred; T-012.7–12 baru (temuan review King Rezi di PR #42, belum dikerjakan) |
 | **Domain**    | workspace · UI                                                         |
 | **ADR**       | ADR-058 (+ addendum drag-handle **shift-on-hover**, mengoverride keputusan awal "no-shift") |
 | **Depends**   | T-009 ✅ · `listConnectedAccounts` ✅ (dari T-028, v0.2) · T-012.2 butuh domain publishing (v0.2) |
@@ -157,6 +157,15 @@ Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand o
 - [x] **T-012.4** Render section + avatar bulat + badge logo brand `react-icons/fa6` overlay + status badge
 - [x] **T-012.5** Scheduled count ↔ quick-compose "+" dengan fixed-slot (no-shift) — **UI/interaksi selesai** (swap no-shift + `openNewPost(accountId)` wired nyata ke Draft Editor Account Selector), tapi **scheduled count masih stub hardcode 0** di `layout.tsx` — data asli menunggu T-012.2 (v0.2)
 - [x] **T-012.6** Drag-handle shift-on-hover — seluruh isi baris ikut bergeser — **visual/interaksi selesai**, tapi reorder **client-state only, tidak persisten** (reset saat reload) — menunggu T-012.1 (v0.2)
+
+**Temuan review King Rezi di PR #42 (2026-08-05, sebelum merge) — belum dikerjakan, dikerjakan di sesi/chat terpisah:**
+
+- [ ] **T-012.7** Glyph tombol quick-compose "+" (`_sidebar-channels/channels-section.tsx:224-227`) pakai komponen `Text` (karakter "+" mentah), bukan `Icon`/`react-icons` seperti pola drag-handle (`GripIcon` via `Icon` di file yang sama, baris ~158) atau platform badge (`react-icons/fa6`). Bukan pelanggaran ADR-058 (ADR minta "karakter +", bukan grafis ikon) — murni inkonsistensi implementasi Mark, ganti ke `Icon`/react-icons untuk konsistensi pola di file yang sama.
+- [ ] **T-012.8** Font-size glyph "+" salah token: pakai `size="2xs"` (`--font-size-2xs` = 8px) padahal ADR-058 addendum poin 9 eksplisit minta **10px**, yang cocok dengan token `size="xs"` (`--font-size-xs` = 10px). Ini penyebab utama tombol terlihat "sangat kecil" — kesalahan pemilihan token oleh Mark, bukan dari ADR.
+- [ ] **T-012.9 (bug)** Drag-reorder channel tidak konsisten: drop kadang tidak menukar posisi. Root cause terverifikasi via simulasi `DragEvent` langsung di browser (`channels-section.tsx`, `ChannelsSection`/`handleDragStart`/`handleDrop`): `handleDrop` membaca state `draggedId` lewat closure yang dibuat ulang tiap render; kalau browser men-fire native `drop` sebelum React sempat re-render dari `setDraggedId` di `handleDragStart`, closure `handleDrop` masih baca `draggedId` lama (`null`) → guard `if (!draggedId...) return;` membatalkan reorder tanpa error terlihat. Terbukti: simulasi tanpa jeda antar `dragstart`/`dragover`/`drop` → gagal reorder; dengan jeda realistis → berhasil. Race condition murni bug implementasi, bukan dari plan/ADR manapun.
+- [ ] **T-012.10** Konvensi folder underscore-prefix (`_sidebar-channels`, `_draft-editor`) adalah fitur "private folder" Next.js App Router (resmi, bukan karangan), tapi **belum ditulis sebagai konvensi resmi project** di `context/ctx-development.md` — hanya pola implisit yang diikuti dari `_draft-editor` (T-011.2). Perlu diputuskan: dokumentasikan sebagai konvensi resmi, atau ganti pendekatan lain.
+- [ ] **T-012.11** Tidak ada helper `cn`/`clsx` global di `apps/web` — `channels-section.tsx` mendefinisikan `cx()` lokal sendiri (keputusan sadar Mark untuk menghindari dependency baru "just for one file", bukan oversight). Kalau pola custom Tailwind className makin dipakai di komponen lain ke depan, pertimbangkan ekstrak ke lokasi shared (mis. `apps/web/src/lib/cn.ts`).
+- [ ] **T-012.12** Beberapa Tailwind arbitrary-value class di `channels-section.tsx` (mis. baris ~153 `start-[calc(var(--spacing-4)*-1)]`) punya padanan utility kanonik Tailwind yang lebih idiomatic (mis. `-start-4`). Project belum memasang `eslint-plugin-tailwindcss`/`prettier-plugin-tailwindcss` (dicek di `eslint.config.mjs`, tidak ada), jadi `bun run lint` tidak menangkap ini — warning yang terlihat kemungkinan dari extension editor (Tailwind CSS IntelliSense), bukan pipeline lint project. Perbaiki manual di file ini, dan pertimbangkan menambah plugin lint tsb supaya tertangkap otomatis ke depan.
 
 ---
 

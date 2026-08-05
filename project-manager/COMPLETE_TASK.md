@@ -8,6 +8,15 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-05 — T-012 Sidebar "Channels" — laporan temuan review King Rezi di PR #42 (T-012.7–12, belum dikerjakan)
+
+### Added
+
+- Subtask baru **T-012.7–T-012.12** di `project-manager/tasks/v01-foundation.md`, mencatat 6 temuan King Rezi saat review PR #42 (belum di-merge): 1 bug (T-012.9, drag-reorder race condition — closure `draggedId` stale kalau native `drop` ter-fire sebelum React re-render dari `setDraggedId`, diverifikasi lewat simulasi `DragEvent` langsung di browser) + 5 catatan kualitas (T-012.7 icon "+" pakai `Text` bukan `Icon`/react-icons; T-012.8 token font-size salah — `2xs`/8px dipakai padahal ADR-058 minta 10px yaitu token `xs`; T-012.10 konvensi folder underscore-prefix belum terdokumentasi resmi; T-012.11 tidak ada helper `cn`/`clsx` global; T-012.12 beberapa Tailwind class belum kanonik, project belum punya lint plugin untuk itu).
+- Tidak ada perubahan kode — sesi ini murni pelaporan/pencatatan, sesuai permintaan King Rezi untuk dikerjakan di sesi/chat terpisah. PR #42 tetap terbuka, menunggu instruksi merge dari King Rezi.
+
+---
+
 ## 2026-08-05 — T-012 Sidebar section "Channels" — implementasi sebagian (T-012.3/4/5/6 selesai, T-012.1/2 tetap deferred)
 
 ### Added
