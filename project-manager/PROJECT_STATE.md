@@ -181,11 +181,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-065** — Draft Editor: toggle Fullscreen/Standard naik status jadi fitur resmi produk, default diubah ke Standard (amandemen ADR-052).
+* **ADR-064** — Konsolidasi skill ke `.claude/skills/` sebagai sumber tunggal — hapus `.agents/skills/`.
 * **ADR-063** — Integrasi delegasi subagent ke alur kerja wajib + pemetaan Domain → Subagent (`.claude/agents/README.md`).
 * **ADR-062** — Backlog task berjenjang per release (`TASKS.md` + `tasks/`) + amandemen aturan "status hanya di `PROJECT_STATE.md`".
 * **ADR-061** — Konsolidasi CHANGELOG jadi `COMPLETE_TASK.md` tunggal + larangan baca proaktif AI (amandemen ADR-060).
-* **ADR-060** — Dokumentasi Efficiency Restructuring: `DECISIONS.md` dipecah per-file + indeks, `PROJECT_STATE.md` dapat Snapshot + trim, skill navigator jadi cascade 3 tingkat.
-* **ADR-059** — Fake OutstandAdapter — persistensi nyata "Schedule" tanpa kredensial Outstand asli.
 
 ---
 

@@ -152,6 +152,8 @@ function DraftEditorForm({
   slug,
   onOpenChange,
   onLatestChange,
+  dialogVariant,
+  onToggleDialogVariant,
 }: {
   mode: "create" | "edit";
   postId?: string;
@@ -159,6 +161,8 @@ function DraftEditorForm({
   slug: string;
   onOpenChange: (open: boolean) => void;
   onLatestChange: (snapshot: LatestFormSnapshot) => void;
+  dialogVariant: "standard" | "fullscreen";
+  onToggleDialogVariant: () => void;
 }) {
   const { close, clearUnsavedNewPost } = useDraftEditor();
   const router = useRouter();
@@ -178,11 +182,12 @@ function DraftEditorForm({
   const [pinLink, setPinLink] = useState("");
   const [scheduleDate, setScheduleDate] = useState<string | undefined>();
   const [scheduleTime, setScheduleTime] = useState<string | undefined>();
-  // A step *within* this same fullscreen Dialog — NOT a second nested
-  // Dialog. Astryx's own component docs explicitly disallow nesting Dialogs
-  // ("restructure the flow into steps within a single dialog instead");
-  // a previous version of this file did nest a confirm Dialog inside the
-  // fullscreen one, which QA found silently never opened in real usage.
+  // A step *within* this same Dialog (regardless of variant) — NOT a
+  // second nested Dialog. Astryx's own component docs explicitly disallow
+  // nesting Dialogs ("restructure the flow into steps within a single
+  // dialog instead"); a previous version of this file did nest a confirm
+  // Dialog inside this one, which QA found silently never opened in real
+  // usage.
   const [isConfirmStep, setIsConfirmStep] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
@@ -364,10 +369,20 @@ function DraftEditorForm({
           }
           endContent={
             isConfirmStep ? undefined : (
-              <Badge
-                label={CONTENT_STATUS_LABEL[status]}
-                variant={CONTENT_STATUS_BADGE_VARIANT[status]}
-              />
+              <HStack gap={2} align="center">
+                <Badge
+                  label={CONTENT_STATUS_LABEL[status]}
+                  variant={CONTENT_STATUS_BADGE_VARIANT[status]}
+                />
+                <Button
+                  label={
+                    dialogVariant === "fullscreen" ? "Standard" : "Fullscreen"
+                  }
+                  variant="ghost"
+                  size="sm"
+                  onClick={onToggleDialogVariant}
+                />
+              </HStack>
             )
           }
           onOpenChange={onOpenChange}
@@ -409,7 +424,7 @@ function DraftEditorForm({
                 <Text type="supporting">Memuat draft…</Text>
               ) : (
                 <HStack gap={6} align="start" wrap="wrap">
-                  <VStack gap={5} width="100%" maxWidth={560}>
+                  <VStack gap={5} width="100%" maxWidth={500}>
                     <VStack gap={3}>
                       <Heading level={2}>Caption</Heading>
                       <TextArea
@@ -436,7 +451,7 @@ function DraftEditorForm({
                     </VStack>
                   </VStack>
 
-                  <VStack gap={4} width="100%" maxWidth={380}>
+                  <VStack gap={4} width="100%" maxWidth={340}>
                     <VStack gap={3}>
                       <Heading level={2}>Account Selector</Heading>
                       {isLoadingAccounts ? (
@@ -613,6 +628,28 @@ function DraftEditorForm({
   );
 }
 
+// Standard variant's floating card + backdrop margins waste too much of a
+// small phone's screen (ADR-065 only decided the desktop default; it never
+// addressed small viewports). Below this breakpoint the Dialog always
+// renders Fullscreen regardless of the user's toggle choice, restoring the
+// edge-to-edge editing surface mobile needs.
+const MOBILE_VIEWPORT_QUERY = "(max-width: 640px)";
+
+function useIsMobileViewport() {
+  const [isMobile, setIsMobile] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia(MOBILE_VIEWPORT_QUERY).matches,
+  );
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_VIEWPORT_QUERY);
+    const onChange = (event: MediaQueryListEvent) => setIsMobile(event.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return isMobile;
+}
+
 export function DraftEditorModal({ slug }: { slug: string }) {
   const {
     state,
@@ -639,6 +676,33 @@ export function DraftEditorModal({ slug }: { slug: string }) {
   if (state.mode === "resume-check" && state.unsaved !== resumeData) {
     setResumeData(state.unsaved);
   }
+
+  // Fullscreen/Standard toggle (ADR-065): official, user-switchable, never
+  // persisted — reset to the default (Standard) every time a new session
+  // starts. `DraftEditorForm` itself remounts per session via `key=
+  // {sessionKey}`, but this state has to live here because it drives the
+  // wrapping `Dialog`'s own `variant`/`width`, so it's reset the same way
+  // `resumeData` above is: adjusted during render when `sessionKey` changes,
+  // not in an effect.
+  const [dialogVariant, setDialogVariant] = useState<"standard" | "fullscreen">(
+    "standard",
+  );
+  const [prevSessionKey, setPrevSessionKey] = useState(sessionKey);
+  if (prevSessionKey !== sessionKey) {
+    setPrevSessionKey(sessionKey);
+    if (dialogVariant !== "standard") {
+      setDialogVariant("standard");
+    }
+  }
+  function toggleDialogVariant() {
+    setDialogVariant((current) =>
+      current === "standard" ? "fullscreen" : "standard",
+    );
+  }
+  const isMobileViewport = useIsMobileViewport();
+  const effectiveDialogVariant = isMobileViewport
+    ? "fullscreen"
+    : dialogVariant;
 
   const latestFormRef = useRef<LatestFormSnapshot>({
     mode: "create",
@@ -674,7 +738,9 @@ export function DraftEditorModal({ slug }: { slug: string }) {
       <Dialog
         isOpen={isEditorOpen}
         onOpenChange={handleOpenChange}
-        variant="fullscreen"
+        variant={effectiveDialogVariant}
+        width="min(960px, 94vw)"
+        maxHeight="90vh"
         purpose="form"
       >
         {isEditorOpen ? (
@@ -687,6 +753,8 @@ export function DraftEditorModal({ slug }: { slug: string }) {
             }
             slug={slug}
             onOpenChange={handleOpenChange}
+            dialogVariant={dialogVariant}
+            onToggleDialogVariant={toggleDialogVariant}
             onLatestChange={(snapshot) => {
               latestFormRef.current = snapshot;
             }}
