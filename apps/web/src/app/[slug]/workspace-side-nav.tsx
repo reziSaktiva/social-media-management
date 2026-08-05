@@ -2,6 +2,8 @@
 
 import { usePathname, useRouter } from "next/navigation";
 
+import { FaBell, FaMoon, FaPlus, FaSun } from "react-icons/fa6";
+
 import { Button } from "@astryxdesign/core/Button";
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { HStack } from "@astryxdesign/core/HStack";
@@ -70,7 +72,7 @@ export function WorkspaceSideNav({
           label="New Post"
           variant="primary"
           width="100%"
-          icon={<span aria-hidden>＋</span>}
+          icon={<FaPlus />}
           // openNewPost sekarang menerima preSelectedAccountId opsional
           // (T-012, ADR-058 addendum poin 9) — wrap supaya event Button
           // onClick tidak ikut tersalur sebagai argumen pertama.
@@ -81,7 +83,7 @@ export function WorkspaceSideNav({
         <HStack gap={2} align="center" justify="between" width="100%">
           <IconButton
             label="Notifikasi"
-            icon={<span aria-hidden>🔔</span>}
+            icon={<FaBell />}
             variant="ghost"
             tooltip="Notifikasi"
             onClick={() => router.push("/account/notifications")}
@@ -90,7 +92,7 @@ export function WorkspaceSideNav({
             label={
               mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode"
             }
-            icon={<span aria-hidden>{mode === "light" ? "🌙" : "☀️"}</span>}
+            icon={mode === "light" ? <FaMoon /> : <FaSun />}
             variant="ghost"
             tooltip={
               mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode"

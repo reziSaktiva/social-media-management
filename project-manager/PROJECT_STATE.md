@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.42     |
+| Version      | 1.0.43     |
 | Status       | Active     |
 | Last Updated | 2026-08-05 |
 
@@ -192,28 +192,6 @@ Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production
 
 Bagian UI/interaksi T-012.5 (swap count↔quick-compose "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level, tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2 (query scheduled-posts count lintas domain), yang masih deferred sampai domain publishing v0.2 siap.
 
-### KI-008 · Icon quick-compose "+" pakai `Text`, bukan `Icon`/react-icons
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Code Consistency |
-| Terkait | T-012 (out-of-scope) |
-| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
-
-Glyph tombol quick-compose "+" (`_sidebar-channels/channels-section.tsx:224-227`) pakai komponen `Text` (karakter "+" mentah), bukan `Icon`/`react-icons` seperti pola drag-handle (`GripIcon`) atau platform badge (`react-icons/fa6`) di file yang sama — inkonsistensi implementasi, bukan pelanggaran ADR-058.
-
-### KI-009 · Font-size token salah pada glyph "+"
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Code Consistency |
-| Terkait | T-012 (out-of-scope) |
-| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
-
-Pakai `size="2xs"` (8px) padahal ADR-058 addendum poin 9 minta 10px, yang cocok dengan token `size="xs"` — penyebab tombol terlihat "sangat kecil".
-
 ### KI-010 · Konvensi folder underscore-prefix belum terdokumentasi
 
 | Field | Value |
@@ -224,17 +202,6 @@ Pakai `size="2xs"` (8px) padahal ADR-058 addendum poin 9 minta 10px, yang cocok 
 | Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
 
 Konvensi folder underscore-prefix (`_sidebar-channels`, `_draft-editor`, fitur resmi Next.js App Router) belum ditulis sebagai konvensi resmi di `context/ctx-development.md` — masih pola implisit yang diikuti dari `_draft-editor` (T-011.2). Perlu diputuskan: dokumentasikan sebagai konvensi resmi, atau ganti pendekatan lain.
-
-### KI-012 · Tailwind arbitrary-value class belum kanonik
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Code Consistency |
-| Terkait | T-012 (out-of-scope) · `channels-section.tsx` |
-| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
-
-Beberapa Tailwind arbitrary-value class di `channels-section.tsx` (mis. baris ~153 `start-[calc(var(--spacing-4)*-1)]`) punya padanan utility kanonik Tailwind yang lebih idiomatic (mis. `-start-4`). Project belum memasang `eslint-plugin-tailwindcss`/`prettier-plugin-tailwindcss` (dicek di `eslint.config.mjs`, tidak ada), jadi `bun run lint` tidak menangkap ini. Perbaiki manual, dan pertimbangkan menambah plugin lint tsb supaya tertangkap otomatis ke depan.
 
 ### KI-013 · Hydration gagal saat diakses lewat tunnel ngrok
 
@@ -258,11 +225,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **KI-008/KI-009/KI-012 resolved** — Icon sidebar Channels (quick-compose "+", grip-handle) dan icon `WorkspaceSideNav` (New Post, Notifikasi, Dark/Light toggle) diganti penuh ke `react-icons`; Tailwind arbitrary-value class dikanonikkan. Sekaligus lahir **ADR-068** (amandemen ADR-058 poin 6) — `react-icons` diperluas jadi library ikon tunggal untuk seluruh icon (brand maupun generik), bukan hanya logo brand.
 * **ADR-063** — Integrasi delegasi subagent ke alur kerja wajib (`AGENTS.md`, `SKILL.md`, `TASKS.md`) + pemetaan Domain → Subagent di `.claude/agents/README.md`, memperbaiki isu AI jarang mendelegasikan ke subagent.
 * **ADR-062** — Backlog task berjenjang: `TASKS.md` (indeks) + `tasks/` per release, 67 task ber-ID `T-NNN`, rolling wave v0.1–v0.3 detail, dan amandemen aturan lokasi status.
 * **ADR-058** — Sidebar "Channels" (quick-glance daftar akun terhubung): selesai di Claude Design, implementasi kode `apps/web` menyusul (T-012).
 * **Claude Design** — bug fix Content Format Selector hilang di New Post + penambahan akun mock TikTok & Pinterest (catch-up ADR-037/ADR-039).
-* **ADR-059** — Fake OutstandAdapter: persistensi nyata "Schedule" selesai (kode + QA + review arsitektur Ridwan, tanpa temuan baru).
 
 ---
 
@@ -270,11 +237,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-068** — `react-icons` diperluas jadi library ikon tunggal untuk seluruh icon (brand maupun generik), tidak lagi dibatasi logo brand saja (amandemen ADR-058 poin 6).
 * **ADR-067** — Known Issues `Resolved` yang sudah tercatat di `COMPLETE_TASK.md` dihapus dari `PROJECT_STATE.md` (amandemen ADR-066), bukan dibiarkan menumpuk dengan status `Resolved`.
 * **ADR-066** — Known Issues berstruktur dengan ID `KI-XXX` di `PROJECT_STATE.md` (field table Status/Kategori/Terkait, terpisah dari namespace task).
 * **ADR-065** — Draft Editor: toggle Fullscreen/Standard naik status jadi fitur resmi produk, default diubah ke Standard (amandemen ADR-052).
 * **ADR-064** — Konsolidasi skill ke `.claude/skills/` sebagai sumber tunggal — hapus `.agents/skills/`.
-* **ADR-063** — Integrasi delegasi subagent ke alur kerja wajib + pemetaan Domain → Subagent (`.claude/agents/README.md`).
 
 ---
 
