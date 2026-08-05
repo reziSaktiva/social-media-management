@@ -1,7 +1,5 @@
 "use client";
 
-import * as stylex from "@stylexjs/stylex";
-import { durationVars, easeVars } from "@astryxdesign/core";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { DragEvent } from "react";
@@ -53,116 +51,40 @@ function GripIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-const styles = stylex.create({
-  list: {
-    // Scroll independen dari SideNavSection "Menu" di atasnya — max-height
-    // token-based (spacing-12 = 48px x 5 baris), bukan raw px.
-    maxHeight: "calc(var(--spacing-12) * 5)",
-    overflowY: "auto",
-  },
-  row: {
-    position: "relative",
-    // ADR-058 addendum poin 10: drag-handle shift-on-hover — seluruh isi
-    // baris bergeser via margin-inline-start bertransisi (override eksplisit
-    // dari "no-shift" yang berlaku untuk swap count<->"+" di poin 4-5 asli).
-    marginInlineStart: 0,
-    transitionProperty: "margin-inline-start",
-    transitionDuration: durationVars["--duration-fast"],
-    transitionTimingFunction: easeVars["--ease-standard"],
-  },
-  rowShifted: {
-    marginInlineStart: "var(--spacing-4)",
-  },
-  rowClickable: {
-    cursor: "pointer",
-  },
-  rowDefaultCursor: {
-    cursor: "default",
-  },
-  rowDragging: {
-    opacity: 0.5,
-  },
-  rowIdle: {
-    opacity: 1,
-  },
-  dragHandle: {
-    position: "absolute",
-    insetInlineStart: "calc(var(--spacing-4) * -1)",
-    insetBlock: 0,
-    display: "flex",
-    alignItems: "center",
-    opacity: 0,
-    transitionProperty: "opacity",
-    transitionDuration: durationVars["--duration-fast"],
-    transitionTimingFunction: easeVars["--ease-standard"],
-    cursor: "grab",
-  },
-  dragHandleVisible: {
-    opacity: 1,
-  },
-  avatarSlot: {
-    position: "relative",
-    flexShrink: 0,
-  },
-  platformBadge: {
-    position: "absolute",
-    insetInlineEnd: "calc(var(--spacing-1) * -1)",
-    insetBlockEnd: "calc(var(--spacing-1) * -1)",
-    width: "var(--spacing-4)",
-    height: "var(--spacing-4)",
-    borderRadius: "var(--radius-full)",
-    backgroundColor: "var(--color-background-surface)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 0 0 var(--border-width) var(--color-border)",
-  },
-  rightSlot: {
-    position: "relative",
-    width: "var(--spacing-4)",
-    height: "var(--spacing-4)",
-    flexShrink: 0,
-  },
-  // Swap count <-> tombol "+": fixed slot, opacity/visibility toggle
-  // (bukan display none<->flex) — ini TIDAK berubah dari ADR-058 asli
-  // (no-shift), berbeda dari drag-handle di atas yang sengaja shift-on-hover.
-  slotLayer: {
-    position: "absolute",
-    inset: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transitionProperty: "opacity, visibility",
-    transitionDuration: durationVars["--duration-fast"],
-    transitionTimingFunction: easeVars["--ease-standard"],
-  },
-  slotShown: {
-    opacity: 1,
-    visibility: "visible",
-  },
-  slotHidden: {
-    opacity: 0,
-    visibility: "hidden",
-    pointerEvents: "none",
-  },
-  addButton: {
-    // ADR-058 addendum poin 9: slot count/tombol 16x16px, lebih kecil dari
-    // size token IconButton terkecil Astryx (--size-element-sm, 28px) —
-    // override eksplisit ukuran via xstyle karena tidak ada varian lebih
-    // kecil di komponen (dicek via `astryx component IconButton --dense`).
-    width: "var(--spacing-4)",
-    height: "var(--spacing-4)",
-    minWidth: "var(--spacing-4)",
-    minHeight: "var(--spacing-4)",
-    padding: 0,
-  },
-});
+/**
+ * className builder — this file has no `cn`/`clsx` helper installed
+ * elsewhere in the app, so a tiny local join keeps the conditional classes
+ * readable without adding a new dependency for one file.
+ */
+function cx(...classes: Array<string | false | null | undefined>): string {
+  return classes.filter(Boolean).join(" ");
+}
+
+// Custom styling here is Tailwind utilities backed by Astryx design tokens
+// (per apps/web/.claude/CLAUDE.md: "component props first; else Tailwind
+// utilities backed by tokens"). Numeric spacing utilities (w-4, ms-4, max-h-60,
+// ...) are already token-backed because the Tailwind bridge sets
+// `--spacing: var(--spacing-1)`, so `4` === `--spacing-4` (16px) etc. Values
+// with no Tailwind-native utility (duration, easing, border/shadow color) use
+// arbitrary values that reference the token CSS var directly — never a raw
+// hex/px — which keeps them token-backed per project convention.
+const TRANSITION_FAST =
+  "duration-[var(--duration-fast)] ease-[var(--ease-standard)]";
+
+// Scroll independen dari SideNavSection "Menu" di atasnya — max-height
+// token-based (spacing-12 = 48px x 5 baris = 240px = spacing unit x60).
+const LIST_CLASSNAME = "max-h-60 overflow-y-auto";
 
 function PlatformBadge({ platform }: { platform: SocialPlatform }) {
   const entry = PLATFORM_ICON[platform];
   const PlatformGlyph = entry.Icon;
   return (
-    <HStack xstyle={styles.platformBadge} aria-hidden>
+    <HStack
+      hAlign="center"
+      vAlign="center"
+      className="absolute end-[calc(var(--spacing-1)*-1)] bottom-[calc(var(--spacing-1)*-1)] w-4 h-4 rounded-full bg-surface shadow-[0_0_0_var(--border-width)_var(--color-border)]"
+      aria-hidden
+    >
       {/* Warna brand asli (bukan token) — pengecualian disengaja, lihat
           komentar di platform-icons.tsx (ADR-058 poin 6 & 10). */}
       <PlatformGlyph size={9} color={entry.color} />
@@ -212,24 +134,31 @@ function ChannelRow({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={needsAttention ? handleRowClick : undefined}
-      xstyle={[
-        styles.row,
-        isHovered ? styles.rowShifted : null,
-        needsAttention ? styles.rowClickable : styles.rowDefaultCursor,
-        isDragging ? styles.rowDragging : styles.rowIdle,
-      ]}
+      className={cx(
+        // ADR-058 addendum poin 10: drag-handle shift-on-hover — seluruh isi
+        // baris bergeser via margin-inline-start bertransisi (override
+        // eksplisit dari "no-shift" yang berlaku untuk swap count<->"+" di
+        // poin 4-5 asli).
+        "relative transition-[margin-inline-start]",
+        TRANSITION_FAST,
+        isHovered ? "ms-4" : "ms-0",
+        needsAttention ? "cursor-pointer" : "cursor-default",
+        isDragging ? "opacity-50" : "opacity-100",
+      )}
       data-testid="channel-row"
     >
       <HStack
-        xstyle={[
-          styles.dragHandle,
-          isHovered ? styles.dragHandleVisible : null,
-        ]}
+        align="center"
+        className={cx(
+          "absolute start-[calc(var(--spacing-4)*-1)] inset-y-0 cursor-grab transition-opacity",
+          TRANSITION_FAST,
+          isHovered ? "opacity-100" : "opacity-0",
+        )}
       >
         <Icon icon={GripIcon} size="xsm" color="secondary" label="" />
       </HStack>
 
-      <HStack xstyle={styles.avatarSlot}>
+      <HStack className="relative shrink-0">
         <Avatar
           name={account.handle}
           size="sm"
@@ -249,29 +178,48 @@ function ChannelRow({
         </VStack>
       </StackItem>
 
-      <HStack xstyle={styles.rightSlot}>
+      <HStack className="relative w-4 h-4 shrink-0">
+        {/* Swap count <-> tombol "+": fixed slot, opacity/visibility toggle
+            (bukan display none<->flex) — ini TIDAK berubah dari ADR-058 asli
+            (no-shift), berbeda dari drag-handle di atas yang sengaja
+            shift-on-hover. */}
         <HStack
-          xstyle={[
-            styles.slotLayer,
-            isHovered ? styles.slotHidden : styles.slotShown,
-          ]}
+          hAlign="center"
+          align="center"
+          className={cx(
+            "absolute inset-0 transition-[opacity,visibility]",
+            TRANSITION_FAST,
+            isHovered
+              ? "opacity-0 invisible pointer-events-none"
+              : "opacity-100 visible",
+          )}
         >
           <Text type="supporting" size="2xs" hasTabularNumbers>
             {account.scheduledCount}
           </Text>
         </HStack>
         <HStack
-          xstyle={[
-            styles.slotLayer,
-            isHovered ? styles.slotShown : styles.slotHidden,
-          ]}
+          hAlign="center"
+          align="center"
+          className={cx(
+            "absolute inset-0 transition-[opacity,visibility]",
+            TRANSITION_FAST,
+            isHovered
+              ? "opacity-100 visible"
+              : "opacity-0 invisible pointer-events-none",
+          )}
         >
           <IconButton
             label={`Buat post baru untuk ${account.handle}`}
             tooltip="New post"
             variant="ghost"
             size="sm"
-            xstyle={styles.addButton}
+            // ADR-058 addendum poin 9: slot count/tombol 16x16px, lebih kecil
+            // dari size token IconButton terkecil Astryx (--size-element-sm,
+            // 28px) — override eksplisit ukuran karena tidak ada varian
+            // lebih kecil di komponen (dicek via
+            // `astryx component IconButton --dense`).
+            className="w-4 h-4 min-w-4 min-h-4 p-0"
             icon={
               <Text type="inherit" size="2xs" as="span">
                 +
@@ -367,7 +315,7 @@ export function ChannelsSection({
 
   return (
     <SideNavSection title="Channels">
-      <VStack gap={1} isScrollable xstyle={styles.list}>
+      <VStack gap={1} isScrollable className={LIST_CLASSNAME}>
         {orderedChannels.map((account) => (
           <ChannelRow
             key={account.id}
