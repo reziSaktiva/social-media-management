@@ -273,6 +273,11 @@ export function ChannelsSection({
 }) {
   const [orderedChannels, setOrderedChannels] = useState(channels);
   const [channelsSnapshot, setChannelsSnapshot] = useState(channels);
+  // Render-only — drives `isDragging` opacity. NOT safe to read inside drop
+  // logic: this closure can be stale if native `drop` fires before React
+  // re-renders from `setDraggedId` in handleDragStart. handleDrop reads the
+  // source id from `e.dataTransfer` instead (immune to that race) — keep any
+  // new drop-time logic doing the same, not reaching for this state.
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
   // Sinkronisasi ringan kalau daftar akun dari server berubah (akun baru
