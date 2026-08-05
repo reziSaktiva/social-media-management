@@ -23,7 +23,7 @@ import { SocialPlatform } from "@social/shared";
  */
 export const PLATFORM_ICON: Record<
   SocialPlatform,
-  { Icon: IconType; color: string; label: string }
+  { Icon: IconType; color: string; colorDark?: string; label: string }
 > = {
   [SocialPlatform.Instagram]: {
     Icon: FaInstagram,
@@ -38,6 +38,7 @@ export const PLATFORM_ICON: Record<
   [SocialPlatform.Twitter]: {
     Icon: FaXTwitter,
     color: "#000000",
+    colorDark: "#FFFFFF",
     label: "X (Twitter)",
   },
   [SocialPlatform.LinkedIn]: {
@@ -48,6 +49,7 @@ export const PLATFORM_ICON: Record<
   [SocialPlatform.TikTok]: {
     Icon: FaTiktok,
     color: "#000000",
+    colorDark: "#FFFFFF",
     label: "TikTok",
   },
   [SocialPlatform.YouTube]: {
@@ -58,6 +60,7 @@ export const PLATFORM_ICON: Record<
   [SocialPlatform.Threads]: {
     Icon: FaThreads,
     color: "#000000",
+    colorDark: "#FFFFFF",
     label: "Threads",
   },
   [SocialPlatform.Pinterest]: {

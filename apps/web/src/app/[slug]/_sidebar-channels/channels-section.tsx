@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import type { DragEvent } from "react";
 
@@ -77,6 +77,9 @@ const LIST_CLASSNAME = "max-h-60 overflow-y-auto";
 
 function PlatformBadge({ platform }: { platform: SocialPlatform }) {
   const entry = PLATFORM_ICON[platform];
+  if (!entry) {
+    return null;
+  }
   const PlatformGlyph = entry.Icon;
   return (
     <HStack
@@ -109,18 +112,14 @@ function ChannelRow({
   onDrop: (e: DragEvent<HTMLDivElement>) => void;
   onDragEnd: (e: DragEvent<HTMLDivElement>) => void;
 }) {
-  const router = useRouter();
   const { openNewPost } = useDraftEditor();
   const [isHovered, setIsHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  // Reveal action affordances on either hover or keyboard focus-within.
+  const isRevealed = isHovered || isFocused;
 
   const displayStatus = resolveConnectionDisplayStatus(account);
   const needsAttention = displayStatus !== "active";
-
-  function handleRowClick() {
-    if (needsAttention) {
-      router.push(`/${slug}/settings/connected-accounts`);
-    }
-  }
 
   return (
     <HStack
@@ -133,7 +132,14 @@ function ChannelRow({
       onDragEnd={onDragEnd}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={needsAttention ? handleRowClick : undefined}
+      onFocus={() => setIsFocused(true)}
+      onBlur={(e) => {
+        // Only clear when focus truly leaves the row, not when it moves
+        // between children (e.g. from row to IconButton within same row).
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setIsFocused(false);
+        }
+      }}
       className={cx(
         // ADR-058 addendum poin 10: drag-handle shift-on-hover — seluruh isi
         // baris bergeser via margin-inline-start bertransisi (override
@@ -141,8 +147,7 @@ function ChannelRow({
         // poin 4-5 asli).
         "relative transition-[margin-inline-start]",
         TRANSITION_FAST,
-        isHovered ? "ms-4" : "ms-0",
-        needsAttention ? "cursor-pointer" : "cursor-default",
+        isRevealed ? "ms-4" : "ms-0",
         isDragging ? "opacity-50" : "opacity-100",
       )}
       data-testid="channel-row"
@@ -152,7 +157,7 @@ function ChannelRow({
         className={cx(
           "absolute start-[calc(var(--spacing-4)*-1)] inset-y-0 cursor-grab transition-opacity",
           TRANSITION_FAST,
-          isHovered ? "opacity-100" : "opacity-0",
+          isRevealed ? "opacity-100" : "opacity-0",
         )}
       >
         <Icon icon={GripIcon} size="xsm" color="secondary" label="" />
@@ -171,10 +176,22 @@ function ChannelRow({
           <Text type="label" maxLines={1}>
             {account.handle}
           </Text>
-          <Badge
-            variant={displayStatus === "active" ? "neutral" : "warning"}
-            label={getConnectionStatusLabel(account)}
-          />
+          {needsAttention ? (
+            <Link
+              href={`/${slug}/settings/connected-accounts`}
+              className="no-underline"
+            >
+              <Badge
+                variant="warning"
+                label={getConnectionStatusLabel(account)}
+              />
+            </Link>
+          ) : (
+            <Badge
+              variant="neutral"
+              label={getConnectionStatusLabel(account)}
+            />
+          )}
         </VStack>
       </StackItem>
 
@@ -189,7 +206,7 @@ function ChannelRow({
           className={cx(
             "absolute inset-0 transition-[opacity,visibility]",
             TRANSITION_FAST,
-            isHovered
+            isRevealed
               ? "opacity-0 invisible pointer-events-none"
               : "opacity-100 visible",
           )}
@@ -204,7 +221,7 @@ function ChannelRow({
           className={cx(
             "absolute inset-0 transition-[opacity,visibility]",
             TRANSITION_FAST,
-            isHovered
+            isRevealed
               ? "opacity-100 visible"
               : "opacity-0 invisible pointer-events-none",
           )}
@@ -278,6 +295,7 @@ export function ChannelsSection({
     return (e: DragEvent<HTMLDivElement>) => {
       setDraggedId(id);
       e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", id);
     };
   }
 
