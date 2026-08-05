@@ -192,16 +192,16 @@ Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production
 
 Bagian UI/interaksi T-012.5 (swap count↔quick-compose "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level, tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2 (query scheduled-posts count lintas domain), yang masih deferred sampai domain publishing v0.2 siap.
 
-### KI-007 · PR #42 (T-012 Channels) belum di-merge — bug in-scope belum dikerjakan
+### KI-007 · PR #42 (T-012 Channels) belum di-merge — bug in-scope sudah diperbaiki
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | Resolved |
 | Kategori | Bug |
 | Terkait | T-012.9 |
 | Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
 
-Drag-reorder race condition (kadang gagal menukar posisi saat drop) — sebagai subtask in-scope T-012.9, detail + evidence root cause di `tasks/v01-foundation.md` → T-012.
+Drag-reorder race condition (kadang gagal menukar posisi saat drop) — bug in-scope T-012.9 sudah diperbaiki (2026-08-05, review arsitektur Ridwan 0 pelanggaran, QA statis Najwa PASS), detail + evidence root cause di `tasks/v01-foundation.md` → T-012. **Catatan:** PR #42 itu sendiri belum di-merge — itu status merge-nya sendiri, terpisah dari status bug yang sudah `Resolved` di sini.
 
 ### KI-008 · Icon quick-compose "+" pakai `Text`, bukan `Icon`/react-icons
 
@@ -240,12 +240,12 @@ Konvensi folder underscore-prefix (`_sidebar-channels`, `_draft-editor`, fitur r
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | Resolved |
 | Kategori | Tech-Debt |
 | Terkait | T-012 (out-of-scope) · `apps/web` |
 | Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
 
-Tidak ada helper `cn`/`clsx` global di `apps/web` — `channels-section.tsx` mendefinisikan `cx()` lokal sendiri (keputusan sadar Mark untuk menghindari dependency baru "just for one file", bukan oversight). Kalau pola custom Tailwind className makin dipakai di komponen lain ke depan, pertimbangkan ekstrak ke lokasi shared (mis. `apps/web/src/lib/cn.ts`).
+Tidak ada helper `cn`/`clsx` global di `apps/web` — `channels-section.tsx` sebelumnya mendefinisikan `cx()` lokal sendiri (keputusan sadar Mark untuk menghindari dependency baru "just for one file", bukan oversight). **Resolved (2026-08-05):** helper `apps/web/src/lib/cn.ts` sudah dibuat (tanpa dependency baru) dan `channels-section.tsx` sudah dimigrasikan penuh — `cx()` lokal dihapus, 4 titik pemanggilan className diganti `cn()` dari `@/lib/cn`. Review arsitektur Ridwan: 0 pelanggaran. QA statis Najwa: typecheck/lint/test PASS.
 
 ### KI-012 · Tailwind arbitrary-value class belum kanonik
 

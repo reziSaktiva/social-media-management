@@ -21,6 +21,7 @@ import {
   resolveConnectionDisplayStatus,
   type SidebarChannelAccount,
 } from "@/domains/workspace";
+import { cn } from "@/lib/cn";
 
 import { useDraftEditor } from "../_draft-editor/context";
 
@@ -49,15 +50,6 @@ function GripIcon(props: React.SVGProps<SVGSVGElement>) {
       <circle cx="15" cy="18" r="1.5" />
     </svg>
   );
-}
-
-/**
- * className builder — this file has no `cn`/`clsx` helper installed
- * elsewhere in the app, so a tiny local join keeps the conditional classes
- * readable without adding a new dependency for one file.
- */
-function cx(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(" ");
 }
 
 // Custom styling here is Tailwind utilities backed by Astryx design tokens
@@ -140,7 +132,7 @@ function ChannelRow({
           setIsFocused(false);
         }
       }}
-      className={cx(
+      className={cn(
         // ADR-058 addendum poin 10: drag-handle shift-on-hover — seluruh isi
         // baris bergeser via margin-inline-start bertransisi (override
         // eksplisit dari "no-shift" yang berlaku untuk swap count<->"+" di
@@ -154,7 +146,7 @@ function ChannelRow({
     >
       <HStack
         align="center"
-        className={cx(
+        className={cn(
           "absolute start-[calc(var(--spacing-4)*-1)] inset-y-0 cursor-grab transition-opacity",
           TRANSITION_FAST,
           isRevealed ? "opacity-100" : "opacity-0",
@@ -203,7 +195,7 @@ function ChannelRow({
         <HStack
           hAlign="center"
           align="center"
-          className={cx(
+          className={cn(
             "absolute inset-0 transition-[opacity,visibility]",
             TRANSITION_FAST,
             isRevealed
@@ -218,7 +210,7 @@ function ChannelRow({
         <HStack
           hAlign="center"
           align="center"
-          className={cx(
+          className={cn(
             "absolute inset-0 transition-[opacity,visibility]",
             TRANSITION_FAST,
             isRevealed
@@ -306,12 +298,13 @@ export function ChannelsSection({
   function handleDrop(targetId: string) {
     return (e: DragEvent<HTMLDivElement>) => {
       e.preventDefault();
-      if (!draggedId || draggedId === targetId) {
+      const sourceId = e.dataTransfer.getData("text/plain");
+      if (!sourceId || sourceId === targetId) {
         return;
       }
       setOrderedChannels((prev) => {
         const next = [...prev];
-        const fromIndex = next.findIndex((c) => c.id === draggedId);
+        const fromIndex = next.findIndex((c) => c.id === sourceId);
         const toIndex = next.findIndex((c) => c.id === targetId);
         if (fromIndex === -1 || toIndex === -1) {
           return prev;
