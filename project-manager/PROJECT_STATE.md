@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.40     |
+| Version      | 1.0.41     |
 | Status       | Active     |
 | Last Updated | 2026-08-05 |
 
@@ -130,47 +130,143 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
 
 ## Known Issues
 
-* **Dependency terbuka — Transactional Email Provider** (→ T-005). Password reset & email verification (Better Auth) membutuhkan email provider yang belum ditetapkan (kandidat: Resend, Postmark, AWS SES, SMTP Supabase). Dicatat di `auth-strategy.md` (AS-D04). `requireEmailVerification` dinonaktifkan sementara di skeleton. Tidak memblokir M8 awal.
-* **RLS SQL policies belum digenerate** di migrasi awal (→ T-017) — ditambahkan saat jalur server set `app.current_user_id` diimplementasi (DO-D06).
-* **Runtime ADR-040 belum diimplementasikan** (→ T-025, T-026, T-027). Alignment
-  dokumentasi dan schema/migration sudah selesai, tetapi handler webhook, durable
-  ingestion, retry internal, media upload Outstand, engagement sync/reply, dan
-  reconnect flow masih task M8. `schedulePost` sendiri sudah bisa dipakai lewat
-  `FakeOutstandAdapter` (ADR-059) — `getOutstandAdapter()` akan beralih otomatis
-  ke real adapter begitu `OUTSTAND_API_KEY` diisi **dan** kode real adapter sudah
-  ditulis (kalau env terisi tapi kode belum ada, factory throw error, bukan
-  silent fallback ke Fake).
-* **Toggle Light/Dark (T-010) — alur UI belum diuji.** Pemeriksaan otomatis
-  (`typecheck`/`lint`/`test`) dan implementasi server-side (baca cookie di RSC
-  sebelum render) sudah diverifikasi; alur UI (klik toggle di sidebar footer →
-  cookie tertulis) belum diuji lewat browser karena butuh login — perlu dicek
-  King Rezi saat login.
-* **Astryx masih Beta.** Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat
-  smoke test dan production build, tetapi risiko perubahan API tetap dikelola
-  dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
-  verifikasi ulang saat upgrade.
-* **Sidebar Channels (T-012) — scheduled count masih stub 0, reorder channel
-  belum persisten.** Bagian UI/interaksi T-012.5 (swap count↔quick-compose
-  "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level,
-  tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua
-  hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2
-  (query scheduled-posts count lintas domain), yang masih deferred sampai
-  domain publishing v0.2 siap.
-* **PR #42 (T-012 Channels) belum di-merge — 6 temuan dari review King Rezi
-  (T-012.7–12) belum dikerjakan.** Termasuk 1 bug nyata (drag-reorder race
-  condition, kadang gagal menukar posisi saat drop) dan 5 catatan kualitas
-  (icon "+" pakai `Text` bukan `Icon`/react-icons, token font-size salah,
-  konvensi folder underscore belum terdokumentasi, tidak ada helper `cn`
-  global, beberapa Tailwind class belum kanonik). Detail lengkap + evidence
-  di `tasks/v01-foundation.md` → T-012. Rencana dikerjakan di sesi terpisah.
-* **Hydration gagal saat diakses lewat tunnel ngrok** (→ T-018). Saat uji halaman
-  auth lewat tunnel ngrok yang dipakai untuk `BETTER_AUTH_URL`, seluruh halaman
-  (bukan spesifik komponen auth) tidak ter-hydrate — tidak ada React fiber di
-  elemen manapun meski `window.next` termuat tanpa error console; klik submit
-  jatuh ke native HTML form-submit. Kemungkinan besar isu HMR/WebSocket Turbopack
-  lewat ngrok. Backend/API sendiri terverifikasi benar via raw `fetch()`. Perlu
-  ditelusuri sebelum uji interaksi form penuh di browser lewat ngrok bisa
-  diandalkan.
+> **ID `KI-XXX`** (ADR-066) — global, tidak pernah didaur ulang. `Status`: `Open` / `Resolved` / `Promoted to T-XXX`. Terpisah dari namespace task (`T-XXX`) karena belum tentu jadi task formal.
+
+### KI-001 · Transactional Email Provider belum ditetapkan
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Dependency |
+| Terkait | T-005 |
+
+Password reset & email verification (Better Auth) membutuhkan email provider yang belum ditetapkan (kandidat: Resend, Postmark, AWS SES, SMTP Supabase). Dicatat di `auth-strategy.md` (AS-D04). `requireEmailVerification` dinonaktifkan sementara di skeleton. Tidak memblokir M8 awal.
+
+### KI-002 · RLS SQL policies belum digenerate
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-017 |
+
+Belum digenerate di migrasi awal — ditambahkan saat jalur server set `app.current_user_id` diimplementasi (DO-D06).
+
+### KI-003 · Runtime ADR-040 belum diimplementasikan
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-025, T-026, T-027 |
+
+Alignment dokumentasi dan schema/migration sudah selesai, tetapi handler webhook, durable ingestion, retry internal, media upload Outstand, engagement sync/reply, dan reconnect flow masih task M8. `schedulePost` sendiri sudah bisa dipakai lewat `FakeOutstandAdapter` (ADR-059) — `getOutstandAdapter()` akan beralih otomatis ke real adapter begitu `OUTSTAND_API_KEY` diisi **dan** kode real adapter sudah ditulis (kalau env terisi tapi kode belum ada, factory throw error, bukan silent fallback ke Fake).
+
+### KI-004 · Toggle Light/Dark — alur UI belum diuji
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Test Coverage |
+| Terkait | T-010 |
+
+Pemeriksaan otomatis (`typecheck`/`lint`/`test`) dan implementasi server-side (baca cookie di RSC sebelum render) sudah diverifikasi; alur UI (klik toggle di sidebar footer → cookie tertulis) belum diuji lewat browser karena butuh login — perlu dicek King Rezi saat login.
+
+### KI-005 · Astryx masih Beta
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Process |
+| Terkait | — |
+
+Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production build, tetapi risiko perubahan API tetap dikelola dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan verifikasi ulang saat upgrade.
+
+### KI-006 · Sidebar Channels — scheduled count stub, reorder belum persisten
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-012 (menunggu T-012.1, T-012.2) |
+
+Bagian UI/interaksi T-012.5 (swap count↔quick-compose "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level, tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2 (query scheduled-posts count lintas domain), yang masih deferred sampai domain publishing v0.2 siap.
+
+### KI-007 · PR #42 (T-012 Channels) belum di-merge — bug in-scope belum dikerjakan
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug |
+| Terkait | T-012.9 |
+| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
+
+Drag-reorder race condition (kadang gagal menukar posisi saat drop) — sebagai subtask in-scope T-012.9, detail + evidence root cause di `tasks/v01-foundation.md` → T-012.
+
+### KI-008 · Icon quick-compose "+" pakai `Text`, bukan `Icon`/react-icons
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Code Consistency |
+| Terkait | T-012 (out-of-scope) |
+| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
+
+Glyph tombol quick-compose "+" (`_sidebar-channels/channels-section.tsx:224-227`) pakai komponen `Text` (karakter "+" mentah), bukan `Icon`/`react-icons` seperti pola drag-handle (`GripIcon`) atau platform badge (`react-icons/fa6`) di file yang sama — inkonsistensi implementasi, bukan pelanggaran ADR-058.
+
+### KI-009 · Font-size token salah pada glyph "+"
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Code Consistency |
+| Terkait | T-012 (out-of-scope) |
+| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
+
+Pakai `size="2xs"` (8px) padahal ADR-058 addendum poin 9 minta 10px, yang cocok dengan token `size="xs"` — penyebab tombol terlihat "sangat kecil".
+
+### KI-010 · Konvensi folder underscore-prefix belum terdokumentasi
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Process |
+| Terkait | T-012 (out-of-scope) · `context/ctx-development.md` |
+| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
+
+Konvensi folder underscore-prefix (`_sidebar-channels`, `_draft-editor`, fitur resmi Next.js App Router) belum ditulis sebagai konvensi resmi di `context/ctx-development.md` — masih pola implisit yang diikuti dari `_draft-editor` (T-011.2). Perlu diputuskan: dokumentasikan sebagai konvensi resmi, atau ganti pendekatan lain.
+
+### KI-011 · Tidak ada helper `cn`/`clsx` global
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-012 (out-of-scope) · `apps/web` |
+| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
+
+Tidak ada helper `cn`/`clsx` global di `apps/web` — `channels-section.tsx` mendefinisikan `cx()` lokal sendiri (keputusan sadar Mark untuk menghindari dependency baru "just for one file", bukan oversight). Kalau pola custom Tailwind className makin dipakai di komponen lain ke depan, pertimbangkan ekstrak ke lokasi shared (mis. `apps/web/src/lib/cn.ts`).
+
+### KI-012 · Tailwind arbitrary-value class belum kanonik
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Code Consistency |
+| Terkait | T-012 (out-of-scope) · `channels-section.tsx` |
+| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
+
+Beberapa Tailwind arbitrary-value class di `channels-section.tsx` (mis. baris ~153 `start-[calc(var(--spacing-4)*-1)]`) punya padanan utility kanonik Tailwind yang lebih idiomatic (mis. `-start-4`). Project belum memasang `eslint-plugin-tailwindcss`/`prettier-plugin-tailwindcss` (dicek di `eslint.config.mjs`, tidak ada), jadi `bun run lint` tidak menangkap ini. Perbaiki manual, dan pertimbangkan menambah plugin lint tsb supaya tertangkap otomatis ke depan.
+
+### KI-013 · Hydration gagal saat diakses lewat tunnel ngrok
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug |
+| Terkait | T-018 |
+
+Saat uji halaman auth lewat tunnel ngrok yang dipakai untuk `BETTER_AUTH_URL`, seluruh halaman (bukan spesifik komponen auth) tidak ter-hydrate — tidak ada React fiber di elemen manapun meski `window.next` termuat tanpa error console; klik submit jatuh ke native HTML form-submit. Kemungkinan besar isu HMR/WebSocket Turbopack lewat ngrok. Backend/API sendiri terverifikasi benar via raw `fetch()`. Perlu ditelusuri sebelum uji interaksi form penuh di browser lewat ngrok bisa diandalkan.
 
 ---
 
@@ -196,11 +292,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-066** — Known Issues berstruktur dengan ID `KI-XXX` di `PROJECT_STATE.md` (field table Status/Kategori/Terkait, terpisah dari namespace task).
 * **ADR-065** — Draft Editor: toggle Fullscreen/Standard naik status jadi fitur resmi produk, default diubah ke Standard (amandemen ADR-052).
 * **ADR-064** — Konsolidasi skill ke `.claude/skills/` sebagai sumber tunggal — hapus `.agents/skills/`.
 * **ADR-063** — Integrasi delegasi subagent ke alur kerja wajib + pemetaan Domain → Subagent (`.claude/agents/README.md`).
 * **ADR-062** — Backlog task berjenjang per release (`TASKS.md` + `tasks/`) + amandemen aturan "status hanya di `PROJECT_STATE.md`".
-* **ADR-061** — Konsolidasi CHANGELOG jadi `COMPLETE_TASK.md` tunggal + larangan baca proaktif AI (amandemen ADR-060).
 
 ---
 
