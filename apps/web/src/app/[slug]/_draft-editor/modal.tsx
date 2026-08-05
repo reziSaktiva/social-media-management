@@ -628,6 +628,28 @@ function DraftEditorForm({
   );
 }
 
+// Standard variant's floating card + backdrop margins waste too much of a
+// small phone's screen (ADR-065 only decided the desktop default; it never
+// addressed small viewports). Below this breakpoint the Dialog always
+// renders Fullscreen regardless of the user's toggle choice, restoring the
+// edge-to-edge editing surface mobile needs.
+const MOBILE_VIEWPORT_QUERY = "(max-width: 640px)";
+
+function useIsMobileViewport() {
+  const [isMobile, setIsMobile] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia(MOBILE_VIEWPORT_QUERY).matches,
+  );
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_VIEWPORT_QUERY);
+    const onChange = (event: MediaQueryListEvent) => setIsMobile(event.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return isMobile;
+}
+
 export function DraftEditorModal({ slug }: { slug: string }) {
   const {
     state,
@@ -677,6 +699,10 @@ export function DraftEditorModal({ slug }: { slug: string }) {
       current === "standard" ? "fullscreen" : "standard",
     );
   }
+  const isMobileViewport = useIsMobileViewport();
+  const effectiveDialogVariant = isMobileViewport
+    ? "fullscreen"
+    : dialogVariant;
 
   const latestFormRef = useRef<LatestFormSnapshot>({
     mode: "create",
@@ -712,7 +738,7 @@ export function DraftEditorModal({ slug }: { slug: string }) {
       <Dialog
         isOpen={isEditorOpen}
         onOpenChange={handleOpenChange}
-        variant={dialogVariant}
+        variant={effectiveDialogVariant}
         width="min(960px, 94vw)"
         maxHeight="90vh"
         purpose="form"
