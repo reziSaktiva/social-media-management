@@ -29,7 +29,14 @@ export function DraftsList({ drafts }: { drafts: PublishingPostRecord[] }) {
           <Heading level={1}>Publish</Heading>
           <Text type="supporting">Draft yang belum terjadwal</Text>
         </VStack>
-        <Button label="+ New Post" variant="primary" onClick={openNewPost} />
+        {/* openNewPost sekarang menerima preSelectedAccountId opsional
+        (T-012, ADR-058 addendum poin 9) — wrap supaya event onClick tidak
+        ikut tersalur sebagai argumen pertama. */}
+        <Button
+          label="+ New Post"
+          variant="primary"
+          onClick={() => openNewPost()}
+        />
       </HStack>
 
       <Card padding={4}>

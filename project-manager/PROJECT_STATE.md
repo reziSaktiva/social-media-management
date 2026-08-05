@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** T-012 Sidebar "Channels" · T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** T-012 Sidebar "Channels" (sebagian besar selesai — T-012.1/T-012.2 deferred, menunggu domain publishing v0.2) · T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** Tidak ada blocker aktif. Known issue teratas: dependency Transactional Email Provider belum ditetapkan (T-005, tidak memblokir M8 awal).
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 69 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.38     |
+| Version      | 1.0.39     |
 | Status       | Active     |
-| Last Updated | 2026-08-04 |
+| Last Updated | 2026-08-05 |
 
 ---
 
@@ -107,6 +107,7 @@ Restricted Actions:
 Task berstatus 🟡 — detail dan subtask ada di [`TASKS.md`](TASKS.md):
 
 * **T-031** Redirect otomatis ke sub-screen tujuan (ADR-054) — Save as Draft sudah sejalan; sisanya menyusul bersama T-029/T-032/T-034.
+* **T-012** Sidebar section "Channels" (ADR-058) — T-012.3/4/5/6 selesai kode-level (review Ridwan lolos, browser E2E menunggu tunnel ngrok); T-012.1/T-012.2 deferred menunggu domain publishing v0.2.
 
 Catatan non-task: template `design-tokens.md` berstatus Draft / TBD; nilai final
 berkembang iteratif co-equal dengan Claude Design (ADR-056) — tidak ada lagi
@@ -148,6 +149,13 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
   smoke test dan production build, tetapi risiko perubahan API tetap dikelola
   dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
   verifikasi ulang saat upgrade.
+* **Sidebar Channels (T-012) — scheduled count masih stub 0, reorder channel
+  belum persisten.** Bagian UI/interaksi T-012.5 (swap count↔quick-compose
+  "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level,
+  tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua
+  hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2
+  (query scheduled-posts count lintas domain), yang masih deferred sampai
+  domain publishing v0.2 siap.
 * **Hydration gagal saat diakses lewat tunnel ngrok** (→ T-018). Saat uji halaman
   auth lewat tunnel ngrok yang dipakai untuk `BETTER_AUTH_URL`, seluruh halaman
   (bukan spesifik komponen auth) tidak ter-hydrate — tidak ada React fiber di

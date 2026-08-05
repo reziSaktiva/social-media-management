@@ -8,6 +8,69 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-05 — T-012 Sidebar section "Channels" — implementasi sebagian (T-012.3/4/5/6 selesai, T-012.1/2 tetap deferred)
+
+### Added
+
+- `apps/web/src/app/[slug]/_sidebar-channels/channels-section.tsx` — komponen
+  baru render section "Channels" di `WorkspaceSideNav`, antara `SideNavSection`
+  "Menu" dan footer (bukan nav item ke-6, sesuai P-IA-01/ADR-058).
+- `apps/web/src/app/[slug]/_sidebar-channels/platform-icons.tsx` — mapping 8
+  `SocialPlatform` → ikon brand `react-icons/fa6`.
+- `react-icons@^5.7.0` dikonfirmasi sebagai dependency runtime `apps/web`
+  (T-012.3).
+- Helper `getConnectionStatusLabel` / `resolveConnectionDisplayStatus` di
+  `apps/web/src/domains/workspace/value-objects/connection-status.ts` — mapping
+  status koneksi akun ke label + Badge variant, dipakai section Channels dan
+  disiapkan untuk dipakai ulang oleh halaman Connected Accounts settings
+  (T-015).
+
+### Changed
+
+- `apps/web/src/app/[slug]/_draft-editor/context.tsx` — `openNewPost()`
+  diperluas menerima `preSelectedAccountId?: string`; kalau diisi, langsung
+  masuk mode `"create"` dengan akun ter-pre-select dan **skip** resume-check
+  (ADR-058 addendum poin 9 — entry point beda konteks dari CTA "+ New Post"
+  polos).
+- `apps/web/src/app/[slug]/_draft-editor/modal.tsx` — Account Selector
+  otomatis pre-check akun saat modal dibuka dari `preSelectedAccountId`.
+- `apps/web/src/app/[slug]/workspace-side-nav.tsx` — terima prop channel list
+  baru, render `ChannelsSection`.
+- `project-manager/tasks/v01-foundation.md` (T-012) — checkbox T-012.3/4/5/6
+  ditandai selesai; T-012.5 dan T-012.6 diberi catatan eksplisit masih ada
+  bagian stub/non-persisten (scheduled count hardcode 0, reorder client-state
+  only, tidak reload-safe) menunggu T-012.1/T-012.2 (v0.2). T-012.1/T-012.2
+  tetap unchecked, ditandai "deferred — menunggu domain publishing v0.2".
+- `project-manager/TASKS.md` — status T-012 di **Fokus sekarang** dari ⏳ jadi
+  🟡 In Progress, catatan diperbarui.
+- `project-manager/PROJECT_STATE.md` — `Top Next Tasks` (Snapshot), section
+  **In Progress**, dan **Known Issues** diperbarui (scheduled count stub 0 +
+  reorder belum persisten, menunggu T-012.1/T-012.2). Version 1.0.38 →
+  1.0.39.
+
+### Verifikasi
+
+- Typecheck, lint, dan unit test (Vitest) bersih untuk seluruh perubahan.
+- Review arsitektur Ridwan Architecture Reviewer: **lolos, tanpa temuan
+  blocking** (entry point `layout.tsx` tetap hanya memanggil Application
+  Service, tidak ada leak Prisma/domain internals ke komponen UI).
+- QA code-level Najwa QA Engineer: **lolos**. Verifikasi browser end-to-end
+  (interaksi hover, drag-reorder, klik "+", deep-link Disconnected) **belum
+  dilakukan** — butuh tunnel ngrok aktif yang belum tersedia saat sesi ini;
+  dicatat sebagai follow-up, bukan blocker penutupan T-012.3–6.
+
+### Catatan
+
+- Keputusan implementasi kecil (bukan ADR): Badge status memakai variant
+  `"warning"` untuk **kedua** kondisi `reconnectRequired` dan `disconnected`
+  (bukan hanya `reconnectRequired`). Ini reuse variant Badge yang sudah ada
+  (sejalan ADR-058 poin 2 "tidak ada warna status baru"), belum dikonfirmasi
+  eksplisit ke King Rezi sebagai keputusan terpisah — tidak dianggap
+  penyimpangan material dari ADR-058 sehingga tidak dibuat ADR baru, tapi
+  ditandai di sini untuk transparansi.
+
+---
+
 ## 2026-08-05 — ADR-065: Draft Editor Fullscreen/Standard Toggle Jadi Fitur Resmi
 
 ### Added

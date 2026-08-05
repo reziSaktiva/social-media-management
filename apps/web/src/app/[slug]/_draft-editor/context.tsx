@@ -28,12 +28,19 @@ export interface UnsavedNewPost {
 export type DraftEditorState =
   | { mode: "closed" }
   | { mode: "resume-check"; unsaved: UnsavedNewPost }
-  | { mode: "create"; prefillCaption?: string }
+  | { mode: "create"; prefillCaption?: string; preSelectedAccountId?: string }
   | { mode: "edit"; postId: string };
 
 interface DraftEditorContextValue {
   state: DraftEditorState;
-  openNewPost: () => void;
+  /**
+   * `preSelectedAccountId` is passed by entry points scoped to a specific
+   * connected account (e.g. the sidebar "Channels" quick-compose "+" button,
+   * T-012 / ADR-058 addendum poin 9). When provided, the Resume Unfinished
+   * Post check is intentionally skipped — that flow belongs to a different
+   * context (a specific account) than the generic "+ New Post" CTA.
+   */
+  openNewPost: (preSelectedAccountId?: string) => void;
   openEditDraft: (postId: string) => void;
   resume: () => void;
   discardAndStartNew: () => void;
@@ -69,10 +76,21 @@ export function DraftEditorProvider({
 }) {
   const [state, setState] = useState<DraftEditorState>({ mode: "closed" });
 
-  const openNewPost = useCallback(() => {
-    const unsaved = readUnsavedNewPost(slug);
-    setState(unsaved ? { mode: "resume-check", unsaved } : { mode: "create" });
-  }, [slug]);
+  const openNewPost = useCallback(
+    (preSelectedAccountId?: string) => {
+      // Entry point berbeda konteks (terikat akun tertentu) — skip
+      // resume-check sepenuhnya, ADR-058 addendum poin 9.
+      if (preSelectedAccountId) {
+        setState({ mode: "create", preSelectedAccountId });
+        return;
+      }
+      const unsaved = readUnsavedNewPost(slug);
+      setState(
+        unsaved ? { mode: "resume-check", unsaved } : { mode: "create" },
+      );
+    },
+    [slug],
+  );
 
   const openEditDraft = useCallback((postId: string) => {
     setState({ mode: "edit", postId });

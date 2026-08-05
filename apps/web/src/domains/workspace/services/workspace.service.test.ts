@@ -167,6 +167,7 @@ describe("WorkspaceService.listConnectedAccounts", () => {
         outstandAccountId: "mock-ig-001",
         handle: "@insvire.demo",
         status: "active",
+        reconnectRequired: false,
       },
     ];
     const service = new WorkspaceService(

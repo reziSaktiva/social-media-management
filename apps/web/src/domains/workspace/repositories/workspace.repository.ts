@@ -18,6 +18,7 @@ export interface ConnectedAccountRecord {
   outstandAccountId: string;
   handle: string;
   status: string;
+  reconnectRequired: boolean;
 }
 
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/workspace. */

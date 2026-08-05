@@ -85,7 +85,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
-| **T-012** | Sidebar section "Channels"                      | ⏳      | ADR-058; `listConnectedAccounts` sudah ada, T-012.2 butuh v0.2 |
+| **T-012** | Sidebar section "Channels"                      | 🟡      | T-012.3/4/5/6 selesai (kode-level, review Ridwan lolos); T-012.1/2 masih deferred (v0.2) — scheduled count stub 0, reorder belum persisten |
 | **T-029** | Publish Now                                     | ⏳      | ADR-047; butuh T-025 lebih dulu untuk jalur nyata    |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah             |
 

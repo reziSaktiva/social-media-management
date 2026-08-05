@@ -143,7 +143,7 @@ CTA primary full-width di `WorkspaceSideNav`, di slot `topContent` (di bawah Wor
 
 | Field         | Value                                                                  |
 | ------------- | ---------------------------------------------------------------------- |
-| **Status**    | ⏳ Not Started                                                          |
+| **Status**    | 🟡 In Progress — T-012.3/4/5/6 selesai (T-012.5/6 sebagian, lihat catatan); T-012.1/2 masih deferred |
 | **Domain**    | workspace · UI                                                         |
 | **ADR**       | ADR-058 (+ addendum drag-handle **shift-on-hover**, mengoverride keputusan awal "no-shift") |
 | **Depends**   | T-009 ✅ · `listConnectedAccounts` ✅ (dari T-028, v0.2) · T-012.2 butuh domain publishing (v0.2) |
@@ -151,12 +151,12 @@ CTA primary full-width di `WorkspaceSideNav`, di slot `topContent` (di bawah Wor
 
 Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand overlay, nama akun, status badge, scheduled count ↔ quick-compose "+" (no-shift/fixed-slot).
 
-- [ ] **T-012.1** Skema tabel reorder personal per user (tabel baru + migrasi)
-- [ ] **T-012.2** Query scheduled-posts count lintas domain (Publishing → Workspace, via public API domain)
-- [ ] **T-012.3** Konfirmasi `react-icons` (subset **`react-icons/fa6`**) sebagai dependency runtime `apps/web` di `dependency-strategy.md`
-- [ ] **T-012.4** Render section + avatar bulat + badge logo brand `react-icons/fa6` overlay + status badge
-- [ ] **T-012.5** Scheduled count ↔ quick-compose "+" dengan fixed-slot (no-shift)
-- [ ] **T-012.6** Drag-handle shift-on-hover — seluruh isi baris ikut bergeser
+- [ ] **T-012.1** Skema tabel reorder personal per user (tabel baru + migrasi) — **deferred, menunggu domain publishing v0.2**
+- [ ] **T-012.2** Query scheduled-posts count lintas domain (Publishing → Workspace, via public API domain) — **deferred, menunggu domain publishing v0.2**
+- [x] **T-012.3** Konfirmasi `react-icons` (subset **`react-icons/fa6`**) sebagai dependency runtime `apps/web` di `dependency-strategy.md`
+- [x] **T-012.4** Render section + avatar bulat + badge logo brand `react-icons/fa6` overlay + status badge
+- [x] **T-012.5** Scheduled count ↔ quick-compose "+" dengan fixed-slot (no-shift) — **UI/interaksi selesai** (swap no-shift + `openNewPost(accountId)` wired nyata ke Draft Editor Account Selector), tapi **scheduled count masih stub hardcode 0** di `layout.tsx` — data asli menunggu T-012.2 (v0.2)
+- [x] **T-012.6** Drag-handle shift-on-hover — seluruh isi baris ikut bergeser — **visual/interaksi selesai**, tapi reorder **client-state only, tidak persisten** (reset saat reload) — menunggu T-012.1 (v0.2)
 
 ---
 
