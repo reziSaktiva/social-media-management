@@ -4,7 +4,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 0.3.0      |
+| Version      | 0.3.1      |
 | Status       | Active     |
 | Last Updated | 2026-08-05 |
 
@@ -112,7 +112,7 @@ Termasuk:
 * README **tidak boleh** memuat status (✅ ⏳ 🟡), progress (%), atau fase aktif.
 * Status folder, milestone, dan fase hanya boleh ditampilkan pada `PROJECT_STATE.md`.
 * **Pengecualian tunggal (ADR-062):** status per-task dan per-subtask ditampilkan pada `TASKS.md` + `tasks/vXX-*.md`. Pengecualian ini **tidak** meluas ke phase, milestone, atau overall progress — ketiganya tetap eksklusif milik `PROJECT_STATE.md`, dan tetap terlarang di README maupun dokumen Static Reference lain.
-* **Known Issues (ADR-066):** setiap entry di section `Known Issues` (`PROJECT_STATE.md`) wajib memakai ID global `KI-XXX` (namespace terpisah dari task `T-XXX`) + field table ringkas (`Status`, `Kategori`, `Terkait`, `Ditemukan` bila diketahui). ID tidak pernah didaur ulang — issue yang selesai tetap tercatat dengan `Status: Resolved` atau `Promoted to T-XXX`, bukan dihapus.
+* **Known Issues (ADR-066, amandemen ADR-067):** setiap entry di section `Known Issues` (`PROJECT_STATE.md`) wajib memakai ID global `KI-XXX` (namespace terpisah dari task `T-XXX`) + field table ringkas (`Status`, `Kategori`, `Terkait`, `Ditemukan` bila diketahui). ID tidak pernah didaur ulang. Entry berstatus `Promoted to T-XXX` tetap tercatat sampai task tujuannya selesai. **Entry berstatus `Resolved` dihapus dari `PROJECT_STATE.md` begitu riwayat penyelesaiannya sudah tercatat di `COMPLETE_TASK.md`** — jangan dibiarkan menumpuk dengan status `Resolved` di kedua tempat sekaligus.
 * Setiap perubahan struktural pada dokumen Static Reference wajib dicatat pada `COMPLETE_TASK.md`.
 
 ## Guardrail Ukuran Dokumen (Living/Append-Only)

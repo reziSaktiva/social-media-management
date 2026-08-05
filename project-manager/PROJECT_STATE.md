@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.41     |
+| Version      | 1.0.42     |
 | Status       | Active     |
 | Last Updated | 2026-08-05 |
 
@@ -130,7 +130,7 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
 
 ## Known Issues
 
-> **ID `KI-XXX`** (ADR-066) — global, tidak pernah didaur ulang. `Status`: `Open` / `Resolved` / `Promoted to T-XXX`. Terpisah dari namespace task (`T-XXX`) karena belum tentu jadi task formal.
+> **ID `KI-XXX`** (ADR-066, amandemen ADR-067) — global, tidak pernah didaur ulang. `Status`: `Open` / `Resolved` / `Promoted to T-XXX`. Terpisah dari namespace task (`T-XXX`) karena belum tentu jadi task formal. **Entry `Resolved` yang sudah tercatat di `COMPLETE_TASK.md` dihapus dari daftar ini** (bukan dibiarkan dengan status `Resolved`) — riwayatnya tetap ada di `COMPLETE_TASK.md`, ID-nya tidak didaur ulang untuk entry baru.
 
 ### KI-001 · Transactional Email Provider belum ditetapkan
 
@@ -192,17 +192,6 @@ Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production
 
 Bagian UI/interaksi T-012.5 (swap count↔quick-compose "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level, tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2 (query scheduled-posts count lintas domain), yang masih deferred sampai domain publishing v0.2 siap.
 
-### KI-007 · PR #42 (T-012 Channels) belum di-merge — bug in-scope sudah diperbaiki
-
-| Field | Value |
-|-------|-------|
-| Status | Resolved |
-| Kategori | Bug |
-| Terkait | T-012.9 |
-| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
-
-Drag-reorder race condition (kadang gagal menukar posisi saat drop) — bug in-scope T-012.9 sudah diperbaiki (2026-08-05, review arsitektur Ridwan 0 pelanggaran, QA statis Najwa PASS), detail + evidence root cause di `tasks/v01-foundation.md` → T-012. **Catatan:** PR #42 itu sendiri belum di-merge — itu status merge-nya sendiri, terpisah dari status bug yang sudah `Resolved` di sini.
-
 ### KI-008 · Icon quick-compose "+" pakai `Text`, bukan `Icon`/react-icons
 
 | Field | Value |
@@ -235,17 +224,6 @@ Pakai `size="2xs"` (8px) padahal ADR-058 addendum poin 9 minta 10px, yang cocok 
 | Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
 
 Konvensi folder underscore-prefix (`_sidebar-channels`, `_draft-editor`, fitur resmi Next.js App Router) belum ditulis sebagai konvensi resmi di `context/ctx-development.md` — masih pola implisit yang diikuti dari `_draft-editor` (T-011.2). Perlu diputuskan: dokumentasikan sebagai konvensi resmi, atau ganti pendekatan lain.
-
-### KI-011 · Tidak ada helper `cn`/`clsx` global
-
-| Field | Value |
-|-------|-------|
-| Status | Resolved |
-| Kategori | Tech-Debt |
-| Terkait | T-012 (out-of-scope) · `apps/web` |
-| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
-
-Tidak ada helper `cn`/`clsx` global di `apps/web` — `channels-section.tsx` sebelumnya mendefinisikan `cx()` lokal sendiri (keputusan sadar Mark untuk menghindari dependency baru "just for one file", bukan oversight). **Resolved (2026-08-05):** helper `apps/web/src/lib/cn.ts` sudah dibuat (tanpa dependency baru) dan `channels-section.tsx` sudah dimigrasikan penuh — `cx()` lokal dihapus, 4 titik pemanggilan className diganti `cn()` dari `@/lib/cn`. Review arsitektur Ridwan: 0 pelanggaran. QA statis Najwa: typecheck/lint/test PASS.
 
 ### KI-012 · Tailwind arbitrary-value class belum kanonik
 
@@ -292,11 +270,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-067** — Known Issues `Resolved` yang sudah tercatat di `COMPLETE_TASK.md` dihapus dari `PROJECT_STATE.md` (amandemen ADR-066), bukan dibiarkan menumpuk dengan status `Resolved`.
 * **ADR-066** — Known Issues berstruktur dengan ID `KI-XXX` di `PROJECT_STATE.md` (field table Status/Kategori/Terkait, terpisah dari namespace task).
 * **ADR-065** — Draft Editor: toggle Fullscreen/Standard naik status jadi fitur resmi produk, default diubah ke Standard (amandemen ADR-052).
 * **ADR-064** — Konsolidasi skill ke `.claude/skills/` sebagai sumber tunggal — hapus `.agents/skills/`.
 * **ADR-063** — Integrasi delegasi subagent ke alur kerja wajib + pemetaan Domain → Subagent (`.claude/agents/README.md`).
-* **ADR-062** — Backlog task berjenjang per release (`TASKS.md` + `tasks/`) + amandemen aturan "status hanya di `PROJECT_STATE.md`".
 
 ---
 
