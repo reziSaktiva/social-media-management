@@ -85,7 +85,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
-| **T-012** | Sidebar section "Channels"                      | 🟡      | T-012.3/4/5/6 selesai (kode-level, review Ridwan lolos); T-012.1/2 masih deferred (v0.2); T-012.7–12 baru dari review King Rezi di PR #42 (belum dikerjakan, PR belum di-merge) |
+| **T-012** | Sidebar section "Channels"                      | 🟡      | T-012.3/4/5/6 selesai (kode-level, review Ridwan lolos); T-012.1/2 masih deferred (v0.2); T-012.9 (bug, dari review PR #42) belum dikerjakan, PR belum di-merge. 5 temuan lain dari review PR #42 dipindah ke Known Issues (out-of-scope) |
 | **T-029** | Publish Now                                     | ⏳      | ADR-047; butuh T-025 lebih dulu untuk jalur nyata    |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah             |
 

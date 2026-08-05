@@ -8,6 +8,23 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-05 — ADR-066: Known Issues berstruktur dengan ID `KI-XXX` + pemisahan scope T-012 (out-of-scope dari review PR #42)
+
+### Added
+
+- **ADR-066** (`project-manager/decisions/ADR-066-...md`) — Known Issues di `PROJECT_STATE.md` sekarang memakai ID global `KI-001`–`KI-013` (namespace terpisah dari `T-XXX`), field table ringkas (Status/Kategori/Terkait/Ditemukan), ID tidak didaur ulang. Ditambahkan ke indeks `DECISIONS.md`.
+- **Pemisahan scope T-012**: dari 6 temuan review King Rezi di PR #42 (T-012.7–12), hanya **T-012.9** (bug drag-reorder race condition) dinilai in-scope dan tetap sebagai subtask T-012. 5 temuan lain (T-012.7/8/10/11/12 — code consistency, dokumentasi konvensi folder, helper `cn` global, Tailwind class belum kanonik) dinilai **out-of-scope**, dipindah jadi entry Known Issues terpisah: **KI-008, KI-009, KI-010, KI-011, KI-012**.
+
+### Changed
+
+- `project-manager/tasks/v01-foundation.md` — checklist T-012 dirampingkan, hanya menyisakan T-012.9 dengan pointer ke Known Issues untuk 5 temuan lain.
+- `project-manager/TASKS.md` — baris fokus T-012 di indeks disesuaikan (pointer ke Known Issues untuk temuan out-of-scope).
+- `project-manager/PROJECT_STATE.md` — seluruh section **Known Issues** direstrukturisasi jadi 13 entry berID (`KI-001`–`KI-013`), **Recent Decisions** menambahkan ADR-066 di atas (ADR-061 keluar dari daftar 5 teratas). Version 1.0.40 → 1.0.41.
+- `project-manager/PROJECT_RULES.md` (Static Reference, perubahan struktural) — section **Formatting Rules** menambah bullet konvensi ADR-066 (ID `KI-XXX` + field table wajib untuk setiap entry Known Issues). Version 0.2.0 → 0.3.0.
+- Audit menyeluruh atas seluruh file yang menyebut "Known Issues" (`context/ctx-project.md`, `context/ctx-development.md`, `PROJECT_RULES.md`, `CONVERSATIONS.md`, `DEVELOPER_WORKFLOW.md`, `README.md`, `QA_TEST_ACCOUNTS.md`, `tasks/v10-public-launch.md`, `.claude/agents/gibran-project-manager.md`, `.claude/skills/project-os-navigator/SKILL.md`) — seluruhnya hanya menyebut "Known Issues" sebagai nama section/lokasi (tidak mendeskripsikan format), jadi tidak perlu diubah kecuali `PROJECT_RULES.md` di atas.
+
+---
+
 ## 2026-08-05 — T-012 Sidebar "Channels" — laporan temuan review King Rezi di PR #42 (T-012.7–12, belum dikerjakan)
 
 ### Added
