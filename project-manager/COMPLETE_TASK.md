@@ -8,6 +8,25 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-05 — ADR-067: Known Issues `Resolved` dihapus dari `PROJECT_STATE.md` jika sudah tercatat di `COMPLETE_TASK.md` (amandemen ADR-066)
+
+### Context
+
+King Rezi mengonfirmasi PR #42 sudah `MERGED` (dicek via `gh pr view 42`), lalu meminta KI-007 "diperbaiki". KI-007 ternyata sudah `Resolved` — satu-satunya bagian stale adalah catatan bahwa PR #42 belum di-merge. King Rezi kemudian meminta: entry Known Issues yang sudah `Resolved` **dan** sudah tercatat di `COMPLETE_TASK.md` dihapus saja dari `PROJECT_STATE.md`, dan aturan ini dijadikan aturan resmi pendokumentasian project.
+
+### Added
+
+- **ADR-067** (`project-manager/decisions/ADR-067-...md`, amandemen ADR-066) — Known Issues berstatus `Resolved` yang riwayat penyelesaiannya sudah tercatat di `COMPLETE_TASK.md` dihapus dari `PROJECT_STATE.md`. ID tetap tidak didaur ulang (bagian ADR-066 yang dipertahankan). Entry `Promoted to T-XXX` dikecualikan — tetap tercatat sampai task tujuannya selesai. Ditambahkan ke indeks `DECISIONS.md`.
+
+### Changed
+
+- `project-manager/PROJECT_STATE.md` — **KI-007** dan **KI-011** (keduanya `Resolved`, sudah tercatat di entri `COMPLETE_TASK.md` 2026-08-05 di bawah) dihapus dari section Known Issues. Catatan format section Known Issues diperbarui menyebut ADR-067. Recent Decisions menambahkan ADR-067 di atas (ADR-062 keluar dari daftar 5 teratas). Version 1.0.41 → 1.0.42.
+- `project-manager/decisions/ADR-066-...md` — Status diubah jadi `Accepted — Amended by ADR-067`; poin "ID tidak pernah didaur ulang" ditambah catatan amandemen.
+- `project-manager/DECISIONS.md` — baris ADR-066 diupdate Status-nya, baris baru ADR-067 ditambahkan di atas.
+- `project-manager/PROJECT_RULES.md` — bullet aturan Known Issues (ADR-066) diperbarui menyebut amandemen ADR-067 dan syarat penghapusan entry `Resolved`. Version 0.3.0 → 0.3.1.
+
+---
+
 ## 2026-08-05 — T-012.9 (bug drag-reorder) fix + KI-011 resolved (helper `cn` global + migrasi `channels-section.tsx`)
 
 ### Changed
