@@ -8,6 +8,18 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-05 — T-012.9 (bug drag-reorder) fix + KI-011 resolved (helper `cn` global + migrasi `channels-section.tsx`)
+
+### Changed
+
+- **T-012.9 (bug, in-scope T-012)** — fix race condition drag-reorder di `apps/web/src/app/[slug]/_sidebar-channels/channels-section.tsx` (`handleDrop`): sekarang membaca `sourceId` dari `e.dataTransfer.getData("text/plain")` alih-alih state `draggedId` yang stale lewat closure saat native `drop` fire sebelum React re-render dari `dragstart`. State `draggedId` tetap dipertahankan untuk visual `isDragging`. Diimplementasikan Mark UI Engineer, review arsitektur Ridwan (0 pelanggaran), QA statis Najwa (typecheck/lint/test PASS — verifikasi browser di-skip atas keputusan eksplisit King Rezi, tidak ada environment preview). Belum di-commit ke git.
+- **KI-011 (tech-debt) resolved** — helper `apps/web/src/lib/cn.ts` (`cn()` join className, tanpa dependency baru) dibuat, dan `channels-section.tsx` dimigrasikan penuh: `cx()` lokal dihapus total, 4 titik pemanggilan className diganti `cn()` dari `@/lib/cn`. Review + QA sama seperti di atas.
+- `project-manager/tasks/v01-foundation.md` — T-012.9 dicentang selesai; redaksi Status T-012 disesuaikan (T-012.1/2 tetap deferred menunggu v0.2, tidak diubah).
+- `project-manager/TASKS.md` — baris **Fokus sekarang** untuk T-012 diperbarui menyebut T-012.9 selesai.
+- `project-manager/PROJECT_STATE.md` — **KI-007** dan **KI-011** diubah Status jadi `Resolved`; redaksi KI-007 menambah catatan bahwa merge PR #42 tetap terpisah dari status bug (yang sudah selesai).
+
+---
+
 ## 2026-08-05 — ADR-066: Known Issues berstruktur dengan ID `KI-XXX` + pemisahan scope T-012 (out-of-scope dari review PR #42)
 
 ### Added

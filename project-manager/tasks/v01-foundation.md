@@ -143,7 +143,7 @@ CTA primary full-width di `WorkspaceSideNav`, di slot `topContent` (di bawah Wor
 
 | Field         | Value                                                                  |
 | ------------- | ---------------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress — T-012.3/4/5/6 selesai (T-012.5/6 sebagian, lihat catatan); T-012.1/2 masih deferred; T-012.9 (bug, temuan review PR #42) belum dikerjakan |
+| **Status**    | 🟡 In Progress — T-012.3/4/5/6 selesai (T-012.5/6 sebagian, lihat catatan); T-012.9 (bug, temuan review PR #42) sudah diperbaiki; T-012.1/2 masih deferred |
 | **Domain**    | workspace · UI                                                         |
 | **ADR**       | ADR-058 (+ addendum drag-handle **shift-on-hover**, mengoverride keputusan awal "no-shift") |
 | **Depends**   | T-009 ✅ · `listConnectedAccounts` ✅ (dari T-028, v0.2) · T-012.2 butuh domain publishing (v0.2) |
@@ -160,7 +160,7 @@ Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand o
 
 **Temuan review King Rezi di PR #42 (2026-08-05, sebelum merge):**
 
-- [ ] **T-012.9 (bug)** Drag-reorder channel tidak konsisten: drop kadang tidak menukar posisi. Root cause terverifikasi via simulasi `DragEvent` langsung di browser (`channels-section.tsx`, `ChannelsSection`/`handleDragStart`/`handleDrop`): `handleDrop` membaca state `draggedId` lewat closure yang dibuat ulang tiap render; kalau browser men-fire native `drop` sebelum React sempat re-render dari `setDraggedId` di `handleDragStart`, closure `handleDrop` masih baca `draggedId` lama (`null`) → guard `if (!draggedId...) return;` membatalkan reorder tanpa error terlihat. Terbukti: simulasi tanpa jeda antar `dragstart`/`dragover`/`drop` → gagal reorder; dengan jeda realistis → berhasil. Race condition murni bug implementasi, bukan dari plan/ADR manapun.
+- [x] **T-012.9 (bug)** Drag-reorder channel tidak konsisten: drop kadang tidak menukar posisi. Root cause terverifikasi via simulasi `DragEvent` langsung di browser (`channels-section.tsx`, `ChannelsSection`/`handleDragStart`/`handleDrop`): `handleDrop` membaca state `draggedId` lewat closure yang dibuat ulang tiap render; kalau browser men-fire native `drop` sebelum React sempat re-render dari `setDraggedId` di `handleDragStart`, closure `handleDrop` masih baca `draggedId` lama (`null`) → guard `if (!draggedId...) return;` membatalkan reorder tanpa error terlihat. Terbukti: simulasi tanpa jeda antar `dragstart`/`dragover`/`drop` → gagal reorder; dengan jeda realistis → berhasil. Race condition murni bug implementasi, bukan dari plan/ADR manapun. **Fix (2026-08-05):** `handleDrop` sekarang membaca `sourceId` dari `e.dataTransfer.getData("text/plain")` alih-alih state `draggedId` yang stale lewat closure; state `draggedId` tetap dipertahankan untuk visual `isDragging`. Review arsitektur Ridwan: 0 pelanggaran. QA statis Najwa: typecheck/lint/test PASS (verifikasi browser di-skip atas keputusan eksplisit King Rezi, tidak ada environment preview).
 
 > 5 temuan lain dari review PR #42 (T-012.7/8/10/11/12) dinilai out-of-scope dari T-012 (code consistency, dokumentasi konvensi, refactor helper, lint tooling) — dipindah ke **Known Issues** di `PROJECT_STATE.md`, bukan bagian task ini.
 
