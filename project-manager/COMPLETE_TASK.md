@@ -8,6 +8,61 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-05 — ADR-065: Draft Editor Fullscreen/Standard Toggle Jadi Fitur Resmi
+
+### Added
+
+- ADR-065 (`project-manager/decisions/`) — toggle Fullscreen/Standard di
+  header dialog Draft Editor (New Post & Edit Draft, KSP-05) naik status
+  dari alat banding sementara fase Design System (ADR-052) jadi **fitur
+  resmi produk**, akan dibawa ke implementasi kode `apps/web`. Toggle tidak
+  dipersist — reset ke Standard setiap dialog dibuka ulang.
+- Claude Design (`readme.md`) — section baru "Draft Editor Dialog Variant
+  Toggle (official product feature, ADR-065)".
+
+### Changed
+
+- **Default tampilan Draft Editor diubah dari Fullscreen → Standard**
+  (override ADR-052 addendum "Koreksi: default dikembalikan ke
+  Fullscreen"). Diterapkan di Claude Design: `templates/draft-editor.html`
+  (`var variant = 'standard'`) dan
+  `templates/app-prototype/AppPrototype.dc.html`
+  (`state.dialogVariant: 'standard'`), plus komentar & tooltip toggle di
+  kedua file.
+- `readme.md` — "Don't" list dikoreksi (hapus larangan "Do not ship both
+  Draft Editor Dialog variants to `apps/web`", karena sekarang justru
+  keduanya dikirim); "Direction", "Components" (`.dialog-fs`/`.dialog-lg`),
+  "How to Demo", dan "Files" diperbarui mengikuti default baru + status
+  resmi toggle.
+- `project-manager/DECISIONS.md` — baris indeks ADR-065 ditambahkan.
+- `project-manager/PROJECT_STATE.md` — "Recent Decisions" digeser (ADR-065,
+  ADR-064 masuk; ADR-060, ADR-059 keluar dari daftar 5 teratas).
+- `product-discovery/04-ux/navigation-patterns.md` — 6 penyebutan "modal
+  overlay fullscreen"/"modal fullscreen" (baris Transisi NP di sekitar
+  275/296/314/429/462, dan tabel Decision Log NP-D11) dirapikan: istilah
+  generik "modal overlay" dipakai untuk jenis modalnya, sedangkan
+  Fullscreen/Standard disebut eksplisit sebagai dua variant resmi dengan
+  Standard sebagai default (ADR-065) — supaya tidak lagi seolah-olah
+  Fullscreen satu-satunya/default tampilan.
+- `product-discovery/04-ux/key-screen-patterns.md` (KSP-05, catatan Panel
+  AI) — deskripsi variant Fullscreen/Standard disesuaikan: Standard jadi
+  default (ADR-065), toggle dinyatakan sebagai fitur resmi bukan alat
+  banding sementara.
+
+**Follow-up (2026-08-05, sama hari):** Ditemukan ADR-065 belum punya task
+implementasi kode — T-020 (Draft Editor modal, sudah `✅ Done`) hanya
+mengimplementasikan variant Fullscreen, tidak ada toggle/variant Standard
+sama sekali. Ditambahkan:
+
+- `project-manager/tasks/v02-publishing-mvp.md` — **T-038 baru** "Toggle
+  Fullscreen/Standard resmi di Draft Editor" (4 subtask), memakai nomor
+  cadangan release v0.2 (T-037–T-039). Catatan ditambahkan di T-020
+  menjelaskan deskripsinya sudah tidak lengkap sejak ADR-065.
+- `project-manager/TASKS.md` — indeks v0.2 (18→19 task, ⏳ 12→13) dan Total
+  (69→70 task, 134→138 subtask) diperbarui mengikuti T-038 baru.
+
+---
+
 ## 2026-08-04 — ADR-064: Konsolidasi Skill ke `.claude/skills/` sebagai Sumber Tunggal
 
 **Konteks.** King Rezi menemukan skill project hidup di dua tempat sekaligus:

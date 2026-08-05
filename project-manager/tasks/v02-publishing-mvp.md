@@ -17,6 +17,8 @@
 
 Modal overlay fullscreen (`Dialog variant="fullscreen"`) menggantikan full-page route: caption, account selector, format per akun, Pinterest title/link, schedule date/time, confirm step in-dialog, ResumeDialog untuk draft belum tersimpan. Kode: `apps/web/src/app/[slug]/_draft-editor/modal.tsx`.
 
+**Catatan (2026-08-05):** deskripsi di atas hanya mencakup variant Fullscreen — sejak ADR-065, Fullscreen bukan lagi satu-satunya tampilan. Toggle resmi Fullscreen/Standard (default Standard) **belum diimplementasikan** di kode ini; lihat T-038.
+
 ### T-021 · Persistensi "Save as Draft" / "Edit Draft"
 
 `✅ Done` · **ADR** ADR-016, ADR-017, ADR-031
@@ -52,6 +54,23 @@ Kontrol lampiran media di Draft Editor sudah ada tapi **disabled** dengan ketera
 - [ ] **T-024.3** `OutstandAdapter` media upload working copy (ADR-040)
 - [ ] **T-024.4** Aktifkan kontrol lampiran di Draft Editor + preview
 - [ ] **T-024.5** Delete Media + dialog konfirmasi (ADR-049 Tier 2)
+
+### T-038 · Toggle Fullscreen/Standard resmi di Draft Editor
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | publishing (UI)                                              |
+| **ADR**       | ADR-065 (amandemen ADR-052)                                  |
+| **Depends**   | T-020 (modal Draft Editor sudah ada — Done)                  |
+| **Baca dulu** | `decisions/ADR-065-draft-editor-toggle-fullscreen-standard-jadi-fitur-resmi-default-standard.md` · `04-ux/key-screen-patterns.md` (KSP-05) · `04-ux/navigation-patterns.md` (NP-D11) |
+
+T-020 hanya mengimplementasikan Draft Editor sebagai modal `Dialog variant="fullscreen"` — tidak ada variant Standard maupun toggle. ADR-065 mengangkat toggle Fullscreen/Standard (sebelumnya alat banding di Claude Design saja) jadi fitur resmi produk, dengan default berubah ke **Standard**. Referensi visual sudah ada di Claude Design (`templates/draft-editor.html`, `templates/app-prototype/AppPrototype.dc.html`).
+
+- [ ] **T-038.1** Tambah variant Standard (`Dialog` non-fullscreen, floating card + backdrop) berdampingan dengan variant Fullscreen yang sudah ada
+- [ ] **T-038.2** Toggle di header modal (sebaris status chip, kiri tombol Close) untuk berpindah Fullscreen ↔ Standard
+- [ ] **T-038.3** Default state Standard setiap modal dibuka — tidak dipersist (localStorage/preference) sesuai ADR-065
+- [ ] **T-038.4** Berlaku untuk New Post dan Edit Draft, keduanya
 
 ---
 

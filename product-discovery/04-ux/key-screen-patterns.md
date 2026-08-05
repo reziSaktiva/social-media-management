@@ -434,7 +434,7 @@ Caption Editor kosong atau terfokus
     → Raka mengedit seperlunya
 ```
 
-Panel AI tidak membawa Raka keluar dari Draft Editor — tetap muncul inline/drawer di dalam modal yang sama. Catatan (ADR-052): pada variant `fullscreen` (default saat ini), sidebar navigasi **tertutup total** selama modal terbuka (trade-off yang disadari, lihat NP-D11) — berbeda dari versi sebelumnya di mana sidebar tetap terlihat. Pada variant `standard` (alternatif, masih dibandingkan), sidebar dan layar di belakang tetap terlihat, redup di balik backdrop. (UXP-05)
+Panel AI tidak membawa Raka keluar dari Draft Editor — tetap muncul inline/drawer di dalam modal yang sama. Catatan (ADR-052/ADR-065): pengguna bisa berpindah antara dua variant lewat toggle resmi di header modal (fitur produk, bukan lagi alat banding sementara). Pada variant `standard` (**default sejak ADR-065**), sidebar dan layar di belakang tetap terlihat, redup di balik backdrop. Pada variant `fullscreen` (alternatif, dipilih lewat toggle), sidebar navigasi **tertutup total** selama modal terbuka (trade-off yang disadari, lihat NP-D11) — berbeda dari versi sebelumnya di mana sidebar tetap terlihat. Pilihan toggle tidak dipersist — reset ke Standard setiap modal dibuka ulang. (UXP-05)
 
 ---
 

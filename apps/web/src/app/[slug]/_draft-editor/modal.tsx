@@ -674,7 +674,8 @@ export function DraftEditorModal({ slug }: { slug: string }) {
       <Dialog
         isOpen={isEditorOpen}
         onOpenChange={handleOpenChange}
-        variant="fullscreen"
+        variant="standard"
+        width="min(960px, 94vw)"
         purpose="form"
       >
         {isEditorOpen ? (
