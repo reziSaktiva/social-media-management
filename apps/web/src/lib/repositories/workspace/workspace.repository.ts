@@ -97,6 +97,7 @@ export const workspaceRepository: IWorkspaceRepository = {
       outstandAccountId: account.outstandAccountId,
       handle: account.handle,
       status: account.status,
+      reconnectRequired: account.reconnectRequired,
     }));
   },
 };

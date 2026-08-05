@@ -31,6 +31,10 @@ export default async function Layout({
     redirect("/onboarding");
   }
 
+  // Sidebar "Channels" — service mengembalikan SidebarChannelAccount[] siap-render
+  // (T-012, ADR-058). Kebijakan scheduledCount: 0 ada di WorkspaceService sampai T-012.2.
+  const channels = await workspaceService.listSidebarChannels(workspace.id);
+
   // Provider + modal duduk di level workspace (bukan lagi di `publish/`)
   // supaya CTA "+ New Post" di sidebar bisa membuka Draft Editor dari section
   // manapun — ADR-053, T-011.2.
@@ -44,6 +48,7 @@ export default async function Layout({
             workspaceName={workspace.name}
             userName={session.user.name}
             userEmail={session.user.email}
+            channels={channels}
           />
         }
       >

@@ -6,6 +6,7 @@ import type {
   IWorkspaceRepository,
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
+import type { SidebarChannelAccount } from "../types";
 
 const MAX_NAME_LENGTH = 100;
 const MAX_SLUG_ATTEMPTS = 6;
@@ -69,5 +70,23 @@ export class WorkspaceService {
     workspaceId: WorkspaceId,
   ): Promise<ConnectedAccountRecord[]> {
     return this.repository.listConnectedAccounts(workspaceId);
+  }
+
+  /**
+   * Returns connected accounts shaped for sidebar rendering.
+   * `scheduledCount` is stubbed at 0 until T-012.2 (publishing domain v0.2).
+   */
+  async listSidebarChannels(
+    workspaceId: WorkspaceId,
+  ): Promise<SidebarChannelAccount[]> {
+    const accounts = await this.repository.listConnectedAccounts(workspaceId);
+    return accounts.map((account) => ({
+      id: account.id,
+      platform: account.platform,
+      handle: account.handle,
+      status: account.status,
+      reconnectRequired: account.reconnectRequired,
+      scheduledCount: 0,
+    }));
   }
 }

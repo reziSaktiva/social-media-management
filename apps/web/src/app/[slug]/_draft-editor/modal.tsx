@@ -149,6 +149,7 @@ function DraftEditorForm({
   mode,
   postId,
   prefillCaption,
+  preSelectedAccountId,
   slug,
   onOpenChange,
   onLatestChange,
@@ -158,6 +159,13 @@ function DraftEditorForm({
   mode: "create" | "edit";
   postId?: string;
   prefillCaption?: string;
+  /**
+   * Set only when the editor was opened from an entry point scoped to a
+   * specific connected account (sidebar Channels "+" — T-012, ADR-058
+   * addendum poin 9). The Account Selector below pre-checks this account as
+   * soon as `getConnectedAccountsAction` resolves.
+   */
+  preSelectedAccountId?: string;
   slug: string;
   onOpenChange: (open: boolean) => void;
   onLatestChange: (snapshot: LatestFormSnapshot) => void;
@@ -174,7 +182,9 @@ function DraftEditorForm({
   const [status, setStatus] = useState<ContentStatus>(ContentStatus.Draft);
   const [savedPostId, setSavedPostId] = useState<string | undefined>(postId);
   const [isLoadingDraft, setIsLoadingDraft] = useState(isEdit);
-  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(
+    preSelectedAccountId ? [preSelectedAccountId] : [],
+  );
   const [formatByAccount, setFormatByAccount] = useState<
     Record<string, ContentFormat>
   >({});
@@ -228,7 +238,27 @@ function DraftEditorForm({
     let cancelled = false;
     getConnectedAccountsAction(slug)
       .then((result) => {
-        if (!cancelled) setAccounts(result);
+        if (cancelled) return;
+        setAccounts(result);
+        // Pre-selected account (Channels "+", T-012) is only known by id
+        // before this resolves — `selectedAccountIds` already has it, but
+        // it still needs a default Content Format the same way
+        // `toggleAccount` would set one on manual check.
+        if (preSelectedAccountId) {
+          const preSelected = result.find(
+            (account) => account.id === preSelectedAccountId,
+          );
+          if (preSelected) {
+            setFormatByAccount((prev) =>
+              prev[preSelected.id]
+                ? prev
+                : {
+                    ...prev,
+                    [preSelected.id]: getDefaultFormat(preSelected.platform),
+                  },
+            );
+          }
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -750,6 +780,9 @@ export function DraftEditorModal({ slug }: { slug: string }) {
             postId={state.mode === "edit" ? state.postId : undefined}
             prefillCaption={
               state.mode === "create" ? state.prefillCaption : undefined
+            }
+            preSelectedAccountId={
+              state.mode === "create" ? state.preSelectedAccountId : undefined
             }
             slug={slug}
             onOpenChange={handleOpenChange}

@@ -2,5 +2,6 @@
 export * from "./types";
 export * from "./errors";
 export * from "./value-objects/slugify";
+export * from "./value-objects/connection-status";
 export * from "./repositories/workspace.repository";
 export * from "./services/workspace.service";

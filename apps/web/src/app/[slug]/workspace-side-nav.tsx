@@ -13,11 +13,13 @@ import {
   SideNavSection,
 } from "@astryxdesign/core/SideNav";
 
+import type { SidebarChannelAccount } from "@/domains/workspace";
 import { authClient } from "@/lib/better-auth/client";
 
 import { useThemeMode } from "../providers";
 
 import { useDraftEditor } from "./_draft-editor/context";
+import { ChannelsSection } from "./_sidebar-channels/channels-section";
 
 const NAV_ITEMS = [
   { label: "Home", path: "" },
@@ -32,11 +34,15 @@ export function WorkspaceSideNav({
   workspaceName,
   userName,
   userEmail,
+  // Data untuk section "Channels" (T-012, ADR-058) — dirender via
+  // ChannelsSection di bawah, antara SideNavSection "Menu" dan footer.
+  channels,
 }: {
   slug: string;
   workspaceName: string;
   userName: string;
   userEmail: string;
+  channels: SidebarChannelAccount[];
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -65,7 +71,10 @@ export function WorkspaceSideNav({
           variant="primary"
           width="100%"
           icon={<span aria-hidden>＋</span>}
-          onClick={openNewPost}
+          // openNewPost sekarang menerima preSelectedAccountId opsional
+          // (T-012, ADR-058 addendum poin 9) — wrap supaya event Button
+          // onClick tidak ikut tersalur sebagai argumen pertama.
+          onClick={() => openNewPost()}
         />
       }
       footer={
@@ -121,6 +130,10 @@ export function WorkspaceSideNav({
           );
         })}
       </SideNavSection>
+
+      {/* T-012 / ADR-058: section "Channels" — antara nav items dan zona
+          bawah (Notifikasi/Theme/Avatar), bukan nav item ke-6 (P-IA-01). */}
+      <ChannelsSection slug={slug} channels={channels} />
     </SideNav>
   );
 }

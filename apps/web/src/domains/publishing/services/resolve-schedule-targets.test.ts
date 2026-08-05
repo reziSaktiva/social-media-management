@@ -21,6 +21,7 @@ function createConnectedAccount(
     outstandAccountId: "outstand-account-1",
     handle: "@raka",
     status: "connected",
+    reconnectRequired: false,
     ...overrides,
   };
 }

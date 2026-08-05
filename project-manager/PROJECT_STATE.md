@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.38     |
+| Version      | 1.0.40     |
 | Status       | Active     |
-| Last Updated | 2026-08-04 |
+| Last Updated | 2026-08-05 |
 
 ---
 
@@ -107,6 +107,7 @@ Restricted Actions:
 Task berstatus 🟡 — detail dan subtask ada di [`TASKS.md`](TASKS.md):
 
 * **T-031** Redirect otomatis ke sub-screen tujuan (ADR-054) — Save as Draft sudah sejalan; sisanya menyusul bersama T-029/T-032/T-034.
+* **T-012** Sidebar section "Channels" (ADR-058) — detail subtask di [`TASKS.md`](TASKS.md) / `tasks/v01-foundation.md`.
 
 Catatan non-task: template `design-tokens.md` berstatus Draft / TBD; nilai final
 berkembang iteratif co-equal dengan Claude Design (ADR-056) — tidak ada lagi
@@ -148,6 +149,20 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
   smoke test dan production build, tetapi risiko perubahan API tetap dikelola
   dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan
   verifikasi ulang saat upgrade.
+* **Sidebar Channels (T-012) — scheduled count masih stub 0, reorder channel
+  belum persisten.** Bagian UI/interaksi T-012.5 (swap count↔quick-compose
+  "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level,
+  tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua
+  hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2
+  (query scheduled-posts count lintas domain), yang masih deferred sampai
+  domain publishing v0.2 siap.
+* **PR #42 (T-012 Channels) belum di-merge — 6 temuan dari review King Rezi
+  (T-012.7–12) belum dikerjakan.** Termasuk 1 bug nyata (drag-reorder race
+  condition, kadang gagal menukar posisi saat drop) dan 5 catatan kualitas
+  (icon "+" pakai `Text` bukan `Icon`/react-icons, token font-size salah,
+  konvensi folder underscore belum terdokumentasi, tidak ada helper `cn`
+  global, beberapa Tailwind class belum kanonik). Detail lengkap + evidence
+  di `tasks/v01-foundation.md` → T-012. Rencana dikerjakan di sesi terpisah.
 * **Hydration gagal saat diakses lewat tunnel ngrok** (→ T-018). Saat uji halaman
   auth lewat tunnel ngrok yang dipakai untuk `BETTER_AUTH_URL`, seluruh halaman
   (bukan spesifik komponen auth) tidak ter-hydrate — tidak ada React fiber di
