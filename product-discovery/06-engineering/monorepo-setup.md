@@ -240,7 +240,7 @@ src/app/
 Contoh — `draft-editor` dipakai lintas beberapa route di dalam `[slug]/`,
 sehingga LCA-nya adalah `app/[slug]/`:
 
-```
+```text
 app/[slug]/components/draft-editor/
 ├── Context.tsx           ← component, PascalCase
 ├── Modal.tsx              ← component, PascalCase

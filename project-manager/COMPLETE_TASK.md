@@ -28,7 +28,7 @@ underscore apa adanya, melainkan mengganti konvensinya.
 3. Folder `components/` ditaruh di lowest common ancestor (LCA) route dari
    seluruh pemakainya di App Router tree (1 route → lokal; lintas route 1
    subtree → naik ke ancestor terendah; lintas subtree/root → naik ke
-   `app/` root).
+   `src/components/`).
 
 ### Changed (kode)
 
@@ -37,7 +37,7 @@ konvensi baru — bukan cuma `_draft-editor`/`_sidebar-channels`, tapi juga
 auth forms, onboarding form, workspace-side-nav, publish-tabbar, drafts-list,
 dan `providers.tsx`. Contoh: `app/[slug]/_draft-editor/*` →
 `app/[slug]/components/draft-editor/*`, `app/providers.tsx` →
-`app/components/Providers.tsx`.
+`apps/web/src/components/Providers.tsx`.
 
 ### Changed (dokumentasi)
 

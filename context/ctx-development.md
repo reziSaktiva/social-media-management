@@ -78,8 +78,8 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
 
 ### Git / PR (saat diminta user)
 
-15. Commit hanya jika user meminta — Conventional Commits, imperative, fokus “why”.
-16. Jangan `--no-verify` / force push ke main kecuali diminta eksplisit.
+16. Commit hanya jika user meminta — Conventional Commits, imperative, fokus “why”.
+17. Jangan `--no-verify` / force push ke main kecuali diminta eksplisit.
 
 ---
 

@@ -40,7 +40,7 @@ underscore-prefix apa adanya, melainkan mengganti konvensinya sekaligus.
    - Dipakai lintas beberapa route dalam satu subtree → naik ke level route
      leluhur terendah yang mencakup semua pemakai.
    - Dipakai lintas subtree yang tidak berkaitan (termasuk dari
-     `app/layout.tsx` root) → naik ke level `app/` root.
+     `app/layout.tsx` root) → naik ke `src/components/`.
    - File wajib Next.js (`page.tsx`, `layout.tsx`, `route.ts`) tidak
      terpengaruh — tetap lowercase sesuai kontrak framework Next.js.
 4. **Berlaku juga untuk `src/components/[feature]/`** — aturan penamaan yang
