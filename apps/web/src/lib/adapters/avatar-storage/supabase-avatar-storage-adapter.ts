@@ -33,4 +33,14 @@ export const supabaseAvatarStorageAdapter: IAvatarStorageAdapter = {
     // param browser/CDN bisa terus menampilkan avatar lama yang sudah di-cache.
     return { url: `${data.publicUrl}?v=${Date.now()}` };
   },
+
+  async deleteAvatar({ userId, extension }) {
+    const supabase = createServerSupabaseClient();
+    const path = buildAvatarPath(userId, extension);
+
+    // Best-effort — dipanggil sebagai cleanup saat DB write gagal setelah
+    // upload sukses (identity.service.ts). Errornya sendiri sengaja tidak
+    // dilempar; kegagalan cleanup tidak boleh menutupi error asli.
+    await supabase.storage.from(AVATARS_BUCKET).remove([path]);
+  },
 };

@@ -42,12 +42,18 @@ export function AccountSideNav({
       <SideNavSection title="Account">
         {NAV_ITEMS.map((item) => {
           const href = `/account/${item.path}`;
+          // Sama seperti WorkspaceSideNav/SettingsSideNav: item dengan path
+          // kosong (kalau ada) butuh exact match, bukan startsWith, supaya
+          // tidak tetap "selected" di setiap sub-route.
+          const isSelected = item.path
+            ? pathname.startsWith(href)
+            : pathname === href;
           return (
             <SideNavItem
               key={item.label}
               label={item.label}
               href={href}
-              isSelected={pathname.startsWith(href)}
+              isSelected={isSelected}
             />
           );
         })}

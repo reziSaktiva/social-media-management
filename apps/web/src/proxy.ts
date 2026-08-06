@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
+import { LAST_WORKSPACE_SLUG_COOKIE } from "@/lib/workspace/last-workspace-cookie";
+
 /**
  * Auth guard — session-cookie gate for protected routes (M8 workspace onboarding).
  * /api/auth/*, /api/jobs/*, /api/health are bypassed (monorepo-setup.md).
@@ -24,8 +26,27 @@ const PUBLIC_AUTH_PATHS = [
   "/reset-password",
 ];
 
+// Top-level segments yang bukan workspace slug (`/[slug]/...`) — dipakai
+// findWorkspaceSlugInPath di bawah untuk membedakan "/insvire" (workspace)
+// dari "/account", "/onboarding", dst.
+const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
+  "account",
+  "api",
+  "onboarding",
+  ...PUBLIC_AUTH_PATHS.map((path) => path.slice(1)),
+]);
+
 function isUnderPath(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(`${base}/`);
+}
+
+/** Segmen pertama path, kalau bukan route top-level yang direservasi. */
+function findWorkspaceSlugInPath(pathname: string): string | null {
+  const [, first] = pathname.split("/");
+  if (!first || RESERVED_TOP_LEVEL_SEGMENTS.has(first)) {
+    return null;
+  }
+  return first;
 }
 
 export function proxy(request: NextRequest) {
@@ -48,7 +69,23 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+
+  // Ingat workspace terakhir dikunjungi supaya link "Kembali ke Workspace"
+  // di /account tidak selalu jatuh ke membership tertua user (code-review
+  // finding, T-016 review).
+  if (hasSessionCookie) {
+    const workspaceSlug = findWorkspaceSlugInPath(pathname);
+    if (workspaceSlug) {
+      response.cookies.set(LAST_WORKSPACE_SLUG_COOKIE, workspaceSlug, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+        sameSite: "lax",
+      });
+    }
+  }
+
+  return response;
 }
 
 export const config = {

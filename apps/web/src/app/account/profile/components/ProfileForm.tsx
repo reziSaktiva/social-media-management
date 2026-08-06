@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { Avatar } from "@astryxdesign/core/Avatar";
 import { Banner } from "@astryxdesign/core/Banner";
@@ -12,11 +12,14 @@ import { Section } from "@astryxdesign/core/Section";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { VStack } from "@astryxdesign/core/VStack";
 
-import type { UserProfileRecord } from "@/domains/identity";
+import {
+  ALLOWED_AVATAR_ACCEPT,
+  MAX_AVATAR_BYTES,
+  MAX_NAME_LENGTH,
+  type UserProfileRecord,
+} from "@/domains/identity";
 
 import { updateProfileAction } from "../actions";
-
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2MB, sesuai mockup account-profile.html
 
 export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
   const [name, setName] = useState(profile.name);
@@ -33,6 +36,14 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
     [avatarFile, image],
   );
 
+  // Revoke blob URL di atas begitu diganti (file lain dipilih) atau komponen
+  // unmount — mencegah blob URL menumpuk tiap kali user ganti pilihan avatar
+  // sebelum submit. Bukan setState, jadi tidak melanggar react-hooks/set-state-in-effect.
+  useEffect(() => {
+    if (!avatarFile) return;
+    return () => URL.revokeObjectURL(avatarPreviewUrl);
+  }, [avatarPreviewUrl, avatarFile]);
+
   function handleAvatarChange(files: File | File[] | null) {
     const file = Array.isArray(files) ? (files[0] ?? null) : files;
     setAvatarFile(file);
@@ -43,6 +54,12 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
     e.preventDefault();
     setError(null);
     setIsSuccess(false);
+
+    if (name.trim().length > MAX_NAME_LENGTH) {
+      setError(`Nama maksimal ${MAX_NAME_LENGTH} karakter.`);
+      return;
+    }
+
     setIsSubmitting(true);
 
     const formData = new FormData();
@@ -51,19 +68,23 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
       formData.set("avatar", avatarFile);
     }
 
-    const result = await updateProfileAction(formData);
+    try {
+      const result = await updateProfileAction(formData);
 
-    if (!result.ok) {
-      setError(result.error);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setName(result.name);
+      setImage(result.image);
+      setAvatarFile(null);
+      setIsSuccess(true);
+    } catch {
+      setError("Gagal menyimpan profil. Coba lagi.");
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    setName(result.name);
-    setImage(result.image);
-    setAvatarFile(null);
-    setIsSuccess(true);
-    setIsSubmitting(false);
   }
 
   return (
@@ -84,7 +105,7 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
                 label="Foto Profil"
                 value={avatarFile}
                 onChange={handleAvatarChange}
-                accept="image/jpeg,image/png"
+                accept={ALLOWED_AVATAR_ACCEPT}
                 maxSize={MAX_AVATAR_BYTES}
                 placeholder="Upload Foto"
                 description="JPG/PNG, maks 2MB"

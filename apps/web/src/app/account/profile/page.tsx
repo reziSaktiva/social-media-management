@@ -1,16 +1,15 @@
 import { asUserId } from "@social/shared";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { IdentityService } from "@/domains/identity";
 import { supabaseAvatarStorageAdapter } from "@/lib/adapters/avatar-storage";
-import { auth } from "@/lib/better-auth/auth";
+import { getCachedSession } from "@/lib/better-auth/session";
 import { identityRepository } from "@/lib/repositories/identity";
 
 import { ProfileForm } from "./components/ProfileForm";
 
 export default async function Page() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getCachedSession();
   if (!session) {
     redirect("/login");
   }

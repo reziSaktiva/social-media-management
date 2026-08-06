@@ -58,11 +58,17 @@ export function WorkspaceSideNav({
   // dialog konfirmasi sebelum eksekusi, karena berpotensi menginterupsi
   // pekerjaan yang belum tersimpan meski aksinya sendiri reversibel.
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   async function handleLogout() {
-    await authClient.signOut();
-    router.push("/login");
-    router.refresh();
+    setIsLoggingOut(true);
+    try {
+      await authClient.signOut();
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setIsLoggingOut(false);
+    }
   }
 
   return (
@@ -131,9 +137,15 @@ export function WorkspaceSideNav({
             description="Perubahan yang belum disimpan di halaman ini bisa hilang (ADR-049/NP-D10)."
             cancelLabel="Batal"
             actionLabel="Logout"
+            isActionLoading={isLoggingOut}
             onAction={async () => {
-              await handleLogout();
-              setIsLogoutDialogOpen(false);
+              try {
+                await handleLogout();
+                setIsLogoutDialogOpen(false);
+              } catch {
+                // Dialog tetap terbuka supaya user bisa coba lagi atau Batal;
+                // isLoggingOut sudah direset di handleLogout's finally.
+              }
             }}
           />
         </HStack>

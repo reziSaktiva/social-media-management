@@ -48,6 +48,11 @@ export async function updateProfileAction(
     if (error instanceof ValidationError) {
       return { ok: false, error: error.message };
     }
-    throw error;
+    // Error lain (mis. ExternalServiceError dari upload avatar gagal) tidak
+    // dilempar mentah ke client — diterjemahkan jadi pesan generik supaya
+    // ProfileForm selalu punya {ok:false} untuk ditampilkan, bukan exception
+    // tak tertangani.
+    console.error("[updateProfileAction] gagal update profil:", error);
+    return { ok: false, error: "Gagal menyimpan profil. Coba lagi." };
   }
 }

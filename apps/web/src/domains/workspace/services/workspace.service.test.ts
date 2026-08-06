@@ -25,6 +25,7 @@ function createFakeRepository(
       slug,
     }),
     findAnyMembershipSlugByUserId: async () => null,
+    findDefaultWorkspaceForUser: async () => null,
     findBySlug: async () => null,
     listConnectedAccounts: async () => [],
     ...overrides,

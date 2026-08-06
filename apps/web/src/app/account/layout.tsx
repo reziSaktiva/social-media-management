@@ -1,12 +1,13 @@
 import { asUserId } from "@social/shared";
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@astryxdesign/core/AppShell";
 
 import { WorkspaceService } from "@/domains/workspace";
-import { auth } from "@/lib/better-auth/auth";
+import { getCachedSession } from "@/lib/better-auth/session";
 import { workspaceRepository } from "@/lib/repositories/workspace";
+import { LAST_WORKSPACE_SLUG_COOKIE } from "@/lib/workspace/last-workspace-cookie";
 
 import { AccountSideNav } from "./components/AccountSideNav";
 
@@ -19,26 +20,36 @@ export default async function Layout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getCachedSession();
   if (!session) {
     redirect("/login");
   }
 
   const workspaceService = new WorkspaceService(workspaceRepository);
-  const slug = await workspaceService.getDefaultWorkspaceSlugForUser(
-    asUserId(session.user.id),
-  );
-  const workspace = slug
-    ? await workspaceService.getWorkspaceBySlug(slug)
+
+  // Preferensikan workspace yang terakhir dikunjungi (cookie diset proxy.ts)
+  // di atas "membership tertua" — code-review finding: link "Kembali ke
+  // Workspace" sebelumnya selalu jatuh ke workspace tertua user, bukan yang
+  // sedang dilihat sebelum masuk ke /account.
+  const lastWorkspaceSlug = (await cookies()).get(
+    LAST_WORKSPACE_SLUG_COOKIE,
+  )?.value;
+  const workspace = lastWorkspaceSlug
+    ? await workspaceService.getWorkspaceBySlug(lastWorkspaceSlug)
     : null;
+  const defaultWorkspace =
+    workspace ??
+    (await workspaceService.getDefaultWorkspaceForUser(
+      asUserId(session.user.id),
+    ));
 
   return (
     <AppShell
       contentPadding={4}
       sideNav={
         <AccountSideNav
-          workspaceSlug={workspace?.slug ?? null}
-          workspaceName={workspace?.name ?? null}
+          workspaceSlug={defaultWorkspace?.slug ?? null}
+          workspaceName={defaultWorkspace?.name ?? null}
         />
       }
     >

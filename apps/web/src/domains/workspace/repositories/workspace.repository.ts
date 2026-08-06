@@ -32,6 +32,13 @@ export interface IWorkspaceRepository {
 
   findAnyMembershipSlugByUserId(userId: UserId): Promise<string | null>;
 
+  /**
+   * Sama seperti `findAnyMembershipSlugByUserId` + `findBySlug` digabung
+   * satu query — dipakai caller yang butuh WorkspaceRecord lengkap
+   * (bukan cuma slug) supaya tidak dua round trip (code-review finding).
+   */
+  findDefaultWorkspaceForUser(userId: UserId): Promise<WorkspaceRecord | null>;
+
   findBySlug(slug: string): Promise<WorkspaceRecord | null>;
 
   /** Ordered by `connectedAt` ascending. */

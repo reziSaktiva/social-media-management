@@ -13,6 +13,12 @@ export interface UploadAvatarResult {
   url: string;
 }
 
+export interface DeleteAvatarInput {
+  userId: UserId;
+  /** File extension without leading dot — must match the uploaded file's. */
+  extension: string;
+}
+
 /**
  * Port for avatar file storage — implementation (Supabase Storage) lives in
  * src/lib/adapters/avatar-storage. Kept out of the repository interface
@@ -21,4 +27,6 @@ export interface UploadAvatarResult {
  */
 export interface IAvatarStorageAdapter {
   uploadAvatar(input: UploadAvatarInput): Promise<UploadAvatarResult>;
+  /** Best-effort cleanup — used when a DB write fails after upload succeeded. */
+  deleteAvatar(input: DeleteAvatarInput): Promise<void>;
 }

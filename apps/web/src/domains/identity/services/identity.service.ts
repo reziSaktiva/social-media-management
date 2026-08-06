@@ -4,15 +4,11 @@ import { ValidationError } from "@/lib/utils/errors";
 import type { IAvatarStorageAdapter } from "../adapters/avatar-storage-adapter";
 import type { IIdentityRepository } from "../repositories/identity.repository";
 import type { UserProfileRecord } from "../types";
-
-const MAX_NAME_LENGTH = 100;
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2MB, sesuai mockup account-profile.html
-
-/** MIME type → file extension, dipakai untuk validasi format + naming path storage. */
-const ALLOWED_AVATAR_MIME_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-};
+import {
+  ALLOWED_AVATAR_MIME_TYPES,
+  MAX_AVATAR_BYTES,
+  MAX_NAME_LENGTH,
+} from "../validation";
 
 export interface UpdateProfileInput {
   userId: UserId;
@@ -46,6 +42,7 @@ export class IdentityService {
     }
 
     let image: string | undefined;
+    let uploadedAvatarExtension: string | undefined;
 
     if (input.avatarFile) {
       const extension = ALLOWED_AVATAR_MIME_TYPES[input.avatarFile.contentType];
@@ -63,8 +60,23 @@ export class IdentityService {
         extension,
       });
       image = uploaded.url;
+      uploadedAvatarExtension = extension;
     }
 
-    return this.repository.updateProfile(input.userId, { name, image });
+    try {
+      return await this.repository.updateProfile(input.userId, { name, image });
+    } catch (error) {
+      if (uploadedAvatarExtension) {
+        // Upload sudah sukses tapi DB write gagal — bersihkan file yatim
+        // (best-effort; kegagalan cleanup tidak boleh menutupi error asli).
+        await this.avatarStorage
+          .deleteAvatar({
+            userId: input.userId,
+            extension: uploadedAvatarExtension,
+          })
+          .catch(() => {});
+      }
+      throw error;
+    }
   }
 }
