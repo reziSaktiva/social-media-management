@@ -57,7 +57,7 @@ function PlatformBadge({ platform }: { platform: SocialPlatform }) {
     <HStack
       hAlign="center"
       vAlign="center"
-      className="absolute -end-1 -bottom-1 size-4 rounded-full bg-surface shadow-[0_0_0_var(--border-width)_var(--color-border)]"
+      className="absolute -inset-e-1 -bottom-1 size-4 rounded-full bg-surface shadow-[0_0_0_var(--border-width)_var(--color-border)]"
       aria-hidden
     >
       {/* Warna brand asli (bukan token) — pengecualian disengaja, lihat
@@ -127,7 +127,7 @@ function ChannelRow({
       <HStack
         align="center"
         className={cn(
-          "inset-y-0 -start-4 cursor-grab transition-opacity",
+          "inset-y-0 -inset-s-4 cursor-grab transition-opacity",
           TRANSITION_FAST,
           isRevealed ? "opacity-100" : "opacity-0",
         )}
