@@ -98,6 +98,7 @@ export const workspaceRepository: IWorkspaceRepository = {
       handle: account.handle,
       status: account.status,
       reconnectRequired: account.reconnectRequired,
+      connectedAt: account.connectedAt,
     }));
   },
 };

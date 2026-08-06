@@ -19,6 +19,7 @@ export interface ConnectedAccountRecord {
   handle: string;
   status: string;
   reconnectRequired: boolean;
+  connectedAt: Date;
 }
 
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/workspace. */

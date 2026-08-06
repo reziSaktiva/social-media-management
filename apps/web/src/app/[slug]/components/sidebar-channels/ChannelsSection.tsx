@@ -28,7 +28,7 @@ import { cn } from "@/lib/cn";
 
 import { useDraftEditor } from "../draft-editor/Context";
 
-import { PLATFORM_ICON } from "./platform-icons";
+import { PLATFORM_ICON } from "../platform-icons";
 
 export type { SidebarChannelAccount };
 

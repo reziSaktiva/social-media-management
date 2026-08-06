@@ -172,7 +172,7 @@ Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand o
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress — T-013.3 selesai (UI Connected Accounts); T-013.1/2 masih diblokir T-025 (v0.2, belum dikerjakan); T-013.4 murni operasional, belum ada tindakan |
 | **Domain**    | workspace · integration                                      |
 | **ADR**       | ADR-021, ADR-037 (platform), ADR-040                         |
 | **Depends**   | T-006 ✅                                                      |
@@ -182,7 +182,7 @@ OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Saat i
 
 - [ ] **T-013.1** `OutstandAdapter.connectAccount` — inisiasi redirect flow (butuh **T-025**, v0.2 ⏳)
 - [ ] **T-013.2** Route Handler callback + persist `WorkspaceConnectedAccount`
-- [ ] **T-013.3** UI `/settings/connected-accounts` — daftar + tombol Connect per platform
+- [x] **T-013.3** UI `/settings/connected-accounts` — daftar + tombol Connect per platform
 - [ ] **T-013.4** Operasional X: kredensial BYOK dikonfigurasi manual Project Owner di dashboard Outstand — **aplikasi tidak membuat form atau secret store X**
 
 ### T-014 · Disconnect account + dialog konfirmasi

@@ -8,6 +8,49 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-06 — T-013.3 selesai: UI `/settings/connected-accounts`
+
+### Context
+
+Subtask **T-013.3** (UI daftar akun terhubung + tombol Connect per platform)
+dikerjakan Mark UI Engineer, direview arsitektur oleh Ridwan (clean, 1 catatan
+penataan folder — sudah diperbaiki sebelum selesai), lalu QA statis oleh
+Najwa (typecheck/lint/test PASS, tanpa blocker). T-013.1/.2/.4 **tidak**
+dikerjakan pada sesi ini — T-013 secara keseluruhan masih berstatus
+🟡 In Progress (bukan selesai).
+
+### Changed (kode)
+
+- Server Component baru untuk route `/settings/connected-accounts`.
+- Komponen baru `ConnectedAccountsList` — menampilkan daftar akun terhubung
+  per workspace.
+- Komponen baru `ConnectPlatformMenu` — menu tombol Connect per platform
+  sosial yang didukung.
+- Field `connectedAt` ditambahkan ke domain workspace (connected account)
+  untuk mendukung tampilan tanggal terhubung di UI.
+
+### Keputusan scope
+
+- **Connect CTA untuk semua platform disabled** — T-025 (Real OutstandAdapter,
+  v0.2) belum dikerjakan, jadi belum ada jalur nyata untuk inisiasi OAuth
+  redirect (T-013.1 blocked by T-025).
+- **Row action (disconnect/reconnect) disabled + tooltip penjelasan** — T-014
+  (Disconnect) dan T-015 (Reconnect) belum dikerjakan, jadi UI hanya
+  menampilkan state tapi belum mengekspos aksi fungsional.
+
+### Verifikasi
+
+- Typecheck/lint/test: PASS, bersih.
+- Browser E2E: PASS — termasuk pengecekan empty state (belum ada akun
+  terhubung) dan regresi sidebar Channels (memastikan perubahan tidak
+  merusak fitur T-012 yang sudah ada).
+
+### Terkait
+
+- `project-manager/tasks/v01-foundation.md` — T-013.3 dicentang selesai,
+  status T-013 diubah jadi 🟡 In Progress.
+- `project-manager/TASKS.md` — indeks release v0.1 diperbarui (2 🟡, 8 ⏳).
+
 ## 2026-08-06 — KI-013 resolved: instalasi self-hosted Better Auth terverifikasi, ngrok tidak lagi wajib
 
 ### Context
