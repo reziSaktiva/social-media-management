@@ -168,6 +168,7 @@ describe("WorkspaceService.listConnectedAccounts", () => {
         handle: "@insvire.demo",
         status: "active",
         reconnectRequired: false,
+        connectedAt: new Date("2026-01-01T00:00:00Z"),
       },
     ];
     const service = new WorkspaceService(

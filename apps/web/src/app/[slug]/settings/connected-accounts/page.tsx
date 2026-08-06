@@ -1,17 +1,31 @@
-export default function Page() {
-  return (
-    <main className="flex min-h-screen items-center justify-center p-8">
-      <div className="space-y-2 text-center">
-        <p className="text-sm tracking-wide text-zinc-500 uppercase">
-          Scaffold
-        </p>
-        <h1 className="text-2xl font-semibold text-zinc-900">
-          Settings — Connected Accounts
-        </h1>
-        <p className="text-sm text-zinc-600">
-          Placeholder — implementasi fitur di M8.
-        </p>
-      </div>
-    </main>
-  );
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
+import { WorkspaceService } from "@/domains/workspace";
+import { auth } from "@/lib/better-auth/auth";
+import { workspaceRepository } from "@/lib/repositories/workspace";
+
+import { ConnectedAccountsList } from "./components/ConnectedAccountsList";
+
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    redirect("/login");
+  }
+
+  const workspaceService = new WorkspaceService(workspaceRepository);
+  const workspace = await workspaceService.getWorkspaceBySlug(slug);
+  if (!workspace) {
+    redirect("/onboarding");
+  }
+
+  const accounts = await workspaceService.listConnectedAccounts(workspace.id);
+
+  return <ConnectedAccountsList accounts={accounts} />;
 }
