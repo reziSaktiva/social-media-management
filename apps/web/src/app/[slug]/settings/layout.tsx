@@ -1,14 +1,34 @@
-import { Section } from "@astryxdesign/core/Section";
+import {
+  Layout as AstryxLayout,
+  LayoutContent,
+  LayoutPanel,
+} from "@astryxdesign/core/Layout";
 
-export default function Layout({ children }: { children: React.ReactNode }) {
-  // settings layout shell — sidebar/nav internal direncanakan di T-016.1.
-  // Section dipakai (bukan AppShell kedua — route ini sudah dibungkus
-  // AppShell di [slug]/layout.tsx, dan menumpuk AppShell dilarang) hanya
-  // untuk memberi surface/background token yang benar (fix kontras
-  // ScaffoldPlaceholder di dark mode).
+import { SettingsSideNav } from "./components/SettingsSideNav";
+
+// settings layout shell (T-016.1) — subnav General/Connected Accounts/
+// Members/Roles/Billing di LayoutPanel start, konten child page.tsx tidak
+// diubah sama sekali. Route ini sudah dibungkus AppShell + WorkspaceSideNav
+// di [slug]/layout.tsx — jadi TIDAK menumpuk AppShell/SideNav kedua di sini,
+// hanya Layout+LayoutPanel (secondary nav di dalam content area).
+export default async function Layout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+
   return (
-    <Section variant="section" minHeight="100%">
-      {children}
-    </Section>
+    <AstryxLayout
+      height="fill"
+      start={
+        <LayoutPanel role="navigation" width={220} hasDivider>
+          <SettingsSideNav slug={slug} />
+        </LayoutPanel>
+      }
+      content={<LayoutContent padding={4}>{children}</LayoutContent>}
+    />
   );
 }

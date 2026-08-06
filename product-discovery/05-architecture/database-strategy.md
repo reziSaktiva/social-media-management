@@ -603,11 +603,11 @@ Media file disimpan di **Supabase Storage** (keputusan pra-architecture). Supaba
 | Bucket | Tipe | Konten |
 |--------|------|--------|
 | `media` | Private | File yang diupload user: gambar, video, gif untuk konten |
-| `avatars` | Public | Avatar workspace dan Start Page |
+| `avatars` | Public | Avatar workspace, Start Page, dan avatar user personal (T-016.2) |
 
 **Alasan private untuk `media`:** File konten tidak boleh diakses langsung via URL publik tanpa authentication. Signed URL digunakan untuk generate link sementara saat merender konten.
 
-**Alasan public untuk `avatars`:** Avatar workspace dan Start Page perlu diakses publik (Start Page adalah halaman publik).
+**Alasan public untuk `avatars`:** Avatar workspace, Start Page, dan avatar user personal perlu diakses publik (Start Page adalah halaman publik; avatar user ditampilkan di berbagai UI tanpa signed URL).
 
 ## Naming Convention File
 
@@ -617,6 +617,7 @@ Media file disimpan di **Supabase Storage** (keputusan pra-architecture). Supaba
 Contoh:
 media/abc-123-workspace/2026/07/f47ac10b-58cc-4372-a567-0e02b2c3d479.jpg
 avatars/abc-123-workspace/avatar.jpg
+avatars/users/{user_id}/avatar.{ext}
 ```
 
 ## Storage URL di Database

@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.44     |
+| Version      | 1.0.45     |
 | Status       | Active     |
 | Last Updated | 2026-08-06 |
 
@@ -108,6 +108,7 @@ Task berstatus 🟡 — detail dan subtask ada di [`TASKS.md`](TASKS.md):
 
 * **T-031** Redirect otomatis ke sub-screen tujuan (ADR-054) — Save as Draft sudah sejalan; sisanya menyusul bersama T-029/T-032/T-034.
 * **T-012** Sidebar section "Channels" (ADR-058) — detail subtask di [`TASKS.md`](TASKS.md) / `tasks/v01-foundation.md`.
+* **T-016** Account & user settings screens — T-016.1/2/3/5 selesai; hanya T-016.4 (notifications) tersisa, Blocked oleh T-036 (v0.2).
 
 Catatan non-task: template `design-tokens.md` berstatus Draft / TBD; nilai final
 berkembang iteratif co-equal dengan Claude Design (ADR-056) — tidak ada lagi
@@ -182,6 +183,16 @@ Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production
 
 Bagian UI/interaksi T-012.5 (swap count↔quick-compose "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level, tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2 (query scheduled-posts count lintas domain), yang masih deferred sampai domain publishing v0.2 siap.
 
+### KI-014 · Domain `identity` belum punya unit test
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-016 |
+
+`IdentityService`, `IIdentityRepository`, dan `SupabaseAvatarStorageAdapter` (domain `identity`, diisi pertama kali lewat T-016.2) belum punya unit test Vitest. Review arsitektur Ridwan sudah memverifikasi boundary domain bersih (tidak ada pelanggaran), tetapi coverage test-nya nihil. Tidak memblokir penutupan T-016.1/.2/.3/.5 — keempatnya sudah lolos QA browser end-to-end.
+
 ---
 
 ## Blockers
@@ -194,11 +205,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-016.1/2/3/5 selesai** — Account & user settings screens: layout `account/`+`settings/` (sidebar/nav internal), `/account/profile` (edit nama + avatar, domain `identity` diisi pertama kali), `/account/preferences` (toggle tema), dialog konfirmasi Logout (ADR-049 Tier 2). Lolos review arsitektur Ridwan (nihil temuan) dan QA end-to-end Najwa + verifikasi tambahan sesi utama. Bucket `avatars` diperluas untuk avatar user personal lewat **ADR-071**. T-016.4 (notifications) tetap Blocked, menunggu T-036 (v0.2). Known Issue baru: KI-014 (domain `identity` belum ada unit test).
 * **KI-013 resolved** — Instalasi self-hosted Better Auth (ADR-070) terverifikasi jalan normal di `localhost:3000` (login/register berhasil, session/cookie terbaca) tanpa ngrok. `db:studio` script ditambahkan (`bun run db:studio`) untuk lihat data `identity_*`/domain lain via Prisma Studio. `QA_TEST_ACCOUNTS.md` diperbarui — verifikasi browser tidak lagi wajib tanya URL tunnel.
 * **ADR-070** — Tetap self-hosted Better Auth, tolak Better Auth Cloud. Requirement tunnel ngrok di dev mode ternyata berasal dari constraint Better Auth Cloud (Base URL wajib publik, sempat dipakai tanpa tercatat ADR), bukan keterbatasan Better Auth self-hosted. Migrasi ke Supabase Auth dipertimbangkan lalu ditolak. Instalasi self-hosted (`localhost:3000` + Supabase Cloud, tanpa Railway) dilakukan mandiri oleh King Rezi.
 * **KI-004 resolved** — Alur UI toggle Light/Dark (klik toggle di sidebar footer → cookie tertulis) sudah diuji lewat browser oleh King Rezi, berhasil sesuai ekspektasi.
 * **KI-010 resolved** — Konvensi folder underscore-prefix (`_draft-editor`, `_sidebar-channels`) diganti: file yang meng-export React component pakai PascalCase, folder tetap kebab-case (underscore dihapus), folder `components/` ditaruh di lowest common ancestor (LCA) route pemakainya. Lahir **ADR-069**. Migrasi kode seluruh komponen colocated di `apps/web/src/app/` selesai, lolos review Ridwan dan QA Najwa.
-* **KI-008/KI-009/KI-012 resolved** — Icon sidebar Channels (quick-compose "+", grip-handle) dan icon `WorkspaceSideNav` (New Post, Notifikasi, Dark/Light toggle) diganti penuh ke `react-icons`; Tailwind arbitrary-value class dikanonikkan. Sekaligus lahir **ADR-068** (amandemen ADR-058 poin 6) — `react-icons` diperluas jadi library ikon tunggal untuk seluruh icon (brand maupun generik), bukan hanya logo brand.
 
 ---
 
@@ -206,11 +217,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-071** — Perluasan bucket Supabase Storage `avatars` (publik) untuk juga menampung avatar user personal (T-016.2), path baru `avatars/users/{user_id}/avatar.{ext}` di samping path avatar workspace yang sudah ada. Tidak membuat bucket baru.
+* **ADR-070** — Tetap self-hosted Better Auth, tolak Better Auth Cloud (resolusi akar masalah KI-013).
 * **ADR-069** — Konvensi penamaan & peletakan komponen lokal di `src/app/` (resolusi KI-010): PascalCase untuk file component, kebab-case untuk folder & file non-component, peletakan `components/` berbasis lowest common ancestor (LCA) route.
 * **ADR-068** — `react-icons` diperluas jadi library ikon tunggal untuk seluruh icon (brand maupun generik), tidak lagi dibatasi logo brand saja (amandemen ADR-058 poin 6).
 * **ADR-067** — Known Issues `Resolved` yang sudah tercatat di `COMPLETE_TASK.md` dihapus dari `PROJECT_STATE.md` (amandemen ADR-066), bukan dibiarkan menumpuk dengan status `Resolved`.
-* **ADR-066** — Known Issues berstruktur dengan ID `KI-XXX` di `PROJECT_STATE.md` (field table Status/Kategori/Terkait, terpisah dari namespace task).
-* **ADR-065** — Draft Editor: toggle Fullscreen/Standard naik status jadi fitur resmi produk, default diubah ke Standard (amandemen ADR-052).
 
 ---
 

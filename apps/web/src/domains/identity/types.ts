@@ -1,2 +1,10 @@
+import type { UserId } from "@social/shared";
+
 /** Domain-specific types for identity. */
-export {};
+
+export interface UserProfileRecord {
+  id: UserId;
+  name: string;
+  email: string;
+  image: string | null;
+}
