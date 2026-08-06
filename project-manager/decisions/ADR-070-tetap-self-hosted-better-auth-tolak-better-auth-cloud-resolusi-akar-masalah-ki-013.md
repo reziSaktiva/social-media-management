@@ -59,7 +59,11 @@ memang tidak bisa membaca cookie di `localhost`.
    dev.
 3. Saat nanti pindah ke Railway (staging/production), yang berubah hanya
    env var (`BETTER_AUTH_URL`, secret) per tabel `environment-management.md`
-   — bukan migrasi arsitektur.
+   — bukan migrasi arsitektur. `BETTER_AUTH_API_KEY` **wajib tetap tidak
+   diset** di Railway Variables staging maupun production — kalau terisi
+   (sengaja atau terwarisi), plugin `dash` di `auth.ts` aktif kembali dan
+   mengulang constraint Base URL publik dari Better Auth Cloud yang baru
+   dihindari lewat ADR ini.
 
 ### Reason
 
