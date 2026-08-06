@@ -6,7 +6,7 @@ import { VStack } from "@astryxdesign/core/VStack";
 
 import { googleOAuthEnabled } from "@/lib/env";
 
-import { RegisterForm } from "./register-form";
+import { RegisterForm } from "./components/RegisterForm";
 
 export default function RegisterPage() {
   return (

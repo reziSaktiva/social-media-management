@@ -11,7 +11,7 @@ import { WorkspaceService } from "@/domains/workspace";
 import { auth } from "@/lib/better-auth/auth";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 
-import { CreateWorkspaceForm } from "./create-workspace-form";
+import { CreateWorkspaceForm } from "./components/CreateWorkspaceForm";
 
 export default async function OnboardingPage() {
   const session = await auth.api.getSession({ headers: await headers() });

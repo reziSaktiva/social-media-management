@@ -35,7 +35,7 @@ export interface SchedulePostsTargetInput {
  * pass adapter di call site baru langsung ketahuan TypeScript, bukan cuma
  * runtime throw (temuan review Ridwan Architecture Reviewer). Satu-satunya
  * call site saat ini: `scheduleDraftAction` di
- * `_draft-editor/actions.ts`.
+ * `components/draft-editor/actions.ts`.
  *
  * Urutan kritis: persist dulu (`PublishingPostTarget` status `pending`)
  * lewat `repository.schedulePost`, baru panggil adapter per target, baru

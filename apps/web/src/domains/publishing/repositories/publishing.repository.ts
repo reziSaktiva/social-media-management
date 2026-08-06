@@ -71,7 +71,7 @@ export interface IPublishingRepository {
    *    Guard ini WAJIB di layer repository — berlaku untuk semua caller,
    *    termasuk entry point yang belum ada (mis. Route Handler /api/v1
    *    AL-D08) yang mungkin tidak mereplikasi validasi di
-   *    `_draft-editor/actions.ts`.
+   *    `components/draft-editor/actions.ts`.
    *
    * Returns `null` kalau salah satu guard gagal (post tidak ditemukan
    * dalam status yang valid, ATAU salah satu akun bukan milik workspace

@@ -64,16 +64,22 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
 10. Public API domain diekspor dari `index.ts` module tersebut.
 11. Shared types: `packages/shared` — nama jelas, tanpa logic bisnis.
 12. Persona & role: pakai nama kanonikal (Raka, Maya, … / Owner, Admin, Manager, Creator).
+13. Komponen React di `apps/web/src/app/` dan `src/components/`: file yang
+    meng-export component pakai PascalCase, folder & file non-component
+    (helper, Server Action, data map) tetap kebab-case; peletakan folder
+    `components/` mengikuti lowest common ancestor (LCA) dari route
+    pemakainya. Detail & contoh di `monorepo-setup.md` section
+    `## src/app/ — App Router Structure` (ADR-069, resolusi KI-010).
 
 ### Testing
 
-13. Unit/domain test: **Vitest** (`bun run test`).
-14. Test yang ditambah harus relevan dengan behavior yang diubah; jangan stub berlebihan tanpa nilai.
+14. Unit/domain test: **Vitest** (`bun run test`).
+15. Test yang ditambah harus relevan dengan behavior yang diubah; jangan stub berlebihan tanpa nilai.
 
 ### Git / PR (saat diminta user)
 
-15. Commit hanya jika user meminta — Conventional Commits, imperative, fokus “why”.
-16. Jangan `--no-verify` / force push ke main kecuali diminta eksplisit.
+16. Commit hanya jika user meminta — Conventional Commits, imperative, fokus “why”.
+17. Jangan `--no-verify` / force push ke main kecuali diminta eksplisit.
 
 ---
 

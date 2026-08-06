@@ -1,6 +1,6 @@
 import { Card } from "@astryxdesign/core/Card";
 
-import { ForgotPasswordForm } from "./forgot-password-form";
+import { ForgotPasswordForm } from "./components/ForgotPasswordForm";
 
 export default function ForgotPasswordPage() {
   return (

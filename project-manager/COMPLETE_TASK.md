@@ -8,6 +8,71 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-06 — KI-010 resolved: konvensi penamaan & peletakan komponen lokal `src/app/` + ADR-069
+
+### Context
+
+KI-010 (dicatat sejak review PR #42, 2026-08-05) mencatat konvensi folder
+underscore-prefix (`_draft-editor`, `_sidebar-channels`) di
+`apps/web/src/app/` belum resmi didokumentasikan, dan King Rezi tidak nyaman
+dengan penamaan itu. Setelah diskusi, disepakati bukan mendokumentasikan
+underscore apa adanya, melainkan mengganti konvensinya.
+
+### Decision (ADR-069)
+
+1. File yang meng-export React component pakai PascalCase (`Modal.tsx`);
+   file non-component (`actions.ts`, `status-badge.ts`, `platform-icons.tsx`)
+   tetap kebab-case.
+2. Folder tetap kebab-case seluruhnya (tidak ada folder PascalCase) —
+   `_draft-editor` → `draft-editor` (hanya hilang underscore).
+3. Folder `components/` ditaruh di lowest common ancestor (LCA) route dari
+   seluruh pemakainya di App Router tree (1 route → lokal; lintas route 1
+   subtree → naik ke ancestor terendah; lintas subtree/root → naik ke
+   `src/components/`).
+
+### Changed (kode)
+
+Seluruh komponen colocated di `apps/web/src/app/` dipindah & di-rename sesuai
+konvensi baru — bukan cuma `_draft-editor`/`_sidebar-channels`, tapi juga
+auth forms, onboarding form, workspace-side-nav, publish-tabbar, drafts-list,
+dan `providers.tsx`. Contoh: `app/[slug]/_draft-editor/*` →
+`app/[slug]/components/draft-editor/*`, `app/providers.tsx` →
+`apps/web/src/components/Providers.tsx`.
+
+### Changed (dokumentasi)
+
+- `product-discovery/06-engineering/monorepo-setup.md` — section baru
+  "Penamaan & peletakan folder `components/` lokal (KI-010, ADR-069)" di
+  bawah `## src/app/ — App Router Structure`, plus update rujukan di
+  `## src/components/ — UI Components`.
+- `context/ctx-development.md` — item baru #13 di "Naming & file".
+- `context/ctx-implementation.md` — bullet baru di "## UI Components
+  (ADR-041)".
+
+### Added
+
+- **ADR-069** (`project-manager/decisions/ADR-069-...md`) — konvensi
+  penamaan & peletakan komponen lokal di `src/app/`, resolusi KI-010.
+
+### Verifikasi
+
+- **Review Ridwan Architecture Reviewer**: PASS, tanpa temuan pelanggaran
+  hard rules (entry point tetap tanpa business logic, tidak ada import baru
+  yang melanggar domain logic, cross-domain tetap lewat barrel `index.ts`).
+- **QA Najwa**: PASS — typecheck/lint/test hijau, browser E2E (sidebar
+  Channels + drag-reorder, Draft Editor modal, Save as Draft,
+  `/publish/drafts` DraftsList + Status Badge, Edit Draft) semua jalan
+  normal tanpa regresi.
+
+### Catatan task
+
+KI-010 sebelumnya terkait T-012 dengan status out-of-scope. Diputuskan cukup
+sebagai resolusi KI standalone (bukan task/subtask T-XXX baru) — sudah
+selesai penuh dalam satu sesi, tidak ada sisa pekerjaan yang perlu dilacak
+lebih lanjut.
+
+---
+
 ## 2026-08-05 — KI-008/KI-009/KI-012 resolved: icon sidebar Channels diganti react-icons penuh + ADR-068 (amandemen ADR-058 poin 6)
 
 ### Context

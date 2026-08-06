@@ -5,7 +5,7 @@ import { Link } from "@astryxdesign/core/Link";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 
-import { ResetPasswordForm } from "./reset-password-form";
+import { ResetPasswordForm } from "./components/ResetPasswordForm";
 
 export default async function ResetPasswordPage({
   searchParams,

@@ -5,7 +5,7 @@ import { WorkspaceService } from "@/domains/workspace";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 
-import { DraftsList } from "./drafts-list";
+import { DraftsList } from "./components/DraftsList";
 
 export default async function Page({
   params,

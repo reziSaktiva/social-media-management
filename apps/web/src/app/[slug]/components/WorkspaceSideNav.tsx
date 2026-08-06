@@ -18,10 +18,10 @@ import {
 import type { SidebarChannelAccount } from "@/domains/workspace";
 import { authClient } from "@/lib/better-auth/client";
 
-import { useThemeMode } from "../providers";
+import { useThemeMode } from "@/components/Providers";
 
-import { useDraftEditor } from "./_draft-editor/context";
-import { ChannelsSection } from "./_sidebar-channels/channels-section";
+import { useDraftEditor } from "./draft-editor/Context";
+import { ChannelsSection } from "./sidebar-channels/ChannelsSection";
 
 const NAV_ITEMS = [
   { label: "Home", path: "" },

@@ -208,6 +208,51 @@ src/app/
   path lama secara salah. Ini keputusan final, bukan interim — lihat
   ADR-046 Amandemen Final (2026-07-29) di `DECISIONS.md`.
 
+**Penamaan & peletakan folder `components/` lokal (KI-010, ADR-069):**
+
+1. **Penamaan file** — hanya file yang benar-benar meng-export React
+   component memakai PascalCase, sama seperti nama exportnya (mis.
+   `Modal.tsx`, bukan `modal.tsx`). File non-component (Server Action
+   seperti `actions.ts`, helper/pure function seperti `status-badge.ts`,
+   atau file yang cuma berisi data map seperti `platform-icons.tsx`) tetap
+   kebab-case — **tidak** ikut PascalCase.
+2. **Penamaan folder** — seluruh folder tetap kebab-case, **tidak ada**
+   folder PascalCase. Folder komposit yang sebelumnya memakai prefix
+   underscore (`_draft-editor`, `_sidebar-channels`) kehilangan
+   underscore-nya saja (`draft-editor`, `sidebar-channels`) — bukan
+   berubah jadi PascalCase.
+3. **Peletakan** — folder `components/` ditaruh pada leluhur bersama
+   terendah (*lowest common ancestor* / LCA) dari seluruh pemakai
+   komponen tersebut di route tree App Router:
+   - Dipakai di 1 route saja → `components/` lokal tepat di route itu.
+   - Dipakai lintas beberapa route dalam satu subtree → `components/` di
+     level route leluhur terendah yang mencakup semua pemakai.
+   - Dipakai lintas subtree yang tidak berkaitan (termasuk dipakai dari
+     `app/layout.tsx` root) → **bukan** naik ke folder baru di `app/`,
+     tapi pindah ke `src/components/` — lokasi shared yang sudah ada
+     (lihat section `## src/components/ — UI Components` di bawah).
+     Cuma ada 2 bucket peletakan: lokal (`app/**/components/`) atau
+     shared (`src/components/`), tidak ada bucket ketiga "`app/` root".
+   - File wajib Next.js (`page.tsx`, `layout.tsx`, `route.ts`) tidak
+     terpengaruh — tetap lowercase sesuai kontrak framework, tidak masuk
+     folder `components/`.
+
+Contoh — `draft-editor` dipakai lintas beberapa route di dalam `[slug]/`,
+sehingga LCA-nya adalah `app/[slug]/`:
+
+```text
+app/[slug]/components/draft-editor/
+├── Context.tsx           ← component, PascalCase
+├── Modal.tsx              ← component, PascalCase
+├── Mount.tsx               ← component, PascalCase
+├── actions.ts              ← Server Action, kebab-case
+├── status-badge.ts         ← helper murni, kebab-case
+└── terminal-destination.ts ← helper murni, kebab-case
+```
+
+Rujukan konvensi ini juga berlaku untuk `src/components/[feature]/` —
+lihat aturan di bawah pada `## src/components/ — UI Components`.
+
 ---
 
 ## src/domains/ — Domain Modules
@@ -282,6 +327,13 @@ src/components/
 - Gunakan neutral theme Astryx selama development feature. Hindari canary,
   `swizzle`, dan authoring StyleX pada tahap awal.
 - Feature components tidak boleh berisi business logic — logika ada di domain services.
+- **Penamaan mengikuti aturan yang sama dengan `components/` lokal di
+  `src/app/`** (lihat "Penamaan & peletakan folder `components/` lokal
+  (KI-010, ADR-069)" di section `## src/app/ — App Router Structure`): file yang
+  meng-export React component pakai PascalCase (`ChannelsSection.tsx`),
+  folder `[feature]/` dan file non-component (helper, data map, dsb.) tetap
+  kebab-case. Aturan ini berlaku untuk setiap `[feature]/` di
+  `src/components/`, bukan hanya untuk `components/` di dalam `app/`.
 
 ---
 

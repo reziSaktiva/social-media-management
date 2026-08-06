@@ -7,9 +7,9 @@ import { WorkspaceService } from "@/domains/workspace";
 import { auth } from "@/lib/better-auth/auth";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 
-import { DraftEditorProvider } from "./_draft-editor/context";
-import { DraftEditorMount } from "./_draft-editor/mount";
-import { WorkspaceSideNav } from "./workspace-side-nav";
+import { DraftEditorProvider } from "./components/draft-editor/Context";
+import { DraftEditorMount } from "./components/draft-editor/Mount";
+import { WorkspaceSideNav } from "./components/WorkspaceSideNav";
 
 export default async function Layout({
   children,
