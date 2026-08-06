@@ -54,6 +54,43 @@ function PlatformStatusDot({
   );
 }
 
+/**
+ * Tombol aksi per baris ditentukan dari `displayStatus` penuh (3 state),
+ * bukan cuma boolean `reconnectRequired` — akun yang sudah `disconnected`
+ * (bukan `reconnect-required`) tidak punya aksi yang relevan untuk
+ * ditampilkan di sini (bukan "Disconnect" lagi, karena sudah disconnected).
+ */
+function ConnectedAccountAction({
+  displayStatus,
+}: {
+  displayStatus: ConnectionDisplayStatus;
+}) {
+  switch (displayStatus) {
+    case "reconnect-required":
+      return (
+        <Button
+          label="Reconnect"
+          variant="secondary"
+          size="sm"
+          isDisabled
+          tooltip="Tersedia setelah T-015 (Reconnect akun) selesai"
+        />
+      );
+    case "active":
+      return (
+        <Button
+          label="Disconnect"
+          variant="secondary"
+          size="sm"
+          isDisabled
+          tooltip="Tersedia setelah T-014 (Disconnect akun) selesai"
+        />
+      );
+    case "disconnected":
+      return null;
+  }
+}
+
 function ConnectedAccountRow({ account }: { account: ConnectedAccountRecord }) {
   const displayStatus = resolveConnectionDisplayStatus(account);
   const entry = PLATFORM_ICON[account.platform];
@@ -76,23 +113,7 @@ function ConnectedAccountRow({ account }: { account: ConnectedAccountRecord }) {
             variant={STATUS_BADGE_VARIANT[displayStatus]}
             label={getConnectionStatusLabel(account)}
           />
-          {account.reconnectRequired ? (
-            <Button
-              label="Reconnect"
-              variant="secondary"
-              size="sm"
-              isDisabled
-              tooltip="Tersedia setelah T-015 (Reconnect akun) selesai"
-            />
-          ) : (
-            <Button
-              label="Disconnect"
-              variant="secondary"
-              size="sm"
-              isDisabled
-              tooltip="Tersedia setelah T-014 (Disconnect akun) selesai"
-            />
-          )}
+          <ConnectedAccountAction displayStatus={displayStatus} />
         </HStack>
       }
     />
