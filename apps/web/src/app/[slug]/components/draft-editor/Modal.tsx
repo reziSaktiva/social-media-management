@@ -35,8 +35,8 @@ import {
   scheduleDraftAction,
   updateDraftAction,
 } from "./actions";
-import type { UnsavedNewPost } from "./context";
-import { useDraftEditor } from "./context";
+import type { UnsavedNewPost } from "./Context";
+import { useDraftEditor } from "./Context";
 import {
   CONTENT_STATUS_BADGE_VARIANT,
   CONTENT_STATUS_LABEL,

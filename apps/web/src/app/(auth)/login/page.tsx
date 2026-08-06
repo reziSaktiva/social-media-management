@@ -7,7 +7,7 @@ import { VStack } from "@astryxdesign/core/VStack";
 
 import { googleOAuthEnabled } from "@/lib/env";
 
-import { LoginForm } from "./login-form";
+import { LoginForm } from "./components/LoginForm";
 
 export default function LoginPage() {
   return (

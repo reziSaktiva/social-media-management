@@ -1,6 +1,6 @@
 import { VStack } from "@astryxdesign/core/VStack";
 
-import { PublishTabbar } from "./publish-tabbar";
+import { PublishTabbar } from "./components/PublishTabbar";
 
 export default async function Layout({
   children,

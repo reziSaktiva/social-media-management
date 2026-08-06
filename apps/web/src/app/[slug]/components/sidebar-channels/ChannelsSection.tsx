@@ -26,7 +26,7 @@ import {
 } from "@/domains/workspace";
 import { cn } from "@/lib/cn";
 
-import { useDraftEditor } from "../_draft-editor/context";
+import { useDraftEditor } from "../draft-editor/Context";
 
 import { PLATFORM_ICON } from "./platform-icons";
 

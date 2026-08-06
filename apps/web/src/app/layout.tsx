@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
-import { Providers } from "./providers";
+import { Providers } from "@/components/Providers";
 
 import { THEME_COOKIE_NAME, parseThemeMode } from "@/lib/theme/theme-cookie";
 

@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.43     |
+| Version      | 1.0.44     |
 | Status       | Active     |
-| Last Updated | 2026-08-05 |
+| Last Updated | 2026-08-06 |
 
 ---
 
@@ -192,17 +192,6 @@ Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production
 
 Bagian UI/interaksi T-012.5 (swap count↔quick-compose "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level, tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2 (query scheduled-posts count lintas domain), yang masih deferred sampai domain publishing v0.2 siap.
 
-### KI-010 · Konvensi folder underscore-prefix belum terdokumentasi
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Process |
-| Terkait | T-012 (out-of-scope) · `context/ctx-development.md` |
-| Ditemukan | Review PR #42, King Rezi, 2026-08-05 |
-
-Konvensi folder underscore-prefix (`_sidebar-channels`, `_draft-editor`, fitur resmi Next.js App Router) belum ditulis sebagai konvensi resmi di `context/ctx-development.md` — masih pola implisit yang diikuti dari `_draft-editor` (T-011.2). Perlu diputuskan: dokumentasikan sebagai konvensi resmi, atau ganti pendekatan lain.
-
 ### KI-013 · Hydration gagal saat diakses lewat tunnel ngrok
 
 | Field | Value |
@@ -225,11 +214,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **KI-010 resolved** — Konvensi folder underscore-prefix (`_draft-editor`, `_sidebar-channels`) diganti: file yang meng-export React component pakai PascalCase, folder tetap kebab-case (underscore dihapus), folder `components/` ditaruh di lowest common ancestor (LCA) route pemakainya. Lahir **ADR-069**. Migrasi kode seluruh komponen colocated di `apps/web/src/app/` selesai, lolos review Ridwan dan QA Najwa.
 * **KI-008/KI-009/KI-012 resolved** — Icon sidebar Channels (quick-compose "+", grip-handle) dan icon `WorkspaceSideNav` (New Post, Notifikasi, Dark/Light toggle) diganti penuh ke `react-icons`; Tailwind arbitrary-value class dikanonikkan. Sekaligus lahir **ADR-068** (amandemen ADR-058 poin 6) — `react-icons` diperluas jadi library ikon tunggal untuk seluruh icon (brand maupun generik), bukan hanya logo brand.
 * **ADR-063** — Integrasi delegasi subagent ke alur kerja wajib (`AGENTS.md`, `SKILL.md`, `TASKS.md`) + pemetaan Domain → Subagent di `.claude/agents/README.md`, memperbaiki isu AI jarang mendelegasikan ke subagent.
 * **ADR-062** — Backlog task berjenjang: `TASKS.md` (indeks) + `tasks/` per release, 67 task ber-ID `T-NNN`, rolling wave v0.1–v0.3 detail, dan amandemen aturan lokasi status.
 * **ADR-058** — Sidebar "Channels" (quick-glance daftar akun terhubung): selesai di Claude Design, implementasi kode `apps/web` menyusul (T-012).
-* **Claude Design** — bug fix Content Format Selector hilang di New Post + penambahan akun mock TikTok & Pinterest (catch-up ADR-037/ADR-039).
 
 ---
 
@@ -237,11 +226,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-069** — Konvensi penamaan & peletakan komponen lokal di `src/app/` (resolusi KI-010): PascalCase untuk file component, kebab-case untuk folder & file non-component, peletakan `components/` berbasis lowest common ancestor (LCA) route.
 * **ADR-068** — `react-icons` diperluas jadi library ikon tunggal untuk seluruh icon (brand maupun generik), tidak lagi dibatasi logo brand saja (amandemen ADR-058 poin 6).
 * **ADR-067** — Known Issues `Resolved` yang sudah tercatat di `COMPLETE_TASK.md` dihapus dari `PROJECT_STATE.md` (amandemen ADR-066), bukan dibiarkan menumpuk dengan status `Resolved`.
 * **ADR-066** — Known Issues berstruktur dengan ID `KI-XXX` di `PROJECT_STATE.md` (field table Status/Kategori/Terkait, terpisah dari namespace task).
 * **ADR-065** — Draft Editor: toggle Fullscreen/Standard naik status jadi fitur resmi produk, default diubah ke Standard (amandemen ADR-052).
-* **ADR-064** — Konsolidasi skill ke `.claude/skills/` sebagai sumber tunggal — hapus `.agents/skills/`.
 
 ---
 

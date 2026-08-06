@@ -3,7 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 
-import { useDraftEditor } from "./context";
+import { useDraftEditor } from "./Context";
 
 /**
  * Loads the Draft Editor chunk only once the editor is first opened. The modal
@@ -15,7 +15,7 @@ import { useDraftEditor } from "./context";
  * handling instead of vanishing on unmount.
  */
 const DraftEditorModal = dynamic(
-  () => import("./modal").then((mod) => mod.DraftEditorModal),
+  () => import("./Modal").then((mod) => mod.DraftEditorModal),
   { ssr: false },
 );
 

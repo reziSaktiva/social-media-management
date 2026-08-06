@@ -76,6 +76,11 @@ ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
   menunggu designer eksternal — ADR-056, ADR-057) dipetakan ke Astryx theme +
   Tailwind token bridge tanpa mengganti fondasi komponen.
 - Sebelum adopsi Astryx secara luas, pastikan smoke test ADR-041 telah lolos.
+- Penamaan & peletakan file/folder komponen (PascalCase untuk file yang
+  meng-export component, kebab-case untuk folder & helper, peletakan
+  `components/` berdasar lowest common ancestor pemakainya) mengikuti
+  konvensi di `monorepo-setup.md` section `## src/app/ — App Router
+Structure` (ADR-069, resolusi KI-010).
 
 ---
 
