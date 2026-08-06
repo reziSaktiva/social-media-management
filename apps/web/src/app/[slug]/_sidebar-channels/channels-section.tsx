@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import type { DragEvent } from "react";
 
+import { FaPlus } from "react-icons/fa6";
+import { RxDragHandleDots2 } from "react-icons/rx";
+
 import { Avatar } from "@astryxdesign/core/Avatar";
 import { Badge } from "@astryxdesign/core/Badge";
 import { HStack } from "@astryxdesign/core/HStack";
@@ -28,29 +31,6 @@ import { useDraftEditor } from "../_draft-editor/context";
 import { PLATFORM_ICON } from "./platform-icons";
 
 export type { SidebarChannelAccount };
-
-/**
- * Grip glyph for the drag handle. Astryx `Icon`'s semantic icon set has no
- * drag-handle entry (`astryx docs` / `astryx component Icon --dense`
- * verified: close, chevronDown/Left/Right, check, success, error, warning,
- * info, calendar, clock, externalLink, menu, moreHorizontal, search,
- * arrowUp/Down, arrowsUpDown, funnel, eyeSlash, viewColumns, copy,
- * checkDouble, wrench, stop, microphone) — `Icon` explicitly also accepts a
- * raw SVG component via its `icon` prop, which is the supported extension
- * point used here instead of a semantic name.
- */
-function GripIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <circle cx="9" cy="6" r="1.5" />
-      <circle cx="9" cy="12" r="1.5" />
-      <circle cx="9" cy="18" r="1.5" />
-      <circle cx="15" cy="6" r="1.5" />
-      <circle cx="15" cy="12" r="1.5" />
-      <circle cx="15" cy="18" r="1.5" />
-    </svg>
-  );
-}
 
 // Custom styling here is Tailwind utilities backed by Astryx design tokens
 // (per apps/web/.claude/CLAUDE.md: "component props first; else Tailwind
@@ -77,7 +57,7 @@ function PlatformBadge({ platform }: { platform: SocialPlatform }) {
     <HStack
       hAlign="center"
       vAlign="center"
-      className="absolute end-[calc(var(--spacing-1)*-1)] bottom-[calc(var(--spacing-1)*-1)] w-4 h-4 rounded-full bg-surface shadow-[0_0_0_var(--border-width)_var(--color-border)]"
+      className="absolute -inset-e-1 -bottom-1 size-4 rounded-full bg-surface shadow-[0_0_0_var(--border-width)_var(--color-border)]"
       aria-hidden
     >
       {/* Warna brand asli (bukan token) — pengecualian disengaja, lihat
@@ -147,12 +127,12 @@ function ChannelRow({
       <HStack
         align="center"
         className={cn(
-          "absolute start-[calc(var(--spacing-4)*-1)] inset-y-0 cursor-grab transition-opacity",
+          "inset-y-0 -inset-s-4 cursor-grab transition-opacity",
           TRANSITION_FAST,
           isRevealed ? "opacity-100" : "opacity-0",
         )}
       >
-        <Icon icon={GripIcon} size="xsm" color="secondary" label="" />
+        <Icon icon={RxDragHandleDots2} size="xsm" color="secondary" label="" />
       </HStack>
 
       <HStack className="relative shrink-0">
@@ -187,7 +167,7 @@ function ChannelRow({
         </VStack>
       </StackItem>
 
-      <HStack className="relative w-4 h-4 shrink-0">
+      <HStack className="relative size-4 shrink-0">
         {/* Swap count <-> tombol "+": fixed slot, opacity/visibility toggle
             (bukan display none<->flex) — ini TIDAK berubah dari ADR-058 asli
             (no-shift), berbeda dari drag-handle di atas yang sengaja
@@ -199,8 +179,8 @@ function ChannelRow({
             "absolute inset-0 transition-[opacity,visibility]",
             TRANSITION_FAST,
             isRevealed
-              ? "opacity-0 invisible pointer-events-none"
-              : "opacity-100 visible",
+              ? "pointer-events-none invisible opacity-0"
+              : "visible opacity-100",
           )}
         >
           <Text type="supporting" size="2xs" hasTabularNumbers>
@@ -214,8 +194,8 @@ function ChannelRow({
             "absolute inset-0 transition-[opacity,visibility]",
             TRANSITION_FAST,
             isRevealed
-              ? "opacity-100 visible"
-              : "opacity-0 invisible pointer-events-none",
+              ? "visible opacity-100"
+              : "pointer-events-none invisible opacity-0",
           )}
         >
           <IconButton
@@ -228,12 +208,8 @@ function ChannelRow({
             // 28px) — override eksplisit ukuran karena tidak ada varian
             // lebih kecil di komponen (dicek via
             // `astryx component IconButton --dense`).
-            className="w-4 h-4 min-w-4 min-h-4 p-0"
-            icon={
-              <Text type="inherit" size="2xs" as="span">
-                +
-              </Text>
-            }
+            className="size-4 min-h-4 min-w-4 p-0"
+            icon={<FaPlus size={10} />}
             onClick={(e) => {
               e.stopPropagation();
               openNewPost(account.id);

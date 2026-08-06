@@ -6,7 +6,7 @@ Sidebar mendapat section "Channels" — quick-glance daftar akun media sosial te
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-068 (2026-08-05)
 
 ### Date
 
@@ -52,6 +52,10 @@ harus masuk ke Workspace Settings.
    dihapus segera — pola sama seperti swizzle-verifikasi-lalu-hapus yang
    sudah dipakai untuk Astryx (ADR-041/051), bukan dependency baru yang
    menempel permanen di project pada tahap Claude Design ini.
+   **[Diamandemen ADR-068, 2026-08-05]** — cakupan `react-icons` diperluas
+   jadi sumber icon TUNGGAL untuk seluruh UI (brand maupun generik),
+   menggantikan pola campuran (react-icons untuk brand, custom SVG untuk
+   generik). Lihat ADR-068 untuk detail dan riwayat konflik terkait.
 7. **Bukan pengganti KSP-08:** Connect/Disconnect/Reconnect Account tetap
    eksklusif di `Workspace Settings → Connected Accounts` (IA-D05 tidak
    berubah). Klik channel berstatus Disconnected/Expired di sidebar
@@ -166,10 +170,12 @@ harus masuk ke Workspace Settings.
   didesain.
 * Scheduled-posts count per channel butuh query lintas domain (Publishing
   → Connected Account) yang ringan karena dipanggil tiap render sidebar.
-* Kalau fitur ini lanjut ke kode `apps/web`, `react-icons` perlu
-  dikonfirmasi ulang sebagai dependency asli project (ikuti pola
-  `dependency-strategy.md`) — belum ada keputusan pin versi untuk runtime
-  produksi, baru dipakai sebagai sumber ekstraksi SVG statis di Claude
-  Design.
+* ~~Kalau fitur ini lanjut ke kode `apps/web`, `react-icons` perlu
+  dikonfirmasi ulang sebagai dependency asli project~~ — **selesai**:
+  `react-icons` sudah jadi dependency runtime `apps/web` (`package.json`,
+  `^5.7.0`), dipakai di `channels-section.tsx`, `workspace-side-nav.tsx`,
+  dan `platform-icons.tsx`. Cakupannya kemudian diperluas jadi sumber icon
+  TUNGGAL untuk seluruh UI (lihat ADR-068), bukan lagi sekadar ekstraksi
+  SVG statis untuk Claude Design.
 
 ---
