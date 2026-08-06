@@ -16,6 +16,7 @@
     "db:validate": "bunx prisma validate",
     "db:migrate": "bun --env-file=.env.local x prisma migrate dev",
     "db:deploy": "bun --env-file=.env.local x prisma migrate deploy",
+    "db:studio": "bun --env-file=.env.local x prisma studio",
     "postinstall": "bunx prisma generate"
   },
   "dependencies": {

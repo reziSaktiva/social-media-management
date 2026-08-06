@@ -113,6 +113,7 @@ Lokasi file di monorepo (ditetapkan M7): **`apps/web/`** — `.env.example` (di 
 | `SUPABASE_JWT_SECRET` | local JWT secret | staging | prod | Sign JWT Supabase-compatible (AS-D03) |
 | `BETTER_AUTH_SECRET` | unik local | unik staging | unik prod | Min. entropy tinggi; generate terpisah |
 | `BETTER_AUTH_URL` | `http://localhost:3000` | `https://staging.<domain>` | `https://<production-domain>` | Base URL Better Auth + OAuth callback |
+| `BETTER_AUTH_API_KEY` | tidak diset | **tidak diset** | **tidak diset** | Wajib kosong di semua env (ADR-070) — kalau terisi, plugin `dash` (Better Auth Cloud) aktif dan mensyaratkan Base URL publik |
 | `GOOGLE_CLIENT_ID` | OAuth client local/dev | OAuth staging | OAuth prod | Client terpisah atau redirect URI terpisah per env (AS-D05) |
 | `GOOGLE_CLIENT_SECRET` | local/dev | staging | prod | Pasangan client di atas |
 | `OUTSTAND_API_KEY` | sandbox/local key | staging key | prod key | Integrasi Outstand |

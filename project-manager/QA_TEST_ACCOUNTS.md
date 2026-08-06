@@ -7,18 +7,19 @@ tanpa registrasi ulang.
 
 ---
 
-## Kenapa testing browser pakai ngrok, bukan localhost
+## Testing browser pakai localhost langsung (ADR-070)
 
-Better Auth pada setup project ini **tidak bisa membaca session/cookie**
-saat diakses lewat `localhost` — sudah dikonfirmasi lewat insiden hydration
-gagal (lihat `PROJECT_STATE.md` — Known Issues). Karena itu verifikasi
-browser dilakukan lewat **tunnel ngrok**, bukan `http://localhost:3000`.
+Akar masalah requirement ngrok sebelumnya adalah **Better Auth Cloud**
+(produk hosted terpisah, sempat aktif via plugin `dash` di `auth.ts` dengan
+`BETTER_AUTH_API_KEY` terisi) yang mewajibkan Base URL publik — bukan
+Better Auth self-hosted. Setelah `BETTER_AUTH_API_KEY` dikosongkan dan
+project kembali ke Better Auth self-hosted sesuai baseline
+(`auth-strategy.md`, ADR-024), login/session terverifikasi normal lewat
+`http://localhost:3000` — lihat ADR-070 di `DECISIONS.md`.
 
-**URL ngrok bersifat efemeran** — berubah setiap kali tunnel baru dibuka.
-Jangan pernah pakai URL ngrok dari sesi sebelumnya atau dari dokumentasi
-manapun (termasuk `COMPLETE_TASK.md`/`PROJECT_STATE.md` yang menyebut "tunnel
-ngrok" tanpa URL eksplisit). **Wajib tanya ke user URL testing yang aktif
-di setiap sesi baru** sebelum mulai verifikasi browser.
+**Verifikasi browser:** buka langsung `http://localhost:3000` (via
+`bun run dev` atau `preview_start` dengan config `web` di `.claude/
+launch.json`) — **tidak perlu tanya URL tunnel ke user lagi.**
 
 ---
 
