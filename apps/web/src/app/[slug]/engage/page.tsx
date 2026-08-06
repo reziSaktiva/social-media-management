@@ -2,7 +2,7 @@ export default function Page() {
   return (
     <main className="flex min-h-screen items-center justify-center p-8">
       <div className="space-y-2 text-center">
-        <p className="text-sm uppercase tracking-wide text-zinc-500">
+        <p className="text-sm tracking-wide text-zinc-500 uppercase">
           Scaffold
         </p>
         <h1 className="text-2xl font-semibold text-zinc-900">

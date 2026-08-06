@@ -57,7 +57,7 @@ function PlatformBadge({ platform }: { platform: SocialPlatform }) {
     <HStack
       hAlign="center"
       vAlign="center"
-      className="absolute -end-1 -bottom-1 w-4 h-4 rounded-full bg-surface shadow-[0_0_0_var(--border-width)_var(--color-border)]"
+      className="absolute -end-1 -bottom-1 size-4 rounded-full bg-surface shadow-[0_0_0_var(--border-width)_var(--color-border)]"
       aria-hidden
     >
       {/* Warna brand asli (bukan token) — pengecualian disengaja, lihat
@@ -127,7 +127,7 @@ function ChannelRow({
       <HStack
         align="center"
         className={cn(
-          "-start-4 inset-y-0 cursor-grab transition-opacity",
+          "inset-y-0 -start-4 cursor-grab transition-opacity",
           TRANSITION_FAST,
           isRevealed ? "opacity-100" : "opacity-0",
         )}
@@ -167,7 +167,7 @@ function ChannelRow({
         </VStack>
       </StackItem>
 
-      <HStack className="relative w-4 h-4 shrink-0">
+      <HStack className="relative size-4 shrink-0">
         {/* Swap count <-> tombol "+": fixed slot, opacity/visibility toggle
             (bukan display none<->flex) — ini TIDAK berubah dari ADR-058 asli
             (no-shift), berbeda dari drag-handle di atas yang sengaja
@@ -179,8 +179,8 @@ function ChannelRow({
             "absolute inset-0 transition-[opacity,visibility]",
             TRANSITION_FAST,
             isRevealed
-              ? "opacity-0 invisible pointer-events-none"
-              : "opacity-100 visible",
+              ? "pointer-events-none invisible opacity-0"
+              : "visible opacity-100",
           )}
         >
           <Text type="supporting" size="2xs" hasTabularNumbers>
@@ -194,8 +194,8 @@ function ChannelRow({
             "absolute inset-0 transition-[opacity,visibility]",
             TRANSITION_FAST,
             isRevealed
-              ? "opacity-100 visible"
-              : "opacity-0 invisible pointer-events-none",
+              ? "visible opacity-100"
+              : "pointer-events-none invisible opacity-0",
           )}
         >
           <IconButton
@@ -208,7 +208,7 @@ function ChannelRow({
             // 28px) — override eksplisit ukuran karena tidak ada varian
             // lebih kecil di komponen (dicek via
             // `astryx component IconButton --dense`).
-            className="w-4 h-4 min-w-4 min-h-4 p-0"
+            className="size-4 min-h-4 min-w-4 p-0"
             icon={<FaPlus size={10} />}
             onClick={(e) => {
               e.stopPropagation();

@@ -15,7 +15,7 @@ export default function OnboardingLayout({
       <Center height="100%">
         <VStack gap={6} width="100%" maxWidth={480} padding={6}>
           <HStack gap={2} justify="center" align="center">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-semibold text-on-accent">
+            <span className="flex size-8 items-center justify-center rounded-md bg-accent text-sm font-semibold text-on-accent">
               SM
             </span>
             <Text type="label" weight="semibold">
