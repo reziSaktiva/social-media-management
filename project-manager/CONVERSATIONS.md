@@ -392,3 +392,15 @@ Selama eksekusi terjadi 2 putaran revisi dari user: (1) hapus teks nama platform
 
 **Impact:** `DECISIONS.md` (ADR-058 baru), `navigation-patterns.md` (NP-D14 + section "Channels (Sidebar)" + pola "Quick Compose dari Channels Sidebar" + perluasan "Status Indicator → Settings"), `key-screen-patterns.md` (entry point KSP-05 & KSP-08), `PROJECT_STATE.md`, `CHANGELOG.md` — semua diperbarui. Implementasi kode `apps/web` belum berjalan (Next Tasks).
 
+---
+
+## 2026-08-06 — Diskusi "kenapa ngrok wajib di dev" berakhir di ADR-070: tetap self-hosted Better Auth
+
+**Phase:** Phase 6 / M8 Development
+
+**Summary:** User mengeluhkan proses dev jadi merepotkan karena auth "mengharuskan" tunnel ngrok setiap kali autentikasi diuji di dev mode (lupa jalankan tunnel, tunnel mati, memicu error berulang saat Claude Code mencoba login lewat link `localhost`), dan awalnya mengusulkan migrasi ke Supabase Auth sebagai solusi. Diminta eksplisit untuk hanya berdiskusi dulu tanpa eksekusi apapun. Penelusuran silang `auth-strategy.md`/ADR-024, KI-013, `QA_TEST_ACCOUNTS.md`, dan `.claude/launch.json` menemukan baseline resmi mendesain Better Auth sebagai library self-hosted yang seharusnya jalan normal di `localhost` tanpa tunnel — kontradiksi dengan catatan QA yang mewajibkan ngrok memicu pertanyaan balik ke user. User lalu mengungkap detail kunci: dashboard **Better Auth Cloud** (bukan library self-hosted) menolak Base URL non-publik ("localhost, link-local hosts are not allowed") — dan mengonfirmasi tidak ada alasan spesifik memakai Better Auth Cloud selain belum tahu ada constraint tersebut.
+
+**Key Decision/Insight:** Akar masalah bukan keterbatasan Better Auth atau bug tersembunyi, melainkan adopsi Better Auth Cloud yang tidak pernah tercatat di ADR manapun. Migrasi ke Supabase Auth (opsi awal user) dipertimbangkan tapi ditolak setelah dihitung biayanya — akan memaksa redesain dual-context RLS, JWT bridge Realtime (AS-D03), Bearer plugin mobile (ADR-043), dan migrasi data user, untuk masalah yang ternyata terselesaikan hanya dengan berhenti memakai Better Auth Cloud dan kembali ke self-hosted sesuai desain asli. Pola sesi ini — user melapor gejala, AI menelusuri baseline dulu sebelum menyimpulkan itu bug/limitasi produk, ternyata akar masalahnya adopsi tool tambahan yang tidak tercatat — layak diwaspadai di isu serupa lain (mis. KI-005 Astryx Beta, tool eksternal lain).
+
+**Impact:** `DECISIONS.md` (ADR-070 baru), `PROJECT_STATE.md` (Completed Ringkasan + update catatan KI-013 mereferensikan ADR-070), `COMPLETE_TASK.md`. Instalasi self-hosted Better Auth dilakukan mandiri oleh King Rezi di komputer lokal (`localhost:3000` + Supabase Cloud, tanpa Railway) — belum ada eksekusi kode oleh AI. Next: `QA_TEST_ACCOUNTS.md` dan KI-013 perlu ditinjau ulang setelah instalasi terverifikasi jalan normal.
+

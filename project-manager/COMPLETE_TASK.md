@@ -8,6 +8,113 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-06 — KI-013 resolved: instalasi self-hosted Better Auth terverifikasi, ngrok tidak lagi wajib
+
+### Context
+
+Menyusul ADR-070 (revert Better Auth Cloud → self-hosted), King Rezi
+menginstall self-hosted Better Auth secara mandiri di komputer lokal dan
+mengonfirmasi **login/register berhasil lewat `http://localhost:3000`**
+tanpa tunnel ngrok apapun. Kode `auth.ts` dan route handler ternyata sudah
+lengkap sejak awal (Prisma adapter, tabel `identity_*` sudah termodel) —
+yang diubah cuma env var: `BETTER_AUTH_URL=http://localhost:3000` dan
+`BETTER_AUTH_API_KEY` dikosongkan (menonaktifkan plugin `dash`/Better Auth
+Cloud).
+
+Sesi lanjutan membahas cara melihat data: Better Auth **tidak menyimpan
+data sendiri** — semua data (`identity_user`, `identity_session`,
+`identity_account`, `identity_verification`) disimpan di Postgres Supabase
+Cloud yang sama, diakses lewat Prisma. Untuk kebutuhan lihat/verifikasi
+data tanpa dashboard Better Auth Cloud, ditambahkan script `db:studio`
+(Prisma Studio) sebagai alternatif self-hosted.
+
+### Changed (kode)
+
+- `apps/web/package.json` — script baru `db:studio`: `bun --env-file=.env.local x prisma studio`.
+- `package.json` (root) — script baru `db:studio`: `bun run --cwd apps/web db:studio`, mengikuti pola delegasi `db:migrate`/`db:deploy` yang sudah ada.
+
+### Changed (dokumentasi)
+
+- `QA_TEST_ACCOUNTS.md` — section "Kenapa testing browser pakai ngrok"
+  diperbarui: catatan lama dipindah ke `<details>` (riwayat), ditambahkan
+  catatan bahwa verifikasi browser sekarang langsung ke `localhost:3000`,
+  tidak perlu lagi tanya URL tunnel ke user di setiap sesi.
+- `PROJECT_STATE.md` — KI-013 dihapus dari Known Issues (ADR-067), bullet
+  resolved ditambahkan ke Completed (Ringkasan).
+
+### Resolved
+
+KI-013 dihapus dari `PROJECT_STATE.md` (ADR-067) — riwayatnya tercatat di
+entri ini. Bug hydration spesifik lewat tunnel ngrok (root cause asli
+KI-013) tidak lagi relevan ditelusuri karena ngrok tidak dipakai lagi untuk
+dev/testing.
+
+### Catatan
+
+`.claude/agents/najwa-qa-engineer.md` masih menyebut requirement ngrok di
+langkah 0 — **belum diubah** karena file agent ini Static Reference
+(chmod 444), hanya boleh diubah atas permintaan eksplisit King Rezi
+(`AGENTS.md`). Perlu direvisi terpisah kalau King Rezi meminta.
+
+---
+
+## 2026-08-06 — ADR-070: tetap self-hosted Better Auth, tolak Better Auth Cloud
+
+### Context
+
+King Rezi mengeluhkan proses dev jadi merepotkan karena auth "mengharuskan"
+tunnel ngrok setiap kali autentikasi diuji di dev mode. Diskusi menelusuri
+akar masalah: baseline resmi (`auth-strategy.md`, ADR-024) mendesain Better
+Auth sebagai library self-hosted yang seharusnya jalan normal di
+`localhost:3000` tanpa tunnel apapun. Requirement ngrok ternyata berasal
+dari **Better Auth Cloud** (produk hosted terpisah, sempat dipakai tanpa
+tercatat di ADR manapun) — dashboard-nya menolak Base URL non-publik
+("localhost, link-local hosts are not allowed"). Sempat dipertimbangkan
+migrasi ke Supabase Auth, tapi ditolak karena akar masalahnya bukan
+keterbatasan Better Auth secara umum.
+
+### Decision (ADR-070)
+
+Berhenti memakai Better Auth Cloud, kembali ke self-hosted Better Auth
+sesuai desain asli ADR-024/`auth-strategy.md` — tidak ada perubahan
+arsitektur. Instalasi dilakukan mandiri oleh King Rezi di komputer lokal
+(`localhost:3000`, `BETTER_AUTH_SECRET` sendiri, DB tetap Supabase Cloud),
+tanpa perlu Railway untuk dev.
+
+### Added
+
+- **ADR-070** (`project-manager/decisions/ADR-070-...md`).
+
+### Status
+
+Instalasi self-hosted belum dieksekusi AI — dilakukan mandiri oleh King
+Rezi. `QA_TEST_ACCOUNTS.md` (catatan "wajib ngrok") dan KI-013 perlu
+ditinjau ulang setelah instalasi terverifikasi jalan normal di `localhost`.
+
+---
+
+## 2026-08-06 — KI-004 resolved: alur UI toggle Light/Dark sudah diuji lewat browser
+
+### Context
+
+KI-004 mencatat bagian implementasi server-side toggle Light/Dark (baca
+cookie di RSC sebelum render) sudah diverifikasi lewat `typecheck`/`lint`/
+`test` otomatis, tetapi alur UI-nya (klik toggle di sidebar footer → cookie
+tertulis) belum diuji lewat browser karena butuh login.
+
+### Verifikasi
+
+King Rezi sudah melakukan pengujian manual alur UI toggle Light/Dark lewat
+browser (klik toggle di sidebar footer → cookie tertulis) — hasilnya berhasil
+sesuai ekspektasi, tanpa temuan masalah.
+
+### Resolved
+
+KI-004 dihapus dari `PROJECT_STATE.md` (ADR-067) — riwayatnya tercatat di
+entri ini.
+
+---
+
 ## 2026-08-06 — KI-010 resolved: konvensi penamaan & peletakan komponen lokal `src/app/` + ADR-069
 
 ### Context

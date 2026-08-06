@@ -162,16 +162,6 @@ Belum digenerate di migrasi awal — ditambahkan saat jalur server set `app.curr
 
 Alignment dokumentasi dan schema/migration sudah selesai, tetapi handler webhook, durable ingestion, retry internal, media upload Outstand, engagement sync/reply, dan reconnect flow masih task M8. `schedulePost` sendiri sudah bisa dipakai lewat `FakeOutstandAdapter` (ADR-059) — `getOutstandAdapter()` akan beralih otomatis ke real adapter begitu `OUTSTAND_API_KEY` diisi **dan** kode real adapter sudah ditulis (kalau env terisi tapi kode belum ada, factory throw error, bukan silent fallback ke Fake).
 
-### KI-004 · Toggle Light/Dark — alur UI belum diuji
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Test Coverage |
-| Terkait | T-010 |
-
-Pemeriksaan otomatis (`typecheck`/`lint`/`test`) dan implementasi server-side (baca cookie di RSC sebelum render) sudah diverifikasi; alur UI (klik toggle di sidebar footer → cookie tertulis) belum diuji lewat browser karena butuh login — perlu dicek King Rezi saat login.
-
 ### KI-005 · Astryx masih Beta
 
 | Field | Value |
@@ -192,16 +182,6 @@ Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production
 
 Bagian UI/interaksi T-012.5 (swap count↔quick-compose "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level, tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2 (query scheduled-posts count lintas domain), yang masih deferred sampai domain publishing v0.2 siap.
 
-### KI-013 · Hydration gagal saat diakses lewat tunnel ngrok
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Bug |
-| Terkait | T-018 |
-
-Saat uji halaman auth lewat tunnel ngrok yang dipakai untuk `BETTER_AUTH_URL`, seluruh halaman (bukan spesifik komponen auth) tidak ter-hydrate — tidak ada React fiber di elemen manapun meski `window.next` termuat tanpa error console; klik submit jatuh ke native HTML form-submit. Kemungkinan besar isu HMR/WebSocket Turbopack lewat ngrok. Backend/API sendiri terverifikasi benar via raw `fetch()`. Perlu ditelusuri sebelum uji interaksi form penuh di browser lewat ngrok bisa diandalkan.
-
 ---
 
 ## Blockers
@@ -214,11 +194,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **KI-013 resolved** — Instalasi self-hosted Better Auth (ADR-070) terverifikasi jalan normal di `localhost:3000` (login/register berhasil, session/cookie terbaca) tanpa ngrok. `db:studio` script ditambahkan (`bun run db:studio`) untuk lihat data `identity_*`/domain lain via Prisma Studio. `QA_TEST_ACCOUNTS.md` diperbarui — verifikasi browser tidak lagi wajib tanya URL tunnel.
+* **ADR-070** — Tetap self-hosted Better Auth, tolak Better Auth Cloud. Requirement tunnel ngrok di dev mode ternyata berasal dari constraint Better Auth Cloud (Base URL wajib publik, sempat dipakai tanpa tercatat ADR), bukan keterbatasan Better Auth self-hosted. Migrasi ke Supabase Auth dipertimbangkan lalu ditolak. Instalasi self-hosted (`localhost:3000` + Supabase Cloud, tanpa Railway) dilakukan mandiri oleh King Rezi.
+* **KI-004 resolved** — Alur UI toggle Light/Dark (klik toggle di sidebar footer → cookie tertulis) sudah diuji lewat browser oleh King Rezi, berhasil sesuai ekspektasi.
 * **KI-010 resolved** — Konvensi folder underscore-prefix (`_draft-editor`, `_sidebar-channels`) diganti: file yang meng-export React component pakai PascalCase, folder tetap kebab-case (underscore dihapus), folder `components/` ditaruh di lowest common ancestor (LCA) route pemakainya. Lahir **ADR-069**. Migrasi kode seluruh komponen colocated di `apps/web/src/app/` selesai, lolos review Ridwan dan QA Najwa.
 * **KI-008/KI-009/KI-012 resolved** — Icon sidebar Channels (quick-compose "+", grip-handle) dan icon `WorkspaceSideNav` (New Post, Notifikasi, Dark/Light toggle) diganti penuh ke `react-icons`; Tailwind arbitrary-value class dikanonikkan. Sekaligus lahir **ADR-068** (amandemen ADR-058 poin 6) — `react-icons` diperluas jadi library ikon tunggal untuk seluruh icon (brand maupun generik), bukan hanya logo brand.
-* **ADR-063** — Integrasi delegasi subagent ke alur kerja wajib (`AGENTS.md`, `SKILL.md`, `TASKS.md`) + pemetaan Domain → Subagent di `.claude/agents/README.md`, memperbaiki isu AI jarang mendelegasikan ke subagent.
-* **ADR-062** — Backlog task berjenjang: `TASKS.md` (indeks) + `tasks/` per release, 67 task ber-ID `T-NNN`, rolling wave v0.1–v0.3 detail, dan amandemen aturan lokasi status.
-* **ADR-058** — Sidebar "Channels" (quick-glance daftar akun terhubung): selesai di Claude Design, implementasi kode `apps/web` menyusul (T-012).
 
 ---
 
