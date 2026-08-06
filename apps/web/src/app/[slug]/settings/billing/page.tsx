@@ -1,17 +1,10 @@
+import { ScaffoldPlaceholder } from "@/components/ScaffoldPlaceholder";
+
 export default function Page() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-8">
-      <div className="space-y-2 text-center">
-        <p className="text-sm tracking-wide text-zinc-500 uppercase">
-          Scaffold
-        </p>
-        <h1 className="text-2xl font-semibold text-zinc-900">
-          Settings — Billing (Post-MVP)
-        </h1>
-        <p className="text-sm text-zinc-600">
-          Placeholder — implementasi fitur di M8.
-        </p>
-      </div>
-    </main>
+    <ScaffoldPlaceholder
+      title="Settings — Billing (Post-MVP)"
+      message="Placeholder — Billing tidak termasuk roadmap rilis manapun saat ini (lihat project-manager/tasks/v10-public-launch.md)."
+    />
   );
 }

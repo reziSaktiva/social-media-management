@@ -1,15 +1,10 @@
+import { ScaffoldPlaceholder } from "@/components/ScaffoldPlaceholder";
+
 export default function Page() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-8">
-      <div className="space-y-2 text-center">
-        <p className="text-sm tracking-wide text-zinc-500 uppercase">
-          Scaffold
-        </p>
-        <h1 className="text-2xl font-semibold text-zinc-900">Start Page</h1>
-        <p className="text-sm text-zinc-600">
-          Placeholder — implementasi fitur di M8.
-        </p>
-      </div>
-    </main>
+    <ScaffoldPlaceholder
+      title="Start Page"
+      message="Placeholder — implementasi direncanakan di T-070 s/d T-074 (Start Page domain skeleton, Public profile page, Link management, Theme configuration, Basic analytics — release v0.6)."
+    />
   );
 }

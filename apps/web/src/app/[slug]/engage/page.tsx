@@ -1,17 +1,10 @@
+import { ScaffoldPlaceholder } from "@/components/ScaffoldPlaceholder";
+
 export default function Page() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-8">
-      <div className="space-y-2 text-center">
-        <p className="text-sm tracking-wide text-zinc-500 uppercase">
-          Scaffold
-        </p>
-        <h1 className="text-2xl font-semibold text-zinc-900">
-          Engagement Inbox
-        </h1>
-        <p className="text-sm text-zinc-600">
-          Placeholder — implementasi fitur di M8.
-        </p>
-      </div>
-    </main>
+    <ScaffoldPlaceholder
+      title="Engagement Inbox"
+      message="Placeholder — implementasi direncanakan di T-050 (Engagement domain skeleton, release v0.4)."
+    />
   );
 }
