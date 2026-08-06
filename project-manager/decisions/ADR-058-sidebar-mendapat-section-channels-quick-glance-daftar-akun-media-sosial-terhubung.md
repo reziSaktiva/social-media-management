@@ -170,10 +170,12 @@ harus masuk ke Workspace Settings.
   didesain.
 * Scheduled-posts count per channel butuh query lintas domain (Publishing
   → Connected Account) yang ringan karena dipanggil tiap render sidebar.
-* Kalau fitur ini lanjut ke kode `apps/web`, `react-icons` perlu
-  dikonfirmasi ulang sebagai dependency asli project (ikuti pola
-  `dependency-strategy.md`) — belum ada keputusan pin versi untuk runtime
-  produksi, baru dipakai sebagai sumber ekstraksi SVG statis di Claude
-  Design.
+* ~~Kalau fitur ini lanjut ke kode `apps/web`, `react-icons` perlu
+  dikonfirmasi ulang sebagai dependency asli project~~ — **selesai**:
+  `react-icons` sudah jadi dependency runtime `apps/web` (`package.json`,
+  `^5.7.0`), dipakai di `channels-section.tsx`, `workspace-side-nav.tsx`,
+  dan `platform-icons.tsx`. Cakupannya kemudian diperluas jadi sumber icon
+  TUNGGAL untuk seluruh UI (lihat ADR-068), bukan lagi sekadar ekstraksi
+  SVG statis untuk Claude Design.
 
 ---
