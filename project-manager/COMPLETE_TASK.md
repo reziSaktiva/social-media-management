@@ -8,6 +8,57 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-07 — T-007.4: UI daftar anggota `/settings/members` (Astryx Table)
+
+### Context
+
+Lanjutan T-007 (Members management). Setelah T-007.3 menyelesaikan Server
+Actions untuk `removeMember`/`updateMemberRole`, T-007.4 membangun UI daftar
+anggota nyata di `/settings/members` menggantikan `ScaffoldPlaceholder`,
+memakai Astryx Table.
+
+### Changed (kode)
+
+- Domain `workspace` (`apps/web/src/domains/workspace/`): `IWorkspaceRepository`
+  ditambah method `listMembers` dan `findUsersByIds` + implementasi Prisma-nya;
+  `WorkspaceService.listMembersWithUser` (join member + data user); type baru
+  `WorkspaceMemberWithUser`. Test baru ditambahkan ke
+  `workspace.service.test.ts` (26 test pass, tanpa regresi).
+- `apps/web/src/app/[slug]/settings/members/page.tsx` — diganti dari
+  `ScaffoldPlaceholder` jadi server component nyata yang memanggil
+  `listMembersWithUser`.
+- `apps/web/src/app/[slug]/settings/members/components/MembersTable.tsx` —
+  baru, client component memakai Astryx Table dengan kolom
+  Member/Role/Status/Actions. Tombol Change Role/Remove disabled dengan
+  tooltip "Tersedia setelah T-007.5 selesai", dan disembunyikan untuk baris
+  Owner atau baris milik user yang sedang login.
+- Verifikasi: `bunx tsc --noEmit` bersih, `bun run lint` bersih, unit test
+  service pass (26/26). Verifikasi visual browser **tidak** dilakukan (tidak
+  ada kredensial test user yang valid tersedia saat sesi ini) — dicatat
+  sebagai known gap, bukan diklaim selesai penuh secara end-to-end.
+
+### Changed (dokumentasi)
+
+- `project-manager/tasks/v01-foundation.md` — T-007.4 ditandai selesai
+  (`[x]`). T-007 tetap 🟡 In Progress (T-007.1 `inviteMember` masih menunggu
+  T-005, T-007.5 dialog konfirmasi Remove Member/Update Role belum
+  dikerjakan).
+- `project-manager/PROJECT_STATE.md` — entri baru di "Completed (Ringkasan)",
+  metadata `Version`/`Last Updated` diperbarui.
+
+### Di luar scope (sengaja belum dikerjakan)
+
+- Dialog konfirmasi Remove Member/Update Role → T-007.5 (masih ⏳ Not
+  Started, ADR-049 Tier 2).
+- Tombol Invite Member → masih menunggu T-005 (transactional email provider).
+
+### Tindak lanjut
+
+- T-007.5 (dialog konfirmasi) jadi next step logis untuk menutup T-007
+  sepenuhnya (bersama T-007.1 begitu T-005 selesai).
+
+---
+
 ## 2026-08-07 — T-007.3: Server Actions + delegasi RBAC ke domain layer (Members Management)
 
 ### Context

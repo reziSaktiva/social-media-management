@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.45     |
+| Version      | 1.0.46     |
 | Status       | Active     |
-| Last Updated | 2026-08-06 |
+| Last Updated | 2026-08-07 |
 
 ---
 
@@ -256,6 +256,105 @@ sebenarnya — DECISIONS.md bersifat Append-Only sehingga perbaikan
 dilakukan sebagai amandemen (bukan edit diam-diam entri lama), lihat
 konvensi amandemen ADR-027/ADR-066.
 
+### KI-019 · Footer sidebar: avatar bulat (Design System) vs tombol teks nama (Web)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Design-Consistency |
+| Terkait | `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx`, project Claude Design "Social Media Management" |
+
+Design System (`components/navigation.html` di Claude Design) me-render
+footer sidebar dengan avatar bulat berisi inisial saja
+(`<span class="avatar-round">RK</span>` dibungkus icon button
+`aria-label="Menu akun"`), tanpa teks nama sama sekali. Implementasi web
+(`WorkspaceSideNav.tsx` baris ~116-121) memakai `DropdownMenu` dengan
+`button={{ label: userName || userEmail, variant: "ghost" }}` — ini tombol
+TEKS nama/email, bukan komponen `Avatar`. Bukan cuma beda posisi visual,
+elemen UI yang dipakai memang berbeda jenis (avatar bulat vs text button).
+
+Ditemukan 2026-08-07 saat King Rezi mengecek Design System pasca-implementasi
+T-007.4. Murni pencatatan temuan — resolusi (Design System ikut kode, kode
+ikut Design System, atau keduanya direvisi) belum diputuskan, tidak ada
+perbaikan kode yang dilakukan.
+
+### KI-020 · Layout footer sidebar: grouping (Design System) vs spread merata `justify="between"` (Web)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Design-Consistency |
+| Terkait | `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx`, project Claude Design "Social Media Management" |
+
+Design System CSS (`.sidebar-footer` di `styles.css`) tidak memakai
+`justify-content` pada container-nya (cuma `display:flex; gap:var(--spacing-1)`)
+— efek "renggang" didapat dari `margin-left:auto` yang ditempel LANGSUNG pada
+tombol Theme, sehingga Notifikasi menempel kiri sementara Theme+Avatar
+mengelompok jadi satu klaster di kanan. Implementasi web
+(`WorkspaceSideNav.tsx` baris ~97) memakai
+`<HStack gap={2} align="center" justify="between" width="100%">` yang
+membungkus 3 children langsung (IconButton Notifikasi, IconButton Theme,
+DropdownMenu Avatar/nama) — `justify="between"` di container menyebar
+ketiganya dengan jarak SAMA rata (Notifikasi kiri, Theme di tengah, Avatar
+di kanan), bukan mengelompokkan Theme+Avatar jadi satu grup di kanan seperti
+Design System.
+
+Ditemukan 2026-08-07 saat King Rezi mengecek Design System pasca-implementasi
+T-007.4. Murni pencatatan temuan — resolusi (Design System ikut kode, kode
+ikut Design System, atau keduanya direvisi) belum diputuskan, tidak ada
+perbaikan kode yang dilakukan.
+
+### KI-021 · Klik avatar tidak memunculkan menu Profile/Logout di Design System — alur Logout belum pernah dimodelkan
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Design-Consistency |
+| Terkait | `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx`, project Claude Design "Social Media Management" |
+
+Design System (`templates/app-prototype/AppPrototype.dc.html`, fungsi
+`route()`) tidak punya logic apa pun untuk membuka dropdown/menu saat avatar
+diklik — satu-satunya handler yang cocok adalah
+`if (el.querySelector && el.querySelector('.avatar-round')) return this.go('settings-connected-accounts');`
+yang langsung pindah screen, tanpa render menu. Tidak ada satu pun logout
+screen/logic di seluruh daftar 12 screen prototype (`SCREENS` array) — alur
+logout memang belum pernah dimodelkan di Design System sama sekali.
+Implementasi web sudah punya alur lengkap: `DropdownMenu` dengan item
+Profile + divider + Logout (yang membuka `AlertDialog` konfirmasi Tier 2
+sesuai ADR-049/NP-D10). Root cause: fitur Logout (T-016.5) dan alur akun
+(T-016.1-3) dikerjakan setelah Design System prototype dibuat, dan Design
+System tidak pernah disinkronkan ulang untuk merefleksikan fitur-fitur ini.
+
+Ditemukan 2026-08-07 saat King Rezi mengecek Design System pasca-implementasi
+T-007.4. Murni pencatatan temuan — resolusi (Design System ikut kode, kode
+ikut Design System, atau keduanya direvisi) belum diputuskan, tidak ada
+perbaikan kode yang dilakukan.
+
+### KI-022 · Klik avatar ke Workspace Settings (Design System) vs ke User Settings `/account/profile` (Web)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Design-Consistency |
+| Terkait | `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx`, project Claude Design "Social Media Management" |
+
+Design System: baris kode yang sama di KI-021 (`route()` handler avatar)
+mengarahkan ke `settings-connected-accounts` — bagian dari Workspace
+**Settings**. Implementasi web: item "Profile" di `DropdownMenu`
+mengarahkan ke `/account/profile` (`router.push("/account/profile")`) —
+route User **Settings** (bukan Workspace Settings). Implementasi web ini
+sebenarnya SESUAI baseline UX
+(`product-discovery/04-ux/information-architecture.md`: "User Settings
+diakses via Avatar/user menu" vs "Workspace Settings diakses via Workspace
+Selector") — jadi kemungkinan Design System yang perlu diperbarui mengikuti
+baseline, bukan sebaliknya, tapi keputusan final ini tetap milik King Rezi
+(belum diputuskan sesi ini).
+
+Ditemukan 2026-08-07 saat King Rezi mengecek Design System pasca-implementasi
+T-007.4. Murni pencatatan temuan — resolusi (Design System ikut kode, kode
+ikut Design System, atau keduanya direvisi) belum diputuskan, tidak ada
+perbaikan kode yang dilakukan.
+
 ---
 
 ## Blockers
@@ -268,11 +367,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-007.4 selesai** — UI daftar anggota `/settings/members` (Astryx Table): `page.tsx` diganti dari `ScaffoldPlaceholder` jadi server component nyata, `MembersTable.tsx` (client component baru, kolom Member/Role/Status/Actions). Tombol Change Role/Remove disabled dengan tooltip (menunggu T-007.5), disembunyikan untuk baris Owner/diri sendiri. Backend: `WorkspaceService.listMembersWithUser` + repository method baru (domain `workspace`), 26 unit test pass, `tsc`/lint bersih. Verifikasi visual browser belum dilakukan (tidak ada kredensial test user) — known gap, bukan klaim selesai penuh.
 * **KI-016 resolved** — Shadow database Prisma gagal (P3006) untuk migrasi berikutnya, diatasi permanen lewat fitur resmi Prisma 7 External Tables (`initShadowDb` + `tables.external`) di `apps/web/prisma.config.ts`, tanpa mengubah migration history yang sudah applied. Terverifikasi end-to-end (replay shadow DB, `migrate status` bersih, uji `migrate dev --create-only` tanpa P3006). Lahir **ADR-073**. Temuan terpisah selama verifikasi (staleness ADR-071) dicatat sebagai KI-018 baru.
 * **T-016.1/2/3/5 selesai** — Account & user settings screens: layout `account/`+`settings/` (sidebar/nav internal), `/account/profile` (edit nama + avatar, domain `identity` diisi pertama kali), `/account/preferences` (toggle tema), dialog konfirmasi Logout (ADR-049 Tier 2). Lolos review arsitektur Ridwan (nihil temuan) dan QA end-to-end Najwa + verifikasi tambahan sesi utama. Bucket `avatars` diperluas untuk avatar user personal lewat **ADR-071**. T-016.4 (notifications) tetap Blocked, menunggu T-036 (v0.2). Known Issue baru: KI-014 (domain `identity` belum ada unit test).
 * **KI-013 resolved** — Instalasi self-hosted Better Auth (ADR-070) terverifikasi jalan normal di `localhost:3000` (login/register berhasil, session/cookie terbaca) tanpa ngrok. `db:studio` script ditambahkan (`bun run db:studio`) untuk lihat data `identity_*`/domain lain via Prisma Studio. `QA_TEST_ACCOUNTS.md` diperbarui — verifikasi browser tidak lagi wajib tanya URL tunnel.
 * **ADR-070** — Tetap self-hosted Better Auth, tolak Better Auth Cloud. Requirement tunnel ngrok di dev mode ternyata berasal dari constraint Better Auth Cloud (Base URL wajib publik, sempat dipakai tanpa tercatat ADR), bukan keterbatasan Better Auth self-hosted. Migrasi ke Supabase Auth dipertimbangkan lalu ditolak. Instalasi self-hosted (`localhost:3000` + Supabase Cloud, tanpa Railway) dilakukan mandiri oleh King Rezi.
-* **KI-004 resolved** — Alur UI toggle Light/Dark (klik toggle di sidebar footer → cookie tertulis) sudah diuji lewat browser oleh King Rezi, berhasil sesuai ekspektasi.
 
 ---
 

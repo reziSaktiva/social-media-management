@@ -1,6 +1,12 @@
 /** Domain-specific types for workspace. */
 
-import type { SocialPlatform } from "@social/shared";
+import type {
+  MemberId,
+  MemberRole,
+  MemberStatus,
+  SocialPlatform,
+  UserId,
+} from "@social/shared";
 
 /**
  * Shape consumed by UI surfaces that render a quick-glance list of connected
@@ -21,4 +27,20 @@ export interface SidebarChannelAccount {
   status: string;
   reconnectRequired: boolean;
   scheduledCount: number;
+}
+
+/**
+ * Workspace member row joined with user name/email — dipakai UI daftar
+ * anggota (T-007.4). `userId` tidak punya relasi FK Prisma ke `User`
+ * (beda bounded context, lihat catatan di IWorkspaceRepository.findUsersByIds),
+ * jadi join ini dilakukan manual di WorkspaceService.listMembersWithUser,
+ * bukan lewat Prisma `include`.
+ */
+export interface WorkspaceMemberWithUser {
+  id: MemberId;
+  userId: UserId;
+  name: string;
+  email: string;
+  role: MemberRole;
+  status: MemberStatus;
 }

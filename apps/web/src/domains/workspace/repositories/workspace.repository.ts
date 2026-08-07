@@ -69,6 +69,19 @@ export interface IWorkspaceRepository {
     workspaceId: WorkspaceId,
   ): Promise<ConnectedAccountRecord[]>;
 
+  /** Ordered by `joinedAt` ascending — dipakai UI daftar anggota (T-007.4). */
+  listMembers(workspaceId: WorkspaceId): Promise<WorkspaceMemberRecord[]>;
+
+  /**
+   * Batch lookup nama/email user by id. `WorkspaceMember.userId` tidak
+   * punya relasi FK Prisma ke `User` (kemungkinan disengaja, beda bounded
+   * context), jadi join dilakukan manual di service layer lewat method ini
+   * — bukan Prisma `include`. Dipakai `WorkspaceService.listMembersWithUser`.
+   */
+  findUsersByIds(
+    userIds: UserId[],
+  ): Promise<{ id: UserId; name: string; email: string }[]>;
+
   /** Lookup membership by user — dipakai RBAC untuk resolve role actor. */
   getMember(
     workspaceId: WorkspaceId,
