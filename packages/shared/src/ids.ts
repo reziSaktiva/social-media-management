@@ -3,6 +3,7 @@
 export type UserId = string & { readonly _brand: "UserId" };
 export type WorkspaceId = string & { readonly _brand: "WorkspaceId" };
 export type MemberId = string & { readonly _brand: "MemberId" };
+export type InvitationId = string & { readonly _brand: "InvitationId" };
 export type ConnectedAccountId = string & {
   readonly _brand: "ConnectedAccountId";
 };
@@ -29,6 +30,14 @@ export function asUserId(value: string): UserId {
 
 export function asWorkspaceId(value: string): WorkspaceId {
   return value as WorkspaceId;
+}
+
+export function asMemberId(value: string): MemberId {
+  return value as MemberId;
+}
+
+export function asInvitationId(value: string): InvitationId {
+  return value as InvitationId;
 }
 
 export function asPostId(value: string): PostId {

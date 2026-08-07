@@ -1,5 +1,11 @@
-import type { UserId, WorkspaceId } from "@social/shared";
-import { ConflictError, ValidationError } from "@/lib/utils/errors";
+import { MemberRole, MemberStatus } from "@social/shared";
+import type { MemberId, UserId, WorkspaceId } from "@social/shared";
+import {
+  AuthorizationError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from "@/lib/utils/errors";
 import { slugify } from "../value-objects/slugify";
 import type {
   ConnectedAccountRecord,
@@ -95,5 +101,74 @@ export class WorkspaceService {
       reconnectRequired: account.reconnectRequired,
       scheduledCount: 0,
     }));
+  }
+
+  async removeMember(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    targetMemberId: MemberId,
+  ): Promise<void> {
+    const actor = await this.repository.getMember(workspaceId, actorUserId);
+    if (!actor || actor.status !== MemberStatus.Active) {
+      throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
+    }
+    if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
+      throw new AuthorizationError(
+        "Hanya Owner atau Admin yang bisa menghapus anggota.",
+      );
+    }
+
+    const target = await this.repository.findMemberById(
+      workspaceId,
+      targetMemberId,
+    );
+    if (!target) {
+      throw new NotFoundError("Anggota tidak ditemukan.");
+    }
+    if (target.role === MemberRole.Owner) {
+      throw new AuthorizationError("Owner tidak bisa dihapus dari workspace.");
+    }
+
+    await this.repository.removeMember(workspaceId, targetMemberId);
+  }
+
+  async updateMemberRole(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    targetMemberId: MemberId,
+    newRole: MemberRole,
+  ): Promise<void> {
+    if (newRole === MemberRole.Owner) {
+      throw new ValidationError(
+        "Gunakan alur Transfer Ownership untuk menjadikan anggota sebagai Owner.",
+      );
+    }
+
+    const actor = await this.repository.getMember(workspaceId, actorUserId);
+    if (!actor || actor.status !== MemberStatus.Active) {
+      throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
+    }
+    if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
+      throw new AuthorizationError(
+        "Hanya Owner atau Admin yang bisa mengubah role anggota.",
+      );
+    }
+
+    const target = await this.repository.findMemberById(
+      workspaceId,
+      targetMemberId,
+    );
+    if (!target) {
+      throw new NotFoundError("Anggota tidak ditemukan.");
+    }
+    if (target.role === MemberRole.Owner) {
+      throw new AuthorizationError("Role Owner tidak bisa diubah lewat sini.");
+    }
+
+    await this.repository.updateMemberRole(
+      workspaceId,
+      targetMemberId,
+      newRole,
+    );
   }
 }

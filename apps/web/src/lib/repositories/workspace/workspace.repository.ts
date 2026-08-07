@@ -1,5 +1,8 @@
 import {
   asConnectedAccountId,
+  asInvitationId,
+  asMemberId,
+  asUserId,
   asWorkspaceId,
   MemberRole,
   MemberStatus,
@@ -118,5 +121,104 @@ export const workspaceRepository: IWorkspaceRepository = {
       reconnectRequired: account.reconnectRequired,
       connectedAt: account.connectedAt,
     }));
+  },
+
+  async getMember(workspaceId, userId) {
+    const member = await prisma.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId } },
+    });
+
+    if (!member) {
+      return null;
+    }
+
+    return {
+      id: asMemberId(member.id),
+      workspaceId: asWorkspaceId(member.workspaceId),
+      userId: asUserId(member.userId),
+      role: member.role as MemberRole,
+      status: member.status as MemberStatus,
+    };
+  },
+
+  async findMemberById(workspaceId, memberId) {
+    const member = await prisma.workspaceMember.findFirst({
+      where: { id: memberId, workspaceId },
+    });
+
+    if (!member) {
+      return null;
+    }
+
+    return {
+      id: asMemberId(member.id),
+      workspaceId: asWorkspaceId(member.workspaceId),
+      userId: asUserId(member.userId),
+      role: member.role as MemberRole,
+      status: member.status as MemberStatus,
+    };
+  },
+
+  async removeMember(workspaceId, memberId) {
+    await prisma.workspaceMember.delete({
+      where: { id: memberId, workspaceId },
+    });
+  },
+
+  async updateMemberRole(workspaceId, memberId, role) {
+    await prisma.workspaceMember.update({
+      where: { id: memberId, workspaceId },
+      data: { role },
+    });
+  },
+
+  async createInvitation({
+    workspaceId,
+    email,
+    role,
+    invitedByUserId,
+    token,
+    expiresAt,
+  }) {
+    const invitation = await prisma.workspaceInvitation.create({
+      data: {
+        workspaceId,
+        email,
+        role,
+        invitedByUserId,
+        token,
+        expiresAt,
+      },
+    });
+
+    return {
+      id: asInvitationId(invitation.id),
+      workspaceId: asWorkspaceId(invitation.workspaceId),
+      email: invitation.email,
+      role: invitation.role as MemberRole,
+      token: invitation.token,
+      status: invitation.status,
+      expiresAt: invitation.expiresAt,
+    };
+  },
+
+  async findInvitationByToken(token) {
+    const invitation = await prisma.workspaceInvitation.findUnique({
+      where: { token },
+    });
+
+    if (!invitation) {
+      return null;
+    }
+
+    return {
+      id: asInvitationId(invitation.id),
+      workspaceId: asWorkspaceId(invitation.workspaceId),
+      email: invitation.email,
+      role: invitation.role as MemberRole,
+      token: invitation.token,
+      status: invitation.status,
+      expiresAt: invitation.expiresAt,
+    };
   },
 };

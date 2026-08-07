@@ -1,5 +1,9 @@
 import type {
   ConnectedAccountId,
+  InvitationId,
+  MemberId,
+  MemberRole,
+  MemberStatus,
   SocialPlatform,
   UserId,
   WorkspaceId,
@@ -20,6 +24,24 @@ export interface ConnectedAccountRecord {
   status: string;
   reconnectRequired: boolean;
   connectedAt: Date;
+}
+
+export interface WorkspaceMemberRecord {
+  id: MemberId;
+  workspaceId: WorkspaceId;
+  userId: UserId;
+  role: MemberRole;
+  status: MemberStatus;
+}
+
+export interface WorkspaceInvitationRecord {
+  id: InvitationId;
+  workspaceId: WorkspaceId;
+  email: string;
+  role: MemberRole;
+  token: string;
+  status: string;
+  expiresAt: Date;
 }
 
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/workspace. */
@@ -45,4 +67,39 @@ export interface IWorkspaceRepository {
   listConnectedAccounts(
     workspaceId: WorkspaceId,
   ): Promise<ConnectedAccountRecord[]>;
+
+  /** Lookup membership by user — dipakai RBAC untuk resolve role actor. */
+  getMember(
+    workspaceId: WorkspaceId,
+    userId: UserId,
+  ): Promise<WorkspaceMemberRecord | null>;
+
+  /** Lookup membership by row id — dipakai untuk resolve target member. */
+  findMemberById(
+    workspaceId: WorkspaceId,
+    memberId: MemberId,
+  ): Promise<WorkspaceMemberRecord | null>;
+
+  /** Hard delete (DB-D03) — bukan soft-delete. */
+  removeMember(workspaceId: WorkspaceId, memberId: MemberId): Promise<void>;
+
+  updateMemberRole(
+    workspaceId: WorkspaceId,
+    memberId: MemberId,
+    role: MemberRole,
+  ): Promise<void>;
+
+  createInvitation(input: {
+    workspaceId: WorkspaceId;
+    email: string;
+    role: MemberRole;
+    invitedByUserId: UserId;
+    token: string;
+    expiresAt: Date;
+  }): Promise<WorkspaceInvitationRecord>;
+
+  /** Belum dipakai service manapun — disiapkan untuk acceptInvite (task lain). */
+  findInvitationByToken(
+    token: string,
+  ): Promise<WorkspaceInvitationRecord | null>;
 }

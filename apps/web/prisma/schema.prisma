@@ -101,6 +101,7 @@ model Workspace {
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   members            WorkspaceMember[]
+  invitations        WorkspaceInvitation[]
   connectedAccounts  WorkspaceConnectedAccount[]
   posts              PublishingPost[]
   queueSlots         PublishingQueueSlot[]
@@ -130,6 +131,26 @@ model WorkspaceMember {
   @@unique([workspaceId, userId])
   @@index([workspaceId])
   @@map("workspace_members")
+}
+
+model WorkspaceInvitation {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId     String    @map("workspace_id") @db.Uuid
+  email           String
+  role            String
+  token           String    @unique
+  status          String    @default("pending") // pending | accepted | revoked | expired
+  invitedByUserId String    @map("invited_by_user_id")
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  acceptedAt      DateTime? @map("accepted_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId])
+  @@map("workspace_invitations")
 }
 
 model WorkspaceConnectedAccount {

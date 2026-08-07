@@ -8,6 +8,59 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-07 — T-007.1 (sebagian) & T-007.2 selesai: Members management (removeMember, updateMemberRole, repository invitation)
+
+### Context
+
+**T-007** (Members management) dikerjakan oleh Prabowo Feature Engineer.
+Scope sesi ini: `WorkspaceService.removeMember` + `updateMemberRole` (RBAC
+manual) dan seluruh repository method + migrasi tabel invitation.
+`inviteMember` belum dikerjakan — tetap menunggu T-005 (transactional email
+provider) selesai/ditentukan.
+
+### Changed (kode)
+
+- **T-007.1 (sebagian) — `WorkspaceService.removeMember` + `updateMemberRole`:**
+  RBAC manual Owner/Admin only; Owner tidak bisa dihapus atau diubah role-nya;
+  `updateMemberRole` menolak promosi member manapun ke Owner. File:
+  `apps/web/src/domains/workspace/services/workspace.service.ts` +
+  `apps/web/src/domains/workspace/services/workspace.service.test.ts`.
+  `inviteMember` masih Blocked (T-005).
+- **T-007.2 — Repository method + migrasi tabel invitation:** Model Prisma
+  baru `WorkspaceInvitation` → tabel `workspace_invitations` (lihat
+  **ADR-072**), migration
+  `apps/web/prisma/migrations/20260807061502_add_workspace_invitations/`.
+  Repository method baru: `getMember`, `findMemberById`, `removeMember`,
+  `updateMemberRole`, `createInvitation`, `findInvitationByToken` — interface
+  di `apps/web/src/domains/workspace/repositories/workspace.repository.ts`,
+  implementasi Prisma di
+  `apps/web/src/lib/repositories/workspace/workspace.repository.ts`. ID baru
+  ditambahkan di `packages/shared/src/ids.ts`.
+
+### Keputusan & temuan
+
+- **ADR-072** — Invite member wajib bisa menyasar orang yang belum punya
+  akun (dikonfirmasi King Rezi), sehingga dibuat tabel `workspace_invitations`
+  terpisah dari `workspace_members` (yang mensyaratkan `user_id NOT NULL`).
+  `database-strategy.md` perlu diupdate menyusul untuk merefleksikan tabel
+  baru ini (belum dieksekusi di sesi ini).
+- **KI-016 (baru)** — `prisma migrate dev` gagal (P3006) untuk migrasi kali
+  ini karena migration lama `20260806120000_extend_avatars_bucket_user_profile`
+  berisi raw SQL ke skema `storage.buckets` yang tidak ada di shadow database
+  kosong. Diatasi dengan workaround manual (`prisma migrate diff` ke DB live
+  + `prisma db execute` + `prisma migrate resolve --applied`), sudah
+  diverifikasi `prisma migrate status` up to date — tapi workaround ini akan
+  perlu diulang untuk migrasi Prisma berikutnya sampai ditangani permanen.
+
+### Task tracking
+
+- `tasks/v01-foundation.md` — T-007 Status `⏳ Not Started` → `🟡 In Progress`;
+  T-007.1 tetap unchecked (catatan inline ditambahkan); T-007.2 dicentang
+  selesai.
+- `TASKS.md` — indeks v0.1: `3 🟡` → `4 🟡`, `7 ⏳` → `6 ⏳`.
+
+---
+
 ## 2026-08-06 — T-016.1/2/3/5 selesai: Account & user settings screens
 
 ### Context
