@@ -3,6 +3,9 @@
     "xds": {
       "type": "http",
       "url": "https://astryx.atmeta.com/mcp"
+    },
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=ndcrkzqgqukqfmekgoze&read_only=true"
     }
   }
 }
