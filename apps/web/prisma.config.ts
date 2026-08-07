@@ -27,10 +27,17 @@ const migrateUrl =
  * itself reviewable in its own file (prisma/shadow-init.sql) while still
  * satisfying the config API's actual contract.
  */
-const shadowDbInitScript = readFileSync(
-  join(import.meta.dirname, "prisma/shadow-init.sql"),
-  "utf-8",
-);
+let shadowDbInitScript = "";
+try {
+  shadowDbInitScript = readFileSync(
+    join(import.meta.dirname, "prisma/shadow-init.sql"),
+    "utf-8",
+  );
+} catch {
+  // Missing/moved shadow-init.sql shouldn't crash generate/validate/studio —
+  // only migrate/diff actually need this script, and they'll surface a
+  // clear Prisma-level error if the shadow DB init turns out empty.
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
