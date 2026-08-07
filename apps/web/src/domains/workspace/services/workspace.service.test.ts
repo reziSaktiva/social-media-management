@@ -45,6 +45,8 @@ function createFakeRepository(
     findDefaultWorkspaceForUser: async () => null,
     findBySlug: async () => null,
     listConnectedAccounts: async () => [],
+    listMembers: async () => [],
+    findUsersByIds: async () => [],
     getMember: async (_workspaceId, userId) => {
       for (const member of members.values()) {
         if (member.userId === userId) {
@@ -272,6 +274,73 @@ describe("WorkspaceService.listConnectedAccounts", () => {
     await expect(
       service.listConnectedAccounts(asWorkspaceId("workspace-1")),
     ).resolves.toBe(accounts);
+  });
+});
+
+describe("WorkspaceService.listMembersWithUser", () => {
+  it("joins member records with user name/email", async () => {
+    const ownerId = asUserId("owner-user");
+    const adminId = asUserId("admin-user");
+    const ownerMemberId = asMemberId("member-owner");
+    const adminMemberId = asMemberId("member-admin");
+
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listMembers: async () => [
+          member(ownerId, ownerMemberId, MemberRole.Owner),
+          member(adminId, adminMemberId, MemberRole.Admin),
+        ],
+        findUsersByIds: async () => [
+          { id: ownerId, name: "Raka", email: "raka@example.com" },
+          { id: adminId, name: "Maya", email: "maya@example.com" },
+        ],
+      }),
+    );
+
+    const result = await service.listMembersWithUser(WORKSPACE_ID);
+
+    expect(result).toEqual([
+      {
+        id: ownerMemberId,
+        userId: ownerId,
+        name: "Raka",
+        email: "raka@example.com",
+        role: MemberRole.Owner,
+        status: MemberStatus.Active,
+      },
+      {
+        id: adminMemberId,
+        userId: adminId,
+        name: "Maya",
+        email: "maya@example.com",
+        role: MemberRole.Admin,
+        status: MemberStatus.Active,
+      },
+    ]);
+  });
+
+  it("silently skips members whose user record is missing", async () => {
+    const ownerId = asUserId("owner-user");
+    const orphanUserId = asUserId("orphan-user");
+    const ownerMemberId = asMemberId("member-owner");
+    const orphanMemberId = asMemberId("member-orphan");
+
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listMembers: async () => [
+          member(ownerId, ownerMemberId, MemberRole.Owner),
+          member(orphanUserId, orphanMemberId, MemberRole.Creator),
+        ],
+        findUsersByIds: async () => [
+          { id: ownerId, name: "Raka", email: "raka@example.com" },
+        ],
+      }),
+    );
+
+    const result = await service.listMembersWithUser(WORKSPACE_ID);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe(ownerMemberId);
   });
 });
 

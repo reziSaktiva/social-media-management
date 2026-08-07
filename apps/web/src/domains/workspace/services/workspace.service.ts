@@ -13,7 +13,7 @@ import type {
   WorkspaceMemberRecord,
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
-import type { SidebarChannelAccount } from "../types";
+import type { SidebarChannelAccount, WorkspaceMemberWithUser } from "../types";
 
 const MAX_NAME_LENGTH = 100;
 const MAX_SLUG_ATTEMPTS = 6;
@@ -102,6 +102,41 @@ export class WorkspaceService {
       reconnectRequired: account.reconnectRequired,
       scheduledCount: 0,
     }));
+  }
+
+  /**
+   * Daftar anggota workspace tergabung dengan nama/email (T-007.4). Join
+   * dilakukan manual (bukan Prisma `include`) karena `WorkspaceMember.userId`
+   * tidak punya relasi FK ke `User` — lihat catatan di
+   * `IWorkspaceRepository.findUsersByIds`. Anggota yang usernya tidak
+   * ditemukan (data korup) dilewati diam-diam, bukan throw — konsisten
+   * dengan gaya defensif `listSidebarChannels`.
+   */
+  async listMembersWithUser(
+    workspaceId: WorkspaceId,
+  ): Promise<WorkspaceMemberWithUser[]> {
+    const members = await this.repository.listMembers(workspaceId);
+    const users = await this.repository.findUsersByIds(
+      members.map((member) => member.userId),
+    );
+    const userById = new Map(users.map((user) => [user.id, user]));
+
+    const result: WorkspaceMemberWithUser[] = [];
+    for (const member of members) {
+      const user = userById.get(member.userId);
+      if (!user) {
+        continue;
+      }
+      result.push({
+        id: member.id,
+        userId: member.userId,
+        name: user.name,
+        email: user.email,
+        role: member.role,
+        status: member.status,
+      });
+    }
+    return result;
   }
 
   /** Owner/Admin only; dipakai removeMember & updateMemberRole. */

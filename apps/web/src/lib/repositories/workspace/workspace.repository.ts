@@ -171,6 +171,28 @@ export const workspaceRepository: IWorkspaceRepository = {
     }));
   },
 
+  async listMembers(workspaceId) {
+    const members = await prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      orderBy: { joinedAt: "asc" },
+    });
+
+    return members.map(toMemberRecord);
+  },
+
+  async findUsersByIds(userIds) {
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true },
+    });
+
+    return users.map((user) => ({
+      id: asUserId(user.id),
+      name: user.name,
+      email: user.email,
+    }));
+  },
+
   async getMember(workspaceId, userId) {
     const member = await prisma.workspaceMember.findUnique({
       where: { workspaceId_userId: { workspaceId, userId } },
