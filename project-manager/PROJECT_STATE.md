@@ -206,24 +206,6 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003), tiga env var ini belum diisi di 
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — kode Google OAuth di `auth.ts` sudah siap (`socialProviders.google` terdaftar kondisional lewat `env.ts`), tapi tanpa env ini "Sign in with Google" tidak aktif.
 - `JOB_SECRET` — dibutuhkan untuk header `X-Job-Secret` (Railway Cron → web, EM-D0x). Belum diisi berarti job runner (T-027) belum bisa diverifikasi end-to-end di local; dev bisa memakai nilai dummy sementara.
 
-### KI-016 · Shadow database Prisma gagal untuk migrasi berikutnya (P3006)
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Tech-Debt |
-| Terkait | T-007, seluruh migrasi Prisma berikutnya |
-
-`prisma migrate dev` gagal (error P3006) karena migration lama
-`20260806120000_extend_avatars_bucket_user_profile` berisi raw SQL ke skema
-`storage.buckets` (Supabase Storage) yang tidak ada di shadow database
-kosong. Untuk migrasi `20260807061502_add_workspace_invitations` dipakai
-workaround (`prisma migrate diff` ke DB live + `prisma db execute` manual +
-`prisma migrate resolve --applied`), sudah diverifikasi `prisma migrate
-status` up to date — tapi workaround ini akan perlu diulang untuk SEMUA
-migrasi Prisma berikutnya sampai ditangani permanen. Butuh keputusan: shadow
-DB config khusus, atau baseline ulang migration history.
-
 ### KI-017 · Mismatch role di mockup Claude Design screen Members vs baseline role permissions
 
 | Field | Value |
@@ -254,6 +236,28 @@ T-007.1/.2/.3 (backend), tapi wajib beres sebelum T-007.4 (UI) supaya tidak
 salah pola. Belum ada ADR terkait (murni temuan konsistensi desain, bukan
 keputusan arsitektur).
 
+### KI-018 · ADR-071 stale — kutipan migration.sql tidak sinkron dengan kode aktual
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Docs-Consistency |
+| Terkait | ADR-071, `20260806120000_extend_avatars_bucket_user_profile` |
+
+Ditemukan saat investigasi KI-016 (lihat ADR-073): isi migration.sql aktual
+`apps/web/prisma/migrations/20260806120000_extend_avatars_bucket_user_profile/migration.sql`
+sudah `ON CONFLICT (id) DO UPDATE` + guardrail kolom
+`file_size_limit`/`allowed_mime_types`, tapi **ADR-071**
+(`project-manager/decisions/ADR-071-perluasan-bucket-avatars-untuk-avatar-user-personal.md`)
+yang mendokumentasikannya masih mengutip versi lama (`DO NOTHING`, tanpa
+guardrail) — kode sudah diedit setelah ADR-071 ditulis, tapi kutipannya di
+ADR belum diperbarui. Bukan bagian dari resolusi KI-016 (berbeda file,
+berbeda root cause), murni temuan staleness dokumentasi. Tindak lanjut:
+ADR-071 perlu diperbaiki agar kutipan SQL-nya sinkron dengan kode
+sebenarnya — DECISIONS.md bersifat Append-Only sehingga perbaikan
+dilakukan sebagai amandemen (bukan edit diam-diam entri lama), lihat
+konvensi amandemen ADR-027/ADR-066.
+
 ---
 
 ## Blockers
@@ -266,11 +270,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **KI-016 resolved** — Shadow database Prisma gagal (P3006) untuk migrasi berikutnya, diatasi permanen lewat fitur resmi Prisma 7 External Tables (`initShadowDb` + `tables.external`) di `apps/web/prisma.config.ts`, tanpa mengubah migration history yang sudah applied. Terverifikasi end-to-end (replay shadow DB, `migrate status` bersih, uji `migrate dev --create-only` tanpa P3006). Lahir **ADR-073**. Temuan terpisah selama verifikasi (staleness ADR-071) dicatat sebagai KI-018 baru.
 * **T-016.1/2/3/5 selesai** — Account & user settings screens: layout `account/`+`settings/` (sidebar/nav internal), `/account/profile` (edit nama + avatar, domain `identity` diisi pertama kali), `/account/preferences` (toggle tema), dialog konfirmasi Logout (ADR-049 Tier 2). Lolos review arsitektur Ridwan (nihil temuan) dan QA end-to-end Najwa + verifikasi tambahan sesi utama. Bucket `avatars` diperluas untuk avatar user personal lewat **ADR-071**. T-016.4 (notifications) tetap Blocked, menunggu T-036 (v0.2). Known Issue baru: KI-014 (domain `identity` belum ada unit test).
 * **KI-013 resolved** — Instalasi self-hosted Better Auth (ADR-070) terverifikasi jalan normal di `localhost:3000` (login/register berhasil, session/cookie terbaca) tanpa ngrok. `db:studio` script ditambahkan (`bun run db:studio`) untuk lihat data `identity_*`/domain lain via Prisma Studio. `QA_TEST_ACCOUNTS.md` diperbarui — verifikasi browser tidak lagi wajib tanya URL tunnel.
 * **ADR-070** — Tetap self-hosted Better Auth, tolak Better Auth Cloud. Requirement tunnel ngrok di dev mode ternyata berasal dari constraint Better Auth Cloud (Base URL wajib publik, sempat dipakai tanpa tercatat ADR), bukan keterbatasan Better Auth self-hosted. Migrasi ke Supabase Auth dipertimbangkan lalu ditolak. Instalasi self-hosted (`localhost:3000` + Supabase Cloud, tanpa Railway) dilakukan mandiri oleh King Rezi.
 * **KI-004 resolved** — Alur UI toggle Light/Dark (klik toggle di sidebar footer → cookie tertulis) sudah diuji lewat browser oleh King Rezi, berhasil sesuai ekspektasi.
-* **KI-010 resolved** — Konvensi folder underscore-prefix (`_draft-editor`, `_sidebar-channels`) diganti: file yang meng-export React component pakai PascalCase, folder tetap kebab-case (underscore dihapus), folder `components/` ditaruh di lowest common ancestor (LCA) route pemakainya. Lahir **ADR-069**. Migrasi kode seluruh komponen colocated di `apps/web/src/app/` selesai, lolos review Ridwan dan QA Najwa.
 
 ---
 
@@ -278,11 +282,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-073** — Prisma External Tables (`initShadowDb` + `tables.external`) untuk shadow database menangani tabel platform Supabase (`storage.buckets`) — resolusi KI-016.
+* **ADR-072** — Tabel `workspace_invitations` terpisah untuk invite member yang belum punya akun (T-007.1/.2).
 * **ADR-071** — Perluasan bucket Supabase Storage `avatars` (publik) untuk juga menampung avatar user personal (T-016.2), path baru `avatars/users/{user_id}/avatar.{ext}` di samping path avatar workspace yang sudah ada. Tidak membuat bucket baru.
 * **ADR-070** — Tetap self-hosted Better Auth, tolak Better Auth Cloud (resolusi akar masalah KI-013).
 * **ADR-069** — Konvensi penamaan & peletakan komponen lokal di `src/app/` (resolusi KI-010): PascalCase untuk file component, kebab-case untuk folder & file non-component, peletakan `components/` berbasis lowest common ancestor (LCA) route.
-* **ADR-068** — `react-icons` diperluas jadi library ikon tunggal untuk seluruh icon (brand maupun generik), tidak lagi dibatasi logo brand saja (amandemen ADR-058 poin 6).
-* **ADR-067** — Known Issues `Resolved` yang sudah tercatat di `COMPLETE_TASK.md` dihapus dari `PROJECT_STATE.md` (amandemen ADR-066), bukan dibiarkan menumpuk dengan status `Resolved`.
 
 ---
 

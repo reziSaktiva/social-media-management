@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { config as loadEnv } from "dotenv";
 import { defineConfig } from "prisma/config";
 
@@ -17,10 +19,37 @@ const migrateUrl =
   process.env.DIRECT_URL ||
   "postgresql://prisma:prisma@127.0.0.1:5432/prisma?schema=public";
 
+/**
+ * KI-016: `migrations.initShadowDb` expects the SQL script *content* as a
+ * string, not a file path — the CLI passes this value through verbatim to
+ * the schema engine (confirmed by reading prisma@7.8.0's compiled CLI: no
+ * fs read happens on this field). Loading the file here keeps the SQL
+ * itself reviewable in its own file (prisma/shadow-init.sql) while still
+ * satisfying the config API's actual contract.
+ */
+let shadowDbInitScript = "";
+try {
+  shadowDbInitScript = readFileSync(
+    join(import.meta.dirname, "prisma/shadow-init.sql"),
+    "utf-8",
+  );
+} catch {
+  // Missing/moved shadow-init.sql shouldn't crash generate/validate/studio —
+  // only migrate/diff actually need this script, and they'll surface a
+  // clear Prisma-level error if the shadow DB init turns out empty.
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
+  experimental: {
+    externalTables: true,
+  },
   migrations: {
     path: "prisma/migrations",
+    initShadowDb: shadowDbInitScript,
+  },
+  tables: {
+    external: ["storage.buckets"],
   },
   datasource: {
     url: migrateUrl,

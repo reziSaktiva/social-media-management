@@ -199,6 +199,33 @@ Penyelarasan ADR-040 menggunakan migrasi aditif `20260723121000_align_outstand_c
 
 Policy SQL (`ENABLE ROW LEVEL SECURITY`, `CREATE POLICY`, function helper untuk `app.current_user_id`) disimpan sebagai bagian dari migrasi Prisma (raw SQL dalam migration folder) agar skema + policy tetap sejalan di kedua project Supabase.
 
+## Shadow Database & External Tables (ADR-073)
+
+Setiap `prisma migrate dev` mereplay **seluruh** migration history ke shadow
+database kosong untuk validasi. Migrasi yang berisi raw SQL ke tabel milik
+platform lain (mis. `storage.buckets` milik Supabase Storage, bukan model
+Prisma) akan gagal (**P3006**) karena tabel itu tidak ada di shadow DB kosong
+yang baru dibuat.
+
+Keputusan (**ADR-073**): memakai fitur resmi **Prisma 7 External Tables**,
+dikonfigurasi di `apps/web/prisma.config.ts`:
+
+| Field config | Fungsi |
+|---|---|
+| `experimental.externalTables: true` | Mengaktifkan dukungan tabel eksternal |
+| `tables.external: ["storage.buckets"]` | Menandai tabel yang dimiliki platform lain, tidak dikelola Prisma |
+| `migrations.initShadowDb` | Isi SQL setup (stub tabel eksternal) yang dijalankan Prisma terhadap shadow DB sebelum replay migration history |
+
+SQL stub-nya sendiri disimpan di file terpisah agar reviewable
+(`apps/web/prisma/shadow-init.sql`), dibaca via `readFileSync` di
+`prisma.config.ts` — **catatan penting**: `migrations.initShadowDb` di
+Prisma 7.8.0 mengharapkan isi SQL script (string), bukan path file.
+
+Pendekatan ini murni konfigurasi (`prisma.config.ts` + satu file SQL) —
+tidak mengubah `schema.prisma` maupun migration.sql yang sudah applied di
+DB manapun. Shadow DB bersifat efemeral (dibuat-hapus otomatis oleh Prisma
+setiap run), sehingga tidak ada state yang perlu di-undo saat rollback.
+
 ---
 
 # Repository Implementation dengan Prisma
