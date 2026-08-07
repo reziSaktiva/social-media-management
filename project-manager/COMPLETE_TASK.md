@@ -8,6 +8,34 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-07 — Resolusi KI-018: Amandemen ADR-071 (sinkronisasi kutipan migration.sql)
+
+### Context
+
+KI-018 ditemukan saat investigasi KI-016 (ADR-073): kutipan SQL di bagian
+"Catatan implementasi" ADR-071 (`ON CONFLICT (id) DO NOTHING`, tanpa
+guardrail kolom) sudah stale terhadap isi aktual
+`apps/web/prisma/migrations/20260806120000_extend_avatars_bucket_user_profile/migration.sql`
+(`ON CONFLICT (id) DO UPDATE` + guardrail `file_size_limit`/
+`allowed_mime_types`) — kode diedit setelah ADR-071 ditulis, kutipannya
+tidak ikut diperbarui.
+
+### Changed (dokumentasi)
+
+- ADR baru **ADR-075** dibuat (`project-manager/decisions/ADR-075-amandemen-adr-071-sinkronisasi-kutipan-migration-sql-bucket-avatars.md`)
+  mengamandemen ADR-071 — DECISIONS.md append-only, jadi kutipan lama
+  ADR-071 tidak diedit, hanya digantikan lewat ADR baru yang eksplisit
+  merujuknya (konvensi amandemen ADR-027/ADR-067).
+- `project-manager/DECISIONS.md` — baris ADR-075 ditambahkan; baris ADR-071
+  diupdate Status jadi `Accepted — Amended by ADR-075 (2026-08-07)`.
+- `project-manager/PROJECT_STATE.md` — KI-018 Status diubah dari `Open` ke
+  `Resolved`, ditambah catatan referensi ADR-075; baris log KI-018 resolved
+  ditambahkan di dekat entri KI-016.
+- Tidak ada perubahan kode — murni koreksi dokumentasi (Docs-Consistency),
+  tidak ada keputusan arsitektur baru.
+
+---
+
 ## 2026-08-07 — T-007.4: UI daftar anggota `/settings/members` (Astryx Table)
 
 ### Context
