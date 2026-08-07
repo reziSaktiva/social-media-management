@@ -1,6 +1,7 @@
 import type {
   ConnectedAccountId,
   InvitationId,
+  InvitationStatus,
   MemberId,
   MemberRole,
   MemberStatus,
@@ -40,7 +41,7 @@ export interface WorkspaceInvitationRecord {
   email: string;
   role: MemberRole;
   token: string;
-  status: string;
+  status: InvitationStatus;
   expiresAt: Date;
 }
 

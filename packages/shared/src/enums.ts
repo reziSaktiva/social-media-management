@@ -22,6 +22,13 @@ export enum MemberStatus {
   Removed = "removed",
 }
 
+export enum InvitationStatus {
+  Pending = "pending",
+  Accepted = "accepted",
+  Revoked = "revoked",
+  Expired = "expired",
+}
+
 export enum SocialPlatform {
   Instagram = "instagram",
   Facebook = "facebook",

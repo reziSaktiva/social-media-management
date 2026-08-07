@@ -10,6 +10,7 @@ import { slugify } from "../value-objects/slugify";
 import type {
   ConnectedAccountRecord,
   IWorkspaceRepository,
+  WorkspaceMemberRecord,
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
 import type { SidebarChannelAccount } from "../types";
@@ -103,21 +104,27 @@ export class WorkspaceService {
     }));
   }
 
-  async removeMember(
+  /** Owner/Admin only; dipakai removeMember & updateMemberRole. */
+  private async assertActorCanManageMembers(
     workspaceId: WorkspaceId,
     actorUserId: UserId,
-    targetMemberId: MemberId,
+    actionErrorMessage: string,
   ): Promise<void> {
     const actor = await this.repository.getMember(workspaceId, actorUserId);
     if (!actor || actor.status !== MemberStatus.Active) {
       throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
     }
     if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
-      throw new AuthorizationError(
-        "Hanya Owner atau Admin yang bisa menghapus anggota.",
-      );
+      throw new AuthorizationError(actionErrorMessage);
     }
+  }
 
+  /** Owner tidak bisa jadi target; dipakai removeMember & updateMemberRole. */
+  private async getManageableTarget(
+    workspaceId: WorkspaceId,
+    targetMemberId: MemberId,
+    ownerErrorMessage: string,
+  ): Promise<WorkspaceMemberRecord> {
     const target = await this.repository.findMemberById(
       workspaceId,
       targetMemberId,
@@ -126,8 +133,26 @@ export class WorkspaceService {
       throw new NotFoundError("Anggota tidak ditemukan.");
     }
     if (target.role === MemberRole.Owner) {
-      throw new AuthorizationError("Owner tidak bisa dihapus dari workspace.");
+      throw new AuthorizationError(ownerErrorMessage);
     }
+    return target;
+  }
+
+  async removeMember(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    targetMemberId: MemberId,
+  ): Promise<void> {
+    await this.assertActorCanManageMembers(
+      workspaceId,
+      actorUserId,
+      "Hanya Owner atau Admin yang bisa menghapus anggota.",
+    );
+    await this.getManageableTarget(
+      workspaceId,
+      targetMemberId,
+      "Owner tidak bisa dihapus dari workspace.",
+    );
 
     await this.repository.removeMember(workspaceId, targetMemberId);
   }
@@ -144,26 +169,16 @@ export class WorkspaceService {
       );
     }
 
-    const actor = await this.repository.getMember(workspaceId, actorUserId);
-    if (!actor || actor.status !== MemberStatus.Active) {
-      throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
-    }
-    if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
-      throw new AuthorizationError(
-        "Hanya Owner atau Admin yang bisa mengubah role anggota.",
-      );
-    }
-
-    const target = await this.repository.findMemberById(
+    await this.assertActorCanManageMembers(
+      workspaceId,
+      actorUserId,
+      "Hanya Owner atau Admin yang bisa mengubah role anggota.",
+    );
+    await this.getManageableTarget(
       workspaceId,
       targetMemberId,
+      "Role Owner tidak bisa diubah lewat sini.",
     );
-    if (!target) {
-      throw new NotFoundError("Anggota tidak ditemukan.");
-    }
-    if (target.role === MemberRole.Owner) {
-      throw new AuthorizationError("Role Owner tidak bisa diubah lewat sini.");
-    }
 
     await this.repository.updateMemberRole(
       workspaceId,

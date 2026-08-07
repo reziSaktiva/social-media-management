@@ -4,6 +4,7 @@ import {
   asMemberId,
   asUserId,
   asWorkspaceId,
+  InvitationStatus,
   MemberRole,
   MemberStatus,
   SocialPlatform,
@@ -70,7 +71,7 @@ function createFakeRepository(
         email: input.email,
         role: input.role,
         token: input.token,
-        status: "pending",
+        status: InvitationStatus.Pending,
         expiresAt: input.expiresAt,
       };
       invitations.set(invitation.token, invitation);
