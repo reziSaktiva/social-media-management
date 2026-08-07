@@ -8,6 +8,102 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-06 — T-016.1/2/3/5 selesai: Account & user settings screens
+
+### Context
+
+**T-016** (Account & user settings screens) dikerjakan lintas subagent —
+Mark UI Engineer (T-016.1 layout, T-016.3 preferences, T-016.5 dialog
+konfirmasi Logout) dan Prabowo Feature Engineer (T-016.2 profile edit).
+Direview arsitektur oleh Ridwan (nihil temuan) dan lolos QA end-to-end oleh
+Najwa + verifikasi tambahan sesi utama. **T-016.4** (notifications) tetap
+di luar scope sesi ini — blocked T-036 (v0.2), tidak dikerjakan.
+
+### Changed (kode)
+
+- **T-016.1 — Layout `account/` + `settings/`:** Sesi Claude Design (AI
+  utama, bukan subagent Neymar) lebih dulu untuk 4 mockup:
+  `templates/account-profile.html`, `templates/account-preferences.html`,
+  kolom Tier 2 baru di `components/dialog.html`, subnav baru di
+  `templates/settings-connected-accounts.html` (project Claude Design
+  "Social Media Management", projectId `84aded99-bb23-49b1-be9f-dd8f21c6873e`).
+  `/account` pakai `AppShell`+`SideNav` (top-level, tanpa workspace context,
+  back-link ke workspace); `/[slug]/settings` pakai
+  `Layout`+`LayoutPanel role="navigation"`+`LayoutContent` (bukan AppShell
+  kedua, karena sudah dibungkus AppShell dari `[slug]/layout.tsx`). File
+  baru: `apps/web/src/app/account/page.tsx` (redirect ke `/account/profile`,
+  menutup celah ADR-046), `apps/web/src/app/account/components/AccountSideNav.tsx`,
+  `apps/web/src/app/[slug]/settings/components/SettingsSideNav.tsx`. Diubah:
+  `apps/web/src/app/account/layout.tsx`, `apps/web/src/app/[slug]/settings/layout.tsx`.
+- **T-016.2 — `/account/profile` (edit nama, avatar):** Domain `identity`
+  (`apps/web/src/domains/identity/`) diisi **pertama kali** (sebelumnya
+  scaffold kosong): `IIdentityRepository`, `IAvatarStorageAdapter` (pola sama
+  `IOutstandAdapter` domain publishing), `IdentityService` (constructor
+  injection, validasi nama + avatar). Infra: `apps/web/src/lib/repositories/identity/`,
+  `apps/web/src/lib/adapters/avatar-storage/` (Supabase Storage,
+  service-role). Entry point: `apps/web/src/app/account/profile/page.tsx`
+  (Server Component) + `actions.ts` (Server Action) + `components/ProfileForm.tsx`.
+  Scope sengaja hanya nama + avatar — email read-only, tidak ada flow ganti
+  email (belum ada infra verifikasi email).
+- **T-016.3 — `/account/preferences`:** Card "Tema Tampilan" dengan toggle
+  Light/Dark, reuse hook `useThemeMode()` existing (tidak ada state/cookie
+  baru) — baseline (`04-ux/information-architecture.md` § 7) tidak
+  mendefinisikan personal preference lain di luar tema. File:
+  `apps/web/src/app/account/preferences/page.tsx`.
+- **T-016.5 — Dialog konfirmasi Logout (ADR-049 Tier 2):** Memperbaiki
+  pelanggaran aktif ADR-049/NP-D10 yang ditemukan saat eksplorasi:
+  `handleLogout` di `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx`
+  sebelumnya dipanggil langsung dari dropdown "Logout" tanpa konfirmasi
+  apapun. Fix: tambah `AlertDialog` (komponen Astryx, konsumen pertama di
+  `apps/web`) — title "Logout dari akun ini?", description mengacu
+  ADR-049/NP-D10, `cancelLabel="Batal"`, `actionLabel="Logout"`. Logic
+  `handleLogout` (signOut + redirect + refresh) tidak berubah, hanya
+  digating di belakang dialog.
+
+### Perluasan baseline (ADR-071)
+
+Bucket Supabase Storage `avatars` diperluas dari "khusus avatar workspace +
+Start Page" menjadi juga menampung avatar user personal, path baru
+`avatars/users/{user_id}/avatar.{ext}`. Direalisasikan lewat migration
+idempotent
+`apps/web/prisma/migrations/20260806120000_extend_avatars_bucket_user_profile/migration.sql`
+(`insert into storage.buckets ... on conflict do nothing`), sudah diterapkan
+ke dev (bucket sebelumnya belum eksis, dikonfirmasi via `listBuckets()`).
+`product-discovery/05-architecture/database-strategy.md` § Storage Strategy
+diupdate merefleksikan ini. Keputusan resmi dicatat sebagai **ADR-071** di
+`DECISIONS.md` + `decisions/ADR-071-perluasan-bucket-avatars-untuk-avatar-user-personal.md`.
+
+### Gap yang dicatat (bukan blocker)
+
+Belum ada unit test Vitest baru untuk `IdentityService`/`IIdentityRepository`/
+`SupabaseAvatarStorageAdapter` (domain `identity` yang baru diisi). Ridwan
+sudah cek boundary arsitektur (bersih), tapi coverage test-nya nihil. Dicatat
+sebagai **KI-014** (Open) di `PROJECT_STATE.md` — bukan blocker penutupan
+T-016.1/.2/.3/.5, semua sudah lolos QA browser end-to-end.
+
+### Verifikasi
+
+- Typecheck/lint/test: PASS.
+- Review arsitektur Ridwan: nihil temuan (boundary domain `identity` bersih).
+- QA end-to-end Najwa + verifikasi tambahan sesi utama: golden path edit
+  nama, upload avatar sungguhan, validasi nama kosong, validasi file bukan
+  gambar, validasi >2MB — semua PASS via browser nyata,
+  `identity_user.image`/`identity_user.name` dicek langsung di DB. Dialog
+  Logout: Cancel membatalkan tanpa efek, Escape berperilaku sama seperti
+  Cancel, Confirm sign-out + redirect `/login`, dites di light & dark mode.
+  Toggle tema preferences: berfungsi, persist lintas section via cookie
+  `theme` existing, tidak ada flash tema salah.
+
+### Terkait
+
+- `project-manager/tasks/v01-foundation.md` — T-016.1/.2/.3/.5 dicentang
+  selesai, status T-016 diubah jadi 🟡 In Progress (T-016.4 tetap Blocked).
+- `project-manager/TASKS.md` — indeks release v0.1 diperbarui (3 🟡, 7 ⏳).
+- `project-manager/PROJECT_STATE.md` — KI-014 ditambahkan, ringkasan
+  Completed/Recent Decisions diperbarui.
+- `project-manager/DECISIONS.md` + `project-manager/decisions/` — ADR-071
+  ditambahkan.
+
 ## 2026-08-06 — T-013.3 selesai: UI `/settings/connected-accounts`
 
 ### Context

@@ -67,6 +67,24 @@ export const workspaceRepository: IWorkspaceRepository = {
     return membership?.workspace.slug ?? null;
   },
 
+  async findDefaultWorkspaceForUser(userId) {
+    const membership = await prisma.workspaceMember.findFirst({
+      where: { userId, status: MemberStatus.Active },
+      orderBy: { joinedAt: "asc" },
+      include: { workspace: { select: { id: true, name: true, slug: true } } },
+    });
+
+    if (!membership) {
+      return null;
+    }
+
+    return {
+      id: asWorkspaceId(membership.workspace.id),
+      name: membership.workspace.name,
+      slug: membership.workspace.slug,
+    };
+  },
+
   async findBySlug(slug) {
     const workspace = await prisma.workspace.findUnique({
       where: { slug },

@@ -62,6 +62,13 @@ export class WorkspaceService {
     return this.repository.findAnyMembershipSlugByUserId(userId);
   }
 
+  /** WorkspaceRecord lengkap dalam satu query — lihat catatan di IWorkspaceRepository. */
+  async getDefaultWorkspaceForUser(
+    userId: UserId,
+  ): Promise<WorkspaceRecord | null> {
+    return this.repository.findDefaultWorkspaceForUser(userId);
+  }
+
   async getWorkspaceBySlug(slug: string): Promise<WorkspaceRecord | null> {
     return this.repository.findBySlug(slug);
   }

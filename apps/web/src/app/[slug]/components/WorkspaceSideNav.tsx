@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
+
 import { usePathname, useRouter } from "next/navigation";
 
 import { FaBell, FaMoon, FaPlus, FaSun } from "react-icons/fa6";
 
+import { AlertDialog } from "@astryxdesign/core/AlertDialog";
 import { Button } from "@astryxdesign/core/Button";
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { HStack } from "@astryxdesign/core/HStack";
@@ -51,10 +54,21 @@ export function WorkspaceSideNav({
   const { mode, toggleMode } = useThemeMode();
   const { openNewPost } = useDraftEditor();
 
+  // T-016.5 / ADR-049 (NP-D10): Logout adalah Tier 2 Safety Check — wajib
+  // dialog konfirmasi sebelum eksekusi, karena berpotensi menginterupsi
+  // pekerjaan yang belum tersimpan meski aksinya sendiri reversibel.
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   async function handleLogout() {
-    await authClient.signOut();
-    router.push("/login");
-    router.refresh();
+    setIsLoggingOut(true);
+    try {
+      await authClient.signOut();
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setIsLoggingOut(false);
+    }
   }
 
   return (
@@ -110,8 +124,29 @@ export function WorkspaceSideNav({
                 onClick: () => router.push("/account/profile"),
               },
               { type: "divider" },
-              { label: "Logout", onClick: handleLogout },
+              {
+                label: "Logout",
+                onClick: () => setIsLogoutDialogOpen(true),
+              },
             ]}
+          />
+          <AlertDialog
+            isOpen={isLogoutDialogOpen}
+            onOpenChange={setIsLogoutDialogOpen}
+            title="Logout dari akun ini?"
+            description="Perubahan yang belum disimpan di halaman ini bisa hilang (ADR-049/NP-D10)."
+            cancelLabel="Batal"
+            actionLabel="Logout"
+            isActionLoading={isLoggingOut}
+            onAction={async () => {
+              try {
+                await handleLogout();
+                setIsLogoutDialogOpen(false);
+              } catch {
+                // Dialog tetap terbuka supaya user bisa coba lagi atau Batal;
+                // isLoggingOut sudah direset di handleLogout's finally.
+              }
+            }}
           />
         </HStack>
       }

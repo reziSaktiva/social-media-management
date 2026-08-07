@@ -143,7 +143,7 @@ CTA primary full-width di `WorkspaceSideNav`, di slot `topContent` (di bawah Wor
 
 | Field         | Value                                                                  |
 | ------------- | ---------------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress — T-012.3/4/5/6 selesai (T-012.5/6 sebagian, lihat catatan); T-012.9 (bug, temuan review PR #42) sudah diperbaiki; T-012.1/2 masih deferred |
+| **Status**    | 🟡 In Progress — T-012.3/4/5/6 selesai (T-012.5/6 sebagian, lihat catatan); T-012.9 (bug, temuan review PR #42) sudah diperbaiki; PR #42 sudah di-merge (2026-08-05); T-012.1/2 masih deferred |
 | **Domain**    | workspace · UI                                                         |
 | **ADR**       | ADR-058 (+ addendum drag-handle **shift-on-hover**, mengoverride keputusan awal "no-shift") |
 | **Depends**   | T-009 ✅ · `listConnectedAccounts` ✅ (dari T-028, v0.2) · T-012.2 butuh domain publishing (v0.2) |
@@ -223,19 +223,21 @@ RBAC Owner/Admin — tidak ada perubahan RBAC, tinggal tambah gate konfirmasi se
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress — T-016.1/2/3/5 selesai (review Ridwan nihil temuan, QA end-to-end Najwa + verifikasi tambahan sesi utama lolos); T-016.4 tetap 🚫 Blocked (T-036, v0.2) |
 | **Domain**    | identity                                                     |
-| **ADR**       | ADR-046 (routing convention)                                 |
+| **ADR**       | ADR-046 (routing convention), ADR-071 (perluasan bucket `avatars`) |
 | **Depends**   | T-003 ✅, T-009 ✅                                             |
 | **Baca dulu** | `04-ux/information-architecture.md`                           |
 
-Semua route `/account/*` dan `/settings/*` masih placeholder "Scaffold — implementasi fitur di M8", dan layout-nya masih shell kosong.
+Semua route `/account/*` dan `/settings/*` sebelumnya masih placeholder "Scaffold — implementasi fitur di M8", dan layout-nya masih shell kosong.
 
-- [ ] **T-016.1** Layout `account/` + `settings/` (sidebar/nav internal)
-- [ ] **T-016.2** `/account/profile` — edit nama, avatar
-- [ ] **T-016.3** `/account/preferences`
-- [ ] **T-016.4** `/account/notifications` — preferensi notifikasi (butuh **T-036**, v0.2 ⏳)
-- [ ] **T-016.5** Dialog konfirmasi Logout (ADR-049 Tier 2)
+- [x] **T-016.1** Layout `account/` + `settings/` (sidebar/nav internal) — Sesi Claude Design (AI utama) lebih dulu untuk 4 mockup (`templates/account-profile.html`, `templates/account-preferences.html`, kolom Tier 2 di `components/dialog.html`, subnav baru di `templates/settings-connected-accounts.html`). Hasil `astryx build`/`astryx docs layout`: `/account` pakai `AppShell`+`SideNav` (top-level, tanpa workspace context, back-link ke workspace); `/[slug]/settings` pakai `Layout`+`LayoutPanel role="navigation"`+`LayoutContent` (bukan AppShell kedua, karena sudah dibungkus AppShell dari `[slug]/layout.tsx`). File baru: `apps/web/src/app/account/page.tsx` (redirect ke `/account/profile`, menutup celah ADR-046), `apps/web/src/app/account/components/AccountSideNav.tsx`, `apps/web/src/app/[slug]/settings/components/SettingsSideNav.tsx`. Verifikasi: konten existing (Connected Accounts, dll) terbukti identik sebelum/sesudah — cuma dibungkus nav baru.
+- [x] **T-016.2** `/account/profile` — edit nama, avatar — Domain `identity` (`apps/web/src/domains/identity/`) diisi pertama kali: `IIdentityRepository`, `IAvatarStorageAdapter` (pola sama `IOutstandAdapter`), `IdentityService` (constructor injection, validasi nama + avatar). Infra: `apps/web/src/lib/repositories/identity/`, `apps/web/src/lib/adapters/avatar-storage/` (Supabase Storage, service-role). Entry point: `apps/web/src/app/account/profile/page.tsx` (Server Component) + `actions.ts` (Server Action) + `components/ProfileForm.tsx`. Scope sengaja hanya nama + avatar — email read-only, belum ada flow ganti email (belum ada infra verifikasi email). Bucket `avatars` diperluas untuk avatar user personal via **ADR-071** (migration idempotent `apps/web/prisma/migrations/20260806120000_extend_avatars_bucket_user_profile/migration.sql`). Verifikasi: golden path (edit nama, upload avatar sungguhan, validasi nama kosong, validasi file bukan gambar, validasi >2MB) semua PASS via browser nyata + `identity_user.image`/`identity_user.name` dicek langsung di DB.
+- [x] **T-016.3** `/account/preferences` — Card "Tema Tampilan" dengan toggle Light/Dark, reuse hook `useThemeMode()` existing (tidak ada state/cookie baru) — baseline (`information-architecture.md` § 7) tidak mendefinisikan personal preference lain di luar tema. File: `apps/web/src/app/account/preferences/page.tsx`. Verifikasi: toggle berfungsi, persist lintas section via cookie `theme` existing, tidak ada flash tema salah saat reload langsung di halaman ini.
+- [ ] **T-016.4** `/account/notifications` — preferensi notifikasi (butuh **T-036**, v0.2 ⏳) — tetap di luar scope, tidak dikerjakan.
+- [x] **T-016.5** Dialog konfirmasi Logout (ADR-049 Tier 2) — Memperbaiki pelanggaran aktif ADR-049/NP-D10 yang ditemukan saat eksplorasi: `handleLogout` di `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx` sebelumnya dipanggil langsung dari dropdown "Logout" tanpa konfirmasi apapun. Fix: tambah `AlertDialog` (komponen Astryx, konsumen pertama di `apps/web`) — title "Logout dari akun ini?", description mengacu ADR-049/NP-D10, `cancelLabel="Batal"`, `actionLabel="Logout"`. Logic `handleLogout` (signOut + redirect + refresh) tidak berubah, hanya digating di belakang dialog. Verifikasi: Cancel membatalkan tanpa efek, Escape berperilaku sama seperti Cancel, Confirm benar-benar sign-out + redirect `/login`, dites di light & dark mode.
+
+> **Catatan (belum jadi Known Issue formal, lihat `PROJECT_STATE.md` KI-014):** belum ada unit test Vitest baru untuk `IdentityService`/`IIdentityRepository`/`SupabaseAvatarStorageAdapter` (domain `identity` yang baru diisi). Review arsitektur Ridwan sudah cek boundary (bersih), tapi coverage test-nya nihil. Bukan blocker penutupan T-016.1/.2/.3/.5 — semua sudah lolos QA browser end-to-end.
 
 ---
 
