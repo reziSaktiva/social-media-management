@@ -330,11 +330,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-075** — Amandemen ADR-071: sinkronisasi kutipan `migration.sql` bucket `avatars` (resolusi KI-018).
+* **ADR-074** — Reduksi struktur role dari 4 jadi 3 (Account Owner, Admin, Creator) — resolusi KI-017.
 * **ADR-073** — Prisma External Tables (`initShadowDb` + `tables.external`) untuk shadow database menangani tabel platform Supabase (`storage.buckets`) — resolusi KI-016.
 * **ADR-072** — Tabel `workspace_invitations` terpisah untuk invite member yang belum punya akun (T-007.1/.2).
 * **ADR-071** — Perluasan bucket Supabase Storage `avatars` (publik) untuk juga menampung avatar user personal (T-016.2), path baru `avatars/users/{user_id}/avatar.{ext}` di samping path avatar workspace yang sudah ada. Tidak membuat bucket baru.
-* **ADR-070** — Tetap self-hosted Better Auth, tolak Better Auth Cloud (resolusi akar masalah KI-013).
-* **ADR-069** — Konvensi penamaan & peletakan komponen lokal di `src/app/` (resolusi KI-010): PascalCase untuk file component, kebab-case untuk folder & file non-component, peletakan `components/` berbasis lowest common ancestor (LCA) route.
 
 ---
 
