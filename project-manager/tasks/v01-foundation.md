@@ -74,7 +74,7 @@ Aktifkan verifikasi email + password reset yang benar-benar mengirim email. Saat
 
 | Field         | Value                                                              |
 | ------------- | ------------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                      |
+| **Status**    | 🟡 In Progress                                                     |
 | **Domain**    | workspace                                                          |
 | **ADR**       | ADR-012 (roles), ADR-049 (konfirmasi Remove Member & Update Role)  |
 | **Depends**   | T-006 ✅, T-005 (invite butuh email)                                |
@@ -82,8 +82,8 @@ Aktifkan verifikasi email + password reset yang benar-benar mengirim email. Saat
 
 Screen Workspace Settings → Members. Disepakati **desain minimal dulu**: cukup daftar anggota + Remove Member, tanpa manajemen anggota lengkap.
 
-- [ ] **T-007.1** `WorkspaceService.inviteMember` + `removeMember` + `updateMemberRole` (RBAC Owner/Admin)
-- [ ] **T-007.2** Repository method + migrasi tabel invitation (jika perlu)
+- [ ] **T-007.1** `WorkspaceService.inviteMember` + `removeMember` + `updateMemberRole` (RBAC Owner/Admin) (removeMember + updateMemberRole selesai; inviteMember menunggu T-005 selesai)
+- [x] **T-007.2** Repository method + migrasi tabel invitation (jika perlu)
 - [ ] **T-007.3** Server Actions + validasi RBAC di application layer
 - [ ] **T-007.4** UI daftar anggota di `/settings/members` (Astryx Table)
 - [ ] **T-007.5** Dialog konfirmasi Remove Member + Update Member Role (ADR-049 Tier 2)

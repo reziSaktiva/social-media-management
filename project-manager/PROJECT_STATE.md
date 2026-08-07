@@ -193,6 +193,67 @@ Bagian UI/interaksi T-012.5 (swap count↔quick-compose "+") dan T-012.6 (drag-h
 
 `IdentityService`, `IIdentityRepository`, dan `SupabaseAvatarStorageAdapter` (domain `identity`, diisi pertama kali lewat T-016.2) belum punya unit test Vitest. Review arsitektur Ridwan sudah memverifikasi boundary domain bersih (tidak ada pelanggaran), tetapi coverage test-nya nihil. Tidak memblokir penutupan T-016.1/.2/.3/.5 — keempatnya sudah lolos QA browser end-to-end.
 
+### KI-015 · Env var `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JOB_SECRET` belum diisi
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Dependency |
+| Terkait | T-025, T-026, T-027 |
+
+Sama seperti `OUTSTAND_API_KEY` (lihat KI-003), tiga env var ini belum diisi di `.env.local`:
+
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — kode Google OAuth di `auth.ts` sudah siap (`socialProviders.google` terdaftar kondisional lewat `env.ts`), tapi tanpa env ini "Sign in with Google" tidak aktif.
+- `JOB_SECRET` — dibutuhkan untuk header `X-Job-Secret` (Railway Cron → web, EM-D0x). Belum diisi berarti job runner (T-027) belum bisa diverifikasi end-to-end di local; dev bisa memakai nilai dummy sementara.
+
+### KI-016 · Shadow database Prisma gagal untuk migrasi berikutnya (P3006)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-007, seluruh migrasi Prisma berikutnya |
+
+`prisma migrate dev` gagal (error P3006) karena migration lama
+`20260806120000_extend_avatars_bucket_user_profile` berisi raw SQL ke skema
+`storage.buckets` (Supabase Storage) yang tidak ada di shadow database
+kosong. Untuk migrasi `20260807061502_add_workspace_invitations` dipakai
+workaround (`prisma migrate diff` ke DB live + `prisma db execute` manual +
+`prisma migrate resolve --applied`), sudah diverifikasi `prisma migrate
+status` up to date — tapi workaround ini akan perlu diulang untuk SEMUA
+migrasi Prisma berikutnya sampai ditangani permanen. Butuh keputusan: shadow
+DB config khusus, atau baseline ulang migration history.
+
+### KI-017 · Mismatch role di mockup Claude Design screen Members vs baseline role permissions
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Design-Consistency |
+| Terkait | T-007.4, `product-discovery/02-product/roles-permissions.md` |
+
+Mockup `templates/settings-members.html` di project Claude Design ("Social
+Media Management", id `84aded99-bb23-49b1-be9f-dd8f21c6873e`) memakai role
+dropdown **Admin/Editor/Viewer** pada baris anggota (Maya, Sinta, Dimas,
+Lara). Baseline sebenarnya di `product-discovery/02-product/roles-permissions.md`
+dan enum `MemberRole` (`packages/shared/src/enums.ts`) mendefinisikan role
+sebagai **Owner/Admin/Manager/Creator** — beda total (Editor/Viewer tidak ada
+di baseline, Manager/Creator tidak ada di mockup). Baseline menang atas
+mockup Claude Design per governance di `context/ctx-design.md` (poin 1 & 9a,
+ADR-056) — kalau T-007.4 (implementasi UI daftar anggota) meniru mockup
+mentah-mentah, dropdown role di kode akan salah dan tidak sesuai RBAC yang
+sudah diimplementasikan di `WorkspaceService.updateMemberRole` (T-007.1,
+sudah selesai sebagian). Ditemukan saat implementasi T-007.1 (partial:
+removeMember/updateMemberRole) & T-007.2 (repository + migrasi invitation),
+2026-08-07. Tindak lanjut yang disarankan: mockup `settings-members.html` di
+Claude Design perlu direvisi (ganti dropdown role jadi
+Owner/Admin/Manager/Creator, sesuaikan label "Editor"/"Viewer" yang muncul di
+beberapa baris) sebelum T-007.4 dikerjakan — pekerjaan Neymar Product
+Designer atau King Rezi langsung di Claude Design, bukan blocker untuk
+T-007.1/.2/.3 (backend), tapi wajib beres sebelum T-007.4 (UI) supaya tidak
+salah pola. Belum ada ADR terkait (murni temuan konsistensi desain, bukan
+keputusan arsitektur).
+
 ---
 
 ## Blockers

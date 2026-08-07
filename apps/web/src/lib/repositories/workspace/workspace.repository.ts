@@ -1,14 +1,26 @@
 import {
   asConnectedAccountId,
+  asInvitationId,
+  asMemberId,
+  asUserId,
   asWorkspaceId,
+  type InvitationStatus,
   MemberRole,
   MemberStatus,
   type SocialPlatform,
 } from "@social/shared";
-import type { IWorkspaceRepository } from "@/domains/workspace";
-import { Prisma } from "@/generated/prisma/client";
+import type {
+  IWorkspaceRepository,
+  WorkspaceInvitationRecord,
+  WorkspaceMemberRecord,
+} from "@/domains/workspace";
+import {
+  Prisma,
+  type WorkspaceInvitation,
+  type WorkspaceMember,
+} from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma/client";
-import { ConflictError } from "@/lib/utils/errors";
+import { ConflictError, NotFoundError } from "@/lib/utils/errors";
 
 /**
  * With the pg driver adapter (Prisma 7 / @prisma/adapter-pg), P2002's
@@ -23,6 +35,45 @@ function isSlugConflict(error: unknown): boolean {
     error.code === "P2002" &&
     error.meta?.modelName === "Workspace"
   );
+}
+
+function isRecordNotFound(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2025"
+  );
+}
+
+function isInvitationEmailConflict(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002" &&
+    error.meta?.modelName === "WorkspaceInvitation"
+  );
+}
+
+function toMemberRecord(member: WorkspaceMember): WorkspaceMemberRecord {
+  return {
+    id: asMemberId(member.id),
+    workspaceId: asWorkspaceId(member.workspaceId),
+    userId: asUserId(member.userId),
+    role: member.role as MemberRole,
+    status: member.status as MemberStatus,
+  };
+}
+
+function toInvitationRecord(
+  invitation: WorkspaceInvitation,
+): WorkspaceInvitationRecord {
+  return {
+    id: asInvitationId(invitation.id),
+    workspaceId: asWorkspaceId(invitation.workspaceId),
+    email: invitation.email,
+    role: invitation.role as MemberRole,
+    token: invitation.token,
+    status: invitation.status as InvitationStatus,
+    expiresAt: invitation.expiresAt,
+  };
 }
 
 export const workspaceRepository: IWorkspaceRepository = {
@@ -118,5 +169,88 @@ export const workspaceRepository: IWorkspaceRepository = {
       reconnectRequired: account.reconnectRequired,
       connectedAt: account.connectedAt,
     }));
+  },
+
+  async getMember(workspaceId, userId) {
+    const member = await prisma.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId } },
+    });
+
+    return member ? toMemberRecord(member) : null;
+  },
+
+  async findMemberById(workspaceId, memberId) {
+    const member = await prisma.workspaceMember.findFirst({
+      where: { id: memberId, workspaceId },
+    });
+
+    return member ? toMemberRecord(member) : null;
+  },
+
+  async removeMember(workspaceId, memberId) {
+    try {
+      await prisma.workspaceMember.delete({
+        where: { id: memberId, workspaceId },
+      });
+    } catch (error) {
+      if (isRecordNotFound(error)) {
+        throw new NotFoundError("Anggota tidak ditemukan.");
+      }
+      throw error;
+    }
+  },
+
+  async updateMemberRole(workspaceId, memberId, role) {
+    try {
+      await prisma.workspaceMember.update({
+        where: { id: memberId, workspaceId },
+        data: { role },
+      });
+    } catch (error) {
+      if (isRecordNotFound(error)) {
+        throw new NotFoundError("Anggota tidak ditemukan.");
+      }
+      throw error;
+    }
+  },
+
+  async createInvitation({
+    workspaceId,
+    email,
+    role,
+    invitedByUserId,
+    token,
+    expiresAt,
+  }) {
+    let invitation;
+    try {
+      invitation = await prisma.workspaceInvitation.create({
+        data: {
+          workspaceId,
+          email,
+          role,
+          invitedByUserId,
+          token,
+          expiresAt,
+        },
+      });
+    } catch (error) {
+      if (isInvitationEmailConflict(error)) {
+        throw new ConflictError(
+          `Undangan untuk "${email}" di workspace ini sudah ada.`,
+        );
+      }
+      throw error;
+    }
+
+    return toInvitationRecord(invitation);
+  },
+
+  async findInvitationByToken(token) {
+    const invitation = await prisma.workspaceInvitation.findUnique({
+      where: { token },
+    });
+
+    return invitation ? toInvitationRecord(invitation) : null;
   },
 };
