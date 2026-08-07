@@ -63,7 +63,7 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
 9. Domain module: `apps/web/src/domains/<domain>/` — nama selaras BC (kebab/folder lowercase).
 10. Public API domain diekspor dari `index.ts` module tersebut.
 11. Shared types: `packages/shared` — nama jelas, tanpa logic bisnis.
-12. Persona & role: pakai nama kanonikal (Raka, Maya, … / Owner, Admin, Manager, Creator).
+12. Persona & role: pakai nama kanonikal (Raka, Maya, … / Account Owner, Admin, Creator — ADR-074).
 13. Komponen React di `apps/web/src/app/` dan `src/components/`: file yang
     meng-export component pakai PascalCase, folder & file non-component
     (helper, Server Action, data map) tetap kebab-case; peletakan folder

@@ -210,31 +210,29 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003), tiga env var ini belum diisi di 
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | Resolved |
 | Kategori | Design-Consistency |
-| Terkait | T-007.4, `product-discovery/02-product/roles-permissions.md` |
+| Terkait | T-007.4, `product-discovery/02-product/roles-permissions.md`, ADR-074 |
 
-Mockup `templates/settings-members.html` di project Claude Design ("Social
-Media Management", id `84aded99-bb23-49b1-be9f-dd8f21c6873e`) memakai role
-dropdown **Admin/Editor/Viewer** pada baris anggota (Maya, Sinta, Dimas,
-Lara). Baseline sebenarnya di `product-discovery/02-product/roles-permissions.md`
-dan enum `MemberRole` (`packages/shared/src/enums.ts`) mendefinisikan role
-sebagai **Owner/Admin/Manager/Creator** — beda total (Editor/Viewer tidak ada
-di baseline, Manager/Creator tidak ada di mockup). Baseline menang atas
-mockup Claude Design per governance di `context/ctx-design.md` (poin 1 & 9a,
-ADR-056) — kalau T-007.4 (implementasi UI daftar anggota) meniru mockup
-mentah-mentah, dropdown role di kode akan salah dan tidak sesuai RBAC yang
-sudah diimplementasikan di `WorkspaceService.updateMemberRole` (T-007.1,
-sudah selesai sebagian). Ditemukan saat implementasi T-007.1 (partial:
-removeMember/updateMemberRole) & T-007.2 (repository + migrasi invitation),
-2026-08-07. Tindak lanjut yang disarankan: mockup `settings-members.html` di
-Claude Design perlu direvisi (ganti dropdown role jadi
-Owner/Admin/Manager/Creator, sesuaikan label "Editor"/"Viewer" yang muncul di
-beberapa baris) sebelum T-007.4 dikerjakan — pekerjaan Neymar Product
-Designer atau King Rezi langsung di Claude Design, bukan blocker untuk
-T-007.1/.2/.3 (backend), tapi wajib beres sebelum T-007.4 (UI) supaya tidak
-salah pola. Belum ada ADR terkait (murni temuan konsistensi desain, bukan
-keputusan arsitektur).
+Ditemukan saat implementasi T-007.1 (partial: removeMember/updateMemberRole)
+& T-007.2 (repository + migrasi invitation), 2026-08-07: mockup
+`templates/settings-members.html` di project Claude Design ("Social Media
+Management", id `84aded99-bb23-49b1-be9f-dd8f21c6873e`) memakai role dropdown
+**Admin/Editor/Viewer**, sedangkan baseline lama mendefinisikan **Owner/
+Admin/Manager/Creator** — mismatch total.
+
+**Resolusi (2026-08-07):** King Rezi memutuskan bukan sekadar menyamakan
+mockup ke baseline lama, melainkan merevisi baseline itu sendiri — struktur
+role dikurangi dari 4 jadi **3 role: Account Owner, Admin, Creator**
+(role "Manager" dihapus, hak operasionalnya — schedule/publish/engagement
+inbox/analytics penuh — digabung ke Creator). Keputusan didokumentasikan di
+**ADR-074**. Baseline (`roles-permissions.md`, `domain-model.md`,
+`auth-architecture.md`, dll.) dan kode (`packages/shared/src/enums.ts`,
+`workspace.service.test.ts`) sudah diupdate mengikuti 3-role ini. Revisi
+mockup `settings-members.html` di Claude Design (ganti dropdown ke Account
+Owner/Admin/Creator, hapus Editor/Viewer/Manager) dikerjakan King Rezi
+sendiri di Claude Design — agent memberikan prompt siap pakai atas permintaan
+eksplisit King Rezi, bukan mengeksekusi `DesignSync` langsung.
 
 ### KI-018 · ADR-071 stale — kutipan migration.sql tidak sinkron dengan kode aktual
 

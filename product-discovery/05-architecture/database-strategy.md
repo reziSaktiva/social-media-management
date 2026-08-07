@@ -203,7 +203,7 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 | `id` | `uuid PK DEFAULT gen_random_uuid()` | Member ID |
 | `workspace_id` | `uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE` | |
 | `user_id` | `uuid NOT NULL` | Referensi ke `identity_user.id` |
-| `role` | `text NOT NULL` | `owner \| admin \| manager \| creator` |
+| `role` | `text NOT NULL` | `owner \| admin \| creator` (ADR-074 — sebelumnya termasuk `manager`) |
 | `status` | `text NOT NULL DEFAULT 'pending'` | `pending \| active \| removed` |
 | `invited_at` | `timestamptz NOT NULL DEFAULT now()` | |
 | `joined_at` | `timestamptz` | Null sampai member menerima undangan |

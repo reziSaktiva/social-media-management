@@ -18,14 +18,14 @@ Opsi A: Product + User digabung di file ini (bukan file `ctx-*` terpisah).
 
 ### Product — `02-product/`
 
-| Dokumen                                                                                  | Isi singkat                                                           |
-| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| [`../product-discovery/02-product/README.md`](../product-discovery/02-product/README.md) | Indeks Product Baseline v1.0 (ADR-008)                                |
-| [`mvp-definition.md`](../product-discovery/02-product/mvp-definition.md)                 | Batas MVP                                                             |
-| [`product-scope.md`](../product-discovery/02-product/product-scope.md)                   | Scope / non-scope                                                     |
-| [`feature-modules.md`](../product-discovery/02-product/feature-modules.md)               | Modul fitur                                                           |
-| [`feature-priority.md`](../product-discovery/02-product/feature-priority.md)             | Prioritas                                                             |
-| [`roles-permissions.md`](../product-discovery/02-product/roles-permissions.md)           | Owner / Admin / Manager / Creator + status konten kanonikal (ADR-012) |
+| Dokumen                                                                                  | Isi singkat                                                                  |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [`../product-discovery/02-product/README.md`](../product-discovery/02-product/README.md) | Indeks Product Baseline v1.0 (ADR-008)                                       |
+| [`mvp-definition.md`](../product-discovery/02-product/mvp-definition.md)                 | Batas MVP                                                                    |
+| [`product-scope.md`](../product-discovery/02-product/product-scope.md)                   | Scope / non-scope                                                            |
+| [`feature-modules.md`](../product-discovery/02-product/feature-modules.md)               | Modul fitur                                                                  |
+| [`feature-priority.md`](../product-discovery/02-product/feature-priority.md)             | Prioritas                                                                    |
+| [`roles-permissions.md`](../product-discovery/02-product/roles-permissions.md)           | Account Owner / Admin / Creator + status konten kanonikal (ADR-012, ADR-074) |
 
 ### User — `03-user/`
 
@@ -41,7 +41,7 @@ Opsi A: Product + User digabung di file ini (bukan file `ctx-*` terpisah).
 ## Aturan operasional
 
 1. **Persona kanonikal** (jangan diganti nama): Raka, Maya, Sinta, Dimas, Lara.
-2. Roles kanonikal: Owner, Admin, Manager, Creator — detail & transisi status konten hanya dari `roles-permissions.md`.
+2. Roles kanonikal (ADR-074): Account Owner, Admin, Creator — detail & transisi status konten hanya dari `roles-permissions.md`.
 3. Jangan menambah fitur di luar MVP/scope tanpa ADR + update Product Baseline.
 4. Status konten kanonikal (Draft → … → Published/Failed) harus konsisten dengan `roles-permissions.md` dan UX.
 5. Diskusi pricing / competitor / metrics bisnis → baca `01-business/`; jangan mengarang angka atau positioning baru di kode.

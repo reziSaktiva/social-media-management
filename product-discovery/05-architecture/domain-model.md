@@ -159,7 +159,7 @@ Workspace adalah **root context** — seluruh data domain lain terikat ke `Works
 - `id: MemberId`
 - `workspaceId: WorkspaceId`
 - `userId: UserId` — referensi ke Identity BC
-- `role: MemberRole` — `owner | admin | manager | creator`
+- `role: MemberRole` — `owner | admin | creator` (ADR-074 — sebelumnya termasuk `manager`)
 - `invitedAt: Date`
 - `joinedAt: Date?`
 - `status: MemberStatus` — `pending | active | removed`
@@ -688,11 +688,10 @@ enum ContentStatus {
   Failed = 'failed',
 }
 
-// Member role
+// Member role (ADR-074 — 3 role, "Manager" dihapus)
 enum MemberRole {
   Owner = 'owner',
   Admin = 'admin',
-  Manager = 'manager',
   Creator = 'creator',
 }
 

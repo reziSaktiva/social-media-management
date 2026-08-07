@@ -28,7 +28,7 @@ Keputusan berikut sudah final dari Auth Architecture (ADR-024) dan menjadi input
 | Session Token | HTTP-only cookie | AU-D02 |
 | Session Expiry | 7 hari | `auth-architecture.md` |
 | SameSite | `lax` | `auth-architecture.md` |
-| Authorization | RBAC di Application Service (4 roles) | AU-D05 |
+| Authorization | RBAC di Application Service (3 roles, ADR-074) | AU-D05 |
 | Workspace Context | Di-resolve Middleware dari URL slug | AU-D03, AU-D04 |
 | RLS | Defense-in-depth, bukan primary enforcement | AU-D06, DB-D05 |
 | Identity Tables | Prefix `identity_`, dikelola Better Auth | DB-D04 |

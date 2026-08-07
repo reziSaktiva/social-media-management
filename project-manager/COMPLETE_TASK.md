@@ -8,6 +8,66 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-07 — ADR-074: Reduksi struktur role 4→3 (Account Owner/Admin/Creator), resolusi KI-017
+
+### Context
+
+KI-017 mencatat mismatch role di mockup Claude Design `settings-members.html`
+(Admin/Editor/Viewer) vs baseline 4-role lama (Owner/Admin/Manager/Creator).
+Saat membahas resolusi, King Rezi meminta brainstorming lebih dulu, lalu
+memutuskan menyederhanakan struktur role menjadi 3 — bukan sekadar
+menyamakan mockup ke baseline lama. Role **Manager** dihapus; hak
+operasionalnya (schedule/publish/engagement inbox/analytics penuh) digabung
+ke **Creator** (bukan Admin), karena persona yang memegangnya (Raka — Social
+Media Manager, operator publishing harian) tidak pernah butuh akses
+administratif (billing/workspace settings/member management). Keputusan
+dicatat sebagai **ADR-074**.
+
+### Changed (dokumentasi)
+
+- `product-discovery/02-product/roles-permissions.md` — ditulis ulang total:
+  3 role, matriks hak akses, tabel transisi status, mapping persona
+  (Raka → Creator).
+- `product-discovery/02-product/mvp-definition.md`,
+  `05-architecture/README.md`, `domain-model.md`, `auth-architecture.md`,
+  `application-layer.md`, `realtime-strategy.md`, `database-strategy.md`,
+  `06-engineering/auth-strategy.md`, `04-ux/information-architecture.md`,
+  `04-ux/key-screen-patterns.md` — semua referensi 4-role/`Manager` diupdate
+  ke 3-role.
+- `context/ctx-business.md`, `context/ctx-development.md` — daftar role
+  kanonikal diupdate.
+- `project-manager/PROJECT_STATE.md` — KI-017 ditandai Resolved.
+- `project-manager/ARCHITECTURE_OVERVIEW.md` — label role di diagram System
+  Context diupdate.
+- `project-manager/tasks/v02-publishing-mvp.md` — RBAC `publishNow` (T-029.1)
+  diupdate jadi semua role.
+- `project-manager/DECISIONS.md` + `decisions/ADR-074-...md` — ADR baru.
+
+### Changed (kode)
+
+- `packages/shared/src/enums.ts` — `MemberRole.Manager` dihapus. Enum key
+  `Owner` (value `"owner"`) dipertahankan tanpa migrasi — tampilan UI/dokumen
+  memakai label "Account Owner".
+- `apps/web/src/domains/workspace/services/workspace.service.test.ts` —
+  skenario test yang memakai `MemberRole.Manager` disesuaikan ke 3 role
+  (member seed, target, dan actor diganti ke Owner/Admin/Creator). Logika
+  RBAC (`removeMember`/`updateMemberRole`, hanya Owner/Admin boleh jadi
+  actor) tidak berubah.
+- Verifikasi: `bun test` untuk `workspace.service.test.ts` +
+  `enums.test.ts` — 28 test lolos, 0 gagal.
+
+### Tindak lanjut yang bukan tanggung jawab agent
+
+- Revisi mockup Claude Design `templates/settings-members.html` — prompt
+  siap pakai sudah diberikan ke King Rezi untuk dikerjakan langsung di
+  Claude Design (bukan dieksekusi otomatis via `DesignSync` dalam sesi ini,
+  sesuai permintaan eksplisit King Rezi).
+- `apps/web/prisma/schema.prisma` menyimpan `role` sebagai `String` biasa —
+  tidak ada migration DB yang diperlukan (belum ada data live dengan role
+  `manager`).
+
+---
+
 ## 2026-08-07 — KI-016 resolved: Shadow database Prisma (P3006) via External Tables
 
 ### Context

@@ -49,8 +49,9 @@ Kemampuan berikut wajib tersedia pada MVP.
   * Platform lain yang didukung: format `post` sebagai default
 * Menjadwalkan posting.
 * Mempublikasikan konten secara langsung tanpa penjadwalan (**Publish Now**) —
-  dibatasi ke role yang sama dengan Schedule: Owner, Admin, Manager (bukan
-  Creator), lihat `roles-permissions.md` (ADR-047).
+  dibatasi ke role yang sama dengan Schedule: Account Owner, Admin, Creator
+  (semua role bisa, sejak reduksi struktur role di ADR-074), lihat
+  `roles-permissions.md` (ADR-047).
 * Melihat kalender publikasi.
 * Mengelola antrean (queue) posting.
 * Melihat riwayat publikasi.

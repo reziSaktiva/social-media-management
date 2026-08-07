@@ -58,8 +58,8 @@ Menjawab: *siapa yang memakai sistem, dan sistem apa saja yang berbatasan dengan
                     ┌─────────────────────┐
                     │  Marketing Team     │
                     │  (Primary User)     │
-                    │  Owner / Admin /    │
-                    │  Manager / Creator  │
+                    │  Account Owner /    │
+                    │  Admin / Creator    │
                     └──────────┬──────────┘
                                │
                                │ HTTPS (browser)
