@@ -8,6 +8,41 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-07 — T-007.3: Server Actions + validasi RBAC di application layer (Members Management)
+
+### Context
+
+Lanjutan T-007 (Members management). RBAC `removeMember`/`updateMemberRole`
+sudah lengkap di domain layer (`WorkspaceService`, T-007.1 partial). T-007.3
+membuat Server Actions tipis di route `[slug]/settings/members` yang
+mewiring UI ke service tersebut, sesuai aturan keras #5 (entry point tidak
+boleh berisi business logic).
+
+### Changed (kode)
+
+- `apps/web/src/app/[slug]/settings/members/actions.ts` — baru:
+  `removeMemberAction` dan `updateMemberRoleAction`, wiring tipis ke
+  `WorkspaceService.removeMember` / `updateMemberRole`. Helper lokal
+  `resolveWorkspaceAndSession(slug)`. Tidak ada business logic baru — RBAC
+  tetap di domain layer.
+- `apps/web/src/app/[slug]/settings/members/actions.test.ts` — baru, 6 test.
+- Verifikasi: vitest lolos (6/6 test baru + 24/24
+  `workspace.service.test.ts` tanpa regresi), typecheck bersih. Tidak ada
+  perubahan domain/service layer maupun schema.
+
+### Changed (dokumentasi)
+
+- `project-manager/tasks/v01-foundation.md` — T-007.3 ditandai selesai
+  (`[x]`). T-007 tetap 🟡 In Progress (T-007.1 inviteMember masih menunggu
+  T-005, T-007.4 UI dan T-007.5 dialog konfirmasi belum dikerjakan).
+
+### Tindak lanjut
+
+- T-007.4 (UI daftar anggota `/settings/members`, Astryx Table) jadi next
+  step logis untuk melanjutkan T-007.
+
+---
+
 ## 2026-08-07 — ADR-074: Reduksi struktur role 4→3 (Account Owner/Admin/Creator), resolusi KI-017
 
 ### Context

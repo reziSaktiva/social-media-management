@@ -84,7 +84,7 @@ Screen Workspace Settings → Members. Disepakati **desain minimal dulu**: cukup
 
 - [ ] **T-007.1** `WorkspaceService.inviteMember` + `removeMember` + `updateMemberRole` (RBAC Owner/Admin) (removeMember + updateMemberRole selesai; inviteMember menunggu T-005 selesai)
 - [x] **T-007.2** Repository method + migrasi tabel invitation (jika perlu)
-- [ ] **T-007.3** Server Actions + validasi RBAC di application layer
+- [x] **T-007.3** Server Actions + validasi RBAC di application layer
 - [ ] **T-007.4** UI daftar anggota di `/settings/members` (Astryx Table)
 - [ ] **T-007.5** Dialog konfirmasi Remove Member + Update Member Role (ADR-049 Tier 2)
 
