@@ -8,6 +8,58 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-07 — KI-016 resolved: Shadow database Prisma (P3006) via External Tables
+
+### Context
+
+`prisma migrate dev` gagal (P3006) karena migration lama
+`20260806120000_extend_avatars_bucket_user_profile` berisi raw SQL ke
+`storage.buckets` (tabel Supabase Storage, bukan model Prisma) — tabel itu
+tidak ada di shadow database kosong yang direplay Prisma setiap validasi.
+Sebelumnya diatasi per-migrasi dengan workaround manual (`migrate diff` ke
+DB live + `db execute` + `migrate resolve --applied`), tercatat sebagai
+KI-016 karena workaround itu harus diulang untuk SEMUA migrasi berikutnya
+kalau tidak ditangani permanen.
+
+### Changed (kode — dikerjakan Elon Backend Engineer, sudah terverifikasi sebelum sesi dokumentasi ini)
+
+- `apps/web/prisma.config.ts` — tambah `experimental.externalTables: true`,
+  `tables.external: ["storage.buckets"]`, `migrations.initShadowDb` (isi SQL
+  dibaca dari file terpisah via `readFileSync`).
+- File baru `apps/web/prisma/shadow-init.sql` — stub minimal idempotent
+  tabel `storage.buckets` untuk shadow DB.
+
+### Verifikasi end-to-end
+
+1. `prisma migrate diff --shadow-database-url ...` — replay 6 migration
+   history termasuk migration `storage.buckets` sukses tanpa P3006.
+2. Ditemukan masalah terpisah (checksum drift, bukan bagian KI-016):
+   migration `20260806120000_extend_avatars_bucket_user_profile` di disk
+   sudah diedit (jadi `DO UPDATE` + guardrail) setelah pernah applied ke DB
+   dev lokal — diperbaiki via UPDATE manual kolom `checksum` di
+   `_prisma_migrations` (persetujuan eksplisit King Rezi, dijalankan lewat
+   `prisma db execute --stdin`, hanya metadata Prisma yang tersentuh).
+3. `prisma migrate status` → "Database schema is up to date!".
+4. Uji final `prisma migrate dev --create-only --name test_ki016_resolution`
+   → berhasil tanpa P3006/error checksum apapun (folder migrasi kosong
+   dihapus lagi, tidak di-commit).
+
+### Changed (dokumentasi)
+
+- `project-manager/PROJECT_STATE.md` — KI-016 dihapus dari Known Issues
+  (per ADR-067, resolved KI yang sudah tercatat di sini tidak dibiarkan
+  menumpuk sebagai status Resolved di `PROJECT_STATE.md`); ditambahkan
+  KI-018 baru (staleness ADR-071 vs kode aktual, temuan terpisah selama
+  investigasi).
+- ADR baru **ADR-073** (`project-manager/decisions/ADR-073-prisma-external-tables-untuk-shadow-database-tabel-platform-supabase.md`)
+  + baris baru di `project-manager/DECISIONS.md`.
+- `product-discovery/06-engineering/database-orm.md` § Migration Strategy
+  (DO-D03) — subsection baru "Shadow Database & External Tables (ADR-073)"
+  (perubahan struktural pada Static Reference, dicatat di sini sesuai
+  governance).
+
+---
+
 ## 2026-08-07 — T-007.1 (sebagian) & T-007.2 selesai: Members management (removeMember, updateMemberRole, repository invitation)
 
 ### Context
