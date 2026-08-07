@@ -40,7 +40,7 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
   // unmount — mencegah blob URL menumpuk tiap kali user ganti pilihan avatar
   // sebelum submit. Bukan setState, jadi tidak melanggar react-hooks/set-state-in-effect.
   useEffect(() => {
-    if (!avatarFile) return;
+    if (!avatarFile || !avatarPreviewUrl) return;
     return () => URL.revokeObjectURL(avatarPreviewUrl);
   }, [avatarPreviewUrl, avatarFile]);
 
