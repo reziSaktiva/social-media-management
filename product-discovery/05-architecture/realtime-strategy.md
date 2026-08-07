@@ -116,10 +116,10 @@ notifications
 
 | Type | Trigger | Penerima | Toast |
 |------|---------|----------|-------|
-| `post_published` | JOB-01 memproses `post.published` | Pemilik post (Creator/Manager yang buat) | Ya |
+| `post_published` | JOB-01 memproses `post.published` | Pemilik post (Creator yang buat) | Ya |
 | `post_failed` | JOB-01 memetakan event vendor `post.error` ke status domain `failed` | Pemilik post | Ya |
-| `account_reconnect_required` | JOB-01 memetakan `account.token_expired` ke akun `error` | Owner, Admin | Ya |
-| `engagement_new` | JOB-03/manual sync menemukan komentar baru | Manager, Admin, Owner | Tidak (hanya badge) |
+| `account_reconnect_required` | JOB-01 memetakan `account.token_expired` ke akun `error` | Account Owner, Admin | Ya |
+| `engagement_new` | JOB-03/manual sync menemukan komentar baru | Creator, Admin, Account Owner | Tidak (hanya badge) |
 | `post_scheduled_reminder` | Post akan tayang dalam 1 jam | Pemilik post | Tidak |
 
 **Catatan:**

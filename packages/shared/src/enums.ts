@@ -9,10 +9,10 @@ export enum ContentStatus {
   Failed = "failed",
 }
 
+/** 3 role (ADR-074) — "Owner" tampil sebagai "Account Owner" di UI/dokumen, value/enum key tidak berubah. */
 export enum MemberRole {
   Owner = "owner",
   Admin = "admin",
-  Manager = "manager",
   Creator = "creator",
 }
 

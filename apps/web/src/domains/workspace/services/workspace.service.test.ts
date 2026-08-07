@@ -278,36 +278,33 @@ describe("WorkspaceService.listConnectedAccounts", () => {
 describe("WorkspaceService.removeMember", () => {
   const OWNER_USER = asUserId("owner-user");
   const ADMIN_USER = asUserId("admin-user");
-  const MANAGER_USER = asUserId("manager-user");
   const CREATOR_USER = asUserId("creator-user");
 
   const OWNER_MEMBER_ID = asMemberId("member-owner");
   const ADMIN_MEMBER_ID = asMemberId("member-admin");
-  const MANAGER_MEMBER_ID = asMemberId("member-manager");
   const CREATOR_MEMBER_ID = asMemberId("member-creator");
 
   function baseSeed(): WorkspaceMemberRecord[] {
     return [
       member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
       member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
-      member(MANAGER_USER, MANAGER_MEMBER_ID, MemberRole.Manager),
       member(CREATOR_USER, CREATOR_MEMBER_ID, MemberRole.Creator),
     ];
   }
 
-  it("allows Owner to remove an Admin/Manager/Creator member", async () => {
+  it("allows Owner to remove an Admin or Creator member", async () => {
     const service = new WorkspaceService(
       createFakeRepository(seedMembers(baseSeed())),
     );
 
-    await service.removeMember(WORKSPACE_ID, OWNER_USER, MANAGER_MEMBER_ID);
+    await service.removeMember(WORKSPACE_ID, OWNER_USER, CREATOR_MEMBER_ID);
 
     await expect(
-      service.removeMember(WORKSPACE_ID, OWNER_USER, MANAGER_MEMBER_ID),
+      service.removeMember(WORKSPACE_ID, OWNER_USER, CREATOR_MEMBER_ID),
     ).rejects.toThrow(NotFoundError);
   });
 
-  it("allows Admin to remove a Manager/Creator member", async () => {
+  it("allows Admin to remove a Creator member", async () => {
     const service = new WorkspaceService(
       createFakeRepository(seedMembers(baseSeed())),
     );
@@ -327,23 +324,13 @@ describe("WorkspaceService.removeMember", () => {
     ).rejects.toThrow(AuthorizationError);
   });
 
-  it("rejects Manager as actor even against a valid target", async () => {
-    const service = new WorkspaceService(
-      createFakeRepository(seedMembers(baseSeed())),
-    );
-
-    await expect(
-      service.removeMember(WORKSPACE_ID, MANAGER_USER, CREATOR_MEMBER_ID),
-    ).rejects.toThrow(AuthorizationError);
-  });
-
   it("rejects Creator as actor even against a valid target", async () => {
     const service = new WorkspaceService(
       createFakeRepository(seedMembers(baseSeed())),
     );
 
     await expect(
-      service.removeMember(WORKSPACE_ID, CREATOR_USER, MANAGER_MEMBER_ID),
+      service.removeMember(WORKSPACE_ID, CREATOR_USER, ADMIN_MEMBER_ID),
     ).rejects.toThrow(AuthorizationError);
   });
 
@@ -366,7 +353,7 @@ describe("WorkspaceService.removeMember", () => {
       service.removeMember(
         WORKSPACE_ID,
         asUserId("stranger-user"),
-        MANAGER_MEMBER_ID,
+        CREATOR_MEMBER_ID,
       ),
     ).rejects.toThrow(AuthorizationError);
   });
@@ -389,7 +376,7 @@ describe("WorkspaceService.removeMember", () => {
       service.removeMember(
         WORKSPACE_ID,
         asUserId("pending-user"),
-        MANAGER_MEMBER_ID,
+        CREATOR_MEMBER_ID,
       ),
     ).rejects.toThrow(AuthorizationError);
   });
@@ -398,23 +385,21 @@ describe("WorkspaceService.removeMember", () => {
 describe("WorkspaceService.updateMemberRole", () => {
   const OWNER_USER = asUserId("owner-user");
   const ADMIN_USER = asUserId("admin-user");
-  const MANAGER_USER = asUserId("manager-user");
+  const CREATOR_USER = asUserId("creator-user");
 
   const OWNER_MEMBER_ID = asMemberId("member-owner");
   const ADMIN_MEMBER_ID = asMemberId("member-admin");
-  const MANAGER_MEMBER_ID = asMemberId("member-manager");
   const CREATOR_MEMBER_ID = asMemberId("member-creator");
 
   function baseSeed(): WorkspaceMemberRecord[] {
     return [
       member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
       member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
-      member(MANAGER_USER, MANAGER_MEMBER_ID, MemberRole.Manager),
-      member(asUserId("creator-user"), CREATOR_MEMBER_ID, MemberRole.Creator),
+      member(CREATOR_USER, CREATOR_MEMBER_ID, MemberRole.Creator),
     ];
   }
 
-  it("allows Owner to update an Admin/Manager/Creator member's role", async () => {
+  it("allows Owner to update an Admin or Creator member's role", async () => {
     const service = new WorkspaceService(
       createFakeRepository(seedMembers(baseSeed())),
     );
@@ -423,13 +408,13 @@ describe("WorkspaceService.updateMemberRole", () => {
       service.updateMemberRole(
         WORKSPACE_ID,
         OWNER_USER,
-        MANAGER_MEMBER_ID,
+        CREATOR_MEMBER_ID,
         MemberRole.Admin,
       ),
     ).resolves.toBeUndefined();
   });
 
-  it("allows Admin to update a Manager/Creator member's role", async () => {
+  it("allows Admin to update a Creator member's role", async () => {
     const service = new WorkspaceService(
       createFakeRepository(seedMembers(baseSeed())),
     );
@@ -439,7 +424,7 @@ describe("WorkspaceService.updateMemberRole", () => {
         WORKSPACE_ID,
         ADMIN_USER,
         CREATOR_MEMBER_ID,
-        MemberRole.Manager,
+        MemberRole.Admin,
       ),
     ).resolves.toBeUndefined();
   });
@@ -459,7 +444,7 @@ describe("WorkspaceService.updateMemberRole", () => {
     ).rejects.toThrow(AuthorizationError);
   });
 
-  it("rejects Manager as actor even against a valid target", async () => {
+  it("rejects Creator as actor even against a valid target", async () => {
     const service = new WorkspaceService(
       createFakeRepository(seedMembers(baseSeed())),
     );
@@ -467,8 +452,8 @@ describe("WorkspaceService.updateMemberRole", () => {
     await expect(
       service.updateMemberRole(
         WORKSPACE_ID,
-        MANAGER_USER,
-        CREATOR_MEMBER_ID,
+        CREATOR_USER,
+        ADMIN_MEMBER_ID,
         MemberRole.Admin,
       ),
     ).rejects.toThrow(AuthorizationError);
@@ -483,7 +468,7 @@ describe("WorkspaceService.updateMemberRole", () => {
       service.updateMemberRole(
         WORKSPACE_ID,
         OWNER_USER,
-        MANAGER_MEMBER_ID,
+        CREATOR_MEMBER_ID,
         MemberRole.Owner,
       ),
     ).rejects.toThrow(ValidationError);
@@ -513,7 +498,7 @@ describe("WorkspaceService.updateMemberRole", () => {
       service.updateMemberRole(
         WORKSPACE_ID,
         asUserId("stranger-user"),
-        MANAGER_MEMBER_ID,
+        CREATOR_MEMBER_ID,
         MemberRole.Admin,
       ),
     ).rejects.toThrow(AuthorizationError);

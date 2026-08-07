@@ -157,7 +157,7 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 
 Belum ada di kode **maupun** di App Prototype Claude Design. Grep `publishNow` nol hasil di seluruh `src/`.
 
-- [ ] **T-029.1** `PublishingService.publishNow()` — RBAC Owner/Admin/Manager (bukan Creator)
+- [ ] **T-029.1** `PublishingService.publishNow()` — RBAC semua role (Owner/Admin/Creator, ADR-074)
 - [ ] **T-029.2** Validasi `ContentFormat` (ADR-039) sebelum panggil adapter
 - [ ] **T-029.3** Server Action + panggil `OutstandAdapter.publishNow`
 - [ ] **T-029.4** Tombol "Publish Now" di Draft Editor berdampingan dengan Schedule (KSP-05-F12)

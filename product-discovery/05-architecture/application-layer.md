@@ -392,7 +392,7 @@ User klik "Schedule" di UI
   ├─ [PublishingService]
   │    ├─ Ambil Post via IPostRepository.findById(postId)
   │    ├─ Verifikasi userId adalah member workspace post ini (WorkspaceService.getMember)
-  │    ├─ Verifikasi role member >= Manager (domain rule)
+  │    ├─ Verifikasi role member >= Creator (domain rule — semua role bisa, ADR-074)
   │    ├─ Jalankan domain rule: scheduledAt tidak boleh di masa lalu
   │    ├─ Jalankan domain rule: post harus memiliki minimal satu PublishingTarget
   │    ├─ Update Post.status = "scheduled", Post.scheduledAt = scheduledAt
@@ -472,7 +472,7 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 | `updateDraft` | Server Action | Edit konten draft (caption, media, targets, `contentFormat`, `platformOptions`) |
 | `schedulePosts` | Server Action | Jadwalkan satu atau beberapa post — wajib validasi matriks `ContentFormat` per target (ADR-039) sebelum memanggil Outstand |
 | `cancelSchedule` | Server Action | Batalkan jadwal, kembali ke draft — wajib dialog konfirmasi Tier 2 sebelum eksekusi, simetris dengan konfirmasi Schedule (ADR-049) |
-| `publishNow` | Server Action | Publish langsung tanpa jadwal (KSP-05-F12, ADR-047) — RBAC sama dengan `schedulePosts` (Owner/Admin/Manager, bukan Creator); validasi matriks `ContentFormat` per target (ADR-039) tetap wajib sebelum memanggil Outstand |
+| `publishNow` | Server Action | Publish langsung tanpa jadwal (KSP-05-F12, ADR-047) — RBAC sama dengan `schedulePosts` (semua role: Account Owner/Admin/Creator, sejak ADR-074); validasi matriks `ContentFormat` per target (ADR-039) tetap wajib sebelum memanggil Outstand |
 | `deletePost` | Server Action | Soft delete post — wajib dialog konfirmasi Tier 2 sebelum eksekusi (ADR-049), meski soft delete di DB (DB-D03) |
 | `getScheduledPosts` | Server Component | Load post untuk Calendar view |
 | `getDraftPosts` | Server Component | Load post untuk Draft list |

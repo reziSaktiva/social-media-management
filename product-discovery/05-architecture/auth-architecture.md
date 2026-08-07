@@ -27,7 +27,7 @@ Keputusan berikut sudah ditetapkan sebelum dokumen ini dibuat dan menjadi fondas
 | Auth Enforcement | Application-enforced sebagai lapisan utama; RLS sebagai defense-in-depth | ADR-015 |
 | Identity BC | BC-01 Identity — dikelola Better Auth, prefix tabel `identity_` | `domain-model.md` |
 | Application Layer | Middleware untuk auth guard dan workspace context injection | ADR-016 |
-| Roles | 4 roles: Owner, Admin, Manager, Creator | ADR-012, `roles-permissions.md` |
+| Roles | 3 roles: Account Owner, Admin, Creator | ADR-012, ADR-074, `roles-permissions.md` |
 | Multi-tenancy Unit | `workspace_id` sebagai unit isolasi | ADR-015 |
 
 ---
@@ -171,7 +171,7 @@ Middleware menginject workspace context sebagai custom request headers:
 
 ```
 x-workspace-id: {workspaceId}
-x-workspace-role: {owner | admin | manager | creator}
+x-workspace-role: {owner | admin | creator}
 ```
 
 Application Service dan Server Actions membaca headers ini untuk mengetahui workspace aktif dan role user tanpa perlu query ulang ke database.
@@ -205,10 +205,10 @@ Request (Server Action / Route Handler)
 ## Role Hierarchy
 
 ```
-Owner > Admin > Manager > Creator
+Owner > Admin > Creator
 ```
 
-Owner memiliki semua permission Admin. Admin memiliki semua permission Manager. Manager memiliki lebih banyak permission dari Creator.
+Owner memiliki semua permission Admin. Admin memiliki lebih banyak permission dari Creator (ADR-074 — hierarki sebelumnya Owner > Admin > Manager > Creator, "Manager" dihapus dan hak operasional kontennya digabung ke Creator).
 
 ## Permission Matrix
 
@@ -216,19 +216,19 @@ Referensi lengkap: `../../02-product/roles-permissions.md`
 
 Ringkasan permission per area yang relevan untuk enforcement di Application Service:
 
-| Operasi | Owner | Admin | Manager | Creator |
-|---------|-------|-------|---------|---------|
-| Hapus workspace | ✅ | ❌ | ❌ | ❌ |
-| Transfer ownership | ✅ | ❌ | ❌ | ❌ |
-| Ubah billing | ✅ | ❌ | ❌ | ❌ |
-| Kelola connected accounts | ✅ | ✅ | ❌ | ❌ |
-| Undang/hapus member | ✅ | ✅ | Creator only | ❌ |
-| Publish / jadwalkan post | ✅ | ✅ | ✅ | ❌ |
-| Buat / edit draft | ✅ | ✅ | ✅ | ✅ |
-| Hapus konten orang lain | ✅ | ✅ | ✅ | ❌ |
-| Baca analytics | ✅ | ✅ | ✅ | ❌ |
-| Balas engagement | ✅ | ✅ | ✅ | ❌ |
-| Baca audit log | ✅ | ✅ | ❌ | ❌ |
+| Operasi | Account Owner | Admin | Creator |
+|---------|-------|-------|---------|
+| Hapus workspace | ✅ | ❌ | ❌ |
+| Transfer ownership | ✅ | ❌ | ❌ |
+| Ubah billing | ✅ | ❌ | ❌ |
+| Kelola connected accounts | ✅ | ✅ | ❌ |
+| Undang/hapus member | ✅ | ✅ | ❌ |
+| Publish / jadwalkan post | ✅ | ✅ | ✅ |
+| Buat / edit draft | ✅ | ✅ | ✅ |
+| Hapus konten orang lain | ✅ | ✅ | ❌ |
+| Baca analytics | ✅ | ✅ | ✅ |
+| Balas engagement | ✅ | ✅ | ✅ |
+| Baca audit log | ✅ | ✅ | ❌ |
 
 ## Authorization Helper
 

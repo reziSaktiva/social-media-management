@@ -111,28 +111,27 @@ adalah siklus terpisah setelah konten published, lihat langsung
 ## 3. Siklus status konten (state per role)
 
 Enam status kanonikal dan siapa yang boleh memicu tiap transisi — dari
-`product-discovery/02-product/roles-permissions.md`. `Creator` sengaja tidak
-punya jalur ke `Scheduled` sama sekali (UXP-06: koordinasi ringan, bukan
-approval berlapis).
+`product-discovery/02-product/roles-permissions.md`. Sejak ADR-074 (3 role:
+Account Owner/Admin/Creator), semua role memiliki hak yang sama untuk
+transisi status konten — tidak ada lagi role yang dibatasi hanya sampai
+`In Review`.
 
 ```mermaid
 flowchart TD
   N((baru)) --> D[Draft]
-  D -->|siapa saja: Owner/Admin/Manager/Creator| IR[In Review]
-  IR -->|kembali: Owner/Admin/Manager, atau Creator utk draft sendiri| D
-  IR -->|Owner/Admin/Manager| RS[Ready to Schedule]
-  RS -->|Owner/Admin/Manager| SC[Scheduled]
-  D -->|Owner/Admin/Manager, skip review| SC
-  SC -->|tarik jadwal: Owner/Admin/Manager| D
+  D -->|siapa saja: Account Owner/Admin/Creator| IR[In Review]
+  IR -->|kembali: Account Owner/Admin/Creator| D
+  IR -->|Account Owner/Admin/Creator| RS[Ready to Schedule]
+  RS -->|Account Owner/Admin/Creator| SC[Scheduled]
+  D -->|Account Owner/Admin/Creator, skip review| SC
+  SC -->|tarik jadwal: Account Owner/Admin/Creator| D
   SC -->|otomatis, sistem| PB[Published]
   SC -->|otomatis, sistem| FL[Failed]
-  FL -->|Owner/Admin/Manager| D
+  FL -->|Account Owner/Admin/Creator| D
 ```
 
-**Catatan:** `Creator` **tidak pernah** bisa memicu transisi ke `Scheduled`
-langsung maupun tidak langsung — hanya sampai `In Review`. Post yang sudah
-`Scheduled` **tidak** otomatis batal saat akun disconnect (KSP-D09) — tetap
-menunggu di antrean sampai akun reconnect.
+**Catatan:** Post yang sudah `Scheduled` **tidak** otomatis batal saat akun
+disconnect (KSP-D09) — tetap menunggu di antrean sampai akun reconnect.
 
 **Rujukan:** `../product-discovery/02-product/roles-permissions.md`,
 `../product-discovery/04-ux/key-screen-patterns.md` (KSP-D09).
