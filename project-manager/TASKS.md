@@ -52,7 +52,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
-| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039 | 20   | 🟡 8 ✅ · 1 🚫 · 4 🟡 · 7 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
+| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹ | 20   | 🟡 8 ✅ · 1 🚫 · 4 🟡 · 7 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038 | 19   | 🟡 5 ✅ · 1 🟡 · 13 ⏳       | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | ⏳ 0 / 6             | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
@@ -61,6 +61,8 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 
 **Total:** 71 task · 13 selesai · 142 subtask terdefinisi (v0.1–v0.3).
+
+¹ **T-039** ID-nya dipinjam dari rentang v0.2 (bukan urutan lanjutan v0.1) — nomor kosong v0.1 sudah habis, jadi diambil ID global berikutnya yang belum pernah dipakai. Lihat Catatan Rilis di `tasks/v01-foundation.md` dan `tasks/v02-publishing-mvp.md` untuk detailnya.
 
 Urutan release mengikuti [`release-roadmap.md`](../product-discovery/02-product/release-roadmap.md). Perubahan urutan atau ruang lingkup release wajib lewat ADR.
 
