@@ -8,6 +8,58 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-10 — KI-020 resolved: layout footer sidebar grouping, kode ikut Design System
+
+### Context
+
+KI-020 mencatat mismatch layout di footer sidebar: Design System CSS
+(`.sidebar-footer` di `styles.css`) tidak memakai `justify-content` pada
+container-nya (cuma `display:flex; gap:var(--spacing-1)`) — efek
+"renggang" didapat dari `margin-left:auto` yang ditempel LANGSUNG pada
+tombol Theme, sehingga Notifikasi menempel kiri sementara Theme+Avatar
+mengelompok jadi satu klaster di kanan. Implementasi web
+(`WorkspaceSideNav.tsx`) sebelumnya memakai `<HStack gap={2} align="center"
+justify="between" width="100%">` yang membungkus 3 children langsung
+(IconButton Notifikasi, IconButton Theme, DropdownMenu Avatar) —
+`justify="between"` di container menyebar ketiganya dengan jarak sama
+rata, bukan mengelompokkan Theme+Avatar jadi satu grup di kanan seperti
+Design System.
+
+King Rezi memutuskan arah resolusi: **kode mengikuti Design System**,
+Design System tidak diubah.
+
+### Changed (kode)
+
+- `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx`:
+  - Outer `HStack justify="between"` sekarang membungkus 2 grup, bukan 3
+    children langsung: (1) IconButton Notifikasi sendiri, (2) `HStack`
+    baru berisi IconButton Theme + `DropdownMenu` Avatar (grup kanan).
+  - `AlertDialog` konfirmasi Logout tetap di level yang sama (tidak
+    visual, cuma overlay) — tidak terdampak.
+
+### Verifikasi
+
+Diverifikasi manual di browser preview: layout footer sidebar menunjukkan
+Notifikasi kiri, Theme+Avatar mengelompok kanan — sesuai Design System.
+Dropdown avatar (Profile/Logout) tetap berfungsi normal (menuitem
+terdeteksi via `read_page`). `tsc --noEmit` di `apps/web` bersih, tidak
+ada error. Tidak menjalankan test suite otomatis lain; tidak ada regresi
+terdeteksi di area lain.
+
+### Keputusan dokumentasi
+
+Tidak dibuat ADR baru — ini pilihan implementasi kecil (grouping layout
+mengikuti Design System yang sudah ada), bukan keputusan
+arsitektur/workflow/repository strategy/business requirement/domain/
+teknologi baru, sejalan dengan pola resolusi KI-019.
+
+### Resolved
+
+KI-020 dihapus dari `PROJECT_STATE.md` — riwayatnya tercatat di entri
+ini.
+
+---
+
 ## 2026-08-10 — KI-019 resolved: footer sidebar pakai `Avatar`, kode ikut Design System
 
 ### Context

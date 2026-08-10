@@ -231,6 +231,14 @@ fase aktif di file ini.
   sama — kalau tidak, hitungan di indeks jadi salah).
 - Update `project-manager/PROJECT_STATE.md` bila phase / milestone / Known
   Issues / fokus terdekat berubah. Jangan menyalin detail task ke sana.
+- Section **"Completed (Ringkasan)"** di `PROJECT_STATE.md` dibatasi **5
+  item terakhir** (bukan sekadar target, ini hitungan aktual — cek
+  `grep -c "^\* \*\*"` pada section itu setelah edit). Setiap menambah
+  bullet baru, **hapus bullet paling lama** di bawahnya supaya total tetap
+  5 — isi lengkapnya sudah aman di `COMPLETE_TASK.md`, jadi tidak ada info
+  yang hilang. Ditemukan drift ke 7 item pada 2026-08-10 karena aturan ini
+  cuma teks di dalam file itu sendiri, bukan hard rule — sekarang dipindah
+  ke sini agar terlihat setiap awal sesi.
 - Catat di `project-manager/COMPLETE_TASK.md` (append entri baru saja — jangan baca isi lengkapnya kecuali diperintah eksplisit King Rezi).
 - Insight diskusi penting → `project-manager/CONVERSATIONS.md`.
 - Keputusan material → ADR di `project-manager/DECISIONS.md`.
