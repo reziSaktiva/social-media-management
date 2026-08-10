@@ -31,12 +31,9 @@ mengimplementasikan (ganti `button` `DropdownMenu` jadi `isIconOnly` dengan
 `icon: <Avatar ... />`), lalu diverifikasi manual di browser (light/dark
 mode, dropdown Profile/Logout normal, tanpa regresi).
 
-**Key Insight / Decision:** Untuk mismatch Design-Consistency semacam ini,
-default arahnya adalah kode menyesuaikan Design System (bukan Design System
-menyesuaikan kode) kecuali ada alasan teknis/produk kuat untuk sebaliknya —
-konsisten dengan preseden ADR-074 (KI-017, baseline direvisi mengikuti
-kebutuhan produk) di mana arah revisi tetap ditentukan eksplisit per kasus,
-bukan otomatis satu arah.
+**Key Insight / Decision:** Untuk KI-019, kode menyesuaikan Design System
+untuk footer sidebar. Kasus lain memerlukan keputusan eksplisit sesuai
+konteksnya.
 
 **Impact:** `PROJECT_STATE.md` (KI-019 dihapus, resolved), `COMPLETE_TASK.md`
 (entri baru). Tidak ada ADR baru — bukan keputusan arsitektur/domain/
