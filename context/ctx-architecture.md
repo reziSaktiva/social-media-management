@@ -17,7 +17,7 @@ Bukan tempat config env, script DX, atau gaya kode.
 | [`integration-layer.md`](../product-discovery/05-architecture/integration-layer.md)                | Outstand ACL, OAuth, publish, media upload, webhook, comment sync |
 | [`background-jobs.md`](../product-discovery/05-architecture/background-jobs.md)                    | Job queue Postgres, Railway Cron, job types                       |
 | [`realtime-strategy.md`](../product-discovery/05-architecture/realtime-strategy.md)                | Supabase Realtime untuk notifikasi                                |
-| [`auth-architecture.md`](../product-discovery/05-architecture/auth-architecture.md)                | Session, middleware workspace, RBAC di service, RLS               |
+| [`auth-architecture.md`](../product-discovery/05-architecture/auth-architecture.md)                | Session, workspace context via cookie, RBAC di service, RLS       |
 
 ---
 

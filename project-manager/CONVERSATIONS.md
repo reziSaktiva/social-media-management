@@ -18,6 +18,45 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-08-10 — Dua keputusan turunan untuk rencana hapus `[slug]` dari routing
+
+**Phase:** M8 Development
+
+**Summary:** Rencana perubahan routing & Settings (hapus dynamic segment
+`[slug]`, workspace context pindah ke cookie, gabung "Workspace Settings" +
+"User Settings" jadi "Organization Settings" + "Account Settings") punya 2
+keputusan turunan yang masih terbuka sebelum 14 file baseline
+(`product-discovery/` + `context/`) bisa ditulis ulang — lihat catatan
+"tahap eksekusi" di plan terkait. King Rezi diminta memutuskan lewat
+`AskQuestion` (bukan diasumsikan AI), dengan pilihan yang sudah dikurasi.
+
+**Key Insight / Decision:**
+1. **Nama route group pengganti `[slug]`** (lawan `(auth)`) di
+   `monorepo-setup.md`: **`(app)`** — pasangan idiomatis untuk `(auth)`
+   (pre-login vs aplikasi utama pasca-login), konvensi Next.js yang umum,
+   netral terhadap detail implementasi. Route group ini membungkus Home,
+   Publish, Engage, Analyze, Start Page, Settings — layout dengan sidebar +
+   workspace context dari cookie, tanpa tampil di URL.
+2. **Nasib field `Workspace.slug`** di data model
+   (`domain-model.md`, `database-strategy.md`, `updateWorkspace` di
+   `application-layer.md`): **dipertahankan sebagai internal unique
+   identifier (non-URL)** — bukan dihapus total. Deskripsi field berubah
+   dari "URL identifier unik" menjadi "internal unique identifier, tidak
+   dipakai di routing/URL" (rasion: referensi human-readable di
+   log/debugging/support, dan future-proofing kalau multi-workspace
+   URL-based direvisit post-MVP). Kolom `workspaces.slug` (termasuk index
+   terkait) tetap ada di skema, hanya keterangannya yang direvisi saat 14
+   file baseline ditulis ulang.
+
+**Impact:** Belum ada file baseline yang diubah sesi ini (rewrite 14 file
+tetap di luar scope, menunggu eksekusi terpisah). Keputusan ini jadi input
+wajib saat rewrite `monorepo-setup.md`, `domain-model.md`,
+`database-strategy.md`, `application-layer.md` dilakukan. ADR baru untuk
+perubahan routing & Settings secara keseluruhan tetap wajib dibuat saat
+eksekusi (bukan sesi ini), sesuai catatan di plan terkait dan hard rule #4.
+
+---
+
 ## 2026-08-10 — KI-019: kode ikut Design System untuk footer sidebar (avatar vs tombol teks)
 
 **Phase:** M8 Development

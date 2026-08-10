@@ -164,8 +164,8 @@ Responsibilities:
 
 Responsibilities:
 
-* Workspace Settings
-* User Settings
+* Organization Settings
+* Account Settings
 * Integrations
 
 ---

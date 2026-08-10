@@ -83,8 +83,7 @@ Secondary navigation diakses melalui elemen tetap di luar primary nav — tidak 
 
 | Label | Akses Via | Isi |
 | ----- | --------- | --- |
-| Workspace Settings | Workspace selector / bottom sidebar | Anggota tim, akun terhubung, izin, branding, billing |
-| User Settings | Avatar / user menu | Profil pengguna, notifikasi, preferensi |
+| Settings | Avatar / user menu | Grup **Organization** (anggota tim, akun terhubung, izin, branding, billing) dan grup **Account** (profil pengguna, notifikasi, preferensi) |
 | Notifications | Icon notifikasi | Notifikasi in-app |
 
 ---
@@ -201,30 +200,22 @@ Start Page
 
 ---
 
-## 6. Workspace Settings
+## 6. Settings
 
-Diakses via secondary navigation — bukan layar kerja harian.
-
-```
-Workspace Settings
-├── General                   — nama workspace, timezone, brand settings
-├── Connected Accounts        — kelola akun media sosial yang terhubung
-├── Members                   — undang, kelola anggota tim
-├── Roles & Permissions       — atur hak akses per peran
-└── Billing                   — langganan dan pembayaran
-```
-
----
-
-## 7. User Settings
-
-Diakses via user menu — bukan layar kerja harian.
+Diakses via avatar / user menu — bukan layar kerja harian. Terdiri dari dua grup: **Organization** (pengelolaan workspace, hanya untuk role yang berwenang) dan **Account** (preferensi personal pengguna).
 
 ```
-User Settings
-├── Profile                   — nama, foto, email
-├── Notifications             — preferensi notifikasi email dan in-app
-└── Preferences               — pengaturan tampilan personal
+Settings
+├── Organization
+│   ├── General                   — nama organisasi, timezone, brand settings
+│   ├── Connected Accounts        — kelola akun media sosial yang terhubung
+│   ├── Members                   — undang, kelola anggota tim
+│   ├── Roles & Permissions       — atur hak akses per peran
+│   └── Billing                   — langganan dan pembayaran
+└── Account
+    ├── Profile                   — nama, foto, email
+    ├── Notifications             — preferensi notifikasi email dan in-app
+    └── Preferences               — pengaturan tampilan personal
 ```
 
 ---
@@ -235,10 +226,10 @@ Tabel berikut memetakan fitur MVP (Must Have) ke layar spesifik dalam IA.
 
 | Fitur (MVP Must Have) | Layar |
 | --------------------- | ----- |
-| Workspace Management | Workspace Settings → General |
-| Team Members | Workspace Settings → Members |
-| Roles & Permissions | Workspace Settings → Roles & Permissions |
-| Social Account Connection | Workspace Settings → Connected Accounts |
+| Workspace Management | Settings → Organization → General |
+| Team Members | Settings → Organization → Members |
+| Roles & Permissions | Settings → Organization → Roles & Permissions |
+| Social Account Connection | Settings → Organization → Connected Accounts |
 | Content Draft | Publish → Drafts → Draft Editor |
 | Content Format Selection (ADR-039) | Publish → Draft Editor → Content Format per akun |
 | Schedule Post | Publish → Draft Editor → Schedule Picker |
@@ -294,7 +285,7 @@ Keputusan struktural yang dibuat dalam dokumen ini.
 | IA-D02 | AI tidak menjadi item navigasi | AI contextual, bukan destinasi. Tempatkan di Draft Editor | UXP-05 |
 | IA-D03 | Home sebagai layar orientasi, bukan dashboard kerja | Melayani Maya tanpa mengganggu alur Raka | UXP-02 |
 | IA-D04 | Calendar sebagai tampilan default di Publish | Calendar memberikan overview status konten yang terbaik | UXP-02, UXP-04 |
-| IA-D05 | Workspace Settings di luar primary nav | Bukan akses harian — jangan memenuhi slot navigasi utama | UXP-03 |
+| IA-D05 | Settings (grup Organization + Account) di luar primary nav, diakses via avatar/user menu | Bukan akses harian — jangan memenuhi slot navigasi utama | UXP-03 |
 | IA-D06 | Kedalaman navigasi maksimal dua level | Lebih dari dua level menambah cognitive load tanpa nilai | UXP-03 |
 | IA-D07 | Media Library tidak di primary nav | Diakses dari Draft Editor (Should Have) — bukan entry point utama | UXP-03 |
 

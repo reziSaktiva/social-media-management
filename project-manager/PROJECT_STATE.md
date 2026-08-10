@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.48     |
+| Version      | 1.0.49     |
 | Status       | Active     |
 | Last Updated | 2026-08-10 |
 
@@ -206,46 +206,35 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003), tiga env var ini belum diisi di 
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — kode Google OAuth di `auth.ts` sudah siap (`socialProviders.google` terdaftar kondisional lewat `env.ts`), tapi tanpa env ini "Sign in with Google" tidak aktif.
 - `JOB_SECRET` — dibutuhkan untuk header `X-Job-Secret` (Railway Cron → web, EM-D0x). Belum diisi berarti job runner (T-027) belum bisa diverifikasi end-to-end di local; dev bisa memakai nilai dummy sementara.
 
-### KI-023 · Workspace Selector (dropdown workspace + link Workspace Settings) belum pernah diimplementasikan
+### KI-023 · Kode `apps/web` belum dimigrasikan ke baseline routing/Settings baru (ADR-076)
 
 | Field | Value |
 |-------|-------|
 | Status | Open |
 | Kategori | Tech-Debt |
-| Terkait | T-009, IA-D05, NP-D07 |
+| Terkait | T-009, ADR-076 |
 
-Baseline navigasi (`product-discovery/04-ux/navigation-patterns.md`, baris
-~111 dan ~131-142, keputusan IA-D05 dan NP-D07) mendefinisikan "Workspace
-Selector" sebagai dropdown interaktif di zona atas sidebar workspace —
-menampilkan daftar workspace yang dimiliki user + opsi "Create New
-Workspace" + link langsung ke Workspace Settings — dan mendesainnya sebagai
-SATU-SATUNYA entry point resmi ke Workspace Settings (General, Connected
-Accounts, Members, Roles & Permissions, Billing), karena Workspace Settings
-sengaja tidak diberi slot di primary nav (bukan akses harian, sesuai
-IA-D05).
+Ditemukan awalnya sebagai gap "Workspace Selector tidak pernah
+diimplementasikan" (baseline navigasi lama, IA-D05/NP-D07 versi lama).
+Investigasi lanjutan 2026-08-10 menyimpulkan premis itu sendiri sudah
+tidak relevan: **ADR-076** menghapus konsep Workspace Selector dari
+baseline sama sekali — bukan cuma belum dibangun, tapi memang tidak lagi
+jadi bagian desain (digantikan entry point avatar/user menu tunggal ke
+Settings gabungan Organization + Account).
 
-Elemen ini tidak pernah dibangun di kode:
-`apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx` baris 76-83 cuma
-render `SideNavHeading` statis (heading=nama workspace,
-headingHref=`/${slug}`, link biasa ke halaman home workspace), tanpa
-onClick, tanpa dropdown, tanpa state apapun — inilah elemen yang disebut
-"Workspace Selector" secara longgar di T-011/ADR-053 (soal posisi CTA "New
-Post"), berbeda dari dropdown interaktif penuh yang dimaksud baseline
-navigasi di atas. Satu-satunya jalur nyata ke
-`/[slug]/settings/*` hari ini adalah 2 deep-link KONTEKSTUAL yang hanya
-muncul dalam kondisi tertentu: badge status channel bermasalah di
-`apps/web/src/app/[slug]/components/sidebar-channels/ChannelsSection.tsx`
-baris 153 (hanya tampil kalau ada channel `needsAttention`), dan link
-"Reconnect" di `apps/web/src/app/[slug]/components/draft-editor/Modal.tsx`
-baris 526 (hanya tampil kalau akun `isDisconnected`) — keduanya cuma
-menuju `connected-accounts`, tidak ada jalur apapun ke
-General/Members/Roles/Billing dari UI utama manapun (hanya mengetik URL
-langsung). Tidak ada task formal untuk membangun Workspace Selector —
-T-009 ("App Shell + sidebar navigation") sudah ditutup status Done tanpa
-mencakup fitur ini sama sekali.
+Gap yang tersisa sekarang lebih besar dari sekadar satu komponen: seluruh
+kode `apps/web` masih memakai skema **lama** yang sudah di-superseded ADR-076—
+`apps/web/src/app/[slug]/...` (dynamic segment, bukan route group `(app)`),
+`apps/web/src/app/account/...` terpisah dari `[slug]/settings/...` (bukan
+`settings/account/*` gabungan), dan Middleware/`src/proxy.ts` yang masih
+resolve workspace dari `WorkspaceSideNav.tsx` (elemen statis tanpa
+dropdown) alih-alih dari cookie `active-workspace-id`. Halaman
+`/onboarding` dengan picker workspace (re-entry saat cookie hilang) juga
+belum ada.
 
-Ditemukan 2026-08-10 saat King Rezi melakukan riset navigasi. Murni
-pencatatan gap — belum ada task T-XXX yang dibuat untuk implementasinya.
+Migrasi kode ke baseline baru belum punya task T-XXX formal — perlu
+ditambahkan ke `TASKS.md` sebelum dikerjakan (lihat "Catatan implementasi"
+di ADR-076, `DECISIONS.md`).
 
 ---
 
@@ -259,11 +248,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **ADR-076** — 14 file baseline `product-discovery/`+`context/` ditulis ulang: workspace context pindah ke cookie (hapus `[slug]`, route group `(app)`), Settings dikonsolidasi jadi Organization + Account dengan entry point avatar tunggal, `/onboarding` jadi re-entry point saat cookie hilang. Review internal (PR [#61](https://github.com/reziSaktiva/social-media-management/pull/61)) menemukan & memperbaiki 5 inkonsistensi (referensi `/dashboard` basi, bahasa "superseded" di Decision Log, `settings/account/` tanpa `page.tsx` default, contoh URL salah tulis nama route group, jumlah zona sidebar keliru) sebelum ADR dibuat. KI-023 direvisi mengikuti ADR ini. Migrasi kode `apps/web` masih menyusul sebagai task terpisah.
 * **KI-021 resolved** — Design System tidak punya logic apa pun untuk membuka menu saat avatar diklik (langsung pindah screen) dan alur Logout belum pernah dimodelkan. King Rezi memperbaiki manual: avatar sidebar Design System sekarang membuka dropdown (Profile + divider + Logout, mirror `DropdownMenu` Astryx), dan Logout membuka dialog konfirmasi Tier 2 (judul "Logout dari akun ini?", mirror `AlertDialog`, sesuai ADR-049/NP-D10). Tidak ada kode `apps/web` yang berubah — perubahan murni di Design System.
 * **KI-022 resolved** — Avatar Design System sebelumnya mengarah ke Workspace Settings `settings-connected-accounts`, berbeda dari kode web yang mengarah ke `/account/profile` User Settings. Dikonfirmasi kode web sudah benar sesuai baseline `information-architecture.md` + ADR-056, jadi King Rezi memperbaiki Design System mengikuti kode: item Profile sekarang mengarah ke screen baru `templates/user-settings.html` (User Settings) dengan sidebar minimal ala `AccountSideNav.tsx` (link kembali + 3 nav item Profile/Notifications/Preferences), bukan lagi sidebar workspace penuh. `readme.md` project Claude Design diperbarui menjelaskan alur baru ini.
 * **KI-020 resolved** — Layout footer sidebar `WorkspaceSideNav.tsx` sebelumnya memakai `<HStack justify="between">` yang membungkus 3 children langsung (Notifikasi, Theme, Avatar) sehingga menyebar rata, berbeda dari Design System (`.sidebar-footer`) yang mengelompokkan Theme+Avatar jadi satu klaster di kanan (via `margin-left:auto` pada tombol Theme) dengan Notifikasi sendiri di kiri. King Rezi memutuskan kode ikut Design System — outer `HStack justify="between"` sekarang membungkus 2 grup: IconButton Notifikasi sendiri, dan HStack baru berisi IconButton Theme + DropdownMenu Avatar (grup kanan). Terverifikasi manual di browser (Notifikasi kiri, Theme+Avatar mengelompok kanan, dropdown avatar tetap normal), `tsc --noEmit` bersih.
 * **KI-019 resolved** — Footer sidebar `WorkspaceSideNav.tsx` sebelumnya memakai `DropdownMenu` dengan tombol teks nama/email (`button={{ label: userName || userEmail, variant: "ghost" }}`), berbeda jenis elemen dari Design System (`components/navigation.html` di Claude Design) yang memakai avatar bulat berisi inisial. King Rezi memutuskan kode mengikuti Design System (bukan sebaliknya) — tombol diganti `isIconOnly` dengan `icon: <Avatar name={userName || userEmail} size="sm" />`, `hasChevron={false}`, `aria-label` nama/email dipertahankan. Terverifikasi manual di browser (light & dark mode, dropdown Profile/Logout normal, tanpa regresi). Layout container `justify="between"` (KI-020) resolved terpisah — lihat bullet di atas.
-* **T-007.4 selesai** — UI daftar anggota `/settings/members` (Astryx Table): `page.tsx` diganti dari `ScaffoldPlaceholder` jadi server component nyata, `MembersTable.tsx` (client component baru, kolom Member/Role/Status/Actions). Tombol Change Role/Remove disabled dengan tooltip (menunggu T-007.5), disembunyikan untuk baris Owner/diri sendiri. Backend: `WorkspaceService.listMembersWithUser` + repository method baru (domain `workspace`), 26 unit test pass, `tsc`/lint bersih. Verifikasi visual browser belum dilakukan (tidak ada kredensial test user) — known gap, bukan klaim selesai penuh.
 
 ---
 
@@ -271,11 +260,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-076** — Workspace context pindah ke cookie (hapus dynamic segment `[slug]`, route group `(app)`) + Settings dikonsolidasi jadi Organization + Account dengan entry point avatar tunggal — menggantikan Workspace Selector yang tidak pernah dibangun (KI-023).
 * **ADR-075** — Amandemen ADR-071: sinkronisasi kutipan `migration.sql` bucket `avatars` (resolusi KI-018).
 * **ADR-074** — Reduksi struktur role dari 4 jadi 3 (Account Owner, Admin, Creator) — resolusi KI-017.
 * **ADR-073** — Prisma External Tables (`initShadowDb` + `tables.external`) untuk shadow database menangani tabel platform Supabase (`storage.buckets`) — resolusi KI-016.
 * **ADR-072** — Tabel `workspace_invitations` terpisah untuk invite member yang belum punya akun (T-007.1/.2).
-* **ADR-071** — Perluasan bucket Supabase Storage `avatars` (publik) untuk juga menampung avatar user personal (T-016.2), path baru `avatars/users/{user_id}/avatar.{ext}` di samping path avatar workspace yang sudah ada. Tidak membuat bucket baru.
 
 ---
 

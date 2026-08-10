@@ -149,7 +149,7 @@ Workspace adalah **root context** — seluruh data domain lain terikat ke `Works
 **Workspace**
 - `id: WorkspaceId`
 - `name: string`
-- `slug: string` — URL identifier unik
+- `slug: string` — internal unique identifier, tidak dipakai di routing/URL (referensi human-readable di log/debugging/support; workspace context di routing memakai cookie, lihat `auth-architecture.md`)
 - `ownerId: UserId` — referensi ke Identity BC
 - `pendingOwnerTransferTo: UserId?` — diisi saat Owner memicu `transferOwnership`; dikosongkan lagi setelah target menerima (`acceptOwnershipTransfer`) atau proses dibatalkan (ADR-050)
 - `plan: WorkspacePlan` — `free | pro | (post-MVP: team)`
