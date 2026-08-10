@@ -37,8 +37,8 @@ konteksnya.
 
 **Impact:** `PROJECT_STATE.md` (KI-019 dihapus, resolved), `COMPLETE_TASK.md`
 (entri baru). Tidak ada ADR baru — bukan keputusan arsitektur/domain/
-teknologi material. KI-020 (layout `justify="between"`) tetap Open,
-terpisah.
+teknologi material. KI-020 (layout `justify="between"`) resolved terpisah
+di PR #59 — lihat entri KI-020 di `PROJECT_STATE.md`/`COMPLETE_TASK.md`.
 
 ---
 
