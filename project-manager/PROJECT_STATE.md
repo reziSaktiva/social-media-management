@@ -212,7 +212,7 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003), tiga env var ini belum diisi di 
 |-------|-------|
 | Status | Open |
 | Kategori | Tech-Debt |
-| Terkait | T-009, ADR-076 |
+| Terkait | T-009, T-039, ADR-076 |
 
 Ditemukan awalnya sebagai gap "Workspace Selector tidak pernah
 diimplementasikan" (baseline navigasi lama, IA-D05/NP-D07 versi lama).
@@ -232,9 +232,9 @@ dropdown) alih-alih dari cookie `active-workspace-id`. Halaman
 `/onboarding` dengan picker workspace (re-entry saat cookie hilang) juga
 belum ada.
 
-Migrasi kode ke baseline baru belum punya task T-XXX formal — perlu
-ditambahkan ke `TASKS.md` sebelum dikerjakan (lihat "Catatan implementasi"
-di ADR-076, `DECISIONS.md`).
+Migrasi kode ke baseline baru sudah dibuatkan task formal **T-039**
+(`tasks/v01-foundation.md`), status `⏳ Not Started` — murni entry backlog,
+eksekusi belum dimulai sampai diperintahkan eksplisit King Rezi.
 
 ---
 

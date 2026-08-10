@@ -171,7 +171,7 @@ Belum ada di kode **maupun** di App Prototype Claude Design. Grep `publishNow` n
 | **Status**    | ⏳ Not Started                                    |
 | **Domain**    | publishing                                       |
 | **ADR**       | ADR-049 (Tier 2)                                 |
-| **Depends**   | T-028 ✅, T-032 (aksi dipicu dari Queue)          |
+| **Depends**   | T-028 ✅, T-032 (aksi dipicu dari Queue), T-033 (aksi dipicu dari Calendar) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                    |
 
 - [ ] **T-030.1** `PublishingService.cancelSchedule` + batalkan di Outstand (T-025)
@@ -312,5 +312,5 @@ Berjalan **kontinu** selama rilis ini, bukan sekali selesai: setiap kali konvens
 
 ## Catatan Rilis
 
-* T-038–T-039 sengaja dikosongkan sebagai ruang penambahan task v0.2.
+* Ruang kosong v0.2 sebelumnya mencakup T-039, tapi nomor itu sudah dipakai untuk **T-039** (Migrasi Routing & Settings, ADR-076) di `tasks/v01-foundation.md`, bukan task v0.2 — lihat Catatan Rilis file tersebut. Tidak ada lagi ruang kosong tersisa untuk task v0.2 baru; task v0.2 berikutnya memakai nomor global berikutnya yang belum pernah dipakai (cek Indeks release di `TASKS.md`).
 * **Definition of Done rilis ini** (dari `release-roadmap.md`): pengguna dapat mengelola proses publikasi dari awal hingga selesai — draft → format per akun → schedule/publish → lihat queue/calendar → lihat hasil di history.

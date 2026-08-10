@@ -7,7 +7,7 @@
 
 **Kedalaman dokumen ini:** task-level saja (rolling wave). **Subtask sengaja belum diisi** — akan dirinci saat rilis ini mendekat. ID task sudah dikunci sejak sekarang agar bisa dirujuk.
 
-**Titik awal:** domain `start-page/` masih stub kosong. Model `StartPagePage` + `StartPageLink` **sudah ada** di schema. Route `/[slug]/start-page` masih placeholder.
+**Titik awal:** domain `start-page/` masih stub kosong. Model `StartPagePage` + `StartPageLink` **sudah ada** di schema. Route `/start-page` (halaman pengaturan, bukan halaman publik — lihat T-070/T-071 untuk itu) masih placeholder — saat ini masih di bawah dynamic segment lama `[slug]`, tapi baseline routing sudah pindah ke route group `(app)` (ADR-076); kalau **T-039** (migrasi kode, `tasks/v01-foundation.md`) belum selesai saat task rilis ini dikerjakan, bangun langsung di `(app)/start-page` — jangan menambah route baru di `[slug]/...` lama.
 
 > ⚠️ **Karakter khusus rilis ini:** ini satu-satunya rilis yang menghasilkan **halaman publik tanpa autentikasi**. Seluruh arsitektur sekarang mengasumsikan setiap request melewati auth guard di `proxy.ts` dan berada di dalam workspace scope. Rilis ini melanggar asumsi itu, jadi butuh perhatian arsitektur lebih awal — lihat T-070.
 
