@@ -8,6 +8,80 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-10 — KI-021/KI-022 resolved (Design System, avatar dropdown + Logout + Profile routing) — KI-023 baru (Workspace Selector belum diimplementasikan)
+
+### Context
+
+KI-021 mencatat bahwa Design System (`templates/app-prototype/AppPrototype.dc.html`)
+tidak punya logic apa pun untuk membuka menu saat avatar diklik (langsung
+pindah screen) dan alur Logout belum pernah dimodelkan sama sekali di
+prototype. KI-022 mencatat bahwa avatar Design System mengarah ke Workspace
+Settings `settings-connected-accounts`, sementara kode web mengarah ke
+`/account/profile` User Settings — dan investigasi baseline
+(`information-architecture.md`) mengonfirmasi kode web sudah benar,
+kemungkinan Design System yang perlu mengikuti.
+
+King Rezi mengerjakan sendiri fix di Claude Design (manual, di luar sesi
+AI) dan meminta hasilnya diverifikasi cocok dengan kode
+(`WorkspaceSideNav.tsx`, `AccountSideNav.tsx`, `account/layout.tsx`) lalu
+dicatat sebagai resolved. Tidak ada kode `apps/web` yang diubah di semua
+ini.
+
+### Fixed
+
+- **KI-021 resolved** — Avatar sidebar di Design System sekarang membuka
+  dropdown (Profile + divider + Logout), mirror `DropdownMenu` Astryx di
+  kode. Item Logout membuka dialog konfirmasi Tier 2 (judul "Logout dari
+  akun ini?", deskripsi "Perubahan yang belum disimpan di halaman ini bisa
+  hilang (ADR-049/NP-D10).", tombol Cancel/Logout) — mirror `AlertDialog`
+  di kode, sesuai ADR-049/NP-D10.
+- **KI-022 resolved** — Item Profile pada dropdown avatar Design System
+  sekarang mengarah ke screen baru `templates/user-settings.html` (User
+  Settings), dengan sidebar minimal ala `AccountSideNav.tsx` (link kembali
+  + 3 nav item Profile/Notifications/Preferences) — bukan lagi sidebar
+  workspace penuh menuju Workspace Settings. Konfirmasi: kode web
+  (`/account/profile`, User Settings) sudah benar sesuai baseline
+  `information-architecture.md` + ADR-056; Design System yang disesuaikan
+  mengikuti kode/baseline, bukan sebaliknya.
+- `readme.md` project Claude Design "Social Media Management" diperbarui,
+  section baru "Avatar Menu (KI-021/KI-022 fix, T-021)" menjelaskan alur
+  dropdown + screen User Settings + dialog Logout ini.
+
+Tidak dibuat ADR baru — ini menegakkan ADR-056 (User Settings vs Workspace
+Settings) dan ADR-049/NP-D10 (dialog konfirmasi Tier 2) yang sudah ada,
+bukan keputusan material baru.
+
+### Added (Known Issue baru — KI-023)
+
+Riset navigasi di sesi ini menemukan gap terpisah yang belum pernah
+tercatat: **KI-023** — "Workspace Selector" (dropdown daftar workspace +
+"Create New Workspace" + link Workspace Settings) didefinisikan lengkap
+di baseline (`navigation-patterns.md`, IA-D05, NP-D07) sebagai satu-satunya
+entry point resmi ke Workspace Settings, tapi belum pernah diimplementasikan
+di kode. `WorkspaceSideNav.tsx` baris 76-83 cuma render `SideNavHeading`
+statis tanpa dropdown/state apapun. Satu-satunya jalur nyata ke
+`/[slug]/settings/*` hari ini adalah 2 deep-link kontekstual (badge channel
+`needsAttention` di `ChannelsSection.tsx` baris 153, link "Reconnect" di
+draft editor `Modal.tsx` baris 526) — keduanya cuma menuju
+`connected-accounts`, tidak ada jalur ke General/Members/Roles/Billing.
+Tidak ada task T-XXX untuk membangun fitur ini; T-009 sudah Done tanpa
+mencakupnya. Dicatat sebagai Known Issue murni (Tech-Debt), tidak ada task
+baru dibuat, tidak ada implementasi dilakukan.
+
+### Documentation
+
+- `project-manager/PROJECT_STATE.md` — KI-021 dan KI-022 dihapus dari
+  Known Issues (riwayatnya tercatat di entri ini), 2 bullet baru
+  ditambahkan di **Completed (Ringkasan)** (2 bullet paling lama
+  dikeluarkan dari daftar 5 item, riwayatnya tetap ada di entri
+  `COMPLETE_TASK.md` sebelumnya). **KI-023** ditambahkan baru ke Known
+  Issues (Status Open, Kategori Tech-Debt, Terkait T-009/IA-D05/NP-D07).
+  Version 1.0.47 → 1.0.48.
+- `TASKS.md`/`tasks/` tidak disentuh — KI-021/022/023 tidak pernah terkait
+  ke task T-XXX manapun secara formal.
+
+---
+
 ## 2026-08-10 — KI-020 resolved: layout footer sidebar grouping, kode ikut Design System
 
 ### Context
