@@ -8,6 +8,56 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-10 — KI-019 resolved: footer sidebar pakai `Avatar`, kode ikut Design System
+
+### Context
+
+KI-019 mencatat mismatch elemen UI di footer sidebar: Design System
+(`components/navigation.html` di Claude Design, project "Social Media
+Management") me-render avatar bulat berisi inisial (`<span
+class="avatar-round">`, dibungkus icon button `aria-label="Menu akun"`),
+sedangkan implementasi web (`WorkspaceSideNav.tsx`) memakai `DropdownMenu`
+dengan tombol TEKS nama/email (`button={{ label: userName || userEmail,
+variant: "ghost" }}`) — beda jenis elemen, bukan cuma beda posisi visual.
+
+King Rezi memutuskan arah resolusi: **kode mengikuti Design System**, Design
+System tidak diubah.
+
+### Changed (kode, dikerjakan Mark UI Engineer)
+
+- `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx`:
+  - Tambah import `Avatar` dari `@astryxdesign/core/Avatar`.
+  - `DropdownMenu` footer: `button` diganti jadi `{ isIconOnly: true, icon:
+    <Avatar name={userName || userEmail} size="sm" />, variant: "ghost",
+    label: userName || userEmail }`, tambah `hasChevron={false}`.
+  - `items` (Profile, divider, Logout) tidak berubah.
+  - Layout container `HStack` (`justify="between"`) **tidak disentuh** —
+    tetap scope KI-020 (Known Issue terpisah, masih Open).
+
+### Verifikasi
+
+Diverifikasi manual di browser oleh AI utama (akun test Raka Pratama):
+avatar bulat "RP" tampil menggantikan teks nama di footer sidebar,
+`aria-label="Raka Pratama"` tetap ada (aksesibilitas terjaga), dropdown
+Profile/Logout berfungsi normal saat avatar diklik, dark mode dicek (avatar
+tetap terbaca, tidak ada regresi), IconButton Notifikasi & Theme di
+sebelahnya tidak terdampak.
+
+### Keputusan dokumentasi
+
+Tidak dibuat ADR baru — ini perbaikan implementasi UI mengikuti Design
+System yang sudah ada (bukan keputusan arsitektur/workflow/repository
+strategy/business requirement/domain/teknologi baru), sejalan dengan pola
+resolusi KI-004 (verifikasi/perbaikan UI langsung tanpa ADR).
+
+### Resolved
+
+KI-019 dihapus dari `PROJECT_STATE.md` (ADR-067) — riwayatnya tercatat di
+entri ini. KI-020 (layout `justify="between"`) tetap Open, tidak
+tersentuh.
+
+---
+
 ## 2026-08-07 — Resolusi KI-018: Amandemen ADR-071 (sinkronisasi kutipan migration.sql)
 
 ### Context

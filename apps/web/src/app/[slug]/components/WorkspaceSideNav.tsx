@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { FaBell, FaMoon, FaPlus, FaSun } from "react-icons/fa6";
 
 import { AlertDialog } from "@astryxdesign/core/AlertDialog";
+import { Avatar } from "@astryxdesign/core/Avatar";
 import { Button } from "@astryxdesign/core/Button";
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { HStack } from "@astryxdesign/core/HStack";
@@ -115,9 +116,12 @@ export function WorkspaceSideNav({
           />
           <DropdownMenu
             button={{
-              label: userName || userEmail,
+              isIconOnly: true,
+              icon: <Avatar name={userName || userEmail} size="sm" />,
               variant: "ghost",
+              label: userName || userEmail,
             }}
+            hasChevron={false}
             items={[
               {
                 label: "Profile",

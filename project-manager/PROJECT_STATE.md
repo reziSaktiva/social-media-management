@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.46     |
+| Version      | 1.0.47     |
 | Status       | Active     |
-| Last Updated | 2026-08-07 |
+| Last Updated | 2026-08-10 |
 
 ---
 
@@ -206,28 +206,6 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003), tiga env var ini belum diisi di 
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — kode Google OAuth di `auth.ts` sudah siap (`socialProviders.google` terdaftar kondisional lewat `env.ts`), tapi tanpa env ini "Sign in with Google" tidak aktif.
 - `JOB_SECRET` — dibutuhkan untuk header `X-Job-Secret` (Railway Cron → web, EM-D0x). Belum diisi berarti job runner (T-027) belum bisa diverifikasi end-to-end di local; dev bisa memakai nilai dummy sementara.
 
-### KI-019 · Footer sidebar: avatar bulat (Design System) vs tombol teks nama (Web)
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Design-Consistency |
-| Terkait | `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx`, project Claude Design "Social Media Management" |
-
-Design System (`components/navigation.html` di Claude Design) me-render
-footer sidebar dengan avatar bulat berisi inisial saja
-(`<span class="avatar-round">RK</span>` dibungkus icon button
-`aria-label="Menu akun"`), tanpa teks nama sama sekali. Implementasi web
-(`WorkspaceSideNav.tsx` baris ~116-121) memakai `DropdownMenu` dengan
-`button={{ label: userName || userEmail, variant: "ghost" }}` — ini tombol
-TEKS nama/email, bukan komponen `Avatar`. Bukan cuma beda posisi visual,
-elemen UI yang dipakai memang berbeda jenis (avatar bulat vs text button).
-
-Ditemukan 2026-08-07 saat King Rezi mengecek Design System pasca-implementasi
-T-007.4. Murni pencatatan temuan — resolusi (Design System ikut kode, kode
-ikut Design System, atau keduanya direvisi) belum diputuskan, tidak ada
-perbaikan kode yang dilakukan.
-
 ### KI-020 · Layout footer sidebar: grouping (Design System) vs spread merata `justify="between"` (Web)
 
 | Field | Value |
@@ -317,12 +295,12 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **KI-019 resolved** — Footer sidebar `WorkspaceSideNav.tsx` sebelumnya memakai `DropdownMenu` dengan tombol teks nama/email (`button={{ label: userName || userEmail, variant: "ghost" }}`), berbeda jenis elemen dari Design System (`components/navigation.html` di Claude Design) yang memakai avatar bulat berisi inisial. King Rezi memutuskan kode mengikuti Design System (bukan sebaliknya) — tombol diganti `isIconOnly` dengan `icon: <Avatar name={userName || userEmail} size="sm" />`, `hasChevron={false}`, `aria-label` nama/email dipertahankan. Terverifikasi manual di browser (light & dark mode, dropdown Profile/Logout normal, tanpa regresi). Layout container `justify="between"` tidak disentuh — tetap scope KI-020 (Open, terpisah).
 * **T-007.4 selesai** — UI daftar anggota `/settings/members` (Astryx Table): `page.tsx` diganti dari `ScaffoldPlaceholder` jadi server component nyata, `MembersTable.tsx` (client component baru, kolom Member/Role/Status/Actions). Tombol Change Role/Remove disabled dengan tooltip (menunggu T-007.5), disembunyikan untuk baris Owner/diri sendiri. Backend: `WorkspaceService.listMembersWithUser` + repository method baru (domain `workspace`), 26 unit test pass, `tsc`/lint bersih. Verifikasi visual browser belum dilakukan (tidak ada kredensial test user) — known gap, bukan klaim selesai penuh.
 * **KI-016 resolved** — Shadow database Prisma gagal (P3006) untuk migrasi berikutnya, diatasi permanen lewat fitur resmi Prisma 7 External Tables (`initShadowDb` + `tables.external`) di `apps/web/prisma.config.ts`, tanpa mengubah migration history yang sudah applied. Terverifikasi end-to-end (replay shadow DB, `migrate status` bersih, uji `migrate dev --create-only` tanpa P3006). Lahir **ADR-073**. Temuan terpisah selama verifikasi (staleness ADR-071) dicatat sebagai KI-018 baru.
 * **KI-018 resolved** — Kutipan `migration.sql` di ADR-071 ("Catatan implementasi") stale terhadap kode aktual (`ON CONFLICT DO NOTHING` tanpa guardrail, padahal kode sudah `ON CONFLICT DO UPDATE` + guardrail `file_size_limit`/`allowed_mime_types`). Diperbaiki lewat amandemen **ADR-075** — DECISIONS.md append-only, jadi kutipan disinkronkan via ADR baru, bukan edit diam-diam ADR-071.
 * **T-016.1/2/3/5 selesai** — Account & user settings screens: layout `account/`+`settings/` (sidebar/nav internal), `/account/profile` (edit nama + avatar, domain `identity` diisi pertama kali), `/account/preferences` (toggle tema), dialog konfirmasi Logout (ADR-049 Tier 2). Lolos review arsitektur Ridwan (nihil temuan) dan QA end-to-end Najwa + verifikasi tambahan sesi utama. Bucket `avatars` diperluas untuk avatar user personal lewat **ADR-071**. T-016.4 (notifications) tetap Blocked, menunggu T-036 (v0.2). Known Issue baru: KI-014 (domain `identity` belum ada unit test).
 * **KI-013 resolved** — Instalasi self-hosted Better Auth (ADR-070) terverifikasi jalan normal di `localhost:3000` (login/register berhasil, session/cookie terbaca) tanpa ngrok. `db:studio` script ditambahkan (`bun run db:studio`) untuk lihat data `identity_*`/domain lain via Prisma Studio. `QA_TEST_ACCOUNTS.md` diperbarui — verifikasi browser tidak lagi wajib tanya URL tunnel.
-* **ADR-070** — Tetap self-hosted Better Auth, tolak Better Auth Cloud. Requirement tunnel ngrok di dev mode ternyata berasal dari constraint Better Auth Cloud (Base URL wajib publik, sempat dipakai tanpa tercatat ADR), bukan keterbatasan Better Auth self-hosted. Migrasi ke Supabase Auth dipertimbangkan lalu ditolak. Instalasi self-hosted (`localhost:3000` + Supabase Cloud, tanpa Railway) dilakukan mandiri oleh King Rezi.
 
 ---
 
