@@ -19,9 +19,9 @@ Dokumen ini mencakup 8 layar kritis yang menjadi inti interaksi pengguna:
 | KSP-05 | Publish — Draft Editor | Raka |
 | KSP-06 | Engage — Inbox | Raka |
 | KSP-07 | Analyze — Dashboard | Maya + Raka |
-| KSP-08 | Workspace Settings — Connected Accounts | Raka / Maya |
+| KSP-08 | Settings — Organization — Connected Accounts | Raka / Maya |
 
-Layar yang tidak tercantum (History, Start Page, User Settings) bukan layar kritis harian — polanya lebih sederhana dan tidak memerlukan dokumentasi mendalam di fase ini.
+Layar yang tidak tercantum (History, Start Page, Settings → Account) bukan layar kritis harian — polanya lebih sederhana dan tidak memerlukan dokumentasi mendalam di fase ini.
 
 ---
 
@@ -677,7 +677,7 @@ Tampilkan:
   "Belum ada data analytics."
   "Hubungkan akun sosial untuk mulai melacak performa konten."
 
-  [Connect Account]    →  Workspace Settings → Connected Accounts
+  [Connect Account]    →  Settings → Organization → Connected Accounts
   [Create First Post]  →  Publish → Drafts → New Post
 ```
 
@@ -687,15 +687,15 @@ Tidak ada angka nol atau grafik kosong yang ditampilkan — lebih baik empty sta
 
 ---
 
-## KSP-08 — Workspace Settings — Connected Accounts
+## KSP-08 — Settings — Organization — Connected Accounts
 
 ### Identitas
 
 | Field | Value |
 | ----- | ----- |
-| Path IA | `Workspace Settings → Connected Accounts` |
+| Path IA | `Settings → Organization → Connected Accounts` |
 | Pengguna Utama | Raka atau Maya (siapa yang memiliki akses Settings) |
-| Entry Points | Workspace Selector → Workspace Settings; Error indicator / Reconnect link dari Calendar, Queue, Account Selector; klik channel berstatus Disconnected/Expired di Channels sidebar (NP-D14) |
+| Entry Points | User Avatar → user menu → Settings → Organization; Error indicator / Reconnect link dari Calendar, Queue, Account Selector; klik channel berstatus Disconnected/Expired di Channels sidebar (NP-D14) |
 | UX Principles | UXP-03, UXP-04 |
 
 ### Tujuan
@@ -871,7 +871,7 @@ Aksi yang reversibel, low-stakes, atau berfrekuensi tinggi (bagian dari alur ker
 
 * Schedule, Publish Now, dan Disconnect Account sudah punya screen resmi dan sudah diimplementasikan sebagai KSP function ID tersendiri.
 * Delete Post, Delete Media, dan Cancel Schedule punya screen tempat bernaung (Draft Editor/Media Library) tapi entry point UI untuk aksi spesifik ini **belum dirancang** — klasifikasi tier di atas berlaku begitu entry point-nya dibuat, bukan keputusan yang menunggu lagi.
-* Remove Member, Update Member Role, Transfer Ownership, dan Delete Workspace **belum punya screen sama sekali** (Workspace Settings → Members/General di luar 8 KSP) — klasifikasi tier di atas jadi acuan wajib begitu screen tersebut dirancang.
+* Remove Member, Update Member Role, Transfer Ownership, dan Delete Workspace **belum punya screen sama sekali** (Settings → Organization → Members/General di luar 8 KSP) — klasifikasi tier di atas jadi acuan wajib begitu screen tersebut dirancang.
 * Logout sudah punya entry point (User Menu dropdown, `navigation-patterns.md`) — implementasi dialog konfirmasinya adalah task terpisah.
 
 ---

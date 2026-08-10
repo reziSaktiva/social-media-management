@@ -54,7 +54,7 @@ Setiap flow memiliki struktur:
 | UF-02 | Mengelola Queue Konten | Raka | Publishing |
 | UF-03 | Review Kalender Publishing | Raka + Maya (observer) | Publishing |
 | UF-04 | Triage Engagement Inbox | Raka | Engagement |
-| UF-05 | Menghubungkan Akun Sosial | Raka / Maya | Workspace Settings |
+| UF-05 | Menghubungkan Akun Sosial | Raka / Maya | Organization Settings |
 | UF-06 | Melihat Ringkasan Performa | Maya + Raka (sekunder) | Analytics |
 
 ---
@@ -197,7 +197,7 @@ Setiap flow memiliki struktur:
 
 1. Raka melihat item di Calendar dengan status `Failed` — terlihat jelas tanpa harus mencarinya.
 2. Raka mengklik item tersebut untuk membaca alasan kegagalan (contoh: "Akun X tidak terhubung").
-3. Raka navigasi ke **Workspace Settings → Connected Accounts** untuk mengatasi masalah koneksi (lihat UF-05 Alternate Path).
+3. Raka navigasi ke **Organization Settings → Connected Accounts** untuk mengatasi masalah koneksi (lihat UF-05 Alternate Path).
 4. Setelah akun terhubung kembali, Raka kembali ke Calendar dan me-reschedule atau retry post tersebut.
 
 **Outcome:** Masalah teridentifikasi dan ditangani langsung dari konteks Calendar, bukan melalui notifikasi yang terlambat.
@@ -271,17 +271,17 @@ Setiap flow memiliki struktur:
 
 **Goal:** Akun media sosial berhasil terhubung ke workspace dan siap digunakan untuk publishing.
 
-**Aktor:** Raka atau Maya (siapa yang memiliki akses Workspace Settings)
+**Aktor:** Raka atau Maya (siapa yang memiliki akses Organization Settings)
 
 **Trigger:** Workspace baru dibuat dan belum ada akun terhubung, atau Raka ingin menambah akun platform baru.
 
-**Modul:** Workspace Settings (Connected Accounts), Authentication (OAuth)
+**Modul:** Organization Settings (Connected Accounts), Authentication (OAuth)
 
 ---
 
 ### Happy Path
 
-1. Aktor membuka **Workspace Settings → Connected Accounts**.
+1. Aktor membuka **Organization Settings → Connected Accounts**.
 2. Aktor klik **Connect Account**.
 3. Sistem menampilkan daftar platform yang tersedia (Instagram, Facebook, X, LinkedIn, TikTok, YouTube, Threads, Pinterest).
 4. Aktor memilih platform tujuan.
@@ -300,7 +300,7 @@ Setiap flow memiliki struktur:
 
 1. Raka melihat indikator `Disconnected` pada akun di Calendar, Queue, atau Draft Editor Account Selector.
 2. Sistem menampilkan pesan ringkas: akun X kehilangan akses, perlu reconnect.
-3. Raka membuka **Workspace Settings → Connected Accounts**.
+3. Raka membuka **Organization Settings → Connected Accounts**.
 4. Akun yang bermasalah ditampilkan dengan status `Disconnected` dan tombol **Reconnect**.
 5. Raka klik **Reconnect** → alur OAuth diulang untuk akun tersebut.
 6. Setelah berhasil, status akun kembali `Active`.
@@ -354,7 +354,7 @@ Setiap flow memiliki struktur:
 1. Maya atau Raka membuka **Analyze → Dashboard**.
 2. Dashboard menampilkan **empty state** dengan pesan: _"Belum ada data. Hubungkan akun sosial dan mulai publish konten untuk melihat performa."_
 3. Empty state menyertakan tautan langsung ke dua aksi:
-   - **Connect Account** → mengarah ke Workspace Settings → Connected Accounts (UF-05).
+   - **Connect Account** → mengarah ke Organization Settings → Connected Accounts (UF-05).
    - **Create First Post** → mengarah ke Publish → Drafts → New Post (UF-01).
 4. Tidak ada angka kosong atau grafik tanpa data yang ditampilkan.
 

@@ -34,7 +34,7 @@ Primary navigation selalu terlihat dan dapat diakses dari posisi manapun dalam a
 
 **Turunan dari:** UXP-04, UXP-03
 
-Ketika pengguna akan berpindah dari satu section ke section lain (misalnya dari Draft Editor ke Workspace Settings), perpindahan tersebut harus terasa sebagai keputusan sadar — bukan sebagai konsekuensi tidak terduga dari aksi lain.
+Ketika pengguna akan berpindah dari satu section ke section lain (misalnya dari Draft Editor ke Settings), perpindahan tersebut harus terasa sebagai keputusan sadar — bukan sebagai konsekuensi tidak terduga dari aksi lain.
 
 Konteks pekerjaan yang sedang dikerjakan tidak boleh hilang secara tiba-tiba karena navigasi yang tidak disengaja.
 
@@ -54,8 +54,6 @@ Produk menggunakan model **Persistent Sidebar Navigation** untuk web.
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Workspace Selector                                  │
-├─────────────────────────────────────────────────────┤
 │  [Sidebar]          │  [Main Content Area]           │
 │  [+ New Post]       │                                │
 │  • Home             │  Konten layar aktif            │
@@ -89,9 +87,7 @@ Primary navigation terdiri dari dua zona vertikal:
 
 ```
 ┌──────────────────────┐
-│  Workspace Selector  │  ← selalu di atas
-├──────────────────────┤
-│  [+ New Post]        │  ← CTA, pinned
+│  [+ New Post]        │  ← CTA, pinned di puncak sidebar
 ├──────────────────────┤
 │  Home                │
 │  Publish             │  ← navigation items
@@ -108,9 +104,7 @@ Primary navigation terdiri dari dua zona vertikal:
 └──────────────────────┘
 ```
 
-**Zona atas:** Workspace Selector — menampilkan nama workspace aktif; klik membuka panel ganti workspace atau Workspace Settings.
-
-**Zona CTA:** Tombol "+ New Post" (primary, full-width) — pinned tepat di bawah Workspace Selector, di atas navigation items. Tersedia dari section manapun (Home, Publish, Engage, Analyze, Settings), bukan hanya saat pengguna sedang berada di Publish (NP-D12). Melengkapi, bukan menggantikan, CTA New Post yang sudah ada langsung di layar Calendar/Queue/Drafts (NP-D09) — keduanya membuka Draft Editor yang sama.
+**Zona CTA:** Tombol "+ New Post" (primary, full-width) — pinned di puncak sidebar, di atas navigation items. Tersedia dari section manapun (Home, Publish, Engage, Analyze, Settings), bukan hanya saat pengguna sedang berada di Publish (NP-D12). Melengkapi, bukan menggantikan, CTA New Post yang sudah ada langsung di layar Calendar/Queue/Drafts (NP-D09) — keduanya membuka Draft Editor yang sama.
 
 **Zona tengah:** 5 navigation items — Home, Publish, Engage, Analyze, Start Page. Urutan mencerminkan alur nilai produk (UXP-07): Publishing reliability → Engagement triage → Analytics snapshot.
 
@@ -128,24 +122,9 @@ Primary navigation terdiri dari dua zona vertikal:
 
 ---
 
-## Workspace Selector
-
-```
-Workspace Selector
-├── Nama workspace aktif (ditampilkan)
-├── [Klik] → Dropdown:
-│   ├── Daftar workspace yang dimiliki user
-│   ├── Create New Workspace
-│   └── Workspace Settings → (langsung ke Workspace Settings)
-```
-
-Workspace Selector adalah titik masuk ke Workspace Settings — bukan item di primary nav. Ini sesuai dengan IA-D05 (Workspace Settings di luar primary nav).
-
----
-
 ## Channels (Sidebar)
 
-Daftar akun media sosial yang terhubung, ditampilkan sebagai quick-glance list — bukan pengganti `Workspace Settings → Connected Accounts` (KSP-08), yang tetap satu-satunya tempat Connect/Disconnect/Reconnect (IA-D05 tidak berubah).
+Daftar akun media sosial yang terhubung, ditampilkan sebagai quick-glance list — bukan pengganti `Settings → Organization → Connected Accounts` (KSP-08), yang tetap satu-satunya tempat Connect/Disconnect/Reconnect (IA-D05 tidak berubah).
 
 ```
 Default (tidak di-hover):
@@ -167,7 +146,7 @@ Hover:
 
 **Swap count ↔ tombol "+" tetap no-shift:** berbeda dari drag handle di atas, slot count/tombol "+" di sisi kanan baris tetap **fixed-slot** — tidak pernah menggeser konten, hanya isinya yang berganti (count → "+") saat hover. Ini tidak berubah dari keputusan awal.
 
-**Klik channel berstatus Disconnected/Expired:** deep-link ke `Workspace Settings → Connected Accounts` — memperluas pola "Status Indicator → Settings" (lihat Contextual Navigation Pattern di bawah), bukan pola baru.
+**Klik channel berstatus Disconnected/Expired:** deep-link ke `Settings → Organization → Connected Accounts` — memperluas pola "Status Indicator → Settings" (lihat Contextual Navigation Pattern di bawah), bukan pola baru.
 
 **Scroll independen:** list ini scroll sendiri (tidak ikut men-scroll seluruh sidebar) supaya zona bawah (Notifications/User Avatar) tetap selalu terlihat walau akun terhubung banyak.
 
@@ -192,17 +171,16 @@ Notifications Panel muncul sebagai overlay atau drawer — tidak menggantikan Ma
 
 ---
 
-## User Settings
+## Settings
 
 ```
 User Avatar → User Menu (dropdown)
-├── Profile
-├── Notifications Settings
-├── Preferences
+├── Settings → Organization  (General, Connected Accounts, Members, Roles & Permissions, Billing)
+├── Settings → Account       (Profile, Notifications, Preferences)
 └── Logout
 ```
 
-User Menu muncul sebagai dropdown kecil — akses ke halaman User Settings dilakukan dari sini. Ini bukan layar kerja harian sehingga tidak memerlukan slot di primary nav.
+User Menu muncul sebagai dropdown kecil — satu-satunya titik masuk ke halaman Settings (grup Organization dan Account), dilakukan dari sini. Ini bukan layar kerja harian sehingga tidak memerlukan slot di primary nav.
 
 **Logout wajib melalui dialog konfirmasi (Tier 2)** — lihat kebijakan Safety Check / Double Confirmation di `key-screen-patterns.md` (ADR-049).
 
@@ -355,7 +333,7 @@ Terjadi ketika pengguna menemukan status masalah di layar kerja dan perlu ke Set
 ```
 Calendar / Queue / Account Selector / Sidebar Channels → status "Disconnected" atau "Failed"
     → [klik indikator / pesan error / channel row]
-    → Workspace Settings → Connected Accounts
+    → Settings → Organization → Connected Accounts
 ```
 
 **Transisi:** Navigasi langsung ke Settings — bukan sidebar manual. Pesan error menyertakan tautan aksi ("Reconnect") yang langsung membawa pengguna ke halaman yang tepat.
@@ -370,7 +348,7 @@ Terjadi di layar yang belum memiliki data.
 
 ```
 Analyze → Dashboard (kosong)
-    → "Connect Account" → Workspace Settings → Connected Accounts (UF-05)
+    → "Connect Account" → Settings → Organization → Connected Accounts (UF-05)
     → "Create First Post" → Publish → Drafts → New Post (UF-01)
 
 Engage → Inbox (kosong)
@@ -422,7 +400,7 @@ Empty State Analytics     → [Create First Post]  → Publish → Drafts → Dr
 
 ## Navigasi Balik Setelah Cross-Section
 
-Ketika pengguna tiba di section baru melalui cross-section navigation (misalnya dari Calendar error → Workspace Settings), tidak ada tombol "back" otomatis yang mengembalikan ke posisi sebelumnya.
+Ketika pengguna tiba di section baru melalui cross-section navigation (misalnya dari Calendar error → Settings), tidak ada tombol "back" otomatis yang mengembalikan ke posisi sebelumnya.
 
 **Alasan:** Terlalu kompleks untuk ditangani di level navigasi tanpa history stack yang jelas. Pengguna menggunakan sidebar untuk navigasi kembali.
 
@@ -442,12 +420,12 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | NP-D04 | Notification badge hanya pada Engage | Hanya Engage yang memerlukan respons segera; badge di semua section menambah noise | UXP-03, UXP-07 |
 | NP-D05 | Tidak ada redirect otomatis setelah cross-section navigation | State layar asal mungkin sudah berubah; redirect otomatis menciptakan kebingungan | NP-P02 |
 | NP-D06 | Publish default ke tab Calendar | Calendar memberi overview jadwal terbaik untuk Raka dan Maya (IA-D04) | UXP-02, P-IA-02 |
-| NP-D07 | Workspace Selector sebagai entry point ke Workspace Settings | Workspace Settings bukan akses harian; tidak perlu slot di primary nav (IA-D05) | UXP-03 |
+| NP-D07 | User Avatar (user menu) sebagai satu-satunya entry point ke Settings (grup Organization + Account) | Settings bukan akses harian; tidak perlu slot di primary nav (IA-D05); satu titik masuk lebih sederhana daripada dua entry point terpisah | UXP-03 |
 | NP-D08 | Notifications Panel sebagai overlay, bukan pengganti Main Content Area | Pengguna harus bisa menutup panel dan kembali ke pekerjaan tanpa kehilangan state | NP-P02 |
 | NP-D09 | New Post CTA tersedia langsung dari Calendar dan Queue, bukan hanya dari Drafts. Sejak NP-D12, CTA yang sama juga tersedia di Sidebar — keduanya melengkapi, bukan saling menggantikan | Raka sering menemukan gap jadwal saat melihat Calendar atau Queue — memaksanya berpindah ke tab Drafts dulu menambah friction yang tidak perlu. CTA langsung di titik penemuan kebutuhan selaras dengan alur siklus kerja (UXP-01) | UXP-01, UXP-03 |
 | NP-D10 | Logout wajib melalui dialog konfirmasi (Tier 2) | Melindungi dari interupsi pekerjaan yang belum tersimpan, walau aksi Logout sendiri reversibel — bagian dari kebijakan Safety Check/Double Confirmation lintas produk (ADR-049, `key-screen-patterns.md`) | UXP-04 |
 | NP-D11 | Draft Editor (New Post & Edit Draft) jadi **modal overlay**, mengoverride NP-D02. Dua variant tampilan resmi — **Standard** (default, ADR-065: floating card + backdrop redup, konteks Calendar/Queue tetap terlihat) dan **Fullscreen** (menutupi seluruh viewport termasuk sidebar) — dipilih lewat toggle resmi di header modal, tidak dipersist antar sesi | Ingin New Post/Edit Draft terasa lebih cepat/ringan tanpa pindah halaman, konsisten pola tools lain — trade-off kehilangan konteks visual Calendar/Queue (alasan asli NP-D02) diterima sadar demi kecepatan alur kerja saat variant Fullscreen dipilih; default Standard (ADR-065) menjaga konteks tetap terlihat tanpa memaksa trade-off itu di awal. Route lama dihapus total (modal-only, tanpa deep-link URL). Resume unsaved state (localStorage) hanya untuk New Post, tidak untuk Edit Draft (ADR-052) | NP-P02, UXP-04 |
-| NP-D12 | Sidebar mendapat CTA "+ New Post" pinned (di bawah Workspace Selector, di atas nav items), tersedia dari section manapun | Sebelumnya CTA New Post hanya ada di layar Calendar/Queue/Drafts (NP-D09) — pengguna di Home/Engage/Analyze harus pindah section dulu ke Publish untuk membuat post baru. Pola umum di tools sejenis (CTA utama di puncak sidebar) menghilangkan langkah ekstra ini (ADR-053) | UXP-01, NP-P01 |
+| NP-D12 | Sidebar mendapat CTA "+ New Post" pinned di puncak sidebar (di atas nav items), tersedia dari section manapun | Sebelumnya CTA New Post hanya ada di layar Calendar/Queue/Drafts (NP-D09) — pengguna di Home/Engage/Analyze harus pindah section dulu ke Publish untuk membuat post baru. Pola umum di tools sejenis (CTA utama di puncak sidebar) menghilangkan langkah ekstra ini (ADR-053) | UXP-01, NP-P01 |
 | NP-D13 | Setelah aksi terminal Draft Editor (Save as Draft / Schedule / Publish Now), pengguna diarahkan ke sub-screen **tujuan** (Drafts / Queue / History-sementara-Calendar) — bukan kembali ke sub-screen asal seperti tombol Close | Sidebar CTA (NP-D12) membuat Draft Editor bisa dibuka dari section manapun; pengguna perlu langsung melihat hasil aksinya di section Publish yang relevan, bukan tertinggal di section asal yang sudah tidak berkaitan dengan konten yang baru diproses (ADR-054). Tidak mengubah NP-D05 (kasus berbeda: link status error → Settings) | UXP-04 |
 | NP-D14 | Sidebar mendapat section "Channels" — quick-glance daftar akun terhubung (avatar bulat + badge logo brand overlay + nama akun + status), antara navigation items dan zona bawah, scroll independen. Default: scheduled-posts count. Hover: drag handle muncul di kiri baris (reorder personal per user, **shift-on-hover** — seluruh isi baris ikut bergeser, addendum ADR-058 mengoverride keputusan awal "no-shift") + tombol quick-compose "+" (buka Draft Editor, akun pre-selected — **tetap no-shift/fixed-slot**, tidak berubah). Klik channel bermasalah → Settings (perluasan pola existing) | King Rezi ingin visibilitas status channel + jalan pintas compose per akun tanpa keluar dari layar kerja; posisi di luar 5 nav item menjaga sidebar tetap berbasis alur kerja, bukan daftar entitas (P-IA-01); shift-on-hover drag handle dipilih ulang mengikuti referensi screenshot aplikasi lain atas permintaan eksplisit King Rezi (ADR-058) | UXP-01, UXP-04, NP-P01 |
 
@@ -464,11 +442,10 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | Buat post baru dari section manapun | Klik CTA "+ New Post" di Sidebar | Buka Draft Editor (modal) kosong, sama seperti CTA di Calendar/Queue/Drafts (NP-D12) |
 | Selesaikan aksi terminal di Draft Editor | Klik Save as Draft / Schedule / Publish Now | Modal tertutup, redirect ke Publish → Drafts / Queue / History-sementara-Calendar (NP-D13) |
 | Buka thread dari Inbox | Klik thread | Expand inline panel kanan dalam Inbox |
-| Akses Workspace Settings | Klik Workspace Selector → dropdown | Navigasi ke Workspace Settings |
-| Akses User Settings | Klik User Avatar → dropdown | Navigasi ke User Settings |
+| Akses Settings | Klik User Avatar → dropdown | Navigasi ke Settings (Organization / Account) |
 | Buka Notifications | Klik Notifications icon | Buka Notifications Panel (overlay) |
-| Error status → Settings | Klik indikator error / tautan aksi | Navigasi ke Workspace Settings → Connected Accounts |
-| Channel bermasalah di sidebar Channels → klik | Klik channel row (Disconnected/Expired) | Navigasi ke Workspace Settings → Connected Accounts |
+| Error status → Settings | Klik indikator error / tautan aksi | Navigasi ke Settings → Organization → Connected Accounts |
+| Channel bermasalah di sidebar Channels → klik | Klik channel row (Disconnected/Expired) | Navigasi ke Settings → Organization → Connected Accounts |
 | Channel di sidebar Channels → hover lalu klik "+" | Klik tombol quick-compose | Buka Draft Editor (modal) kosong, akun ini otomatis ter-pre-select |
 | Empty state → aksi pertama | Klik CTA di empty state | Navigasi ke section / sub-screen terkait |
 

@@ -425,11 +425,11 @@ Outstand API kirim POST /api/webhooks/outstand
 ## Contoh 3: Load Halaman Calendar
 
 ```
-User navigasi ke /[workspace]/publish/calendar  ← Calendar; /publish sendiri redirect permanen ke sini (ADR-046 Amandemen Final, pengecualian permanen)
+User navigasi ke (app)/publish/calendar  ← Calendar; /publish sendiri redirect permanen ke sini (ADR-046 Amandemen Final, pengecualian permanen)
   │
   ├─ [Middleware]
   │    ├─ Verifikasi session (Better Auth)
-  │    └─ Resolve workspaceId dari URL slug
+  │    └─ Resolve workspaceId dari cookie active-workspace-id (`auth-architecture.md`)
   │
   ├─ [Server Component CalendarPage]
   │    └─ Panggil PublishingService.getScheduledPosts(workspaceId, dateRange)
@@ -452,7 +452,7 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 |--------|---------|-----------|
 | `createWorkspace` | Server Action | Buat workspace baru, otomatis tambah Owner |
 | `getWorkspace` | Server Component | Load data workspace + brand settings |
-| `updateWorkspace` | Server Action | Update nama, slug, atau brand settings |
+| `updateWorkspace` | Server Action | Update nama, `slug` (internal unique identifier, tidak dipakai di routing/URL — `domain-model.md`), atau brand settings |
 | `inviteMember` | Server Action | Kirim undangan ke email |
 | `acceptInvite` | Server Action | Terima undangan, aktivasi membership |
 | `removeMember` | Server Action | Hapus member dari workspace — wajib dialog konfirmasi Tier 2 sebelum eksekusi (ADR-049) |

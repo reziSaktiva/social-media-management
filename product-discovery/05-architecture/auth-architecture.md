@@ -124,12 +124,13 @@ Session {
 
 ## Workspace Context
 
-Session Better Auth **tidak menyimpan** `workspaceId` secara langsung. Workspace context di-resolve oleh Middleware berdasarkan URL dan data member.
+Session Better Auth **tidak menyimpan** `workspaceId` secara langsung. Workspace context disimpan di **cookie** (`active-workspace-id`, HTTP-only) dan divalidasi ulang oleh Middleware terhadap data member pada setiap request.
 
 **Alasan:**
-- User dapat memiliki akses ke beberapa workspace (post-MVP: workspace switching).
-- Workspace aktif bergantung pada URL (misal `/dashboard/[workspaceSlug]/...`).
-- Menyimpan workspaceId di session menciptakan state yang bisa stale.
+- User tetap efektif 1 workspace aktif pada MVP (bukan fitur multi-workspace switching — tetap Out of Scope, lihat `../../02-product/mvp-definition.md`); cookie berfungsi sebagai penanda workspace aktif, bukan mekanisme switching.
+- Seluruh route workspace-scoped (Home, Publish, Engage, Analyze, Start Page, Settings) berada di bawah route group `(app)` — workspace context tidak bergantung pada struktur URL (`../06-engineering/monorepo-setup.md`).
+- Cookie tetap divalidasi ulang terhadap `workspace_members` di setiap request (bukan dipercaya mentah) — mencegah cookie yang stale atau dimanipulasi memberi akses ke workspace yang salah.
+- Jika cookie hilang atau tidak valid (mis. browser baru, cookie terhapus), user diarahkan kembali ke picker workspace di alur onboarding (lihat "Onboarding Flow" di bawah) — bukan UI switch-workspace permanen.
 
 ## Session Validation
 
@@ -151,16 +152,17 @@ Request masuk
 
 ## Cara Kerja
 
-Workspace aktif di-resolve oleh Middleware dari URL path, kemudian divalidasi bahwa user memiliki akses ke workspace tersebut.
+Workspace aktif di-resolve oleh Middleware dari cookie `active-workspace-id`, kemudian divalidasi bahwa user memiliki akses ke workspace tersebut.
 
 ```
-URL: /dashboard/[workspaceSlug]/publish
+Request ke route (app)/*
   └── Middleware
-        ├── Extract workspaceSlug dari URL
-        ├── Query: SELECT * FROM workspace_members
-        │           WHERE workspace_id = (SELECT id FROM workspaces WHERE slug = ?)
-        │             AND user_id = session.userId
-        ├── Jika tidak ditemukan → redirect ke /dashboard (no access)
+        ├── Baca cookie active-workspace-id
+        ├── Jika cookie tidak ada → redirect ke /onboarding (lihat "Onboarding Flow")
+        ├── Jika ada → Query: SELECT * FROM workspace_members
+        │                       WHERE workspace_id = ?
+        │                         AND user_id = session.userId
+        ├── Jika tidak ditemukan (cookie invalid/workspace sudah tidak diikuti) → redirect ke /onboarding
         ├── Jika ditemukan → inject { workspaceId, role } ke request headers
         └── Application Service dapat membaca workspaceId dari headers
 ```
@@ -254,10 +256,11 @@ Next.js Middleware mengelola dua zona route:
 Middleware matchers:
 ├── /login          → Public route (bypass auth)
 ├── /register       → Public route (bypass auth)  
+├── /onboarding     → Protected route (wajib session, tanpa workspace context — lihat "Onboarding Flow")
 ├── /api/webhooks/* → Webhook routes (bypass auth — protected via HMAC signature)
 ├── /api/jobs/*     → Job runner routes (bypass auth — protected via X-Job-Secret)
-└── /dashboard/*    → Protected routes (wajib session + workspace context)
-    └── /dashboard/[workspaceSlug]/* → Wajib workspace membership check
+└── (app)/*         → Protected routes (wajib session + workspace context dari cookie)
+    └── Home, Publish, Engage, Analyze, Start Page, Settings — semua wajib workspace membership check
 ```
 
 ## Middleware Flow Diagram
@@ -279,15 +282,19 @@ Middleware matchers:
 │      │                                                            │
 │      ├─ Tidak ada / expired ──► Redirect /login                  │
 │      │                                                            │
-│      └─ Valid → Ada workspaceSlug di URL?                         │
+│      └─ Valid → Route termasuk (app)/*?                           │
 │                     │                                             │
-│                     ├─ Tidak ──► Inject userId → Lanjut          │
+│                     ├─ Tidak (mis. /onboarding) ──► Inject userId → Lanjut │
 │                     │                                             │
-│                     └─ Ya → Query workspace membership            │
+│                     └─ Ya → Baca cookie active-workspace-id       │
 │                                 │                                 │
-│                                 ├─ Tidak ada akses → /dashboard  │
+│                                 ├─ Tidak ada ──► Redirect /onboarding │
 │                                 │                                 │
-│                                 └─ Ada → Inject headers → Lanjut │
+│                                 └─ Ada → Query workspace membership │
+│                                             │                     │
+│                                             ├─ Tidak ada akses → Redirect /onboarding │
+│                                             │                     │
+│                                             └─ Ada → Inject headers → Lanjut │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -352,19 +359,26 @@ USING (
 
 ---
 
-# Onboarding Flow (First Login)
+# Onboarding Flow (First Login & Cookie Re-entry)
 
-Saat user pertama kali login dan belum memiliki workspace:
+`/onboarding` menangani dua skenario — user baru tanpa workspace, dan user existing yang kehilangan cookie workspace aktif (browser baru, cookie dihapus, dsb). Picker workspace di skenario kedua **bukan** fitur "Multi Workspace Management" (tetap Out of Scope, `../../02-product/mvp-definition.md` tidak berubah) — ia adalah re-entry point saat cookie hilang, bukan UI switch-workspace permanen.
 
 ```
-Login berhasil
-  └── Middleware: session valid, tidak ada workspaceSlug di URL
-        └── Redirect ke /onboarding
-              └── User membuat workspace pertama
-                    └── WorkspaceService.createWorkspace()
-                          ├── Buat Workspace baru
-                          ├── Buat WorkspaceMember (userId, role: owner)
-                          └── Redirect ke /dashboard/[workspaceSlug]
+Login berhasil / Middleware redirect ke /onboarding (cookie active-workspace-id tidak ada/invalid)
+  └── /onboarding
+        ├── Query: workspace yang diikuti user (workspace_members WHERE user_id = session.userId)
+        │
+        ├── 0 workspace → User membuat workspace pertama
+        │     └── WorkspaceService.createWorkspace()
+        │           ├── Buat Workspace baru
+        │           ├── Buat WorkspaceMember (userId, role: owner)
+        │           ├── Set cookie active-workspace-id
+        │           └── Redirect ke (app) home
+        │
+        └── ≥1 workspace (cookie hilang, bukan user baru) → Tampilkan picker daftar workspace
+              └── User pilih salah satu
+                    ├── Set cookie active-workspace-id
+                    └── Redirect ke (app) home
 ```
 
 ---
@@ -388,7 +402,7 @@ Login berhasil
 |----|-----------|--------|
 | AU-D01 | Better Auth sebagai auth library | Sudah ditetapkan sebagai keputusan pra-architecture; menghindari implementasi auth dari nol |
 | AU-D02 | HTTP-only cookie untuk session token | Mencegah XSS attack; session tidak dapat diakses oleh JavaScript di browser |
-| AU-D03 | Workspace context di-resolve via Middleware dari URL slug | Workspace aktif bergantung pada URL — lebih akurat dari menyimpan di session yang bisa stale |
+| AU-D03 | Workspace context disimpan di cookie `active-workspace-id`, divalidasi ulang oleh Middleware terhadap `workspace_members` di setiap request | User tetap efektif 1 workspace aktif (bukan multi-workspace switching); cookie tidak dipercaya mentah — tetap divalidasi ke database agar tidak stale atau bisa dimanipulasi; cookie hilang → re-entry via picker onboarding |
 | AU-D04 | Inject workspace context via custom request headers | Memungkinkan Application Service membaca context tanpa query database ulang; tidak dapat dimanipulasi client |
 | AU-D05 | Authorization check di Application Service layer | Selaras dengan DDD — domain service yang mengetahui aturan bisnis; Entry Point tetap thin |
 | AU-D06 | RLS sebagai defense-in-depth, bukan primary enforcement | Application-enforced lebih fleksibel dan testable; RLS sebagai safety net jika ada bug di layer atas |

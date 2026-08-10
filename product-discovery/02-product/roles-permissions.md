@@ -36,7 +36,7 @@ Pemilik workspace. Role ini dipegang oleh orang yang mendaftarkan workspace ke p
 
 | Area | Hak Akses |
 | ---- | --------- |
-| Workspace Settings | Baca, ubah, hapus workspace |
+| Organization Settings | Baca, ubah, hapus workspace |
 | Billing & Subscription | Penuh (upgrade, downgrade, batalkan) |
 | Connected Accounts | Tambah, hapus, kelola semua akun media sosial |
 | Members | Undang, hapus, ubah role semua anggota |
@@ -61,7 +61,7 @@ Admin adalah kepercayaan Account Owner. Role ini cocok untuk manajer senior atau
 
 | Area | Hak Akses |
 | ---- | --------- |
-| Workspace Settings | Baca dan ubah (tidak bisa hapus workspace) |
+| Organization Settings | Baca dan ubah (tidak bisa hapus workspace) |
 | Billing & Subscription | Baca (tidak bisa ubah plan) |
 | Connected Accounts | Tambah, hapus, kelola semua akun media sosial |
 | Members | Undang, hapus, ubah role (kecuali role Account Owner) |
@@ -82,13 +82,13 @@ Creator adalah operator konten — mencakup pembuatan draft **dan** eksekusi jad
 - Workspace bisa memiliki lebih dari satu Creator.
 - Creator bisa melihat **semua** konten di workspace (bukan cuma miliknya sendiri) — diperlukan untuk menjalankan jadwal dan queue tim secara efektif.
 - Creator bisa membuat, edit, jadwalkan, dan mempublish konten (termasuk **Publish Now**, ADR-047) — tidak lagi dibatasi hanya ke konten sendiri seperti pada struktur role sebelumnya.
-- Creator tidak memiliki akses ke Members, Billing, Workspace Settings, atau Audit Logs.
+- Creator tidak memiliki akses ke Members, Billing, Organization Settings, atau Audit Logs.
 
 **Hak Akses:**
 
 | Area | Hak Akses |
 | ---- | --------- |
-| Workspace Settings | Tidak ada akses |
+| Organization Settings | Tidak ada akses |
 | Billing & Subscription | Tidak ada akses |
 | Connected Accounts | Baca saja (melihat akun yang tersedia) |
 | Members | Tidak ada akses |
@@ -108,7 +108,7 @@ Creator adalah operator konten — mencakup pembuatan draft **dan** eksekusi jad
 | Hapus workspace (wajib konfirmasi Tier 1, ADR-049) | ✅ | ❌ | ❌ |
 | Transfer ownership (wajib konfirmasi Tier 1, ADR-049) | ✅ | ❌ | ❌ |
 | Kelola billing | ✅ | 👁 | ❌ |
-| Kelola workspace settings | ✅ | ✅ | ❌ |
+| Kelola Organization Settings | ✅ | ✅ | ❌ |
 | Undang/hapus member (hapus wajib konfirmasi Tier 2, ADR-049) | ✅ | ✅ | ❌ |
 | Ubah role member (wajib konfirmasi Tier 2, ADR-049) | ✅ | ✅ (kecuali Account Owner) | ❌ |
 | Tambah/hapus connected accounts (hapus wajib lewat Disconnect Confirmation, ADR-048) | ✅ | ✅ | ❌ |

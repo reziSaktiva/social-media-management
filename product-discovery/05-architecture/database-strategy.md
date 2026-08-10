@@ -184,7 +184,7 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 |-------|------|-----------|
 | `id` | `uuid PK DEFAULT gen_random_uuid()` | Workspace ID |
 | `name` | `text NOT NULL` | Nama workspace |
-| `slug` | `text NOT NULL UNIQUE` | URL identifier unik |
+| `slug` | `text NOT NULL UNIQUE` | Internal unique identifier, tidak dipakai di routing/URL (`domain-model.md`) |
 | `owner_id` | `uuid NOT NULL` | Referensi ke `identity_user.id` |
 | `pending_owner_transfer_to` | `uuid` | Referensi ke `identity_user.id`; diisi saat `transferOwnership` dipicu, dikosongkan setelah `acceptOwnershipTransfer` atau dibatalkan (ADR-050) |
 | `plan` | `text NOT NULL DEFAULT 'free'` | `free \| pro` |
@@ -588,7 +588,7 @@ Berlaku untuk: `workspace_members`, `workspace_connected_accounts`, `publishing_
 | `analytics_post_metrics` | `post_id` | Metrics per post |
 | `notifications` | `(user_id, is_read)` | Notifikasi belum dibaca per user |
 | `start_page_pages` | `slug` | Public URL lookup (sudah UNIQUE) |
-| `workspaces` | `slug` | Workspace URL lookup (sudah UNIQUE) |
+| `workspaces` | `slug` | Lookup internal by unique identifier — bukan URL lookup (sudah UNIQUE) |
 
 ---
 

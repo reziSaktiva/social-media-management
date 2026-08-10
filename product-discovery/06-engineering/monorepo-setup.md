@@ -115,9 +115,9 @@ Routing structure mencerminkan Information Architecture dari `product-discovery/
 ```
 src/app/
 ├── layout.tsx                    ← Root layout (HTML, global providers)
-├── page.tsx                      ← Redirect ke workspace aktif atau onboarding
+├── page.tsx                      ← Redirect ke (app) atau onboarding
 │
-├── (auth)/                       ← Route group: auth pages (tanpa workspace layout)
+├── (auth)/                       ← Route group: auth pages (tanpa layout aplikasi)
 │   ├── login/
 │   │   └── page.tsx
 │   ├── register/
@@ -125,9 +125,9 @@ src/app/
 │   └── forgot-password/
 │       └── page.tsx
 │
-├── [slug]/                       ← Dynamic segment: workspace slug
-│   ├── layout.tsx                ← Workspace layout (sidebar nav, workspace context)
-│   ├── page.tsx                  ← Home — Today's Schedule, Recent Activity, Snapshots (root workspace; ADR-046)
+├── (app)/                        ← Route group: aplikasi utama pasca-login (workspace context dari cookie)
+│   ├── layout.tsx                ← App layout (sidebar nav, resolve workspace context dari cookie)
+│   ├── page.tsx                  ← Home — Today's Schedule, Recent Activity, Snapshots (root aplikasi; ADR-046)
 │   │
 │   ├── publish/
 │   │   ├── layout.tsx            ← Publish sub-nav (Calendar / Queue / Drafts / History); tempat modal state Draft Editor dipasang (ADR-052)
@@ -152,26 +152,24 @@ src/app/
 │   ├── start-page/
 │   │   └── page.tsx              ← Start Page Editor + Preview
 │   │
-│   └── settings/
-│       ├── layout.tsx            ← Settings sub-nav
-│       ├── page.tsx              ← General — Workspace name, timezone, brand (default tab; ADR-046)
+│   └── settings/                 ← Organization Settings + Account Settings — satu section, dua grup sidebar
+│       ├── layout.tsx            ← Settings sub-nav (grup Organization + grup Account)
+│       ├── page.tsx              ← Organization → General — nama workspace, timezone, brand (default tab; ADR-046)
 │       ├── connected-accounts/
-│       │   └── page.tsx          ← Social account management
+│       │   └── page.tsx          ← Organization → Social account management
 │       ├── members/
-│       │   └── page.tsx          ← Team members
+│       │   └── page.tsx          ← Organization → Team members
 │       ├── roles/
-│       │   └── page.tsx          ← Roles & permissions
-│       └── billing/
-│           └── page.tsx          ← Billing (Post-MVP, halaman placeholder)
-│
-├── account/                      ← User settings (bukan workspace-specific)
-│   ├── layout.tsx
-│   ├── profile/
-│   │   └── page.tsx
-│   ├── notifications/
-│   │   └── page.tsx
-│   └── preferences/
-│       └── page.tsx
+│       │   └── page.tsx          ← Organization → Roles & permissions
+│       ├── billing/
+│       │   └── page.tsx          ← Organization → Billing (Post-MVP, halaman placeholder)
+│       └── account/               ← grup Account
+│           ├── profile/
+│           │   └── page.tsx      ← Account → Profil pengguna
+│           ├── notifications/
+│           │   └── page.tsx      ← Account → Preferensi notifikasi
+│           └── preferences/
+│               └── page.tsx      ← Account → Preferensi tampilan personal
 │
 └── api/                          ← Route Handlers (external / platform only)
     ├── auth/
@@ -188,20 +186,22 @@ src/app/
 ```
 
 **Aturan routing:**
-- `[slug]` adalah workspace slug — digunakan Middleware untuk resolve workspace context.
-- Route group `(auth)` tidak mewarisi workspace layout — render halaman kosong tanpa sidebar.
+- Route group `(app)` membungkus seluruh aplikasi pasca-login. Workspace context di-resolve dari **cookie** (dibaca & divalidasi membership-nya oleh `src/proxy.ts`), bukan dari URL. User tetap efektif 1 workspace; tidak ada workspace switcher di URL (lihat `auth-architecture.md`, "Workspace Context Resolution").
+- Route group `(auth)` tidak mewarisi layout `(app)` — render halaman kosong tanpa sidebar.
 - `api/` hanya untuk Route Handlers platform/eksternal: Better Auth (`/api/auth/*`), health check, job runner (`/api/jobs/run`), dan webhook. Mutations UI menggunakan Server Actions, bukan route API internal.
-- `/api/auth/*` dan `/api/jobs/*` di-bypass dari session Middleware — auth sendiri dilindungi Better Auth; job runner dilindungi header `X-Job-Secret` (lihat `auth-architecture.md`, `deployment-infrastructure.md`).
+- `/api/auth/*` dan `/api/jobs/*` di-bypass dari session Middleware/Proxy — auth sendiri dilindungi Better Auth; job runner dilindungi header `X-Job-Secret` (lihat `auth-architecture.md`, `deployment-infrastructure.md`).
 - `/api/webhooks/outstand` wajib membaca raw body sebelum parsing. Route memanggil WebhookIngestion Application Service untuk menulis `outstand_webhook_events` idempoten dan enqueue `outstand.webhook.process`; business processing tidak berjalan inline.
 - `billing/` ada di routing MVP tapi halaman menampilkan placeholder — implementasi Post-MVP.
+- **Settings terdiri dari dua grup dalam satu section**: grup **Organization** (General, Connected Accounts, Members, Roles, Billing) dan grup **Account** (Profile, Notifications, Preferences) — keduanya diakses via sidebar Settings yang sama, dengan entry point tunggal dari avatar/user menu.
 - Section dengan default/single view (Home, Engage → Inbox, Settings →
-  General) merender langsung di `page.tsx` pada root path section-nya —
-  bukan named child segment terpisah (`/home`, `/inbox`, `/general` tidak
-  ada sebagai path). Sub-screen non-default tetap punya segment eksplisit
-  (`queue`, `drafts`, `history`, `connected-accounts`, `members`, `roles`,
-  `billing`). Segment yang hanya berfungsi sebagai container (`layout.tsx`
-  tanpa `page.tsx` sendiri, atau tanpa keduanya) tidak boleh dibiarkan —
-  setiap section wajib punya `page.tsx` di root path-nya (ADR-046).
+  Organization General) merender langsung di `page.tsx` pada root path
+  section-nya — bukan named child segment terpisah (`/home`, `/inbox`,
+  `/general` tidak ada sebagai path). Sub-screen non-default tetap punya
+  segment eksplisit (`queue`, `drafts`, `history`, `connected-accounts`,
+  `members`, `roles`, `billing`, `account/*`). Segment yang hanya
+  berfungsi sebagai container (`layout.tsx` tanpa `page.tsx` sendiri, atau
+  tanpa keduanya) tidak boleh dibiarkan — setiap section wajib punya
+  `page.tsx` di root path-nya (ADR-046).
 - **Pengecualian permanen — Publish:** `/publish` redirect ke
   `/publish/calendar` (bukan render langsung), karena `calendar/` tetap
   ada sebagai folder statis untuk mencegah `publish/[postId]` menangkap
@@ -237,11 +237,11 @@ src/app/
      terpengaruh — tetap lowercase sesuai kontrak framework, tidak masuk
      folder `components/`.
 
-Contoh — `draft-editor` dipakai lintas beberapa route di dalam `[slug]/`,
-sehingga LCA-nya adalah `app/[slug]/`:
+Contoh — `draft-editor` dipakai lintas beberapa route di dalam `(app)/`,
+sehingga LCA-nya adalah `app/(app)/`:
 
 ```text
-app/[slug]/components/draft-editor/
+app/(app)/components/draft-editor/
 ├── Context.tsx           ← component, PascalCase
 ├── Modal.tsx              ← component, PascalCase
 ├── Mount.tsx               ← component, PascalCase
@@ -510,7 +510,7 @@ import { something } from '@/domains/workspace';  // di dalam packages/shared/
 |----|-----------|--------|-----------|
 | MS-D01 | `apps/web` sebagai satu-satunya aplikasi pada MVP | Sesuai ADR-004 Modular Monolith — satu deployment unit sampai ada alasan kuat untuk memisahkan | Multi-app sejak awal (premature separation) |
 | MS-D02 | Domain modules di `src/domains/` dalam apps/web, bukan sebagai workspace package terpisah | Domain logic tightly coupled dengan Next.js entry points di fase MVP — memisahkan ke package menambah indirection tanpa benefit nyata untuk single-app | packages/identity, packages/publishing, dst. |
-| MS-D03 | App Router routing menggunakan `[slug]` sebagai workspace dynamic segment | Workspace context di-resolve dari URL slug — selaras dengan auth-architecture.md dan keputusan Middleware workspace resolution | Query param `?workspace=slug` (kurang bersih, tidak SEO-friendly) |
+| MS-D03 | **[Superseded 2026-08-10]** App Router routing menggunakan route group `(app)` (bukan dynamic segment `[slug]`) untuk membungkus Home, Publish, Engage, Analyze, Start Page, Settings — workspace context di-resolve dari **cookie**, bukan URL | User tetap efektif 1 workspace (Multi Workspace Management tetap Out of Scope); `[slug]` menambah kompleksitas routing tanpa manfaat nyata selama tidak ada switching antar workspace via URL. `(app)` dipilih sebagai pasangan idiomatis untuk `(auth)` (pre-login vs aplikasi utama pasca-login), konvensi Next.js yang umum dan netral terhadap detail implementasi — selaras `auth-architecture.md` (Workspace Context Resolution) | Dynamic segment `[slug]` (keputusan awal, di-superseded); Query param `?workspace=slug` (kurang bersih, tidak SEO-friendly); nama route group lain seperti `(dashboard)`, `(workspace)` (kurang eksplisit menyandingkan `(auth)`) |
 | MS-D04 | `packages/shared` hanya untuk branded IDs, enums, dan value objects yang digunakan 2+ domain | Mencegah shared menjadi "junk drawer" — hanya types yang genuinely cross-domain | Tidak ada shared package, tiap domain define ulang (duplikasi) |
 | MS-D05 | Repository implementations ada di `src/lib/repositories/`, bukan di dalam domain folder | Domain hanya kenal interface — implementations di-inject, memudahkan testing dan penggantian infrastruktur | Repository implementation di dalam domain folder (mencampur domain logic dan infrastructure) |
 | MS-D06 | Outstand webhook route hanya ingestion; processor berjalan sebagai JOB-01 | Durable-before-ACK dan retry internal tidak bercampur dengan HTTP delivery vendor |

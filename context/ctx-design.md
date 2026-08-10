@@ -77,7 +77,7 @@ Project lama bernama **"Modernist"** di akun yang sama **bukan** milik product i
 | ---------------------------------------- | ------------------------------------------------------ |
 | Susun halaman / route sesuai menu        | `information-architecture.md`                          |
 | Alur publish / approve / connect account | `user-flows.md`                                        |
-| Sidebar, navigasi, workspace switch      | `navigation-patterns.md`                               |
+| Sidebar, navigasi, entry point Settings  | `navigation-patterns.md`                               |
 | Pola layar editor, inbox, analytics      | `key-screen-patterns.md`                               |
 | Content Format (Post/Reel/Story/Pin)     | `key-screen-patterns.md` (KSP-05-F11) + ADR-039        |
 | Font, warna, neutral, status (SoT)       | `../product-discovery/06-engineering/design-tokens.md` |
