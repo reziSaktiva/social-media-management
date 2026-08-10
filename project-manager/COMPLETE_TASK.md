@@ -33,7 +33,7 @@ ini.
   dropdown (Profile + divider + Logout), mirror `DropdownMenu` Astryx di
   kode. Item Logout membuka dialog konfirmasi Tier 2 (judul "Logout dari
   akun ini?", deskripsi "Perubahan yang belum disimpan di halaman ini bisa
-  hilang (ADR-049/NP-D10).", tombol Cancel/Logout) — mirror `AlertDialog`
+  hilang (ADR-049/NP-D10).", tombol Batal/Logout) — mirror `AlertDialog`
   di kode, sesuai ADR-049/NP-D10.
 - **KI-022 resolved** — Item Profile pada dropdown avatar Design System
   sekarang mengarah ke screen baru `templates/user-settings.html` (User
@@ -44,7 +44,7 @@ ini.
   `information-architecture.md` + ADR-056; Design System yang disesuaikan
   mengikuti kode/baseline, bukan sebaliknya.
 - `readme.md` project Claude Design "Social Media Management" diperbarui,
-  section baru "Avatar Menu (KI-021/KI-022 fix, T-021)" menjelaskan alur
+  section baru "Avatar Menu (KI-021/KI-022 fix)" menjelaskan alur
   dropdown + screen User Settings + dialog Logout ini.
 
 Tidak dibuat ADR baru — ini menegakkan ADR-056 (User Settings vs Workspace
@@ -54,19 +54,11 @@ bukan keputusan material baru.
 ### Added (Known Issue baru — KI-023)
 
 Riset navigasi di sesi ini menemukan gap terpisah yang belum pernah
-tercatat: **KI-023** — "Workspace Selector" (dropdown daftar workspace +
-"Create New Workspace" + link Workspace Settings) didefinisikan lengkap
-di baseline (`navigation-patterns.md`, IA-D05, NP-D07) sebagai satu-satunya
-entry point resmi ke Workspace Settings, tapi belum pernah diimplementasikan
-di kode. `WorkspaceSideNav.tsx` baris 76-83 cuma render `SideNavHeading`
-statis tanpa dropdown/state apapun. Satu-satunya jalur nyata ke
-`/[slug]/settings/*` hari ini adalah 2 deep-link kontekstual (badge channel
-`needsAttention` di `ChannelsSection.tsx` baris 153, link "Reconnect" di
-draft editor `Modal.tsx` baris 526) — keduanya cuma menuju
-`connected-accounts`, tidak ada jalur ke General/Members/Roles/Billing.
-Tidak ada task T-XXX untuk membangun fitur ini; T-009 sudah Done tanpa
-mencakupnya. Dicatat sebagai Known Issue murni (Tech-Debt), tidak ada task
-baru dibuat, tidak ada implementasi dilakukan.
+tercatat: **KI-023** — Workspace Selector belum pernah diimplementasikan
+di kode, meski didefinisikan lengkap di baseline navigasi. Status masih
+Open (belum resolved) — detail lengkap sengaja hanya disimpan di
+`PROJECT_STATE.md` (satu sumber, bukan diduplikasi di sini) supaya tidak
+ada dua salinan yang bisa divergen saat isu ini nanti berubah/resolved.
 
 ### Documentation
 

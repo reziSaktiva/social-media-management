@@ -228,7 +228,10 @@ Elemen ini tidak pernah dibangun di kode:
 `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx` baris 76-83 cuma
 render `SideNavHeading` statis (heading=nama workspace,
 headingHref=`/${slug}`, link biasa ke halaman home workspace), tanpa
-onClick, tanpa dropdown, tanpa state apapun. Satu-satunya jalur nyata ke
+onClick, tanpa dropdown, tanpa state apapun — inilah elemen yang disebut
+"Workspace Selector" secara longgar di T-011/ADR-053 (soal posisi CTA "New
+Post"), berbeda dari dropdown interaktif penuh yang dimaksud baseline
+navigasi di atas. Satu-satunya jalur nyata ke
 `/[slug]/settings/*` hari ini adalah 2 deep-link KONTEKSTUAL yang hanya
 muncul dalam kondisi tertentu: badge status channel bermasalah di
 `apps/web/src/app/[slug]/components/sidebar-channels/ChannelsSection.tsx`
