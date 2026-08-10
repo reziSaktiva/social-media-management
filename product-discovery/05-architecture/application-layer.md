@@ -425,7 +425,7 @@ Outstand API kirim POST /api/webhooks/outstand
 ## Contoh 3: Load Halaman Calendar
 
 ```
-User navigasi ke (app)/publish/calendar  ← Calendar; /publish sendiri redirect permanen ke sini (ADR-046 Amandemen Final, pengecualian permanen)
+User navigasi ke /publish/calendar  ← Calendar; /publish sendiri redirect permanen ke sini (ADR-046 Amandemen Final, pengecualian permanen). Route group `(app)` tidak muncul di URL — hanya nama folder pembungkus di `src/app/`
   │
   ├─ [Middleware]
   │    ├─ Verifikasi session (Better Auth)

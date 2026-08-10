@@ -87,7 +87,7 @@ Better Auth mengelola seluruh lifecycle autentikasi:
 User submit form login
   └── Server Action
         └── Better Auth auth.signIn.email({ email, password })
-              ├── Sukses → Set session cookie → Redirect ke /dashboard
+              ├── Sukses → Set session cookie → Redirect ke root (Middleware lanjut resolve ke `(app)` atau `/onboarding`, lihat "Onboarding Flow")
               └── Gagal  → Return error ke form
 ```
 
@@ -353,7 +353,7 @@ USING (
 |----------|---------|
 | Tidak ada session | Redirect ke `/login` (via Middleware) |
 | Session expired | Redirect ke `/login` (via Middleware) |
-| User tidak memiliki akses ke workspace | Redirect ke `/dashboard` |
+| User tidak memiliki akses ke workspace (cookie invalid/workspace sudah tidak diikuti) | Redirect ke `/onboarding` |
 | Role tidak cukup untuk operasi | `AuthorizationError` → UI error message / HTTP 403 |
 | RLS violation | Supabase mengembalikan empty result atau error — Application Service menangani sebagai not found |
 

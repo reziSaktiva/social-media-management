@@ -83,7 +83,7 @@ Produk menggunakan model **Persistent Sidebar Navigation** untuk web.
 
 ## Struktur Sidebar
 
-Primary navigation terdiri dari dua zona vertikal:
+Primary navigation terdiri dari empat zona vertikal:
 
 ```
 ┌──────────────────────┐
