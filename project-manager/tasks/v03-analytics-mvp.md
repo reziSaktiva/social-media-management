@@ -5,7 +5,7 @@
 **Tujuan rilis:** Memberikan visibilitas terhadap performa konten.
 **Baseline rilis:** `product-discovery/02-product/release-roadmap.md` → v0.3
 
-**Titik awal:** domain `analytics/` masih stub kosong (`index.ts` + `types.ts` berisi `export {}` + `errors.ts`). Model `AnalyticsPostMetric` dan `AnalyticsWorkspaceSnapshot` **sudah ada** di schema. Route `/[slug]` (Home) dan `/[slug]/analyze` masih placeholder.
+**Titik awal:** domain `analytics/` masih stub kosong (`index.ts` + `types.ts` berisi `export {}` + `errors.ts`). Model `AnalyticsPostMetric` dan `AnalyticsWorkspaceSnapshot` **sudah ada** di schema. Route Home dan `/analyze` masih placeholder — saat ini masih di bawah dynamic segment lama `[slug]`, tapi baseline routing sudah pindah ke route group `(app)` (ADR-076); kalau **T-039** (migrasi kode, `tasks/v01-foundation.md`) belum selesai saat task rilis ini dikerjakan, bangun langsung di `(app)/analyze` — jangan menambah route baru di `[slug]/...` lama.
 
 **Prasyarat lintas rilis:** rilis ini tidak bisa menghasilkan angka nyata sebelum T-025 (Real OutstandAdapter) + T-027 (job runner) selesai — tanpa keduanya tidak ada sumber metrik.
 

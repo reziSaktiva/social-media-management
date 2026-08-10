@@ -241,6 +241,33 @@ Semua route `/account/*` dan `/settings/*` sebelumnya masih placeholder "Scaffol
 
 ---
 
+## Migrasi Routing & Settings (ADR-076)
+
+### T-039 · Migrasi kode routing workspace ke baseline ADR-076 (route group `(app)`, cookie, Settings gabungan)
+
+| Field         | Value                                                                  |
+| ------------- | ----------------------------------------------------------------------- |
+| **Status**    | ⏳ Not Started                                                          |
+| **Domain**    | workspace · platform                                                    |
+| **ADR**       | ADR-076                                                                  |
+| **Terkait**   | KI-023 (`PROJECT_STATE.md`)                                              |
+| **Depends**   | T-009 ✅ (App Shell), T-006 ✅ (Onboarding lama), T-016 🟡 (Account settings) |
+| **Baca dulu** | `decisions/ADR-076-workspace-context-via-cookie-hapus-slug-konsolidasi-settings-organization-account.md` · `05-architecture/auth-architecture.md` (Workspace Context Resolution, Middleware Strategy, Onboarding Flow) · `06-engineering/monorepo-setup.md` (App Router Structure, MS-D03) · `04-ux/information-architecture.md` (section Settings) |
+
+ADR-076 hanya mengubah baseline dokumentasi (PR #61) — kode `apps/web` **belum**
+dimigrasikan. Struktur route saat ini masih dynamic segment `[slug]` dan
+`account/` terpisah dari `settings/`; Middleware/`src/proxy.ts` masih resolve
+workspace dari URL, bukan cookie. Task ini menutup gap tersebut (KI-023).
+**Catatan: task ini murni entry backlog — belum boleh dieksekusi sampai
+diperintahkan eksplisit oleh King Rezi.**
+
+- [ ] **T-039.1** Hapus dynamic segment `apps/web/src/app/[slug]/...`, pindahkan seluruh route workspace-scoped (Home, Publish, Engage, Analyze, Start Page, Settings) ke route group baru `apps/web/src/app/(app)/...`
+- [ ] **T-039.2** Gabungkan `apps/web/src/app/account/...` (saat ini terpisah) ke dalam `settings/account/*`, konsisten dengan konsolidasi Settings jadi dua grup "Organization" + "Account" (satu entry point avatar/user menu)
+- [ ] **T-039.3** Ganti resolusi workspace di Middleware/`src/proxy.ts` dari parsing URL `[slug]` menjadi baca cookie `active-workspace-id` (HTTP-only), tetap divalidasi ulang terhadap `workspace_members` di setiap request
+- [ ] **T-039.4** Bangun halaman `/onboarding` dengan picker workspace — re-entry point untuk dua skenario: user baru tanpa workspace (buat workspace pertama) dan user existing yang kehilangan cookie workspace aktif (pilih dari daftar workspace)
+
+---
+
 ## Security & Platform Hygiene
 
 ### T-017 · RLS SQL policies
@@ -300,7 +327,7 @@ Alasan urgensinya: kalau jalur Bearer token baru dipasang setelah kode web matan
 
 ## Catatan Rilis
 
-* Nomor kosong v0.1 sudah terpakai semua (T-019 diisi task API mobile). Task v0.1 baru berikutnya memakai nomor global berikutnya yang belum pernah dipakai — jangan menggeser ID yang sudah ada.
+* Nomor kosong v0.1 sudah terpakai semua (T-019 diisi task API mobile). Task v0.1 baru berikutnya memakai nomor global berikutnya yang belum pernah dipakai — jangan menggeser ID yang sudah ada. **T-039** (Migrasi Routing & Settings, ADR-076) memakai nomor ini: ID global berikutnya yang belum pernah dipakai, dipinjam dari ruang kosong yang sebelumnya dicadangkan untuk pertumbuhan v0.2 (lihat Catatan Rilis `tasks/v02-publishing-mvp.md`) — task tetap ditempatkan di file v0.1 karena scope-nya (Workspace/Settings routing) sejalan dengan T-009/T-016, bukan v0.2 Publishing.
 * **Definisi "Foundation selesai":** semua task di rilis ini `✅ Done` **kecuali** yang secara sadar ditunda dengan alasan tercatat — dan **kecuali empat task yang menunggu v0.2** (lihat di bawah).
 * **Task v0.1 yang tidak bisa ditutup sebelum v0.2 berjalan** (dependency lintas rilis, disengaja dan diketahui):
   * **T-013** Connect account — subtask T-013.1 butuh T-025 (Real OutstandAdapter, v0.2).

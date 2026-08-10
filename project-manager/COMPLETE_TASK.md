@@ -8,6 +8,45 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-10 — Task baru T-039 (Migrasi Routing & Settings, ADR-076) — entry backlog, belum dieksekusi
+
+### Context
+
+ADR-076 (PR #61) mengubah baseline routing workspace dari dynamic segment
+`[slug]` ke route group `(app)` + cookie `active-workspace-id`, dan
+mengonsolidasi Settings jadi Organization + Account — tapi PR itu hanya
+mengubah baseline dokumentasi, kode `apps/web` belum dimigrasikan. Catatan
+implementasi ADR-076 eksplisit menyebut migrasi kode ini butuh task T-XXX
+formal sebelum dikerjakan, dan KI-023 di `PROJECT_STATE.md` mencatat gap
+yang sama. King Rezi meminta task ini dibuat dulu (entry backlog saja),
+eksekusi ditunda.
+
+### Added
+
+- **T-039** ditambahkan ke `tasks/v01-foundation.md` (section baru "Migrasi
+  Routing & Settings (ADR-076)"), status `⏳ Not Started`, 4 subtask
+  (T-039.1–T-039.4): hapus dynamic segment `[slug]` → route group `(app)`,
+  gabung `account/` terpisah ke `settings/account/*`, ganti resolusi
+  workspace Middleware/`src/proxy.ts` dari URL ke cookie
+  `active-workspace-id`, dan bangun halaman `/onboarding` dengan picker
+  workspace.
+- ID **T-039** dipilih karena rentang v0.1 (T-001–T-019) sudah penuh —
+  dipinjam dari nomor yang sebelumnya dicadangkan untuk ruang pertumbuhan
+  v0.2 (`tasks/v02-publishing-mvp.md`, Catatan Rilis diperbarui mengikuti
+  ini), sesuai aturan "ambil nomor global berikutnya yang belum pernah
+  dipakai" di `TASKS.md`.
+- `TASKS.md`: indeks release v0.1 diperbarui (Rentang ID → "T-001–T-019,
+  T-039", Task 19→20, status ⏳ bertambah 1), **Total** 70→71 task, 138→142
+  subtask.
+- `PROJECT_STATE.md` KI-023: field **Terkait** ditambah `T-039`, paragraf
+  penutup diperbarui dari "belum punya task T-XXX formal" menjadi
+  mereferensikan T-039 yang sudah dibuat (status Not Started).
+- **Tidak ada kode `apps/web` yang berubah** — murni penambahan entry
+  backlog dokumentasi, sesuai permintaan eksplisit King Rezi untuk menunda
+  eksekusi.
+
+---
+
 ## 2026-08-10 — KI-021/KI-022 resolved (Design System, avatar dropdown + Logout + Profile routing) — KI-023 baru (Workspace Selector belum diimplementasikan)
 
 ### Context
