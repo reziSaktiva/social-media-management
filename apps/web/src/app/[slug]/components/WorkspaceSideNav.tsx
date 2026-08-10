@@ -95,6 +95,10 @@ export function WorkspaceSideNav({
         />
       }
       footer={
+        // KI-020: Design System mengelompokkan Theme+Avatar jadi satu klaster
+        // di kanan (Notifikasi terpisah di kiri), bukan spread rata 3 elemen
+        // — direplikasi lewat HStack justify="between" berisi 2 grup, bukan
+        // 3 children langsung.
         <HStack gap={2} align="center" justify="between" width="100%">
           <IconButton
             label="Notifikasi"
@@ -103,37 +107,39 @@ export function WorkspaceSideNav({
             tooltip="Notifikasi"
             onClick={() => router.push("/account/notifications")}
           />
-          <IconButton
-            label={
-              mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode"
-            }
-            icon={mode === "light" ? <FaMoon /> : <FaSun />}
-            variant="ghost"
-            tooltip={
-              mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode"
-            }
-            onClick={toggleMode}
-          />
-          <DropdownMenu
-            button={{
-              isIconOnly: true,
-              icon: <Avatar name={userName || userEmail} size="sm" />,
-              variant: "ghost",
-              label: userName || userEmail,
-            }}
-            hasChevron={false}
-            items={[
-              {
-                label: "Profile",
-                onClick: () => router.push("/account/profile"),
-              },
-              { type: "divider" },
-              {
-                label: "Logout",
-                onClick: () => setIsLogoutDialogOpen(true),
-              },
-            ]}
-          />
+          <HStack gap={2} align="center">
+            <IconButton
+              label={
+                mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode"
+              }
+              icon={mode === "light" ? <FaMoon /> : <FaSun />}
+              variant="ghost"
+              tooltip={
+                mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode"
+              }
+              onClick={toggleMode}
+            />
+            <DropdownMenu
+              button={{
+                isIconOnly: true,
+                icon: <Avatar name={userName || userEmail} size="sm" />,
+                variant: "ghost",
+                label: userName || userEmail,
+              }}
+              hasChevron={false}
+              items={[
+                {
+                  label: "Profile",
+                  onClick: () => router.push("/account/profile"),
+                },
+                { type: "divider" },
+                {
+                  label: "Logout",
+                  onClick: () => setIsLogoutDialogOpen(true),
+                },
+              ]}
+            />
+          </HStack>
           <AlertDialog
             isOpen={isLogoutDialogOpen}
             onOpenChange={setIsLogoutDialogOpen}

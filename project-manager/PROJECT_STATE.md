@@ -206,32 +206,6 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003), tiga env var ini belum diisi di 
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — kode Google OAuth di `auth.ts` sudah siap (`socialProviders.google` terdaftar kondisional lewat `env.ts`), tapi tanpa env ini "Sign in with Google" tidak aktif.
 - `JOB_SECRET` — dibutuhkan untuk header `X-Job-Secret` (Railway Cron → web, EM-D0x). Belum diisi berarti job runner (T-027) belum bisa diverifikasi end-to-end di local; dev bisa memakai nilai dummy sementara.
 
-### KI-020 · Layout footer sidebar: grouping (Design System) vs spread merata `justify="between"` (Web)
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Design-Consistency |
-| Terkait | `apps/web/src/app/[slug]/components/WorkspaceSideNav.tsx`, project Claude Design "Social Media Management" |
-
-Design System CSS (`.sidebar-footer` di `styles.css`) tidak memakai
-`justify-content` pada container-nya (cuma `display:flex; gap:var(--spacing-1)`)
-— efek "renggang" didapat dari `margin-left:auto` yang ditempel LANGSUNG pada
-tombol Theme, sehingga Notifikasi menempel kiri sementara Theme+Avatar
-mengelompok jadi satu klaster di kanan. Implementasi web
-(`WorkspaceSideNav.tsx` baris ~97) memakai
-`<HStack gap={2} align="center" justify="between" width="100%">` yang
-membungkus 3 children langsung (IconButton Notifikasi, IconButton Theme,
-DropdownMenu Avatar/nama) — `justify="between"` di container menyebar
-ketiganya dengan jarak SAMA rata (Notifikasi kiri, Theme di tengah, Avatar
-di kanan), bukan mengelompokkan Theme+Avatar jadi satu grup di kanan seperti
-Design System.
-
-Ditemukan 2026-08-07 saat King Rezi mengecek Design System pasca-implementasi
-T-007.4. Murni pencatatan temuan — resolusi (Design System ikut kode, kode
-ikut Design System, atau keduanya direvisi) belum diputuskan, tidak ada
-perbaikan kode yang dilakukan.
-
 ### KI-021 · Klik avatar tidak memunculkan menu Profile/Logout di Design System — alur Logout belum pernah dimodelkan
 
 | Field | Value |
@@ -295,12 +269,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
-* **KI-019 resolved** — Footer sidebar `WorkspaceSideNav.tsx` sebelumnya memakai `DropdownMenu` dengan tombol teks nama/email (`button={{ label: userName || userEmail, variant: "ghost" }}`), berbeda jenis elemen dari Design System (`components/navigation.html` di Claude Design) yang memakai avatar bulat berisi inisial. King Rezi memutuskan kode mengikuti Design System (bukan sebaliknya) — tombol diganti `isIconOnly` dengan `icon: <Avatar name={userName || userEmail} size="sm" />`, `hasChevron={false}`, `aria-label` nama/email dipertahankan. Terverifikasi manual di browser (light & dark mode, dropdown Profile/Logout normal, tanpa regresi). Layout container `justify="between"` tidak disentuh — tetap scope KI-020 (Open, terpisah).
+* **KI-020 resolved** — Layout footer sidebar `WorkspaceSideNav.tsx` sebelumnya memakai `<HStack justify="between">` yang membungkus 3 children langsung (Notifikasi, Theme, Avatar) sehingga menyebar rata, berbeda dari Design System (`.sidebar-footer`) yang mengelompokkan Theme+Avatar jadi satu klaster di kanan (via `margin-left:auto` pada tombol Theme) dengan Notifikasi sendiri di kiri. King Rezi memutuskan kode ikut Design System — outer `HStack justify="between"` sekarang membungkus 2 grup: IconButton Notifikasi sendiri, dan HStack baru berisi IconButton Theme + DropdownMenu Avatar (grup kanan). Terverifikasi manual di browser (Notifikasi kiri, Theme+Avatar mengelompok kanan, dropdown avatar tetap normal), `tsc --noEmit` bersih.
+* **KI-019 resolved** — Footer sidebar `WorkspaceSideNav.tsx` sebelumnya memakai `DropdownMenu` dengan tombol teks nama/email (`button={{ label: userName || userEmail, variant: "ghost" }}`), berbeda jenis elemen dari Design System (`components/navigation.html` di Claude Design) yang memakai avatar bulat berisi inisial. King Rezi memutuskan kode mengikuti Design System (bukan sebaliknya) — tombol diganti `isIconOnly` dengan `icon: <Avatar name={userName || userEmail} size="sm" />`, `hasChevron={false}`, `aria-label` nama/email dipertahankan. Terverifikasi manual di browser (light & dark mode, dropdown Profile/Logout normal, tanpa regresi). Layout container `justify="between"` (KI-020) resolved terpisah — lihat bullet di atas.
 * **T-007.4 selesai** — UI daftar anggota `/settings/members` (Astryx Table): `page.tsx` diganti dari `ScaffoldPlaceholder` jadi server component nyata, `MembersTable.tsx` (client component baru, kolom Member/Role/Status/Actions). Tombol Change Role/Remove disabled dengan tooltip (menunggu T-007.5), disembunyikan untuk baris Owner/diri sendiri. Backend: `WorkspaceService.listMembersWithUser` + repository method baru (domain `workspace`), 26 unit test pass, `tsc`/lint bersih. Verifikasi visual browser belum dilakukan (tidak ada kredensial test user) — known gap, bukan klaim selesai penuh.
 * **KI-016 resolved** — Shadow database Prisma gagal (P3006) untuk migrasi berikutnya, diatasi permanen lewat fitur resmi Prisma 7 External Tables (`initShadowDb` + `tables.external`) di `apps/web/prisma.config.ts`, tanpa mengubah migration history yang sudah applied. Terverifikasi end-to-end (replay shadow DB, `migrate status` bersih, uji `migrate dev --create-only` tanpa P3006). Lahir **ADR-073**. Temuan terpisah selama verifikasi (staleness ADR-071) dicatat sebagai KI-018 baru.
 * **KI-018 resolved** — Kutipan `migration.sql` di ADR-071 ("Catatan implementasi") stale terhadap kode aktual (`ON CONFLICT DO NOTHING` tanpa guardrail, padahal kode sudah `ON CONFLICT DO UPDATE` + guardrail `file_size_limit`/`allowed_mime_types`). Diperbaiki lewat amandemen **ADR-075** — DECISIONS.md append-only, jadi kutipan disinkronkan via ADR baru, bukan edit diam-diam ADR-071.
-* **T-016.1/2/3/5 selesai** — Account & user settings screens: layout `account/`+`settings/` (sidebar/nav internal), `/account/profile` (edit nama + avatar, domain `identity` diisi pertama kali), `/account/preferences` (toggle tema), dialog konfirmasi Logout (ADR-049 Tier 2). Lolos review arsitektur Ridwan (nihil temuan) dan QA end-to-end Najwa + verifikasi tambahan sesi utama. Bucket `avatars` diperluas untuk avatar user personal lewat **ADR-071**. T-016.4 (notifications) tetap Blocked, menunggu T-036 (v0.2). Known Issue baru: KI-014 (domain `identity` belum ada unit test).
-* **KI-013 resolved** — Instalasi self-hosted Better Auth (ADR-070) terverifikasi jalan normal di `localhost:3000` (login/register berhasil, session/cookie terbaca) tanpa ngrok. `db:studio` script ditambahkan (`bun run db:studio`) untuk lihat data `identity_*`/domain lain via Prisma Studio. `QA_TEST_ACCOUNTS.md` diperbarui — verifikasi browser tidak lagi wajib tanya URL tunnel.
 
 ---
 
