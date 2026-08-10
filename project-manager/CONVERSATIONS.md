@@ -18,6 +18,30 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-08-10 — KI-019: kode ikut Design System untuk footer sidebar (avatar vs tombol teks)
+
+**Phase:** M8 Development
+
+**Summary:** KI-019 mencatat mismatch elemen UI footer sidebar — Design
+System (Claude Design, `components/navigation.html`) memakai avatar bulat
+berisi inisial, sedangkan `WorkspaceSideNav.tsx` memakai tombol teks nama/
+email. King Rezi memutuskan arah resolusinya: kode mengikuti Design System
+(bukan sebaliknya, dan Design System tidak direvisi). Mark UI Engineer
+mengimplementasikan (ganti `button` `DropdownMenu` jadi `isIconOnly` dengan
+`icon: <Avatar ... />`), lalu diverifikasi manual di browser (light/dark
+mode, dropdown Profile/Logout normal, tanpa regresi).
+
+**Key Insight / Decision:** Untuk KI-019, kode menyesuaikan Design System
+untuk footer sidebar. Kasus lain memerlukan keputusan eksplisit sesuai
+konteksnya.
+
+**Impact:** `PROJECT_STATE.md` (KI-019 dihapus, resolved), `COMPLETE_TASK.md`
+(entri baru). Tidak ada ADR baru — bukan keputusan arsitektur/domain/
+teknologi material. KI-020 (layout `justify="between"`) tetap Open,
+terpisah.
+
+---
+
 ## 2026-07-29 — Astryx agent docs & MCP server: manual vs resmi, project-scoped vs global
 
 **Phase:** M8 Development
