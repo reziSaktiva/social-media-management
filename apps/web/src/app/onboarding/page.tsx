@@ -25,7 +25,7 @@ export default async function OnboardingPage() {
   );
 
   if (slug) {
-    redirect(`/${slug}`);
+    redirect("/onboarding/resume");
   }
 
   return (

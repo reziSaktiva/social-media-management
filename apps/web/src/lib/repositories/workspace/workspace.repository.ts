@@ -136,9 +136,9 @@ export const workspaceRepository: IWorkspaceRepository = {
     };
   },
 
-  async findBySlug(slug) {
+  async findById(workspaceId) {
     const workspace = await prisma.workspace.findUnique({
-      where: { slug },
+      where: { id: workspaceId },
       select: { id: true, name: true, slug: true },
     });
 

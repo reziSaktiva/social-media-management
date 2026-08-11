@@ -62,7 +62,8 @@ export interface IWorkspaceRepository {
    */
   findDefaultWorkspaceForUser(userId: UserId): Promise<WorkspaceRecord | null>;
 
-  findBySlug(slug: string): Promise<WorkspaceRecord | null>;
+  /** Dipakai `getWorkspaceContext()` (ADR-076) — resolve workspace by cookie id. */
+  findById(workspaceId: WorkspaceId): Promise<WorkspaceRecord | null>;
 
   /** Ordered by `connectedAt` ascending. */
   listConnectedAccounts(

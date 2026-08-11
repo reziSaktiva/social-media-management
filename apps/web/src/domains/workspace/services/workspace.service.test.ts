@@ -43,7 +43,7 @@ function createFakeRepository(
     }),
     findAnyMembershipSlugByUserId: async () => null,
     findDefaultWorkspaceForUser: async () => null,
-    findBySlug: async () => null,
+    findById: async () => null,
     listConnectedAccounts: async () => [],
     listMembers: async () => [],
     findUsersByIds: async () => [],
@@ -228,26 +228,53 @@ describe("WorkspaceService.getDefaultWorkspaceSlugForUser", () => {
   });
 });
 
-describe("WorkspaceService.getWorkspaceBySlug", () => {
+describe("WorkspaceService.getWorkspaceById", () => {
   it("delegates to the repository", async () => {
     const record: WorkspaceRecord = {
-      id: asWorkspaceId("workspace-1"),
+      id: WORKSPACE_ID,
       name: "Acme",
       slug: "acme",
     };
     const service = new WorkspaceService(
       createFakeRepository({
-        findBySlug: async () => record,
+        findById: async () => record,
       }),
     );
 
-    await expect(service.getWorkspaceBySlug("acme")).resolves.toEqual(record);
+    await expect(service.getWorkspaceById(WORKSPACE_ID)).resolves.toEqual(
+      record,
+    );
   });
 
-  it("returns null when no workspace matches the slug", async () => {
+  it("returns null when no workspace matches the id", async () => {
     const service = new WorkspaceService(createFakeRepository());
 
-    await expect(service.getWorkspaceBySlug("missing")).resolves.toBeNull();
+    await expect(
+      service.getWorkspaceById(asWorkspaceId("missing")),
+    ).resolves.toBeNull();
+  });
+});
+
+describe("WorkspaceService.getMembership", () => {
+  it("delegates to the repository", async () => {
+    const ownerId = asUserId("owner-user");
+    const ownerMemberId = asMemberId("member-owner");
+    const record = member(ownerId, ownerMemberId, MemberRole.Owner);
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers([record])),
+    );
+
+    await expect(service.getMembership(WORKSPACE_ID, ownerId)).resolves.toEqual(
+      record,
+    );
+  });
+
+  it("returns null when the user has no membership", async () => {
+    const service = new WorkspaceService(createFakeRepository());
+
+    await expect(
+      service.getMembership(WORKSPACE_ID, asUserId("stranger-user")),
+    ).resolves.toBeNull();
   });
 });
 
