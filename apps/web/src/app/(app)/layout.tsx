@@ -8,9 +8,9 @@ import { auth } from "@/lib/better-auth/auth";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 
+import { AppSideNav } from "./components/AppSideNav";
 import { DraftEditorProvider } from "./components/draft-editor/Context";
 import { DraftEditorMount } from "./components/draft-editor/Mount";
-import { WorkspaceSideNav } from "./components/WorkspaceSideNav";
 
 export default async function Layout({
   children,
@@ -45,7 +45,7 @@ export default async function Layout({
       <AppShell
         contentPadding={4}
         sideNav={
-          <WorkspaceSideNav
+          <AppSideNav
             workspaceName={workspace.name}
             userName={session.user.name}
             userEmail={session.user.email}

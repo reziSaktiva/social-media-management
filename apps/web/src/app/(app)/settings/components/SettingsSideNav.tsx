@@ -2,16 +2,22 @@
 
 import { usePathname } from "next/navigation";
 
+import { FaArrowLeft } from "react-icons/fa6";
+
 import {
   SideNav,
+  SideNavHeading,
   SideNavItem,
   SideNavSection,
 } from "@astryxdesign/core/SideNav";
 
-// Subnav internal untuk /settings/* (T-039.1-3, ADR-076). Dirender di dalam
-// LayoutPanel di layout.tsx — bukan pengganti WorkspaceSideNav primary
-// (route ini sudah dibungkus AppShell + WorkspaceSideNav di
-// (app)/layout.tsx, jadi tidak menumpuk AppShell/SideNav kedua).
+// Sidebar Settings tunggal, pola Buffer (ADR-077, T-039.5) — dirender lewat
+// slot `sideNav` AppShell oleh AppSideNav (../../components/AppSideNav.tsx)
+// saat pathname di bawah /settings, MENGGANTIKAN TOTAL WorkspaceSideNav
+// (bukan sidebar kedua yang berdampingan seperti pola lama ADR-076/
+// T-039.1-3). Header back-navigation (ikon back + label "Settings", link ke
+// "/") ditaruh di prop `header` SideNav lewat SideNavHeading — pure link,
+// bukan submit/reload.
 //
 // Direstrukturisasi jadi 2 grup berlabel (Organization/Account) sesuai IA
 // (information-architecture.md) — dulu satu List flat tanpa grouping saat
@@ -56,7 +62,15 @@ export function SettingsSideNav() {
   const pathname = usePathname();
 
   return (
-    <SideNav>
+    <SideNav
+      header={
+        <SideNavHeading
+          heading="Settings"
+          icon={<FaArrowLeft />}
+          headingHref="/"
+        />
+      }
+    >
       {NAV_GROUPS.map((group) => (
         <SideNavSection key={group.title} title={group.title}>
           {group.items.map((item) => {

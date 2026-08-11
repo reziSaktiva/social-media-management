@@ -247,7 +247,7 @@ Semua route `/account/*` dan `/settings/*` sebelumnya masih placeholder "Scaffol
 
 | Field         | Value                                                                  |
 | ------------- | ----------------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress — T-039.1/.2/.3 selesai (review Ridwan + QA Najwa lolos); T-039.4 belum dikerjakan (terpisah) |
+| **Status**    | 🟡 In Progress — T-039.1/.2/.3/.5 selesai (review Ridwan + QA Najwa lolos); T-039.4 belum dikerjakan (terpisah) |
 | **Domain**    | workspace · platform                                                    |
 | **ADR**       | ADR-076                                                                  |
 | **Terkait**   | KI-023 (`PROJECT_STATE.md`)                                              |
@@ -268,6 +268,7 @@ task ini dieksekusi sudah akurat/up-to-date.
 - [x] **T-039.2** Gabungkan `apps/web/src/app/account/...` (saat ini terpisah) ke dalam `settings/account/*`, konsisten dengan konsolidasi Settings jadi dua grup "Organization" + "Account" (satu entry point avatar/user menu)
 - [x] **T-039.3** Ganti resolusi workspace di Middleware/`src/proxy.ts` dari parsing URL `[slug]` menjadi baca cookie `active-workspace-id` (HTTP-only), tetap divalidasi ulang terhadap `workspace_members` di setiap request
 - [ ] **T-039.4** Bangun halaman `/onboarding` dengan picker workspace — re-entry point untuk dua skenario: user baru tanpa workspace (buat workspace pertama) dan user existing yang kehilangan cookie workspace aktif (pilih dari daftar workspace)
+- [x] **T-039.5** (ADR-077) Migrasi kode pola sidebar Settings dari secondary nav ke sidebar tunggal pola Buffer: (a) `sideNav` di `AppShell` (`apps/web/src/app/(app)/layout.tsx`) jadi kondisional per-route — `WorkspaceSideNav` di luar `/settings`, `SettingsSideNav` di dalam `/settings`; (b) hapus `Layout`+`LayoutPanel role="navigation"` secondary nav di `apps/web/src/app/(app)/settings/layout.tsx`, content jadi full-width; (c) tambah header back-navigation ("← Settings" → Home) di `SettingsSideNav.tsx`; referensi visual sudah ada di readme.md Claude Design (`.settings-sidebar`)
 
 **Catatan eksekusi T-039.1–.3 (2026-08-11):** Dikerjakan 5 track paralel
 (proxy.ts+onboarding, app shell+draft editor, publish, engage/analyze/
@@ -316,6 +317,29 @@ dengan picker workspace untuk user yang punya >1 workspace saat cookie
 hilang. Saat ini `onboarding/resume/route.ts` otomatis memilih salah satu
 lewat `getDefaultWorkspaceForUser` — bukan bug, itu batasan scope saat ini,
 menunggu T-039.4.
+
+**Catatan eksekusi T-039.5 (2026-08-11, ADR-077):** Dikerjakan Mark UI
+Engineer → review arsitektur Ridwan (lolos, tidak ada temuan) → QA Najwa
+end-to-end browser (PASS semua golden path: typecheck bersih, lint bersih,
+79/79 test pass, sidebar Settings menggantikan total main sidebar dengan
+header back-navigation berfungsi, taksonomi Organization/Account tidak
+berubah, tidak ada regresi di halaman lain, dark mode konsisten, reload
+langsung juga benar).
+
+- Diubah: `apps/web/src/app/(app)/layout.tsx` (`sideNav` `AppShell` jadi
+  kondisional per-route lewat komponen baru di bawah), dan
+  `apps/web/src/app/(app)/settings/components/SettingsSideNav.tsx`
+  (tambah header back-navigation "← Settings" → Home).
+- Ditambah: `apps/web/src/app/(app)/components/AppSideNav.tsx` (Client
+  Component baru — `usePathname()` memilih render `SettingsSideNav` di
+  bawah `/settings`, atau `WorkspaceSideNav` di luar itu).
+- Dihapus total: `apps/web/src/app/(app)/settings/layout.tsx` (wrapper
+  `LayoutPanel` secondary nav tidak diperlukan lagi — content Settings
+  sekarang full-width dengan sidebar tunggal).
+
+T-039.5 menutup sisa gap render sidebar Settings di KI-023 (bersama ADR-077).
+Sisa scope terbuka KI-023/T-039 sekarang hanya **T-039.4** (onboarding
+picker workspace).
 
 ---
 

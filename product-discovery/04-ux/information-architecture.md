@@ -83,7 +83,7 @@ Secondary navigation diakses melalui elemen tetap di luar primary nav — tidak 
 
 | Label | Akses Via | Isi |
 | ----- | --------- | --- |
-| Settings | Avatar / user menu | Grup **Organization** (anggota tim, akun terhubung, izin, branding, billing) dan grup **Account** (profil pengguna, notifikasi, preferensi) |
+| Settings | Avatar / user menu | Grup **Organization** (anggota tim, akun terhubung, izin, branding, billing) dan grup **Account** (profil pengguna, notifikasi, preferensi). Begitu masuk, primary nav (sidebar workspace) **digantikan total** oleh sidebar khusus Settings di slot yang sama — bukan tampil berdampingan — dengan header back-navigation di atasnya (ADR-077) |
 | Notifications | Icon notifikasi | Notifikasi in-app |
 
 ---
@@ -202,7 +202,7 @@ Start Page
 
 ## 6. Settings
 
-Diakses via avatar / user menu — bukan layar kerja harian. Terdiri dari dua grup: **Organization** (pengelolaan workspace, hanya untuk role yang berwenang) dan **Account** (preferensi personal pengguna).
+Diakses via avatar / user menu — bukan layar kerja harian. Terdiri dari dua grup: **Organization** (pengelolaan workspace, hanya untuk role yang berwenang) dan **Account** (preferensi personal pengguna). Begitu masuk, primary nav (sidebar workspace) digantikan total oleh satu sidebar khusus Settings di slot yang sama — pola Buffer, bukan dua sidebar berdampingan — dengan header back-navigation ("← Settings") di atasnya yang menaut balik ke halaman utama app (ADR-077).
 
 ```
 Settings
