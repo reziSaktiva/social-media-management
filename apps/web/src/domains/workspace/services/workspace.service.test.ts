@@ -41,7 +41,6 @@ function createFakeRepository(
       name,
       slug,
     }),
-    findAnyMembershipSlugByUserId: async () => null,
     findDefaultWorkspaceForUser: async () => null,
     findById: async () => null,
     listConnectedAccounts: async () => [],
@@ -211,20 +210,6 @@ describe("WorkspaceService.createWorkspace", () => {
     await expect(
       service.createWorkspace({ userId: USER_ID, name: "Acme" }),
     ).rejects.toThrow("unexpected");
-  });
-});
-
-describe("WorkspaceService.getDefaultWorkspaceSlugForUser", () => {
-  it("delegates to the repository", async () => {
-    const service = new WorkspaceService(
-      createFakeRepository({
-        findAnyMembershipSlugByUserId: async () => "acme",
-      }),
-    );
-
-    await expect(service.getDefaultWorkspaceSlugForUser(USER_ID)).resolves.toBe(
-      "acme",
-    );
   });
 });
 
