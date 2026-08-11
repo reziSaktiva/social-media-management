@@ -28,7 +28,8 @@ import {
  *    `ACTIVE_WORKSPACE_ID_COOKIE`, lalu inject sebagai request header
  *    (`x-workspace-id` / `x-workspace-role`) untuk dibaca `getWorkspaceContext()`
  *    di Server Component/Server Action downstream. Ini melakukan Prisma
- *    query — WAJIB runtime Node.js (lihat `export const config` di bawah).
+ *    query — aman karena Proxy Next.js 16 selalu Node.js (tanpa
+ *    `runtime` di `config`; opsi itu tidak diizinkan di Proxy file).
  */
 
 const BYPASS_PREFIXES = ["/api/auth", "/api/jobs", "/api/health"];
@@ -129,7 +130,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  runtime: "nodejs",
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
