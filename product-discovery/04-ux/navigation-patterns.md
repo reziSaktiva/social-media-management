@@ -182,6 +182,8 @@ User Avatar → User Menu (dropdown)
 
 User Menu muncul sebagai dropdown kecil — satu-satunya titik masuk ke halaman Settings (grup Organization dan Account), dilakukan dari sini. Ini bukan layar kerja harian sehingga tidak memerlukan slot di primary nav.
 
+**Layout setelah masuk (pola Buffer, ADR-077):** begitu masuk Settings, sidebar persistent (workspace switcher, nav items, Channels) **digantikan total** oleh satu sidebar khusus Settings di slot yang sama — bukan tampil berdampingan sebagai secondary nav. Sidebar khusus ini punya header back-navigation ("← Settings") di atas dua grup Organization/Account, menaut balik ke Home. Taksonomi grup tidak berubah.
+
 **Logout wajib melalui dialog konfirmasi (Tier 2)** — lihat kebijakan Safety Check / Double Confirmation di `key-screen-patterns.md` (ADR-049).
 
 ---
@@ -404,7 +406,7 @@ Ketika pengguna tiba di section baru melalui cross-section navigation (misalnya 
 
 **Alasan:** Terlalu kompleks untuk ditangani di level navigasi tanpa history stack yang jelas. Pengguna menggunakan sidebar untuk navigasi kembali.
 
-**Pengecualian:** Draft Editor (modal overlay, ADR-052/ADR-065) selalu memiliki tombol Close yang mengembalikan tampilan ke sub-screen asal di dalam section Publish — karena modal dibuka di atas sub-screen yang sama, bukan drill-down lintas route.
+**Pengecualian:** Draft Editor (modal overlay, ADR-052/ADR-065) selalu memiliki tombol Close yang mengembalikan tampilan ke sub-screen asal di dalam section Publish — karena modal dibuka di atas sub-screen yang sama, bukan drill-down lintas route. **Settings** juga jadi pengecualian sejak ADR-077: karena sidebar persistent digantikan total oleh sidebar khusus Settings (bukan drill-down biasa di dalam Main Content Area), sidebar itu sendiri punya tombol back permanen ("← Settings") menuju Home — bukan history-based back ke posisi sebelumnya, cuma satu tujuan tetap.
 
 ---
 
@@ -420,7 +422,7 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | NP-D04 | Notification badge hanya pada Engage | Hanya Engage yang memerlukan respons segera; badge di semua section menambah noise | UXP-03, UXP-07 |
 | NP-D05 | Tidak ada redirect otomatis setelah cross-section navigation | State layar asal mungkin sudah berubah; redirect otomatis menciptakan kebingungan | NP-P02 |
 | NP-D06 | Publish default ke tab Calendar | Calendar memberi overview jadwal terbaik untuk Raka dan Maya (IA-D04) | UXP-02, P-IA-02 |
-| NP-D07 | User Avatar (user menu) sebagai satu-satunya entry point ke Settings (grup Organization + Account) | Settings bukan akses harian; tidak perlu slot di primary nav (IA-D05); satu titik masuk lebih sederhana daripada dua entry point terpisah | UXP-03 |
+| NP-D07 | User Avatar (user menu) sebagai satu-satunya entry point ke Settings (grup Organization + Account). Sejak ADR-077, begitu masuk, sidebar persistent digantikan total oleh sidebar khusus Settings (pola Buffer) dengan header back-navigation — bukan tampil berdampingan sebagai secondary nav | Settings bukan akses harian; tidak perlu slot di primary nav (IA-D05); satu titik masuk lebih sederhana daripada dua entry point terpisah; sidebar tunggal dengan back button lebih ringkas dibanding dua sidebar berdampingan (ADR-077) | UXP-03 |
 | NP-D08 | Notifications Panel sebagai overlay, bukan pengganti Main Content Area | Pengguna harus bisa menutup panel dan kembali ke pekerjaan tanpa kehilangan state | NP-P02 |
 | NP-D09 | New Post CTA tersedia langsung dari Calendar dan Queue, bukan hanya dari Drafts. Sejak NP-D12, CTA yang sama juga tersedia di Sidebar — keduanya melengkapi, bukan saling menggantikan | Raka sering menemukan gap jadwal saat melihat Calendar atau Queue — memaksanya berpindah ke tab Drafts dulu menambah friction yang tidak perlu. CTA langsung di titik penemuan kebutuhan selaras dengan alur siklus kerja (UXP-01) | UXP-01, UXP-03 |
 | NP-D10 | Logout wajib melalui dialog konfirmasi (Tier 2) | Melindungi dari interupsi pekerjaan yang belum tersimpan, walau aksi Logout sendiri reversibel — bagian dari kebijakan Safety Check/Double Confirmation lintas produk (ADR-049, `key-screen-patterns.md`) | UXP-04 |
@@ -442,7 +444,7 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | Buat post baru dari section manapun | Klik CTA "+ New Post" di Sidebar | Buka Draft Editor (modal) kosong, sama seperti CTA di Calendar/Queue/Drafts (NP-D12) |
 | Selesaikan aksi terminal di Draft Editor | Klik Save as Draft / Schedule / Publish Now | Modal tertutup, redirect ke Publish → Drafts / Queue / History-sementara-Calendar (NP-D13) |
 | Buka thread dari Inbox | Klik thread | Expand inline panel kanan dalam Inbox |
-| Akses Settings | Klik User Avatar → dropdown | Navigasi ke Settings (Organization / Account) |
+| Akses Settings | Klik User Avatar → dropdown | Navigasi ke Settings (Organization / Account); sidebar persistent digantikan sidebar khusus Settings + tombol back (ADR-077) |
 | Buka Notifications | Klik Notifications icon | Buka Notifications Panel (overlay) |
 | Error status → Settings | Klik indikator error / tautan aksi | Navigasi ke Settings → Organization → Connected Accounts |
 | Channel bermasalah di sidebar Channels → klik | Klik channel row (Disconnected/Expired) | Navigasi ke Settings → Organization → Connected Accounts |

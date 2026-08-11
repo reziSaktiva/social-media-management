@@ -8,6 +8,104 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-11 — T-039.5 selesai: migrasi kode sidebar Settings ke pola Buffer (ADR-077)
+
+### Context
+
+Menyusul baseline ADR-077 (entri di bawah) dan T-039.1/.2/.3 (entri
+selanjutnya), King Rezi memerintahkan eksekusi T-039.5 — migrasi kode
+render sidebar Settings dari secondary nav ke sidebar tunggal pola Buffer.
+Dikerjakan Mark UI Engineer, lalu direview arsitektur oleh Ridwan dan QA
+end-to-end browser oleh Najwa.
+
+### Changed — Implementasi
+
+- `apps/web/src/app/(app)/layout.tsx` — `sideNav` di `AppShell` jadi
+  kondisional per-route lewat komponen baru `AppSideNav.tsx`.
+- `apps/web/src/app/(app)/settings/components/SettingsSideNav.tsx` —
+  ditambah header back-navigation ("← Settings" → Home).
+
+### Added — Implementasi
+
+- `apps/web/src/app/(app)/components/AppSideNav.tsx` (Client Component
+  baru) — `usePathname()` memilih render `SettingsSideNav` di bawah
+  `/settings`, atau `WorkspaceSideNav` di luar itu.
+
+### Removed — Implementasi
+
+- `apps/web/src/app/(app)/settings/layout.tsx` (dihapus total) — wrapper
+  `Layout`+`LayoutPanel role="navigation"` secondary nav tidak diperlukan
+  lagi karena sidebar Settings sekarang tunggal, content jadi full-width.
+
+### Verification
+
+- Review arsitektur Ridwan: lolos, tidak ada temuan.
+- QA Najwa (end-to-end browser): PASS semua golden path — typecheck
+  bersih, lint bersih, 79/79 test pass, sidebar Settings menggantikan
+  total main sidebar dengan header back-navigation berfungsi, taksonomi
+  Organization/Account tidak berubah, tidak ada regresi di halaman lain,
+  dark mode konsisten, reload langsung juga benar.
+
+### Status
+
+T-039.5 ✅ selesai. Menutup sisa gap render sidebar Settings di KI-023
+(bersama ADR-077, lihat `PROJECT_STATE.md`). Sisa scope terbuka
+KI-023/T-039 sekarang hanya **T-039.4** (onboarding picker workspace).
+Tidak ada ADR baru — ini eksekusi ADR-077 yang sudah Accepted, tidak ada
+amandemen.
+
+---
+
+## 2026-08-11 — ADR-077: Settings pakai sidebar tunggal pola Buffer (amandemen mekanisme render ADR-076)
+
+### Context
+
+King Rezi membagikan screenshot halaman Settings Buffer dan meminta pola
+itu ditiru: saat masuk Settings, main sidebar workspace digantikan total
+oleh satu sidebar khusus Settings (bukan dua sidebar berdampingan seperti
+kondisi sekarang, warisan implementasi T-016.1). Diskusi berjalan bertahap
+sesuai `proactive-clarification` — riset struktur kode dulu, klarifikasi
+cakupan (murni halaman Settings) dan status keputusan (mau dieksekusi,
+tapi diskusi dulu), baru King Rezi mengerjakan desainnya sendiri langsung
+di Claude Design (bukan lewat Neymar) memakai prompt yang disusun sesi ini.
+Setelah desain dikonfirmasi selesai, King Rezi meminta baseline dokumen
+diperbarui menyusul.
+
+### Added — Dokumentasi
+
+- `DECISIONS.md` + `decisions/ADR-077-settings-sidebar-tunggal-menggantikan-main-sidebar-pola-buffer.md`
+  (baru) — mengamandemen mekanisme render Settings dari ADR-076 (taksonomi
+  grup Organization/Account tidak berubah, murni ubah render jadi sidebar
+  tunggal + header back-navigation, cakupan terbatas halaman Settings).
+- `tasks/v01-foundation.md` § T-039 — subtask baru **T-039.5** untuk
+  migrasi kode `apps/web` (AppShell `sideNav` kondisional per-route, hapus
+  `LayoutPanel` secondary nav, tambah header back di `SettingsSideNav`).
+
+### Updated — Dokumentasi
+
+- `product-discovery/04-ux/information-architecture.md` — "Secondary
+  Navigation" + section "6. Settings": deskripsi mekanisme jadi
+  "menggantikan primary nav", bukan coexist.
+- `product-discovery/04-ux/navigation-patterns.md` — section "Settings"
+  (tambah deskripsi back-navigation), NP-D07, catatan "Navigasi Balik
+  Setelah Cross-Section" (Settings jadi pengecualian baru), tabel
+  "Ringkasan Pola" (baris Akses Settings).
+
+### Verification
+
+- Cross-check `readme.md` project Claude Design via `DesignSync` — pola
+  `.settings-sidebar`/`.settings-back-btn` + deskripsinya sudah ada
+  duluan (dikerjakan King Rezi sendiri), sehingga **tidak perlu** prompt
+  update readme — sudah sinkron sebelum sesi ini menulis baseline.
+
+### Status
+
+Baseline dokumentasi selesai (ADR-077 Accepted). Desain sudah selesai di
+Claude Design. Kode `apps/web` **belum** dimigrasikan — menyusul sebagai
+T-039.5, task terpisah.
+
+---
+
 ## 2026-08-11 — T-039.1/.2/.3 selesai: migrasi kode `apps/web` ke baseline ADR-076
 
 ### Context

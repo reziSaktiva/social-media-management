@@ -467,3 +467,15 @@ Selama eksekusi terjadi 2 putaran revisi dari user: (1) hapus teks nama platform
 
 **Impact:** `DECISIONS.md` (ADR-070 baru), `PROJECT_STATE.md` (Completed Ringkasan + update catatan KI-013 mereferensikan ADR-070), `COMPLETE_TASK.md`. Instalasi self-hosted Better Auth dilakukan mandiri oleh King Rezi di komputer lokal (`localhost:3000` + Supabase Cloud, tanpa Railway) — belum ada eksekusi kode oleh AI. Next: `QA_TEST_ACCOUNTS.md` dan KI-013 perlu ditinjau ulang setelah instalasi terverifikasi jalan normal.
 
+---
+
+## 2026-08-11 — Settings pakai sidebar tunggal pola Buffer (ADR-077), desain dikerjakan King Rezi sendiri
+
+**Phase:** Phase 6 / M8 Development
+
+**Summary:** King Rezi membagikan screenshot halaman Settings Buffer dan bertanya apakah main sidebar bisa diganti sidebar khusus Settings seperti itu, dengan instruksi eksplisit untuk berdiskusi dulu tanpa eksekusi apapun. Sesi menelusuri struktur kode saat ini (main sidebar `WorkspaceSideNav` via `AppShell`, secondary nav `SettingsSideNav` di dalam `LayoutPanel` — dua sidebar berdampingan, warisan T-016.1) sebelum bertanya balik cakupan dan tingkat kepastian keputusan. King Rezi mengonfirmasi cakupan murni halaman Settings dan ingin lanjut eksekusi, tapi memilih mengerjakan desainnya **sendiri** di Claude Design — bukan lewat subagent Neymar — dan minta disiapkan prompt desain plus daftar dokumen yang perlu diubah kalau desain berubah. Setelah desain selesai, King Rezi meminta perubahan dokumen dikerjakan menyusul.
+
+**Key Decision/Insight:** Cross-check ke `readme.md` project Claude Design (via `DesignSync`) menemukan King Rezi sudah lebih dulu mendokumentasikan pola ini di sana (`.settings-sidebar`, "T-039.1-4, Buffer-style single sidebar") sebelum sesi ini menulis ADR — jadi pertanyaan "apakah readme perlu diupdate" terjawab tidak perlu, baseline dokumen di repo yang justru menyusul menyelaraskan diri ke desain yang sudah ada. Perubahan ini murni mekanisme render (sidebar tunggal + back-navigation menggantikan dua-sidebar-berdampingan) — taksonomi grup Organization/Account dari ADR-076 sengaja dipertahankan, tidak ada alasan mengubahnya.
+
+**Impact:** `DECISIONS.md` (ADR-077 baru, mengamandemen mekanisme render ADR-076), `information-architecture.md` (Secondary Navigation, section 6 Settings), `navigation-patterns.md` (section Settings, NP-D07, catatan back-navigation, tabel Ringkasan Pola), `tasks/v01-foundation.md` (subtask baru T-039.5), `COMPLETE_TASK.md`. Kode `apps/web` belum dimigrasikan — menyusul sebagai T-039.5.
+
