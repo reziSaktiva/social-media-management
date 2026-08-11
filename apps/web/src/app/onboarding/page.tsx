@@ -20,12 +20,12 @@ export default async function OnboardingPage() {
   }
 
   const workspaceService = new WorkspaceService(workspaceRepository);
-  const slug = await workspaceService.getDefaultWorkspaceSlugForUser(
+  const workspace = await workspaceService.getDefaultWorkspaceForUser(
     asUserId(session.user.id),
   );
 
-  if (slug) {
-    redirect(`/${slug}`);
+  if (workspace) {
+    redirect("/onboarding/resume");
   }
 
   return (

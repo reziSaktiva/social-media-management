@@ -53,16 +53,11 @@ export interface IWorkspaceRepository {
     ownerId: UserId;
   }): Promise<WorkspaceRecord>;
 
-  findAnyMembershipSlugByUserId(userId: UserId): Promise<string | null>;
-
-  /**
-   * Sama seperti `findAnyMembershipSlugByUserId` + `findBySlug` digabung
-   * satu query — dipakai caller yang butuh WorkspaceRecord lengkap
-   * (bukan cuma slug) supaya tidak dua round trip (code-review finding).
-   */
+  /** Membership aktif terlama milik user, dengan WorkspaceRecord lengkap. */
   findDefaultWorkspaceForUser(userId: UserId): Promise<WorkspaceRecord | null>;
 
-  findBySlug(slug: string): Promise<WorkspaceRecord | null>;
+  /** Dipakai `getWorkspaceContext()` (ADR-076) — resolve workspace by cookie id. */
+  findById(workspaceId: WorkspaceId): Promise<WorkspaceRecord | null>;
 
   /** Ordered by `connectedAt` ascending. */
   listConnectedAccounts(

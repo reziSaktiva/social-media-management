@@ -109,6 +109,7 @@ Task berstatus 🟡 — detail dan subtask ada di [`TASKS.md`](TASKS.md):
 * **T-031** Redirect otomatis ke sub-screen tujuan (ADR-054) — Save as Draft sudah sejalan; sisanya menyusul bersama T-029/T-032/T-034.
 * **T-012** Sidebar section "Channels" (ADR-058) — detail subtask di [`TASKS.md`](TASKS.md) / `tasks/v01-foundation.md`.
 * **T-016** Account & user settings screens — T-016.1/2/3/5 selesai; hanya T-016.4 (notifications) tersisa, Blocked oleh T-036 (v0.2).
+* **T-039** Migrasi Routing & Settings (ADR-076) — T-039.1/2/3 selesai (review Ridwan + QA Najwa lolos); T-039.4 (onboarding picker workspace) belum dikerjakan, terpisah.
 
 Catatan non-task: template `design-tokens.md` berstatus Draft / TBD; nilai final
 berkembang iteratif co-equal dengan Claude Design (ADR-056) — tidak ada lagi
@@ -210,7 +211,7 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003), tiga env var ini belum diisi di 
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | Sebagian Resolved — sisa scope: T-039.4 (onboarding picker workspace) |
 | Kategori | Tech-Debt |
 | Terkait | T-009, T-039, ADR-076 |
 
@@ -222,22 +223,21 @@ baseline sama sekali — bukan cuma belum dibangun, tapi memang tidak lagi
 jadi bagian desain (digantikan entry point avatar/user menu tunggal ke
 Settings gabungan Organization + Account).
 
-Gap yang tersisa sekarang lebih besar dari sekadar satu komponen: seluruh
-kode `apps/web` masih memakai skema **lama** yang sudah di-superseded ADR-076—
-`apps/web/src/app/[slug]/...` (dynamic segment, bukan route group `(app)`),
-`apps/web/src/app/account/...` terpisah dari `[slug]/settings/...` (bukan
-`settings/account/*` gabungan), dan Middleware/`src/proxy.ts` yang masih
-resolve workspace dari `WorkspaceSideNav.tsx` (elemen statis tanpa
-dropdown) alih-alih dari cookie `active-workspace-id`. Halaman
-`/onboarding` dengan picker workspace (re-entry saat cookie hilang) juga
-belum ada.
+**Update 2026-08-11 — bagian inti gap ini sudah ditutup oleh T-039.1–.3:**
+`apps/web/src/app/[slug]/...` sudah dipindah ke route group `(app)/...`,
+`apps/web/src/app/account/...` sudah digabung ke `(app)/settings/account/*`
+(dua grup Organization + Account), dan Middleware/`src/proxy.ts` sudah
+resolve workspace dari cookie `active-workspace-id` (tervalidasi ulang
+terhadap `workspace_members` per request) alih-alih dari URL/komponen
+statis. Sudah lolos review arsitektur Ridwan + QA Najwa (detail lengkap di
+`tasks/v01-foundation.md` § T-039).
 
-Migrasi kode ke baseline baru sudah dibuatkan task formal **T-039**
-(`tasks/v01-foundation.md`), status `⏳ Not Started` — murni entry backlog,
-eksekusi belum dimulai sampai diperintahkan eksplisit King Rezi. Per
-2026-08-11, Design System (Claude Design) sudah disinkronkan ke ADR-076
-sehingga jadi referensi visual yang akurat/up-to-date saat T-039 nanti
-dieksekusi — gap intinya (kode `apps/web` belum migrasi) belum selesai.
+Sisa gap: halaman `/onboarding` dengan picker workspace (re-entry point
+untuk user dengan >1 workspace saat cookie hilang) — ini **T-039.4**,
+belum dikerjakan. Untuk skenario "cookie hilang, tepat 1 workspace",
+`onboarding/resume/route.ts` (bagian T-039.3) sudah menangani otomatis
+lewat `getDefaultWorkspaceForUser`; sisanya (>1 workspace, perlu pilihan
+eksplisit user) masih menunggu T-039.4.
 
 ---
 
@@ -251,11 +251,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-039.1–.3 selesai** — Migrasi kode `apps/web` ke baseline ADR-076: route `[slug]/*` dipindah ke route group `(app)/*`, `account/*` digabung ke `(app)/settings/account/*` (grup Organization + Account, satu entry point avatar), Middleware/`src/proxy.ts` resolve workspace dari cookie `active-workspace-id` (tervalidasi ulang `workspace_members`, inject header `x-workspace-id`/`x-workspace-role`, runtime Node.js). Dikerjakan 5 track paralel, lolos review Ridwan (2 temuan diperbaiki: dead code `getWorkspaceBySlug`, hardening strip header di jalur bypass) + QA Najwa (1 bug blocking infinite redirect loop di halaman auth publik, sudah diperbaiki + test regresi). Menutup sebagian besar KI-023. T-039.4 (onboarding picker workspace) tetap terbuka, terpisah. Detail: `tasks/v01-foundation.md` § T-039, `COMPLETE_TASK.md`.
 * **ADR-076** — 14 file baseline `product-discovery/`+`context/` ditulis ulang: workspace context pindah ke cookie (hapus `[slug]`, route group `(app)`), Settings dikonsolidasi jadi Organization + Account dengan entry point avatar tunggal, `/onboarding` jadi re-entry point saat cookie hilang. Review internal (PR [#61](https://github.com/reziSaktiva/social-media-management/pull/61)) menemukan & memperbaiki 5 inkonsistensi (referensi `/dashboard` basi, bahasa "superseded" di Decision Log, `settings/account/` tanpa `page.tsx` default, contoh URL salah tulis nama route group, jumlah zona sidebar keliru) sebelum ADR dibuat. KI-023 direvisi mengikuti ADR ini. Migrasi kode `apps/web` masih menyusul sebagai task terpisah. Pada 2026-08-11, Design System (Claude Design) juga sudah disinkronkan mengikuti ADR-076 ini — Settings konsolidasi Organization+Account, avatar entry point tunggal, cleanup duplikasi `user-settings`/`account-profile`/`account-preferences`, fix ikon Astryx-consistent di Preferences; migrasi kode `apps/web` (T-039) masih menyusul sebagai task terpisah yang belum dieksekusi.
 * **KI-021 resolved** *(referensi flow avatar/dropdown di bawah — superseded oleh ADR-076, lihat bullet di atas)* — Design System tidak punya logic apa pun untuk membuka menu saat avatar diklik (langsung pindah screen) dan alur Logout belum pernah dimodelkan. King Rezi memperbaiki manual: avatar sidebar Design System sekarang membuka dropdown (Profile + divider + Logout, mirror `DropdownMenu` Astryx), dan Logout membuka dialog konfirmasi Tier 2 (judul "Logout dari akun ini?", mirror `AlertDialog`, sesuai ADR-049/NP-D10). Tidak ada kode `apps/web` yang berubah — perubahan murni di Design System.
 * **KI-022 resolved** *(superseded oleh ADR-076 — lihat bullet di atas)* — Avatar Design System sebelumnya mengarah ke Workspace Settings `settings-connected-accounts`, berbeda dari kode web yang saat itu mengarah ke `/account/profile` User Settings. Dikonfirmasi kode web sudah benar sesuai baseline `information-architecture.md` + ADR-056 yang berlaku saat itu, jadi King Rezi memperbaiki Design System mengikuti kode: item Profile sempat diarahkan ke screen `templates/user-settings.html` (User Settings) dengan sidebar minimal ala `AccountSideNav.tsx`. **Screen dan target ini sudah tidak berlaku** — ADR-076 mengonsolidasikan Settings jadi satu section (Organization + Account) dengan entry point avatar tunggal, dan Design System sudah disinkronkan mengikutinya (termasuk cleanup duplikasi `user-settings`/`account-profile`/`account-preferences`, lihat bullet `ADR-076`). Migrasi kode `apps/web` ke alur baru ini masih tercatat sebagai gap terbuka di `KI-023`/T-039.
 * **KI-020 resolved** — Layout footer sidebar `WorkspaceSideNav.tsx` sebelumnya memakai `<HStack justify="between">` yang membungkus 3 children langsung (Notifikasi, Theme, Avatar) sehingga menyebar rata, berbeda dari Design System (`.sidebar-footer`) yang mengelompokkan Theme+Avatar jadi satu klaster di kanan (via `margin-left:auto` pada tombol Theme) dengan Notifikasi sendiri di kiri. King Rezi memutuskan kode ikut Design System — outer `HStack justify="between"` sekarang membungkus 2 grup: IconButton Notifikasi sendiri, dan HStack baru berisi IconButton Theme + DropdownMenu Avatar (grup kanan). Terverifikasi manual di browser (Notifikasi kiri, Theme+Avatar mengelompok kanan, dropdown avatar tetap normal), `tsc --noEmit` bersih.
-* **KI-019 resolved** — Footer sidebar `WorkspaceSideNav.tsx` sebelumnya memakai `DropdownMenu` dengan tombol teks nama/email (`button={{ label: userName || userEmail, variant: "ghost" }}`), berbeda jenis elemen dari Design System (`components/navigation.html` di Claude Design) yang memakai avatar bulat berisi inisial. King Rezi memutuskan kode mengikuti Design System (bukan sebaliknya) — tombol diganti `isIconOnly` dengan `icon: <Avatar name={userName || userEmail} size="sm" />`, `hasChevron={false}`, `aria-label` nama/email dipertahankan. Terverifikasi manual di browser (light & dark mode, dropdown Profile/Logout normal, tanpa regresi). Layout container `justify="between"` (KI-020) resolved terpisah — lihat bullet di atas.
 
 ---
 

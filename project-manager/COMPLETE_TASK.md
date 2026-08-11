@@ -8,6 +8,79 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-11 — T-039.1/.2/.3 selesai: migrasi kode `apps/web` ke baseline ADR-076
+
+### Context
+
+Menyusul task backlog T-039 (dibuat 2026-08-10, lihat entri di bawah) dan
+sinkronisasi Design System ke ADR-076 (entri di bawahnya), King Rezi
+memerintahkan eksekusi T-039.1–T-039.3. Dikerjakan lewat 5 track paralel:
+`proxy.ts` + `/onboarding`, App Shell + Draft Editor, Publish, Engage/
+Analyze/Start Page/Home, dan konsolidasi Settings. T-039.4 (halaman
+`/onboarding` dengan picker workspace untuk user dengan >1 workspace)
+sengaja tidak termasuk — tetap terbuka sebagai task terpisah.
+
+### Changed — Implementasi
+
+- Seluruh route workspace-scoped (`Home`, `Publish`, `Engage`, `Analyze`,
+  `Start Page`, `Settings`) dipindah dari dynamic segment
+  `apps/web/src/app/[slug]/...` ke route group `apps/web/src/app/(app)/...`.
+- `apps/web/src/app/account/...` (terpisah) digabung ke dalam
+  `(app)/settings/account/*`, konsisten dengan konsolidasi Settings jadi
+  dua grup sidebar "Organization" + "Account", satu entry point avatar/user
+  menu. Label avatar menu diganti dari "Profile" jadi **"Settings"**
+  (keputusan dikonfirmasi King Rezi saat eksekusi).
+- `apps/web/src/proxy.ts`: resolusi workspace diganti dari parsing URL
+  `[slug]` menjadi baca cookie `active-workspace-id` (HTTP-only), divalidasi
+  ulang terhadap `workspace_members` di setiap request, lalu inject header
+  `x-workspace-id`/`x-workspace-role` ke downstream. Runtime diubah ke
+  Node.js (bukan Edge) karena Prisma memakai adapter `pg`.
+- Dihapus `apps/web/src/app/page.tsx` (root) — konflik routing dengan
+  `(app)/page.tsx` karena route group tidak menambah segmen URL.
+- Ditambahkan Route Handler baru `apps/web/src/app/onboarding/resume/route.ts`
+  — set cookie untuk user existing yang kehilangan cookie tapi sudah punya
+  workspace (bagian T-039.3; bukan picker T-039.4 untuk user dengan >1
+  workspace).
+
+### Fixed — Review Ridwan (Architecture Reviewer)
+
+- Dead code `getWorkspaceBySlug`/`findBySlug` dihapus dari
+  `WorkspaceService`, `IWorkspaceRepository`, dan implementasi Prisma-nya
+  (tidak ada lagi caller produksi pasca migrasi).
+- Hardening: header `x-workspace-id`/`x-workspace-role` di-strip
+  (`stripWorkspaceHeaders`) di jalur bypass (`/api/auth`, `/api/jobs`,
+  `/api/health`) dan `/onboarding`, dipanggil di semua `NextResponse.next()`
+  — mencegah client memalsukan header ini.
+
+### Fixed — QA Najwa (bug blocking, ditemukan sebelum task ditutup)
+
+- Versi awal `proxy.ts` menyebabkan infinite redirect loop di `/login`,
+  `/register`, `/forgot-password`, `/reset-password` untuk SEMUA user tanpa
+  session — root cause: hilang early-return untuk kombinasi
+  `!hasSessionCookie && isPublicAuthPage` setelah refactor redirect logic.
+  Diperbaiki + ditambah test regresi baru `proxy.test.ts`.
+
+### Verification
+
+- `tsc --noEmit` bersih, lint bersih, 80 test pass (termasuk
+  `proxy.test.ts` baru).
+- Verifikasi visual: Claude Design (sudah disinkron ke ADR-076 sebelumnya)
+  dicek cocok dengan hasil implementasi `SettingsSideNav` (grouping
+  Organization/Account, urutan & label item) — tidak ada perubahan di
+  Claude Design.
+
+### Status
+
+T-039.1/.2/.3 ✅ selesai (review + QA lolos). T-039.4 (onboarding picker
+workspace untuk skenario >1 workspace) tetap terbuka, task terpisah.
+Menutup sebagian besar KI-023 di `PROJECT_STATE.md` (sisa scope: T-039.4).
+Tidak ada ADR baru — ini eksekusi ADR-076 yang sudah ada; dua keputusan
+kecil saat eksekusi (label "Settings", penghapusan `page.tsx` root) dicatat
+sebagai detail implementasi di `tasks/v01-foundation.md` § T-039, bukan
+amandemen ADR.
+
+---
+
 ## 2026-08-11 — Design System (Claude Design) disinkronkan ke ADR-076
 
 ### Context

@@ -247,7 +247,7 @@ Semua route `/account/*` dan `/settings/*` sebelumnya masih placeholder "Scaffol
 
 | Field         | Value                                                                  |
 | ------------- | ----------------------------------------------------------------------- |
-| **Status**    | ⏳ Not Started                                                          |
+| **Status**    | 🟡 In Progress — T-039.1/.2/.3 selesai (review Ridwan + QA Najwa lolos); T-039.4 belum dikerjakan (terpisah) |
 | **Domain**    | workspace · platform                                                    |
 | **ADR**       | ADR-076                                                                  |
 | **Terkait**   | KI-023 (`PROJECT_STATE.md`)                                              |
@@ -258,19 +258,64 @@ ADR-076 hanya mengubah baseline dokumentasi (PR #61) — kode `apps/web` **belum
 dimigrasikan. Struktur route saat ini masih dynamic segment `[slug]` dan
 `account/` terpisah dari `settings/`; Middleware/`src/proxy.ts` masih resolve
 workspace dari URL, bukan cookie. Task ini menutup gap tersebut (KI-023).
-**Catatan: task ini murni entry backlog — belum boleh dieksekusi sampai
-diperintahkan eksplisit oleh King Rezi.**
 
 **Catatan tambahan (2026-08-11):** Design System (Claude Design) sudah
 disinkronkan ke ADR-076 (Settings konsolidasi Organization+Account, avatar
 entry point tunggal, cleanup halaman Account lama) — referensi visual saat
-task ini dieksekusi sudah akurat/up-to-date. Ini tidak mengubah status
-subtask di bawah; kode `apps/web` masih belum tersentuh.
+task ini dieksekusi sudah akurat/up-to-date.
 
-- [ ] **T-039.1** Hapus dynamic segment `apps/web/src/app/[slug]/...`, pindahkan seluruh route workspace-scoped (Home, Publish, Engage, Analyze, Start Page, Settings) ke route group baru `apps/web/src/app/(app)/...`
-- [ ] **T-039.2** Gabungkan `apps/web/src/app/account/...` (saat ini terpisah) ke dalam `settings/account/*`, konsisten dengan konsolidasi Settings jadi dua grup "Organization" + "Account" (satu entry point avatar/user menu)
-- [ ] **T-039.3** Ganti resolusi workspace di Middleware/`src/proxy.ts` dari parsing URL `[slug]` menjadi baca cookie `active-workspace-id` (HTTP-only), tetap divalidasi ulang terhadap `workspace_members` di setiap request
+- [x] **T-039.1** Hapus dynamic segment `apps/web/src/app/[slug]/...`, pindahkan seluruh route workspace-scoped (Home, Publish, Engage, Analyze, Start Page, Settings) ke route group baru `apps/web/src/app/(app)/...`
+- [x] **T-039.2** Gabungkan `apps/web/src/app/account/...` (saat ini terpisah) ke dalam `settings/account/*`, konsisten dengan konsolidasi Settings jadi dua grup "Organization" + "Account" (satu entry point avatar/user menu)
+- [x] **T-039.3** Ganti resolusi workspace di Middleware/`src/proxy.ts` dari parsing URL `[slug]` menjadi baca cookie `active-workspace-id` (HTTP-only), tetap divalidasi ulang terhadap `workspace_members` di setiap request
 - [ ] **T-039.4** Bangun halaman `/onboarding` dengan picker workspace — re-entry point untuk dua skenario: user baru tanpa workspace (buat workspace pertama) dan user existing yang kehilangan cookie workspace aktif (pilih dari daftar workspace)
+
+**Catatan eksekusi T-039.1–.3 (2026-08-11):** Dikerjakan 5 track paralel
+(proxy.ts+onboarding, app shell+draft editor, publish, engage/analyze/
+start-page/home, konsolidasi settings) → review arsitektur Ridwan (2 temuan,
+sudah diperbaiki) → QA Najwa (1 bug blocking, sudah diperbaiki) → semua
+verifikasi hijau (typecheck bersih, lint bersih, 80 test pass termasuk
+`proxy.test.ts` baru).
+
+- Ringkasan implementasi: seluruh route `[slug]/*` dipindah ke `(app)/*`,
+  `account/*` digabung ke `(app)/settings/account/*` (dua grup sidebar
+  Organization/Account), `proxy.ts` sekarang resolve workspace dari cookie
+  `active-workspace-id` + validasi `workspace_members` + inject header
+  `x-workspace-id`/`x-workspace-role` (runtime Node.js, bukan Edge — karena
+  Prisma pakai adapter `pg`).
+- Keputusan dikonfirmasi King Rezi saat eksekusi: label avatar menu
+  "Profile" diganti jadi **"Settings"** (mengarah `/settings/account`),
+  karena avatar menu sekarang satu-satunya entry point ke seluruh Settings.
+- Temuan review Ridwan yang sudah diperbaiki: (a) dead code
+  `getWorkspaceBySlug`/`findBySlug` dihapus dari `WorkspaceService`/
+  `IWorkspaceRepository`/implementasi Prisma (sudah tidak ada caller
+  produksi pasca migrasi); (b) hardening — header `x-workspace-id`/
+  `x-workspace-role` di-strip di jalur bypass (`/api/auth`, `/api/jobs`,
+  `/api/health`) dan `/onboarding` sebelum Batch 7, supaya tidak ada jalur
+  client bisa memalsukan header ini (`stripWorkspaceHeaders` dipanggil di
+  semua `NextResponse.next()`).
+- **Bug blocking dari QA Najwa (sudah diperbaiki sebelum task ditutup):**
+  versi awal `proxy.ts` menyebabkan infinite redirect loop di `/login`,
+  `/register`, `/forgot-password`, `/reset-password` untuk SEMUA user tanpa
+  session (root cause: hilang early-return untuk kombinasi
+  `!hasSessionCookie && isPublicAuthPage` setelah refactor redirect logic)
+  — sudah diperbaiki + ditambah test regresi di `proxy.test.ts`.
+- Sentuhan teknis di luar 3 subtask literal tapi wajib untuk migrasi tidak
+  merusak app: hapus `apps/web/src/app/page.tsx` (root, konflik routing
+  dengan `(app)/page.tsx` karena route group tidak menambah segmen URL),
+  tambah Route Handler `apps/web/src/app/onboarding/resume/route.ts` (set
+  cookie untuk user existing yang kehilangan cookie tapi sudah punya
+  workspace — bagian dari T-039.3, BUKAN picker T-039.4 yang menangani user
+  dengan >1 workspace).
+- Verifikasi visual: Claude Design (sudah disinkron ke ADR-076 sebelumnya)
+  dicek cocok dengan hasil implementasi `SettingsSideNav` (grouping
+  Organization/Account, urutan & label item) — tidak ada perubahan di
+  Claude Design, cuma jadi referensi.
+
+**T-039.4 tetap terbuka** sebagai next step terpisah — halaman `/onboarding`
+dengan picker workspace untuk user yang punya >1 workspace saat cookie
+hilang. Saat ini `onboarding/resume/route.ts` otomatis memilih salah satu
+lewat `getDefaultWorkspaceForUser` — bukan bug, itu batasan scope saat ini,
+menunggu T-039.4.
 
 ---
 

@@ -65,19 +65,28 @@ export class WorkspaceService {
     );
   }
 
-  async getDefaultWorkspaceSlugForUser(userId: UserId): Promise<string | null> {
-    return this.repository.findAnyMembershipSlugByUserId(userId);
-  }
-
-  /** WorkspaceRecord lengkap dalam satu query — lihat catatan di IWorkspaceRepository. */
   async getDefaultWorkspaceForUser(
     userId: UserId,
   ): Promise<WorkspaceRecord | null> {
     return this.repository.findDefaultWorkspaceForUser(userId);
   }
 
-  async getWorkspaceBySlug(slug: string): Promise<WorkspaceRecord | null> {
-    return this.repository.findBySlug(slug);
+  /** Dipakai `getWorkspaceContext()` (ADR-076) — resolve workspace by cookie id. */
+  async getWorkspaceById(
+    workspaceId: WorkspaceId,
+  ): Promise<WorkspaceRecord | null> {
+    return this.repository.findById(workspaceId);
+  }
+
+  /**
+   * Lookup membership by user — satu-satunya membership-check di codebase
+   * ini, dipakai `assertActorCanManageMembers` (dedup, bukan pola baru).
+   */
+  async getMembership(
+    workspaceId: WorkspaceId,
+    userId: UserId,
+  ): Promise<WorkspaceMemberRecord | null> {
+    return this.repository.getMember(workspaceId, userId);
   }
 
   async listConnectedAccounts(
@@ -145,7 +154,7 @@ export class WorkspaceService {
     actorUserId: UserId,
     actionErrorMessage: string,
   ): Promise<void> {
-    const actor = await this.repository.getMember(workspaceId, actorUserId);
+    const actor = await this.getMembership(workspaceId, actorUserId);
     if (!actor || actor.status !== MemberStatus.Active) {
       throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
     }

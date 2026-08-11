@@ -1,20 +1,34 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
+import { asUserId, asWorkspaceId, MemberStatus } from "@social/shared";
 
-import { LAST_WORKSPACE_SLUG_COOKIE } from "@/lib/workspace/last-workspace-cookie";
+import { auth } from "@/lib/better-auth/auth";
+import { WorkspaceService } from "@/domains/workspace";
+import { workspaceRepository } from "@/lib/repositories/workspace";
+import { ACTIVE_WORKSPACE_ID_COOKIE } from "@/lib/workspace/active-workspace-cookie";
+import {
+  WORKSPACE_ID_HEADER,
+  WORKSPACE_ROLE_HEADER,
+} from "@/lib/workspace/workspace-context-headers";
 
 /**
- * Auth guard — session-cookie gate for protected routes (M8 workspace onboarding).
- * /api/auth/*, /api/jobs/*, /api/health are bypassed (monorepo-setup.md).
+ * Auth + workspace-context guard (ADR-076 — migrasi routing `[slug]` →
+ * `(app)`). /api/auth/*, /api/jobs/*, /api/health are bypassed
+ * (monorepo-setup.md).
  *
  * Renamed from `middleware` per Next.js 16 file convention
  * (https://nextjs.org/docs/messages/middleware-to-proxy) — behavior unchanged.
  *
- * This is an optimistic cookie-presence check only (no DB call — Better
- * Auth's own recommended middleware pattern). Full session validation
- * (`auth.api.getSession`) and workspace-context resolution happen in Server
- * Components / Server Actions, which have Node.js runtime + Prisma access.
+ * Dua tahap:
+ * 1. Gate murah: cek keberadaan session-cookie saja (tanpa DB call) untuk
+ *    redirect cepat /login atau / pada halaman auth publik.
+ * 2. Kalau lolos gate di atas dan bukan halaman `/onboarding`: validasi
+ *    session penuh (`auth.api.getSession`) + resolve workspace context dari
+ *    `ACTIVE_WORKSPACE_ID_COOKIE`, lalu inject sebagai request header
+ *    (`x-workspace-id` / `x-workspace-role`) untuk dibaca `getWorkspaceContext()`
+ *    di Server Component/Server Action downstream. Ini melakukan Prisma
+ *    query — WAJIB runtime Node.js (lihat `export const config` di bawah).
  */
 
 const BYPASS_PREFIXES = ["/api/auth", "/api/jobs", "/api/health"];
@@ -26,34 +40,33 @@ const PUBLIC_AUTH_PATHS = [
   "/reset-password",
 ];
 
-// Top-level segments yang bukan workspace slug (`/[slug]/...`) — dipakai
-// findWorkspaceSlugInPath di bawah untuk membedakan "/insvire" (workspace)
-// dari "/account", "/onboarding", dst.
-const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
-  "account",
-  "api",
-  "onboarding",
-  ...PUBLIC_AUTH_PATHS.map((path) => path.slice(1)),
-]);
-
 function isUnderPath(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
-/** Segmen pertama path, kalau bukan route top-level yang direservasi. */
-function findWorkspaceSlugInPath(pathname: string): string | null {
-  const [, first] = pathname.split("/");
-  if (!first || RESERVED_TOP_LEVEL_SEGMENTS.has(first)) {
-    return null;
-  }
-  return first;
+/**
+ * `x-workspace-id`/`x-workspace-role` HARUS hanya bisa datang dari blok
+ * injection di bawah (setelah membership tervalidasi) — tanpa strip ini,
+ * client bisa mengirim header itu sendiri lewat curl/devtools dan lolos
+ * tanpa diubah di jalur bypass/`/onboarding` (`NextResponse.next()` tanpa
+ * override meneruskan header request asli apa adanya). Dipanggil di setiap
+ * `next()` supaya invariant ini ditegakkan lewat kode, bukan cuma disiplin
+ * caller (temuan review arsitektur Ridwan).
+ */
+function stripWorkspaceHeaders(request: NextRequest): Headers {
+  const headers = new Headers(request.headers);
+  headers.delete(WORKSPACE_ID_HEADER);
+  headers.delete(WORKSPACE_ROLE_HEADER);
+  return headers;
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (BYPASS_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-    return NextResponse.next();
+    return NextResponse.next({
+      request: { headers: stripWorkspaceHeaders(request) },
+    });
   }
 
   const isPublicAuthPage = PUBLIC_AUTH_PATHS.some((path) =>
@@ -69,26 +82,54 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  const response = NextResponse.next();
-
-  // Ingat workspace terakhir dikunjungi supaya link "Kembali ke Workspace"
-  // di /account tidak selalu jatuh ke membership tertua user (code-review
-  // finding, T-016 review).
-  if (hasSessionCookie) {
-    const workspaceSlug = findWorkspaceSlugInPath(pathname);
-    if (workspaceSlug) {
-      response.cookies.set(LAST_WORKSPACE_SLUG_COOKIE, workspaceSlug, {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30,
-        sameSite: "lax",
-      });
-    }
+  if (isPublicAuthPage) {
+    // !hasSessionCookie && isPublicAuthPage — satu-satunya kombinasi yang
+    // tidak ditangani dua redirect di atas. Tanpa early-return ini, request
+    // jatuh ke validasi session penuh di bawah, yang pasti `null` (memang
+    // belum login) → redirect balik ke halaman yang sama → infinite loop
+    // (QA Najwa: /login, /register, /forgot-password, /reset-password
+    // semua ERR_TOO_MANY_REDIRECTS).
+    return NextResponse.next({
+      request: { headers: stripWorkspaceHeaders(request) },
+    });
   }
 
-  return response;
+  if (isUnderPath(pathname, "/onboarding")) {
+    return NextResponse.next({
+      request: { headers: stripWorkspaceHeaders(request) },
+    });
+  }
+
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  const workspaceIdFromCookie = request.cookies.get(
+    ACTIVE_WORKSPACE_ID_COOKIE,
+  )?.value;
+  if (!workspaceIdFromCookie) {
+    return NextResponse.redirect(new URL("/onboarding", request.url));
+  }
+
+  const workspaceService = new WorkspaceService(workspaceRepository);
+  const membership = await workspaceService.getMembership(
+    asWorkspaceId(workspaceIdFromCookie),
+    asUserId(session.user.id),
+  );
+
+  if (!membership || membership.status !== MemberStatus.Active) {
+    return NextResponse.redirect(new URL("/onboarding", request.url));
+  }
+
+  const requestHeaders = stripWorkspaceHeaders(request);
+  requestHeaders.set(WORKSPACE_ID_HEADER, membership.workspaceId);
+  requestHeaders.set(WORKSPACE_ROLE_HEADER, membership.role);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
+  runtime: "nodejs",
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],

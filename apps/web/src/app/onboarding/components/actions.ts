@@ -1,12 +1,16 @@
 "use server";
 
 import { asUserId } from "@social/shared";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { WorkspaceService } from "@/domains/workspace";
 import { auth } from "@/lib/better-auth/auth";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { ConflictError, ValidationError } from "@/lib/utils/errors";
+import {
+  ACTIVE_WORKSPACE_ID_COOKIE,
+  activeWorkspaceCookieOptions,
+} from "@/lib/workspace/active-workspace-cookie";
 
 export async function createWorkspaceAction(
   name: string,
@@ -31,5 +35,10 @@ export async function createWorkspaceAction(
     throw error;
   }
 
-  redirect(`/${workspace.slug}`);
+  (await cookies()).set(
+    ACTIVE_WORKSPACE_ID_COOKIE,
+    workspace.id,
+    activeWorkspaceCookieOptions(),
+  );
+  redirect("/");
 }
