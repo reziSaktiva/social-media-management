@@ -8,6 +8,58 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-11 — Design System (Claude Design) disinkronkan ke ADR-076
+
+### Context
+
+King Rezi menyinkronkan Claude Design project "Social Media Management"
+(`84aded99-bb23-49b1-be9f-dd8f21c6873e`) lewat serangkaian prompt manual,
+mengikuti konsolidasi Settings (Organization + Account, entry point avatar
+tunggal) dan penghapusan premis Workspace Selector dari ADR-076. Ini murni
+perubahan di Claude Design — verifikasi dilakukan lewat DesignSync
+(read-only `get_file`/`list_files`). Kode `apps/web` (T-039) **tidak
+disentuh sama sekali** dan tetap `⏳ Not Started`.
+
+### Changed — Claude Design
+
+- `templates/settings-connected-accounts.html` dan
+  `templates/settings-members.html`: sidebar `.settings-subnav` sekarang
+  dua grup — "Organization" (General, Connected Accounts, Members, Roles &
+  Permissions, Billing) dan "Account" (Profile, Notifications,
+  Preferences). `page-title` jadi "Settings", `page-sub` jadi breadcrumb
+  "Organization / Connected Accounts" dan "Organization / Members".
+- Halaman Account (Profile/Notifications/Preferences) dipindah jadi 3 file
+  baru — `templates/settings-profile.html`,
+  `templates/settings-notifications.html`,
+  `templates/settings-preferences.html` — semuanya pakai shell app penuh
+  yang sama. File lama yang duplikat/divergen
+  (`templates/user-settings.html`, `templates/account-profile.html`,
+  `templates/account-preferences.html`) dihapus.
+- `templates/app-prototype/AppPrototype.dc.html`: avatar dropdown menu
+  sekarang cuma 2 item — "Settings" (bukan "Profile") + "Logout". Array
+  `SCREENS` diperbarui untuk `settings-members` dan 3 halaman Account baru
+  ("Settings → Account → Profile/Notifications/Preferences"). Komentar
+  kode lama soal "Workspace Selector vs User Settings" diganti mengikuti
+  ADR-076 (satu entry point Settings konsolidasi).
+- Fix ikon Light/Dark di halaman Preferences (`.pref-row` "Tema
+  Tampilan"): emoji mentah (☀/🌙) diganti SVG identik dengan tombol
+  theme-toggle di sidebar-footer, konsisten Astryx.
+- Fix entry `settings-connected-accounts` di SCREENS array yang kelewat
+  saat rename pertama, kode KSP-08 dipertahankan.
+- `readme.md` project Claude Design diperbarui: section "Avatar Menu"
+  tidak lagi menjelaskan pembedaan lama Workspace Selector vs User
+  Settings, jumlah "navigable screens" diperbaiki jadi 16, daftar file di
+  section "Files" mencantumkan 3 file Account baru dan menghapus referensi
+  `user-settings.html`.
+
+### Status
+
+Design System sekarang jadi referensi visual yang akurat untuk ADR-076.
+Migrasi kode `apps/web` (T-039) masih menyusul sebagai task terpisah,
+tetap diblokir sampai King Rezi memerintahkan eksekusi eksplisit.
+
+---
+
 ## 2026-08-10 — Task baru T-039 (Migrasi Routing & Settings, ADR-076) — entry backlog, belum dieksekusi
 
 ### Context

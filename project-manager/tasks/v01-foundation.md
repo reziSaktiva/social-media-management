@@ -261,6 +261,12 @@ workspace dari URL, bukan cookie. Task ini menutup gap tersebut (KI-023).
 **Catatan: task ini murni entry backlog — belum boleh dieksekusi sampai
 diperintahkan eksplisit oleh King Rezi.**
 
+**Catatan tambahan (2026-08-11):** Design System (Claude Design) sudah
+disinkronkan ke ADR-076 (Settings konsolidasi Organization+Account, avatar
+entry point tunggal, cleanup halaman Account lama) — referensi visual saat
+task ini dieksekusi sudah akurat/up-to-date. Ini tidak mengubah status
+subtask di bawah; kode `apps/web` masih belum tersentuh.
+
 - [ ] **T-039.1** Hapus dynamic segment `apps/web/src/app/[slug]/...`, pindahkan seluruh route workspace-scoped (Home, Publish, Engage, Analyze, Start Page, Settings) ke route group baru `apps/web/src/app/(app)/...`
 - [ ] **T-039.2** Gabungkan `apps/web/src/app/account/...` (saat ini terpisah) ke dalam `settings/account/*`, konsisten dengan konsolidasi Settings jadi dua grup "Organization" + "Account" (satu entry point avatar/user menu)
 - [ ] **T-039.3** Ganti resolusi workspace di Middleware/`src/proxy.ts` dari parsing URL `[slug]` menjadi baca cookie `active-workspace-id` (HTTP-only), tetap divalidasi ulang terhadap `workspace_members` di setiap request
