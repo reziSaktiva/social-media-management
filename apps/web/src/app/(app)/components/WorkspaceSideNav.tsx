@@ -18,6 +18,7 @@ import {
   SideNavItem,
   SideNavSection,
 } from "@astryxdesign/core/SideNav";
+import { VStack } from "@astryxdesign/core/VStack";
 
 import type { SidebarChannelAccount } from "@/domains/workspace";
 import { authClient } from "@/lib/better-auth/client";
@@ -74,9 +75,9 @@ export function WorkspaceSideNav({
     <SideNav
       header={
         <SideNavHeading
+          icon={<Avatar name={workspaceName} size="sm" />}
           heading={workspaceName}
           headingHref="/"
-          superheading="Workspace"
         />
       }
       topContent={
@@ -159,26 +160,31 @@ export function WorkspaceSideNav({
         </HStack>
       }
     >
-      <SideNavSection title="Menu">
-        {NAV_ITEMS.map((item) => {
-          const isSelected =
-            item.path === "/"
-              ? pathname === item.path
-              : pathname.startsWith(item.path);
-          return (
-            <SideNavItem
-              key={item.label}
-              label={item.label}
-              href={item.path}
-              isSelected={isSelected}
-            />
-          );
-        })}
-      </SideNavSection>
+      <VStack vAlign="between" className="min-h-full">
+        <SideNavSection title="Menu">
+          {NAV_ITEMS.map((item) => {
+            const isSelected =
+              item.path === "/"
+                ? pathname === item.path
+                : pathname.startsWith(item.path);
+            return (
+              <SideNavItem
+                key={item.label}
+                label={item.label}
+                href={item.path}
+                isSelected={isSelected}
+              />
+            );
+          })}
+        </SideNavSection>
 
-      {/* T-012 / ADR-058: section "Channels" — antara nav items dan zona
-          bawah (Notifikasi/Theme/Avatar), bukan nav item ke-6 (P-IA-01). */}
-      <ChannelsSection channels={channels} />
+        {/* T-012 / ADR-058: section "Channels" — didorong ke bawah lewat
+            VStack vAlign="between" supaya selalu menempel tepat di atas
+            footer (Notifikasi/Theme/Avatar), meniru `.nav{flex:1}` di
+            Claude Design yang menghabiskan sisa ruang vertikal sebelum
+            `.channels`. Bukan section/nav item ke-6 (P-IA-01). */}
+        <ChannelsSection channels={channels} />
+      </VStack>
     </SideNav>
   );
 }

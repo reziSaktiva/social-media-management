@@ -8,6 +8,121 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-11 — Bug-fix ad-hoc: posisi `ChannelsSection` di `WorkspaceSideNav` samakan dengan Design System (menempel footer via `VStack`)
+
+### Context
+
+Bukan task terjadwal — perbaikan kecil oleh main agent (Jokowi) langsung,
+dipicu King Rezi meminta section "Channels" di sidebar utama app disamakan
+posisinya dengan Claude Design (project "Social Media Management", projectId
+`84aded99-bb23-49b1-be9f-dd8f21c6873e`). Di desain (`components/navigation.html`
++ `styles.css`, class `.nav`), nav items punya `flex:1` sehingga menghabiskan
+sisa ruang vertikal dan mendorong `.channels` supaya selalu menempel tepat di
+atas `.sidebar-footer`.
+
+### Root cause
+
+Div internal `.scrollable` milik komponen `SideNav` (dari `@astryxdesign/core`)
+sudah `flex:1` mengisi sisa tinggi sidebar, tapi children di dalamnya
+(`SideNavSection` + `ChannelsSection`, sebelumnya dua sibling lepas) tidak
+flex — jadi sisa spasi jatuh di BAWAH `ChannelsSection` (sebelum footer)
+alih-alih Channels didorong menempel ke footer seperti di desain.
+
+### Changed — Implementasi
+
+- `apps/web/src/app/(app)/components/WorkspaceSideNav.tsx` — tambah import
+  `VStack` dari `@astryxdesign/core/VStack`. Children `<SideNav>` (dulu
+  `<SideNavSection title="Menu">...</SideNavSection>` diikuti langsung
+  `<ChannelsSection channels={channels} />` sebagai dua sibling lepas)
+  dibungkus jadi:
+
+  ```tsx
+  <VStack vAlign="between" className="min-h-full">
+    <SideNavSection title="Menu">...</SideNavSection>
+    <ChannelsSection channels={channels} />
+  </VStack>
+  ```
+
+  `vAlign="between"` map ke `justify-content:space-between` — dengan cuma 2
+  child, ini mendorong Channels ke bawah pas ada slack space, identik efek
+  `.nav{flex:1}` di desain, dan tidak mengubah apapun kalau konten sudah
+  lebih tinggi dari area yang tersedia (overflow-scroll tetap jalan seperti
+  biasa).
+
+### Verification
+
+Sudah dicek di browser preview (dev server `bun run --cwd apps/web dev`,
+halaman `/`) — screenshot dikonfirmasi Channels sekarang menempel tepat di
+atas footer (Notifikasi/Theme/Avatar), tidak ada gap kosong lagi. PASS.
+
+### Catatan
+
+Tidak ada ADR baru — pure layout bug-fix menyamakan implementasi dengan
+Design System yang sudah ada, sama seperti fix header pada entri di bawah.
+Tidak ada task terkait di `TASKS.md`/`tasks/`, sifatnya ad-hoc. Tidak
+berkaitan dengan KI-024 (itu soal `SettingsSideNav.tsx`, file & scope
+berbeda) — KI-024 masih Open, tidak berubah.
+
+### Status
+
+Selesai, terverifikasi visual.
+
+---
+
+## 2026-08-11 — Bug-fix ad-hoc: header `WorkspaceSideNav` samakan dengan Design System (avatar + nama, tanpa superheading)
+
+### Context
+
+Bukan task terjadwal — perbaikan kecil (2 baris) oleh main agent (Jokowi)
+langsung, dipicu King Rezi meminta header sidebar utama app disamakan dengan
+spec Design System (Claude Design, project "Social Media Management",
+projectId `84aded99-bb23-49b1-be9f-dd8f21c6873e`). Setelah dibaca langsung
+dari `components/navigation.html` + `styles.css` (class `.ws-switch`,
+`.ws-avatar`, `.ws-name`, baris ~288-290), spec desain menampilkan **Avatar
+bulat berisi inisial workspace + nama workspace**, tanpa label "Workspace"
+apa pun (tidak ada superheading) — berbeda dari implementasi lama.
+
+### Changed — Implementasi
+
+- `apps/web/src/app/(app)/components/WorkspaceSideNav.tsx` (baris ~74-81) —
+  `SideNavHeading` sebelumnya render `superheading="Workspace"` +
+  `heading={workspaceName}` sebagai teks link tanpa avatar/icon. Diubah jadi:
+
+  ```tsx
+  <SideNavHeading
+    icon={<Avatar name={workspaceName} size="sm" />}
+    heading={workspaceName}
+    headingHref="/"
+  />
+  ```
+
+  `Avatar` sudah diimpor di file itu (dipakai juga di footer). `size="sm"`
+  (24px) dipilih sebagai token Astryx terdekat ke 26px custom di desain,
+  sekaligus konsisten dengan avatar footer yang juga pakai `size="sm"`.
+
+### Verification
+
+- Prop `icon`/`heading` pada `SideNavHeading` dikonfirmasi lewat
+  `bunx astryx component SideNavHeading --dense` (cocok source
+  `@astryxdesign/core` v0.1.8, sesuai AGENTS.md #15).
+- Verifikasi visual di browser preview **belum selesai** dijalankan (proses
+  terinterupsi sebelum sempat screenshot) — masih TODO terbuka, bukan
+  "sudah diverifikasi visual".
+
+### Catatan
+
+Tidak ada ADR baru — ini bug-fix menyamakan implementasi dengan Design
+System yang sudah ada, bukan keputusan desain baru. Ditemukan juga
+divergensi kedua di luar scope sesi ini (Settings sidebar header) — lihat
+KI-024 di `PROJECT_STATE.md`.
+
+### Status
+
+Selesai untuk `WorkspaceSideNav.tsx`. Verifikasi visual browser masih
+tertunda (TODO, bukan blocker).
+
+---
+
 ## 2026-08-11 — T-039.5 selesai: migrasi kode sidebar Settings ke pola Buffer (ADR-077)
 
 ### Context

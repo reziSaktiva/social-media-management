@@ -246,6 +246,24 @@ belum dikerjakan. Untuk skenario "cookie hilang, tepat 1 workspace",
 lewat `getDefaultWorkspaceForUser`; sisanya (>1 workspace, perlu pilihan
 eksplisit user) masih menunggu T-039.4.
 
+### KI-024 · Header sidebar Settings belum sesuai spec Design System (back-button vs judul)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-039.5, ADR-077 |
+
+Ditemukan 2026-08-11 saat memperbaiki header `WorkspaceSideNav.tsx` agar
+sesuai Design System (lihat `COMPLETE_TASK.md`). `SettingsSideNav.tsx`
+(dibuat via T-039.5/ADR-077) merender `SideNavHeading` dengan back-icon +
+judul "Settings" sebagai **satu link utuh**, sedangkan spec desain
+(`.settings-sidebar-header` di `styles.css` Claude Design, baris ~316-319)
+memisahkan back-button (kotak ikon 28px, klik-able sendiri) dari judul
+"Settings" (teks statis, font `--text-body-size`, lebih kecil dari default
+`SideNavHeading` yang pakai `--text-large-size`). Belum diperbaiki — dicatat
+sebagai temuan untuk follow-up King Rezi, belum dibuatkan task formal.
+
 ---
 
 ## Blockers
