@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.49     |
+| Version      | 1.0.50     |
 | Status       | Active     |
-| Last Updated | 2026-08-10 |
+| Last Updated | 2026-08-12 |
 
 ---
 
@@ -107,7 +107,6 @@ Restricted Actions:
 Task berstatus 🟡 — detail dan subtask ada di [`TASKS.md`](TASKS.md):
 
 * **T-031** Redirect otomatis ke sub-screen tujuan (ADR-054) — Save as Draft sudah sejalan; sisanya menyusul bersama T-029/T-032/T-034.
-* **T-012** Sidebar section "Channels" (ADR-058) — ✅ Done (2026-08-12). Detail subtask di [`TASKS.md`](TASKS.md) / `tasks/v01-foundation.md`.
 * **T-016** Account & user settings screens — T-016.1/2/3/5 selesai; hanya T-016.4 (notifications) tersisa, Blocked oleh T-036 (v0.2).
 * **T-039** Migrasi Routing & Settings (ADR-076/ADR-077) — T-039.1/2/3/5 selesai (review Ridwan + QA Najwa lolos); sisa T-039.4 (onboarding picker workspace) belum dikerjakan, terpisah.
 
@@ -124,7 +123,7 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
 
 **Rantai blocker terbesar:** T-025 → T-026 → T-027 (Real adapter → webhook → job runner). Ketiganya mengunci sebagian besar v0.2, seluruh v0.3, dan seluruh v0.4.
 
-**Catatan urutan rilis:** v0.1 dan v0.2 tidak sepenuhnya sekuensial — empat task v0.1 (T-012, T-013, T-015, T-016) punya subtask yang bergantung pada task v0.2. Rinciannya di Catatan Rilis `tasks/v01-foundation.md`.
+**Catatan urutan rilis:** v0.1 dan v0.2 tidak sepenuhnya sekuensial — tiga task v0.1 (T-013, T-015, T-016) punya subtask yang bergantung pada task v0.2. Rinciannya di Catatan Rilis `tasks/v01-foundation.md`.
 
 **Keputusan terbuka yang menunggu King Rezi:** T-005 (email provider), T-060 (provider AI), T-070 (strategi route publik), T-032 (semantik queue slot), T-081 (framework E2E), T-086 (tool observability), serta status Billing yang belum masuk release manapun. Rinciannya di `TASKS.md` → **Keputusan terbuka**.
 
@@ -173,16 +172,6 @@ Alignment dokumentasi dan schema/migration sudah selesai, tetapi handler webhook
 | Terkait | — |
 
 Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production build, tetapi risiko perubahan API tetap dikelola dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan verifikasi ulang saat upgrade.
-
-### KI-006 · Sidebar Channels — scheduled count stub, reorder belum persisten (Resolved)
-
-| Field | Value |
-|-------|-------|
-| Status | Resolved (2026-08-12) |
-| Kategori | Tech-Debt |
-| Terkait | T-012 (T-012.1, T-012.2) |
-
-Bagian UI/interaksi T-012.5 (swap count↔quick-compose "+") dan T-012.6 (drag-handle shift-on-hover) sebelumnya selesai kode-level, tapi data count di-hardcode 0 dan urutan reorder reset saat reload. **Resolved:** T-012.1 (persist reorder per user via model Prisma `WorkspaceChannelOrder`) dan T-012.2 (badge scheduled-count real via `countScheduledByAccount` di domain publishing, lewat port `ScheduledCountsPort`) sudah diimplementasikan, lolos review Ridwan + QA Najwa (typecheck/lint/test 85/85 PASS). Detail: `tasks/v01-foundation.md` § T-012, `COMPLETE_TASK.md`.
 
 ### KI-014 · Domain `identity` belum punya unit test
 
@@ -288,11 +277,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-078** — Amandemen ADR-018: port lokal + composition root untuk cross-domain service call (`ScheduledCountsPort` / T-012.2).
+* **ADR-077** — Settings pakai sidebar tunggal yang menggantikan main sidebar (pola Buffer) — amandemen mekanisme render ADR-076.
 * **ADR-076** — Workspace context pindah ke cookie (hapus dynamic segment `[slug]`, route group `(app)`) + Settings dikonsolidasi jadi Organization + Account dengan entry point avatar tunggal — menggantikan Workspace Selector yang tidak pernah dibangun (KI-023).
 * **ADR-075** — Amandemen ADR-071: sinkronisasi kutipan `migration.sql` bucket `avatars` (resolusi KI-018).
 * **ADR-074** — Reduksi struktur role dari 4 jadi 3 (Account Owner, Admin, Creator) — resolusi KI-017.
-* **ADR-073** — Prisma External Tables (`initShadowDb` + `tables.external`) untuk shadow database menangani tabel platform Supabase (`storage.buckets`) — resolusi KI-016.
-* **ADR-072** — Tabel `workspace_invitations` terpisah untuk invite member yang belum punya akun (T-007.1/.2).
 
 ---
 

@@ -190,8 +190,8 @@ export class WorkspaceService {
   ): Promise<void> {
     const accounts = await this.repository.listConnectedAccounts(workspaceId);
     const ownedIds = new Set(accounts.map((account) => account.id));
-    const validOrderedIds = orderedConnectedAccountIds.filter((id) =>
-      ownedIds.has(id),
+    const validOrderedIds = Array.from(
+      new Set(orderedConnectedAccountIds.filter((id) => ownedIds.has(id))),
     );
 
     await this.repository.saveChannelOrder({

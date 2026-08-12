@@ -8,6 +8,45 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-12 — ADR-078: amandemen ADR-018 (port lokal + composition root) + bersihkan T-012/KI-006 dari PROJECT_STATE
+
+### Context
+
+Follow-up dokumentasi setelah T-012.1/2: pola cross-domain
+`ScheduledCountsPort` + wiring `PublishingService` di composition root
+belum tercatat di ADR, sementara `PROJECT_STATE.md` masih menyisakan
+T-012 di In Progress dan KI-006 Resolved di Known Issues (bertentangan
+dengan ADR-067).
+
+### Added
+
+- **ADR-078** — Amandemen ADR-018: port lokal sempit di domain pemanggil
+  (tidak di-export ke barrel), larangan import service konkret lintas
+  domain di layer domain, wiring konkret hanya di composition root.
+  Preseden kanonikal: `ScheduledCountsPort` +
+  `apps/web/src/app/(app)/layout.tsx` (T-012.2). File:
+  `project-manager/decisions/ADR-078-amandemen-adr-018-port-lokal-composition-root-scheduled-counts.md`.
+
+### Changed
+
+- `project-manager/DECISIONS.md` — baris indeks ADR-078; Status ADR-018 →
+  `Accepted — Amended by ADR-078 (2026-08-12)`.
+- `project-manager/tasks/v01-foundation.md` — catatan T-012.2 + field ADR
+  mereferensikan ADR-078.
+- Catatan T-012.2 di entri COMPLETE_TASK di bawah ini (sibling) juga
+  mereferensikan ADR-078.
+- `project-manager/PROJECT_STATE.md` — T-012 dihapus dari In Progress;
+  KI-006 dihapus dari Known Issues (Resolved + sudah tercatat di
+  COMPLETE_TASK, sesuai ADR-067); catatan "empat task" → "tiga task"
+  (T-012 sudah Done); Recent Decisions digeser (ADR-078 masuk).
+
+### Fixed
+
+- Drift status: T-012 ✅ Done masih muncul di In Progress; KI-006 Resolved
+  masih di Known Issues padahal riwayatnya sudah di COMPLETE_TASK.
+
+---
+
 ## 2026-08-12 — T-012.1/2 selesai: persist reorder channel per user + badge scheduled-count real
 
 ### Context
@@ -47,6 +86,7 @@ review arsitektur Ridwan dan QA end-to-end Najwa. Menutup task **T-012**
   wiring konkret `PublishingService` hanya terjadi di composition root
   (`apps/web/src/app/(app)/layout.tsx`). Ini preseden pertama di codebase
   untuk satu domain service memanggil domain service lain secara langsung.
+  Pola dikunci di **ADR-078** (amandemen ADR-018).
 
 ### Review arsitektur (Ridwan)
 

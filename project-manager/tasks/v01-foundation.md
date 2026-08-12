@@ -145,7 +145,7 @@ CTA primary full-width di `WorkspaceSideNav`, di slot `topContent` (di bawah Wor
 | ------------- | ---------------------------------------------------------------------- |
 | **Status**    | ✅ Done — seluruh subtask T-012.1–T-012.6 dan T-012.9 selesai; T-012.1/2 diimplementasikan & lolos review Ridwan + QA Najwa (2026-08-12, lihat catatan) |
 | **Domain**    | workspace · UI                                                         |
-| **ADR**       | ADR-058 (+ addendum drag-handle **shift-on-hover**, mengoverride keputusan awal "no-shift") |
+| **ADR**       | ADR-058 (+ addendum drag-handle **shift-on-hover**, mengoverride keputusan awal "no-shift") · ADR-078 (amandemen ADR-018 — pola `ScheduledCountsPort`, T-012.2) |
 | **Depends**   | T-009 ✅ · `listConnectedAccounts` ✅ (dari T-028, v0.2)                |
 | **Baca dulu** | `04-ux/navigation-patterns.md` · Claude Design → `components/navigation.html` · `06-engineering/dependency-strategy.md` |
 
@@ -156,7 +156,7 @@ Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand o
 **Implementasi T-012.1/2 (selesai, 2026-08-12):**
 
 - **T-012.1** (persist reorder channel per user): model Prisma baru `WorkspaceChannelOrder` (per workspace+user+account, full-rewrite position tiap drop), repository method `saveChannelOrder`/`getChannelOrder` di `IWorkspaceRepository`, Server Action `reorderChannelsAction` (`apps/web/src/app/(app)/components/sidebar-channels/actions.ts`), wiring optimistic UI + revert-on-failure di `ChannelsSection.tsx` (helper `mergeChannels` lama dihapus, sudah tidak dipakai).
-- **T-012.2** (badge scheduled-count real): method `countScheduledByAccount` (batch `groupBy`, bukan N+1) di public API domain `publishing`, dipanggil dari `WorkspaceService` lewat interface port lokal `ScheduledCountsPort` (bukan import konkret `PublishingService` ke domain layer) — constructor `WorkspaceService` sekarang punya param opsional kedua, wiring konkret `PublishingService` hanya terjadi di composition root (`apps/web/src/app/(app)/layout.tsx`). Preseden pertama di codebase untuk satu domain service memanggil domain service lain secara langsung (AGENTS.md rule #7).
+- **T-012.2** (badge scheduled-count real): method `countScheduledByAccount` (batch `groupBy`, bukan N+1) di public API domain `publishing`, dipanggil dari `WorkspaceService` lewat interface port lokal `ScheduledCountsPort` (bukan import konkret `PublishingService` ke domain layer) — constructor `WorkspaceService` sekarang punya param opsional kedua, wiring konkret `PublishingService` hanya terjadi di composition root (`apps/web/src/app/(app)/layout.tsx`). Preseden pertama di codebase untuk satu domain service memanggil domain service lain secara langsung (AGENTS.md rule #7). Pola ini dikunci di **ADR-078** (amandemen ADR-018).
 - Migration Prisma sudah diterapkan ke DB: `20260812032852_add_publishing_post_target_connected_account_index`, `20260812033031_add_workspace_channel_orders`.
 - Review arsitektur Ridwan: 1 temuan ringan (`ScheduledCountsPort` bocor dari barrel `domains/workspace/index.ts` via `export *`) sudah diperbaiki (hapus keyword `export` dari interface). QA Najwa: typecheck/lint/test 85/85 PASS, reorder persist terverifikasi lewat DB langsung, badge count exact match query DB, tidak ada regresi UI quick-compose/drag-handle.
 
