@@ -26,7 +26,7 @@ Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output teks — 
 
 Di akhir sesi kerja, setelah semua agent implementasi/review/QA selesai — rangkum apa yang berubah, cek apakah perlu ADR baru (arsitektur/workflow/repository strategy/business requirement/domain baru/teknologi utama berubah), lalu update dalam urutan ini:
 
-1. `tasks/vXX-*.md` — centang subtask yang selesai + ubah status task.
+1. `tasks/vXX-*.md` — centang subtask yang selesai + ubah status task jadi `✅ Done` (task ini mungkin sudah `🟡 In Progress` dari langkah pertama subagent implementasi — tugasmu di sini adalah promosi `🟡 → ✅`, bukan membiarkannya di `🟡`).
 2. `TASKS.md` — perbarui hitungan di **Indeks release**, **Total**, dan **Fokus sekarang**. Wajib bersamaan dengan poin 1, kalau tidak angka indeksnya jadi salah.
 3. `PROJECT_STATE.md` — hanya bila phase / milestone / Known Issues / fokus terdekat berubah (Completed / In Progress / Known Issues). Section `In Progress` **dan** `Next Tasks` di sini adalah **pointer** ke `TASKS.md`/`tasks/vXX-*.md`, bukan tempat detail task — kalau ada dorongan menulis nama subtask/dependency/catatan teknis di salah satu section ini, itu tandanya harus pindah ke `tasks/vXX-*.md` saja.
 4. `COMPLETE_TASK.md` — entri baru di bagian atas.

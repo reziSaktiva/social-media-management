@@ -190,8 +190,8 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
       Claude Design.
     - Tujuan: King Rezi sering lupa memastikan desain sudah ada sebelum
       minta implementasi — AI adalah safety net yang wajib menahan langkah
-      ini, bukan asumsi diam-diam. Berbeda dari [[feedback-uiux-docs-design-sync-reminder]]
-      (ADR-056) yang bersifat reminder sinkronisasi _setelah_ perubahan —
+      ini, bukan asumsi diam-diam. Berbeda dari aturan reminder sinkronisasi
+      docs↔Claude Design (ADR-056), yang bersifat reminder _setelah_ perubahan —
       rule ini adalah gate _sebelum_ implementasi dimulai.
 
 ## Workflow Astryx wajib

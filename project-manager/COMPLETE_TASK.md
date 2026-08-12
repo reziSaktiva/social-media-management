@@ -74,6 +74,35 @@ AskUserQuestion.
   masing-masing dibuat, bukan live counter, jadi tidak dikoreksi (akan
   jadi revisionis kalau diubah).
 
+## 2026-08-12 — Fix 5 temuan /code-review PR #68
+
+### Context
+
+`/code-review` atas PR #68 (audit dokumentasi sebelumnya) menemukan PR itu
+sendiri membawa 5 gap baru: simbol status ganda tidak valid, back-link
+KI-015 yang masih terlewat di T-026/T-027, wiki-link `[[...]]` orphan ke
+memory pribadi di `AGENTS.md`, ambiguitas target status di langkah Gibran,
+dan urutan field `Terkait` yang tidak konsisten antar file task.
+
+### Fixed
+
+- **`TASKS.md`**: status T-025 di "Fokus sekarang" dikembalikan ke simbol
+  Legend tunggal `⏳` (bukan kombinasi `⏳ 🚫` yang tidak terdefinisi),
+  catatan "Terhenti" tetap di kolom Catatan saja.
+- **`tasks/v02-publishing-mvp.md`**: T-026/T-027 ditambah back-link
+  `KI-015` yang tadinya cuma `KI-003` (KI-015 sendiri sudah menyebut
+  T-025/T-026/T-027 di `PROJECT_STATE.md`); urutan field `Terkait`
+  dipindah sebelum `Depends` di T-025/T-026/T-027, menyamakan konvensi
+  dengan T-039 di `tasks/v01-foundation.md`.
+- **`AGENTS.md`**: hapus syntax wiki-link `[[feedback-uiux-docs-design-sync-reminder]]`
+  (target itu memory pribadi di luar repo, bukan artefak repo) — diganti
+  frasa biasa tanpa link.
+- **`.claude/agents/gibran-project-manager.md`** (Static Reference, chmod
+  444 — di-unlock sementara, dikembalikan setelah edit): langkah 1
+  diperjelas — target eksplisit `✅ Done`, disebutkan task mungkin sudah
+  `🟡 In Progress` dari langkah pertama subagent implementasi, tugas
+  Gibran adalah promosi `🟡 → ✅`, bukan membiarkannya di `🟡`.
+
 ## 2026-08-12 — Konsistensi aturan "jangan putuskan sendiri" ke Mark & Elon
 
 ### Context
