@@ -44,6 +44,7 @@ function createFakeRepository(
     updateDraftCaption: async () => null,
     schedulePost: async () => null,
     updateTargetOutcome: async () => undefined,
+    countScheduledByAccount: async () => new Map(),
     ...overrides,
   };
 }

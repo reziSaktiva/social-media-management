@@ -265,4 +265,31 @@ export const workspaceRepository: IWorkspaceRepository = {
 
     return invitation ? toInvitationRecord(invitation) : null;
   },
+
+  async saveChannelOrder({ workspaceId, userId, orderedConnectedAccountIds }) {
+    await prisma.$transaction([
+      prisma.workspaceChannelOrder.deleteMany({
+        where: { workspaceId, userId },
+      }),
+      prisma.workspaceChannelOrder.createMany({
+        data: orderedConnectedAccountIds.map(
+          (connectedAccountId, position) => ({
+            workspaceId,
+            userId,
+            connectedAccountId,
+            position,
+          }),
+        ),
+      }),
+    ]);
+  },
+
+  async getChannelOrder(workspaceId, userId) {
+    const rows = await prisma.workspaceChannelOrder.findMany({
+      where: { workspaceId, userId },
+      orderBy: { position: "asc" },
+    });
+
+    return rows.map((row) => asConnectedAccountId(row.connectedAccountId));
+  },
 };

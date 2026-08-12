@@ -1,10 +1,13 @@
+import { asUserId } from "@social/shared";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@astryxdesign/core/AppShell";
 
+import { PublishingService } from "@/domains/publishing";
 import { WorkspaceService } from "@/domains/workspace";
 import { auth } from "@/lib/better-auth/auth";
+import { publishingRepository } from "@/lib/repositories/publishing";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 
@@ -24,7 +27,13 @@ export default async function Layout({
 
   const { workspaceId } = await getWorkspaceContext();
 
-  const workspaceService = new WorkspaceService(workspaceRepository);
+  // Composition root untuk cross-domain publishing -> workspace (T-012.2,
+  // AGENTS.md #7) — satu-satunya tempat `PublishingService` konkret di-wire
+  // ke `WorkspaceService` lewat `ScheduledCountsPort`.
+  const workspaceService = new WorkspaceService(
+    workspaceRepository,
+    new PublishingService(publishingRepository),
+  );
   // Defensif: proxy.ts (ADR-076) seharusnya sudah menjamin workspace context
   // valid sebelum request mencapai sini, tapi tetap di-gate di sini kalau
   // diakses tanpa melalui proxy (mis. route belum ke-cover matcher).
@@ -33,9 +42,13 @@ export default async function Layout({
     redirect("/onboarding");
   }
 
-  // Sidebar "Channels" — service mengembalikan SidebarChannelAccount[] siap-render
-  // (T-012, ADR-058). Kebijakan scheduledCount: 0 ada di WorkspaceService sampai T-012.2.
-  const channels = await workspaceService.listSidebarChannels(workspaceId);
+  // Sidebar "Channels" — service mengembalikan SidebarChannelAccount[]
+  // siap-render (T-012, ADR-058), termasuk scheduledCount real (T-012.2)
+  // dan urutan personal tersimpan per user (T-012.1).
+  const channels = await workspaceService.listSidebarChannels(
+    workspaceId,
+    asUserId(session.user.id),
+  );
 
   // Provider + modal duduk di level workspace (bukan lagi di `publish/`)
   // supaya CTA "+ New Post" di sidebar bisa membuka Draft Editor dari section

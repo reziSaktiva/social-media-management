@@ -1,5 +1,10 @@
 import { MemberRole, MemberStatus } from "@social/shared";
-import type { MemberId, UserId, WorkspaceId } from "@social/shared";
+import type {
+  ConnectedAccountId,
+  MemberId,
+  UserId,
+  WorkspaceId,
+} from "@social/shared";
 import {
   AuthorizationError,
   ConflictError,
@@ -18,8 +23,33 @@ import type { SidebarChannelAccount, WorkspaceMemberWithUser } from "../types";
 const MAX_NAME_LENGTH = 100;
 const MAX_SLUG_ATTEMPTS = 6;
 
+/**
+ * Port lokal untuk cross-domain `publishing` → `workspace` (T-012.2,
+ * AGENTS.md #7) — implementation detail `WorkspaceService`, bukan kontrak
+ * publik domain `workspace`. Sengaja TIDAK `export` (bukan cuma "tidak
+ * diekspor dari barrel") — `index.ts` memakai `export *` per file, jadi
+ * kalau interface ini di-export dari sini, dia otomatis ikut ke-export
+ * ulang lewat barrel juga (tidak ada cara meng-exclude satu named export
+ * dari `export *`). Constructor param di bawah cukup memakai tipe ini
+ * secara lokal (structural typing) — caller (`layout.tsx`, dan fake port
+ * di `workspace.service.test.ts`) tidak perlu mengimpor tipe ini sama
+ * sekali, cukup passing object literal yang bentuknya cocok.
+ * `PublishingService` konkret TIDAK boleh diimport ke file ini; import
+ * cross-domain hanya terjadi di composition root (`app/(app)/layout.tsx`),
+ * yang menyuplai instance ini lewat constructor.
+ */
+interface ScheduledCountsPort {
+  countScheduledByAccount(
+    workspaceId: WorkspaceId,
+    connectedAccountIds: ConnectedAccountId[],
+  ): Promise<Map<ConnectedAccountId, number>>;
+}
+
 export class WorkspaceService {
-  constructor(private readonly repository: IWorkspaceRepository) {}
+  constructor(
+    private readonly repository: IWorkspaceRepository,
+    private readonly scheduledCounts?: ScheduledCountsPort,
+  ) {}
 
   async createWorkspace(input: {
     userId: UserId;
@@ -96,21 +126,79 @@ export class WorkspaceService {
   }
 
   /**
-   * Returns connected accounts shaped for sidebar rendering.
-   * `scheduledCount` is stubbed at 0 until T-012.2 (publishing domain v0.2).
+   * Returns connected accounts shaped for sidebar rendering (T-012,
+   * ADR-058), diurutkan sesuai posisi tersimpan personal user (T-012.1).
+   * Channel yang belum punya posisi tersimpan (baru terhubung) di-append
+   * di akhir sesuai urutan `connectedAt` asli dari repository.
    */
   async listSidebarChannels(
     workspaceId: WorkspaceId,
+    userId: UserId,
   ): Promise<SidebarChannelAccount[]> {
     const accounts = await this.repository.listConnectedAccounts(workspaceId);
-    return accounts.map((account) => ({
+    const counts =
+      (await this.scheduledCounts?.countScheduledByAccount(
+        workspaceId,
+        accounts.map((account) => account.id),
+      )) ?? new Map<ConnectedAccountId, number>();
+
+    const storedOrder = await this.repository.getChannelOrder(
+      workspaceId,
+      userId,
+    );
+    const positionById = new Map(
+      storedOrder.map((connectedAccountId, index) => [
+        connectedAccountId,
+        index,
+      ]),
+    );
+    const orderedAccounts = [...accounts].sort((a, b) => {
+      const posA = positionById.get(a.id);
+      const posB = positionById.get(b.id);
+      if (posA === undefined && posB === undefined) {
+        return 0;
+      }
+      if (posA === undefined) {
+        return 1;
+      }
+      if (posB === undefined) {
+        return -1;
+      }
+      return posA - posB;
+    });
+
+    return orderedAccounts.map((account) => ({
       id: account.id,
       platform: account.platform,
       handle: account.handle,
       status: account.status,
       reconnectRequired: account.reconnectRequired,
-      scheduledCount: 0,
+      scheduledCount: counts.get(account.id) ?? 0,
     }));
+  }
+
+  /**
+   * Persist urutan channel sidebar personal user (T-012.1). Defensif
+   * anti-IDOR: intersect `orderedConnectedAccountIds` dengan akun yang
+   * benar-benar milik `workspaceId` ini sebelum persist — id yang tidak
+   * valid di-drop diam-diam, pola sama seperti `listMembersWithUser`.
+   */
+  async saveChannelOrder(
+    workspaceId: WorkspaceId,
+    userId: UserId,
+    orderedConnectedAccountIds: ConnectedAccountId[],
+  ): Promise<void> {
+    const accounts = await this.repository.listConnectedAccounts(workspaceId);
+    const ownedIds = new Set(accounts.map((account) => account.id));
+    const validOrderedIds = orderedConnectedAccountIds.filter((id) =>
+      ownedIds.has(id),
+    );
+
+    await this.repository.saveChannelOrder({
+      workspaceId,
+      userId,
+      orderedConnectedAccountIds: validOrderedIds,
+    });
   }
 
   /**

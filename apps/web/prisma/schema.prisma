@@ -111,6 +111,7 @@ model Workspace {
   startPages         StartPagePage[]
   mediaItems         MediaItem[]
   notifications      Notification[]
+  channelOrders      WorkspaceChannelOrder[]
 
   @@map("workspaces")
 }
@@ -165,14 +166,40 @@ model WorkspaceConnectedAccount {
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  postTargets PublishingPostTarget[]
-  queueSlots  PublishingQueueSlot[]
-  inboxItems  EngagementInboxItem[]
+  workspace     Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  postTargets   PublishingPostTarget[]
+  queueSlots    PublishingQueueSlot[]
+  inboxItems    EngagementInboxItem[]
+  channelOrders WorkspaceChannelOrder[]
 
   @@unique([workspaceId, outstandAccountId])
   @@index([workspaceId])
   @@map("workspace_connected_accounts")
+}
+
+/**
+ * Urutan channel sidebar per user (T-012.1, ADR-058) — reorder drag-drop
+ * bersifat personal, bukan workspace-wide, jadi disimpan per
+ * (workspaceId, userId, connectedAccountId). `userId` tanpa relasi FK ke
+ * `User`, konsisten dengan `WorkspaceMember.userId` (beda bounded context).
+ * Strategi persist: full rewrite (delete+createMany) tiap drop — lihat
+ * `WorkspaceService.saveChannelOrder`.
+ */
+model WorkspaceChannelOrder {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId        String   @map("workspace_id") @db.Uuid
+  userId             String   @map("user_id")
+  connectedAccountId String   @map("connected_account_id") @db.Uuid
+  position           Int
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace        Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId, connectedAccountId])
+  @@index([workspaceId, userId])
+  @@map("workspace_channel_orders")
 }
 
 // ─────────────────────────────────────────────
@@ -223,6 +250,7 @@ model PublishingPostTarget {
   connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id])
 
   @@index([postId])
+  @@index([connectedAccountId])
   @@map("publishing_post_targets")
 }
 

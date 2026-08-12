@@ -1,4 +1,9 @@
-import type { PostId, UserId, WorkspaceId } from "@social/shared";
+import type {
+  ConnectedAccountId,
+  PostId,
+  UserId,
+  WorkspaceId,
+} from "@social/shared";
 import { NotFoundError } from "@/lib/utils/errors";
 import type {
   IPublishingRepository,
@@ -49,5 +54,23 @@ export class PublishingService {
       throw new NotFoundError("Draft tidak ditemukan.");
     }
     return post;
+  }
+
+  /**
+   * Batch count post terjadwal per akun (T-012.2) — dipakai
+   * `WorkspaceService.listSidebarChannels` lewat `ScheduledCountsPort`.
+   * Skip query kalau tidak ada akun yang perlu dihitung.
+   */
+  async countScheduledByAccount(
+    workspaceId: WorkspaceId,
+    connectedAccountIds: ConnectedAccountId[],
+  ): Promise<Map<ConnectedAccountId, number>> {
+    if (connectedAccountIds.length === 0) {
+      return new Map();
+    }
+    return this.repository.countScheduledByAccount({
+      workspaceId,
+      connectedAccountIds,
+    });
   }
 }

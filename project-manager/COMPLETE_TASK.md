@@ -8,6 +8,75 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-12 — T-012.1/2 selesai: persist reorder channel per user + badge scheduled-count real
+
+### Context
+
+Dua subtask T-012 yang sebelumnya di-flag "deferred, menunggu domain
+publishing v0.2" ternyata sudah unblocked sejak T-028 (Persistensi Schedule
+via Fake OutstandAdapter) selesai — data source (`PublishingPost`/
+`PublishingPostTarget`) sudah ada, tidak perlu menunggu real Outstand
+adapter (T-025/026/027). Dikerjakan oleh Prabowo Feature Engineer, lolos
+review arsitektur Ridwan dan QA end-to-end Najwa. Menutup task **T-012**
+(sekarang ✅ Done, seluruh subtask selesai) dan **KI-006** (Resolved).
+
+### Changed — Implementasi
+
+**T-012.1 (persist reorder channel sidebar per user):**
+
+- Model Prisma baru `WorkspaceChannelOrder` (per workspace + user + account,
+  strategi full-rewrite position setiap kali ada drop — bukan patch parsial).
+- Migration diterapkan ke DB: `20260812033031_add_workspace_channel_orders`.
+- Repository method baru `saveChannelOrder` / `getChannelOrder` di
+  `IWorkspaceRepository` (domain `workspace`).
+- Server Action `reorderChannelsAction` di
+  `apps/web/src/app/(app)/components/sidebar-channels/actions.ts`.
+- Wiring optimistic UI + revert-on-failure di `ChannelsSection.tsx`; helper
+  `mergeChannels` lama dihapus karena sudah tidak diperlukan.
+
+**T-012.2 (badge scheduled-count real dari domain publishing):**
+
+- Method baru `countScheduledByAccount` (batch `groupBy`, bukan N+1 query)
+  di public API domain `publishing`.
+- Migration diterapkan ke DB:
+  `20260812032852_add_publishing_post_target_connected_account_index`.
+- Dipanggil dari `WorkspaceService` lewat interface port lokal
+  `ScheduledCountsPort` (bukan import konkret `PublishingService` ke domain
+  layer workspace) — sesuai aturan cross-domain AGENTS.md #7. Constructor
+  `WorkspaceService` sekarang punya parameter opsional kedua untuk port ini;
+  wiring konkret `PublishingService` hanya terjadi di composition root
+  (`apps/web/src/app/(app)/layout.tsx`). Ini preseden pertama di codebase
+  untuk satu domain service memanggil domain service lain secara langsung.
+
+### Review arsitektur (Ridwan)
+
+1 temuan ringan: `ScheduledCountsPort` sempat bocor dari barrel
+`domains/workspace/index.ts` via `export *`. Diperbaiki dengan menghapus
+keyword `export` dari deklarasi interface tersebut (jadi interface lokal,
+tidak re-export lewat barrel).
+
+### QA (Najwa)
+
+Typecheck, lint, dan test (85/85) PASS. Reorder persist diverifikasi lewat
+query DB langsung (bukan hanya observasi UI). Badge scheduled count
+exact-match dengan hasil query DB. Tidak ada regresi pada UI quick-compose
+"+" maupun drag-handle shift-on-hover (T-012.5/T-012.6).
+
+### Dokumentasi terupdate
+
+- `project-manager/tasks/v01-foundation.md` — T-012.1/2 dicentang, Status
+  header T-012 jadi ✅ Done, catatan stale T-012.5/T-012.6 dihapus, daftar
+  "task v0.1 yang menunggu v0.2" di Catatan Rilis dikurangi (T-012 dikeluarkan).
+- `project-manager/TASKS.md` — indeks v0.1 (9 ✅ · 1 🚫 · 4 🟡 · 6 ⏳), Total
+  (14 selesai), baris T-012 dikeluarkan dari "Fokus sekarang" (diganti
+  catatan Done).
+- `project-manager/PROJECT_STATE.md` — KI-006 ditandai Resolved, pointer
+  T-012 di Next Tasks diupdate ke ✅ Done, Top Next Tasks Snapshot
+  dikurangi jadi T-029/T-025, entri baru ditambah di Completed (Ringkasan)
+  (item terlama — KI-022 resolved — dihapus untuk menjaga hitungan 5).
+
+---
+
 ## 2026-08-11 — Bug-fix ad-hoc: posisi `ChannelsSection` di `WorkspaceSideNav` samakan dengan Design System (menempel footer via `VStack`)
 
 ### Context

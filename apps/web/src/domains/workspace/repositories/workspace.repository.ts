@@ -111,4 +111,23 @@ export interface IWorkspaceRepository {
   findInvitationByToken(
     token: string,
   ): Promise<WorkspaceInvitationRecord | null>;
+
+  /**
+   * Persist urutan channel sidebar personal user (T-012.1). Full rewrite
+   * (delete+createMany) — caller (`WorkspaceService.saveChannelOrder`)
+   * sudah memfilter `orderedConnectedAccountIds` supaya hanya berisi id
+   * milik `workspaceId` ini (anti-IDOR); implementasi TIDAK perlu
+   * re-verifikasi ownership.
+   */
+  saveChannelOrder(input: {
+    workspaceId: WorkspaceId;
+    userId: UserId;
+    orderedConnectedAccountIds: ConnectedAccountId[];
+  }): Promise<void>;
+
+  /** Ordered by `position` ascending — urutan tersimpan milik satu user. */
+  getChannelOrder(
+    workspaceId: WorkspaceId,
+    userId: UserId,
+  ): Promise<ConnectedAccountId[]>;
 }

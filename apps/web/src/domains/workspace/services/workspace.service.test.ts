@@ -46,6 +46,8 @@ function createFakeRepository(
     listConnectedAccounts: async () => [],
     listMembers: async () => [],
     findUsersByIds: async () => [],
+    saveChannelOrder: async () => undefined,
+    getChannelOrder: async () => [],
     getMember: async (_workspaceId, userId) => {
       for (const member of members.values()) {
         if (member.userId === userId) {
@@ -583,5 +585,110 @@ describe("WorkspaceService.updateMemberRole", () => {
         MemberRole.Admin,
       ),
     ).rejects.toThrow(AuthorizationError);
+  });
+});
+
+describe("WorkspaceService.saveChannelOrder", () => {
+  it("drops ids that are not owned by the workspace before persisting", async () => {
+    const ownedAccount: ConnectedAccountRecord = {
+      id: asConnectedAccountId("conn-owned"),
+      workspaceId: WORKSPACE_ID,
+      platform: SocialPlatform.Instagram,
+      outstandAccountId: "mock-ig-owned",
+      handle: "@owned",
+      status: "active",
+      reconnectRequired: false,
+      connectedAt: new Date("2026-01-01T00:00:00Z"),
+    };
+    let received:
+      Parameters<IWorkspaceRepository["saveChannelOrder"]>[0] | null = null;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listConnectedAccounts: async () => [ownedAccount],
+        saveChannelOrder: async (input) => {
+          received = input;
+        },
+      }),
+    );
+
+    await service.saveChannelOrder(WORKSPACE_ID, USER_ID, [
+      asConnectedAccountId("conn-foreign"),
+      ownedAccount.id,
+    ]);
+
+    expect(received).toEqual({
+      workspaceId: WORKSPACE_ID,
+      userId: USER_ID,
+      orderedConnectedAccountIds: [ownedAccount.id],
+    });
+  });
+});
+
+describe("WorkspaceService.listSidebarChannels", () => {
+  function account(id: string, connectedAt: string): ConnectedAccountRecord {
+    return {
+      id: asConnectedAccountId(id),
+      workspaceId: WORKSPACE_ID,
+      platform: SocialPlatform.Instagram,
+      outstandAccountId: `mock-${id}`,
+      handle: `@${id}`,
+      status: "active",
+      reconnectRequired: false,
+      connectedAt: new Date(connectedAt),
+    };
+  }
+
+  it("orders accounts by stored channel order, appending new channels at the end", async () => {
+    const accA = account("conn-a", "2026-01-01T00:00:00Z");
+    const accB = account("conn-b", "2026-01-02T00:00:00Z");
+    const accC = account("conn-c", "2026-01-03T00:00:00Z");
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listConnectedAccounts: async () => [accA, accB, accC],
+        getChannelOrder: async () => [accB.id, accA.id],
+      }),
+    );
+
+    const result = await service.listSidebarChannels(WORKSPACE_ID, USER_ID);
+
+    expect(result.map((c) => c.id)).toEqual([accB.id, accA.id, accC.id]);
+  });
+
+  it("defaults scheduledCount to 0 when constructed without a scheduledCounts port", async () => {
+    const acc = account("conn-a", "2026-01-01T00:00:00Z");
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listConnectedAccounts: async () => [acc],
+      }),
+    );
+
+    const result = await service.listSidebarChannels(WORKSPACE_ID, USER_ID);
+
+    expect(result).toEqual([
+      {
+        id: acc.id,
+        platform: acc.platform,
+        handle: acc.handle,
+        status: acc.status,
+        reconnectRequired: acc.reconnectRequired,
+        scheduledCount: 0,
+      },
+    ]);
+  });
+
+  it("fills scheduledCount from the provided ScheduledCountsPort", async () => {
+    const acc = account("conn-a", "2026-01-01T00:00:00Z");
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listConnectedAccounts: async () => [acc],
+      }),
+      {
+        countScheduledByAccount: async () => new Map([[acc.id, 5]]),
+      },
+    );
+
+    const result = await service.listSidebarChannels(WORKSPACE_ID, USER_ID);
+
+    expect(result[0]?.scheduledCount).toBe(5);
   });
 });
