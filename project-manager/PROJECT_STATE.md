@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** T-012 Sidebar "Channels" · T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** Tidak ada blocker aktif. Known issue teratas: dependency Transactional Email Provider belum ditetapkan (T-005, tidak memblokir M8 awal).
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 69 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.49     |
+| Version      | 1.0.50     |
 | Status       | Active     |
-| Last Updated | 2026-08-10 |
+| Last Updated | 2026-08-12 |
 
 ---
 
@@ -107,7 +107,6 @@ Restricted Actions:
 Task berstatus 🟡 — detail dan subtask ada di [`TASKS.md`](TASKS.md):
 
 * **T-031** Redirect otomatis ke sub-screen tujuan (ADR-054) — Save as Draft sudah sejalan; sisanya menyusul bersama T-029/T-032/T-034.
-* **T-012** Sidebar section "Channels" (ADR-058) — detail subtask di [`TASKS.md`](TASKS.md) / `tasks/v01-foundation.md`.
 * **T-016** Account & user settings screens — T-016.1/2/3/5 selesai; hanya T-016.4 (notifications) tersisa, Blocked oleh T-036 (v0.2).
 * **T-039** Migrasi Routing & Settings (ADR-076/ADR-077) — T-039.1/2/3/5 selesai (review Ridwan + QA Najwa lolos); sisa T-039.4 (onboarding picker workspace) belum dikerjakan, terpisah.
 
@@ -124,7 +123,7 @@ gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
 
 **Rantai blocker terbesar:** T-025 → T-026 → T-027 (Real adapter → webhook → job runner). Ketiganya mengunci sebagian besar v0.2, seluruh v0.3, dan seluruh v0.4.
 
-**Catatan urutan rilis:** v0.1 dan v0.2 tidak sepenuhnya sekuensial — empat task v0.1 (T-012, T-013, T-015, T-016) punya subtask yang bergantung pada task v0.2. Rinciannya di Catatan Rilis `tasks/v01-foundation.md`.
+**Catatan urutan rilis:** v0.1 dan v0.2 tidak sepenuhnya sekuensial — tiga task v0.1 (T-013, T-015, T-016) punya subtask yang bergantung pada task v0.2. Rinciannya di Catatan Rilis `tasks/v01-foundation.md`.
 
 **Keputusan terbuka yang menunggu King Rezi:** T-005 (email provider), T-060 (provider AI), T-070 (strategi route publik), T-032 (semantik queue slot), T-081 (framework E2E), T-086 (tool observability), serta status Billing yang belum masuk release manapun. Rinciannya di `TASKS.md` → **Keputusan terbuka**.
 
@@ -173,16 +172,6 @@ Alignment dokumentasi dan schema/migration sudah selesai, tetapi handler webhook
 | Terkait | — |
 
 Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production build, tetapi risiko perubahan API tetap dikelola dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan verifikasi ulang saat upgrade.
-
-### KI-006 · Sidebar Channels — scheduled count stub, reorder belum persisten
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Tech-Debt |
-| Terkait | T-012 (menunggu T-012.1, T-012.2) |
-
-Bagian UI/interaksi T-012.5 (swap count↔quick-compose "+") dan T-012.6 (drag-handle shift-on-hover) sudah selesai kode-level, tapi data count di-hardcode 0 dan urutan reorder reset saat reload — kedua hal ini menunggu T-012.1 (skema reorder personal per user) dan T-012.2 (query scheduled-posts count lintas domain), yang masih deferred sampai domain publishing v0.2 siap.
 
 ### KI-014 · Domain `identity` belum punya unit test
 
@@ -276,11 +265,11 @@ Tidak ada blocker saat ini.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-012.1/2 selesai (2026-08-12)** — Sidebar Channels: persist reorder per user (model Prisma `WorkspaceChannelOrder`, Server Action `reorderChannelsAction`, optimistic UI + revert-on-failure di `ChannelsSection.tsx`) dan badge scheduled-count real (`countScheduledByAccount` batch query di domain publishing, dipanggil `WorkspaceService` lewat port lokal `ScheduledCountsPort` — preseden pertama domain service memanggil domain service lain langsung, AGENTS.md #7). Lolos review Ridwan (1 temuan ringan diperbaiki: `ScheduledCountsPort` bocor dari barrel `domains/workspace`) + QA Najwa (typecheck/lint/test 85/85 PASS, reorder & count terverifikasi lewat DB langsung). Menutup T-012 (✅ Done) dan KI-006 (Resolved). Detail: `tasks/v01-foundation.md` § T-012, `COMPLETE_TASK.md`.
 * **T-039.5 selesai (ADR-077)** — Migrasi kode pola sidebar Settings dari secondary nav ke sidebar tunggal pola Buffer: `AppShell` `sideNav` (`apps/web/src/app/(app)/layout.tsx`) jadi kondisional per-route lewat `AppSideNav.tsx` baru (`usePathname()` pilih `SettingsSideNav` di `/settings`, `WorkspaceSideNav` di luar itu), `LayoutPanel` secondary nav (`apps/web/src/app/(app)/settings/layout.tsx`) dihapus total, header back-navigation ditambah di `SettingsSideNav.tsx`. Lolos review Ridwan (tidak ada temuan) + QA Najwa end-to-end browser (PASS semua golden path: typecheck bersih, lint bersih, 79/79 test, taksonomi Organization/Account tidak berubah, tidak ada regresi, dark mode & reload konsisten). Menutup sisa gap render Settings di KI-023 — sisa scope KI-023/T-039 sekarang hanya T-039.4. Detail: `tasks/v01-foundation.md` § T-039, `COMPLETE_TASK.md`.
 * **T-039.1–.3 selesai** — Migrasi kode `apps/web` ke baseline ADR-076: route `[slug]/*` dipindah ke route group `(app)/*`, `account/*` digabung ke `(app)/settings/account/*` (grup Organization + Account, satu entry point avatar), Middleware/`src/proxy.ts` resolve workspace dari cookie `active-workspace-id` (tervalidasi ulang `workspace_members`, inject header `x-workspace-id`/`x-workspace-role`, runtime Node.js). Dikerjakan 5 track paralel, lolos review Ridwan (2 temuan diperbaiki: dead code `getWorkspaceBySlug`, hardening strip header di jalur bypass) + QA Najwa (1 bug blocking infinite redirect loop di halaman auth publik, sudah diperbaiki + test regresi). Menutup sebagian besar KI-023. T-039.4 (onboarding picker workspace) tetap terbuka, terpisah. Detail: `tasks/v01-foundation.md` § T-039, `COMPLETE_TASK.md`.
 * **ADR-076** — 14 file baseline `product-discovery/`+`context/` ditulis ulang: workspace context pindah ke cookie (hapus `[slug]`, route group `(app)`), Settings dikonsolidasi jadi Organization + Account dengan entry point avatar tunggal, `/onboarding` jadi re-entry point saat cookie hilang. Review internal (PR [#61](https://github.com/reziSaktiva/social-media-management/pull/61)) menemukan & memperbaiki 5 inkonsistensi (referensi `/dashboard` basi, bahasa "superseded" di Decision Log, `settings/account/` tanpa `page.tsx` default, contoh URL salah tulis nama route group, jumlah zona sidebar keliru) sebelum ADR dibuat. KI-023 direvisi mengikuti ADR ini. Migrasi kode `apps/web` masih menyusul sebagai task terpisah. Pada 2026-08-11, Design System (Claude Design) juga sudah disinkronkan mengikuti ADR-076 ini — Settings konsolidasi Organization+Account, avatar entry point tunggal, cleanup duplikasi `user-settings`/`account-profile`/`account-preferences`, fix ikon Astryx-consistent di Preferences; migrasi kode `apps/web` (T-039) masih menyusul sebagai task terpisah yang belum dieksekusi.
 * **KI-021 resolved** *(referensi flow avatar/dropdown di bawah — superseded oleh ADR-076, lihat bullet di atas)* — Design System tidak punya logic apa pun untuk membuka menu saat avatar diklik (langsung pindah screen) dan alur Logout belum pernah dimodelkan. King Rezi memperbaiki manual: avatar sidebar Design System sekarang membuka dropdown (Profile + divider + Logout, mirror `DropdownMenu` Astryx), dan Logout membuka dialog konfirmasi Tier 2 (judul "Logout dari akun ini?", mirror `AlertDialog`, sesuai ADR-049/NP-D10). Tidak ada kode `apps/web` yang berubah — perubahan murni di Design System.
-* **KI-022 resolved** *(superseded oleh ADR-076 — lihat bullet di atas)* — Avatar Design System sebelumnya mengarah ke Workspace Settings `settings-connected-accounts`, berbeda dari kode web yang saat itu mengarah ke `/account/profile` User Settings. Dikonfirmasi kode web sudah benar sesuai baseline `information-architecture.md` + ADR-056 yang berlaku saat itu, jadi King Rezi memperbaiki Design System mengikuti kode: item Profile sempat diarahkan ke screen `templates/user-settings.html` (User Settings) dengan sidebar minimal ala `AccountSideNav.tsx`. **Screen dan target ini sudah tidak berlaku** — ADR-076 mengonsolidasikan Settings jadi satu section (Organization + Account) dengan entry point avatar tunggal, dan Design System sudah disinkronkan mengikutinya (termasuk cleanup duplikasi `user-settings`/`account-profile`/`account-preferences`, lihat bullet `ADR-076`). Migrasi kode `apps/web` ke alur baru ini masih tercatat sebagai gap terbuka di `KI-023`/T-039.
 
 ---
 
@@ -288,11 +277,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-078** — Amandemen ADR-018: port lokal + composition root untuk cross-domain service call (`ScheduledCountsPort` / T-012.2).
+* **ADR-077** — Settings pakai sidebar tunggal yang menggantikan main sidebar (pola Buffer) — amandemen mekanisme render ADR-076.
 * **ADR-076** — Workspace context pindah ke cookie (hapus dynamic segment `[slug]`, route group `(app)`) + Settings dikonsolidasi jadi Organization + Account dengan entry point avatar tunggal — menggantikan Workspace Selector yang tidak pernah dibangun (KI-023).
 * **ADR-075** — Amandemen ADR-071: sinkronisasi kutipan `migration.sql` bucket `avatars` (resolusi KI-018).
 * **ADR-074** — Reduksi struktur role dari 4 jadi 3 (Account Owner, Admin, Creator) — resolusi KI-017.
-* **ADR-073** — Prisma External Tables (`initShadowDb` + `tables.external`) untuk shadow database menangani tabel platform Supabase (`storage.buckets`) — resolusi KI-016.
-* **ADR-072** — Tabel `workspace_invitations` terpisah untuk invite member yang belum punya akun (T-007.1/.2).
 
 ---
 

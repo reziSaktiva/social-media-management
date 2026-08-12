@@ -29,6 +29,7 @@ import { cn } from "@/lib/cn";
 import { useDraftEditor } from "../draft-editor/Context";
 
 import { PLATFORM_ICON } from "../platform-icons";
+import { reorderChannelsAction } from "./actions";
 
 export type { SidebarChannelAccount };
 
@@ -216,25 +217,6 @@ function ChannelRow({
   );
 }
 
-/**
- * Merge a fresh `channels` payload from the server into the existing
- * client-side order — keep the reorder (T-012.1, intentionally not
- * persisted yet) for accounts that still exist, refresh their fields
- * (status/scheduledCount), drop removed accounts, and append new ones.
- */
-function mergeChannels(
-  prev: SidebarChannelAccount[],
-  next: SidebarChannelAccount[],
-): SidebarChannelAccount[] {
-  const nextIds = new Set(next.map((c) => c.id));
-  const kept = prev
-    .filter((p) => nextIds.has(p.id))
-    .map((p) => next.find((c) => c.id === p.id) ?? p);
-  const prevIds = new Set(prev.map((p) => p.id));
-  const added = next.filter((c) => !prevIds.has(c.id));
-  return [...kept, ...added];
-}
-
 export function ChannelsSection({
   channels,
 }: {
@@ -249,12 +231,17 @@ export function ChannelsSection({
   // new drop-time logic doing the same, not reaching for this state.
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
-  // Sinkronisasi ringan kalau daftar akun dari server berubah (akun baru
-  // terhubung / diputus) — dihitung selama render ("adjusting state when a
-  // prop changes", bukan di useEffect, supaya tidak memicu render tambahan).
+  // Sinkronisasi ringan kalau `channels` dari server berubah (akun baru
+  // terhubung/diputus, atau reload) — dihitung selama render ("adjusting
+  // state when a prop changes", bukan useEffect). T-012.1: server
+  // (`listSidebarChannels`) sekarang selalu mengembalikan urutan final yang
+  // benar (posisi tersimpan per user), jadi cukup replace langsung — skip
+  // hanya saat drag aktif supaya baris tidak "menyentak" dari bawah kursor.
   if (channels !== channelsSnapshot) {
     setChannelsSnapshot(channels);
-    setOrderedChannels((prev) => mergeChannels(prev, channels));
+    if (!draggedId) {
+      setOrderedChannels(channels);
+    }
   }
 
   function handleDragStart(id: string) {
@@ -285,6 +272,22 @@ export function ChannelsSection({
         }
         const [moved] = next.splice(fromIndex, 1);
         next.splice(toIndex, 0, moved);
+
+        // Persist (T-012.1) — optimistic, fire-and-forget. Revert ke urutan
+        // sebelumnya kalau gagal (baik reject maupun `{ error }`) supaya
+        // state lokal tidak diam-diam drift dari DB. Sengaja tidak
+        // `router.refresh()` di jalur sukses (hindari flicker) — reload
+        // berikutnya akan membaca urutan tersimpan.
+        reorderChannelsAction(next.map((c) => c.id))
+          .then((result) => {
+            if (result.error) {
+              setOrderedChannels(prev);
+            }
+          })
+          .catch(() => {
+            setOrderedChannels(prev);
+          });
+
         return next;
       });
     };

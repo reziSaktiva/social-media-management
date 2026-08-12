@@ -97,4 +97,17 @@ export interface IPublishingRepository {
     status: "scheduled" | "failed";
     error?: string;
   }): Promise<void>;
+
+  /**
+   * Batch count of scheduled `PublishingPostTarget` rows per
+   * `connectedAccountId` — dipakai sidebar Channels (T-012.2) untuk badge
+   * jumlah post terjadwal per akun. Batch via `groupBy` (bukan per-akun)
+   * supaya `listSidebarChannels` tidak N+1 saat menghitung semua akun
+   * sekaligus. Hanya menghitung post dengan status `Scheduled` dan
+   * `deletedAt: null` (pola soft-delete konsisten dengan `listDrafts`).
+   */
+  countScheduledByAccount(input: {
+    workspaceId: WorkspaceId;
+    connectedAccountIds: ConnectedAccountId[];
+  }): Promise<Map<ConnectedAccountId, number>>;
 }

@@ -1,4 +1,5 @@
 import {
+  asConnectedAccountId,
   asPostId,
   asUserId,
   asWorkspaceId,
@@ -37,6 +38,7 @@ function createFakeRepository(
     updateDraftCaption: async () => null,
     schedulePost: async () => null,
     updateTargetOutcome: async () => undefined,
+    countScheduledByAccount: async () => new Map(),
     ...overrides,
   };
 }
@@ -183,5 +185,57 @@ describe("PublishingService.updateDraft", () => {
         caption: "Hello",
       }),
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("PublishingService.countScheduledByAccount", () => {
+  it("returns an empty Map without calling the repository when input is empty", async () => {
+    let calls = 0;
+    const service = new PublishingService(
+      createFakeRepository({
+        countScheduledByAccount: async () => {
+          calls += 1;
+          return new Map();
+        },
+      }),
+    );
+
+    const result = await service.countScheduledByAccount(WORKSPACE_ID, []);
+
+    expect(result).toEqual(new Map());
+    expect(calls).toBe(0);
+  });
+
+  it("delegates to the repository for non-empty input", async () => {
+    const connectedAccountIds = [
+      asConnectedAccountId("conn-1"),
+      asConnectedAccountId("conn-2"),
+    ];
+    const expected = new Map([
+      [connectedAccountIds[0]!, 3],
+      [connectedAccountIds[1]!, 0],
+    ]);
+    let received:
+      Parameters<IPublishingRepository["countScheduledByAccount"]>[0] | null =
+      null;
+    const service = new PublishingService(
+      createFakeRepository({
+        countScheduledByAccount: async (input) => {
+          received = input;
+          return expected;
+        },
+      }),
+    );
+
+    const result = await service.countScheduledByAccount(
+      WORKSPACE_ID,
+      connectedAccountIds,
+    );
+
+    expect(result).toBe(expected);
+    expect(received).toEqual({
+      workspaceId: WORKSPACE_ID,
+      connectedAccountIds,
+    });
   });
 });

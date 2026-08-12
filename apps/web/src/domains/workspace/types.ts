@@ -15,10 +15,9 @@ import type {
  * domain's public API so both surfaces import one contract instead of
  * redefining it.
  *
- * `scheduledCount` is a stub — always 0 until T-012.2 (scheduled-posts count
- * across the Publishing domain) is implemented; this needs domain publishing
- * v0.2, which does not exist yet (see PROJECT_STATE.md / v01-foundation.md
- * T-012.2).
+ * `scheduledCount` is a real cross-domain count from `publishing` (T-012.2),
+ * supplied via `WorkspaceService`'s `ScheduledCountsPort` — defaults to 0
+ * when the port isn't provided to the constructor (back-compat call-sites).
  */
 export interface SidebarChannelAccount {
   id: string;

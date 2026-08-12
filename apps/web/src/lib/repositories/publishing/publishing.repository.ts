@@ -4,6 +4,7 @@ import {
   asPostTargetId,
   asUserId,
   asWorkspaceId,
+  type ConnectedAccountId,
   ContentStatus,
 } from "@social/shared";
 import type {
@@ -191,5 +192,23 @@ export const publishingRepository: IPublishingRepository = {
       where: { id: postTargetId },
       data: { outstandJobId, status, error },
     });
+  },
+
+  async countScheduledByAccount({ workspaceId, connectedAccountIds }) {
+    const rows = await prisma.publishingPostTarget.groupBy({
+      by: ["connectedAccountId"],
+      where: {
+        connectedAccountId: { in: connectedAccountIds },
+        post: { workspaceId, status: ContentStatus.Scheduled, deletedAt: null },
+      },
+      _count: { _all: true },
+    });
+
+    return new Map(
+      rows.map((row) => [
+        asConnectedAccountId(row.connectedAccountId),
+        row._count._all,
+      ]),
+    ) as Map<ConnectedAccountId, number>;
   },
 };

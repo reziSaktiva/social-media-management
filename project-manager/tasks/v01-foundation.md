@@ -143,20 +143,29 @@ CTA primary full-width di `WorkspaceSideNav`, di slot `topContent` (di bawah Wor
 
 | Field         | Value                                                                  |
 | ------------- | ---------------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress — T-012.3/4/5/6 selesai (T-012.5/6 sebagian, lihat catatan); T-012.9 (bug, temuan review PR #42) sudah diperbaiki; PR #42 sudah di-merge (2026-08-05); T-012.1/2 masih deferred |
+| **Status**    | ✅ Done — seluruh subtask T-012.1–T-012.6 dan T-012.9 selesai; T-012.1/2 diimplementasikan & lolos review Ridwan + QA Najwa (2026-08-12, lihat catatan) |
 | **Domain**    | workspace · UI                                                         |
-| **ADR**       | ADR-058 (+ addendum drag-handle **shift-on-hover**, mengoverride keputusan awal "no-shift") |
-| **Depends**   | T-009 ✅ · `listConnectedAccounts` ✅ (dari T-028, v0.2) · T-012.2 butuh domain publishing (v0.2) |
+| **ADR**       | ADR-058 (+ addendum drag-handle **shift-on-hover**, mengoverride keputusan awal "no-shift") · ADR-078 (amandemen ADR-018 — pola `ScheduledCountsPort`, T-012.2) |
+| **Depends**   | T-009 ✅ · `listConnectedAccounts` ✅ (dari T-028, v0.2)                |
 | **Baca dulu** | `04-ux/navigation-patterns.md` · Claude Design → `components/navigation.html` · `06-engineering/dependency-strategy.md` |
 
 Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand overlay, nama akun, status badge, scheduled count ↔ quick-compose "+" (no-shift/fixed-slot).
 
-- [ ] **T-012.1** Skema tabel reorder personal per user (tabel baru + migrasi) — **deferred, menunggu domain publishing v0.2**
-- [ ] **T-012.2** Query scheduled-posts count lintas domain (Publishing → Workspace, via public API domain) — **deferred, menunggu domain publishing v0.2**
+**Catatan unblock (2026-08-12):** T-012.1/2 sebelumnya ditandai "deferred, menunggu domain publishing v0.2" — status itu stale. Model `PublishingPost`/`PublishingPostTarget` (schema Prisma, index `[workspaceId, status]`) sudah eksis dan berisi data real sejak **T-028** (Persistensi Schedule via Fake OutstandAdapter) selesai ✅ — jalur real Outstand adapter (T-025/026/027) tidak dibutuhkan untuk query count, hanya untuk publish/webhook/job runner. Kedua subtask ini sekarang bisa dikerjakan.
+
+**Implementasi T-012.1/2 (selesai, 2026-08-12):**
+
+- **T-012.1** (persist reorder channel per user): model Prisma baru `WorkspaceChannelOrder` (per workspace+user+account, full-rewrite position tiap drop), repository method `saveChannelOrder`/`getChannelOrder` di `IWorkspaceRepository`, Server Action `reorderChannelsAction` (`apps/web/src/app/(app)/components/sidebar-channels/actions.ts`), wiring optimistic UI + revert-on-failure di `ChannelsSection.tsx` (helper `mergeChannels` lama dihapus, sudah tidak dipakai).
+- **T-012.2** (badge scheduled-count real): method `countScheduledByAccount` (batch `groupBy`, bukan N+1) di public API domain `publishing`, dipanggil dari `WorkspaceService` lewat interface port lokal `ScheduledCountsPort` (bukan import konkret `PublishingService` ke domain layer) — constructor `WorkspaceService` sekarang punya param opsional kedua, wiring konkret `PublishingService` hanya terjadi di composition root (`apps/web/src/app/(app)/layout.tsx`). Preseden pertama di codebase untuk satu domain service memanggil domain service lain secara langsung (AGENTS.md rule #7). Pola ini dikunci di **ADR-078** (amandemen ADR-018).
+- Migration Prisma sudah diterapkan ke DB: `20260812032852_add_publishing_post_target_connected_account_index`, `20260812033031_add_workspace_channel_orders`.
+- Review arsitektur Ridwan: 1 temuan ringan (`ScheduledCountsPort` bocor dari barrel `domains/workspace/index.ts` via `export *`) sudah diperbaiki (hapus keyword `export` dari interface). QA Najwa: typecheck/lint/test 85/85 PASS, reorder persist terverifikasi lewat DB langsung, badge count exact match query DB, tidak ada regresi UI quick-compose/drag-handle.
+
+- [x] **T-012.1** Skema tabel reorder personal per user (tabel baru + migrasi)
+- [x] **T-012.2** Query scheduled-posts count lintas domain (Publishing → Workspace, via public API domain)
 - [x] **T-012.3** Konfirmasi `react-icons` (subset **`react-icons/fa6`**) sebagai dependency runtime `apps/web` di `dependency-strategy.md`
 - [x] **T-012.4** Render section + avatar bulat + badge logo brand `react-icons/fa6` overlay + status badge
-- [x] **T-012.5** Scheduled count ↔ quick-compose "+" dengan fixed-slot (no-shift) — **UI/interaksi selesai** (swap no-shift + `openNewPost(accountId)` wired nyata ke Draft Editor Account Selector), tapi **scheduled count masih stub hardcode 0** di `layout.tsx` — data asli menunggu T-012.2 (v0.2)
-- [x] **T-012.6** Drag-handle shift-on-hover — seluruh isi baris ikut bergeser — **visual/interaksi selesai**, tapi reorder **client-state only, tidak persisten** (reset saat reload) — menunggu T-012.1 (v0.2)
+- [x] **T-012.5** Scheduled count ↔ quick-compose "+" dengan fixed-slot (no-shift) — selesai, termasuk data count real (T-012.2)
+- [x] **T-012.6** Drag-handle shift-on-hover — seluruh isi baris ikut bergeser — selesai, termasuk persist reorder (T-012.1)
 
 **Temuan review King Rezi di PR #42 (2026-08-05, sebelum merge):**
 
@@ -403,11 +412,10 @@ Alasan urgensinya: kalau jalur Bearer token baru dipasang setelah kode web matan
 ## Catatan Rilis
 
 * Nomor kosong v0.1 sudah terpakai semua (T-019 diisi task API mobile). Task v0.1 baru berikutnya memakai nomor global berikutnya yang belum pernah dipakai — jangan menggeser ID yang sudah ada. **T-039** (Migrasi Routing & Settings, ADR-076) memakai nomor ini: ID global berikutnya yang belum pernah dipakai, dipinjam dari ruang kosong yang sebelumnya dicadangkan untuk pertumbuhan v0.2 (lihat Catatan Rilis `tasks/v02-publishing-mvp.md`) — task tetap ditempatkan di file v0.1 karena scope-nya (Workspace/Settings routing) sejalan dengan T-009/T-016, bukan v0.2 Publishing.
-* **Definisi "Foundation selesai":** semua task di rilis ini `✅ Done` **kecuali** yang secara sadar ditunda dengan alasan tercatat — dan **kecuali empat task yang menunggu v0.2** (lihat di bawah).
+* **Definisi "Foundation selesai":** semua task di rilis ini `✅ Done` **kecuali** yang secara sadar ditunda dengan alasan tercatat — dan **kecuali tiga task yang menunggu v0.2** (lihat di bawah). **T-012** (Sidebar Channels) sebelumnya termasuk daftar ini tapi sudah ✅ Done (2026-08-12) — T-012.2 (scheduled count) ternyata tidak perlu menunggu real Outstand adapter, cukup data `PublishingPost`/`PublishingPostTarget` yang sudah ada sejak T-028.
 * **Task v0.1 yang tidak bisa ditutup sebelum v0.2 berjalan** (dependency lintas rilis, disengaja dan diketahui):
   * **T-013** Connect account — subtask T-013.1 butuh T-025 (Real OutstandAdapter, v0.2).
   * **T-015** Reconnect flow — butuh T-026 (webhook `account.token_expired`, v0.2).
   * **T-016** Account settings — subtask T-016.4 butuh T-036 (notification, v0.2).
-  * **T-012** Sidebar Channels — subtask T-012.2 butuh query scheduled-posts count dari domain publishing (v0.2), meski `listConnectedAccounts` sendiri sudah ada.
 
   Konsekuensinya: v0.1 dan v0.2 **tidak sepenuhnya sekuensial** — sisa v0.1 di atas selesai berbarengan atau setelah v0.2. Kalau di kemudian hari pemisahan ini terasa menyesatkan, pilihan yang lebih bersih adalah memindahkan Connect Account + Channels/CTA ke v0.2 lewat ADR baru (indeks release di `TASKS.md` adalah turunan `release-roadmap.md`, jadi perubahan ruang lingkup rilis wajib lewat ADR).
