@@ -6,7 +6,7 @@ Dokumentasi Efficiency Restructuring — DECISIONS.md per-file + CHANGELOG rotat
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-061 (2026-08-03)
 
 ### Date
 

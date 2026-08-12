@@ -6,7 +6,7 @@ Background Job Strategy — PostgreSQL Job Queue + Railway Cron
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-040 (2026-07-23)
 
 ### Date
 

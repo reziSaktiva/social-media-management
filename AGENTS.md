@@ -174,6 +174,25 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
     baca `.claude/skills/claude-design-scope-discipline/SKILL.md`. Jangan
     mengubah default/state yang sudah disetujui user sebagai efek samping
     fitur baru — insiden nyata di ADR-052.
+17. **Setiap task yang diperintahkan King Rezi wajib diklasifikasi dulu:**
+    UI/UX-related (menyentuh screen, komponen visual, layout, style, atau
+    flow yang terlihat user) atau bukan (backend murni: schema, service,
+    job, integrasi tanpa permukaan visual baru).
+    - Kalau **UI/UX-related**: sebelum menulis kode, cek dulu ke Claude
+      Design (project "Social Media Management", via `DesignSync`) apakah
+      screen/komponen yang relevan sudah ada rancangannya di sana.
+    - Kalau **belum ada** di Claude Design: **STOP** — jangan lanjut
+      menulis kode UI. Beri tahu King Rezi secara eksplisit bahwa rancangan
+      belum ada, dan tunggu King Rezi membuat/mengonfirmasi desainnya
+      (langsung atau lewat Neymar Product Designer) sebelum implementasi
+      dilanjutkan.
+    - Kalau **bukan** UI/UX-related: lanjut seperti biasa, tidak perlu cek
+      Claude Design.
+    - Tujuan: King Rezi sering lupa memastikan desain sudah ada sebelum
+      minta implementasi — AI adalah safety net yang wajib menahan langkah
+      ini, bukan asumsi diam-diam. Berbeda dari aturan reminder sinkronisasi
+      docs↔Claude Design (ADR-056), yang bersifat reminder _setelah_ perubahan —
+      rule ini adalah gate _sebelum_ implementasi dimulai.
 
 ## Workflow Astryx wajib
 

@@ -6,7 +6,7 @@ System Architecture Baseline v1.0 — product-discovery/05-architecture/
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-040 (2026-07-23)
 
 ### Date
 

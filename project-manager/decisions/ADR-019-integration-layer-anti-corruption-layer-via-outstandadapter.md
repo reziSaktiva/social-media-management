@@ -6,7 +6,7 @@ Integration Layer — Anti-Corruption Layer via OutstandAdapter
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-040 (2026-07-23)
 
 ### Date
 

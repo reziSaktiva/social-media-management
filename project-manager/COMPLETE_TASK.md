@@ -8,6 +8,144 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-12 — Audit konsistensi dokumentasi task/state/ADR + governance Gibran/PROJECT_RULES
+
+### Context
+
+King Rezi minta audit menyeluruh: apakah `TASKS.md`/`tasks/vXX-*.md`,
+`PROJECT_STATE.md`, dan `DECISIONS.md`/`decisions/` sudah selaras, dan
+apakah dokumen yang membantu AI (`AGENTS.md`, `context/`, skills, subagent,
+config kembar ADR-064) aman tanpa gap. Dijalankan lewat 4 subagent audit
+paralel (read-only), lalu King Rezi memutuskan 3 fork governance lewat
+AskUserQuestion.
+
+### Fixed
+
+- **TASKS.md**: klaim "142 subtask (v0.1–v0.3)" → **138** (hitung ulang
+  langsung dari `tasks/vXX-*.md`); contoh "nomor kosong" basi (T-019,
+  T-037–T-039, sudah terisi) diganti nomor kosong yang benar-benar kosong
+  (T-046–T-049, T-056–T-059, T-066–T-069, T-075–T-079); T-025 di "Fokus
+  sekarang" diberi catatan blocker eksplisit KI-003.
+- **tasks/v02-publishing-mvp.md**: T-025/T-026/T-027 diberi field
+  `Terkait KI-003`/`KI-015`/`KI-025` (sebelumnya link satu arah — KI
+  menyebut task, task tidak menyebut balik KI).
+- **tasks/v01-foundation.md**: T-039 field `Terkait` ditambah `KI-024`.
+- **PROJECT_STATE.md**: baris "69 task" → **71 task**; urutan section
+  KI-024/KI-025 dibetulkan (sebelumnya 025 ditulis sebelum 024); baris
+  Blockers KI-003 direvisi (bukan cuma env var, kode adapter juga belum
+  ditulis); enum Status Known Issues diperluas menambahkan `Sebagian
+  Resolved — sisa scope: <ID>` (dipakai KI-023, sebelumnya di luar enum
+  dokumentasi); section **In Progress** dan **Next Tasks** dipangkas dari
+  duplikasi detail subtask jadi pointer singkat ke `TASKS.md` (menegakkan
+  ADR-062 yang sudah dinyatakan file ini sendiri tapi dilanggar sendiri).
+- **DECISIONS.md** + 14 file `decisions/ADR-XXX.md` lama: backfill tag
+  `Amended by` yang hilang — ADR-005/008/013/019/020/022/023/025/036
+  (diamendemen ADR-040), ADR-035/038 (ADR-041), ADR-014 (ADR-027), ADR-060
+  (ADR-061), ADR-052 (ADR-065). ADR-038 digabung dengan tag amandemen yang
+  sudah ada (ADR-056/057) jadi satu urutan kronologis.
+- **`.claude/agents/*.md`**: 5 dari 7 file subagent ditemukan writable
+  (644), seharusnya read-only 644 → dikembalikan ke `chmod 444`
+  (`gibran-project-manager.md`, `najwa-qa-engineer.md`,
+  `neymar-product-designer.md`, `prabowo-feature-engineer.md`,
+  `ridwan-architecture-reviewer.md`).
+- **`.cursor/mcp.json`**: entry `supabase` kehilangan field `"type":
+  "http"` yang ada di `.mcp.json` (ADR-064 twin-file drift) → disamakan.
+
+### Changed — Governance (izin eksplisit King Rezi)
+
+- **`PROJECT_RULES.md`** § Append-Only: ditambahkan satu pengecualian
+  eksplisit — kolom `Status`/header `### Status` ADR lama boleh diedit
+  khusus untuk menambah tag `Amended by ADR-YYY`, karena praktik ini sudah
+  berjalan sejak ADR-056/057 tanpa pernah dituliskan sebagai exception,
+  menyebabkan drift 14 ADR lama di atas.
+- **`.claude/agents/gibran-project-manager.md`** (Static Reference, chmod
+  444 — di-unlock sementara untuk edit ini, dikembalikan ke 444 setelah):
+  section "In Progress" ditegaskan pointer-only setara "Next Tasks"
+  (sebelumnya hanya "Next Tasks" yang eksplisit disebut pointer, jadi
+  celah duplikasi); tambah instruksi menjaga simetri `Terkait KI-XXX`
+  dua arah; tambah instruksi hitung ulang (bukan asumsi) angka
+  Total/subtask; tambah pengecualian append-only untuk tag `Amended by`
+  yang sinkron dengan perubahan `PROJECT_RULES.md` di atas.
+
+### Not Changed (disengaja)
+
+- `COMPLETE_TASK.md` dan `decisions/ADR-063-*.md` masih menyebut "69
+  task/134 subtask" — itu snapshot historis di titik keputusan/entri
+  masing-masing dibuat, bukan live counter, jadi tidak dikoreksi (akan
+  jadi revisionis kalau diubah).
+
+## 2026-08-12 — Fix 5 temuan /code-review PR #68
+
+### Context
+
+`/code-review` atas PR #68 (audit dokumentasi sebelumnya) menemukan PR itu
+sendiri membawa 5 gap baru: simbol status ganda tidak valid, back-link
+KI-015 yang masih terlewat di T-026/T-027, wiki-link `[[...]]` orphan ke
+memory pribadi di `AGENTS.md`, ambiguitas target status di langkah Gibran,
+dan urutan field `Terkait` yang tidak konsisten antar file task.
+
+### Fixed
+
+- **`TASKS.md`**: status T-025 di "Fokus sekarang" dikembalikan ke simbol
+  Legend tunggal `⏳` (bukan kombinasi `⏳ 🚫` yang tidak terdefinisi),
+  catatan "Terhenti" tetap di kolom Catatan saja.
+- **`tasks/v02-publishing-mvp.md`**: T-026/T-027 ditambah back-link
+  `KI-015` yang tadinya cuma `KI-003` (KI-015 sendiri sudah menyebut
+  T-025/T-026/T-027 di `PROJECT_STATE.md`); urutan field `Terkait`
+  dipindah sebelum `Depends` di T-025/T-026/T-027, menyamakan konvensi
+  dengan T-039 di `tasks/v01-foundation.md`.
+- **`AGENTS.md`**: hapus syntax wiki-link `[[feedback-uiux-docs-design-sync-reminder]]`
+  (target itu memory pribadi di luar repo, bukan artefak repo) — diganti
+  frasa biasa tanpa link.
+- **`.claude/agents/gibran-project-manager.md`** (Static Reference, chmod
+  444 — di-unlock sementara, dikembalikan setelah edit): langkah 1
+  diperjelas — target eksplisit `✅ Done`, disebutkan task mungkin sudah
+  `🟡 In Progress` dari langkah pertama subagent implementasi, tugas
+  Gibran adalah promosi `🟡 → ✅`, bukan membiarkannya di `🟡`.
+
+## 2026-08-12 — Konsistensi aturan "jangan putuskan sendiri" ke Mark & Elon
+
+### Context
+
+`prabowo-feature-engineer.md` sudah punya aturan keras eksplisit "kalau
+menemukan gap/inkonsistensi saat kerja, laporkan ke user, jangan putuskan
+sendiri" — `mark-ui-engineer.md` dan `elon-backend-engineer.md` belum,
+padahal perilakunya sama-sama ditegakkan main agent. King Rezi minta
+disamakan supaya tidak bergantung ke main agent "ingat" menegakkannya.
+
+### Changed (Static Reference, chmod 444 — di-unlock sementara, dikembalikan setelah edit)
+
+- **`.claude/agents/mark-ui-engineer.md`**: tambah baris aturan keras
+  yang sama, contoh kasus spesifik (spec desain vs komponen Astryx yang
+  tersedia).
+- **`.claude/agents/elon-backend-engineer.md`**: tambah baris aturan
+  keras yang sama, contoh kasus spesifik (kontrak Outstand di kode vs
+  ADR-040).
+
+## 2026-08-12 — Opsi B: mark "In Progress" otomatis oleh subagent implementasi saat mulai kerja
+
+### Context
+
+Follow-up dari audit governance sebelumnya: status task sering baru
+ter-update jadi Done di akhir sesi (lewat Gibran), tanpa pernah eksplisit
+ditandai In Progress saat kerja dimulai. King Rezi minta opsi otomasi
+ringan (Opsi B dari 3 opsi yang diajukan: hook validasi, instruksi
+subagent, atau Workflow penuh) — pilih instruksi eksplisit ke subagent
+implementasi, tanpa infrastruktur baru.
+
+### Changed (Static Reference, chmod 444 — di-unlock sementara, dikembalikan setelah edit)
+
+- **`.claude/agents/prabowo-feature-engineer.md`**,
+  **`mark-ui-engineer.md`**, **`elon-backend-engineer.md`**: tambah
+  section "Langkah pertama sebelum menulis kode" — wajib ubah field
+  `Status` task jadi `🟡 In Progress` di `tasks/vXX-*.md` sebelum menulis
+  kode, sebagai **satu-satunya** edit dokumentasi project yang subagent
+  ini boleh lakukan sendiri. Baris "Di luar scope kamu" masing-masing
+  diperjelas supaya exception sempit ini tidak dibaca sebagai izin
+  menyentuh `tasks/` secara umum — subtask checkbox, `TASKS.md`,
+  `PROJECT_STATE.md`, `DECISIONS.md`, `COMPLETE_TASK.md` tetap eksklusif
+  kerjaan Gibran Project Manager di akhir sesi.
+
 ## 2026-08-12 — ADR-078: amandemen ADR-018 (port lokal + composition root) + bersihkan T-012/KI-006 dari PROJECT_STATE
 
 ### Context

@@ -6,7 +6,7 @@ Real-time Strategy — Supabase Realtime untuk Notifikasi + Manual Refresh
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-040 (2026-07-23)
 
 ### Date
 

@@ -259,7 +259,7 @@ Semua route `/account/*` dan `/settings/*` sebelumnya masih placeholder "Scaffol
 | **Status**    | 🟡 In Progress — T-039.1/.2/.3/.5 selesai (review Ridwan + QA Najwa lolos); T-039.4 belum dikerjakan (terpisah) |
 | **Domain**    | workspace · platform                                                    |
 | **ADR**       | ADR-076                                                                  |
-| **Terkait**   | KI-023 (`PROJECT_STATE.md`)                                              |
+| **Terkait**   | KI-023, KI-024 (`PROJECT_STATE.md`) — KI-024 ditemukan saat T-039.5, belum ada task formal |
 | **Depends**   | T-009 ✅ (App Shell), T-006 ✅ (Onboarding lama), T-016 🟡 (Account settings) |
 | **Baca dulu** | `decisions/ADR-076-workspace-context-via-cookie-hapus-slug-konsolidasi-settings-organization-account.md` · `05-architecture/auth-architecture.md` (Workspace Context Resolution, Middleware Strategy, Onboarding Flow) · `06-engineering/monorepo-setup.md` (App Router Structure, MS-D03) · `04-ux/information-architecture.md` (section Settings) |
 

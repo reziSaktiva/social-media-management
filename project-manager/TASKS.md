@@ -44,7 +44,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 * **Task:** `T-001` … `T-088`, nomor global berurutan. ID **tidak** memuat kode release, supaya task bisa berpindah antar release tanpa penomoran ulang dan tanpa membuat referensi lama jadi salah.
 * **Subtask:** `T-021.4` — nomor task diikuti nomor urut subtask.
 * ID **tidak pernah didaur ulang**. Task yang dibatalkan ditandai `⏸️ Deferred` beserta alasannya, bukan dihapus.
-* Setiap release menyisakan beberapa nomor kosong di akhir sebagai ruang tumbuh (misal T-019 untuk v0.1, T-037–T-039 untuk v0.2).
+* Setiap release menyisakan beberapa nomor kosong di akhir sebagai ruang tumbuh (per 2026-08-12: T-046–T-049 untuk v0.3, T-056–T-059 untuk v0.4, T-066–T-069 untuk v0.5, T-075–T-079 untuk v0.6 — v0.1/v0.2 sudah habis, lihat catatan kaki ¹).
 
 ---
 
@@ -60,7 +60,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 
-**Total:** 71 task · 14 selesai · 142 subtask terdefinisi (v0.1–v0.3).
+**Total:** 71 task · 14 selesai · 138 subtask terdefinisi (v0.1–v0.3).
 
 ¹ **T-039** ID-nya dipinjam dari rentang v0.2 (bukan urutan lanjutan v0.1) — nomor kosong v0.1 sudah habis, jadi diambil ID global berikutnya yang belum pernah dipakai. Lihat Catatan Rilis di `tasks/v01-foundation.md` dan `tasks/v02-publishing-mvp.md` untuk detailnya.
 
@@ -88,7 +88,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
 | **T-029** | Publish Now                                     | ⏳      | ADR-047; butuh T-025 lebih dulu untuk jalur nyata    |
-| **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah             |
+| **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
 
 > **T-012** (Sidebar "Channels") sudah ✅ **Done** (2026-08-12) — seluruh subtask termasuk T-012.1/2 selesai, lolos review Ridwan + QA Najwa. Detail: `tasks/v01-foundation.md` § T-012.
 

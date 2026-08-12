@@ -5,8 +5,8 @@
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
 * **Top Next Tasks:** T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
-* **Blocker:** Tidak ada blocker aktif. Known issue teratas: dependency Transactional Email Provider belum ditetapkan (T-005, tidak memblokir M8 awal).
-* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 69 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
+* **Blocker:** 3 blocker aktif (env var Outstand/Google/JOB_SECRET belum diisi + Railway belum pernah dibuat) — lihat section **Blockers** di bawah. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027 dan verifikasi deploy nyata.
+* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 71 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
 ---
@@ -104,34 +104,31 @@ Restricted Actions:
 
 ## In Progress
 
-Task berstatus 🟡 — detail dan subtask ada di [`TASKS.md`](TASKS.md):
+Task berstatus 🟡 dan subtask detail **hanya** ada di [`TASKS.md`](TASKS.md) +
+`tasks/vXX-*.md` (ADR-062) — tidak diduplikasi di sini supaya tidak desync.
 
-* **T-031** Redirect otomatis ke sub-screen tujuan (ADR-054) — Save as Draft sudah sejalan; sisanya menyusul bersama T-029/T-032/T-034.
-* **T-016** Account & user settings screens — T-016.1/2/3/5 selesai; hanya T-016.4 (notifications) tersisa, Blocked oleh T-036 (v0.2).
-* **T-039** Migrasi Routing & Settings (ADR-076/ADR-077) — T-039.1/2/3/5 selesai (review Ridwan + QA Najwa lolos); sisa T-039.4 (onboarding picker workspace) belum dikerjakan, terpisah.
-
-Catatan non-task: template `design-tokens.md` berstatus Draft / TBD; nilai final
-berkembang iteratif co-equal dengan Claude Design (ADR-056) — tidak ada lagi
-gerbang "designer masuk", project ini tidak akan merekrut designer eksternal
-(ADR-057, amandemen ADR-038 & ADR-041).
+Catatan non-task (bukan task, jadi memang layak di sini): template
+`design-tokens.md` berstatus Draft / TBD; nilai final berkembang iteratif
+co-equal dengan Claude Design (ADR-056) — tidak ada lagi gerbang "designer
+masuk", project ini tidak akan merekrut designer eksternal (ADR-057,
+amandemen ADR-038 & ADR-041).
 
 ---
 
 ## Next Tasks
 
-> Daftar lengkap 69 task (v0.1 → v1.0) beserta subtask, dependency, dan bacaan minimal per task ada di **[`TASKS.md`](TASKS.md)** → section **Fokus sekarang**. Itu satu-satunya daftar fokus; di file ini cukup baris `Top Next Tasks` di Snapshot. **Jangan menulis ulang daftar task di sini** (ADR-062) — daftar ketiga akan langsung desync.
-
-**Rantai blocker terbesar:** T-025 → T-026 → T-027 (Real adapter → webhook → job runner). Ketiganya mengunci sebagian besar v0.2, seluruh v0.3, dan seluruh v0.4.
-
-**Catatan urutan rilis:** v0.1 dan v0.2 tidak sepenuhnya sekuensial — tiga task v0.1 (T-013, T-015, T-016) punya subtask yang bergantung pada task v0.2. Rinciannya di Catatan Rilis `tasks/v01-foundation.md`.
-
-**Keputusan terbuka yang menunggu King Rezi:** T-005 (email provider), T-060 (provider AI), T-070 (strategi route publik), T-032 (semantik queue slot), T-081 (framework E2E), T-086 (tool observability), serta status Billing yang belum masuk release manapun. Rinciannya di `TASKS.md` → **Keputusan terbuka**.
+Daftar lengkap 71 task (v0.1 → v1.0) beserta subtask, dependency, rantai
+blocker, catatan urutan rilis, dan keputusan terbuka yang menunggu King
+Rezi — semuanya **hanya** di **[`TASKS.md`](TASKS.md)** (section **Fokus
+sekarang** + **Keputusan terbuka**). Snapshot di atas sudah menyalin ID +
+judul singkatnya. **Jangan menulis ulang daftar/detail task di sini**
+(ADR-062) — daftar ketiga akan langsung desync.
 
 ---
 
 ## Known Issues
 
-> **ID `KI-XXX`** (ADR-066, amandemen ADR-067) — global, tidak pernah didaur ulang. `Status`: `Open` / `Resolved` / `Promoted to T-XXX`. Terpisah dari namespace task (`T-XXX`) karena belum tentu jadi task formal. **Entry `Resolved` yang sudah tercatat di `COMPLETE_TASK.md` dihapus dari daftar ini** (bukan dibiarkan dengan status `Resolved`) — riwayatnya tetap ada di `COMPLETE_TASK.md`, ID-nya tidak didaur ulang untuk entry baru.
+> **ID `KI-XXX`** (ADR-066, amandemen ADR-067) — global, tidak pernah didaur ulang. `Status`: `Open` / `Resolved` / `Sebagian Resolved — sisa scope: <ID>` / `Promoted to T-XXX`. `Sebagian Resolved` dipakai kalau sebagian besar gap sudah ditutup tapi ada 1 subtask/scope kecil yang eksplisit belum — sebutkan sisa scope-nya di string status. Terpisah dari namespace task (`T-XXX`) karena belum tentu jadi task formal. **Entry `Resolved` yang sudah tercatat di `COMPLETE_TASK.md` dihapus dari daftar ini** (bukan dibiarkan dengan status `Resolved`) — riwayatnya tetap ada di `COMPLETE_TASK.md`, ID-nya tidak didaur ulang untuk entry baru.
 
 ### KI-001 · Transactional Email Provider belum ditetapkan
 
@@ -253,11 +250,42 @@ memisahkan back-button (kotak ikon 28px, klik-able sendiri) dari judul
 `SideNavHeading` yang pakai `--text-large-size`). Belum diperbaiki — dicatat
 sebagai temuan untuk follow-up King Rezi, belum dibuatkan task formal.
 
+### KI-025 · Belum ada project Railway sama sekali (belum pernah deploy)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Dependency |
+| Terkait | T-027, seluruh CI/CD deploy step (ADR-028, ADR-029, ADR-032) |
+
+Project Railway (staging maupun production) **belum pernah dibuat sama
+sekali** — bukan sekadar belum ada deployment yang sukses. Baseline
+`deployment-infrastructure.md`, `environment-topology` (ADR-029), region
+Singapore (ADR-028), dan CI/CD pipeline (ADR-032) semuanya masih rencana,
+belum ada realisasi. Task yang menyentuh Railway Cron trigger (T-027) atau
+verifikasi deploy end-to-end akan jadi **deploy pertama kalinya**, bukan
+update ke environment yang sudah live.
+
 ---
 
 ## Blockers
 
-Tidak ada blocker saat ini.
+**Wajib dicek AI sebelum mengerjakan subtask apapun yang menyentuh area di
+bawah.** Ketiganya adalah dependency eksternal yang belum tersedia di
+lingkungan lokal/CI — bukan bug kode. Kalau eksekusi subtask di area ini
+gagal/crash, cek dulu apakah salah satu blocker ini penyebabnya sebelum
+menyimpulkan ada bug dan mulai "memperbaiki" kode yang sebenarnya sudah
+benar.
+
+| ID         | Blocker                                                        | Menghambat                          |
+| ---------- | --------------------------------------------------------------- | ------------------------------------ |
+| **KI-003** | `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` belum diisi **dan** kode Real OutstandAdapter belum ditulis sama sekali (bukan cuma env — factory sengaja throw kalau env terisi tapi kode belum ada) | T-025 → T-026 → T-027 (rantai terbesar) |
+| **KI-015** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JOB_SECRET` belum diisi | Google OAuth sign-in, verifikasi job runner (T-027) end-to-end |
+| **KI-025** | Project Railway belum pernah dibuat (belum pernah deploy)      | T-027 (Railway Cron trigger), seluruh verifikasi deploy nyata |
+
+Detail masing-masing ada di section **Known Issues** di atas — tabel ini
+hanya pointer supaya blocker aktif langsung terlihat tanpa harus menyisir
+seluruh daftar Known Issues.
 
 ---
 

@@ -83,6 +83,7 @@ T-020 hanya mengimplementasikan Draft Editor sebagai modal `Dialog variant="full
 | **Status**    | ⏳ Not Started                                                |
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-005, ADR-019, ADR-040, ADR-059                           |
+| **Terkait**   | KI-003, KI-015 (`PROJECT_STATE.md` § Blockers)                |
 | **Depends**   | T-028 ✅ (port + factory sudah ada) · kredensial Outstand asli |
 | **Baca dulu** | `05-architecture/integration-layer.md`                        |
 
@@ -105,6 +106,7 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 | **Status**    | ⏳ Not Started                                                      |
 | **Domain**    | integration                                                        |
 | **ADR**       | ADR-020, ADR-040                                                   |
+| **Terkait**   | KI-003 (via T-025), KI-015 (`PROJECT_STATE.md` § Blockers)                    |
 | **Depends**   | T-025                                                              |
 | **Baca dulu** | `05-architecture/integration-layer.md`                              |
 
@@ -124,6 +126,7 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 | **Status**    | ⏳ Not Started                                                |
 | **Domain**    | platform                                                     |
 | **ADR**       | ADR-022, ADR-028, ADR-032, ADR-040                           |
+| **Terkait**   | KI-003 (via T-025), KI-015, KI-025 (Railway belum pernah dibuat, `PROJECT_STATE.md` § Blockers) |
 | **Depends**   | T-025                                                        |
 | **Baca dulu** | `05-architecture/background-jobs.md` · `06-engineering/deployment-infrastructure.md` |
 

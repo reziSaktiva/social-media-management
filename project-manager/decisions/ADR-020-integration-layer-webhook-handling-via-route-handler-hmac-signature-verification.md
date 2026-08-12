@@ -6,7 +6,7 @@ Integration Layer — Webhook Handling via Route Handler + HMAC Signature Verifi
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-040 (2026-07-23)
 
 ### Date
 
