@@ -6,7 +6,7 @@ Database Schema Organization — Single Schema dengan Domain Prefix
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-027 (2026-07-15)
 
 ### Date
 

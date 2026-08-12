@@ -6,7 +6,7 @@ Dependency Strategy — caret ranges, manual updates, root lockfile rules
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-041 (2026-07-23)
 
 ### Date
 

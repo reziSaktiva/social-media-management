@@ -99,10 +99,12 @@ Pembagiannya tegas: status *fase project* milik `PROJECT_STATE.md`, status *task
 
 Dokumen yang hanya bertambah. Entri lama tidak boleh diedit atau dihapus.
 
+**Satu pengecualian eksplisit (ditemukan sebagai gap 2026-08-12, praktik ini sudah berjalan sejak ADR-056/057 sebelum dituliskan di sini):** kolom `Status` pada baris ADR lama di `DECISIONS.md` DAN header `### Status` di file `decisions/ADR-XXX.md` yang bersangkutan **boleh** diedit — tapi **hanya** untuk menambah/melengkapi tag `Accepted — Amended by ADR-YYY (tanggal)` ketika ADR baru mengamandemennya. Ini murni metadata cross-reference dua arah, bukan mengubah keputusan/isi ADR lama. Isi Decision/Reason/Alternatives Considered ADR lama tetap **tidak boleh diubah**. Kalau ADR baru menyatakan "mengamendemen ADR-XXX" di badan teksnya, baris ADR-XXX di `DECISIONS.md` dan header Status di file `decisions/ADR-XXX-*.md` **wajib** diperbarui pada saat yang sama (jangan tunda) — celah ini yang menyebabkan 14 ADR lama (ADR-005 dst.) sempat tidak ter-tag sampai diaudit dan dibackfill.
+
 Termasuk:
 
 * `DECISIONS.md` — **indeks ringkas** ADR (tabel ADR#/Title/Status/Date/Ringkasan/link file), satu baris baru per ADR baru. Bukan lagi tempat full-text ADR (lihat `decisions/`).
-* `decisions/ADR-*.md` — satu file per ADR, isi lengkap (Title/Status/Date/Decision/Reason/Alternatives Considered). Entri lama tidak boleh diedit/dihapus, sama seperti induknya.
+* `decisions/ADR-*.md` — satu file per ADR, isi lengkap (Title/Status/Date/Decision/Reason/Alternatives Considered). Entri lama tidak boleh diedit/dihapus (kecuali tag `Amended by` di header Status, lihat pengecualian di atas), sama seperti induknya.
 * `COMPLETE_TASK.md` — riwayat lengkap seluruh task/perubahan sejak awal project, satu entri baru per sesi kerja (append di bagian atas). **Tidak boleh dibaca AI kecuali diperintahkan eksplisit oleh King Rezi** — lihat peringatan di kepala file. Menambah entri baru tetap wajib (operasi tulis, bukan baca).
 * `CONVERSATIONS.md` — setiap sesi dicatat sebagai entri baru.
 * `BRAINSTORM.md` — setiap ide baru dicatat sebagai entri baru.

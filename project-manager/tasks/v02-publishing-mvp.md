@@ -84,6 +84,7 @@ T-020 hanya mengimplementasikan Draft Editor sebagai modal `Dialog variant="full
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-005, ADR-019, ADR-040, ADR-059                           |
 | **Depends**   | T-028 ✅ (port + factory sudah ada) · kredensial Outstand asli |
+| **Terkait**   | KI-003, KI-015 (`PROJECT_STATE.md` § Blockers)                |
 | **Baca dulu** | `05-architecture/integration-layer.md`                        |
 
 Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **sengaja throw** jika `OUTSTAND_API_KEY` terisi tapi kode real adapter belum ada — bukan silent fallback ke Fake.
@@ -106,6 +107,7 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 | **Domain**    | integration                                                        |
 | **ADR**       | ADR-020, ADR-040                                                   |
 | **Depends**   | T-025                                                              |
+| **Terkait**   | KI-003 (`PROJECT_STATE.md` § Blockers, via T-025)                    |
 | **Baca dulu** | `05-architecture/integration-layer.md`                              |
 
 `/api/webhooks/outstand` masih return 501. Model `OutstandWebhookEvent` sudah ada di schema, `OUTSTAND_WEBHOOK_SECRET` sudah didefinisikan di `src/lib/env.ts` tapi belum dipakai.
@@ -125,6 +127,7 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 | **Domain**    | platform                                                     |
 | **ADR**       | ADR-022, ADR-028, ADR-032, ADR-040                           |
 | **Depends**   | T-025                                                        |
+| **Terkait**   | KI-003 (via T-025), KI-025 (Railway belum pernah dibuat, `PROJECT_STATE.md` § Blockers) |
 | **Baca dulu** | `05-architecture/background-jobs.md` · `06-engineering/deployment-infrastructure.md` |
 
 `/api/jobs/run` masih return 501. Model `BackgroundJob` ada di schema tapi **nol referensi** di kode aplikasi. Tidak ada cron config apapun di repo.

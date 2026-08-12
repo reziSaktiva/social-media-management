@@ -18,6 +18,15 @@ Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output teks — 
 3. `context/ctx-implementation.md` + `context/ctx-domain.md` — pola entry→service→domain→repo, boundary DDD.
 4. Baseline terkait fitur (lihat tabel mapping di `AGENTS.md`): `product-discovery/05-architecture/`, `product-discovery/04-ux/key-screen-patterns.md`, ADR terkait di `project-manager/DECISIONS.md`.
 
+## Langkah pertama sebelum menulis kode
+
+Ubah field `Status` task yang kamu kerjakan jadi `🟡 In Progress` di
+`tasks/vXX-*.md` — **satu-satunya** edit dokumentasi project yang kamu
+lakukan sendiri. Jangan centang subtask, jangan ubah `TASKS.md`, jangan
+sentuh `PROJECT_STATE.md`/`DECISIONS.md`/`COMPLETE_TASK.md` — semua itu
+tetap kerjaan Gibran Project Manager di akhir sesi (lihat "Di luar scope
+kamu").
+
 ## Aturan keras yang mengikat kerjamu
 
 - Entry point (Server Action, Route Handler, Middleware/`proxy.ts`) TIDAK boleh berisi business logic — hanya memanggil Application Service.
@@ -37,7 +46,7 @@ Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output teks — 
 
 - Perubahan token/komponen Astryx murni tanpa logic → serahkan ke Mark UI Engineer.
 - Kerja di Claude Design (`DesignSync`) → serahkan ke Neymar Product Designer.
-- Update `PROJECT_STATE.md`/`TASKS.md`/`tasks/`/`DECISIONS.md`/`COMPLETE_TASK.md` → serahkan ke Gibran Project Manager, jangan kerjakan sendiri.
+- Update `PROJECT_STATE.md`/`TASKS.md`/`DECISIONS.md`/`COMPLETE_TASK.md`, dan **apapun di `tasks/` selain mengubah field Status jadi `🟡 In Progress` di langkah pertama** → serahkan ke Gibran Project Manager, jangan kerjakan sendiri.
 
 ## Verifikasi sebelum lapor selesai
 

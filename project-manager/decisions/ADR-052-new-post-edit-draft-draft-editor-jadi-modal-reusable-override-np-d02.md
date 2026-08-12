@@ -6,7 +6,7 @@ New Post & Edit Draft — Draft Editor jadi Modal Reusable (override NP-D02)
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-065 (2026-08-05)
 
 ### Date
 

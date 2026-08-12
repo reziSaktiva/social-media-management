@@ -6,7 +6,7 @@ UX Planning Baseline v1.0
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-040 (2026-07-23)
 
 ### Date
 
