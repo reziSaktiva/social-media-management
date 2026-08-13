@@ -14,6 +14,10 @@ import type {
 } from "@/domains/publishing";
 import type { Prisma, PublishingPost } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma/client";
+import {
+  setCurrentUserId,
+  withCurrentUser,
+} from "@/lib/prisma/with-current-user";
 
 /**
  * Sentinel internal — dilempar di dalam `$transaction` supaya semua
@@ -40,68 +44,82 @@ function mapPost(post: PublishingPost): PublishingPostRecord {
 
 export const publishingRepository: IPublishingRepository = {
   async createDraft({ workspaceId, authorId, caption }) {
-    const post = await prisma.publishingPost.create({
-      data: {
-        workspaceId,
-        authorId,
-        caption,
-      },
-    });
+    const post = await withCurrentUser(authorId, (tx) =>
+      tx.publishingPost.create({
+        data: {
+          workspaceId,
+          authorId,
+          caption,
+        },
+      }),
+    );
 
     return mapPost(post);
   },
 
-  async listDrafts({ workspaceId }) {
-    const posts = await prisma.publishingPost.findMany({
-      where: {
-        workspaceId,
-        status: ContentStatus.Draft,
-        deletedAt: null,
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+  async listDrafts({ workspaceId }, userId) {
+    const posts = await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.findMany({
+        where: {
+          workspaceId,
+          status: ContentStatus.Draft,
+          deletedAt: null,
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+    );
 
     return posts.map(mapPost);
   },
 
-  async findDraftById({ workspaceId, postId }) {
-    const post = await prisma.publishingPost.findFirst({
-      where: {
-        id: postId,
-        workspaceId,
-        deletedAt: null,
-      },
+  async findDraftById({ workspaceId, postId }, userId) {
+    const post = await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.findFirst({
+        where: {
+          id: postId,
+          workspaceId,
+          deletedAt: null,
+        },
+      }),
+    );
+
+    return post ? mapPost(post) : null;
+  },
+
+  async updateDraftCaption({ workspaceId, postId, caption }, userId) {
+    const post = await withCurrentUser(userId, async (tx) => {
+      const { count } = await tx.publishingPost.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          status: ContentStatus.Draft,
+          deletedAt: null,
+        },
+        data: { caption },
+      });
+
+      if (count === 0) {
+        return null;
+      }
+
+      return tx.publishingPost.findUniqueOrThrow({
+        where: { id: postId },
+      });
     });
 
     return post ? mapPost(post) : null;
   },
 
-  async updateDraftCaption({ workspaceId, postId, caption }) {
-    const { count } = await prisma.publishingPost.updateMany({
-      where: {
-        id: postId,
-        workspaceId,
-        status: ContentStatus.Draft,
-        deletedAt: null,
-      },
-      data: { caption },
-    });
-
-    if (count === 0) {
-      return null;
-    }
-
-    const post = await prisma.publishingPost.findUniqueOrThrow({
-      where: { id: postId },
-    });
-
-    return mapPost(post);
-  },
-
-  async schedulePost({ workspaceId, postId, scheduledAt, targets }) {
+  async schedulePost({ workspaceId, postId, scheduledAt, targets }, userId) {
     let result;
     try {
       result = await prisma.$transaction(async (tx) => {
+        // `setCurrentUserId` (bukan `withCurrentUser`) karena method ini
+        // sudah punya transaksi sendiri (guard ownership anti-IDOR di
+        // bawah wajib atomik dengan updateMany status) — `withCurrentUser`
+        // akan membuka transaksi kedua yang terpisah, memecah atomicity.
+        await setCurrentUserId(tx, userId);
+
         const { count } = await tx.publishingPost.updateMany({
           where: {
             id: postId,
@@ -187,22 +205,33 @@ export const publishingRepository: IPublishingRepository = {
     return record;
   },
 
-  async updateTargetOutcome({ postTargetId, outstandJobId, status, error }) {
-    await prisma.publishingPostTarget.update({
-      where: { id: postTargetId },
-      data: { outstandJobId, status, error },
-    });
+  async updateTargetOutcome(
+    { postTargetId, outstandJobId, status, error },
+    userId,
+  ) {
+    await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.update({
+        where: { id: postTargetId },
+        data: { outstandJobId, status, error },
+      }),
+    );
   },
 
-  async countScheduledByAccount({ workspaceId, connectedAccountIds }) {
-    const rows = await prisma.publishingPostTarget.groupBy({
-      by: ["connectedAccountId"],
-      where: {
-        connectedAccountId: { in: connectedAccountIds },
-        post: { workspaceId, status: ContentStatus.Scheduled, deletedAt: null },
-      },
-      _count: { _all: true },
-    });
+  async countScheduledByAccount({ workspaceId, connectedAccountIds }, userId) {
+    const rows = await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.groupBy({
+        by: ["connectedAccountId"],
+        where: {
+          connectedAccountId: { in: connectedAccountIds },
+          post: {
+            workspaceId,
+            status: ContentStatus.Scheduled,
+            deletedAt: null,
+          },
+        },
+        _count: { _all: true },
+      }),
+    );
 
     return new Map(
       rows.map((row) => [

@@ -47,7 +47,22 @@ export async function withCurrentUser<T>(
   callback: (tx: PrismaTransactionClient) => Promise<T>,
 ): Promise<T> {
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`;
+    await setCurrentUserId(tx, userId);
     return callback(tx);
   });
+}
+
+/**
+ * The single `set_config` statement `withCurrentUser` wraps in its own
+ * transaction — exported separately for callers that already have their
+ * own outer `prisma.$transaction` (e.g. `WorkspaceRepository.createWithOwner`,
+ * which must create the workspace + owner membership atomically and can't
+ * nest a second transaction via `withCurrentUser` itself). Always call this
+ * as the first statement inside that transaction.
+ */
+export async function setCurrentUserId(
+  tx: PrismaTransactionClient,
+  userId: string,
+): Promise<void> {
+  await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`;
 }

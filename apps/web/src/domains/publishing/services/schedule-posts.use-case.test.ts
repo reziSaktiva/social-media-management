@@ -145,6 +145,7 @@ describe("SchedulePostsUseCase.execute", () => {
           outstandAccountId: "outstand-acc-2",
         },
       ],
+      actingUserId: AUTHOR_ID,
     });
 
     expect(result).toBe(scheduleRecord);
@@ -197,6 +198,7 @@ describe("SchedulePostsUseCase.execute", () => {
             outstandAccountId: "outstand-acc-1",
           },
         ],
+        actingUserId: AUTHOR_ID,
       }),
     ).rejects.toThrow(PublishingDomainError);
 
@@ -224,6 +226,7 @@ describe("SchedulePostsUseCase.execute", () => {
             outstandAccountId: "outstand-acc-1",
           },
         ],
+        actingUserId: AUTHOR_ID,
       }),
     ).rejects.toThrow(ConflictError);
   });
@@ -294,6 +297,7 @@ describe("SchedulePostsUseCase.execute", () => {
             outstandAccountId: "outstand-acc-foreign",
           },
         ],
+        actingUserId: AUTHOR_ID,
       }),
     ).rejects.toThrow(ConflictError);
 

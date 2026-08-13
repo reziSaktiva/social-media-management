@@ -1,8 +1,12 @@
 "use server";
 
+import { asUserId } from "@social/shared";
+import { redirect } from "next/navigation";
+
 import type { DashboardSummary, SnapshotPeriod } from "@/domains/analytics";
 import { AnalyticsService } from "@/domains/analytics";
 import { WorkspaceService } from "@/domains/workspace";
+import { getCachedSession } from "@/lib/better-auth/session";
 import { analyticsRepository } from "@/lib/repositories/analytics";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
@@ -25,11 +29,19 @@ export async function getDashboardSummaryAction(
   period: SnapshotPeriod,
 ): Promise<DashboardSummary | null> {
   const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
 
   const analyticsService = new AnalyticsService(
     analyticsRepository,
     new WorkspaceService(workspaceRepository),
   );
 
-  return analyticsService.getDashboardSummary(workspaceId, period);
+  return analyticsService.getDashboardSummary(
+    workspaceId,
+    period,
+    asUserId(session.user.id),
+  );
 }

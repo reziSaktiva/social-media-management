@@ -131,6 +131,10 @@ model WorkspaceMember {
 
   @@unique([workspaceId, userId])
   @@index([workspaceId])
+  // Backs `current_user_workspace_ids()` (RLS helper, migration
+  // 20260813073556) — every RLS-protected table's policy calls it, and it
+  // filters on exactly (user_id, status).
+  @@index([userId, status])
   @@map("workspace_members")
 }
 

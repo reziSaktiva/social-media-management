@@ -3,6 +3,7 @@ import type {
   ContentFormat,
   PostId,
   SocialPlatform,
+  UserId,
   WorkspaceId,
 } from "@social/shared";
 import { ConflictError } from "@/lib/utils/errors";
@@ -53,22 +54,27 @@ export class SchedulePostsUseCase {
     postId: PostId;
     scheduledAt: Date;
     targets: SchedulePostsTargetInput[];
+    /** RLS (KI-026 follow-up) — acting user for `withCurrentUser`. */
+    actingUserId: UserId;
   }): Promise<PublishingPostRecord> {
     for (const target of input.targets) {
       assertContentFormatAllowed(target.platform, target.contentFormat);
     }
 
-    const record = await this.repository.schedulePost({
-      workspaceId: input.workspaceId,
-      postId: input.postId,
-      scheduledAt: input.scheduledAt,
-      targets: input.targets.map((target) => ({
-        connectedAccountId: target.connectedAccountId,
-        platform: target.platform,
-        contentFormat: target.contentFormat,
-        platformOptions: target.platformOptions,
-      })),
-    });
+    const record = await this.repository.schedulePost(
+      {
+        workspaceId: input.workspaceId,
+        postId: input.postId,
+        scheduledAt: input.scheduledAt,
+        targets: input.targets.map((target) => ({
+          connectedAccountId: target.connectedAccountId,
+          platform: target.platform,
+          contentFormat: target.contentFormat,
+          platformOptions: target.platformOptions,
+        })),
+      },
+      input.actingUserId,
+    );
 
     if (!record) {
       throw new ConflictError(
@@ -99,17 +105,23 @@ export class SchedulePostsUseCase {
             platformOptions: targetInput.platformOptions,
           });
 
-          await this.repository.updateTargetOutcome({
-            postTargetId: scheduledTarget.id,
-            outstandJobId: result.outstandJobId,
-            status: "scheduled",
-          });
+          await this.repository.updateTargetOutcome(
+            {
+              postTargetId: scheduledTarget.id,
+              outstandJobId: result.outstandJobId,
+              status: "scheduled",
+            },
+            input.actingUserId,
+          );
         } catch (error) {
-          await this.repository.updateTargetOutcome({
-            postTargetId: scheduledTarget.id,
-            status: "failed",
-            error: error instanceof Error ? error.message : String(error),
-          });
+          await this.repository.updateTargetOutcome(
+            {
+              postTargetId: scheduledTarget.id,
+              status: "failed",
+              error: error instanceof Error ? error.message : String(error),
+            },
+            input.actingUserId,
+          );
         }
       }),
     );

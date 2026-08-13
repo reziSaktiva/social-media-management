@@ -59,16 +59,36 @@ export interface IWorkspaceRepository {
   /** Dipakai `getWorkspaceContext()` (ADR-076) — resolve workspace by cookie id. */
   findById(workspaceId: WorkspaceId): Promise<WorkspaceRecord | null>;
 
-  /** Ordered by `connectedAt` ascending. */
+  /**
+   * Ordered by `connectedAt` ascending. `userId` (RLS, KI-026 follow-up) —
+   * acting user whose session sets `app.current_user_id` for this query;
+   * NOT a filter on the result set (semua akun aktif workspace tetap
+   * dikembalikan, bukan cuma milik user itu).
+   */
   listConnectedAccounts(
     workspaceId: WorkspaceId,
+    userId: UserId,
   ): Promise<ConnectedAccountRecord[]>;
 
-  /** Count-only variant of `listConnectedAccounts` filtered to `status: "active"` (T-042.2). */
-  countActiveConnectedAccounts(workspaceId: WorkspaceId): Promise<number>;
+  /**
+   * Count-only variant of `listConnectedAccounts` filtered to
+   * `status: "active"` (T-042.2). `userId` (RLS, KI-026 follow-up) — acting
+   * user, sama seperti `listConnectedAccounts`.
+   */
+  countActiveConnectedAccounts(
+    workspaceId: WorkspaceId,
+    userId: UserId,
+  ): Promise<number>;
 
-  /** Ordered by `joinedAt` ascending — dipakai UI daftar anggota (T-007.4). */
-  listMembers(workspaceId: WorkspaceId): Promise<WorkspaceMemberRecord[]>;
+  /**
+   * Ordered by `joinedAt` ascending — dipakai UI daftar anggota (T-007.4).
+   * `actingUserId` (RLS, KI-026 follow-up) — user yang memicu query ini
+   * (bukan filter hasil).
+   */
+  listMembers(
+    workspaceId: WorkspaceId,
+    actingUserId: UserId,
+  ): Promise<WorkspaceMemberRecord[]>;
 
   /**
    * Batch lookup nama/email user by id. `WorkspaceMember.userId` tidak
@@ -86,19 +106,32 @@ export interface IWorkspaceRepository {
     userId: UserId,
   ): Promise<WorkspaceMemberRecord | null>;
 
-  /** Lookup membership by row id — dipakai untuk resolve target member. */
+  /**
+   * Lookup membership by row id — dipakai untuk resolve target member.
+   * `actingUserId` (RLS, KI-026 follow-up) — user yang memicu query ini.
+   */
   findMemberById(
     workspaceId: WorkspaceId,
     memberId: MemberId,
+    actingUserId: UserId,
   ): Promise<WorkspaceMemberRecord | null>;
 
-  /** Hard delete (DB-D03) — bukan soft-delete. */
-  removeMember(workspaceId: WorkspaceId, memberId: MemberId): Promise<void>;
+  /**
+   * Hard delete (DB-D03) — bukan soft-delete. `actingUserId` (RLS, KI-026
+   * follow-up) — user yang memicu mutasi ini.
+   */
+  removeMember(
+    workspaceId: WorkspaceId,
+    memberId: MemberId,
+    actingUserId: UserId,
+  ): Promise<void>;
 
+  /** `actingUserId` (RLS, KI-026 follow-up) — user yang memicu mutasi ini. */
   updateMemberRole(
     workspaceId: WorkspaceId,
     memberId: MemberId,
     role: MemberRole,
+    actingUserId: UserId,
   ): Promise<void>;
 
   createInvitation(input: {
@@ -110,7 +143,16 @@ export interface IWorkspaceRepository {
     expiresAt: Date;
   }): Promise<WorkspaceInvitationRecord>;
 
-  /** Belum dipakai service manapun — disiapkan untuk acceptInvite (task lain). */
+  /**
+   * Belum dipakai service manapun — disiapkan untuk acceptInvite (task lain).
+   * SENGAJA TIDAK dibungkus `withCurrentUser` (KI-026 follow-up, code review
+   * PR #71) — invitee yang lookup token ini belum jadi member workspace
+   * tujuan (chicken-and-egg struktural, sama seperti bootstrap INSERT
+   * `workspace_members` di `createWithOwner`), jadi tidak ada `userId` valid
+   * yang bisa memenuhi RLS policy `workspace_invitations_workspace_isolation`.
+   * Butuh RLS policy exception (mis. trusted self-select by validated token)
+   * — keputusan desain terpisah, di luar scope task ini.
+   */
   findInvitationByToken(
     token: string,
   ): Promise<WorkspaceInvitationRecord | null>;

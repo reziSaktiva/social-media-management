@@ -287,7 +287,7 @@ describe("WorkspaceService.listConnectedAccounts", () => {
     );
 
     await expect(
-      service.listConnectedAccounts(asWorkspaceId("workspace-1")),
+      service.listConnectedAccounts(asWorkspaceId("workspace-1"), USER_ID),
     ).resolves.toBe(accounts);
   });
 });
@@ -301,7 +301,10 @@ describe("WorkspaceService.countActiveConnectedAccounts", () => {
     );
 
     await expect(
-      service.countActiveConnectedAccounts(asWorkspaceId("workspace-1")),
+      service.countActiveConnectedAccounts(
+        asWorkspaceId("workspace-1"),
+        USER_ID,
+      ),
     ).resolves.toBe(2);
   });
 
@@ -311,7 +314,10 @@ describe("WorkspaceService.countActiveConnectedAccounts", () => {
     );
 
     await expect(
-      service.countActiveConnectedAccounts(asWorkspaceId("workspace-1")),
+      service.countActiveConnectedAccounts(
+        asWorkspaceId("workspace-1"),
+        USER_ID,
+      ),
     ).resolves.toBe(0);
   });
 });
@@ -336,7 +342,7 @@ describe("WorkspaceService.listMembersWithUser", () => {
       }),
     );
 
-    const result = await service.listMembersWithUser(WORKSPACE_ID);
+    const result = await service.listMembersWithUser(WORKSPACE_ID, USER_ID);
 
     expect(result).toEqual([
       {
@@ -376,7 +382,7 @@ describe("WorkspaceService.listMembersWithUser", () => {
       }),
     );
 
-    const result = await service.listMembersWithUser(WORKSPACE_ID);
+    const result = await service.listMembersWithUser(WORKSPACE_ID, USER_ID);
 
     expect(result).toHaveLength(1);
     expect(result[0]?.id).toBe(ownerMemberId);

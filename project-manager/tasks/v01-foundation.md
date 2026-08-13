@@ -360,7 +360,7 @@ picker workspace).
 
 | Field         | Value                                              |
 | ------------- | -------------------------------------------------- |
-| **Status**    | ✅ Done (2026-08-13) — gap runtime BYPASSRLS (bekas KI-026) juga sudah resolved (2026-08-13) |
+| **Status**    | 🟡 In Progress — adopsi `withCurrentUser` ke seluruh repository (sebelumnya sengaja ditunda) sedang dikerjakan (2026-08-13) |
 | **Domain**    | platform                                           |
 | **ADR**       | ADR-015, ADR-033                                   |
 | **Depends**   | T-002 ✅                                            |

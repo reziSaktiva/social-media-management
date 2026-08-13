@@ -1,3 +1,4 @@
+import { asUserId } from "@social/shared";
 import { redirect } from "next/navigation";
 
 import { WorkspaceService } from "@/domains/workspace";
@@ -20,7 +21,10 @@ export default async function Page() {
   }
 
   const workspaceService = new WorkspaceService(workspaceRepository);
-  const members = await workspaceService.listMembersWithUser(workspaceId);
+  const members = await workspaceService.listMembersWithUser(
+    workspaceId,
+    asUserId(session.user.id),
+  );
 
   return <MembersTable members={members} currentUserId={session.user.id} />;
 }
