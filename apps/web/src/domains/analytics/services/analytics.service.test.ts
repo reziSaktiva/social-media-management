@@ -116,3 +116,69 @@ describe("AnalyticsService.getWorkspaceSnapshot", () => {
     expect(received).toEqual({ workspaceId: WORKSPACE_ID, period: "monthly" });
   });
 });
+
+describe("AnalyticsService.getDashboardSummary", () => {
+  const snapshot: WorkspaceSnapshotRecord = {
+    id: asWorkspaceSnapshotId("snapshot-1"),
+    workspaceId: WORKSPACE_ID,
+    period: "weekly",
+    periodStart: new Date(0),
+    periodEnd: new Date(1),
+    totalPosts: 5,
+    totalReach: 1000,
+    totalEngagements: 120,
+    avgEngagementRate: 0.12,
+    topPostId: POST_ID,
+    createdAt: new Date(0),
+  };
+
+  it("returns null when no snapshot exists yet (empty state, T-042.4) without calling the active accounts port", async () => {
+    let called = false;
+    const service = new AnalyticsService(createFakeRepository(), {
+      countActiveConnectedAccounts: async () => {
+        called = true;
+        return 3;
+      },
+    });
+
+    await expect(
+      service.getDashboardSummary(WORKSPACE_ID, "weekly"),
+    ).resolves.toBeNull();
+    expect(called).toBe(false);
+  });
+
+  it("combines snapshot totals with activeAccounts from the port", async () => {
+    const service = new AnalyticsService(
+      createFakeRepository({
+        findLatestWorkspaceSnapshot: async () => snapshot,
+      }),
+      { countActiveConnectedAccounts: async () => 4 },
+    );
+
+    await expect(
+      service.getDashboardSummary(WORKSPACE_ID, "weekly"),
+    ).resolves.toEqual({
+      totalPosts: 5,
+      totalEngagements: 120,
+      avgEngagementRate: 0.12,
+      activeAccounts: 4,
+    });
+  });
+
+  it("defaults activeAccounts to 0 when no port is supplied", async () => {
+    const service = new AnalyticsService(
+      createFakeRepository({
+        findLatestWorkspaceSnapshot: async () => snapshot,
+      }),
+    );
+
+    await expect(
+      service.getDashboardSummary(WORKSPACE_ID, "weekly"),
+    ).resolves.toEqual({
+      totalPosts: 5,
+      totalEngagements: 120,
+      avgEngagementRate: 0.12,
+      activeAccounts: 0,
+    });
+  });
+});

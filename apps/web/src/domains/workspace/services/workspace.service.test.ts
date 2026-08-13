@@ -291,6 +291,54 @@ describe("WorkspaceService.listConnectedAccounts", () => {
   });
 });
 
+describe("WorkspaceService.countActiveConnectedAccounts", () => {
+  function buildAccount(
+    overrides: Partial<ConnectedAccountRecord>,
+  ): ConnectedAccountRecord {
+    return {
+      id: asConnectedAccountId("conn-1"),
+      workspaceId: asWorkspaceId("workspace-1"),
+      platform: SocialPlatform.Instagram,
+      outstandAccountId: "mock-ig-001",
+      handle: "@insvire.demo",
+      status: "active",
+      reconnectRequired: false,
+      connectedAt: new Date("2026-01-01T00:00:00Z"),
+      ...overrides,
+    };
+  }
+
+  it("counts only accounts with status active (T-042.2)", async () => {
+    const accounts: ConnectedAccountRecord[] = [
+      buildAccount({ id: asConnectedAccountId("conn-1"), status: "active" }),
+      buildAccount({ id: asConnectedAccountId("conn-2"), status: "active" }),
+      buildAccount({
+        id: asConnectedAccountId("conn-3"),
+        status: "disconnected",
+      }),
+    ];
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listConnectedAccounts: async () => accounts,
+      }),
+    );
+
+    await expect(
+      service.countActiveConnectedAccounts(asWorkspaceId("workspace-1")),
+    ).resolves.toBe(2);
+  });
+
+  it("returns 0 when the workspace has no connected accounts", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({ listConnectedAccounts: async () => [] }),
+    );
+
+    await expect(
+      service.countActiveConnectedAccounts(asWorkspaceId("workspace-1")),
+    ).resolves.toBe(0);
+  });
+});
+
 describe("WorkspaceService.listMembersWithUser", () => {
   it("joins member records with user name/email", async () => {
     const ownerId = asUserId("owner-user");

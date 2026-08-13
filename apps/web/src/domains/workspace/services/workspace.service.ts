@@ -126,6 +126,22 @@ export class WorkspaceService {
   }
 
   /**
+   * Jumlah akun terhubung berstatus "active" (T-042.2, dikonsumsi
+   * `AnalyticsService.getDashboardSummary` via `ActiveAccountsPort` —
+   * `WorkspaceService` cocok secara struktural, tidak perlu wrapper
+   * terpisah). "active" adalah default `WorkspaceConnectedAccount.status`
+   * (schema.prisma) — akun dengan status lain (mis. hasil disconnect)
+   * sengaja tidak dihitung, konsisten dengan `reconnectRequired` sebagai
+   * sinyal degradasi terpisah di `listSidebarChannels`.
+   */
+  async countActiveConnectedAccounts(
+    workspaceId: WorkspaceId,
+  ): Promise<number> {
+    const accounts = await this.repository.listConnectedAccounts(workspaceId);
+    return accounts.filter((account) => account.status === "active").length;
+  }
+
+  /**
    * Returns connected accounts shaped for sidebar rendering (T-012,
    * ADR-058), diurutkan sesuai posisi tersimpan personal user (T-012.1).
    * Channel yang belum punya posisi tersimpan (baru terhubung) di-append
