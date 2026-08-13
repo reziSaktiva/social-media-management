@@ -39,7 +39,7 @@ Bun + Next.js 16 + Astryx, workspace `apps/web` + `packages/shared`, ESLint/Pret
 
 Empat halaman + form fungsional memanggil `authClient`. Kode: `apps/web/src/app/(auth)/`.
 
-> ⚠️ Uji interaksi form penuh di browser lewat tunnel ngrok masih terhambat — lihat T-017.
+> Catatan lama di sini merujuk ke isu tunnel ngrok (salah menyebut "T-017" — seharusnya T-018) yang sudah tidak berlaku sejak ADR-070 (self-hosted Better Auth, testing langsung via `localhost:3000`, tanpa ngrok). Lihat T-018 (⏸️ Deferred) untuk detail.
 
 ### T-005 · Email verification flow
 
@@ -92,15 +92,17 @@ Screen Workspace Settings → Members. Disepakati **desain minimal dulu**: cukup
 
 | Field         | Value                                                     |
 | ------------- | --------------------------------------------------------- |
-| **Status**    | ⏳ Not Started                                             |
+| **Status**    | 🟡 In Progress — T-008.1 (desain) sedang dikerjakan King Rezi langsung di Claude Design |
 | **Domain**    | workspace                                                 |
 | **ADR**       | ADR-049, ADR-050                                          |
 | **Depends**   | T-006 ✅, T-007 (transfer butuh daftar anggota)             |
 | **Baca dulu** | `05-architecture/application-layer.md` (method sudah lengkap) |
 
-Screen di luar 8 KSP — disepakati **desain minimal**: cukup "Danger Zone" untuk Transfer Ownership + Delete Workspace. Sesi desain (Neymar) belum dimulai.
+Screen di luar 8 KSP — disepakati **desain minimal**: cukup "Danger Zone" untuk Transfer Ownership + Delete Workspace.
 
-- [ ] **T-008.1** Sesi desain Claude Design: Workspace Settings → General + Danger Zone
+**Status desain (2026-08-13):** T-008.1 sedang dikerjakan **King Rezi sendiri** langsung di Claude Design project "Social Media Management" (bukan lewat subagent Neymar/`DesignSync`) — bukan lagi "belum dimulai". Scope brief yang dipakai: file baru `templates/settings-general.html` (mengisi slot "General" yang sudah ada tapi dead-link `href="#"` di 5 file `settings-*.html` lain), pola Tier 1 "ketik nama workspace untuk konfirmasi" baru (belum ada preseden di `components/dialog.html` sebelum ini — hanya `purpose="form"`/`"required"`/Tier 2 AlertDialog), alur Transfer Ownership dua langkah (ADR-050, state pending), RBAC Danger Zone Owner-only, plus wiring ke `templates/app-prototype/AppPrototype.dc.html` dan `readme.md`. **Sebelum melanjutkan T-008.2–.4 (implementasi kode), agent sesi berikutnya wajib cek dulu via `DesignSync` (`list_files`/`get_file` project `84aded99-bb23-49b1-be9f-dd8f21c6873e`) apakah `templates/settings-general.html` sudah ada** — kalau sudah, lanjut implementasi; kalau belum, desain masih berjalan, jangan mulai kode UI (aturan keras #17).
+
+- [ ] **T-008.1** Sesi desain Claude Design: Workspace Settings → General + Danger Zone — 🟡 sedang dikerjakan King Rezi
 - [ ] **T-008.2** `deleteWorkspace` (RBAC Owner) + dialog konfirmasi Tier tertinggi
 - [ ] **T-008.3** `transferOwnership` + `acceptOwnershipTransfer` (proses dua langkah, ADR-050)
 - [ ] **T-008.4** UI Danger Zone + rename workspace
@@ -358,41 +360,47 @@ picker workspace).
 
 | Field         | Value                                              |
 | ------------- | -------------------------------------------------- |
-| **Status**    | ⏳ Not Started                                      |
+| **Status**    | ✅ Done (2026-08-13) — dengan gap runtime terpisah, lihat KI-026 |
 | **Domain**    | platform                                           |
 | **ADR**       | ADR-015, ADR-033                                   |
 | **Depends**   | T-002 ✅                                            |
 | **Baca dulu** | `06-engineering/database-orm.md` (DO-D06) · `05-architecture/database-strategy.md` |
 
-Belum digenerate di migrasi awal — ditambahkan saat jalur server yang men-set `app.current_user_id` diimplementasi.
+RLS policy sudah digenerate dan **applied ke database nyata** — bukan draft. Helper `withCurrentUser(userId, callback)` (`apps/web/src/lib/prisma/with-current-user.ts`) membungkus `prisma.$transaction` + `set_config('app.current_user_id', $1, true)` (tagged-template, aman dari SQL injection). Migration `20260813045625_t017_add_rls_policies` (`apps/web/prisma/migrations/`) berisi `ENABLE ROW LEVEL SECURITY` + `CREATE POLICY` untuk 16 tabel: 12 dengan `workspace_id` langsung, 4 varian EXISTS-join ke parent (`publishing_post_targets`, `ai_results`, `engagement_replies`, `start_page_links`), plus `analytics_post_metrics` (subquery via `publishing_posts.post_id`, terverifikasi memang tidak punya `workspace_id` langsung). Adopsi contoh: `WorkspaceRepository.getMember` sudah jalan lewat `withCurrentUser` (adopsi penuh ke semua repository sengaja ditunda — bukan bagian scope T-017 ini).
 
-- [ ] **T-017.1** Implementasi jalur server set `app.current_user_id` per request
-- [ ] **T-017.2** Generate RLS policy per tabel domain
-- [ ] **T-017.3** Test negatif: akses lintas workspace harus ditolak di level DB
+**Koreksi baseline (2026-08-13):** contoh SQL asli di `database-strategy.md`/`database-orm.md` memakai cast `current_setting(...)::uuid` untuk `app.current_user_id`, tapi `identity_user.id` (Better Auth) adalah `cuid()` text, bukan UUID — cast itu akan gagal runtime. Sudah dikoreksi (perbandingan `user_id` sebagai text; `workspace_id` tetap `::uuid`) langsung di kedua dokumen tersebut dengan catatan bertanggal (bukan ADR baru — koreksi tipe pada contoh, bukan perubahan keputusan RLS).
+
+**Gap ditemukan saat verifikasi — lihat KI-026:** role Postgres (`postgres`) yang dipakai `DATABASE_URL`/`DIRECT_URL` punya `BYPASSRLS = true` (default Supabase) — RLS **belum efektif secara runtime** meski policy-nya benar secara desain. Authorization tetap 100% di Application Service (RBAC) untuk sekarang, sesuai desain DB-D05 — ini bukan regresi, tapi "defense-in-depth" yang dijanjikan masih murni teori sampai KI-026 di-follow-up (butuh King Rezi ubah role koneksi di dashboard Supabase, bukan task kode).
+
+- [x] **T-017.1** Implementasi jalur server set `app.current_user_id` per request — `withCurrentUser` helper
+- [x] **T-017.2** Generate RLS policy per tabel domain — migration applied ke DB nyata
+- [x] **T-017.3** Test negatif — `with-current-user.test.ts`, integration test nyata ke Supabase (auto-skip tanpa `DATABASE_URL`); 2 assertion eksplisit "KNOWN GAP" membuktikan BYPASSRLS (lihat KI-026) — akan gagal (sengaja) begitu role koneksi diperbaiki, jadi sinyal otomatis untuk membalik assertion-nya nanti
 
 ### T-018 · Investigasi hydration gagal lewat tunnel ngrok
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ⏸️ Deferred — superseded oleh ADR-070 (2026-08-13)             |
 | **Domain**    | platform · DX                                                |
-| **ADR**       | —                                                            |
+| **ADR**       | ADR-070                                                       |
 | **Depends**   | —                                                            |
 | **Baca dulu** | `06-engineering/dx-tooling.md`                                |
 
-Saat halaman auth diakses lewat tunnel ngrok (dipakai untuk `BETTER_AUTH_URL`), **seluruh** halaman tidak ter-hydrate — tidak ada React fiber di elemen manapun meski `window.next` termuat tanpa error console; klik submit jatuh ke native HTML form-submit. Dugaan: isu HMR/WebSocket Turbopack lewat ngrok. Backend/API sendiri terverifikasi benar via raw `fetch()`.
+Saat halaman auth diakses lewat tunnel ngrok (dipakai untuk `BETTER_AUTH_URL`), **seluruh** halaman tidak ter-hydrate — tidak ada React fiber di elemen manapun meski `window.next` termuat tanpa error console; klik submit jatuh ke native HTML form-submit. Dugaan awal: isu HMR/WebSocket Turbopack lewat ngrok. Backend/API sendiri terverifikasi benar via raw `fetch()`.
 
-- [ ] **T-018.1** Konfirmasi apakah reproduksi juga terjadi pada production build (bukan hanya dev/Turbopack)
-- [ ] **T-018.2** Tentukan solusi: konfigurasi ngrok/allowedDevOrigins, atau ganti mekanisme tunnel
-- [ ] **T-018.3** Dokumentasikan cara uji browser lewat tunnel di `dx-tooling.md`
+**Ditunda — bukan diselesaikan sesuai definisi awal.** ADR-070 menemukan bahwa requirement ngrok itu sendiri berasal dari constraint **Better Auth Cloud** (Base URL wajib publik), bukan keterbatasan Better Auth self-hosted maupun bug Turbopack. Setelah kembali ke self-hosted, `http://localhost:3000` dipakai langsung untuk dev/testing — ngrok tidak lagi diperlukan, sehingga skenario reproduksi T-018.1/.2 tidak lagi berlaku. Bug hydration spesifik lewat tunnel ngrok itu sendiri sengaja tidak ditelusuri lebih lanjut (lihat ADR-070 § Catatan implementasi). `QA_TEST_ACCOUNTS.md` sudah diperbarui dengan alur `localhost` langsung.
 
-> Memblokir uji interaksi form penuh di browser lewat ngrok, bukan memblokir fitur.
+- [x] ~~**T-018.1** Konfirmasi apakah reproduksi juga terjadi pada production build~~ — tidak relevan lagi, ngrok tidak dipakai
+- [x] ~~**T-018.2** Tentukan solusi: konfigurasi ngrok/allowedDevOrigins, atau ganti mekanisme tunnel~~ — solusi aktual: berhenti pakai Better Auth Cloud (ADR-070), bukan konfigurasi tunnel
+- [ ] **T-018.3** Dokumentasikan cara uji browser lewat tunnel di `dx-tooling.md` — tidak dilanjutkan, sudah tidak ada tunnel untuk didokumentasikan
+
+> Awalnya memblokir uji interaksi form penuh di browser lewat ngrok. Sudah tidak relevan sejak ADR-070 — testing browser kini langsung lewat `localhost:3000`.
 
 ### T-019 · Skema API mobile `/api/v1` + Better Auth Bearer plugin
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done (2026-08-13)                                          |
 | **Domain**    | platform · identity                                          |
 | **ADR**       | ADR-043                                                      |
 | **Depends**   | T-003 ✅                                                      |
@@ -402,10 +410,14 @@ Saat halaman auth diakses lewat tunnel ngrok (dipakai untuk `BETTER_AUTH_URL`), 
 
 Alasan urgensinya: kalau jalur Bearer token baru dipasang setelah kode web matang, konfigurasi auth harus di-retrofit ke atas sesuatu yang sudah jalan — persis yang ADR-043 ingin dihindari.
 
-- [ ] **T-019.1** Siapkan struktur folder `apps/web/src/app/api/v1/...` (skema route, belum ada endpoint bisnis)
-- [ ] **T-019.2** Aktifkan Better Auth Bearer plugin + set `trustedOrigins`
-- [ ] **T-019.3** Konfigurasi `rateLimit.customRules` untuk jalur API
-- [ ] **T-019.4** Pastikan auth guard `proxy.ts` tidak mem-redirect request Bearer ke `/login` (saat ini hanya `/api/auth`, `/api/jobs`, `/api/health` yang di-bypass)
+- [x] **T-019.1** Struktur folder `apps/web/src/app/api/v1/health/route.ts` — endpoint skema (bukan bisnis): validasi session (cookie web **atau** Bearer mobile) via `auth.api.getSession`, membuktikan wiring bekerja tanpa mengekspos domain apa pun
+- [x] **T-019.2** Bearer plugin aktif tanpa syarat di `apps/web/src/lib/better-auth/auth.ts` (`bearer()`, selalu di-include di array `plugins` bareng `dash` kondisional); `trustedOrigins` dibaca dari `BETTER_AUTH_TRUSTED_ORIGINS` (comma-separated, opsional — kosong untuk sekarang karena scheme mobile/Expo belum ada, didaftarkan nanti begitu mobile app benar-benar mulai, sesuai ADR-043 §7)
+- [x] **T-019.3** `rateLimit.customRules` untuk `/sign-in/email` (window 60s, max 5) dan `/sign-up/email` (window 60s, max 3) — diperketat dari default umum Better Auth (3 req/10s) karena `/api/v1` memperluas attack surface (ADR-043 §7)
+- [x] **T-019.4** `apps/web/src/proxy.ts` — `/api/v1` ditambahkan ke `BYPASS_PREFIXES` supaya request Bearer (tanpa session cookie) tidak lagi kena redirect `/login`; auth divalidasi di dalam handler masing-masing endpoint, bukan di proxy
+
+**Verifikasi:** `typecheck`/`lint`/`test` (103 test) lolos. Uji manual `curl` end-to-end (Bearer token asli → `/api/v1/health`) belum dilakukan — butuh akun test + token nyata, bisa dicek King Rezi kapan saja.
+
+**Catatan syarat yang masih terbuka (ADR-043 §7, bukan blocker fondasi ini):** sebelum endpoint mobile pertama benar-benar dirilis (bukan sekarang) masih perlu: (a) keputusan eksplisit durasi session mobile (tetap 7 hari atau lebih pendek + refresh), (b) `trustedOrigins` diisi scheme mobile nyata (mis. Expo) begitu platform mobile dipilih, (c) requirement secure storage token di sisi mobile client (di luar kendali repo ini). Dicatat di sini supaya tidak terlewat saat endpoint mobile pertama mulai dikerjakan Post-MVP.
 
 ---
 

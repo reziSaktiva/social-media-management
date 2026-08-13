@@ -20,6 +20,7 @@ import {
   type WorkspaceMember,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma/client";
+import { withCurrentUser } from "@/lib/prisma/with-current-user";
 import { ConflictError, NotFoundError } from "@/lib/utils/errors";
 
 /**
@@ -189,10 +190,23 @@ export const workspaceRepository: IWorkspaceRepository = {
     }));
   },
 
+  /**
+   * T-017.1 adoption sample: `getMember` is called with the acting
+   * `userId` already in scope (RBAC membership lookup), so it's a natural
+   * fit for `withCurrentUser` — sets `app.current_user_id` for the
+   * duration of this query so the RLS policy on `workspace_members`
+   * (migration `20260813045625_t017_add_rls_policies`) has the session
+   * variable available as defense-in-depth. See KI (Known Issues,
+   * PROJECT_STATE.md) for the current BYPASSRLS gap that makes this
+   * inert on the connection role used today — the wrapper itself is
+   * still correct and ready for when that gap is resolved.
+   */
   async getMember(workspaceId, userId) {
-    const member = await prisma.workspaceMember.findUnique({
-      where: { workspaceId_userId: { workspaceId, userId } },
-    });
+    const member = await withCurrentUser(userId, (tx) =>
+      tx.workspaceMember.findUnique({
+        where: { workspaceId_userId: { workspaceId, userId } },
+      }),
+    );
 
     return member ? toMemberRecord(member) : null;
   },

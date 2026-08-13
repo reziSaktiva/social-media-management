@@ -14,8 +14,12 @@ import {
 
 /**
  * Auth + workspace-context guard (ADR-076 — migrasi routing `[slug]` →
- * `(app)`). /api/auth/*, /api/jobs/*, /api/health are bypassed
- * (monorepo-setup.md).
+ * `(app)`). /api/auth/*, /api/jobs/*, /api/health, /api/v1/* are bypassed
+ * (monorepo-setup.md). `/api/v1/*` (ADR-043, T-019) auth mobile Bearer,
+ * bukan cookie session — gate cookie-based di bawah ini akan selalu redirect
+ * ke /login karena request Bearer tidak pernah punya session cookie; auth
+ * jalur itu divalidasi oleh Better Auth `bearer()` plugin di dalam handler
+ * masing-masing endpoint `/api/v1`, bukan di sini.
  *
  * Renamed from `middleware` per Next.js 16 file convention
  * (https://nextjs.org/docs/messages/middleware-to-proxy) — behavior unchanged.
@@ -32,7 +36,7 @@ import {
  *    `runtime` di `config`; opsi itu tidak diizinkan di Proxy file).
  */
 
-const BYPASS_PREFIXES = ["/api/auth", "/api/jobs", "/api/health"];
+const BYPASS_PREFIXES = ["/api/auth", "/api/jobs", "/api/health", "/api/v1"];
 
 const PUBLIC_AUTH_PATHS = [
   "/login",

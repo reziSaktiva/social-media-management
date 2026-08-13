@@ -262,9 +262,30 @@ Pola dual-context dari `auth-strategy.md` tetap berlaku; yang berubah hanya **ca
 **Konteks 1 — Server-side (CRUD domain via Prisma)**
 1. Better Auth session → `userId`.
 2. Dalam transaksi / sebelum query:  
-   `SET LOCAL app.current_user_id = '<userId>'` (via Prisma `$executeRaw`).
+   set `app.current_user_id = '<userId>'` (via Prisma `$executeRaw`,
+   fungsi `set_config('app.current_user_id', <userId>, true)` — bukan
+   literal `SET LOCAL app.current_user_id = <userId>`, karena `SET LOCAL`
+   tidak menerima value sebagai bound parameter; `set_config(...)` aman
+   dipakai dengan Prisma tagged-template sehingga `userId` tetap bound
+   parameter, bukan string concat manual).
 3. Query Prisma berikutnya dijalankan dalam koneksi/transaksi yang sama.
 4. Authorization bisnis tetap di Application Service (RBAC); RLS adalah safety net.
+
+> **Koreksi (2026-08-13, T-017):** Policy SQL yang membandingkan
+> `app.current_user_id` **tidak** boleh meng-cast ke `::uuid` — Better
+> Auth `identity_user.id` adalah `cuid()` string (`text`), bukan UUID, dan
+> kolom `user_id` di tabel domain juga `text`. Bandingkan sebagai text
+> langsung: `wm.user_id = current_setting('app.current_user_id', true)`.
+> `workspace_id` tetap `uuid` di semua tabel domain, jadi cast `::uuid`
+> tetap dipakai untuk sisi itu. Implementasi wrapper ada di
+> `apps/web/src/lib/prisma/with-current-user.ts` (fungsi `withCurrentUser`).
+>
+> **Catatan status runtime:** koneksi `DATABASE_URL`/`DIRECT_URL` saat ini
+> memakai role Postgres `postgres` yang di Supabase memiliki atribut
+> `BYPASSRLS` secara default — RLS belum aktif secara efektif di runtime
+> nyata sampai koneksi dipindah ke role tanpa `BYPASSRLS` (lihat Known
+> Issues di `PROJECT_STATE.md`). RLS tetap benar secara desain SQL; ini
+> gap infra/role, bukan gap desain policy.
 
 **Konteks 2 — Realtime** tidak memakai Prisma — tetap JWT Supabase-compatible + Supabase Realtime client (AS-D03).
 

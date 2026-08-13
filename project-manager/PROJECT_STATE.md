@@ -140,16 +140,6 @@ judul singkatnya. **Jangan menulis ulang daftar/detail task di sini**
 
 Password reset & email verification (Better Auth) membutuhkan email provider yang belum ditetapkan (kandidat: Resend, Postmark, AWS SES, SMTP Supabase). Dicatat di `auth-strategy.md` (AS-D04). `requireEmailVerification` dinonaktifkan sementara di skeleton. Tidak memblokir M8 awal.
 
-### KI-002 · RLS SQL policies belum digenerate
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Tech-Debt |
-| Terkait | T-017 |
-
-Belum digenerate di migrasi awal — ditambahkan saat jalur server set `app.current_user_id` diimplementasi (DO-D06).
-
 ### KI-003 · Runtime ADR-040 belum diimplementasikan
 
 | Field | Value |
@@ -266,6 +256,22 @@ belum ada realisasi. Task yang menyentuh Railway Cron trigger (T-027) atau
 verifikasi deploy end-to-end akan jadi **deploy pertama kalinya**, bukan
 update ke environment yang sudah live.
 
+### KI-026 · RLS tidak efektif — role koneksi DB (`postgres`) BYPASSRLS di Supabase
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-017 |
+
+Ditemukan 2026-08-13 saat verifikasi T-017 (RLS SQL policies). Penyebab: `DATABASE_URL`/`DIRECT_URL` connect sebagai role Postgres `postgres`, yang di Supabase punya atribut `rolbypassrls = true` secara default (juga owner semua tabel). Postgres melewati **seluruh** RLS policy untuk role ber-BYPASSRLS, terlepas dari `FORCE ROW LEVEL SECURITY` sekalipun.
+
+Dampak: policy RLS dari migration `20260813045625_t017_add_rls_policies` sudah applied dan benar secara desain, tapi memberi **nol proteksi tambahan** di runtime saat ini — "defense-in-depth" yang dijanjikan `database-strategy.md` masih murni teori, belum aktif. Authorization tetap 100% bergantung Application Service (RBAC) untuk sekarang — sesuai desain DB-D05, **bukan regresi**.
+
+Bukti: `apps/web/src/lib/prisma/with-current-user.test.ts` — 2 assertion eksplisit "KNOWN GAP" terhadap Supabase asli, sengaja akan gagal begitu role koneksi diperbaiki (sinyal otomatis untuk membalik assertion-nya).
+
+Follow-up (butuh King Rezi, infra/dashboard Supabase — bukan task kode): buat role Postgres baru (mis. `app_runtime`) tanpa `BYPASSRLS`, grant CRUD scope yang diperlukan, lalu pindahkan `DATABASE_URL` (dan evaluasi `DIRECT_URL`) ke role itu.
+
 ---
 
 ## Blockers
@@ -293,11 +299,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-017 & T-019 selesai (2026-08-13)** — RLS SQL policies (T-017, dikerjakan Elon Backend Engineer) dan skema API mobile `/api/v1` + Better Auth Bearer plugin (T-019, ADR-043). T-017: migration RLS applied ke DB nyata untuk 16 tabel + helper `withCurrentUser`, tapi verifikasi menemukan role koneksi `postgres` BYPASSRLS (default Supabase) — RLS belum efektif secara runtime, dicatat sebagai **KI-026** (follow-up butuh King Rezi ganti role koneksi di dashboard Supabase); KI-002 lama (RLS belum digenerate) resolved. T-019: `bearer()` plugin aktif, `trustedOrigins`/`rateLimit.customRules` dikonfigurasi, `proxy.ts` bypass `/api/v1`, endpoint skema `/api/v1/health`. T-008 (Workspace Settings) mulai 🟡 In Progress — desain sedang dikerjakan King Rezi langsung di Claude Design. T-018 (investigasi ngrok) di-defer — superseded ADR-070. Detail: `tasks/v01-foundation.md` § T-008/T-017/T-018/T-019, `COMPLETE_TASK.md`.
 * **T-042.2–T-042.5 selesai (2026-08-13)** — Dashboard Home (v0.3) tuntas, seluruh subtask T-042.1–.5 sekarang ✅ Done. Dikerjakan lewat 3 subagent sekuensial (analytics · UI, ADR-063): Prabowo (T-042.2 — `AnalyticsService.getDashboardSummary`, `WorkspaceService.countActiveConnectedAccounts` via port lokal `ActiveAccountsPort` mengikuti pola `ScheduledCountsPort`/ADR-078, Server Action `getDashboardSummaryAction`), Mark (T-042.3–.5 — `DashboardHome.tsx` menggantikan `ScaffoldPlaceholder` di `src/app/(app)/page.tsx`, komponen Astryx `Selector`/`Card`/`ProgressBar`/`EmptyState` terverifikasi via CLI, tanpa dependency chart baru). Lolos QA Najwa (typecheck/lint/test 103/103 PASS, verifikasi visual dark mode & regresi) dan review Ridwan (tidak ada temuan — boundary domain bersih, cross-domain lewat port/adapter). Menutup T-042 (✅ Done). Detail: `tasks/v03-analytics-mvp.md` § T-042, `COMPLETE_TASK.md`.
 * **T-041 selesai (2026-08-13, ADR-079)** — Metric ingestion job dari Outstand (v0.3), versi Fake/mock mengikuti pola ADR-059 (kredensial Outstand asli belum ada, KI-003). `IOutstandAdapter` dipromosikan dari domain `publishing` ke kontrak cross-domain `packages/shared/src/contracts/outstand-adapter.ts` (kategori baru: port/ACL contract), method baru `fetchPostMetrics`/`fetchWorkspaceMetrics` diimplementasikan di `FakeOutstandAdapter` dengan data mock deterministik (hash FNV-1a). `AnalyticsIngestionUseCase` baru (terpisah dari `AnalyticsService`), idempotensi via Prisma `upsert` di atas unique constraint baru `AnalyticsPostMetric` (migration `20260813023329_add_analytics_post_metric_unique`). Menutup T-041 (✅ Done), dependency T-042 dari sisi T-040+T-041 sekarang terpenuhi (T-042.2–.5 belum dikerjakan). Detail: `tasks/v03-analytics-mvp.md` § T-041, ADR-079, `COMPLETE_TASK.md`.
 * **T-040 selesai (2026-08-12)** — Analytics domain skeleton (v0.3): T-040.1–T-040.4 selesai lewat Elon Backend Engineer, tidak ada yang di-skip, tidak ada gap skema Prisma. `IAnalyticsRepository` (read path saja, sesuai kontrak `application-layer.md`) + implementasi Prisma, `AnalyticsService` (`getPostMetrics`, `getWorkspaceSnapshot`), `types.ts` diisi `SnapshotPeriod`, public API barrel `domains/analytics/index.ts` di-extend, factory ID baru di `packages/shared/src/ids.ts`. 4 unit test dengan fake repository lulus. Verifikasi: full test suite 11 file/89 test lulus (tidak ada regresi domain workspace/publishing), `tsc --noEmit` bersih. Method tulis ingestion (`syncMetrics`) sengaja tidak ditambahkan — scope T-041. Detail: `tasks/v03-analytics-mvp.md` § T-040, `COMPLETE_TASK.md`.
 * **T-042.1 selesai (2026-08-12)** — Sesi desain Claude Design untuk layar Dashboard/Home (v0.3, dikerjakan lebih awal dari release-nya karena tidak ada blocker eksternal). Dibandingkan dulu terhadap baseline KSP-01, ditemukan 4 gap: tidak ada empty state, tidak ada visual chart untuk Analytics Snapshot (Astryx dikonfirmasi tidak punya komponen Chart via `astryx docs chart`), tidak ada selector rentang waktu, dan deep-link item Failed di Recent Activity tidak menyorot item tujuan di Calendar — keempatnya dikonfirmasi ke King Rezi lalu diimplementasikan: blok "Referensi State Kosong" (4 state KSP-01), `.select` rentang waktu + `.bar-track`/`.bar-fill` (`ProgressBar`) di Analytics Snapshot, dan arrival-highlight sementara di App Prototype untuk deep-link Failed (tanpa mengubah `publish-calendar.html`). File yang diubah: `styles.css`, `templates/home.html`, `templates/app-prototype/AppPrototype.dc.html`, `readme.md`. Detail: `tasks/v03-analytics-mvp.md` § T-042, `COMPLETE_TASK.md`.
-* **T-012.1/2 selesai (2026-08-12)** — Sidebar Channels: persist reorder per user (model Prisma `WorkspaceChannelOrder`, Server Action `reorderChannelsAction`, optimistic UI + revert-on-failure di `ChannelsSection.tsx`) dan badge scheduled-count real (`countScheduledByAccount` batch query di domain publishing, dipanggil `WorkspaceService` lewat port lokal `ScheduledCountsPort` — preseden pertama domain service memanggil domain service lain langsung, AGENTS.md #7). Lolos review Ridwan (1 temuan ringan diperbaiki: `ScheduledCountsPort` bocor dari barrel `domains/workspace`) + QA Najwa (typecheck/lint/test 85/85 PASS, reorder & count terverifikasi lewat DB langsung). Menutup T-012 (✅ Done) dan KI-006 (Resolved). Detail: `tasks/v01-foundation.md` § T-012, `COMPLETE_TASK.md`.
 
 ---
 
