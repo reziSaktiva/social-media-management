@@ -8,6 +8,43 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-13 — T-042.2–T-042.5 selesai: Dashboard Home tuntas (v0.3)
+
+### Context
+
+King Rezi menyelesaikan sisa subtask T-042 (Dashboard Home, v0.3 Analytics MVP) lewat 3 subagent sekuensial (analytics · UI, sesuai pemetaan ADR-063): Prabowo Feature Engineer (T-042.2, query/service/action), Mark UI Engineer (T-042.3–T-042.5, UI), lalu diverifikasi Najwa QA Engineer dan Ridwan Architecture Reviewer (keduanya tidak ada temuan). Seluruh subtask T-042.1–T-042.5 sekarang selesai.
+
+### File dibuat
+
+- `apps/web/src/app/(app)/components/DashboardHome.tsx` — Client Component dashboard, `useTransition` untuk re-fetch saat selector rentang waktu diganti
+
+### File diubah
+
+- `apps/web/src/domains/analytics/types.ts` — type baru `DashboardSummary` (`totalPosts`, `totalEngagements`, `avgEngagementRate`, `activeAccounts`)
+- `apps/web/src/domains/analytics/services/analytics.service.ts` — method baru `getDashboardSummary(workspaceId, period)`, return `null` kalau belum ada snapshot (empty state); interface lokal `ActiveAccountsPort` (tidak di-export lewat barrel, pola sama seperti `ScheduledCountsPort`/ADR-078) untuk cross-domain ke workspace
+- `apps/web/src/domains/workspace/services/workspace.service.ts` — method baru `countActiveConnectedAccounts(workspaceId)` (hitung `WorkspaceConnectedAccount.status === "active"`)
+- `apps/web/src/app/(app)/dashboard-actions.ts` — Server Action baru `getDashboardSummaryAction(period)`, composition root (instansiasi `AnalyticsService` + `WorkspaceService` dari barrel publik masing-masing domain)
+- `apps/web/src/app/(app)/page.tsx` — diganti dari `ScaffoldPlaceholder` jadi Server Component yang panggil `getDashboardSummaryAction("weekly")` dan render `<DashboardHome>`
+- `apps/web/src/domains/analytics/services/analytics.service.test.ts`, `apps/web/src/domains/workspace/services/workspace.service.test.ts` — test baru untuk method di atas
+
+### Desain
+
+Komponen Astryx yang dipakai diverifikasi lewat `astryx component <Name> --dense` (bukan tebakan): `Selector` (rentang waktu weekly/monthly, T-042.5), `Card`/`Grid`/`HStack`/`VStack`/`Section`/`Heading`/`Text` (stat tiles, T-042.3), `ProgressBar` (representasi `avgEngagementRate` — dikonfirmasi ulang Astryx tidak punya komponen Chart lewat `astryx docs chart`, jadi tidak menambah dependency chart baru seperti `recharts`), `EmptyState` (T-042.4, pola sama seperti `DraftsList.tsx`/`ConnectedAccountsList.tsx`).
+
+### QA (Najwa)
+
+`bun run typecheck`, `bun run lint`, `bun run test` (root, vitest config ada di root) semua hijau, 103/103 test lulus. Verifikasi visual dengan seed data dummy sementara (sudah di-cleanup, dikonfirmasi 0 sisa row) untuk workspace Insvire: stat tiles dan ProgressBar tampil benar untuk period weekly & monthly, dark mode aman, tidak ada regresi di sidebar channel count / halaman Publish.
+
+### Review arsitektur (Ridwan)
+
+Tidak ada temuan — entry point bersih dari business logic, domain tidak import Prisma/Supabase langsung, cross-domain analytics→workspace lewat port/adapter pattern konsisten dengan `ScheduledCountsPort` existing (bukan pelanggaran boundary), `DashboardSummary` tepat di domain types (bukan `packages/shared`), UI 100% komponen Astryx tanpa hardcode style.
+
+### Hasil
+
+T-042 (Status `✅ Done`, seluruh subtask T-042.1–.5 selesai). Tidak ada ADR baru — implementasi mengikuti pola existing (ScheduledCountsPort/ADR-078, FakeOutstandAdapter/ADR-059+ADR-079), bukan keputusan arsitektur baru. Dokumentasi diperbarui: `tasks/v03-analytics-mvp.md` § T-042 (checklist dicentang, status ✅ Done, paragraf implementasi), `TASKS.md` (indeks v0.3 jadi 3 ✅ · 3 ⏳, Total jadi 17 selesai), `PROJECT_STATE.md` (Completed Ringkasan — bullet T-042.2–.5 ditambah, bullet T-039.5 terlama dihapus untuk menjaga batas 5 item; KI-003 prosa diperbarui menyebut T-042 ✅ Done).
+
+---
+
 ## 2026-08-13 — T-041 selesai: Metric ingestion job dari Outstand (v0.3, Fake/mock, ADR-079)
 
 ### Context

@@ -1,10 +1,14 @@
-import { ScaffoldPlaceholder } from "@/components/ScaffoldPlaceholder";
+import { getDashboardSummaryAction } from "./dashboard-actions";
+import { DashboardHome } from "./components/DashboardHome";
 
-export default function Page() {
+import type { SnapshotPeriod } from "@/domains/analytics";
+
+const DEFAULT_PERIOD: SnapshotPeriod = "weekly";
+
+export default async function Page() {
+  const summary = await getDashboardSummaryAction(DEFAULT_PERIOD);
+
   return (
-    <ScaffoldPlaceholder
-      title="Home"
-      message="Placeholder — implementasi direncanakan di T-042 (Dashboard Home, release v0.3 Analytics MVP)."
-    />
+    <DashboardHome initialPeriod={DEFAULT_PERIOD} initialSummary={summary} />
   );
 }

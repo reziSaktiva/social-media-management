@@ -161,6 +161,12 @@ export const workspaceRepository: IWorkspaceRepository = {
     }));
   },
 
+  async countActiveConnectedAccounts(workspaceId) {
+    return prisma.workspaceConnectedAccount.count({
+      where: { workspaceId, status: "active" },
+    });
+  },
+
   async listMembers(workspaceId) {
     const members = await prisma.workspaceMember.findMany({
       where: { workspaceId },

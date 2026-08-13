@@ -64,6 +64,9 @@ export interface IWorkspaceRepository {
     workspaceId: WorkspaceId,
   ): Promise<ConnectedAccountRecord[]>;
 
+  /** Count-only variant of `listConnectedAccounts` filtered to `status: "active"` (T-042.2). */
+  countActiveConnectedAccounts(workspaceId: WorkspaceId): Promise<number>;
+
   /** Ordered by `joinedAt` ascending — dipakai UI daftar anggota (T-007.4). */
   listMembers(workspaceId: WorkspaceId): Promise<WorkspaceMemberRecord[]>;
 

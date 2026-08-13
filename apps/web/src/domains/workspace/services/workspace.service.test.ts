@@ -44,6 +44,7 @@ function createFakeRepository(
     findDefaultWorkspaceForUser: async () => null,
     findById: async () => null,
     listConnectedAccounts: async () => [],
+    countActiveConnectedAccounts: async () => 0,
     listMembers: async () => [],
     findUsersByIds: async () => [],
     saveChannelOrder: async () => undefined,
@@ -288,6 +289,30 @@ describe("WorkspaceService.listConnectedAccounts", () => {
     await expect(
       service.listConnectedAccounts(asWorkspaceId("workspace-1")),
     ).resolves.toBe(accounts);
+  });
+});
+
+describe("WorkspaceService.countActiveConnectedAccounts", () => {
+  it("delegates to the repository's count-only query (T-042.2)", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        countActiveConnectedAccounts: async () => 2,
+      }),
+    );
+
+    await expect(
+      service.countActiveConnectedAccounts(asWorkspaceId("workspace-1")),
+    ).resolves.toBe(2);
+  });
+
+  it("returns 0 when the repository reports no active accounts", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({ countActiveConnectedAccounts: async () => 0 }),
+    );
+
+    await expect(
+      service.countActiveConnectedAccounts(asWorkspaceId("workspace-1")),
+    ).resolves.toBe(0);
   });
 });
 
