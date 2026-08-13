@@ -20,6 +20,10 @@ import {
   type WorkspaceMember,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma/client";
+import {
+  setCurrentUserId,
+  withCurrentUser,
+} from "@/lib/prisma/with-current-user";
 import { ConflictError, NotFoundError } from "@/lib/utils/errors";
 
 /**
@@ -80,6 +84,18 @@ export const workspaceRepository: IWorkspaceRepository = {
   async createWithOwner({ name, slug, ownerId }) {
     try {
       return await prisma.$transaction(async (tx) => {
+        // RLS (KI-026): the owner's membership row is created before any
+        // membership exists, so `app.current_user_id` must be set to the
+        // new owner's own id — the SELECT policy on workspace_members
+        // allows a row to be returned when it matches the session's own
+        // user_id directly (no self-referencing subquery), which is what
+        // lets Prisma's implicit `RETURNING` on the insert below succeed.
+        // Uses `setCurrentUserId` (not `withCurrentUser`) because this
+        // already has its own outer transaction — `withCurrentUser` opens
+        // a second, separate one, which would break the atomicity of
+        // creating the workspace + owner membership together.
+        await setCurrentUserId(tx, ownerId);
+
         const workspace = await tx.workspace.create({
           data: { name, slug, ownerId },
         });
@@ -143,11 +159,13 @@ export const workspaceRepository: IWorkspaceRepository = {
     };
   },
 
-  async listConnectedAccounts(workspaceId) {
-    const accounts = await prisma.workspaceConnectedAccount.findMany({
-      where: { workspaceId },
-      orderBy: { connectedAt: "asc" },
-    });
+  async listConnectedAccounts(workspaceId, userId) {
+    const accounts = await withCurrentUser(userId, (tx) =>
+      tx.workspaceConnectedAccount.findMany({
+        where: { workspaceId },
+        orderBy: { connectedAt: "asc" },
+      }),
+    );
 
     return accounts.map((account) => ({
       id: asConnectedAccountId(account.id),
@@ -161,17 +179,21 @@ export const workspaceRepository: IWorkspaceRepository = {
     }));
   },
 
-  async countActiveConnectedAccounts(workspaceId) {
-    return prisma.workspaceConnectedAccount.count({
-      where: { workspaceId, status: "active" },
-    });
+  async countActiveConnectedAccounts(workspaceId, userId) {
+    return withCurrentUser(userId, (tx) =>
+      tx.workspaceConnectedAccount.count({
+        where: { workspaceId, status: "active" },
+      }),
+    );
   },
 
-  async listMembers(workspaceId) {
-    const members = await prisma.workspaceMember.findMany({
-      where: { workspaceId },
-      orderBy: { joinedAt: "asc" },
-    });
+  async listMembers(workspaceId, actingUserId) {
+    const members = await withCurrentUser(actingUserId, (tx) =>
+      tx.workspaceMember.findMany({
+        where: { workspaceId },
+        orderBy: { joinedAt: "asc" },
+      }),
+    );
 
     return members.map(toMemberRecord);
   },
@@ -189,27 +211,45 @@ export const workspaceRepository: IWorkspaceRepository = {
     }));
   },
 
+  /**
+   * `getMember` is called with the acting `userId` already in scope (RBAC
+   * membership lookup), so it's a natural fit for `withCurrentUser` — sets
+   * `app.current_user_id` for the duration of this query so the RLS
+   * policy on `workspace_members` (migration
+   * `20260813045625_t017_add_rls_policies`, KI-026 follow-up fixes) can
+   * actually enforce workspace isolation. `DATABASE_URL` now connects as
+   * the non-BYPASSRLS `app_runtime` role (KI-026, resolved). Every other
+   * method in this file has since adopted the same pattern (code review,
+   * PR #71) — `findInvitationByToken` is the one deliberate exception, see
+   * its doc comment in `domains/workspace/repositories/workspace.repository.ts`.
+   */
   async getMember(workspaceId, userId) {
-    const member = await prisma.workspaceMember.findUnique({
-      where: { workspaceId_userId: { workspaceId, userId } },
-    });
+    const member = await withCurrentUser(userId, (tx) =>
+      tx.workspaceMember.findUnique({
+        where: { workspaceId_userId: { workspaceId, userId } },
+      }),
+    );
 
     return member ? toMemberRecord(member) : null;
   },
 
-  async findMemberById(workspaceId, memberId) {
-    const member = await prisma.workspaceMember.findFirst({
-      where: { id: memberId, workspaceId },
-    });
-
-    return member ? toMemberRecord(member) : null;
-  },
-
-  async removeMember(workspaceId, memberId) {
-    try {
-      await prisma.workspaceMember.delete({
+  async findMemberById(workspaceId, memberId, actingUserId) {
+    const member = await withCurrentUser(actingUserId, (tx) =>
+      tx.workspaceMember.findFirst({
         where: { id: memberId, workspaceId },
-      });
+      }),
+    );
+
+    return member ? toMemberRecord(member) : null;
+  },
+
+  async removeMember(workspaceId, memberId, actingUserId) {
+    try {
+      await withCurrentUser(actingUserId, (tx) =>
+        tx.workspaceMember.delete({
+          where: { id: memberId, workspaceId },
+        }),
+      );
     } catch (error) {
       if (isRecordNotFound(error)) {
         throw new NotFoundError("Anggota tidak ditemukan.");
@@ -218,12 +258,14 @@ export const workspaceRepository: IWorkspaceRepository = {
     }
   },
 
-  async updateMemberRole(workspaceId, memberId, role) {
+  async updateMemberRole(workspaceId, memberId, role, actingUserId) {
     try {
-      await prisma.workspaceMember.update({
-        where: { id: memberId, workspaceId },
-        data: { role },
-      });
+      await withCurrentUser(actingUserId, (tx) =>
+        tx.workspaceMember.update({
+          where: { id: memberId, workspaceId },
+          data: { role },
+        }),
+      );
     } catch (error) {
       if (isRecordNotFound(error)) {
         throw new NotFoundError("Anggota tidak ditemukan.");
@@ -242,16 +284,18 @@ export const workspaceRepository: IWorkspaceRepository = {
   }) {
     let invitation;
     try {
-      invitation = await prisma.workspaceInvitation.create({
-        data: {
-          workspaceId,
-          email,
-          role,
-          invitedByUserId,
-          token,
-          expiresAt,
-        },
-      });
+      invitation = await withCurrentUser(invitedByUserId, (tx) =>
+        tx.workspaceInvitation.create({
+          data: {
+            workspaceId,
+            email,
+            role,
+            invitedByUserId,
+            token,
+            expiresAt,
+          },
+        }),
+      );
     } catch (error) {
       if (isInvitationEmailConflict(error)) {
         throw new ConflictError(
@@ -273,11 +317,16 @@ export const workspaceRepository: IWorkspaceRepository = {
   },
 
   async saveChannelOrder({ workspaceId, userId, orderedConnectedAccountIds }) {
-    await prisma.$transaction([
-      prisma.workspaceChannelOrder.deleteMany({
+    // `tx` di dalam `withCurrentUser` sudah berupa interactive transaction
+    // client (Prisma.TransactionClient) — tidak mengekspos `$transaction`
+    // untuk nested batch, jadi deleteMany+createMany dijalankan sequential
+    // di sini (tetap atomik karena keduanya ada di dalam transaksi yang
+    // sama, bukan dua transaksi independen seperti sebelumnya).
+    await withCurrentUser(userId, async (tx) => {
+      await tx.workspaceChannelOrder.deleteMany({
         where: { workspaceId, userId },
-      }),
-      prisma.workspaceChannelOrder.createMany({
+      });
+      await tx.workspaceChannelOrder.createMany({
         data: orderedConnectedAccountIds.map(
           (connectedAccountId, position) => ({
             workspaceId,
@@ -286,15 +335,17 @@ export const workspaceRepository: IWorkspaceRepository = {
             position,
           }),
         ),
-      }),
-    ]);
+      });
+    });
   },
 
   async getChannelOrder(workspaceId, userId) {
-    const rows = await prisma.workspaceChannelOrder.findMany({
-      where: { workspaceId, userId },
-      orderBy: { position: "asc" },
-    });
+    const rows = await withCurrentUser(userId, (tx) =>
+      tx.workspaceChannelOrder.findMany({
+        where: { workspaceId, userId },
+        orderBy: { position: "asc" },
+      }),
+    );
 
     return rows.map((row) => asConnectedAccountId(row.connectedAccountId));
   },

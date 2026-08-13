@@ -1,4 +1,4 @@
-import type { PostId, WorkspaceId } from "@social/shared";
+import type { PostId, UserId, WorkspaceId } from "@social/shared";
 import type {
   IAnalyticsRepository,
   PostMetricsRecord,
@@ -17,7 +17,10 @@ import type { DashboardSummary, SnapshotPeriod } from "../types";
  * struktural — `WorkspaceService` konkret TIDAK boleh diimport ke file ini.
  */
 interface ActiveAccountsPort {
-  countActiveConnectedAccounts(workspaceId: WorkspaceId): Promise<number>;
+  countActiveConnectedAccounts(
+    workspaceId: WorkspaceId,
+    userId: UserId,
+  ): Promise<number>;
 }
 
 export class AnalyticsService {
@@ -54,6 +57,7 @@ export class AnalyticsService {
   async getDashboardSummary(
     workspaceId: WorkspaceId,
     period: SnapshotPeriod,
+    userId: UserId,
   ): Promise<DashboardSummary | null> {
     const snapshot = await this.repository.findLatestWorkspaceSnapshot(
       workspaceId,
@@ -70,7 +74,10 @@ export class AnalyticsService {
     }
 
     const activeAccounts =
-      await this.activeAccounts.countActiveConnectedAccounts(workspaceId);
+      await this.activeAccounts.countActiveConnectedAccounts(
+        workspaceId,
+        userId,
+      );
 
     return {
       totalPosts: snapshot.totalPosts,

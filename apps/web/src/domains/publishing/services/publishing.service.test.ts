@@ -108,7 +108,9 @@ describe("PublishingService.listDrafts", () => {
       createFakeRepository({ listDrafts: async () => drafts }),
     );
 
-    await expect(service.listDrafts(WORKSPACE_ID)).resolves.toBe(drafts);
+    await expect(service.listDrafts(WORKSPACE_ID, AUTHOR_ID)).resolves.toBe(
+      drafts,
+    );
   });
 });
 
@@ -117,7 +119,7 @@ describe("PublishingService.getDraftById", () => {
     const service = new PublishingService(createFakeRepository());
 
     await expect(
-      service.getDraftById(WORKSPACE_ID, asPostId("post-1")),
+      service.getDraftById(WORKSPACE_ID, asPostId("post-1"), AUTHOR_ID),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -136,7 +138,7 @@ describe("PublishingService.getDraftById", () => {
     );
 
     await expect(
-      service.getDraftById(WORKSPACE_ID, asPostId("post-1")),
+      service.getDraftById(WORKSPACE_ID, asPostId("post-1"), AUTHOR_ID),
     ).resolves.toBe(draft);
   });
 });
@@ -162,11 +164,14 @@ describe("PublishingService.updateDraft", () => {
       }),
     );
 
-    await service.updateDraft({
-      workspaceId: WORKSPACE_ID,
-      postId: asPostId("post-1"),
-      caption: "  Hello world  ",
-    });
+    await service.updateDraft(
+      {
+        workspaceId: WORKSPACE_ID,
+        postId: asPostId("post-1"),
+        caption: "  Hello world  ",
+      },
+      AUTHOR_ID,
+    );
 
     expect(received).toEqual({
       workspaceId: WORKSPACE_ID,
@@ -179,11 +184,14 @@ describe("PublishingService.updateDraft", () => {
     const service = new PublishingService(createFakeRepository());
 
     await expect(
-      service.updateDraft({
-        workspaceId: WORKSPACE_ID,
-        postId: asPostId("post-1"),
-        caption: "Hello",
-      }),
+      service.updateDraft(
+        {
+          workspaceId: WORKSPACE_ID,
+          postId: asPostId("post-1"),
+          caption: "Hello",
+        },
+        AUTHOR_ID,
+      ),
     ).rejects.toThrow(NotFoundError);
   });
 });
@@ -200,7 +208,11 @@ describe("PublishingService.countScheduledByAccount", () => {
       }),
     );
 
-    const result = await service.countScheduledByAccount(WORKSPACE_ID, []);
+    const result = await service.countScheduledByAccount(
+      WORKSPACE_ID,
+      [],
+      AUTHOR_ID,
+    );
 
     expect(result).toEqual(new Map());
     expect(calls).toBe(0);
@@ -230,6 +242,7 @@ describe("PublishingService.countScheduledByAccount", () => {
     const result = await service.countScheduledByAccount(
       WORKSPACE_ID,
       connectedAccountIds,
+      AUTHOR_ID,
     );
 
     expect(result).toBe(expected);

@@ -42,6 +42,7 @@ interface ScheduledCountsPort {
   countScheduledByAccount(
     workspaceId: WorkspaceId,
     connectedAccountIds: ConnectedAccountId[],
+    userId: UserId,
   ): Promise<Map<ConnectedAccountId, number>>;
 }
 
@@ -121,8 +122,9 @@ export class WorkspaceService {
 
   async listConnectedAccounts(
     workspaceId: WorkspaceId,
+    userId: UserId,
   ): Promise<ConnectedAccountRecord[]> {
-    return this.repository.listConnectedAccounts(workspaceId);
+    return this.repository.listConnectedAccounts(workspaceId, userId);
   }
 
   /**
@@ -136,8 +138,9 @@ export class WorkspaceService {
    */
   async countActiveConnectedAccounts(
     workspaceId: WorkspaceId,
+    userId: UserId,
   ): Promise<number> {
-    return this.repository.countActiveConnectedAccounts(workspaceId);
+    return this.repository.countActiveConnectedAccounts(workspaceId, userId);
   }
 
   /**
@@ -150,11 +153,15 @@ export class WorkspaceService {
     workspaceId: WorkspaceId,
     userId: UserId,
   ): Promise<SidebarChannelAccount[]> {
-    const accounts = await this.repository.listConnectedAccounts(workspaceId);
+    const accounts = await this.repository.listConnectedAccounts(
+      workspaceId,
+      userId,
+    );
     const counts =
       (await this.scheduledCounts?.countScheduledByAccount(
         workspaceId,
         accounts.map((account) => account.id),
+        userId,
       )) ?? new Map<ConnectedAccountId, number>();
 
     const storedOrder = await this.repository.getChannelOrder(
@@ -203,7 +210,10 @@ export class WorkspaceService {
     userId: UserId,
     orderedConnectedAccountIds: ConnectedAccountId[],
   ): Promise<void> {
-    const accounts = await this.repository.listConnectedAccounts(workspaceId);
+    const accounts = await this.repository.listConnectedAccounts(
+      workspaceId,
+      userId,
+    );
     const ownedIds = new Set(accounts.map((account) => account.id));
     const validOrderedIds = Array.from(
       new Set(orderedConnectedAccountIds.filter((id) => ownedIds.has(id))),
@@ -226,8 +236,12 @@ export class WorkspaceService {
    */
   async listMembersWithUser(
     workspaceId: WorkspaceId,
+    actingUserId: UserId,
   ): Promise<WorkspaceMemberWithUser[]> {
-    const members = await this.repository.listMembers(workspaceId);
+    const members = await this.repository.listMembers(
+      workspaceId,
+      actingUserId,
+    );
     const users = await this.repository.findUsersByIds(
       members.map((member) => member.userId),
     );
@@ -270,11 +284,13 @@ export class WorkspaceService {
   private async getManageableTarget(
     workspaceId: WorkspaceId,
     targetMemberId: MemberId,
+    actingUserId: UserId,
     ownerErrorMessage: string,
   ): Promise<WorkspaceMemberRecord> {
     const target = await this.repository.findMemberById(
       workspaceId,
       targetMemberId,
+      actingUserId,
     );
     if (!target) {
       throw new NotFoundError("Anggota tidak ditemukan.");
@@ -298,10 +314,15 @@ export class WorkspaceService {
     await this.getManageableTarget(
       workspaceId,
       targetMemberId,
+      actorUserId,
       "Owner tidak bisa dihapus dari workspace.",
     );
 
-    await this.repository.removeMember(workspaceId, targetMemberId);
+    await this.repository.removeMember(
+      workspaceId,
+      targetMemberId,
+      actorUserId,
+    );
   }
 
   async updateMemberRole(
@@ -324,6 +345,7 @@ export class WorkspaceService {
     await this.getManageableTarget(
       workspaceId,
       targetMemberId,
+      actorUserId,
       "Role Owner tidak bisa diubah lewat sini.",
     );
 
@@ -331,6 +353,7 @@ export class WorkspaceService {
       workspaceId,
       targetMemberId,
       newRole,
+      actorUserId,
     );
   }
 }

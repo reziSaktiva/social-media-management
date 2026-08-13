@@ -8,6 +8,88 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-13 — KI-026 resolved: RLS BYPASSRLS diperbaiki + 2 bug desain policy `workspace_members` ditemukan & diperbaiki
+
+### Context
+
+Lanjutan dari T-017 (lihat entri di bawah, dikerjakan hari yang sama). Setelah T-017 ditutup dengan gap runtime terpisah (KI-026: role koneksi `postgres` punya `BYPASSRLS = true` sehingga RLS belum efektif), King Rezi menindaklanjuti langsung di sesi yang sama.
+
+### Root cause & resolusi
+
+King Rezi membuat role Postgres baru `app_runtime` (tanpa `BYPASSRLS`) via Supabase SQL Editor — grant CRUD ke semua tabel `public` + default privileges untuk tabel baru. `DATABASE_URL` dipindah ke role ini; `DIRECT_URL` sengaja **tetap** memakai role `postgres` (butuh privilege DDL untuk `prisma migrate deploy` — keputusan sadar, bukan oversight).
+
+Setelah RLS benar-benar aktif (bukan lagi dilewati BYPASSRLS), ditemukan 2 bug desain baru yang sebelumnya tersembunyi (root cause sama: policy lama ditulis dengan asumsi tidak pernah benar-benar dieksekusi):
+
+1. **Infinite recursion** pada policy `workspace_members_workspace_isolation` — policy tabel `workspace_members` melakukan subquery ke tabel itu sendiri, memicu Postgres error "infinite recursion detected in policy". Fix: migration `20260813073556_t017_fix_workspace_members_rls_recursion` — pecah subquery jadi `SECURITY DEFINER` function `current_user_workspace_ids()` (dimiliki role `postgres`/BYPASSRLS, jadi tidak memicu ulang RLS saat dipanggil dari dalam function).
+2. **INSERT bootstrap gap** — policy asli pakai `FOR ALL` (WITH CHECK = USING), sehingga insert membership pertama (owner baru bikin workspace) gagal karena user itu belum terdaftar jadi member aktif manapun (chicken-and-egg). Ditambah, Prisma selalu `INSERT ... RETURNING`, jadi SELECT-policy juga dicek ke baris yang baru diinsert. Fix 2 migration:
+   - `20260813073842_t017_split_workspace_members_insert_policy` — pisah `FOR ALL` jadi `FOR SELECT/UPDATE/DELETE` (tetap strict, pakai function) + `FOR INSERT WITH CHECK (true)` terpisah (aman karena authorization utama tetap di Application Service/RBAC per DB-D05 — insert ke `workspace_members` cuma dipanggil dari `WorkspaceRepository.createWithOwner`, sudah divalidasi di service layer).
+   - `20260813074306_t017_allow_self_visibility_workspace_members` — tambah klausa `OR user_id = current_setting('app.current_user_id', true)` langsung (tanpa subquery) di SELECT policy, supaya baris yang baru diinsert bisa langsung "melihat dirinya sendiri" tanpa perlu query ulang tabel (yang tidak akan melihat baris in-flight).
+
+Fix kode aplikasi terkait: `apps/web/src/lib/repositories/workspace/workspace.repository.ts` method `createWithOwner` sekarang set `app.current_user_id = ownerId` (via `tx.$executeRaw` `set_config`) di awal transaksi, sebelum insert workspace + membership pertama — supaya SELECT-policy self-visibility di atas bisa match.
+
+Test `apps/web/src/lib/prisma/with-current-user.test.ts` diupdate: 2 assertion yang tadinya berlabel "KNOWN GAP" (mendokumentasikan bug BYPASSRLS lama) sekarang dibalik jadi assertion positif (cross-workspace row tidak terlihat; default-deny tanpa `SET LOCAL` benar-benar terjadi) — sesuai instruksi yang sudah ditulis di komentar test itu sendiri sejak awal. Setup `beforeAll` di test juga diupdate untuk pakai `withCurrentUser` (pola sama seperti fix repository).
+
+Verifikasi: full test suite `bun run test` (dengan `DATABASE_URL` nyata via `--env-file`) → 14 file test, 105 passed + 1 skipped (skip disengaja untuk environment tanpa DB). `tsc --noEmit` bersih. Tidak ada regresi di test lain yang menyentuh `workspace_members`/`workspaces`.
+
+Ketiga migration baru sudah **applied ke database Supabase nyata** (`bunx prisma migrate deploy`), bukan cuma file lokal.
+
+Railway belum pernah dibuat/dipakai sama sekali oleh King Rezi saat ini — jadi tidak ada perubahan env var production dari pekerjaan ini, hanya `apps/web/.env.local` (lokal). Blocker "Railway belum pernah dibuat" (KI-025) tidak berubah. Follow-up King Rezi di masa depan: begitu Railway project pertama dibuat & deploy production, `DATABASE_URL` production juga perlu di-set ke role `app_runtime` (pola sama seperti `.env.local`), `DIRECT_URL` tetap `postgres`.
+
+### File yang berubah
+
+- `apps/web/src/lib/prisma/with-current-user.test.ts` (modified)
+- `apps/web/src/lib/repositories/workspace/workspace.repository.ts` (modified)
+- `apps/web/prisma/migrations/20260813073556_t017_fix_workspace_members_rls_recursion/migration.sql` (baru, applied)
+- `apps/web/prisma/migrations/20260813073842_t017_split_workspace_members_insert_policy/migration.sql` (baru, applied)
+- `apps/web/prisma/migrations/20260813074306_t017_allow_self_visibility_workspace_members/migration.sql` (baru, applied)
+
+### Dampak dokumentasi
+
+KI-026 dihapus dari daftar Known Issues di `PROJECT_STATE.md` (status Resolved, riwayat lengkap ada di entri ini, ID tidak didaur ulang). T-017 di `tasks/v01-foundation.md` tetap ✅ Done, catatan gap runtime dan 2 assertion "KNOWN GAP" diupdate jadi resolved. Tidak ada ADR baru — ini bugfix/implementasi dari task yang sudah ada (T-017), bukan perubahan baseline arsitektur.
+
+---
+
+## 2026-08-13 — T-017 (RLS SQL policies), T-019 (skema API mobile) selesai; T-008 desain dimulai; T-018 di-defer
+
+### Context
+
+King Rezi meminta laporan task yang bisa dikerjakan, lalu mengerjakan beberapa secara paralel dalam satu sesi: T-017 didelegasikan ke Elon Backend Engineer (subagent), T-019 dikerjakan langsung di sesi utama, T-008 (Workspace Settings) sedang didesain King Rezi sendiri di Claude Design, dan T-018 (investigasi hydration ngrok) ditemukan sudah superseded oleh ADR-070.
+
+### T-018 — Deferred (superseded ADR-070)
+
+Investigasi awal (dugaan bug HMR/Turbopack lewat ngrok) ternyata sudah terjawab oleh ADR-070 (2026-08-06): requirement ngrok berasal dari constraint Better Auth Cloud (Base URL wajib publik), bukan keterbatasan Better Auth self-hosted. Setelah kembali ke self-hosted, testing browser langsung via `localhost:3000` — ngrok tidak lagi dipakai. T-018.1/.2 dicoret (tidak relevan lagi), T-018.3 tidak dilanjutkan. Status diubah ke ⏸️ Deferred di `tasks/v01-foundation.md`. Catatan basi di T-004 (salah merujuk "T-017" untuk isu ngrok, seharusnya T-018) juga diperbaiki.
+
+### T-008 — Desain dimulai (belum implementasi kode)
+
+Cek Claude Design project "Social Media Management": belum ada rancangan Workspace Settings → General + Danger Zone (slot "General" di sidebar Organization masih dead-link `href="#"` di 5 file `settings-*.html`). Disusun brief desain lengkap (file baru `templates/settings-general.html`, pola Tier 1 "ketik nama workspace untuk konfirmasi" baru — belum ada preseden di `components/dialog.html`, alur Transfer Ownership dua langkah ADR-050, RBAC Danger Zone Owner-only, wiring ke `AppPrototype.dc.html` + `readme.md`). King Rezi mengerjakan desainnya sendiri langsung di Claude Design (bukan via subagent/`DesignSync`). Status T-008 diubah ke 🟡 In Progress dengan instruksi eksplisit untuk sesi berikutnya: cek `DesignSync` dulu sebelum lanjut implementasi kode (aturan keras #17).
+
+### T-019 — Selesai (skema API mobile `/api/v1` + Better Auth Bearer plugin, ADR-043)
+
+File diubah/ditambah:
+- `apps/web/src/lib/better-auth/auth.ts` — `bearer()` plugin aktif tanpa syarat (bareng `dash` kondisional), `trustedOrigins` dari env `BETTER_AUTH_TRUSTED_ORIGINS` (opsional, kosong untuk sekarang), `rateLimit.customRules` diperketat untuk `/sign-in/email` (60s/5) dan `/sign-up/email` (60s/3)
+- `apps/web/src/proxy.ts` — `/api/v1` ditambahkan ke `BYPASS_PREFIXES` supaya request Bearer tidak kena redirect `/login`
+- `apps/web/src/app/api/v1/health/route.ts` (baru) — endpoint skema pembuktian wiring (bukan endpoint bisnis), validasi session via `auth.api.getSession`
+
+Verifikasi: `typecheck`/`lint`/`test` (103 test) hijau. Uji manual curl dengan Bearer token asli belum dilakukan. Catatan terbuka (bukan blocker, follow-up sebelum endpoint mobile pertama dirilis): keputusan durasi session mobile, isi `trustedOrigins` dengan scheme mobile nyata, secure storage token di client (ADR-043 §7).
+
+### T-017 — Selesai dengan gap runtime terpisah (RLS SQL policies, KI-026)
+
+Dikerjakan Elon Backend Engineer (subagent), 2 putaran konfirmasi King Rezi di tengah jalan karena 2 gap ditemukan:
+
+1. **Gap tipe data** — baseline SQL (`database-strategy.md`/`database-orm.md`) mencontohkan cast `current_setting(...)::uuid` untuk `app.current_user_id`, tapi `identity_user.id` (Better Auth) adalah `cuid()` text, bukan UUID. Dikoreksi langsung di kedua dokumen baseline (bukan ADR baru — koreksi tipe pada contoh, bukan perubahan keputusan RLS) + SQL migration pakai perbandingan text untuk `user_id` (`workspace_id` tetap `::uuid`).
+2. **Gap BYPASSRLS (lebih serius, KI-026 baru)** — role Postgres `postgres` yang dipakai `DATABASE_URL`/`DIRECT_URL` punya `rolbypassrls = true` (default Supabase), sehingga seluruh policy RLS **tidak efektif** di runtime nyata meski benar secara desain dan sudah applied. Authorization tetap 100% di Application Service (RBAC) untuk sekarang — sesuai desain DB-D05, bukan regresi. Follow-up (butuh King Rezi, dashboard Supabase): buat role `app_runtime` baru tanpa BYPASSRLS, pindahkan `DATABASE_URL`/`DIRECT_URL`.
+
+File dibuat/diubah:
+- `apps/web/src/lib/prisma/with-current-user.ts` (baru) — helper `withCurrentUser(userId, callback)`, `prisma.$transaction` + `set_config('app.current_user_id', $1, true)` (tagged-template, aman SQL injection)
+- `apps/web/prisma/migrations/20260813045625_t017_add_rls_policies/migration.sql` (baru, applied ke DB nyata) — RLS untuk 16 tabel (12 `workspace_id` langsung + 4 EXISTS-join ke parent + `analytics_post_metrics` via subquery `publishing_posts`)
+- `apps/web/src/lib/repositories/workspace/workspace.repository.ts` — adopsi contoh (`getMember` lewat `withCurrentUser`; adopsi penuh sengaja ditunda)
+- `apps/web/src/lib/prisma/with-current-user.test.ts` (baru) — integration test nyata ke Supabase (auto-skip tanpa `DATABASE_URL`), termasuk 2 assertion eksplisit "KNOWN GAP" yang membuktikan BYPASSRLS
+- `product-discovery/05-architecture/database-strategy.md`, `product-discovery/06-engineering/database-orm.md` — koreksi contoh SQL + catatan status runtime
+- `project-manager/PROJECT_STATE.md` — KI-002 (RLS belum digenerate) di-resolve dan dihapus dari daftar Known Issues (riwayatnya di sini); KI-026 baru ditambahkan
+- `project-manager/tasks/v01-foundation.md`, `project-manager/TASKS.md` — status T-017/T-019/T-008/T-018 + indeks v0.1 diperbarui
+
+---
+
 ## 2026-08-13 — T-042.2–T-042.5 selesai: Dashboard Home tuntas (v0.3)
 
 ### Context

@@ -2,6 +2,7 @@ import {
   asConnectedAccountId,
   asPostId,
   asPostMetricsId,
+  asUserId,
   asWorkspaceId,
   asWorkspaceSnapshotId,
   type PostId,
@@ -17,6 +18,7 @@ import { AnalyticsService } from "./analytics.service";
 
 const WORKSPACE_ID = asWorkspaceId("workspace-1");
 const POST_ID = asPostId("post-1");
+const USER_ID = asUserId("user-1");
 
 function createFakeRepository(
   overrides: Partial<IAnalyticsRepository> = {},
@@ -142,7 +144,7 @@ describe("AnalyticsService.getDashboardSummary", () => {
     });
 
     await expect(
-      service.getDashboardSummary(WORKSPACE_ID, "weekly"),
+      service.getDashboardSummary(WORKSPACE_ID, "weekly", USER_ID),
     ).resolves.toBeNull();
     expect(called).toBe(false);
   });
@@ -156,7 +158,7 @@ describe("AnalyticsService.getDashboardSummary", () => {
     );
 
     await expect(
-      service.getDashboardSummary(WORKSPACE_ID, "weekly"),
+      service.getDashboardSummary(WORKSPACE_ID, "weekly", USER_ID),
     ).resolves.toEqual({
       totalPosts: 5,
       totalEngagements: 120,
@@ -173,7 +175,7 @@ describe("AnalyticsService.getDashboardSummary", () => {
     );
 
     await expect(
-      service.getDashboardSummary(WORKSPACE_ID, "weekly"),
+      service.getDashboardSummary(WORKSPACE_ID, "weekly", USER_ID),
     ).rejects.toThrow(/ActiveAccountsPort/);
   });
 });

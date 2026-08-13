@@ -40,13 +40,20 @@ export async function updateDraftAction(
   caption: string,
 ): Promise<{ postId: string }> {
   const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
 
   const publishingService = new PublishingService(publishingRepository);
-  const post = await publishingService.updateDraft({
-    workspaceId,
-    postId: asPostId(postId),
-    caption,
-  });
+  const post = await publishingService.updateDraft(
+    {
+      workspaceId,
+      postId: asPostId(postId),
+      caption,
+    },
+    asUserId(session.user.id),
+  );
 
   return { postId: post.id };
 }
@@ -55,11 +62,16 @@ export async function getDraftAction(
   postId: string,
 ): Promise<{ postId: string; caption: string; status: string }> {
   const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
 
   const publishingService = new PublishingService(publishingRepository);
   const post = await publishingService.getDraftById(
     workspaceId,
     asPostId(postId),
+    asUserId(session.user.id),
   );
 
   return { postId: post.id, caption: post.caption, status: post.status };
@@ -76,9 +88,16 @@ export async function getConnectedAccountsAction(): Promise<
   ConnectedAccountDto[]
 > {
   const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
 
   const workspaceService = new WorkspaceService(workspaceRepository);
-  const accounts = await workspaceService.listConnectedAccounts(workspaceId);
+  const accounts = await workspaceService.listConnectedAccounts(
+    workspaceId,
+    asUserId(session.user.id),
+  );
 
   return accounts.map((account) => ({
     id: account.id,
@@ -127,19 +146,24 @@ export async function scheduleDraftAction(
   // maupun draft existing yang diedit tanpa klik "Save as Draft" dulu.
   // Independen dari `listConnectedAccounts` di bawah — jalankan berbarengan
   // lewat Promise.all daripada await berurutan.
+  const actingUserId = asUserId(session.user.id);
+
   const [post, connectedAccounts] = await Promise.all([
     input.postId
-      ? publishingService.updateDraft({
-          workspaceId,
-          postId: asPostId(input.postId),
-          caption: input.caption,
-        })
+      ? publishingService.updateDraft(
+          {
+            workspaceId,
+            postId: asPostId(input.postId),
+            caption: input.caption,
+          },
+          actingUserId,
+        )
       : publishingService.saveDraft({
           workspaceId,
-          authorId: asUserId(session.user.id),
+          authorId: actingUserId,
           caption: input.caption,
         }),
-    workspaceService.listConnectedAccounts(workspaceId),
+    workspaceService.listConnectedAccounts(workspaceId, actingUserId),
   ]);
   const targets = resolveScheduleTargets(connectedAccounts, input.targets);
 
@@ -151,6 +175,7 @@ export async function scheduleDraftAction(
     postId: post.id,
     scheduledAt: new Date(input.scheduledAt),
     targets,
+    actingUserId,
   });
 
   return { postId: scheduled.id };

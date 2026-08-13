@@ -104,13 +104,41 @@ CREATE POLICY "{table_name}_workspace_isolation"
     workspace_id IN (
       SELECT wm.workspace_id
       FROM workspace_members wm
-      WHERE wm.user_id = current_setting('app.current_user_id', true)::uuid
+      WHERE wm.user_id = current_setting('app.current_user_id', true)
         AND wm.status = 'active'
     )
   );
 ```
 
-Detail SQL RLS per tabel didefinisikan di Engineering Planning (M6).
+> **Koreksi (2026-08-13, T-017):** Contoh di atas semula meng-cast
+> `current_setting('app.current_user_id', true)::uuid`. Ini salah untuk
+> schema aktual — `identity_user.id` (Better Auth) adalah `cuid()` string
+> (`text`), bukan UUID, dan seluruh kolom `user_id` di tabel domain
+> (`workspace_members.user_id`, dst.) juga bertipe `text`, bukan
+> `uuid`. Cast `::uuid` pada nilai `app.current_user_id` akan gagal runtime
+> (`invalid input syntax for type uuid`) begitu diisi cuid asli. `workspace_id`
+> sendiri tetap `uuid` di semua tabel — cast `::uuid` hanya dihapus untuk sisi
+> `user_id`/`app.current_user_id`, bukan untuk `workspace_id`. Ini murni
+> koreksi tipe pada SQL, bukan perubahan pola/keputusan RLS. Lihat juga
+> `database-orm.md` § DO-D06 untuk catatan yang sama, dan
+> `apps/web/src/lib/prisma/with-current-user.ts` untuk implementasi wrapper
+> yang men-set variable ini (`set_config`, bukan literal `SET LOCAL`, untuk
+> menghindari SQL injection lewat tagged-template Prisma).
+
+Detail SQL RLS per tabel didefinisikan di Engineering Planning (M6), dan
+sudah diimplementasikan sebagai migration Prisma (T-017) —
+`apps/web/prisma/migrations/20260813045625_t017_add_rls_policies/migration.sql`.
+
+> **Catatan status runtime (2026-08-13, T-017 — lihat KI terkait di
+> `PROJECT_STATE.md`):** Policy di atas sudah applied ke database, tapi
+> koneksi `DATABASE_URL`/`DIRECT_URL` saat ini memakai role Postgres
+> `postgres`, yang di Supabase punya atribut `BYPASSRLS` secara default.
+> Akibatnya RLS **tidak aktif secara efektif** untuk query lewat koneksi
+> ini — "defense-in-depth" yang dijelaskan di atas belum berfungsi di
+> runtime nyata sampai koneksi aplikasi dipindah ke role tanpa `BYPASSRLS`
+> (task follow-up terpisah, butuh akses dashboard Supabase). Authorization
+> utama tetap 100% bergantung pada Application Service (RBAC), sesuai
+> DB-D05.
 
 ---
 
