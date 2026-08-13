@@ -6,7 +6,7 @@ Fake OutstandAdapter — persistensi nyata "Schedule" tanpa kredensial Outstand 
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-079 (2026-08-13)
 
 ### Date
 

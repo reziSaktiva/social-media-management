@@ -51,3 +51,11 @@ export function asPostTargetId(value: string): PostTargetId {
 export function asConnectedAccountId(value: string): ConnectedAccountId {
   return value as ConnectedAccountId;
 }
+
+export function asPostMetricsId(value: string): PostMetricsId {
+  return value as PostMetricsId;
+}
+
+export function asWorkspaceSnapshotId(value: string): WorkspaceSnapshotId {
+  return value as WorkspaceSnapshotId;
+}

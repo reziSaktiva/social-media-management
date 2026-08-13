@@ -1,29 +1,20 @@
-import type { ContentFormat } from "@social/shared";
-
-export interface ScheduleOutstandPostInput {
-  outstandAccountId: string;
-  caption: string;
-  scheduledAt: Date;
-  contentFormat: ContentFormat;
-  platformOptions?: Record<string, unknown>;
-}
-
-export interface ScheduleOutstandPostResult {
-  outstandJobId: string;
-}
-
 /**
- * Anti-Corruption Layer contract untuk Outstand (integration-layer.md,
- * ADR-040). Domain internal hanya mengenal interface ini — implementasi
- * konkret (real HTTP client maupun Fake) hidup di luar domain
- * (`src/lib/adapters/outstand/`), dipilih lewat factory `getOutstandAdapter`.
+ * Re-export kontrak `IOutstandAdapter` dari `packages/shared` (promosi
+ * cross-domain — lihat ADR baru pasca ADR-078, T-041). Dulu didefinisikan
+ * langsung di sini (ADR-059 poin 4, "domain publishing satu-satunya
+ * pemakai"), sekarang domain `analytics` juga membutuhkannya (T-041) —
+ * kontrak dipindah ke lokasi cross-domain supaya `analytics` tidak perlu
+ * import lintas domain ke internal `publishing`.
  *
- * Scope saat ini (ADR-059) hanya method Publishing (`schedulePost`).
- * Engagement, Analytics, dan connectAccount OAuth ditambahkan bertahap
- * nanti sesuai kebutuhan — bukan dibuat sekaligus dari awal.
+ * File ini dipertahankan sebagai barrel supaya seluruh import relatif yang
+ * sudah ada di domain `publishing` (`../adapters/outstand-adapter`) tidak
+ * perlu diubah satu per satu.
  */
-export interface IOutstandAdapter {
-  schedulePost(
-    input: ScheduleOutstandPostInput,
-  ): Promise<ScheduleOutstandPostResult>;
-}
+export type {
+  FetchPostMetricsResult,
+  FetchWorkspaceMetricsResult,
+  IOutstandAdapter,
+  OutstandMetricsPeriod,
+  ScheduleOutstandPostInput,
+  ScheduleOutstandPostResult,
+} from "@social/shared";
