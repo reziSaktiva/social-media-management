@@ -6,7 +6,7 @@ Fake OutstandAdapter — persistensi nyata "Schedule" tanpa kredensial Outstand 
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-079 (2026-08-13). ADR-079 menggantikan Decision item 1 dan 4 untuk scope Analytics dan lokasi contract `IOutstandAdapter`.
 
 ### Date
 

@@ -166,7 +166,7 @@ model WorkspaceConnectedAccount {
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace     Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace     Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   postTargets   PublishingPostTarget[]
   queueSlots    PublishingQueueSlot[]
   inboxItems    EngagementInboxItem[]
@@ -372,6 +372,12 @@ model AnalyticsPostMetric {
   fetchedAt          DateTime @map("fetched_at") @db.Timestamptz(6)
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  // Satu baris per (post, akun tujuan) — sejalan dengan komentar
+  // `IAnalyticsRepository.findMetricsByPost` ("satu baris per
+  // target/platform untuk satu post"). Constraint ini WAJIB untuk upsert
+  // idempoten T-041.5 (ingestion ulang menimpa baris yang sama, bukan
+  // menggandakan).
+  @@unique([postId, connectedAccountId])
   @@index([postId])
   @@map("analytics_post_metrics")
 }

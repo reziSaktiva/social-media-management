@@ -8,6 +8,105 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-13 — T-041 selesai: Metric ingestion job dari Outstand (v0.3, Fake/mock, ADR-079)
+
+### Context
+
+King Rezi menyelesaikan implementasi T-041 (Metric ingestion job dari Outstand, v0.3 Analytics MVP) lewat Elon Backend Engineer, versi Fake/mock mengikuti pola ADR-059, karena kredensial Outstand asli (`OUTSTAND_API_KEY`) masih belum ada (KI-003). Keputusan material dicatat sebagai ADR-079 (amandemen ADR-059).
+
+### Keputusan (ADR-079)
+
+`IOutstandAdapter` dipromosikan dari domain-owned (`domains/publishing/adapters/outstand-adapter.ts`) ke kontrak cross-domain `packages/shared/src/contracts/outstand-adapter.ts`, dengan kategori baru untuk isi `packages/shared`: port/ACL contract. Domain `publishing` tetap mengimpor dari lokasi lama karena file itu dipertahankan sebagai barrel re-export.
+
+### File dibuat
+
+- `packages/shared/src/contracts/outstand-adapter.ts` — kontrak `IOutstandAdapter` cross-domain, method baru `fetchPostMetrics(outstandJobId)` dan `fetchWorkspaceMetrics(outstandAccountId, period)`
+- `apps/web/src/domains/analytics/services/analytics-ingestion.use-case.ts` — `AnalyticsIngestionUseCase` (`syncPostMetrics`, `syncWorkspaceSnapshot`), terpisah dari `AnalyticsService` (pola ADR-059 poin 5)
+- Migration `20260813023329_add_analytics_post_metric_unique`
+
+### File diubah
+
+- `apps/web/src/domains/publishing/adapters/outstand-adapter.ts` — jadi barrel re-export dari `@social/shared`
+- `apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts` — extend `FakeOutstandAdapter` dengan data mock deterministik (hash FNV-1a dari id)
+- `apps/web/src/domains/analytics/repositories/analytics.repository.ts` + implementasi Prisma-nya — tambah `upsertPostMetrics`/`upsertWorkspaceSnapshot`
+- `apps/web/prisma/schema.prisma` — unique constraint baru `@@unique([postId, connectedAccountId])` pada `AnalyticsPostMetric`
+
+### Desain
+
+Idempotensi (T-041.5) ditegakkan lewat Prisma `upsert` asli di atas unique constraint DB, bukan insert-check-manual. Data mock deterministik (hash, bukan random) dipilih supaya hasil ingestion konsisten/reproducible antar test run. Frekuensi sync (T-041.3) ditetapkan kandidat harian, bukan 30 menit seperti engagement.
+
+### Scope di luar T-041
+
+Real Outstand API call (tetap T-025), cron/job scheduler asli Railway (tetap T-027), perhitungan `topPostId` (query agregat terpisah).
+
+### Hasil
+
+T-041 (Status `✅ Done`) menutup dependency T-042 dari sisi T-040+T-041 (T-042.2–.5 belum dikerjakan, tapi tidak lagi terblokir secara dependency — datanya tetap dari `FakeOutstandAdapter` sampai KI-003 resolved). Dokumentasi diperbarui: `DECISIONS.md` (baris ADR-079 + tag "Amended by" di ADR-059), `decisions/ADR-079-...md` (baru), `decisions/ADR-059-...md` (Status ditandai amended), `tasks/v03-analytics-mvp.md` § T-041 (checklist dicentang, status ✅ Done, catatan implementasi) + § T-042 (catatan dependency terpenuhi), `TASKS.md` (indeks v0.3 jadi 2 ✅ · 1 🟡 · 3 ⏳, Total jadi 16 selesai), `PROJECT_STATE.md` (Completed Ringkasan — bullet T-041 ditambah, bullet T-039.1–.3 terlama dihapus untuk menjaga batas 5 item; Recent Decisions ditambah ADR-079; KI-003 ditambah catatan T-041/T-042).
+
+---
+
+## 2026-08-12 — T-040 selesai: Analytics domain skeleton (v0.3)
+
+### Context
+
+King Rezi menyelesaikan implementasi T-040 (Analytics domain skeleton, v0.3 Analytics MVP) lewat Elon Backend Engineer. T-040.1–T-040.4 semuanya selesai, tidak ada yang di-skip, tidak ada gap skema Prisma.
+
+### File dibuat
+
+- `apps/web/src/domains/analytics/repositories/analytics.repository.ts` — `IAnalyticsRepository` (T-040.1)
+- `apps/web/src/domains/analytics/services/analytics.service.ts` — `AnalyticsService` (T-040.2): `getPostMetrics(postId)`, `getWorkspaceSnapshot(workspaceId, period)`
+- `apps/web/src/domains/analytics/services/analytics.service.test.ts` — unit test dengan fake repository (T-040.4), 4 test lulus
+- `apps/web/src/lib/repositories/analytics/analytics.repository.ts` — implementasi Prisma `analyticsRepository`
+- `apps/web/src/lib/repositories/analytics/index.ts` — barrel export implementasi
+
+### File diubah
+
+- `apps/web/src/domains/analytics/types.ts` — diisi `SnapshotPeriod = "weekly" | "monthly"` (sebelumnya `export {}`)
+- `apps/web/src/domains/analytics/index.ts` — public API barrel di-extend (T-040.3)
+- `packages/shared/src/ids.ts` — tambah factory `asPostMetricsId` dan `asWorkspaceSnapshotId`
+
+### Desain
+
+`IAnalyticsRepository` di T-040 ini sengaja hanya read path (selaras kontrak `application-layer.md`), method tulis untuk ingestion (`syncMetrics`) sengaja tidak ditambahkan karena itu scope T-041. `SnapshotPeriod` ditaruh lokal di domain analytics (bukan `packages/shared`) karena belum ada BC lain yang mengonsumsinya.
+
+### Verifikasi
+
+Full test suite `apps/web/src` + `packages/shared` → 11 file, 89 test, semua lulus (tidak ada regresi ke domain workspace/publishing). `tsc --noEmit` di `apps/web` bersih.
+
+### Hasil
+
+T-040 (Status `✅ Done`) menutup blocker desain untuk T-042.2–.5 dari sisi domain analytics — sisanya masih menunggu T-041 (Metric ingestion, terblokir KI-003/KI-025). Dokumentasi diperbarui: `tasks/v03-analytics-mvp.md` § T-040 (checklist T-040.1–.4 dicentang, status ✅ Done, catatan implementasi), `TASKS.md` (indeks v0.3 jadi 1 ✅ · 1 🟡 · 4 ⏳, Total jadi 15 selesai), `PROJECT_STATE.md` (Completed Ringkasan — bullet T-040 ditambah, bullet ADR-076 terlama dihapus untuk menjaga batas 5 item).
+
+---
+
+## 2026-08-12 — T-042.1 selesai: sesi desain Claude Design untuk Dashboard/Home
+
+### Context
+
+King Rezi minta mulai T-042.1 (sesi desain Claude Design untuk layar Dashboard/Home, bagian dari T-042 Dashboard Home, release v0.3), dengan permintaan tambahan: cek dulu apa yang perlu ditambahkan/diubah dari System Design yang sekarang. Dikerjakan di sesi utama (bukan subagent Neymar — DesignSync diketahui gagal di sesi subagent, lihat memory `feedback_designsync_subagent_limitation`).
+
+### Temuan awal (perbandingan `templates/home.html` vs baseline KSP-01)
+
+4 zona (Today's Schedule, Recent Activity, Engagement Snapshot, Analytics Snapshot) dan deep-link (KSP-01-F05) sudah fungsional di `AppPrototype.dc.html`. Gap yang ditemukan: (1) tidak ada satu pun empty-state meski KSP-01 State Handling mewajibkan 3 kondisi kosong + 1 keputusan "tetap tampil di angka nol"; (2) tidak ada visual chart untuk Analytics Snapshot dan component library belum pernah cek apakah Astryx punya komponen Chart; (3) tidak ada selector rentang waktu di Home; (4) deep-link item Failed di Recent Activity tidak menyorot item tujuan di Calendar. Dikonfirmasi ke King Rezi via `AskUserQuestion` — keempatnya dipilih untuk dikerjakan.
+
+### Implementasi
+
+- Cek CLI Astryx (`astryx docs chart` → topic tidak ada; `astryx component --list` + `--dense` untuk `EmptyState`/`ProgressBar`/`Selector`) — dikonfirmasi Astryx tidak punya komponen Chart, ada `EmptyState` (title/description/actions) dan `ProgressBar` (sudah dipakai sebagai `.bar-track`/`.bar-fill` di `templates/analyze-dashboard.html`).
+- `styles.css`: tambah `.empty-title`/`.empty-desc` (mapping `EmptyState` anatomy) dan `.cal-card.is-arrival-highlight` + `@keyframes arrival-flash` (highlight sementara ~3.2s, self-clearing).
+- `templates/home.html`: tambah blok kedua "Referensi State Kosong" (pola `.state-tag` side-by-side, sama seperti `auth-forgot-password.html`) untuk 4 state KSP-01 (Today's Schedule kosong + CTA Calendar, Recent Activity kosong, Engagement 0 unread tetap tampil, Analytics kosong + CTA Analyze). Analytics Snapshot default juga ditambah `.select` rentang waktu (reuse pola `analyze-dashboard.html`) dan `.bar-track`/`.bar-fill` untuk engagement rate.
+- `templates/app-prototype/AppPrototype.dc.html`: wiring `route()` untuk 2 CTA baru (`home-empty-cta-calendar`/`-analyze`), plus logic highlight — klik item Failed di Recent Activity set flag, `inject()` menambah class `.is-arrival-highlight` ke `.cal-card.is-failed` yang sudah ada di Calendar (tidak mengubah `publish-calendar.html`) dan auto-scroll, lalu hapus class setelah ~3.2s.
+- `readme.md`: section baru "Home (KSP-01) — Empty States, Analytics Snapshot & Arrival Highlight (T-042.1, 2026-08-12)" + update baris Files untuk `styles.css`/`home.html`/`AppPrototype.dc.html` + tabel Components (`.empty`, `.bar-track`/`.bar-fill`).
+
+### Verifikasi
+
+Tidak bisa verifikasi visual langsung (Browser pane butuh login claude.ai terpisah dari auth DesignSync) — diverifikasi via `get_file` re-read untuk konfirmasi konten tersimpan sesuai yang ditulis. Tidak ada perubahan pada tampilan default 4-zona Home yang sudah ada, atau screen lain manapun (scope discipline, `.claude/skills/claude-design-scope-discipline/SKILL.md`).
+
+### Hasil
+
+T-042.1 selesai. T-042.2–.5 (query real, render chart data asli, empty state di kode, selector di kode) tetap menunggu **T-040** (Analytics domain skeleton, tidak ada blocker) dan **T-041** (Metric ingestion, terblokir KI-003/KI-025) — sesi ini hanya referensi desain, bukan implementasi `apps/web`.
+
+---
+
 ## 2026-08-12 — Audit konsistensi dokumentasi task/state/ADR + governance Gibran/PROJECT_RULES
 
 ### Context

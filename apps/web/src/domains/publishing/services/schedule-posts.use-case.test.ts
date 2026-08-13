@@ -54,6 +54,21 @@ function createFakeOutstandAdapter(
 ): IOutstandAdapter {
   return {
     schedulePost: async () => ({ outstandJobId: "fake-job" }),
+    fetchPostMetrics: async () => ({
+      impressions: 0,
+      reach: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      clicks: null,
+      engagementRate: 0,
+    }),
+    fetchWorkspaceMetrics: async () => ({
+      totalPosts: 0,
+      totalReach: 0,
+      totalEngagements: 0,
+      avgEngagementRate: 0,
+    }),
     ...overrides,
   };
 }

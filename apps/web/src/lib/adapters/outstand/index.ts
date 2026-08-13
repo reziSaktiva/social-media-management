@@ -1,10 +1,13 @@
-import type { IOutstandAdapter } from "@/domains/publishing";
+import type { IOutstandAdapter } from "@social/shared";
 import { getServerEnv } from "@/lib/env";
 import { fakeOutstandAdapter } from "./fake-outstand-adapter";
 
 /**
  * Factory `OutstandAdapter` (ADR-040/ADR-059). Switch mechanism: auto-detect
- * dari env kosong.
+ * dari env kosong. `IOutstandAdapter` sejak T-041 didefinisikan di
+ * `@social/shared` (promosi cross-domain, dulu di `domains/publishing`) —
+ * satu factory ini dipakai baik oleh domain `publishing` (`schedulePost`)
+ * maupun `analytics` (`fetchPostMetrics`/`fetchWorkspaceMetrics`).
  *
  * - `OUTSTAND_API_KEY` kosong/undefined → Fake adapter (dev/staging tanpa
  *   kredensial Outstand asli).
