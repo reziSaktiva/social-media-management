@@ -63,9 +63,14 @@ export class AnalyticsService {
       return null;
     }
 
+    if (!this.activeAccounts) {
+      throw new Error(
+        "AnalyticsService.getDashboardSummary requires an ActiveAccountsPort — none was provided to the constructor.",
+      );
+    }
+
     const activeAccounts =
-      (await this.activeAccounts?.countActiveConnectedAccounts(workspaceId)) ??
-      0;
+      await this.activeAccounts.countActiveConnectedAccounts(workspaceId);
 
     return {
       totalPosts: snapshot.totalPosts,

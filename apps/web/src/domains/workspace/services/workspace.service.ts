@@ -137,8 +137,7 @@ export class WorkspaceService {
   async countActiveConnectedAccounts(
     workspaceId: WorkspaceId,
   ): Promise<number> {
-    const accounts = await this.repository.listConnectedAccounts(workspaceId);
-    return accounts.filter((account) => account.status === "active").length;
+    return this.repository.countActiveConnectedAccounts(workspaceId);
   }
 
   /**

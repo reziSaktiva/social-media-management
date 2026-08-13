@@ -165,7 +165,7 @@ describe("AnalyticsService.getDashboardSummary", () => {
     });
   });
 
-  it("defaults activeAccounts to 0 when no port is supplied", async () => {
+  it("throws when no ActiveAccountsPort is supplied, instead of silently reporting 0", async () => {
     const service = new AnalyticsService(
       createFakeRepository({
         findLatestWorkspaceSnapshot: async () => snapshot,
@@ -174,11 +174,6 @@ describe("AnalyticsService.getDashboardSummary", () => {
 
     await expect(
       service.getDashboardSummary(WORKSPACE_ID, "weekly"),
-    ).resolves.toEqual({
-      totalPosts: 5,
-      totalEngagements: 120,
-      avgEngagementRate: 0.12,
-      activeAccounts: 0,
-    });
+    ).rejects.toThrow(/ActiveAccountsPort/);
   });
 });

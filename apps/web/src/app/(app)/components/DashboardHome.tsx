@@ -16,7 +16,7 @@
 // karena itu memakai `ProgressBar` (komponen inti, real) untuk
 // `avgEngagementRate` — bukan menambah library chart baru.
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { Card } from "@astryxdesign/core/Card";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
@@ -68,13 +68,19 @@ export function DashboardHome({
     initialSummary,
   );
   const [isPending, startTransition] = useTransition();
+  // Guards against out-of-order responses: only the reply to the most
+  // recently requested period is allowed to update `summary`.
+  const latestRequestedPeriod = useRef<SnapshotPeriod>(initialPeriod);
 
   function handlePeriodChange(value: string) {
     const nextPeriod = value as SnapshotPeriod;
     setPeriod(nextPeriod);
+    latestRequestedPeriod.current = nextPeriod;
     startTransition(async () => {
       const result = await getDashboardSummaryAction(nextPeriod);
-      setSummary(result);
+      if (latestRequestedPeriod.current === nextPeriod) {
+        setSummary(result);
+      }
     });
   }
 
@@ -88,10 +94,7 @@ export function DashboardHome({
         <Selector
           label="Rentang waktu"
           isLabelHidden
-          options={PERIOD_OPTIONS.map((option) => ({
-            value: option.value,
-            label: option.label,
-          }))}
+          options={PERIOD_OPTIONS}
           value={period}
           onChange={handlePeriodChange}
           isDisabled={isPending}

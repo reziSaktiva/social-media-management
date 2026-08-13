@@ -44,6 +44,7 @@ function createFakeRepository(
     findDefaultWorkspaceForUser: async () => null,
     findById: async () => null,
     listConnectedAccounts: async () => [],
+    countActiveConnectedAccounts: async () => 0,
     listMembers: async () => [],
     findUsersByIds: async () => [],
     saveChannelOrder: async () => undefined,
@@ -292,34 +293,10 @@ describe("WorkspaceService.listConnectedAccounts", () => {
 });
 
 describe("WorkspaceService.countActiveConnectedAccounts", () => {
-  function buildAccount(
-    overrides: Partial<ConnectedAccountRecord>,
-  ): ConnectedAccountRecord {
-    return {
-      id: asConnectedAccountId("conn-1"),
-      workspaceId: asWorkspaceId("workspace-1"),
-      platform: SocialPlatform.Instagram,
-      outstandAccountId: "mock-ig-001",
-      handle: "@insvire.demo",
-      status: "active",
-      reconnectRequired: false,
-      connectedAt: new Date("2026-01-01T00:00:00Z"),
-      ...overrides,
-    };
-  }
-
-  it("counts only accounts with status active (T-042.2)", async () => {
-    const accounts: ConnectedAccountRecord[] = [
-      buildAccount({ id: asConnectedAccountId("conn-1"), status: "active" }),
-      buildAccount({ id: asConnectedAccountId("conn-2"), status: "active" }),
-      buildAccount({
-        id: asConnectedAccountId("conn-3"),
-        status: "disconnected",
-      }),
-    ];
+  it("delegates to the repository's count-only query (T-042.2)", async () => {
     const service = new WorkspaceService(
       createFakeRepository({
-        listConnectedAccounts: async () => accounts,
+        countActiveConnectedAccounts: async () => 2,
       }),
     );
 
@@ -328,9 +305,9 @@ describe("WorkspaceService.countActiveConnectedAccounts", () => {
     ).resolves.toBe(2);
   });
 
-  it("returns 0 when the workspace has no connected accounts", async () => {
+  it("returns 0 when the repository reports no active accounts", async () => {
     const service = new WorkspaceService(
-      createFakeRepository({ listConnectedAccounts: async () => [] }),
+      createFakeRepository({ countActiveConnectedAccounts: async () => 0 }),
     );
 
     await expect(
