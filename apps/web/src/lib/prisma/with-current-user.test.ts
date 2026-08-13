@@ -10,7 +10,13 @@ import type { withCurrentUser as withCurrentUserFn } from "./with-current-user";
  * These tests need a real Postgres connection (RLS cannot be meaningfully
  * mocked — see the task's own instruction not to mock Postgres RLS).
  * Skipped automatically when `DATABASE_URL` is not configured for the
- * current environment (e.g. a fresh checkout without `.env.local`).
+ * current environment (e.g. a fresh checkout without `.env.local`), OR when
+ * `SKIP_ENV_VALIDATION=1` — CI's convention (`.github/workflows/ci.yml`,
+ * CI-D06) for "no real backing services": it sets a dummy `DATABASE_URL`
+ * (`postgresql://ci:ci@localhost:5432/ci`) purely so `prisma generate`/
+ * `validate` don't fail-fast on a missing env var, not a real Postgres to
+ * connect to. Without this second check, CI's dummy URL looks identical to
+ * a real one and this suite tries to connect, failing with ECONNREFUSED.
  *
  * IMPORTANT: `@/lib/prisma/client` eagerly constructs a `PrismaClient` at
  * module load time and throws if `DATABASE_URL` is missing (by design —
@@ -19,7 +25,8 @@ import type { withCurrentUser as withCurrentUserFn } from "./with-current-user";
  * `DATABASE_URL` isn't set (e.g. CI without DB secrets) — hence the dynamic
  * `import()` below, only reached when `hasDb` is true.
  */
-const hasDb = Boolean(process.env.DATABASE_URL);
+const hasDb =
+  Boolean(process.env.DATABASE_URL) && process.env.SKIP_ENV_VALIDATION !== "1";
 
 describe.skipIf(!hasDb)(
   "RLS policies — workspace_members isolation (T-017.3)",
