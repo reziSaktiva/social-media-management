@@ -8,6 +8,47 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-13 — KI-026 resolved: RLS BYPASSRLS diperbaiki + 2 bug desain policy `workspace_members` ditemukan & diperbaiki
+
+### Context
+
+Lanjutan dari T-017 (lihat entri di bawah, dikerjakan hari yang sama). Setelah T-017 ditutup dengan gap runtime terpisah (KI-026: role koneksi `postgres` punya `BYPASSRLS = true` sehingga RLS belum efektif), King Rezi menindaklanjuti langsung di sesi yang sama.
+
+### Root cause & resolusi
+
+King Rezi membuat role Postgres baru `app_runtime` (tanpa `BYPASSRLS`) via Supabase SQL Editor — grant CRUD ke semua tabel `public` + default privileges untuk tabel baru. `DATABASE_URL` dipindah ke role ini; `DIRECT_URL` sengaja **tetap** memakai role `postgres` (butuh privilege DDL untuk `prisma migrate deploy` — keputusan sadar, bukan oversight).
+
+Setelah RLS benar-benar aktif (bukan lagi dilewati BYPASSRLS), ditemukan 2 bug desain baru yang sebelumnya tersembunyi (root cause sama: policy lama ditulis dengan asumsi tidak pernah benar-benar dieksekusi):
+
+1. **Infinite recursion** pada policy `workspace_members_workspace_isolation` — policy tabel `workspace_members` melakukan subquery ke tabel itu sendiri, memicu Postgres error "infinite recursion detected in policy". Fix: migration `20260813073556_t017_fix_workspace_members_rls_recursion` — pecah subquery jadi `SECURITY DEFINER` function `current_user_workspace_ids()` (dimiliki role `postgres`/BYPASSRLS, jadi tidak memicu ulang RLS saat dipanggil dari dalam function).
+2. **INSERT bootstrap gap** — policy asli pakai `FOR ALL` (WITH CHECK = USING), sehingga insert membership pertama (owner baru bikin workspace) gagal karena user itu belum terdaftar jadi member aktif manapun (chicken-and-egg). Ditambah, Prisma selalu `INSERT ... RETURNING`, jadi SELECT-policy juga dicek ke baris yang baru diinsert. Fix 2 migration:
+   - `20260813073842_t017_split_workspace_members_insert_policy` — pisah `FOR ALL` jadi `FOR SELECT/UPDATE/DELETE` (tetap strict, pakai function) + `FOR INSERT WITH CHECK (true)` terpisah (aman karena authorization utama tetap di Application Service/RBAC per DB-D05 — insert ke `workspace_members` cuma dipanggil dari `WorkspaceRepository.createWithOwner`, sudah divalidasi di service layer).
+   - `20260813074306_t017_allow_self_visibility_workspace_members` — tambah klausa `OR user_id = current_setting('app.current_user_id', true)` langsung (tanpa subquery) di SELECT policy, supaya baris yang baru diinsert bisa langsung "melihat dirinya sendiri" tanpa perlu query ulang tabel (yang tidak akan melihat baris in-flight).
+
+Fix kode aplikasi terkait: `apps/web/src/lib/repositories/workspace/workspace.repository.ts` method `createWithOwner` sekarang set `app.current_user_id = ownerId` (via `tx.$executeRaw` `set_config`) di awal transaksi, sebelum insert workspace + membership pertama — supaya SELECT-policy self-visibility di atas bisa match.
+
+Test `apps/web/src/lib/prisma/with-current-user.test.ts` diupdate: 2 assertion yang tadinya berlabel "KNOWN GAP" (mendokumentasikan bug BYPASSRLS lama) sekarang dibalik jadi assertion positif (cross-workspace row tidak terlihat; default-deny tanpa `SET LOCAL` benar-benar terjadi) — sesuai instruksi yang sudah ditulis di komentar test itu sendiri sejak awal. Setup `beforeAll` di test juga diupdate untuk pakai `withCurrentUser` (pola sama seperti fix repository).
+
+Verifikasi: full test suite `bun run test` (dengan `DATABASE_URL` nyata via `--env-file`) → 14 file test, 105 passed + 1 skipped (skip disengaja untuk environment tanpa DB). `tsc --noEmit` bersih. Tidak ada regresi di test lain yang menyentuh `workspace_members`/`workspaces`.
+
+Ketiga migration baru sudah **applied ke database Supabase nyata** (`bunx prisma migrate deploy`), bukan cuma file lokal.
+
+Railway belum pernah dibuat/dipakai sama sekali oleh King Rezi saat ini — jadi tidak ada perubahan env var production dari pekerjaan ini, hanya `apps/web/.env.local` (lokal). Blocker "Railway belum pernah dibuat" (KI-025) tidak berubah. Follow-up King Rezi di masa depan: begitu Railway project pertama dibuat & deploy production, `DATABASE_URL` production juga perlu di-set ke role `app_runtime` (pola sama seperti `.env.local`), `DIRECT_URL` tetap `postgres`.
+
+### File yang berubah
+
+- `apps/web/src/lib/prisma/with-current-user.test.ts` (modified)
+- `apps/web/src/lib/repositories/workspace/workspace.repository.ts` (modified)
+- `apps/web/prisma/migrations/20260813073556_t017_fix_workspace_members_rls_recursion/migration.sql` (baru, applied)
+- `apps/web/prisma/migrations/20260813073842_t017_split_workspace_members_insert_policy/migration.sql` (baru, applied)
+- `apps/web/prisma/migrations/20260813074306_t017_allow_self_visibility_workspace_members/migration.sql` (baru, applied)
+
+### Dampak dokumentasi
+
+KI-026 dihapus dari daftar Known Issues di `PROJECT_STATE.md` (status Resolved, riwayat lengkap ada di entri ini, ID tidak didaur ulang). T-017 di `tasks/v01-foundation.md` tetap ✅ Done, catatan gap runtime dan 2 assertion "KNOWN GAP" diupdate jadi resolved. Tidak ada ADR baru — ini bugfix/implementasi dari task yang sudah ada (T-017), bukan perubahan baseline arsitektur.
+
+---
+
 ## 2026-08-13 — T-017 (RLS SQL policies), T-019 (skema API mobile) selesai; T-008 desain dimulai; T-018 di-defer
 
 ### Context

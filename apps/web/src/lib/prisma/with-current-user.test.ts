@@ -46,9 +46,8 @@ describe.skipIf(!hasDb)(
       ({ prisma } = await import("@/lib/prisma/client"));
       ({ withCurrentUser } = await import("./with-current-user"));
 
-      // Setup uses the plain `prisma` singleton (no RLS session variable
-      // needed for setup — see the BYPASSRLS note below, writes aren't
-      // blocked by RLS on this connection regardless).
+      // Workspace rows themselves have no RLS (see the migration's own
+      // "intentionally WITHOUT" note), so plain `prisma` is fine here.
       const workspaceA = await prisma.workspace.create({
         data: {
           name: `T-017 Test Workspace A ${suffix}`,
@@ -66,24 +65,32 @@ describe.skipIf(!hasDb)(
       workspaceAId = workspaceA.id;
       workspaceBId = workspaceB.id;
 
-      const memberA = await prisma.workspaceMember.create({
-        data: {
-          workspaceId: workspaceAId,
-          userId: userA,
-          role: "owner",
-          status: "active",
-          joinedAt: new Date(),
-        },
-      });
-      const memberB = await prisma.workspaceMember.create({
-        data: {
-          workspaceId: workspaceBId,
-          userId: userB,
-          role: "owner",
-          status: "active",
-          joinedAt: new Date(),
-        },
-      });
+      // workspace_members DOES have RLS — the owner's first membership row
+      // must be created with `app.current_user_id` set to their own id
+      // (matches WorkspaceRepository.createWithOwner's KI-026 fix), or the
+      // implicit `RETURNING` on this INSERT fails the SELECT policy.
+      const memberA = await withCurrentUser(userA, (tx) =>
+        tx.workspaceMember.create({
+          data: {
+            workspaceId: workspaceAId,
+            userId: userA,
+            role: "owner",
+            status: "active",
+            joinedAt: new Date(),
+          },
+        }),
+      );
+      const memberB = await withCurrentUser(userB, (tx) =>
+        tx.workspaceMember.create({
+          data: {
+            workspaceId: workspaceBId,
+            userId: userB,
+            role: "owner",
+            status: "active",
+            joinedAt: new Date(),
+          },
+        }),
+      );
       memberAId = memberA.id;
       memberBId = memberB.id;
     });
@@ -97,35 +104,19 @@ describe.skipIf(!hasDb)(
     });
 
     /**
-     * ⚠️ KNOWN GAP (KI to be filed by Gibran Project Manager per
-     * PROJECT_STATE.md § Known Issues) — THIS TEST DOCUMENTS A BUG, NOT
-     * CORRECT BEHAVIOR.
+     * KI-026 RESOLVED (2026-08-13) — `DATABASE_URL` now connects as
+     * `app_runtime`, a Postgres role without `BYPASSRLS`, so RLS policies
+     * from migration `20260813045625_t017_add_rls_policies` (plus the
+     * KI-026 follow-up fixes: recursion fix, split INSERT policy, and
+     * self-visibility SELECT clause — see those migrations' comments) are
+     * now genuinely enforced, not just correctly designed on paper.
      *
-     * The RLS policies from migration `20260813045625_t017_add_rls_policies`
-     * are correctly *designed* per `database-strategy.md` § "RLS Policy
-     * Pattern", and are verified applied (`ENABLE ROW LEVEL SECURITY` +
-     * `CREATE POLICY` ran successfully against the real Supabase database).
-     *
-     * However, `DATABASE_URL`/`DIRECT_URL` connect to Postgres as role
-     * `postgres`, which is both the owner of every domain table AND has the
-     * `BYPASSRLS` attribute (Supabase default for the service-role/postgres
-     * connection — confirmed via `pg_roles.rolbypassrls = true` in this same
-     * investigation). Postgres skips RLS entirely for BYPASSRLS roles,
-     * regardless of policy correctness or even `FORCE ROW LEVEL SECURITY`.
-     *
-     * Net effect: with the CURRENT connection, `withCurrentUser(userA, ...)`
-     * still sees `userB`'s row below — RLS provides ZERO defense-in-depth
-     * right now. Authorization is 100% dependent on the Application Service
-     * (RBAC), which is consistent with DB-D05's stated fallback but NOT the
-     * "defense-in-depth safety net" the baseline describes.
-     *
-     * If this assertion ever starts FAILING, it means someone fixed the
-     * gap (e.g. a new `app_runtime` Postgres role without BYPASSRLS is now
-     * used for `DATABASE_URL`) — in that case, INVERT this assertion to
-     * `toEqual([memberAId])` (only own-workspace row visible) instead of
-     * treating the failure as a regression.
+     * This assertion was inverted from its original `[KNOWN GAP]` form
+     * (which asserted `userB`'s row leaked into `userA`'s query under the
+     * old BYPASSRLS `postgres` role) per that test's own documented
+     * instruction once the gap closed.
      */
-    it("[KNOWN GAP] cross-workspace row is still visible — RLS is bypassed (BYPASSRLS role), not enforced", async () => {
+    it("cross-workspace row is NOT visible — RLS isolation is enforced", async () => {
       const rows = await withCurrentUser(userA, (tx) =>
         tx.workspaceMember.findMany({
           where: { id: { in: [memberAId, memberBId] } },
@@ -134,33 +125,22 @@ describe.skipIf(!hasDb)(
       );
 
       const visibleIds = rows.map((row) => row.id).sort();
-      // BUG: expected `[memberAId]` only once RLS is actually enforced.
-      expect(visibleIds).toEqual([memberAId, memberBId].sort());
+      expect(visibleIds).toEqual([memberAId]);
     });
 
     /**
-     * ⚠️ KNOWN GAP — same root cause as above (BYPASSRLS). Per the
-     * baseline pattern, a query run WITHOUT `SET LOCAL app.current_user_id`
-     * first (i.e. `current_setting('app.current_user_id', true)` is NULL)
-     * should default-deny — the policy's `workspace_id IN (SELECT ... WHERE
-     * wm.user_id = NULL ...)` subquery returns no rows, so no workspace_id
-     * matches. That default-deny logic is correct in the SQL, but never
-     * gets a chance to run because BYPASSRLS skips the policy machinery
-     * altogether.
-     *
-     * Same instruction as above: if this assertion starts FAILING, invert
-     * it to `toEqual([])` (no rows visible without SET LOCAL) instead of
-     * treating the failure as a regression.
+     * KI-026 RESOLVED — same root cause/fix as above. Inverted from its
+     * original `[KNOWN GAP]` form (which asserted both rows were visible
+     * with no `SET LOCAL app.current_user_id` at all, under BYPASSRLS).
      */
-    it("[KNOWN GAP] rows are still visible without SET LOCAL app.current_user_id — default-deny not enforced", async () => {
+    it("no rows are visible without SET LOCAL app.current_user_id — default-deny is enforced", async () => {
       const rows = await prisma.workspaceMember.findMany({
         where: { id: { in: [memberAId, memberBId] } },
         orderBy: { id: "asc" },
       });
 
       const visibleIds = rows.map((row) => row.id).sort();
-      // BUG: expected `[]` (default-deny) once RLS is actually enforced.
-      expect(visibleIds).toEqual([memberAId, memberBId].sort());
+      expect(visibleIds).toEqual([]);
     });
   },
 );

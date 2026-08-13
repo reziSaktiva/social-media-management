@@ -360,7 +360,7 @@ picker workspace).
 
 | Field         | Value                                              |
 | ------------- | -------------------------------------------------- |
-| **Status**    | ✅ Done (2026-08-13) — dengan gap runtime terpisah, lihat KI-026 |
+| **Status**    | ✅ Done (2026-08-13) — gap runtime BYPASSRLS (bekas KI-026) juga sudah resolved (2026-08-13) |
 | **Domain**    | platform                                           |
 | **ADR**       | ADR-015, ADR-033                                   |
 | **Depends**   | T-002 ✅                                            |
@@ -370,11 +370,22 @@ RLS policy sudah digenerate dan **applied ke database nyata** — bukan draft. H
 
 **Koreksi baseline (2026-08-13):** contoh SQL asli di `database-strategy.md`/`database-orm.md` memakai cast `current_setting(...)::uuid` untuk `app.current_user_id`, tapi `identity_user.id` (Better Auth) adalah `cuid()` text, bukan UUID — cast itu akan gagal runtime. Sudah dikoreksi (perbandingan `user_id` sebagai text; `workspace_id` tetap `::uuid`) langsung di kedua dokumen tersebut dengan catatan bertanggal (bukan ADR baru — koreksi tipe pada contoh, bukan perubahan keputusan RLS).
 
-**Gap ditemukan saat verifikasi — lihat KI-026:** role Postgres (`postgres`) yang dipakai `DATABASE_URL`/`DIRECT_URL` punya `BYPASSRLS = true` (default Supabase) — RLS **belum efektif secara runtime** meski policy-nya benar secara desain. Authorization tetap 100% di Application Service (RBAC) untuk sekarang, sesuai desain DB-D05 — ini bukan regresi, tapi "defense-in-depth" yang dijanjikan masih murni teori sampai KI-026 di-follow-up (butuh King Rezi ubah role koneksi di dashboard Supabase, bukan task kode).
+**Gap ditemukan saat verifikasi, RESOLVED 2026-08-13 (bekas KI-026):** role Postgres (`postgres`) yang dipakai `DATABASE_URL`/`DIRECT_URL` punya `BYPASSRLS = true` (default Supabase) — RLS sempat **tidak efektif secara runtime** meski policy-nya benar secara desain. Authorization 100% bergantung Application Service (RBAC) selama gap ini terbuka, sesuai desain DB-D05 — bukan regresi.
+
+Resolusi (King Rezi + AI, sesi 2026-08-13): King Rezi membuat role Postgres baru `app_runtime` (tanpa `BYPASSRLS`) via Supabase SQL Editor, grant CRUD ke semua tabel `public` + default privileges tabel baru, lalu `DATABASE_URL` dipindah ke role itu (`DIRECT_URL` sengaja **tetap** `postgres` — butuh privilege DDL untuk `prisma migrate deploy`, keputusan sadar bukan oversight). Begitu RLS benar-benar aktif, ditemukan 2 bug desain policy yang sebelumnya tersembunyi karena BYPASSRLS:
+
+1. **Infinite recursion** pada `workspace_members_workspace_isolation` — policy tabel `workspace_members` melakukan subquery ke tabel itu sendiri, memicu error Postgres "infinite recursion detected in policy". Fix: migration `20260813073556_t017_fix_workspace_members_rls_recursion` — pecah subquery jadi function `SECURITY DEFINER` `current_user_workspace_ids()` (dimiliki role `postgres`/BYPASSRLS sehingga tidak memicu ulang RLS saat dipanggil dari dalam function).
+2. **INSERT bootstrap gap** — policy asli pakai `FOR ALL` (WITH CHECK = USING), sehingga insert membership pertama (owner baru bikin workspace) gagal karena user itu belum terdaftar jadi member aktif manapun (chicken-and-egg), diperparah Prisma yang selalu `INSERT ... RETURNING` (SELECT-policy ikut dicek ke baris yang baru diinsert). Fix 2 migration:
+   - `20260813073842_t017_split_workspace_members_insert_policy` — pisah `FOR ALL` jadi `FOR SELECT/UPDATE/DELETE` (tetap strict, pakai function di atas) + `FOR INSERT WITH CHECK (true)` terpisah (aman karena authorization utama tetap di Application Service/RBAC per DB-D05 — insert ke `workspace_members` cuma dipanggil dari `WorkspaceRepository.createWithOwner`, sudah divalidasi di service layer).
+   - `20260813074306_t017_allow_self_visibility_workspace_members` — tambah klausa `OR user_id = current_setting('app.current_user_id', true)` langsung (tanpa subquery) di SELECT policy, supaya baris yang baru diinsert bisa langsung "melihat dirinya sendiri" tanpa query ulang tabel.
+
+Fix kode aplikasi: `apps/web/src/lib/repositories/workspace/workspace.repository.ts` method `createWithOwner` sekarang set `app.current_user_id = ownerId` (via `tx.$executeRaw` `set_config`) di awal transaksi, sebelum insert workspace + membership pertama, supaya SELECT-policy self-visibility di atas match.
+
+Ketiga migration di atas sudah **applied ke database Supabase nyata** (`bunx prisma migrate deploy`), bukan cuma file lokal.
 
 - [x] **T-017.1** Implementasi jalur server set `app.current_user_id` per request — `withCurrentUser` helper
-- [x] **T-017.2** Generate RLS policy per tabel domain — migration applied ke DB nyata
-- [x] **T-017.3** Test negatif — `with-current-user.test.ts`, integration test nyata ke Supabase (auto-skip tanpa `DATABASE_URL`); 2 assertion eksplisit "KNOWN GAP" membuktikan BYPASSRLS (lihat KI-026) — akan gagal (sengaja) begitu role koneksi diperbaiki, jadi sinyal otomatis untuk membalik assertion-nya nanti
+- [x] **T-017.2** Generate RLS policy per tabel domain — migration applied ke DB nyata (termasuk 3 migration perbaikan gap runtime di atas)
+- [x] **T-017.3** Test negatif — `with-current-user.test.ts`, integration test nyata ke Supabase (auto-skip tanpa `DATABASE_URL`); 2 assertion yang sebelumnya berlabel "KNOWN GAP" (mendokumentasikan bug BYPASSRLS) sudah **dibalik jadi assertion positif** (2026-08-13) — cross-workspace row tidak terlihat, default-deny tanpa `SET LOCAL` benar-benar terjadi. Full suite: 14 file test, 105 passed + 1 skipped (skip disengaja untuk environment tanpa DB); `tsc --noEmit` bersih, tidak ada regresi di test lain yang menyentuh `workspace_members`/`workspaces`.
 
 ### T-018 · Investigasi hydration gagal lewat tunnel ngrok
 

@@ -81,6 +81,14 @@ export const workspaceRepository: IWorkspaceRepository = {
   async createWithOwner({ name, slug, ownerId }) {
     try {
       return await prisma.$transaction(async (tx) => {
+        // RLS (KI-026): the owner's membership row is created before any
+        // membership exists, so `app.current_user_id` must be set to the
+        // new owner's own id — the SELECT policy on workspace_members
+        // allows a row to be returned when it matches the session's own
+        // user_id directly (no self-referencing subquery), which is what
+        // lets Prisma's implicit `RETURNING` on the insert below succeed.
+        await tx.$executeRaw`SELECT set_config('app.current_user_id', ${ownerId}, true)`;
+
         const workspace = await tx.workspace.create({
           data: { name, slug, ownerId },
         });
