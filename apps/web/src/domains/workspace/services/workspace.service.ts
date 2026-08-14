@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { MemberRole, MemberStatus, NotificationType } from "@social/shared";
 import type {
   ConnectedAccountId,
@@ -15,6 +16,7 @@ import { slugify } from "../value-objects/slugify";
 import type {
   ConnectedAccountRecord,
   IWorkspaceRepository,
+  WorkspaceInvitationRecord,
   WorkspaceMemberRecord,
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
@@ -22,6 +24,10 @@ import type { SidebarChannelAccount, WorkspaceMemberWithUser } from "../types";
 
 const MAX_NAME_LENGTH = 100;
 const MAX_SLUG_ATTEMPTS = 6;
+/** ADR-072 & ADR-080 — copy "Undangan berlaku 7 hari" di dialog Claude Design. */
+const INVITATION_EXPIRY_DAYS = 7;
+/** Format email sederhana — cukup untuk validasi domain, bukan RFC penuh. */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Port lokal untuk cross-domain `publishing` → `workspace` (T-012.2,
@@ -378,6 +384,57 @@ export class WorkspaceService {
       newRole,
       actorUserId,
     );
+  }
+
+  /**
+   * Jalur **Copy Link** invite member (T-007.1, ADR-080 poin 1 & 3) — generate
+   * invitation email-bound + token, TIDAK bergantung pada T-005 (email
+   * provider). RBAC sama seperti `removeMember`/`updateMemberRole` (Owner/
+   * Admin only, reuse `assertActorCanManageMembers`); role `Owner` ditolak
+   * sama seperti `updateMemberRole` (Transfer Ownership adalah alur
+   * terpisah). Pengiriman email untuk metode "Kirim via Email" adalah
+   * langkah opsional TERPISAH (T-007.7, blocked T-005) yang dipanggil
+   * composition root setelah invitation ini dibuat — tidak ada percabangan
+   * logic RBAC/token/expiry di sini (ADR-080 poin 3).
+   */
+  async inviteMember(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    input: { email: string; role: MemberRole },
+  ): Promise<WorkspaceInvitationRecord> {
+    if (input.role === MemberRole.Owner) {
+      throw new ValidationError(
+        "Gunakan alur Transfer Ownership untuk menjadikan anggota sebagai Owner.",
+      );
+    }
+
+    const email = input.email.trim().toLowerCase();
+    if (!email) {
+      throw new ValidationError("Email wajib diisi.");
+    }
+    if (!EMAIL_PATTERN.test(email)) {
+      throw new ValidationError("Format email tidak valid.");
+    }
+
+    await this.assertActorCanManageMembers(
+      workspaceId,
+      actorUserId,
+      "Hanya Owner atau Admin yang bisa mengundang anggota.",
+    );
+
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(
+      Date.now() + INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    return this.repository.createInvitation({
+      workspaceId,
+      email,
+      role: input.role,
+      invitedByUserId: actorUserId,
+      token,
+      expiresAt,
+    });
   }
 
   /**
