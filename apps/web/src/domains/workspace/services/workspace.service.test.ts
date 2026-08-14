@@ -647,9 +647,17 @@ describe("WorkspaceService.inviteMember", () => {
 
   it("allows Owner to invite a new member and generates a token + 7-day expiry", async () => {
     const before = Date.now();
-    const service = new WorkspaceService(
-      createFakeRepository(seedMembers(baseSeed())),
-    );
+    const baseRepository = createFakeRepository(seedMembers(baseSeed()));
+    const captured: {
+      input?: Parameters<IWorkspaceRepository["createInvitation"]>[0];
+    } = {};
+    const service = new WorkspaceService({
+      ...baseRepository,
+      createInvitation: async (input) => {
+        captured.input = input;
+        return baseRepository.createInvitation(input);
+      },
+    });
 
     const invitation = await service.inviteMember(WORKSPACE_ID, OWNER_USER, {
       email: "Newbie@Example.com",
@@ -660,6 +668,13 @@ describe("WorkspaceService.inviteMember", () => {
     expect(invitation.role).toBe(MemberRole.Creator);
     expect(invitation.status).toBe(InvitationStatus.Pending);
     expect(invitation.token).toMatch(/^[0-9a-f]{64}$/);
+    expect(invitation.workspaceId).toBe(WORKSPACE_ID);
+    // WorkspaceInvitationRecord (return value) tidak menyimpan
+    // invitedByUserId — verifikasi lewat input yang diteruskan ke
+    // repository (temuan CodeRabbit PR #73: pastikan actorUserId benar-benar
+    // di-forward, bukan cuma workspaceId/token).
+    expect(captured.input?.invitedByUserId).toBe(OWNER_USER);
+    expect(captured.input?.workspaceId).toBe(WORKSPACE_ID);
 
     const expectedMinExpiry = before + 7 * 24 * 60 * 60 * 1000;
     const expectedMaxExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;

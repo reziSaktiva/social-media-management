@@ -1,7 +1,6 @@
 "use server";
 
-import type { MemberRole } from "@social/shared";
-import { asMemberId, asUserId } from "@social/shared";
+import { MemberRole, asMemberId, asUserId } from "@social/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { WorkspaceService } from "@/domains/workspace";
@@ -20,6 +19,16 @@ import {
 // workspaceId sekarang dari getWorkspaceContext() (header proxy.ts),
 // actorUserId dari getCachedSession() (pola sama seperti saveDraftAction
 // di (app)/components/draft-editor/actions.ts).
+
+// Server Action adalah HTTP endpoint publik — annotation TypeScript `role:
+// MemberRole` hilang saat runtime, jadi request yang dibuat manual (bukan
+// lewat UI) bisa mengirim string apa pun. Tanpa guard ini, value asing lolos
+// seluruh pengecekan service dan baru gagal di enum Prisma sebagai error
+// tak tertangani, bukan pesan rapi lewat toActionError (temuan CodeRabbit
+// PR #73).
+function isValidMemberRole(value: unknown): value is MemberRole {
+  return Object.values(MemberRole).includes(value as MemberRole);
+}
 
 function toActionError(error: unknown): { error: string } {
   if (
@@ -69,6 +78,10 @@ export async function inviteMemberAction(
   email: string,
   role: MemberRole,
 ): Promise<{ error?: string; token?: string; inviteLink?: string }> {
+  if (!isValidMemberRole(role)) {
+    return { error: "Role tidak valid." };
+  }
+
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
@@ -101,6 +114,10 @@ export async function updateMemberRoleAction(
   targetMemberId: string,
   newRole: MemberRole,
 ): Promise<{ error?: string }> {
+  if (!isValidMemberRole(newRole)) {
+    return { error: "Role tidak valid." };
+  }
+
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {

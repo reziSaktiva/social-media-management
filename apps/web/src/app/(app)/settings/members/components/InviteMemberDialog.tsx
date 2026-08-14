@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { MemberRole } from "@social/shared";
+import { EMAIL_PATTERN, MemberRole } from "@social/shared";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
@@ -17,10 +17,11 @@ import { VStack } from "@astryxdesign/core/VStack";
 
 import { inviteMemberAction } from "../actions";
 
-// Validasi format email di sisi UI hanya untuk gating tombol submit
-// (disabled-until-valid, pola sama seperti WorkspaceGeneralSettings).
-// Validasi otoritatif tetap di WorkspaceService.inviteMember (backend).
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// EMAIL_PATTERN (dari @social/shared) dipakai di sini hanya untuk gating
+// tombol submit (disabled-until-valid, pola sama seperti
+// WorkspaceGeneralSettings). Validasi otoritatif tetap di
+// WorkspaceService.inviteMember (backend) — sumber pattern sama supaya
+// tidak drift (temuan CodeRabbit PR #73).
 
 // Role yang bisa dipilih saat invite — Owner tidak ditawarkan, konsisten
 // dengan WorkspaceService.inviteMember yang menolak role Owner (ADR-080).
@@ -86,9 +87,14 @@ export function InviteMemberDialog({ isOpen, onOpenChange }: Props) {
 
   async function handleCopyLink() {
     if (!inviteLink) return;
-    await navigator.clipboard.writeText(inviteLink);
-    setCopyLabel("Disalin!");
-    setTimeout(() => setCopyLabel("Salin"), 2000);
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopyLabel("Disalin!");
+      setTimeout(() => setCopyLabel("Salin"), 2000);
+    } catch {
+      setCopyLabel("Gagal, salin manual");
+      setTimeout(() => setCopyLabel("Salin"), 2000);
+    }
   }
 
   return (

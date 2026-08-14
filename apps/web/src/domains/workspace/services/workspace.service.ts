@@ -1,5 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { MemberRole, MemberStatus, NotificationType } from "@social/shared";
+import {
+  EMAIL_PATTERN,
+  MemberRole,
+  MemberStatus,
+  NotificationType,
+} from "@social/shared";
 import type {
   ConnectedAccountId,
   MemberId,
@@ -26,9 +31,6 @@ const MAX_NAME_LENGTH = 100;
 const MAX_SLUG_ATTEMPTS = 6;
 /** ADR-072 & ADR-080 — copy "Undangan berlaku 7 hari" di dialog Claude Design. */
 const INVITATION_EXPIRY_DAYS = 7;
-/** Format email sederhana — cukup untuk validasi domain, bukan RFC penuh. */
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /**
  * Port lokal untuk cross-domain `publishing` → `workspace` (T-012.2,
  * AGENTS.md #7) — implementation detail `WorkspaceService`, bukan kontrak
