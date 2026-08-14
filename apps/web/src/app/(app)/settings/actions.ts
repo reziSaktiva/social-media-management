@@ -1,6 +1,11 @@
 "use server";
 
-import { asMemberId, asUserId } from "@social/shared";
+import {
+  asMemberId,
+  asUserId,
+  type UserId,
+  type WorkspaceId,
+} from "@social/shared";
 import { redirect } from "next/navigation";
 import { NotificationService } from "@/domains/notification";
 import { WorkspaceService } from "@/domains/workspace";
@@ -37,6 +42,23 @@ function toActionError(error: unknown): { error: string } {
 }
 
 /**
+ * Guard sesi + workspace context yang sebelumnya diulang identik di tiap
+ * Server Action di file ini — satu tempat untuk redirect ke `/login` kalau
+ * belum login.
+ */
+async function requireActionContext(): Promise<{
+  workspaceId: WorkspaceId;
+  userId: UserId;
+}> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+  return { workspaceId, userId: asUserId(session.user.id) };
+}
+
+/**
  * Composition root untuk `WorkspaceService` di file ini — menyuplai
  * `NotificationService` lewat `NotificationPort` (cross-domain
  * `workspace` → `notification`, AGENTS.md #7).
@@ -51,17 +73,10 @@ function createWorkspaceService(): WorkspaceService {
 }
 
 export async function deleteWorkspaceAction(): Promise<{ error?: string }> {
-  const { workspaceId } = await getWorkspaceContext();
-  const session = await getCachedSession();
-  if (!session) {
-    redirect("/login");
-  }
+  const { workspaceId, userId } = await requireActionContext();
 
   try {
-    await createWorkspaceService().deleteWorkspace(
-      workspaceId,
-      asUserId(session.user.id),
-    );
+    await createWorkspaceService().deleteWorkspace(workspaceId, userId);
   } catch (error) {
     return toActionError(error);
   }
@@ -74,16 +89,12 @@ export async function deleteWorkspaceAction(): Promise<{ error?: string }> {
 export async function transferOwnershipAction(
   targetMemberId: string,
 ): Promise<{ error?: string }> {
-  const { workspaceId } = await getWorkspaceContext();
-  const session = await getCachedSession();
-  if (!session) {
-    redirect("/login");
-  }
+  const { workspaceId, userId } = await requireActionContext();
 
   try {
     await createWorkspaceService().transferOwnership(
       workspaceId,
-      asUserId(session.user.id),
+      userId,
       asMemberId(targetMemberId),
     );
   } catch (error) {
@@ -96,17 +107,10 @@ export async function transferOwnershipAction(
 export async function cancelOwnershipTransferAction(): Promise<{
   error?: string;
 }> {
-  const { workspaceId } = await getWorkspaceContext();
-  const session = await getCachedSession();
-  if (!session) {
-    redirect("/login");
-  }
+  const { workspaceId, userId } = await requireActionContext();
 
   try {
-    await createWorkspaceService().cancelOwnershipTransfer(
-      workspaceId,
-      asUserId(session.user.id),
-    );
+    await createWorkspaceService().cancelOwnershipTransfer(workspaceId, userId);
   } catch (error) {
     return toActionError(error);
   }
@@ -120,16 +124,12 @@ export type RenameWorkspaceActionResult =
 export async function renameWorkspaceAction(
   name: string,
 ): Promise<RenameWorkspaceActionResult> {
-  const { workspaceId } = await getWorkspaceContext();
-  const session = await getCachedSession();
-  if (!session) {
-    redirect("/login");
-  }
+  const { workspaceId, userId } = await requireActionContext();
 
   try {
     const workspace = await createWorkspaceService().renameWorkspace(
       workspaceId,
-      asUserId(session.user.id),
+      userId,
       name,
     );
     return { ok: true, name: workspace.name };
@@ -142,17 +142,10 @@ export async function renameWorkspaceAction(
 export async function acceptOwnershipTransferAction(): Promise<{
   error?: string;
 }> {
-  const { workspaceId } = await getWorkspaceContext();
-  const session = await getCachedSession();
-  if (!session) {
-    redirect("/login");
-  }
+  const { workspaceId, userId } = await requireActionContext();
 
   try {
-    await createWorkspaceService().acceptOwnershipTransfer(
-      workspaceId,
-      asUserId(session.user.id),
-    );
+    await createWorkspaceService().acceptOwnershipTransfer(workspaceId, userId);
   } catch (error) {
     return toActionError(error);
   }

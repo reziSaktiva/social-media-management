@@ -417,23 +417,30 @@ export const workspaceRepository: IWorkspaceRepository = {
     targetMemberId,
     newOwnerUserId,
   }) {
-    await withCurrentUser(newOwnerUserId, async (tx) => {
-      await tx.workspaceMember.update({
-        where: { id: currentOwnerMemberId, workspaceId },
-        data: { role: MemberRole.Admin },
+    try {
+      await withCurrentUser(newOwnerUserId, async (tx) => {
+        await tx.workspaceMember.update({
+          where: { id: currentOwnerMemberId, workspaceId },
+          data: { role: MemberRole.Admin },
+        });
+        await tx.workspaceMember.update({
+          where: { id: targetMemberId, workspaceId },
+          data: { role: MemberRole.Owner },
+        });
+        await tx.workspace.update({
+          where: { id: workspaceId },
+          data: {
+            ownerId: newOwnerUserId,
+            pendingOwnerTransferTo: null,
+          },
+        });
       });
-      await tx.workspaceMember.update({
-        where: { id: targetMemberId, workspaceId },
-        data: { role: MemberRole.Owner },
-      });
-      await tx.workspace.update({
-        where: { id: workspaceId },
-        data: {
-          ownerId: newOwnerUserId,
-          pendingOwnerTransferTo: null,
-        },
-      });
-    });
+    } catch (error) {
+      if (isRecordNotFound(error)) {
+        throw new NotFoundError("Workspace atau anggota tidak ditemukan.");
+      }
+      throw error;
+    }
   },
 
   async renameWorkspace(workspaceId, name, actingUserId) {

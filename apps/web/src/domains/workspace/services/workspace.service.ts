@@ -380,16 +380,30 @@ export class WorkspaceService {
     );
   }
 
+  /**
+   * Actor harus member aktif workspace ini, atau lempar `AuthorizationError`.
+   * Dipakai `assertActorIsOwner`, `acceptOwnershipTransfer`, dan
+   * `renameWorkspace` — satu tempat untuk aturan "aktif" ini, bukan
+   * terduplikasi di tiap method.
+   */
+  private async assertActiveMembership(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<WorkspaceMemberRecord> {
+    const actor = await this.getMembership(workspaceId, actorUserId);
+    if (!actor || actor.status !== MemberStatus.Active) {
+      throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
+    }
+    return actor;
+  }
+
   /** Owner-only, dipakai deleteWorkspace & transferOwnership. */
   private async assertActorIsOwner(
     workspaceId: WorkspaceId,
     actorUserId: UserId,
     actionErrorMessage: string,
   ): Promise<void> {
-    const actor = await this.getMembership(workspaceId, actorUserId);
-    if (!actor || actor.status !== MemberStatus.Active) {
-      throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
-    }
+    const actor = await this.assertActiveMembership(workspaceId, actorUserId);
     if (actor.role !== MemberRole.Owner) {
       throw new AuthorizationError(actionErrorMessage);
     }
@@ -537,10 +551,10 @@ export class WorkspaceService {
       );
     }
 
-    const targetMember = await this.getMembership(workspaceId, actorUserId);
-    if (!targetMember || targetMember.status !== MemberStatus.Active) {
-      throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
-    }
+    const targetMember = await this.assertActiveMembership(
+      workspaceId,
+      actorUserId,
+    );
 
     const currentOwnerMember = await this.repository.listMembers(
       workspaceId,
@@ -583,10 +597,7 @@ export class WorkspaceService {
     actorUserId: UserId,
     name: string,
   ): Promise<WorkspaceRecord> {
-    const actor = await this.getMembership(workspaceId, actorUserId);
-    if (!actor || actor.status !== MemberStatus.Active) {
-      throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
-    }
+    await this.assertActiveMembership(workspaceId, actorUserId);
 
     const trimmedName = name.trim();
     if (!trimmedName) {

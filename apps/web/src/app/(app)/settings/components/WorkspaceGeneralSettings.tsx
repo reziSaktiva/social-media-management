@@ -59,6 +59,10 @@ export function WorkspaceGeneralSettings({
   admins,
 }: Props) {
   const [name, setName] = useState(workspaceName);
+  // Nama tersimpan (bukan draft input di atas) — dipakai sebagai target
+  // perbandingan dialog Tier 1 "ketik nama workspace", supaya draft yang
+  // belum disimpan tidak bisa dipakai untuk melewati konfirmasi.
+  const [savedName, setSavedName] = useState(workspaceName);
   const [nameError, setNameError] = useState<string | null>(null);
   const [nameSuccess, setNameSuccess] = useState(false);
 
@@ -84,6 +88,7 @@ export function WorkspaceGeneralSettings({
       return;
     }
     setName(result.name);
+    setSavedName(result.name);
     setNameSuccess(true);
   }
 
@@ -279,10 +284,10 @@ export function WorkspaceGeneralSettings({
                 />
                 <TextInput
                   type="text"
-                  label={`Ketik ${name} untuk konfirmasi`}
+                  label={`Ketik ${savedName} untuk konfirmasi`}
                   value={transferConfirmText}
                   onChange={setTransferConfirmText}
-                  placeholder={name}
+                  placeholder={savedName}
                   width="100%"
                 />
               </VStack>
@@ -299,7 +304,9 @@ export function WorkspaceGeneralSettings({
                 <Button
                   label="Transfer Ownership"
                   variant="destructive"
-                  isDisabled={transferConfirmText !== name || !selectedAdminId}
+                  isDisabled={
+                    transferConfirmText !== savedName || !selectedAdminId
+                  }
                   clickAction={handleConfirmTransfer}
                 />
               </HStack>
@@ -329,10 +336,10 @@ export function WorkspaceGeneralSettings({
             <LayoutContent>
               <TextInput
                 type="text"
-                label={`Ketik ${name} untuk konfirmasi`}
+                label={`Ketik ${savedName} untuk konfirmasi`}
                 value={deleteConfirmText}
                 onChange={setDeleteConfirmText}
-                placeholder={name}
+                placeholder={savedName}
                 width="100%"
               />
             </LayoutContent>
@@ -348,7 +355,7 @@ export function WorkspaceGeneralSettings({
                 <Button
                   label="Hapus Workspace"
                   variant="destructive"
-                  isDisabled={deleteConfirmText !== name}
+                  isDisabled={deleteConfirmText !== savedName}
                   clickAction={handleConfirmDelete}
                 />
               </HStack>
