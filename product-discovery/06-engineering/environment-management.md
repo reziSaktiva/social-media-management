@@ -236,7 +236,7 @@ Keputusan self-host di masa depan wajib ADR di `DECISIONS.md`; dokumen ini hanya
 | EM-D08 | ADR-040 | EM-D07 mengamandemen katalog/prasyarat integrasi Engineering Baseline |
 | EM-D09 | Project Supabase existing ("Sosial Media Management", ref `ndcrkzqgqukqfmekgoze`) resmi jadi project staging; rencana project baru `social-media-local` dibatalkan | Efisiensi — project sudah ada dan sehat, sudah terverifikasi via Railway staging (KI-025); tidak perlu bikin project baru terpisah | Buat project `social-media-staging` baru sesuai EM-D02 asli (kerja migrasi tanpa manfaat nyata untuk MVP solo developer) |
 | EM-D10 | ADR-081 | EM-D09 mengamandemen EM-D02 (ADR-033) | — |
-| EM-D11 | Local development resmi menumpang ke project staging yang sama (ref `ndcrkzqgqukqfmekgoze`) — final, menutup open question EM-D10/ADR-081 | Efisiensi/kesederhanaan operasional (King Rezi, 2026-08-14) — project ini baru satu-satunya yang aktif, tidak perlu dipersulit dengan project ketiga | Project Supabase Cloud terpisah untuk local (kembali ke pola tiga-project asli EM-D02) — ditolak, kerumitan setup tidak sepadan untuk MVP solo developer |
+| EM-D11 | Local development resmi menumpang ke project staging yang sama (ref `ndcrkzqgqukqfmekgoze`) — final, menutup open question yang tercatat di body ADR-081 | Efisiensi/kesederhanaan operasional (King Rezi, 2026-08-14) — project ini baru satu-satunya yang aktif, tidak perlu dipersulit dengan project ketiga | Project Supabase Cloud terpisah untuk local (kembali ke pola tiga-project asli EM-D02) — ditolak, kerumitan setup tidak sepadan untuk MVP solo developer |
 
 ---
 
