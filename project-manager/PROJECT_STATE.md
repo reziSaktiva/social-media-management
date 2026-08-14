@@ -5,7 +5,7 @@
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
 * **Top Next Tasks:** T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
-* **Blocker:** 3 blocker aktif (env var Outstand/Google/JOB_SECRET belum diisi + Railway belum pernah dibuat) — lihat section **Blockers** di bawah. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027 dan verifikasi deploy nyata.
+* **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 71 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.50     |
+| Version      | 1.0.51     |
 | Status       | Active     |
-| Last Updated | 2026-08-12 |
+| Last Updated | 2026-08-14 |
 
 ---
 
@@ -170,18 +170,18 @@ Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production
 
 `IdentityService`, `IIdentityRepository`, dan `SupabaseAvatarStorageAdapter` (domain `identity`, diisi pertama kali lewat T-016.2) belum punya unit test Vitest. Review arsitektur Ridwan sudah memverifikasi boundary domain bersih (tidak ada pelanggaran), tetapi coverage test-nya nihil. Tidak memblokir penutupan T-016.1/.2/.3/.5 — keempatnya sudah lolos QA browser end-to-end.
 
-### KI-015 · Env var `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JOB_SECRET` belum diisi
+### KI-015 · Env var `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` belum diisi
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | Sebagian Resolved — sisa scope: `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` |
 | Kategori | Dependency |
-| Terkait | T-025, T-026, T-027 |
+| Terkait | T-025, T-026 |
 
-Sama seperti `OUTSTAND_API_KEY` (lihat KI-003), tiga env var ini belum diisi di `.env.local`:
+Sama seperti `OUTSTAND_API_KEY` (lihat KI-003):
 
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — kode Google OAuth di `auth.ts` sudah siap (`socialProviders.google` terdaftar kondisional lewat `env.ts`), tapi tanpa env ini "Sign in with Google" tidak aktif.
-- `JOB_SECRET` — dibutuhkan untuk header `X-Job-Secret` (Railway Cron → web, EM-D0x). Belum diisi berarti job runner (T-027) belum bisa diverifikasi end-to-end di local; dev bisa memakai nilai dummy sementara.
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — kode Google OAuth di `auth.ts` sudah siap (`socialProviders.google` terdaftar kondisional lewat `env.ts`), tapi tanpa env ini "Sign in with Google" tidak aktif. Masih placeholder dummy.
+- `JOB_SECRET` — **resolved 2026-08-14**: sudah diisi nilai asli generated di Railway staging (env var), dan job runner (T-027, `POST /api/jobs/run` via Railway Cron `X-Job-Secret`) sudah terverifikasi end-to-end 2x run berturut-turut SUCCESS di staging. Local `.env.local` masih boleh memakai nilai dummy untuk dev.
 
 ### KI-023 · Kode `apps/web` belum dimigrasikan ke baseline routing/Settings baru (ADR-076/ADR-077)
 
@@ -250,7 +250,7 @@ sebagai temuan untuk follow-up King Rezi, belum dibuatkan task formal.
 
 Mockup `templates/settings-general.html` di Claude Design tidak menunjukkan cara memilih Admin target sebelum dialog Transfer Ownership dibuka. Mark UI Engineer menambahkan komponen `Selector` Admin aktif sebagai keputusan implementasi sendiri (bukan sesuai desain final yang disetujui King Rezi) supaya alur tetap bisa dipakai. Perlu konfirmasi/update balik ke Claude Design dari King Rezi — T-008 sengaja belum ditutup `✅ Done` sampai ini selesai (lihat `tasks/v01-foundation.md` § T-008).
 
-### KI-025 · Belum ada project Railway sama sekali (belum pernah deploy)
+### KI-028 · Production Railway environment & Supabase project belum dibuat
 
 | Field | Value |
 |-------|-------|
@@ -258,20 +258,24 @@ Mockup `templates/settings-general.html` di Claude Design tidak menunjukkan cara
 | Kategori | Dependency |
 | Terkait | T-027, seluruh CI/CD deploy step (ADR-028, ADR-029, ADR-032) |
 
-Project Railway (staging maupun production) **belum pernah dibuat sama
-sekali** — bukan sekadar belum ada deployment yang sukses. Baseline
-`deployment-infrastructure.md`, `environment-topology` (ADR-029), region
-Singapore (ADR-028), dan CI/CD pipeline (ADR-032) semuanya masih rencana,
-belum ada realisasi. Task yang menyentuh Railway Cron trigger (T-027) atau
-verifikasi deploy end-to-end akan jadi **deploy pertama kalinya**, bukan
-update ke environment yang sudah live.
+Ditemukan saat menutup KI-025 (2026-08-14): staging environment (Railway +
+Supabase) sudah live & terverifikasi, tapi **production** belum ada sama
+sekali — belum ada project/environment Railway `production`, dan belum
+ada project Supabase terpisah untuk production (staging permanen memakai
+project Supabase existing "Sosial Media Management",
+ref `ndcrkzqgqukqfmekgoze` — dikonfirmasi permanen via ADR-081, amandemen
+EM-D02; lihat catatan di `COMPLETE_TASK.md` 2026-08-14). Baseline
+`deployment-infrastructure.md`, `environment-topology`
+(ADR-029), region Singapore (ADR-028), dan CI/CD pipeline (ADR-032) untuk
+jalur production masih rencana, belum ada realisasi. Tidak memblokir M8,
+tapi wajib dituntaskan sebelum rilis production.
 
 ---
 
 ## Blockers
 
 **Wajib dicek AI sebelum mengerjakan subtask apapun yang menyentuh area di
-bawah.** Ketiganya adalah dependency eksternal yang belum tersedia di
+bawah.** Keduanya adalah dependency eksternal yang belum tersedia di
 lingkungan lokal/CI — bukan bug kode. Kalau eksekusi subtask di area ini
 gagal/crash, cek dulu apakah salah satu blocker ini penyebabnya sebelum
 menyimpulkan ada bug dan mulai "memperbaiki" kode yang sebenarnya sudah
@@ -280,8 +284,11 @@ benar.
 | ID         | Blocker                                                        | Menghambat                          |
 | ---------- | --------------------------------------------------------------- | ------------------------------------ |
 | **KI-003** | `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` belum diisi **dan** kode Real OutstandAdapter belum ditulis sama sekali (bukan cuma env — factory sengaja throw kalau env terisi tapi kode belum ada) | T-025 → T-026 → T-027 (rantai terbesar) |
-| **KI-015** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JOB_SECRET` belum diisi | Google OAuth sign-in, verifikasi job runner (T-027) end-to-end |
-| **KI-025** | Project Railway belum pernah dibuat (belum pernah deploy)      | T-027 (Railway Cron trigger), seluruh verifikasi deploy nyata |
+| **KI-015** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` belum diisi (JOB_SECRET sudah resolved 2026-08-14 di Railway staging) | Google OAuth sign-in |
+
+**Resolved 2026-08-14:** KI-025 (Railway belum pernah dibuat) — staging
+sudah live & terverifikasi, lihat `COMPLETE_TASK.md`. Sisa gap production
+dicatat terpisah sebagai **KI-028** (tidak memblokir M8/T-027 staging).
 
 Detail masing-masing ada di section **Known Issues** di atas — tabel ini
 hanya pointer supaya blocker aktif langsung terlihat tanpa harus menyisir
@@ -293,11 +300,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **Bug fix — redirect `localhost:8080` di proxy/onboarding (2026-08-14)** — Ditemukan saat test login manual di staging: sesekali browser di-redirect ke `http://localhost:8080` (bind internal container Railway) alih-alih domain publik. Root cause: `proxy.ts` (5 titik) dan `app/onboarding/resume/route.ts` (2 titik) membangun redirect pakai `new URL(path, request.url)` — `request.url` tidak bisa dipercaya di balik reverse proxy Railway saat race container baru start. Fix: origin redirect sekarang selalu dari `getServerEnv().BETTER_AUTH_URL` (pola sama dengan invite link di `settings/members/actions.ts`). Diverifikasi: `tsc --noEmit` bersih, login lokal (akun test Raka Pratama) tetap normal tanpa regresi. Bukan task bernomor — perbaikan ad-hoc, tidak ada ADR baru (bug fix, bukan perubahan baseline arsitektur).
+* **KI-025 resolved — Railway staging live (2026-08-14)** — Project Railway `social-media-management` (workspace Insvire, region Singapore) dibuat, environment `staging` deploy sukses: service `web` (Next.js, domain `web-staging-60d7.up.railway.app`, health check `/api/health` 200 OK) dan service `cron` (`* * * * *` trigger `POST /api/jobs/run`, 2x run SUCCESS berturut-turut). Env var staging lengkap (DATABASE_URL, DIRECT_URL, Supabase, Better Auth, `JOB_SECRET` generated asli); `GOOGLE_CLIENT_ID/SECRET`, `OUTSTAND_API_KEY/WEBHOOK_SECRET` masih placeholder dummy (KI-015 sebagian resolved, KI-003 tetap open). Database staging memakai project Supabase Cloud existing "Sosial Media Management" (ref `ndcrkzqgqukqfmekgoze`) — bukan project baru terpisah; production Railway environment & production Supabase project belum dibuat (gap baru, KI-028). Branch `staging` dibuat & di-push; branch protection GitHub diaktifkan untuk `main`+`staging` (wajib PR + status check CI hijau). Detail: `COMPLETE_TASK.md`.
 * **T-007.1/.5/.6 selesai (2026-08-14)** — Members management: **pembuatan** invitation jalur Copy Link (`WorkspaceService.inviteMember`, ADR-080 — bukan alur invite-to-membership yang utuh, halaman accept-invite `/invite/[token]` belum dibuat), dialog konfirmasi Remove Member + Update Member Role (ADR-049 Tier 2), dan UI dialog invite 2 metode (Copy Link aktif, Kirim via Email disabled — email-bound wajib). Lolos review Ridwan (bersih, tanpa temuan) dan QA Najwa (126 test passed + 3 skip pre-existing; gating UI & radio group terverifikasi browser — submit generate-link gagal karena `JOB_SECRET` belum diisi, belum pernah dibuktikan sukses visual, dikoreksi setelah review CodeRabbit PR #73). Heading duplikat "Members" yang sempat muncul saat implementasi sudah diperbaiki lewat slot `headerAction` di `MembersTable`. Remove/Update Role tidak bisa diuji end-to-end penuh karena dev DB baru punya 1 member (known gap, KI-015). T-007 tetap 🟡 In Progress — sisa T-007.7 (jalur Kirim via Email) blocked T-005, plus halaman accept-invite (task terpisah, belum ada nomor). Detail: `tasks/v01-foundation.md` § T-007, `COMPLETE_TASK.md`.
 * **T-008 implementasi selesai (2026-08-13)** — Workspace Settings General + Danger Zone: backend `deleteWorkspace`/`transferOwnership`/`acceptOwnershipTransfer`/`cancelOwnershipTransfer` (Prabowo Feature Engineer, 2 putaran perbaikan review Ridwan termasuk cascade FK tambahan & ekstraksi `listTransferEligibleMembers`) + UI Danger Zone/rename (Mark UI Engineer). Lolos QA Najwa (full suite hijau, golden path + edge case inti PASS; 3 item minor tidak diverifikasi live karena T-007.1 invite member belum selesai, bukan bug). **Belum ditutup `✅ Done`** — ada 1 open item desain (Selector target Admin di dialog Transfer Ownership ditambahkan sebagai keputusan implementasi Mark, belum eksplisit di mockup Claude Design, belum dikonfirmasi King Rezi — lihat KI-027). Detail: `tasks/v01-foundation.md` § T-008, `COMPLETE_TASK.md`.
 * **KI-026 resolved (2026-08-13)** — RLS tidak efektif karena role koneksi `postgres` BYPASSRLS di Supabase. King Rezi membuat role `app_runtime` baru (tanpa BYPASSRLS) via SQL Editor, `DATABASE_URL` dipindah ke role itu (`DIRECT_URL` sengaja tetap `postgres` untuk privilege DDL migrate). Setelah RLS aktif, ditemukan & diperbaiki 2 bug desain policy yang sebelumnya tersembunyi: infinite recursion pada policy `workspace_members` (fix: `SECURITY DEFINER` function `current_user_workspace_ids()`) dan INSERT bootstrap gap saat owner baru bikin workspace (fix: pecah `FOR ALL` jadi policy terpisah + self-visibility clause). 3 migration baru applied ke DB nyata, `WorkspaceRepository.createWithOwner` diupdate set `app.current_user_id` di awal transaksi, 2 assertion "KNOWN GAP" di `with-current-user.test.ts` dibalik jadi assertion positif. Full suite 105 passed + 1 skipped, `tsc --noEmit` bersih. Detail: `tasks/v01-foundation.md` § T-017, `COMPLETE_TASK.md`.
-* **T-017 & T-019 selesai (2026-08-13)** — RLS SQL policies (T-017, dikerjakan Elon Backend Engineer) dan skema API mobile `/api/v1` + Better Auth Bearer plugin (T-019, ADR-043). T-017: migration RLS applied ke DB nyata untuk 16 tabel + helper `withCurrentUser`; gap runtime BYPASSRLS yang sempat ditemukan (KI-026) sudah resolved hari yang sama (lihat bullet di atas); KI-002 lama (RLS belum digenerate) resolved. T-019: `bearer()` plugin aktif, `trustedOrigins`/`rateLimit.customRules` dikonfigurasi, `proxy.ts` bypass `/api/v1`, endpoint skema `/api/v1/health`. T-008 (Workspace Settings) mulai 🟡 In Progress — desain sedang dikerjakan King Rezi langsung di Claude Design. T-018 (investigasi ngrok) di-defer — superseded ADR-070. Detail: `tasks/v01-foundation.md` § T-008/T-017/T-018/T-019, `COMPLETE_TASK.md`.
-* **T-042.2–T-042.5 selesai (2026-08-13)** — Dashboard Home (v0.3) tuntas, seluruh subtask T-042.1–.5 sekarang ✅ Done. Dikerjakan lewat 3 subagent sekuensial (analytics · UI, ADR-063): Prabowo (T-042.2 — `AnalyticsService.getDashboardSummary`, `WorkspaceService.countActiveConnectedAccounts` via port lokal `ActiveAccountsPort` mengikuti pola `ScheduledCountsPort`/ADR-078, Server Action `getDashboardSummaryAction`), Mark (T-042.3–.5 — `DashboardHome.tsx` menggantikan `ScaffoldPlaceholder` di `src/app/(app)/page.tsx`, komponen Astryx `Selector`/`Card`/`ProgressBar`/`EmptyState` terverifikasi via CLI, tanpa dependency chart baru). Lolos QA Najwa (typecheck/lint/test 103/103 PASS, verifikasi visual dark mode & regresi) dan review Ridwan (tidak ada temuan — boundary domain bersih, cross-domain lewat port/adapter). Menutup T-042 (✅ Done). Detail: `tasks/v03-analytics-mvp.md` § T-042, `COMPLETE_TASK.md`.
 ---
 
 ## Recent Decisions (Ringkasan)

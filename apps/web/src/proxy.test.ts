@@ -28,6 +28,12 @@ vi.mock("@/lib/repositories/workspace", () => ({
   workspaceRepository: {},
 }));
 
+// CI runs with `SKIP_ENV_VALIDATION=1` (BETTER_AUTH_URL unset) — proxy.ts
+// needs a real origin to build redirect URLs, same as production.
+vi.mock("@/lib/env", () => ({
+  getServerEnv: () => ({ BETTER_AUTH_URL: "http://localhost:3000" }),
+}));
+
 import { WorkspaceService } from "@/domains/workspace";
 import { proxy } from "./proxy";
 
