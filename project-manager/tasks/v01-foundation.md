@@ -74,7 +74,7 @@ Aktifkan verifikasi email + password reset yang benar-benar mengirim email. Saat
 
 | Field         | Value                                                              |
 | ------------- | ------------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress                                                     |
+| **Status**    | 🟡 In Progress — T-007.1/.5/.6 selesai & lolos review+QA; sisa T-007.7 (jalur Kirim via Email) blocked T-005 |
 | **Domain**    | workspace                                                          |
 | **ADR**       | ADR-012 (roles), ADR-049 (konfirmasi Remove Member & Update Role), ADR-072 (tabel `workspace_invitations`), ADR-080 (dua metode invite — Email + Copy Link, amandemen ADR-072) |
 | **Depends**   | T-006 ✅, T-005 (soft dependency — hanya memblokir opsi "Kirim via Email", bukan T-007.1 jalur "Copy Link", lihat ADR-080) |
@@ -82,14 +82,16 @@ Aktifkan verifikasi email + password reset yang benar-benar mengirim email. Saat
 
 Screen Workspace Settings → Members. Disepakati **desain minimal dulu**: cukup daftar anggota + Remove Member, tanpa manajemen anggota lengkap.
 
-**Catatan (2026-08-14, ADR-080):** invite member dipecah jadi dua metode — **Copy Link** (generate invitation + token, dibagikan manual, tidak bergantung T-005 — jalur aktif sekarang) dan **Kirim via Email** (tetap menunggu T-005, tampil disabled di UI sampai provider siap). Desain UI dialog invite (dialog "Undang Anggota Baru" — Selector Role, 2 opsi metode dengan Copy Link default aktif dan Kirim via Email disabled berbadge "Segera", link readonly + tombol Salin) sudah dibuat di Claude Design (`templates/settings-members.html`) — table anggota + dialog Remove/Update Role yang sudah ada tidak diubah. **Belum dikonfirmasi King Rezi** — jangan mulai implementasi kode UI (T-007.6) sebelum dikonfirmasi.
+**Catatan (2026-08-14, ADR-080):** invite member dipecah jadi dua metode — **Copy Link** (generate invitation + token, dibagikan manual, tidak bergantung T-005 — jalur aktif sekarang) dan **Kirim via Email** (tetap menunggu T-005, tampil disabled di UI sampai provider siap). Desain UI dialog invite (dialog "Undang Anggota Baru" — Selector Role, 2 opsi metode dengan Copy Link default aktif dan Kirim via Email disabled berbadge "Segera", link readonly + tombol Salin) sudah dibuat di Claude Design (`templates/settings-members.html`) — table anggota + dialog Remove/Update Role yang sudah ada tidak diubah.
 
-- [ ] **T-007.1** `WorkspaceService.inviteMember` — jalur **Copy Link** (generate invitation email-bound + token, tidak menunggu T-005) + `removeMember` + `updateMemberRole` (RBAC Owner/Admin) — removeMember + updateMemberRole selesai; inviteMember jalur Copy Link bisa dikerjakan sekarang
+**Status implementasi T-007.1/.5/.6 (2026-08-14):** Ketiganya selesai dan lolos review arsitektur Ridwan (bersih, tanpa temuan) serta QA Najwa (typecheck/lint/test: 126 passed + 3 skip pre-existing; golden path Invite Member via Copy Link diverifikasi langsung di browser — generate link, salin, RBAC Owner/Admin). Heading duplikat "Members" yang sempat muncul saat implementasi (akibat `MembersTable` merender heading section-nya sendiri berdampingan dengan heading halaman) sudah diperbaiki lewat slot `headerAction` baru di `MembersTable`, dipakai untuk menaruh tombol "Undang Anggota" tanpa duplikasi judul. Remove Member dan Update Role end-to-end **tidak** bisa diuji penuh secara live karena dev DB saat ini cuma berisi 1 member (belum ada akun kedua nyata untuk jadi target) dan env `JOB_SECRET` juga belum diisi — keduanya known gap lingkungan yang sudah tercatat (KI-015), bukan bug baru dari task ini.
+
+- [x] **T-007.1** `WorkspaceService.inviteMember` — jalur **Copy Link** (generate invitation email-bound + token, tidak menunggu T-005) + `removeMember` + `updateMemberRole` (RBAC Owner/Admin) — selesai
 - [x] **T-007.2** Repository method + migrasi tabel invitation (jika perlu)
 - [x] **T-007.3** Server Actions + validasi RBAC di application layer
 - [x] **T-007.4** UI daftar anggota di `/settings/members` (Astryx Table)
-- [ ] **T-007.5** Dialog konfirmasi Remove Member + Update Member Role (ADR-049 Tier 2)
-- [ ] **T-007.6** UI dialog invite member dengan 2 opsi (Copy Link aktif, Kirim via Email disabled) + field email-bound wajib (ADR-080 poin 6) — desain **sudah dikonfirmasi King Rezi** di Claude Design (2026-08-14), siap diimplementasikan ke `apps/web`
+- [x] **T-007.5** Dialog konfirmasi Remove Member + Update Member Role (ADR-049 Tier 2) — selesai
+- [x] **T-007.6** UI dialog invite member dengan 2 opsi (Copy Link aktif, Kirim via Email disabled) + field email-bound wajib (ADR-080 poin 6) — selesai, sesuai desain yang dikonfirmasi King Rezi di Claude Design (2026-08-14)
 - [ ] **T-007.7** `WorkspaceService.inviteMember` — jalur **Kirim via Email** (kirim email berisi link undangan yang sama, dipicu setelah invitation dibuat) — **blocked oleh T-005** (provider email belum ditetapkan), dipisah dari T-007.1 supaya jalur Copy Link tidak ikut tertahan (ADR-080)
 
 ### T-008 · Workspace Settings — General + Danger Zone

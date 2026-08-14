@@ -8,6 +8,42 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-14 — T-007.1/.5/.6 (Members management: Invite via Copy Link + safety dialogs Remove/Update Role): selesai
+
+### Context
+
+Bagian dari T-007 (Members management), memakai ADR-080 (invite dipecah dua metode — Copy Link vs Kirim via Email, amandemen ADR-072). Dikerjakan dalam satu sesi, direview Ridwan Architecture Reviewer dan diverifikasi Najwa QA Engineer.
+
+### T-007.1 — `WorkspaceService.inviteMember` (jalur Copy Link)
+
+Generate invitation email-bound + token, tidak bergantung T-005 (provider email). `removeMember` dan `updateMemberRole` (RBAC Owner/Admin) juga bagian subtask ini — sudah selesai sebelumnya, dikonfirmasi ulang tetap benar. Jalur "Kirim via Email" tetap terpisah sebagai T-007.7, masih blocked T-005.
+
+### T-007.5 — Dialog konfirmasi Remove Member + Update Member Role
+
+ADR-049 Tier 2 — dialog konfirmasi sebelum aksi Remove Member dan Update Member Role dieksekusi.
+
+### T-007.6 — UI dialog Invite Member (2 metode)
+
+Dialog "Undang Anggota Baru" dengan Selector Role, 2 opsi metode (Copy Link default aktif, Kirim via Email disabled berbadge "Segera"), field email-bound wajib, link readonly + tombol Salin — sesuai desain yang sudah dikonfirmasi King Rezi di Claude Design (`templates/settings-members.html`, 2026-08-14).
+
+### Fix tambahan selama implementasi
+
+Heading duplikat "Members" sempat muncul (komponen `MembersTable` merender heading section-nya sendiri berdampingan dengan heading halaman) — diperbaiki dengan menambah slot `headerAction` baru di `MembersTable`, dipakai untuk menaruh tombol "Undang Anggota" tanpa mengulang judul.
+
+### Review Ridwan Architecture Reviewer
+
+Bersih, tanpa temuan.
+
+### QA Najwa
+
+Full suite (typecheck/lint/test: 126 passed + 3 skip pre-existing) hijau. Golden path Invite Member via Copy Link diverifikasi langsung di browser (generate link, salin ke clipboard, role selector). Remove Member dan Update Role **tidak** bisa diuji end-to-end penuh secara live — dev DB saat ini cuma punya 1 member (belum ada akun kedua nyata untuk jadi target aksi) dan env `JOB_SECRET` juga belum diisi — keduanya known gap lingkungan (KI-015), bukan bug baru dari task ini.
+
+### Status task T-007
+
+Tetap `🟡 In Progress` — sisa T-007.7 (jalur Kirim via Email) masih blocked T-005 (provider email transactional belum ditetapkan).
+
+---
+
 ## 2026-08-13 — T-008 (Workspace Settings — General + Danger Zone): implementasi selesai, 1 open item desain belum ditutup
 
 ### Context
