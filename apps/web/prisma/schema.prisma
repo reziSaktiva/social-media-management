@@ -89,16 +89,20 @@ model Verification {
 // ─────────────────────────────────────────────
 
 model Workspace {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String
-  slug            String   @unique
-  ownerId         String   @map("owner_id")
-  plan            String   @default("free")
-  brandName       String?  @map("brand_name")
-  brandTone       String?  @map("brand_tone")
-  brandGuidelines String?  @map("brand_guidelines")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String
+  slug                   String   @unique
+  ownerId                String   @map("owner_id")
+  // Transfer Ownership dua langkah (ADR-050, DM-D11) — diisi saat Owner
+  // memicu `transferOwnership`, dikosongkan lagi setelah target menerima
+  // (`acceptOwnershipTransfer`) atau dibatalkan (`cancelOwnershipTransfer`).
+  pendingOwnerTransferTo String?  @map("pending_owner_transfer_to")
+  plan                   String   @default("free")
+  brandName              String?  @map("brand_name")
+  brandTone              String?  @map("brand_tone")
+  brandGuidelines        String?  @map("brand_guidelines")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   members            WorkspaceMember[]
   invitations        WorkspaceInvitation[]
@@ -225,7 +229,7 @@ model PublishingPost {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace  Workspace              @relation(fields: [workspaceId], references: [id])
+  workspace  Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   targets    PublishingPostTarget[]
   queueSlots PublishingQueueSlot[]
 
@@ -251,7 +255,7 @@ model PublishingPostTarget {
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   post             PublishingPost            @relation(fields: [postId], references: [id], onDelete: Cascade)
-  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id])
+  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id], onDelete: Cascade)
 
   @@index([postId])
   @@index([connectedAccountId])
@@ -269,7 +273,7 @@ model PublishingQueueSlot {
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   workspace        Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id])
+  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id], onDelete: Cascade)
   post             PublishingPost?           @relation(fields: [postId], references: [id], onDelete: SetNull)
 
   @@unique([connectedAccountId, scheduledAt])
@@ -291,7 +295,7 @@ model AiRequest {
   context     String?
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  workspace Workspace  @relation(fields: [workspaceId], references: [id])
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   results   AiResult[]
 
   @@index([workspaceId])
@@ -330,8 +334,8 @@ model EngagementInboxItem {
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace        Workspace                 @relation(fields: [workspaceId], references: [id])
-  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id])
+  workspace        Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id], onDelete: Cascade)
   replies          EngagementReply[]
 
   @@unique([workspaceId, connectedAccountId, externalId])
@@ -352,7 +356,7 @@ model EngagementReply {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  inboxItem EngagementInboxItem @relation(fields: [inboxItemId], references: [id])
+  inboxItem EngagementInboxItem @relation(fields: [inboxItemId], references: [id], onDelete: Cascade)
 
   @@map("engagement_replies")
 }
@@ -399,7 +403,7 @@ model AnalyticsWorkspaceSnapshot {
   topPostId         String?  @map("top_post_id") @db.Uuid
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, period, periodStart])
   @@index([workspaceId])
@@ -469,7 +473,7 @@ model MediaItem {
   duration           Decimal?  @db.Decimal(10, 2)
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
   @@map("media_items")
@@ -492,7 +496,7 @@ model Notification {
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   readAt            DateTime? @map("read_at") @db.Timestamptz(6)
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
   @@index([userId, isRead])

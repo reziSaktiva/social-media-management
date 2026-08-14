@@ -63,3 +63,15 @@ export enum ContentFormat {
 export enum EngagementType {
   Comment = "comment",
 }
+
+/**
+ * Subset dari daftar `NotificationType` di `domain-model.md` (BC-09) yang
+ * sudah punya pengirim nyata di kode — ditambah incremental, bukan
+ * enum tertutup. `ownership_transfer_requested`/`ownership_transfer_resolved`
+ * dipakai `WorkspaceService.transferOwnership`/`acceptOwnershipTransfer`
+ * (ADR-050, T-008.3).
+ */
+export enum NotificationType {
+  OwnershipTransferRequested = "ownership_transfer_requested",
+  OwnershipTransferResolved = "ownership_transfer_resolved",
+}

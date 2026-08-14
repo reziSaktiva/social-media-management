@@ -92,7 +92,7 @@ Screen Workspace Settings → Members. Disepakati **desain minimal dulu**: cukup
 
 | Field         | Value                                                     |
 | ------------- | --------------------------------------------------------- |
-| **Status**    | 🟡 In Progress — T-008.1 (desain) sedang dikerjakan King Rezi langsung di Claude Design |
+| **Status**    | 🟡 In Progress — implementasi selesai & lolos QA, menunggu 1 open item desain (lihat catatan di bawah) sebelum ditutup `✅ Done` |
 | **Domain**    | workspace                                                 |
 | **ADR**       | ADR-049, ADR-050                                          |
 | **Depends**   | T-006 ✅, T-007 (transfer butuh daftar anggota)             |
@@ -100,12 +100,16 @@ Screen Workspace Settings → Members. Disepakati **desain minimal dulu**: cukup
 
 Screen di luar 8 KSP — disepakati **desain minimal**: cukup "Danger Zone" untuk Transfer Ownership + Delete Workspace.
 
-**Status desain (2026-08-13):** T-008.1 sedang dikerjakan **King Rezi sendiri** langsung di Claude Design project "Social Media Management" (bukan lewat subagent Neymar/`DesignSync`) — bukan lagi "belum dimulai". Scope brief yang dipakai: file baru `templates/settings-general.html` (mengisi slot "General" yang sudah ada tapi dead-link `href="#"` di 5 file `settings-*.html` lain), pola Tier 1 "ketik nama workspace untuk konfirmasi" baru (belum ada preseden di `components/dialog.html` sebelum ini — hanya `purpose="form"`/`"required"`/Tier 2 AlertDialog), alur Transfer Ownership dua langkah (ADR-050, state pending), RBAC Danger Zone Owner-only, plus wiring ke `templates/app-prototype/AppPrototype.dc.html` dan `readme.md`. **Sebelum melanjutkan T-008.2–.4 (implementasi kode), agent sesi berikutnya wajib cek dulu via `DesignSync` (`list_files`/`get_file` project `84aded99-bb23-49b1-be9f-dd8f21c6873e`) apakah `templates/settings-general.html` sudah ada** — kalau sudah, lanjut implementasi; kalau belum, desain masih berjalan, jangan mulai kode UI (aturan keras #17).
+**Status implementasi (2026-08-13):** Seluruh subtask kode (T-008.2–.4) selesai dan lolos review Ridwan Architecture Reviewer (2 temuan, keduanya sudah diperbaiki) + QA Najwa (golden path & edge case inti PASS; 3 item minor tidak diverifikasi live karena limitation environment test, bukan bug — lihat detail di bawah).
 
-- [ ] **T-008.1** Sesi desain Claude Design: Workspace Settings → General + Danger Zone — 🟡 sedang dikerjakan King Rezi
-- [ ] **T-008.2** `deleteWorkspace` (RBAC Owner) + dialog konfirmasi Tier tertinggi
-- [ ] **T-008.3** `transferOwnership` + `acceptOwnershipTransfer` (proses dua langkah, ADR-050)
-- [ ] **T-008.4** UI Danger Zone + rename workspace
+- [x] **T-008.1** Sesi desain Claude Design: Workspace Settings → General + Danger Zone — selesai (King Rezi, langsung di Claude Design)
+- [x] **T-008.2** `deleteWorkspace` (RBAC Owner) + dialog konfirmasi Tier tertinggi — RBAC Owner-only, cascade delete via `ON DELETE CASCADE`. Ditemukan gap baseline (sejumlah tabel `workspace_id` masih RESTRICT), diperbaiki lewat 2 migration applied ke DB: `20260813085308_t008_workspace_transfer_ownership_delete` (6 tabel) dan `20260813092018_t008_cascade_connected_account_and_engagement_reply` (4 FK tambahan ditemukan Ridwan, termasuk `engagement_replies.inbox_item_id` yang sebelumnya tanpa jalur cascade dari workspaces sama sekali).
+- [x] **T-008.3** `transferOwnership` + `acceptOwnershipTransfer` (proses dua langkah, ADR-050) — kolom baru `workspaces.pending_owner_transfer_to`. `transferOwnership` (RBAC Owner, target harus Admin aktif) set pending state + notifikasi `ownership_transfer_requested`; `acceptOwnershipTransfer` (RBAC hanya target) swap role Owner↔Admin dalam satu transaksi + notifikasi `ownership_transfer_resolved`. Ditambah `cancelOwnershipTransfer` (RBAC Owner-only, kebutuhan UI tombol "Batalkan Permintaan", tidak eksplisit di baseline awal tapi konsisten pola). Domain `notification` (scaffold kosong sebelumnya) diisi minimal (`NotificationService.notify`), dipanggil workspace service via port lokal — boundary cross-domain terjaga. Fix review Ridwan #2: logic "siapa eligible jadi target transfer" (Admin + Active) diekstrak dari duplikasi RSC/service jadi satu sumber `WorkspaceService.listTransferEligibleMembers`.
+- [x] **T-008.4** UI Danger Zone + rename workspace — `apps/web/src/app/(app)/settings/page.tsx` + `components/WorkspaceGeneralSettings.tsx`. Card General (rename tanpa konfirmasi) + Card Danger Zone (hidden total untuk non-Owner) dengan 2 dialog Tier 1 "ketik nama workspace untuk konfirmasi" (Transfer Ownership, Hapus Workspace), dikomposisi dari Dialog+Field+TextInput Astryx yang sudah ada.
+
+**Open item desain — BELUM dikonfirmasi King Rezi (jangan ditutup sebagai clean-closed sebelum ini selesai):** mockup `templates/settings-general.html` di Claude Design tidak menunjukkan cara memilih Admin target sebelum dialog Transfer Ownership dibuka. Mark UI Engineer menambahkan `Selector` Admin aktif sebagai keputusan implementasi sendiri (bukan sesuai desain final) — perlu konfirmasi/update balik ke Claude Design dari King Rezi sebelum T-008 dianggap 100% selesai. Lihat juga KI-027.
+
+**Catatan QA (Najwa, 2026-08-13):** full suite (typecheck/lint/test: 118 passed + 3 skip pre-existing) hijau. Golden path rename ✅, Danger Zone visible+correct untuk Owner ✅, dialog type-to-confirm (salah→disabled, benar→enabled) ✅, RBAC hidden-by-code untuk non-Owner ✅ (verified via code review, bukan live 2-akun), delete workspace end-to-end nyata berhasil (sekaligus dipakai sebagai test cleanup). 3 item **tidak** diverifikasi live — bukan bug, tapi limitation environment: Selector dengan data Admin sungguhan, RBAC live dengan akun non-Owner, dan alur transfer 2-akun end-to-end, karena fitur invite member (T-007.1) belum selesai sehingga tidak bisa membuat akun Admin kedua di workspace yang sama.
 
 ---
 
