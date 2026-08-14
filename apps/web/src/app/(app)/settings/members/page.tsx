@@ -6,6 +6,7 @@ import { getCachedSession } from "@/lib/better-auth/session";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 
+import { InviteMemberAction } from "./components/InviteMemberAction";
 import { MembersTable } from "./components/MembersTable";
 
 // ADR-076 (T-039.1-3): workspaceId dari getWorkspaceContext() (header
@@ -26,5 +27,11 @@ export default async function Page() {
     asUserId(session.user.id),
   );
 
-  return <MembersTable members={members} currentUserId={session.user.id} />;
+  return (
+    <MembersTable
+      members={members}
+      currentUserId={session.user.id}
+      headerAction={<InviteMemberAction />}
+    />
+  );
 }
