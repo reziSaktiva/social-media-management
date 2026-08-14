@@ -47,6 +47,22 @@ Kronologi singkat (detail lengkap: `DECISIONS.md` ADR-052, addendum "Variant Dia
 
 5. **Kalau terlanjur mengubah sesuatu di luar scope** (sengaja atau tidak sengaja), sebutkan secara eksplisit ke user sebagai bagian dari laporan — jangan diamkan, walau perubahannya terlihat kecil atau "lebih baik". User yang berhak memutuskan apakah perubahan tambahan itu diterima atau di-revert.
 
+6. **Selalu verifikasi remote sebelum push wholesale** — King Rezi mengedit
+   Claude Design langsung di luar sesi Claude, jadi versi remote sering lebih
+   baru dari scratchpad/rencana mana pun yang ditulis sesi sebelumnya. Sebelum
+   `DesignSync` write apa pun: (1) baca file target dari remote dulu, (2) diff
+   terhadap yang akan di-push, (3) kalau remote lebih maju, batalkan rencana
+   "push utuh" dan terapkan perubahan **minimal** di atas isi remote —
+   susun file gabungan lewat script, bukan diketik ulang manual (file ini
+   sering berisi path SVG inline panjang yang typo-nya tidak kelihatan saat
+   review), pertahankan indentasi remote apa adanya supaya diff hanya berisi
+   perubahan yang dimaksud, lalu baca ulang remote setelah menulis untuk
+   verifikasi. Kasus nyata (T-010.3, 2026-08-04): task backlog bilang
+   `components/navigation.html` "tinggal push dari scratchpad", tapi remote
+   ternyata sudah punya 5 baris Channels (TikTok + Pinterest ditambahkan
+   King Rezi sendiri) sementara scratchpad cuma punya 3 — push tanpa
+   verifikasi akan menghapus kerja King Rezi.
+
 ---
 
 ## Contoh
