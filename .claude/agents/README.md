@@ -45,13 +45,16 @@ bukan keputusan delegasi (siapa yang membangun).
 Tool `DesignSync` (akses Claude Design) tercatat gagal dimuat dua kali di
 sesi `neymar-product-designer` (Channels sidebar ADR-058, dan fix
 TikTok/Pinterest + Content Format Selector — keduanya 2026-07-31), padahal
-tool yang sama berhasil di sesi utama pada waktu yang berdekatan. Sampai ada
-bukti sebaliknya (`DesignSync` berhasil dimuat di sesi subagent), jangan
-delegasikan kerja Claude Design ke `neymar-product-designer` sebagai langkah
-pertama — minta izin eksplisit user untuk mengerjakannya langsung di sesi
-utama, verifikasi `DesignSync` termuat, baru lanjut. Kalau di masa depan
-`DesignSync` terbukti berhasil di sesi subagent, update catatan ini alih-alih
-mengasumsikan keterbatasan ini berlaku selamanya.
+tool yang sama berhasil di sesi utama pada waktu yang berdekatan.
+
+**Ini pengecualian sementara terhadap mandat WAJIB di
+`neymar-product-designer.md`, bukan pembatalannya.** Selama keterbatasan ini
+belum terbukti hilang (`DesignSync` berhasil dimuat di sesi subagent): coba
+delegasikan ke `neymar-product-designer` seperti biasa dulu; kalau
+`DesignSync` gagal dimuat di sesi itu, baru minta izin eksplisit user untuk
+mengerjakannya langsung di sesi utama, verifikasi `DesignSync` termuat di
+sana, lalu lanjut. Begitu ada bukti `DesignSync` berhasil di sesi subagent,
+update catatan ini alih-alih mengasumsikan keterbatasan berlaku selamanya.
 
 ---
 

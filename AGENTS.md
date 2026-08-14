@@ -131,9 +131,9 @@ kedua tool — tidak ada instruksi khusus per-tool selain tabel di atas.
 - Arsitektur: **Modular Monolith + DDD** · domain di `apps/web/src/domains/`
 - UI: **Astryx** (ADR-041) · neutral theme selama M8 · **Tailwind layout-only**
 - Deploy: **Railway** (web + cron) · CI: **GitHub Actions**
-- Staging web: `web-staging-60d7.up.railway.app` (Railway environment
-  `staging`, deploy dari branch `staging`) — pakai untuk smoke test manual
-  sebelum PR `staging → main` (lihat CI-D03).
+- Staging web: URL & detail deploy di `PROJECT_STATE.md` (KI-025) /
+  `COMPLETE_TASK.md` — pakai untuk smoke test manual sebelum PR
+  `staging → main` (lihat CI-D03).
 
 Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineering/`.
 
@@ -201,9 +201,10 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
     branch baru dulu (`feature/<nama>` atau `fix/<nama>`, checkout dari state
     saat itu) sebelum commit — jangan pernah commit langsung ke salah satu
     dari dua branch itu. Ini menegakkan alur promosi CI-D03
-    (`product-discovery/06-engineering/cicd-pipeline.md`): `feature/* → PR →
-staging → PR → main`, bukan commit langsung ke keduanya. Berlaku simetris
-    untuk `main` dan `staging` — jangan cuma diterapkan ke `main`.
+    (`product-discovery/06-engineering/cicd-pipeline.md`):
+    `feature/* → PR → staging → PR → main`, bukan commit langsung ke
+    keduanya. Berlaku simetris untuk `main` dan `staging` — jangan cuma
+    diterapkan ke `main`.
 19. Untuk task yang terhambat kredensial Outstand yang belum ada
     (`OUTSTAND_API_KEY`, `OUTSTAND_WEBHOOK_SECRET`) — jangan biarkan mandek.
     Bangun Fake/mock adapter dulu mengikuti pola ADR-059 (auto-switch lewat
