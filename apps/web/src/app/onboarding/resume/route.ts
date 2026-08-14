@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { asUserId } from "@social/shared";
 import { auth } from "@/lib/better-auth/auth";
-import { getServerEnv } from "@/lib/env";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { WorkspaceService } from "@/domains/workspace";
 import {
@@ -17,14 +16,9 @@ import {
  * Home (`/`).
  */
 export async function GET(request: NextRequest) {
-  // `request.url` bisa mencerminkan alamat bind internal container
-  // (mis. Railway) alih-alih domain publik — pakai BETTER_AUTH_URL sebagai
-  // origin redirect yang stabil, sama seperti proxy.ts.
-  const appOrigin = getServerEnv().BETTER_AUTH_URL;
-
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) {
-    return NextResponse.redirect(new URL("/login", appOrigin));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   const workspaceService = new WorkspaceService(workspaceRepository);
@@ -33,7 +27,7 @@ export async function GET(request: NextRequest) {
   );
 
   const response = NextResponse.redirect(
-    new URL(workspace ? "/" : "/onboarding", appOrigin),
+    new URL(workspace ? "/" : "/onboarding", request.url),
   );
   if (workspace) {
     response.cookies.set(

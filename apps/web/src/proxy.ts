@@ -5,7 +5,6 @@ import { asUserId, asWorkspaceId, MemberStatus } from "@social/shared";
 
 import { auth } from "@/lib/better-auth/auth";
 import { WorkspaceService } from "@/domains/workspace";
-import { getServerEnv } from "@/lib/env";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { ACTIVE_WORKSPACE_ID_COOKIE } from "@/lib/workspace/active-workspace-cookie";
 import {
@@ -51,18 +50,6 @@ function isUnderPath(pathname: string, base: string): boolean {
 }
 
 /**
- * `request.url` mencerminkan Host header yang benar-benar diterima proses
- * Next.js — di balik reverse proxy Railway, ini bisa jadi alamat bind
- * internal container (mis. `http://localhost:8080`) alih-alih domain
- * publik saat race di request awal (container baru start). Selalu bangun
- * origin redirect dari `BETTER_AUTH_URL` (base URL publik per environment,
- * sama seperti pola invite link di settings/members/actions.ts).
- */
-function redirectTo(path: string): NextResponse {
-  return NextResponse.redirect(new URL(path, getServerEnv().BETTER_AUTH_URL));
-}
-
-/**
  * `x-workspace-id`/`x-workspace-role` HARUS hanya bisa datang dari blok
  * injection di bawah (setelah membership tervalidasi) — tanpa strip ini,
  * client bisa mengirim header itu sendiri lewat curl/devtools dan lolos
@@ -93,11 +80,11 @@ export async function proxy(request: NextRequest) {
   const hasSessionCookie = Boolean(getSessionCookie(request));
 
   if (!hasSessionCookie && !isPublicAuthPage) {
-    return redirectTo("/login");
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   if (hasSessionCookie && isPublicAuthPage) {
-    return redirectTo("/");
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   if (isPublicAuthPage) {
@@ -120,14 +107,14 @@ export async function proxy(request: NextRequest) {
 
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) {
-    return redirectTo("/login");
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   const workspaceIdFromCookie = request.cookies.get(
     ACTIVE_WORKSPACE_ID_COOKIE,
   )?.value;
   if (!workspaceIdFromCookie) {
-    return redirectTo("/onboarding");
+    return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 
   const workspaceService = new WorkspaceService(workspaceRepository);
@@ -137,7 +124,7 @@ export async function proxy(request: NextRequest) {
   );
 
   if (!membership || membership.status !== MemberStatus.Active) {
-    return redirectTo("/onboarding");
+    return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 
   const requestHeaders = stripWorkspaceHeaders(request);
