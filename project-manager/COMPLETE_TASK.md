@@ -8,6 +8,35 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-14 — Bug fix: redirect `localhost:8080` di proxy/onboarding (root cause dari `request.url` di balik reverse proxy Railway)
+
+### Context
+
+Ditemukan ad-hoc saat King Rezi menguji login manual di staging (browser test, akun QA `raka.test@kopiselasar.com`): sesekali browser sempat di-redirect ke `http://localhost:8080` (gagal load, `ERR_SSL_PROTOCOL_ERROR`/`ERR_BLOCKED_BY_CLIENT`) sebelum session tetap terbentuk normal. Log Railway (`railway logs`) mengonfirmasi `next start` di container memang bind internal ke `localhost:8080` — cocok dengan console error browser "Failed to fetch RSC payload for .../onboarding/resume. Falling back to browser navigation."
+
+### Root cause
+
+`proxy.ts` (Next.js Middleware, 5 titik) dan `app/onboarding/resume/route.ts` (2 titik) membangun redirect pakai `new URL(path, request.url)`. `request.url` mencerminkan Host header yang diterima proses Next.js — di balik reverse proxy Railway, ini bisa jadi alamat bind internal container (`http://localhost:8080`) alih-alih domain publik, khususnya saat race di request awal (container baru start/warm-up). Alur redirect: `proxy.ts` (workspace cookie belum ke-set) → `/onboarding` → `onboarding/page.tsx` → `/onboarding/resume` → route handler ini — semua titik memakai pola yang sama, jadi kalau origin salah di satu titik, tetap salah di seluruh chain.
+
+### Yang diubah
+
+- **`apps/web/src/proxy.ts`**: tambah helper `redirectTo(path)` yang membangun origin dari `getServerEnv().BETTER_AUTH_URL` (bukan `request.url`). 5 pemanggil `NextResponse.redirect(new URL(..., request.url))` diganti pakai helper ini.
+- **`apps/web/src/app/onboarding/resume/route.ts`**: origin redirect diambil sekali di awal handler (`getServerEnv().BETTER_AUTH_URL`), dipakai di 2 titik redirect (`/login`, `/` atau `/onboarding`).
+- Pola ini konsisten dengan base URL publik yang sudah dipakai untuk invite link (`settings/members/actions.ts:106`).
+
+### Verifikasi
+
+- `tsc --noEmit` bersih (apps/web).
+- `eslint .` tidak ada error baru pada file yang diubah (warning "Pages directory cannot be found" pre-existing, tidak terkait).
+- Login manual lokal (`bun run dev`, akun QA Raka Pratama): logout → login → dashboard, tidak ada redirect salah, tidak ada regresi, console bersih.
+- Tidak sempat direproduksi ulang di staging secara deterministik (bug bersifat race/kondisional) — perbaikan berdasarkan root cause yang terkonfirmasi dari log Railway + kode, bukan dari reproduksi berulang.
+
+### Known Issues terdampak
+
+- Tidak ada KI baru dibuka. Bukan task bernomor (perbaikan ad-hoc, ditemukan di luar backlog formal). Tidak ada ADR baru — ini bug fix, bukan perubahan baseline arsitektur.
+
+---
+
 ## 2026-08-14 — ADR-081: Open question local dev ditutup — local resmi menumpang ke project staging
 
 ### Context
