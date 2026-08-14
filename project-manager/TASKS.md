@@ -102,7 +102,7 @@ Task yang **menghasilkan ADR**, bukan sekadar mengikuti ADR. Semuanya menunggu k
 
 | Task      | Keputusan yang belum diambil                              | Menghambat                     |
 | --------- | --------------------------------------------------------- | ------------------------------ |
-| **T-005** | Transactional email provider (AS-D04)                     | Email verification, invite member (T-007) |
+| **T-005** | Transactional email provider (AS-D04)                     | Email verification; invite member T-007.7 (jalur "Kirim via Email") — T-007.1 "Copy Link" (ADR-080) tidak terhambat |
 | **T-060** | Provider + model AI                                       | Seluruh v0.5                   |
 | **T-070** | Strategi route publik tanpa auth (+ custom domain?)       | Seluruh v0.6                   |
 | **T-032** | Semantik queue slot — slot waktu berulang vs urutan antrean | Queue management               |

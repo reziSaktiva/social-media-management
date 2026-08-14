@@ -628,6 +628,163 @@ describe("WorkspaceService.updateMemberRole", () => {
   });
 });
 
+describe("WorkspaceService.inviteMember", () => {
+  const OWNER_USER = asUserId("owner-user");
+  const ADMIN_USER = asUserId("admin-user");
+  const CREATOR_USER = asUserId("creator-user");
+
+  const OWNER_MEMBER_ID = asMemberId("member-owner");
+  const ADMIN_MEMBER_ID = asMemberId("member-admin");
+  const CREATOR_MEMBER_ID = asMemberId("member-creator");
+
+  function baseSeed(): WorkspaceMemberRecord[] {
+    return [
+      member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
+      member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
+      member(CREATOR_USER, CREATOR_MEMBER_ID, MemberRole.Creator),
+    ];
+  }
+
+  it("allows Owner to invite a new member and generates a token + 7-day expiry", async () => {
+    const before = Date.now();
+    const baseRepository = createFakeRepository(seedMembers(baseSeed()));
+    const captured: {
+      input?: Parameters<IWorkspaceRepository["createInvitation"]>[0];
+    } = {};
+    const service = new WorkspaceService({
+      ...baseRepository,
+      createInvitation: async (input) => {
+        captured.input = input;
+        return baseRepository.createInvitation(input);
+      },
+    });
+
+    const invitation = await service.inviteMember(WORKSPACE_ID, OWNER_USER, {
+      email: "Newbie@Example.com",
+      role: MemberRole.Creator,
+    });
+
+    expect(invitation.email).toBe("newbie@example.com");
+    expect(invitation.role).toBe(MemberRole.Creator);
+    expect(invitation.status).toBe(InvitationStatus.Pending);
+    expect(invitation.token).toMatch(/^[0-9a-f]{64}$/);
+    expect(invitation.workspaceId).toBe(WORKSPACE_ID);
+    // WorkspaceInvitationRecord (return value) tidak menyimpan
+    // invitedByUserId — verifikasi lewat input yang diteruskan ke
+    // repository (temuan CodeRabbit PR #73: pastikan actorUserId benar-benar
+    // di-forward, bukan cuma workspaceId/token).
+    expect(captured.input?.invitedByUserId).toBe(OWNER_USER);
+    expect(captured.input?.workspaceId).toBe(WORKSPACE_ID);
+
+    const expectedMinExpiry = before + 7 * 24 * 60 * 60 * 1000;
+    const expectedMaxExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    expect(invitation.expiresAt.getTime()).toBeGreaterThanOrEqual(
+      expectedMinExpiry,
+    );
+    expect(invitation.expiresAt.getTime()).toBeLessThanOrEqual(
+      expectedMaxExpiry,
+    );
+  });
+
+  it("allows Admin to invite a new member", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.inviteMember(WORKSPACE_ID, ADMIN_USER, {
+        email: "another@example.com",
+        role: MemberRole.Admin,
+      }),
+    ).resolves.toMatchObject({ email: "another@example.com" });
+  });
+
+  it("rejects Creator as actor", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.inviteMember(WORKSPACE_ID, CREATOR_USER, {
+        email: "another@example.com",
+        role: MemberRole.Creator,
+      }),
+    ).rejects.toThrow(AuthorizationError);
+  });
+
+  it("throws AuthorizationError when the actor is not a member", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.inviteMember(WORKSPACE_ID, asUserId("stranger-user"), {
+        email: "another@example.com",
+        role: MemberRole.Creator,
+      }),
+    ).rejects.toThrow(AuthorizationError);
+  });
+
+  it("rejects inviting a new member as Owner", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.inviteMember(WORKSPACE_ID, OWNER_USER, {
+        email: "another@example.com",
+        role: MemberRole.Owner,
+      }),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("rejects an empty email", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.inviteMember(WORKSPACE_ID, OWNER_USER, {
+        email: "   ",
+        role: MemberRole.Creator,
+      }),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("rejects a malformed email", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.inviteMember(WORKSPACE_ID, OWNER_USER, {
+        email: "not-an-email",
+        role: MemberRole.Creator,
+      }),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("propagates ConflictError when an invitation for the email already exists", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        createInvitation: async () => {
+          throw new ConflictError(
+            'Undangan untuk "dup@example.com" di workspace ini sudah ada.',
+          );
+        },
+      }),
+    );
+
+    await expect(
+      service.inviteMember(WORKSPACE_ID, OWNER_USER, {
+        email: "dup@example.com",
+        role: MemberRole.Creator,
+      }),
+    ).rejects.toThrow(ConflictError);
+  });
+});
+
 describe("WorkspaceService.saveChannelOrder", () => {
   it("drops ids that are not owned by the workspace before persisting", async () => {
     const ownedAccount: ConnectedAccountRecord = {

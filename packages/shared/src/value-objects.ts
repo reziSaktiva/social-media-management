@@ -13,6 +13,13 @@ export interface PaginationParams {
 export type Email = string & { readonly _brand: "Email" };
 export type Url = string & { readonly _brand: "Url" };
 
+/**
+ * Format email sederhana — cukup untuk validasi domain, bukan RFC penuh.
+ * Sumber tunggal dipakai backend (validasi otoritatif) dan UI (gating
+ * tombol submit) supaya tidak drift (temuan CodeRabbit PR #73).
+ */
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function asEmail(value: string): Email {
   return value as Email;
 }
