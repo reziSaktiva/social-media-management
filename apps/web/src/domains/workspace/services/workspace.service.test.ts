@@ -49,6 +49,15 @@ function createFakeRepository(
     findUsersByIds: async () => [],
     saveChannelOrder: async () => undefined,
     getChannelOrder: async () => [],
+    deleteWorkspace: async () => undefined,
+    setPendingOwnerTransfer: async () => undefined,
+    clearPendingOwnerTransfer: async () => undefined,
+    acceptOwnershipTransfer: async () => undefined,
+    renameWorkspace: async (workspaceId, name) => ({
+      id: workspaceId,
+      name,
+      slug: "workspace-1",
+    }),
     getMember: async (_workspaceId, userId) => {
       for (const member of members.values()) {
         if (member.userId === userId) {
@@ -652,6 +661,319 @@ describe("WorkspaceService.saveChannelOrder", () => {
       userId: USER_ID,
       orderedConnectedAccountIds: [ownedAccount.id],
     });
+  });
+});
+
+describe("WorkspaceService.listTransferEligibleMembers", () => {
+  it("returns only Active Admins, excluding Owner/Creator/pending Admin", async () => {
+    const ownerId = asUserId("owner-user");
+    const activeAdminId = asUserId("active-admin");
+    const pendingAdminId = asUserId("pending-admin");
+    const creatorId = asUserId("creator-user");
+
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listMembers: async () => [
+          member(ownerId, asMemberId("m-owner"), MemberRole.Owner),
+          member(activeAdminId, asMemberId("m-admin-active"), MemberRole.Admin),
+          member(
+            pendingAdminId,
+            asMemberId("m-admin-pending"),
+            MemberRole.Admin,
+            MemberStatus.Pending,
+          ),
+          member(creatorId, asMemberId("m-creator"), MemberRole.Creator),
+        ],
+        findUsersByIds: async () => [
+          { id: ownerId, name: "Raka", email: "raka@example.com" },
+          { id: activeAdminId, name: "Maya", email: "maya@example.com" },
+          { id: pendingAdminId, name: "Sinta", email: "sinta@example.com" },
+          { id: creatorId, name: "Dimas", email: "dimas@example.com" },
+        ],
+      }),
+    );
+
+    const result = await service.listTransferEligibleMembers(
+      WORKSPACE_ID,
+      ownerId,
+    );
+
+    expect(result).toEqual([
+      {
+        id: asMemberId("m-admin-active"),
+        userId: activeAdminId,
+        name: "Maya",
+        email: "maya@example.com",
+        role: MemberRole.Admin,
+        status: MemberStatus.Active,
+      },
+    ]);
+  });
+});
+
+describe("WorkspaceService.deleteWorkspace", () => {
+  const OWNER_USER = asUserId("owner-user");
+  const ADMIN_USER = asUserId("admin-user");
+  const OWNER_MEMBER_ID = asMemberId("member-owner");
+  const ADMIN_MEMBER_ID = asMemberId("member-admin");
+
+  function baseSeed(): WorkspaceMemberRecord[] {
+    return [
+      member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
+      member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
+    ];
+  }
+
+  it("allows Owner to delete the workspace", async () => {
+    let deleted = 0;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        deleteWorkspace: async () => {
+          deleted += 1;
+        },
+      }),
+    );
+
+    await expect(
+      service.deleteWorkspace(WORKSPACE_ID, OWNER_USER),
+    ).resolves.toBeUndefined();
+    expect(deleted).toBe(1);
+  });
+
+  it("rejects Admin trying to delete the workspace", async () => {
+    let deleted = 0;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        deleteWorkspace: async () => {
+          deleted += 1;
+        },
+      }),
+    );
+
+    await expect(
+      service.deleteWorkspace(WORKSPACE_ID, ADMIN_USER),
+    ).rejects.toThrow(AuthorizationError);
+    expect(deleted).toBe(0);
+  });
+
+  it("rejects a non-member", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.deleteWorkspace(WORKSPACE_ID, asUserId("stranger-user")),
+    ).rejects.toThrow(AuthorizationError);
+  });
+});
+
+describe("WorkspaceService.transferOwnership", () => {
+  const OWNER_USER = asUserId("owner-user");
+  const ADMIN_USER = asUserId("admin-user");
+  const CREATOR_USER = asUserId("creator-user");
+  const OWNER_MEMBER_ID = asMemberId("member-owner");
+  const ADMIN_MEMBER_ID = asMemberId("member-admin");
+  const CREATOR_MEMBER_ID = asMemberId("member-creator");
+
+  function baseSeed(): WorkspaceMemberRecord[] {
+    return [
+      member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
+      member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
+      member(CREATOR_USER, CREATOR_MEMBER_ID, MemberRole.Creator),
+    ];
+  }
+
+  it("sets pendingOwnerTransferTo and notifies the target Admin", async () => {
+    let pendingCall: { targetUserId: string; actingUserId: string } | null =
+      null;
+    let notified: unknown = null;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        setPendingOwnerTransfer: async (
+          _workspaceId,
+          targetUserId,
+          actingUserId,
+        ) => {
+          pendingCall = { targetUserId, actingUserId };
+        },
+      }),
+      undefined,
+      {
+        notify: async (input) => {
+          notified = input;
+        },
+      },
+    );
+
+    await service.transferOwnership(WORKSPACE_ID, OWNER_USER, ADMIN_MEMBER_ID);
+
+    expect(pendingCall).toEqual({
+      targetUserId: ADMIN_USER,
+      actingUserId: OWNER_USER,
+    });
+    expect(notified).toMatchObject({
+      workspaceId: WORKSPACE_ID,
+      userId: ADMIN_USER,
+      type: "ownership_transfer_requested",
+    });
+  });
+
+  it("rejects a non-Owner actor", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.transferOwnership(WORKSPACE_ID, ADMIN_USER, CREATOR_MEMBER_ID),
+    ).rejects.toThrow(AuthorizationError);
+  });
+
+  it("rejects a target that is not an Admin", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.transferOwnership(WORKSPACE_ID, OWNER_USER, CREATOR_MEMBER_ID),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("rejects a non-existent target", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.transferOwnership(
+        WORKSPACE_ID,
+        OWNER_USER,
+        asMemberId("missing"),
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("WorkspaceService.cancelOwnershipTransfer", () => {
+  const OWNER_USER = asUserId("owner-user");
+  const ADMIN_USER = asUserId("admin-user");
+  const OWNER_MEMBER_ID = asMemberId("member-owner");
+  const ADMIN_MEMBER_ID = asMemberId("member-admin");
+
+  function baseSeed(): WorkspaceMemberRecord[] {
+    return [
+      member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
+      member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
+    ];
+  }
+
+  it("allows Owner to cancel a pending transfer", async () => {
+    let cleared = 0;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        clearPendingOwnerTransfer: async () => {
+          cleared += 1;
+        },
+      }),
+    );
+
+    await service.cancelOwnershipTransfer(WORKSPACE_ID, OWNER_USER);
+    expect(cleared).toBe(1);
+  });
+
+  it("rejects a non-Owner actor", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.cancelOwnershipTransfer(WORKSPACE_ID, ADMIN_USER),
+    ).rejects.toThrow(AuthorizationError);
+  });
+});
+
+describe("WorkspaceService.acceptOwnershipTransfer", () => {
+  const OWNER_USER = asUserId("owner-user");
+  const ADMIN_USER = asUserId("admin-user");
+  const OWNER_MEMBER_ID = asMemberId("member-owner");
+  const ADMIN_MEMBER_ID = asMemberId("member-admin");
+
+  function baseSeed(): WorkspaceMemberRecord[] {
+    return [
+      member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
+      member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
+    ];
+  }
+
+  it("swaps roles and notifies the old Owner when the target accepts", async () => {
+    let swapInput: unknown = null;
+    let notified: unknown = null;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        findById: async () => ({
+          id: WORKSPACE_ID,
+          name: "Acme",
+          slug: "acme",
+          pendingOwnerTransferTo: ADMIN_USER,
+        }),
+        listMembers: async () => baseSeed(),
+        acceptOwnershipTransfer: async (input) => {
+          swapInput = input;
+        },
+      }),
+      undefined,
+      {
+        notify: async (input) => {
+          notified = input;
+        },
+      },
+    );
+
+    await service.acceptOwnershipTransfer(WORKSPACE_ID, ADMIN_USER);
+
+    expect(swapInput).toEqual({
+      workspaceId: WORKSPACE_ID,
+      currentOwnerMemberId: OWNER_MEMBER_ID,
+      targetMemberId: ADMIN_MEMBER_ID,
+      newOwnerUserId: ADMIN_USER,
+    });
+    expect(notified).toMatchObject({
+      workspaceId: WORKSPACE_ID,
+      userId: OWNER_USER,
+      type: "ownership_transfer_resolved",
+    });
+  });
+
+  it("rejects a user with no pending transfer directed at them", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        findById: async () => ({
+          id: WORKSPACE_ID,
+          name: "Acme",
+          slug: "acme",
+          pendingOwnerTransferTo: null,
+        }),
+      }),
+    );
+
+    await expect(
+      service.acceptOwnershipTransfer(WORKSPACE_ID, ADMIN_USER),
+    ).rejects.toThrow(AuthorizationError);
+  });
+
+  it("rejects when the workspace does not exist", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({ findById: async () => null }),
+    );
+
+    await expect(
+      service.acceptOwnershipTransfer(WORKSPACE_ID, ADMIN_USER),
+    ).rejects.toThrow(NotFoundError);
   });
 });
 

@@ -59,3 +59,7 @@ export function asPostMetricsId(value: string): PostMetricsId {
 export function asWorkspaceSnapshotId(value: string): WorkspaceSnapshotId {
   return value as WorkspaceSnapshotId;
 }
+
+export function asNotificationId(value: string): NotificationId {
+  return value as NotificationId;
+}

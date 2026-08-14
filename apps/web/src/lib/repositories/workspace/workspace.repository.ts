@@ -145,7 +145,12 @@ export const workspaceRepository: IWorkspaceRepository = {
   async findById(workspaceId) {
     const workspace = await prisma.workspace.findUnique({
       where: { id: workspaceId },
-      select: { id: true, name: true, slug: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        pendingOwnerTransferTo: true,
+      },
     });
 
     if (!workspace) {
@@ -156,6 +161,9 @@ export const workspaceRepository: IWorkspaceRepository = {
       id: asWorkspaceId(workspace.id),
       name: workspace.name,
       slug: workspace.slug,
+      pendingOwnerTransferTo: workspace.pendingOwnerTransferTo
+        ? asUserId(workspace.pendingOwnerTransferTo)
+        : null,
     };
   },
 
@@ -348,5 +356,121 @@ export const workspaceRepository: IWorkspaceRepository = {
     );
 
     return rows.map((row) => asConnectedAccountId(row.connectedAccountId));
+  },
+
+  /**
+   * `prisma.workspace.delete` — `workspaces` bukan tabel RLS-protected
+   * (lihat catatan "Tables intentionally WITHOUT workspace-isolation RLS"
+   * di migration `20260813045625_t017_add_rls_policies`), tapi tetap
+   * dibungkus `withCurrentUser` supaya `app.current_user_id` ikut ter-set
+   * untuk cascade delete ke tabel anak yang RLS-protected (mis.
+   * `workspace_members`, `notifications`) dalam transaksi yang sama.
+   */
+  async deleteWorkspace(workspaceId, actingUserId) {
+    try {
+      await withCurrentUser(actingUserId, (tx) =>
+        tx.workspace.delete({ where: { id: workspaceId } }),
+      );
+    } catch (error) {
+      if (isRecordNotFound(error)) {
+        throw new NotFoundError("Workspace tidak ditemukan.");
+      }
+      throw error;
+    }
+  },
+
+  async setPendingOwnerTransfer(workspaceId, targetUserId, actingUserId) {
+    try {
+      await withCurrentUser(actingUserId, (tx) =>
+        tx.workspace.update({
+          where: { id: workspaceId },
+          data: { pendingOwnerTransferTo: targetUserId },
+        }),
+      );
+    } catch (error) {
+      if (isRecordNotFound(error)) {
+        throw new NotFoundError("Workspace tidak ditemukan.");
+      }
+      throw error;
+    }
+  },
+
+  async clearPendingOwnerTransfer(workspaceId, actingUserId) {
+    try {
+      await withCurrentUser(actingUserId, (tx) =>
+        tx.workspace.update({
+          where: { id: workspaceId },
+          data: { pendingOwnerTransferTo: null },
+        }),
+      );
+    } catch (error) {
+      if (isRecordNotFound(error)) {
+        throw new NotFoundError("Workspace tidak ditemukan.");
+      }
+      throw error;
+    }
+  },
+
+  async acceptOwnershipTransfer({
+    workspaceId,
+    currentOwnerMemberId,
+    targetMemberId,
+    newOwnerUserId,
+  }) {
+    try {
+      await withCurrentUser(newOwnerUserId, async (tx) => {
+        await tx.workspaceMember.update({
+          where: { id: currentOwnerMemberId, workspaceId },
+          data: { role: MemberRole.Admin },
+        });
+        await tx.workspaceMember.update({
+          where: { id: targetMemberId, workspaceId },
+          data: { role: MemberRole.Owner },
+        });
+        await tx.workspace.update({
+          where: { id: workspaceId },
+          data: {
+            ownerId: newOwnerUserId,
+            pendingOwnerTransferTo: null,
+          },
+        });
+      });
+    } catch (error) {
+      if (isRecordNotFound(error)) {
+        throw new NotFoundError("Workspace atau anggota tidak ditemukan.");
+      }
+      throw error;
+    }
+  },
+
+  async renameWorkspace(workspaceId, name, actingUserId) {
+    try {
+      const workspace = await withCurrentUser(actingUserId, (tx) =>
+        tx.workspace.update({
+          where: { id: workspaceId },
+          data: { name },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            pendingOwnerTransferTo: true,
+          },
+        }),
+      );
+
+      return {
+        id: asWorkspaceId(workspace.id),
+        name: workspace.name,
+        slug: workspace.slug,
+        pendingOwnerTransferTo: workspace.pendingOwnerTransferTo
+          ? asUserId(workspace.pendingOwnerTransferTo)
+          : null,
+      };
+    } catch (error) {
+      if (isRecordNotFound(error)) {
+        throw new NotFoundError("Workspace tidak ditemukan.");
+      }
+      throw error;
+    }
   },
 };

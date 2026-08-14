@@ -14,6 +14,14 @@ export interface WorkspaceRecord {
   id: WorkspaceId;
   name: string;
   slug: string;
+  /**
+   * Transfer Ownership dua langkah (ADR-050, DM-D11). `null` saat tidak ada
+   * transfer pending. `undefined` di record yang belum pernah mem-fetch
+   * kolom ini (mis. `findDefaultWorkspaceForUser`, yang tidak butuh field
+   * ini) — dibedakan dari `null` supaya caller tidak salah asumsi "tidak
+   * ada transfer pending" padahal sebenarnya belum pernah dicek.
+   */
+  pendingOwnerTransferTo?: UserId | null;
 }
 
 export interface ConnectedAccountRecord {
@@ -56,7 +64,12 @@ export interface IWorkspaceRepository {
   /** Membership aktif terlama milik user, dengan WorkspaceRecord lengkap. */
   findDefaultWorkspaceForUser(userId: UserId): Promise<WorkspaceRecord | null>;
 
-  /** Dipakai `getWorkspaceContext()` (ADR-076) — resolve workspace by cookie id. */
+  /**
+   * Dipakai `getWorkspaceContext()` (ADR-076) — resolve workspace by cookie
+   * id. Menyertakan `pendingOwnerTransferTo` (T-008.3, ADR-050) supaya
+   * caller (mis. `WorkspaceService.acceptOwnershipTransfer`) tidak perlu
+   * query terpisah.
+   */
   findById(workspaceId: WorkspaceId): Promise<WorkspaceRecord | null>;
 
   /**
@@ -175,4 +188,67 @@ export interface IWorkspaceRepository {
     workspaceId: WorkspaceId,
     userId: UserId,
   ): Promise<ConnectedAccountId[]>;
+
+  /**
+   * Hapus workspace beserta seluruh data terkait — mengandalkan
+   * `ON DELETE CASCADE` per `workspace_id` (T-008.2, ADR-050,
+   * `database-strategy.md`). `actingUserId` (RLS, KI-026 follow-up) — user
+   * yang memicu mutasi ini; RBAC (Owner-only) sudah diverifikasi di
+   * `WorkspaceService.deleteWorkspace` sebelum method ini dipanggil.
+   */
+  deleteWorkspace(
+    workspaceId: WorkspaceId,
+    actingUserId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Set `Workspace.pendingOwnerTransferTo` (T-008.3, ADR-050) — langkah
+   * pertama Transfer Ownership. `actingUserId` (RLS) adalah Owner yang
+   * memicu, `targetUserId` adalah Admin yang dituju.
+   */
+  setPendingOwnerTransfer(
+    workspaceId: WorkspaceId,
+    targetUserId: UserId,
+    actingUserId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Kosongkan `Workspace.pendingOwnerTransferTo` tanpa menukar role —
+   * dipakai `WorkspaceService.cancelOwnershipTransfer` (method tambahan,
+   * dibutuhkan UI banner pending — tidak disebut eksplisit di
+   * `application-layer.md`/ADR-050, tapi konsisten dengan pola method
+   * lain: Owner-only, no-op sederhana).
+   */
+  clearPendingOwnerTransfer(
+    workspaceId: WorkspaceId,
+    actingUserId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Terima Transfer Ownership (T-008.3, ADR-050) — dalam SATU transaksi:
+   * role Owner lama diturunkan jadi Admin, role target dinaikkan jadi
+   * Owner, `Workspace.ownerId` diupdate ke `newOwnerUserId` (field ini
+   * merepresentasikan Owner aktual — domain-model.md BC-02), dan
+   * `pendingOwnerTransferTo` dikosongkan. `actingUserId` (RLS) adalah
+   * `newOwnerUserId` — user yang menerima transfer dan memicu mutasi ini.
+   */
+  acceptOwnershipTransfer(input: {
+    workspaceId: WorkspaceId;
+    currentOwnerMemberId: MemberId;
+    targetMemberId: MemberId;
+    newOwnerUserId: UserId;
+  }): Promise<void>;
+
+  /**
+   * Ubah `Workspace.name` (T-008.4) — reversible, low-stakes, tanpa
+   * konfirmasi (beda dengan Danger Zone). `actingUserId` (RLS, KI-026
+   * follow-up) — user yang memicu mutasi ini; RBAC (member aktif) sudah
+   * diverifikasi di `WorkspaceService.renameWorkspace` sebelum method ini
+   * dipanggil. Slug TIDAK ikut berubah — hanya nama tampilan.
+   */
+  renameWorkspace(
+    workspaceId: WorkspaceId,
+    name: string,
+    actingUserId: UserId,
+  ): Promise<WorkspaceRecord>;
 }

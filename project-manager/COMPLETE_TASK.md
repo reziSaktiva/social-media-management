@@ -8,6 +8,43 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-13 — T-008 (Workspace Settings — General + Danger Zone): implementasi selesai, 1 open item desain belum ditutup
+
+### Context
+
+T-008.2–.4 dikerjakan dalam satu sesi oleh dua subagent berurutan: Prabowo Feature Engineer (backend) lalu Mark UI Engineer (UI), direview Ridwan Architecture Reviewer, dan diverifikasi Najwa QA Engineer.
+
+### T-008.2 — `deleteWorkspace`
+
+RBAC Owner-only, cascade delete via `ON DELETE CASCADE`. Ditemukan gap: baseline menyatakan seluruh tabel `workspace_id` sudah cascade, tapi realita `schema.prisma` awal masih RESTRICT di beberapa tabel. Diperbaiki lewat 2 migration applied ke DB nyata:
+
+- `20260813085308_t008_workspace_transfer_ownership_delete` — 6 tabel: `publishing_posts`, `ai_requests`, `engagement_inbox_items`, `analytics_workspace_snapshots`, `media_items`, `notifications`.
+- `20260813092018_t008_cascade_connected_account_and_engagement_reply` — 4 FK tambahan ditemukan Ridwan: `publishing_post_targets.connected_account_id`, `publishing_queue_slots.connected_account_id`, `engagement_inbox_items.connected_account_id`, `engagement_replies.inbox_item_id` (yang terakhir sebelumnya sama sekali tidak punya jalur cascade dari `workspaces`).
+
+### T-008.3 — `transferOwnership` + `acceptOwnershipTransfer` + `cancelOwnershipTransfer`
+
+Kolom baru `workspaces.pending_owner_transfer_to`. `transferOwnership` (RBAC Owner, target harus Admin aktif) set pending state + kirim notifikasi `ownership_transfer_requested`, tidak langsung swap role. `acceptOwnershipTransfer` (RBAC hanya target) swap role Owner↔Admin dalam satu transaksi + notifikasi `ownership_transfer_resolved`. Ditambah `cancelOwnershipTransfer` (tidak eksplisit di baseline awal, ditambahkan karena UI butuh tombol "Batalkan Permintaan" di pending banner — konsisten pola RBAC Owner-only). Domain `notification` (sebelumnya scaffold kosong) diisi minimal (`NotificationService.notify`), dipanggil workspace service via port lokal, bukan import langsung — cross-domain boundary terjaga.
+
+Fix review Ridwan putaran ke-2: logic "siapa yang eligible jadi target Transfer Ownership" (Admin + status Active) sebelumnya terduplikasi di RSC `page.tsx` dan service — diekstrak jadi `WorkspaceService.listTransferEligibleMembers` (satu sumber kebenaran, dipakai baik untuk render UI maupun validasi transfer).
+
+### T-008.4 — UI
+
+`apps/web/src/app/(app)/settings/page.tsx` + `components/WorkspaceGeneralSettings.tsx`. Card General (rename, tanpa konfirmasi) + Card Danger Zone (hidden total untuk non-Owner, bukan cuma disabled) dengan 2 dialog Tier 1 "ketik nama workspace untuk konfirmasi" (Transfer Ownership, Hapus Workspace) — pola baru, dikomposisi dari Dialog+Field+TextInput Astryx yang sudah ada, tanpa komponen baru.
+
+### Gap desain terbuka — BELUM dikonfirmasi King Rezi
+
+Mockup `templates/settings-general.html` di Claude Design tidak menunjukkan cara memilih Admin target sebelum dialog Transfer Ownership dibuka. Mark UI Engineer menambahkan `Selector` Admin aktif sebagai keputusan implementasi sendiri (bukan sesuai desain final) — dicatat sebagai open item (KI-027), bukan langsung ditutup sebagai selesai 100%, karena butuh konfirmasi/update balik ke Claude Design.
+
+### QA Najwa
+
+Full suite (typecheck/lint/test: 118 passed + 3 skip pre-existing) hijau. Golden path rename ✅, Danger Zone visible+correct untuk Owner ✅, dialog type-to-confirm (salah→disabled, benar→enabled) ✅, RBAC hidden-by-code untuk non-Owner ✅ (verified via code review, bukan live 2-akun), delete workspace end-to-end nyata berhasil (dipakai sekaligus sebagai test cleanup). 3 item TIDAK diverifikasi live (Selector dengan data Admin sungguhan, RBAC live dengan akun non-Owner, alur transfer 2-akun end-to-end) karena fitur invite member (T-007.1) belum selesai sehingga tidak bisa membuat akun Admin kedua di workspace yang sama — dicatat sebagai limitation environment, bukan bug.
+
+### Dampak dokumentasi
+
+`tasks/v01-foundation.md` § T-008: T-008.1–.4 dicentang selesai, status task tetap `🟡 In Progress` (bukan `✅ Done`) karena open item desain Selector belum dikonfirmasi. `PROJECT_STATE.md`: Completed (Ringkasan) ditambah entry T-008 (item terlama T-040 dihapus dari daftar untuk menjaga batas 5), Known Issues ditambah KI-027. Tidak ada perubahan di `TASKS.md` Fokus sekarang (T-008 memang bukan bagian dari fokus itu) maupun hitungan Total subtask (masih 138, T-008 tidak menambah/mengurangi jumlah subtask terdefinisi). Tidak ada ADR baru — ini implementasi dari task yang sudah ada (T-008, ADR-049/ADR-050), deviasi kecil Selector adalah gap implementasi menunggu konfirmasi desain, bukan perubahan keputusan arsitektur.
+
+---
+
 ## 2026-08-13 — KI-026 resolved: RLS BYPASSRLS diperbaiki + 2 bug desain policy `workspace_members` ditemukan & diperbaiki
 
 ### Context

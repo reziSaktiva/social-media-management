@@ -1,4 +1,4 @@
-import { MemberRole, MemberStatus } from "@social/shared";
+import { MemberRole, MemberStatus, NotificationType } from "@social/shared";
 import type {
   ConnectedAccountId,
   MemberId,
@@ -46,10 +46,33 @@ interface ScheduledCountsPort {
   ): Promise<Map<ConnectedAccountId, number>>;
 }
 
+/**
+ * Port lokal untuk cross-domain `workspace` → `notification` (T-008.3,
+ * ADR-050, AGENTS.md #7) — pola sama seperti `ScheduledCountsPort` di atas.
+ * `NotificationService` konkret TIDAK boleh diimport ke file ini; composition
+ * root (Server Action) menyuplai instance lewat constructor. Opsional (bisa
+ * `undefined`, mis. di test) supaya caller lama tanpa notifikasi tidak perlu
+ * berubah — tapi wajib disuplai di composition root produksi untuk
+ * `transferOwnership`/`acceptOwnershipTransfer` supaya notifikasi
+ * benar-benar terkirim (ADR-050).
+ */
+interface NotificationPort {
+  notify(input: {
+    workspaceId: WorkspaceId;
+    userId: UserId;
+    type: NotificationType;
+    title: string;
+    body: string;
+    relatedEntityType?: string;
+    relatedEntityId?: string;
+  }): Promise<unknown>;
+}
+
 export class WorkspaceService {
   constructor(
     private readonly repository: IWorkspaceRepository,
     private readonly scheduledCounts?: ScheduledCountsPort,
+    private readonly notifications?: NotificationPort,
   ) {}
 
   async createWorkspace(input: {
@@ -353,6 +376,242 @@ export class WorkspaceService {
       workspaceId,
       targetMemberId,
       newRole,
+      actorUserId,
+    );
+  }
+
+  /**
+   * Actor harus member aktif workspace ini, atau lempar `AuthorizationError`.
+   * Dipakai `assertActorIsOwner`, `acceptOwnershipTransfer`, dan
+   * `renameWorkspace` — satu tempat untuk aturan "aktif" ini, bukan
+   * terduplikasi di tiap method.
+   */
+  private async assertActiveMembership(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<WorkspaceMemberRecord> {
+    const actor = await this.getMembership(workspaceId, actorUserId);
+    if (!actor || actor.status !== MemberStatus.Active) {
+      throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
+    }
+    return actor;
+  }
+
+  /** Owner-only, dipakai deleteWorkspace & transferOwnership. */
+  private async assertActorIsOwner(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    actionErrorMessage: string,
+  ): Promise<void> {
+    const actor = await this.assertActiveMembership(workspaceId, actorUserId);
+    if (actor.role !== MemberRole.Owner) {
+      throw new AuthorizationError(actionErrorMessage);
+    }
+  }
+
+  /**
+   * Hapus workspace beserta seluruh data terkait (T-008.2, ADR-050). RBAC:
+   * Owner saja. Tidak ada state "pending" — satu langkah setelah konfirmasi
+   * Tier 1 di sisi UI (beda dengan Transfer Ownership). Cascade mengikuti
+   * `ON DELETE CASCADE` per `workspace_id` (`database-strategy.md`) —
+   * service ini TIDAK menghapus baris per tabel secara manual.
+   */
+  async deleteWorkspace(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<void> {
+    await this.assertActorIsOwner(
+      workspaceId,
+      actorUserId,
+      "Hanya Owner yang bisa menghapus workspace.",
+    );
+
+    await this.repository.deleteWorkspace(workspaceId, actorUserId);
+  }
+
+  /**
+   * Single source of truth untuk "siapa yang eligible jadi target Transfer
+   * Ownership" (ADR-050: Admin aktif) — dipakai `transferOwnership` untuk
+   * validasi DAN `listTransferEligibleMembers` untuk render pilihan di RSC.
+   * Sebelumnya aturan ini sempat terduplikasi inline di
+   * `(app)/settings/page.tsx`; diekstrak ke sini supaya hanya ada satu
+   * tempat yang mendefinisikan kriterianya (code review Ridwan).
+   */
+  private isTransferEligible(member: {
+    role: MemberRole;
+    status: MemberStatus;
+  }): boolean {
+    return (
+      member.role === MemberRole.Admin && member.status === MemberStatus.Active
+    );
+  }
+
+  /**
+   * Daftar anggota yang eligible jadi target Transfer Ownership (Admin
+   * aktif) — dipakai RSC (`(app)/settings/page.tsx`) untuk render pilihan
+   * Selector Danger Zone. Kriteria eligibility sama persis dengan yang
+   * divalidasi `transferOwnership` lewat `isTransferEligible`.
+   */
+  async listTransferEligibleMembers(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<WorkspaceMemberWithUser[]> {
+    const members = await this.listMembersWithUser(workspaceId, actorUserId);
+    return members.filter((member) => this.isTransferEligible(member));
+  }
+
+  /**
+   * Langkah 1 Transfer Ownership (T-008.3, ADR-050) — Owner memicu, target
+   * harus Admin aktif di workspace yang sama. Mengisi
+   * `pendingOwnerTransferTo`, kirim notifikasi `ownership_transfer_requested`
+   * ke target. **Tidak** langsung menukar role.
+   */
+  async transferOwnership(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    targetMemberId: MemberId,
+  ): Promise<void> {
+    await this.assertActorIsOwner(
+      workspaceId,
+      actorUserId,
+      "Hanya Owner yang bisa memulai Transfer Ownership.",
+    );
+
+    const target = await this.repository.findMemberById(
+      workspaceId,
+      targetMemberId,
+      actorUserId,
+    );
+    if (!target) {
+      throw new NotFoundError("Anggota tidak ditemukan.");
+    }
+    if (!this.isTransferEligible(target)) {
+      throw new ValidationError(
+        "Transfer Ownership hanya bisa ditujukan ke Admin aktif.",
+      );
+    }
+
+    await this.repository.setPendingOwnerTransfer(
+      workspaceId,
+      target.userId,
+      actorUserId,
+    );
+
+    await this.notifications?.notify({
+      workspaceId,
+      userId: target.userId,
+      type: NotificationType.OwnershipTransferRequested,
+      title: "Permintaan Transfer Ownership",
+      body: "Anda diminta menerima transfer kepemilikan workspace ini.",
+      relatedEntityType: "member",
+      relatedEntityId: targetMemberId,
+    });
+  }
+
+  /**
+   * Batalkan Transfer Ownership yang masih pending (dibutuhkan UI banner
+   * pending — tidak disebut eksplisit sebagai method di
+   * `application-layer.md`/ADR-050, ditambahkan konsisten dengan pola
+   * method lain: RBAC Owner saja, reset `pendingOwnerTransferTo`).
+   */
+  async cancelOwnershipTransfer(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<void> {
+    await this.assertActorIsOwner(
+      workspaceId,
+      actorUserId,
+      "Hanya Owner yang bisa membatalkan Transfer Ownership.",
+    );
+
+    await this.repository.clearPendingOwnerTransfer(workspaceId, actorUserId);
+  }
+
+  /**
+   * Langkah 2 Transfer Ownership (T-008.3, ADR-050) — Admin target
+   * menerima. RBAC: hanya user yang cocok dengan `pendingOwnerTransferTo`.
+   * Role Owner lama dan Admin target bertukar dalam satu transaksi;
+   * `pendingOwnerTransferTo` dikosongkan; notifikasi
+   * `ownership_transfer_resolved` ke Owner lama.
+   */
+  async acceptOwnershipTransfer(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<void> {
+    const workspace = await this.repository.findById(workspaceId);
+    if (!workspace) {
+      throw new NotFoundError("Workspace tidak ditemukan.");
+    }
+    if (
+      !workspace.pendingOwnerTransferTo ||
+      workspace.pendingOwnerTransferTo !== actorUserId
+    ) {
+      throw new AuthorizationError(
+        "Tidak ada Transfer Ownership yang ditujukan untuk Anda.",
+      );
+    }
+
+    const targetMember = await this.assertActiveMembership(
+      workspaceId,
+      actorUserId,
+    );
+
+    const currentOwnerMember = await this.repository.listMembers(
+      workspaceId,
+      actorUserId,
+    );
+    const oldOwner = currentOwnerMember.find(
+      (candidate) => candidate.role === MemberRole.Owner,
+    );
+    if (!oldOwner) {
+      throw new NotFoundError("Owner saat ini tidak ditemukan.");
+    }
+
+    await this.repository.acceptOwnershipTransfer({
+      workspaceId,
+      currentOwnerMemberId: oldOwner.id,
+      targetMemberId: targetMember.id,
+      newOwnerUserId: actorUserId,
+    });
+
+    await this.notifications?.notify({
+      workspaceId,
+      userId: oldOwner.userId,
+      type: NotificationType.OwnershipTransferResolved,
+      title: "Transfer Ownership diterima",
+      body: "Kepemilikan workspace ini telah berpindah tangan.",
+      relatedEntityType: "member",
+      relatedEntityId: targetMember.id,
+    });
+  }
+
+  /**
+   * Ganti nama workspace (T-008.4) — RBAC: member aktif mana pun (bukan
+   * Owner-only), reversible/low-stakes, tanpa dialog konfirmasi di UI (beda
+   * dengan Danger Zone). Validasi nama reuse aturan yang sama dengan
+   * `createWorkspace` (panjang max, tidak boleh kosong) — slug TIDAK
+   * ikut berubah di sini.
+   */
+  async renameWorkspace(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    name: string,
+  ): Promise<WorkspaceRecord> {
+    await this.assertActiveMembership(workspaceId, actorUserId);
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new ValidationError("Nama workspace wajib diisi.");
+    }
+    if (trimmedName.length > MAX_NAME_LENGTH) {
+      throw new ValidationError(
+        `Nama workspace maksimal ${MAX_NAME_LENGTH} karakter.`,
+      );
+    }
+
+    return this.repository.renameWorkspace(
+      workspaceId,
+      trimmedName,
       actorUserId,
     );
   }
