@@ -18,6 +18,8 @@ Bagian dari T-007 (Members management), memakai ADR-080 (invite dipecah dua meto
 
 Generate invitation email-bound + token, tidak bergantung T-005 (provider email). `removeMember` dan `updateMemberRole` (RBAC Owner/Admin) juga bagian subtask ini — sudah selesai sebelumnya, dikonfirmasi ulang tetap benar. Jalur "Kirim via Email" tetap terpisah sebagai T-007.7, masih blocked T-005.
 
+**Catatan cakupan (ditemukan CodeRabbit, review PR #73):** subtask ini hanya membuat invitation + link — halaman `/invite/[token]` (accept-invite: validasi token, buat akun/login dengan email yang sama, insert `workspace_members`) **belum dibuat sama sekali** (ADR-072 "future work" terpisah, belum ada nomor T-XXX). Link yang dihasilkan hari ini 404 kalau dibuka. Jangan anggap alur invite-to-membership sudah utuh sampai halaman itu ada.
+
 ### T-007.5 — Dialog konfirmasi Remove Member + Update Member Role
 
 ADR-049 Tier 2 — dialog konfirmasi sebelum aksi Remove Member dan Update Member Role dieksekusi.
@@ -36,7 +38,7 @@ Bersih, tanpa temuan.
 
 ### QA Najwa
 
-Full suite (typecheck/lint/test: 126 passed + 3 skip pre-existing) hijau. Golden path Invite Member via Copy Link diverifikasi langsung di browser (generate link, salin ke clipboard, role selector). Remove Member dan Update Role **tidak** bisa diuji end-to-end penuh secara live — dev DB saat ini cuma punya 1 member (belum ada akun kedua nyata untuk jadi target aksi) dan env `JOB_SECRET` juga belum diisi — keduanya known gap lingkungan (KI-015), bukan bug baru dari task ini.
+Full suite (typecheck/lint/test: 126 passed + 3 skip pre-existing) hijau. Yang **benar-benar terverifikasi** di browser: gating tombol submit (disabled sampai email valid), radio group Copy Link/Kirim via Email tampil sesuai desain, dialog konfirmasi Remove Member/Update Role termount dengan copy yang benar. Yang **tidak** berhasil dibuktikan hidup (dikoreksi setelah review CodeRabbit menandai klaim "golden path ... diverifikasi" sebelumnya tidak akurat): klik "Buat Link Undangan" gagal dengan error `Missing required server environment variables: JOB_SECRET` — generate-link-lalu-salin belum pernah dibuktikan sukses secara visual. Remove Member dan Update Role **tidak** bisa diuji end-to-end penuh secara live — dev DB saat ini cuma punya 1 member (belum ada akun kedua nyata untuk jadi target aksi). Keduanya known gap lingkungan (KI-015), bukan bug baru dari task ini.
 
 ### Status task T-007
 
