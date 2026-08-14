@@ -8,6 +8,75 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-14 — ADR-081: Open question local dev ditutup — local resmi menumpang ke project staging
+
+### Context
+
+King Rezi menjawab open question yang tercatat di ADR-081 (entri di bawah): local development **tidak** akan memakai project Supabase terpisah — akan menumpang ke project staging yang sama (ref `ndcrkzqgqukqfmekgoze`). Alasan: efisiensi/kesederhanaan operasional, project ini baru satu-satunya yang aktif. Ini adalah finalisasi/kelanjutan ADR-081 yang sudah ada, **bukan** ADR baru terpisah.
+
+### Yang diubah
+
+- **`project-manager/decisions/ADR-081-...md`**: bagian open question diganti jadi keputusan final (poin 4 di Decision) — local development resmi menumpang ke project staging yang sama, tanpa isolasi database local↔staging. Ditambahkan sub-bagian konsekuensi yang disadari (migrasi/eksperimen lokal langsung menyentuh data staging; EM-D06 dikecualikan untuk pasangan local↔staging, tetap penuh untuk staging↔production). Bagian "Alternatives Considered" diupdate — opsi project local terpisah kini eksplisit **ditolak** (bukan lagi "belum diputuskan").
+- **`project-manager/DECISIONS.md`**: baris indeks ADR-081 diupdate — kalimat "open question" dihapus, diganti ringkasan keputusan final.
+- **`product-discovery/06-engineering/environment-management.md`**: EM-D02, diagram/tabel Environment Tiers, Secret Management, Perbedaan Konfigurasi per Tier (baris Migrate/Seed-reset), Alur Setup Local, dan Decision Log (EM-D06 dicatat pengecualian eksplisit, EM-D10 dirapikan, **EM-D11 baru** untuk keputusan final) — seluruh referensi "open question" strategi local dev dihapus/ditandai selesai.
+- **`project-manager/PROJECT_STATE.md`**: dicek — tidak ada referensi eksplisit ke open question ini di file tersebut (KI-028 hanya membahas gap production, tidak terdampak), jadi tidak ada perubahan.
+
+### Known Issues terdampak
+
+- Tidak ada — KI-028 (gap production) tetap terbuka, tidak terkait closure open question ini.
+
+---
+
+## 2026-08-14 — ADR-081: Project Supabase existing resmi jadi staging permanen (amandemen EM-D02)
+
+### Context
+
+King Rezi mengonfirmasi eksplisit bahwa pemakaian project Supabase Cloud existing ("Sosial Media Management", ref `ndcrkzqgqukqfmekgoze`, region Singapore `ap-southeast-1`) sebagai database **staging** — dicatat sebagai gap terhadap EM-D02 saat penutupan KI-025 (entri 2026-08-14 di atas) — adalah keputusan **permanen**, bukan shortcut sementara.
+
+### Yang diubah
+
+- **ADR baru ADR-081** ditambahkan di `project-manager/DECISIONS.md` + `project-manager/decisions/ADR-081-project-supabase-existing-resmi-jadi-staging-amandemen-em-d02.md`, mengamandemen **ADR-033/EM-D02**.
+- **ADR-033** (`project-manager/decisions/ADR-033-...md` dan baris indeks di `DECISIONS.md`): Status ditandai `Accepted — Amended by ADR-081 (2026-08-14)`.
+- **`product-discovery/06-engineering/environment-management.md`**: EM-D02, diagram/tabel Environment Tiers, Secret Management, Alur Setup Local, dan Decision Log (baris EM-D09/EM-D10 baru) diupdate — project existing resmi jadi staging, rencana project `social-media-local` terpisah dibatalkan. Strategi local development pasca-amandemen ditandai **open question** (belum diputuskan).
+- **`project-manager/PROJECT_STATE.md`** (KI-028): kalimat disesuaikan — "staging saat ini memakai" → "staging permanen memakai", ditambah referensi ADR-081.
+- **Tidak diubah** (di luar scope): DI-D03 (`deployment-infrastructure.md`, isolasi staging↔production tetap wajib project terpisah) dan KI-028 (production project belum dibuat, tetap open).
+
+### Known Issues terdampak
+
+- KI-028 tetap terbuka — tidak resolved oleh ADR ini (hanya soal staging, bukan production).
+
+---
+
+## 2026-08-14 — Railway staging deploy live: KI-025 resolved, KI-028 (gap production) dibuka
+
+### Context
+
+Deploy pertama kalinya project ke Railway. Menutup KI-025 ("belum ada project Railway sama sekali") dengan bukti deploy staging sukses + verifikasi runtime, bukan cuma pembuatan project.
+
+### Yang dibuat/diverifikasi
+
+- **Project Railway** `social-media-management` (workspace Insvire), environment `staging`, region Singapore (`asia-southeast1-eqsg3a`) sesuai DI-D01.
+- **Service `web`** (Next.js) — connect ke branch `staging` GitHub repo. Build command `bun install && bun run build`, `preDeployCommand` `cd apps/web && bunx prisma migrate deploy`, `startCommand` `bun run --cwd apps/web start`, healthcheck `/api/health`. Domain: `web-staging-60d7.up.railway.app`. Deploy SUCCESS, health check 200 OK terverifikasi.
+- **Service `cron`** — image `curlimages/curl:latest`, `cronSchedule` `* * * * *`, trigger `POST /api/jobs/run` dengan header `X-Job-Secret`. 2x run berturut-turut SUCCESS.
+- **Env var staging** lengkap dan terisi nilai asli/generated: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `JOB_SECRET`. `BETTER_AUTH_API_KEY` sengaja dikosongkan (ADR-070). `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` masih placeholder dummy — 4 env var tersisa dari known gap sebelumnya (JOB_SECRET kini sudah diisi nilai asli generated).
+- **Database staging**: memakai project Supabase Cloud yang **sudah ada sebelumnya** ("Sosial Media Management", ref `ndcrkzqgqukqfmekgoze`, region Singapore) — keputusan eksplisit King Rezi, bukan project baru terpisah seperti disebut awal di EM-D02. Project Supabase untuk **production** belum dibuat sama sekali.
+- **Git**: branch `staging` dibuat dari `main` dan di-push ke GitHub (repo sebelumnya cuma punya `main`).
+- **Bug fix**: script `prepare` di root `package.json` (`lefthook install`) gagal di container build Railway (tidak ada git hooks context) — diubah jadi `lefthook install || true`, di-commit ke branch `staging`.
+- **Railway MCP server** (`https://mcp.railway.com`) didaftarkan ke `.mcp.json` dan `.cursor/mcp.json` (dua file kembar, ADR-064) via `railway setup agent --oauth`.
+- **Branch protection GitHub** diaktifkan untuk `main` dan `staging`: wajib PR (no direct push), wajib status check "Quality gates" (workflow CI `.github/workflows/ci.yml`) hijau sebelum merge, force-push & delete branch diblokir, required approving reviews = 0 (solo developer).
+
+### Known Issues terdampak
+
+- **KI-025 resolved** — dihapus dari daftar Known Issues aktif di `PROJECT_STATE.md` (sesuai konvensi ADR-066/067, riwayat lengkap ada di sini).
+- **KI-015** — status berubah jadi "Sebagian Resolved": `JOB_SECRET` sudah resolved (staging), sisa scope `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`.
+- **KI-028 dibuka** (baru) — production Railway environment dan production Supabase project belum dibuat sama sekali; menyusul setelah KI-003/KI-015 (Outstand/Google) resolved atau sesuai prioritas King Rezi.
+
+### Catatan untuk King Rezi (flag, bukan keputusan final)
+
+Keputusan memakai project Supabase existing "Sosial Media Management" sebagai database staging (alih-alih membuat project baru terpisah) berpotensi menyimpang dari premis awal EM-D02. Ini dicatat di sini sebagai temuan governance — belum dibuatkan ADR baru karena instruksi sesi ini secara eksplisit meminta konfirmasi dulu ke King Rezi sebelum menulis ADR.
+
+---
+
 ## 2026-08-14 — T-007.1/.5/.6 (Members management: Invite via Copy Link + safety dialogs Remove/Update Role): selesai
 
 ### Context

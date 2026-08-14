@@ -6,7 +6,7 @@ Environment Management — Supabase Cloud-First, Native Secrets, Dedicated Local
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-081 (2026-08-14)
 
 ### Date
 
