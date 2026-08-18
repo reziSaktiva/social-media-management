@@ -8,6 +8,45 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-18 — T-029 Publish Now selesai + perbaikan UI Schedule Picker Draft Editor (KI-029, KI-030)
+
+### Context
+
+T-029 (Publish Now, ADR-047) sebelumnya salah tercatat sebagai "belum ada desain apapun" — koreksi (commit `c967b47`) menemukan tombol "Publish Now" dan dialog konfirmasinya sudah ada di Claude Design (`templates/draft-editor.html`, `templates/app-prototype/AppPrototype.dc.html`), jadi sisa pekerjaan murni implementasi kode. Implementasi dikerjakan oleh Prabowo Feature Engineer (backend/use-case) dan Mark UI Engineer (komponen Astryx di Draft Editor), commit `1c35004`, branch `feature/t-029-publish-now`, PR #80 ke base `staging`.
+
+### Yang diubah — Backend
+
+- **`apps/web/src/domains/publishing/services/publish-now.use-case.ts`** (baru) — `PublishNowUseCase`, mengikuti pola `SchedulePostsUseCase` (T-028/ADR-059). RBAC eksplisit (`assertActorCanPublishNow`) dijalankan fail-fast sebelum validasi `ContentFormat` (ADR-039, `assertContentFormatAllowed`). Urutan kritis: persist dulu (`PublishingPostTarget` status `pending`, post → `Published`) lewat `repository.publishNow`, baru panggil adapter per target, baru update outcome — mencegah job Outstand orphan tanpa jejak DB.
+- **`apps/web/src/domains/publishing/rbac.ts`** (baru) — `assertActorCanPublishNow`, role diizinkan (ADR-074): Owner, Admin, Creator — sama persis dengan Schedule, dieksplisitkan di kode (bukan implicit "semua boleh") karena `getWorkspaceContext()` men-cast `role` dari header tanpa validasi runtime.
+- **`apps/web/src/domains/publishing/repositories/publishing.repository.ts`** + **`apps/web/src/lib/repositories/publishing/publishing.repository.ts`** — tambah method `publishNow` (interface + implementasi Prisma).
+- **`apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts`** + **`apps/web/src/domains/publishing/adapters/outstand-adapter.ts`** + **`packages/shared/src/contracts/outstand-adapter.ts`** — perluasan `IOutstandAdapter`/`FakeOutstandAdapter` dengan `publishNow`, pola ADR-059 (auto-switch via env var, fidelity instan tanpa simulasi delay/failure). Jalur produksi tetap `FakeOutstandAdapter` — T-025 real adapter masih blocked kredensial (KI-003).
+- **`apps/web/src/domains/publishing/index.ts`** — expose public API baru.
+
+### Yang diubah — UI Draft Editor
+
+- **`apps/web/src/app/(app)/components/draft-editor/Modal.tsx`** — tombol "Publish Now" berdampingan "Save as Draft"/"Schedule" (KSP-05-F12), dialog Confirmation Summary varian Publish Now (UXP-04). Sebagai bagian commit yang sama: Schedule Picker dirapikan menyamai mockup Claude Design — heading tunggal "Jadwal" (sebelumnya duplikat), label individual field disembunyikan, placeholder Bahasa Indonesia, ikon kalender/jam dipindah ke kanan lewat Tailwind `flex-row-reverse` (bukan `xstyle`/`stylex.create()` — lihat KI-029 di bawah), dan dot indicator ditambahkan ke `Badge` status lewat slot icon resmi (`currentColor`, otomatis menyesuaikan variant).
+- **`apps/web/src/app/(app)/components/draft-editor/actions.ts`** — Server Action `publishNowAction`, satu-satunya call site `PublishNowUseCase`.
+- **`apps/web/src/app/(app)/components/draft-editor/terminal-destination.ts`** (+ test) — redirect setelah konfirmasi Publish Now diarahkan ke Publish/Calendar lewat `finishTerminalAction`, menutup T-031.4 sekaligus (dipakai seragam dengan Save as Draft dan Schedule).
+
+### Known Issues baru
+
+- **KI-029** — `@stylexjs/babel-plugin` tidak pernah di-wire di `next.config.ts` `apps/web`, sehingga prop `xstyle`+`stylex.create()` (mekanisme kustomisasi resmi Astryx) gagal di runtime (`"Unexpected 'stylex.create' call ... must be compiled by '@stylexjs/babel-plugin'"`). Workaround sementara: `className` Tailwind layout-only (rule 14 AGENTS.md) untuk kasus yang bisa diselesaikan lewat class utility biasa.
+- **KI-030** — `TimeInput` Astryx tidak membatasi input real-time (elemen `<input>` internal `type="text"` tanpa `maxLength`/`pattern`), tidak ada prop resmi untuk membatasinya. Mitigasi wrapper `onKeyDownCapture`/`onPaste` sempat dicoba tapi **dihapus atas keputusan King Rezi** (2026-08-18) karena belum solid (tidak menangkap paste/drag-drop/IME) — menunggu Astryx menambah prop resmi.
+
+### Verifikasi
+
+- `tsc --noEmit` bersih.
+- Vitest: `publish-now.use-case.test.ts` (baru, 357 baris), `fake-outstand-adapter.test.ts` (tambahan test `publishNow`), plus test terkait lain yang disesuaikan (`publishing.repository.ts`, `schedule-posts.use-case.test.ts`, `terminal-destination.test.ts`, `analytics-ingestion.use-case.test.ts`) — semua lulus.
+- End-to-end browser: New Post → isi caption/target → klik "Publish Now" → dialog Confirmation Summary → konfirmasi → redirect ke Publish/Calendar → data di DB berstatus `published`.
+
+### Dokumentasi terkait
+
+- `project-manager/tasks/v02-publishing-mvp.md` § T-029 (Status ✅ Done, seluruh subtask T-029.1–.6 dicentang) dan § T-031 (T-031.4 dicentang, Status task ✅ Done).
+- `project-manager/TASKS.md` — indeks v0.2 (7 ✅ · 12 ⏳), Total (21 selesai · 140 subtask), Fokus sekarang (T-029 dipindah jadi catatan Done, tersisa T-025).
+- `project-manager/PROJECT_STATE.md` — Completed (Ringkasan) + Top Next Tasks diperbarui.
+
+---
+
 ## 2026-08-14 — Bug fix: redirect `localhost:8080` di proxy/onboarding (root cause dari `request.url` di balik reverse proxy Railway)
 
 ### Context

@@ -152,10 +152,10 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing                                                   |
-| **ADR**       | ADR-047, ADR-039, ADR-049                                    |
-| **Depends**   | T-025                                                        |
+| **ADR**       | ADR-047, ADR-039, ADR-049, ADR-059, ADR-074                  |
+| **Depends**   | T-025 (untuk jalur nyata — sementara tetap via `FakeOutstandAdapter`) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md` (KSP-05-F12) · `04-ux/user-flows.md` (UXP-04) · `02-product/roles-permissions.md` |
 
 **Update 2026-08-18 — koreksi:** belum ada di kode (`grep publishNow` nol hasil di `src/`), tapi desainnya **sudah ada** di Claude Design (project "Social Media Management") — catatan lama di sini ("belum ada... maupun di App Prototype") salah dan sudah usang:
@@ -165,12 +165,14 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 
 Jadi T-029.4/.5/.6 di bawah **desainnya sudah tersedia** — sisa pekerjaan murni implementasi kode (Server Action + service + wiring ke komponen Astryx nyata), bukan menunggu desain baru.
 
-- [ ] **T-029.1** `PublishingService.publishNow()` — RBAC semua role (Owner/Admin/Creator, ADR-074)
-- [ ] **T-029.2** Validasi `ContentFormat` (ADR-039) sebelum panggil adapter
-- [ ] **T-029.3** Server Action + panggil `OutstandAdapter.publishNow`
-- [ ] **T-029.4** Tombol "Publish Now" di Draft Editor berdampingan dengan Schedule (KSP-05-F12) — desain sudah ada, tinggal implementasi komponen Astryx nyata
-- [ ] **T-029.5** Dialog Confirmation Summary varian Publish Now (UXP-04) — desain sudah ada di App Prototype, tinggal implementasi komponen Astryx nyata
-- [ ] **T-029.6** ~~Tambahkan tombolnya di App Prototype Claude Design~~ — sudah ada di App Prototype, task ini selesai dari sisi desain
+- [x] **T-029.1** `PublishingService.publishNow()` — RBAC semua role (Owner/Admin/Creator, ADR-074)
+- [x] **T-029.2** Validasi `ContentFormat` (ADR-039) sebelum panggil adapter
+- [x] **T-029.3** Server Action + panggil `OutstandAdapter.publishNow`
+- [x] **T-029.4** Tombol "Publish Now" di Draft Editor berdampingan dengan Schedule (KSP-05-F12) — desain sudah ada, tinggal implementasi komponen Astryx nyata
+- [x] **T-029.5** Dialog Confirmation Summary varian Publish Now (UXP-04) — desain sudah ada di App Prototype, tinggal implementasi komponen Astryx nyata
+- [x] **T-029.6** ~~Tambahkan tombolnya di App Prototype Claude Design~~ — sudah ada di App Prototype, task ini selesai dari sisi desain
+
+**Selesai (2026-08-18):** `PublishNowUseCase` (`apps/web/src/domains/publishing/services/publish-now.use-case.ts`) mengikuti pola `SchedulePostsUseCase` (T-028/ADR-059) — RBAC eksplisit lewat `assertActorCanPublishNow` (`apps/web/src/domains/publishing/rbac.ts`, ADR-074: Owner/Admin/Creator) dijalankan fail-fast sebelum validasi `ContentFormat` (ADR-039), lalu persist dulu (`PublishingPostTarget` status `pending`, post → `Published`) sebelum panggil adapter per target — supaya tidak ada job Outstand yang orphan tanpa jejak DB. Server Action `publishNowAction` di `apps/web/src/app/(app)/components/draft-editor/actions.ts` memanggil use-case ini lewat `OutstandAdapter.publishNow`, yang jalur produksinya masih `FakeOutstandAdapter` (pola ADR-059, T-025 real adapter belum ada — KI-003). UI Draft Editor (`apps/web/src/app/(app)/components/draft-editor/Modal.tsx`) menambahkan tombol "Publish Now" berdampingan Schedule + dialog Confirmation Summary varian Publish Now, dan redirect ke Publish/Calendar setelah konfirmasi (menutup T-031.4). Sebagai bagian commit yang sama, Schedule Picker Draft Editor dirapikan menyamai mockup (heading tunggal "Jadwal", placeholder Bahasa Indonesia, ikon kalender/jam dipindah ke kanan via Tailwind `flex-row-reverse`) dan dot indicator ditambahkan ke Badge status — dua temuan dari pekerjaan ini dicatat sebagai **KI-029** (xstyle Astryx belum bisa dipakai) dan **KI-030** (TimeInput Astryx tidak membatasi input real-time) di `PROJECT_STATE.md`. Diverifikasi: `tsc --noEmit` bersih, Vitest suite terkait lulus (`publish-now.use-case.test.ts`, `fake-outstand-adapter.test.ts`, dst), end-to-end browser (New Post → Publish Now → Confirmation Summary → redirect → data DB `published`).
 
 ### T-030 · Cancel Schedule + dialog konfirmasi
 
@@ -190,10 +192,10 @@ Jadi T-029.4/.5/.6 di bawah **desainnya sudah tersedia** — sisa pekerjaan murn
 
 | Field         | Value                                                    |
 | ------------- | -------------------------------------------------------- |
-| **Status**    | 🟡 In Progress                                            |
+| **Status**    | ✅ Done                                                   |
 | **Domain**    | UI                                                       |
 | **ADR**       | ADR-054                                                  |
-| **Depends**   | T-029, T-032, T-034                                      |
+| **Depends**   | T-029 ✅, T-032, T-034                                    |
 | **Baca dulu** | `04-ux/navigation-patterns.md`                            |
 
 Bukan task besar berdiri sendiri — cukup diselaraskan saat task tujuannya dikerjakan.
@@ -201,7 +203,7 @@ Bukan task besar berdiri sendiri — cukup diselaraskan saat task tujuannya dike
 - [x] **T-031.1** Save as Draft → Drafts (sudah sejalan dengan alur existing)
 - [x] **T-031.2** Pastikan tetap konsisten begitu CTA sidebar (T-011) aktif dari section manapun — `finishTerminalAction` di `_draft-editor/modal.tsx` menutup editor lalu mengarahkan ke tujuan, dipakai seragam oleh Save as Draft dan Schedule
 - [x] **T-031.3** Schedule → Queue — dikerjakan lebih awal dari catatan "relevan setelah T-032": begitu CTA sidebar aktif, Schedule dari Home/Analyze meninggalkan pengguna tanpa jejak aksi, jadi destinasi ADR-054 dipakai walau layar Queue sendiri masih placeholder
-- [ ] **T-031.4** Publish Now → History/Calendar (relevan setelah T-029 + T-034)
+- [x] **T-031.4** Publish Now → History/Calendar — ditutup bersamaan T-029 (2026-08-18), `finishTerminalAction` dipakai seragam untuk redirect setelah konfirmasi Publish Now
 
 ---
 
