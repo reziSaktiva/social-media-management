@@ -293,7 +293,25 @@ Ditemukan 2026-08-18 saat King Rezi menguji Schedule Picker Draft Editor secara 
 - **Wrapper `onKeyDownCapture`/`onPaste`** untuk intercept keystroke dari luar (level "wrapper selektif", bukan swizzle) — secara arsitektur boleh, tapi tidak solid (tidak menangkap paste/drag-drop/IME sepenuhnya tanpa handler tambahan) dan berisiko konflik dengan state internal `TimeInput` yang tidak kita kontrol. Sempat diimplementasikan (varian: `status` error saat blur untuk feedback, bukan mencegah ketik) tapi **dihapus atas keputusan King Rezi** (2026-08-18) — dianggap belum sesuai harapan, bukan solusi final.
 - Menunggu Astryx menambah prop resmi untuk ini (masih Beta, KI-005) — solusi paling bersih, tidak instan.
 
-Tidak memblokir M8. Icon kalender/jam Draft Editor sudah diperbaiki terpisah (posisi kanan, sesuai mockup, lihat `COMPLETE_TASK.md`) — sisa gap di KI ini murni soal pembatasan input real-time, belum ada solusi yang disetujui.
+Tidak memblokir M8. Icon kalender/jam Draft Editor sempat diperbaiki terpisah (posisi kanan, sesuai mockup) tapi **direvert** 2026-08-18 karena masalah a11y — lihat **KI-031**. Sisa gap di KI ini murni soal pembatasan input real-time, belum ada solusi yang disetujui.
+
+### KI-031 · Ikon kalender/jam Date/TimeInput tidak bisa dipindah ke kanan tanpa merusak keyboard tab order
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-029, ADR-041 |
+
+Ditemukan 2026-08-18 lewat code review PR #80: perbaikan sebelumnya yang memindah ikon kalender/jam `DateInput`/`TimeInput` dari kiri ke kanan (`className="flex-row-reverse"`, Tailwind, supaya sesuai mockup Claude Design `templates/draft-editor.html`) ternyata hanya membalik urutan **visual**, bukan urutan DOM — ikon (button/span) tetap child pertama secara DOM (dikonfirmasi lewat source `DateInput`/`TimeInput` Astryx: tidak ada `tabIndex` atau CSS `order`), sehingga keyboard Tab dan screen reader tetap mengunjungi ikon LEBIH DULU walau secara visual sekarang tampil di kanan — mismatch WCAG 2.4.3 (Focus Order). CSS `order` juga tidak menyelesaikan ini (MDN: `order` cuma mengubah urutan visual, bukan urutan navigasi sekuensial/tab).
+
+Fix yang diterapkan (2026-08-18): `flex-row-reverse` **dihapus**, ikon dikembalikan ke posisi default Astryx (kiri) — mengutamakan a11y di atas kecocokan visual pixel-perfect dengan mockup. Konsekuensinya: Draft Editor **tidak lagi identik** dengan mockup Claude Design di titik ini (ikon kiri vs kanan).
+
+Opsi yang belum diambil (butuh keputusan King Rezi kalau posisi kanan tetap diinginkan):
+- Restrukturisasi DOM manual di sisi kita (bukan CSS) supaya urutan render benar-benar ikon-setelah-input — tapi ini butuh akses ke internal Astryx yang tidak diekspos lewat props resmi, masuk kategori swizzle (perlu amandemen ADR-041 kalau mau diambil).
+- Menunggu Astryx menambah opsi resmi posisi ikon (trailing icon) di versi mendatang (masih Beta, KI-005).
+
+Tidak memblokir M8. Trade-off ini murni keputusan a11y vs kecocokan visual, dicatat di sini supaya tidak diasumsikan "belum selesai" di masa depan.
 
 ---
 

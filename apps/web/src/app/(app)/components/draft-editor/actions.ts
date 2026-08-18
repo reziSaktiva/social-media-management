@@ -5,6 +5,7 @@ import { asPostId, asUserId } from "@social/shared";
 import { redirect } from "next/navigation";
 import type { ScheduleTargetRequest } from "@/domains/publishing";
 import {
+  assertActorCanPublishNow,
   PublishingService,
   PublishNowUseCase,
   resolveScheduleTargets,
@@ -204,6 +205,11 @@ export async function publishNowAction(
   input: PublishNowInput,
 ): Promise<{ postId: string }> {
   const { workspaceId, role } = await getWorkspaceContext();
+  // RBAC dulu, sebelum side effect apapun (saveDraft/updateDraft) — supaya
+  // actor yang tidak berhak tidak sempat mempersist perubahan caption
+  // walau `PublishNowUseCase.execute` juga mengulang guard yang sama.
+  assertActorCanPublishNow(role);
+
   const session = await getCachedSession();
   if (!session) {
     redirect("/login");

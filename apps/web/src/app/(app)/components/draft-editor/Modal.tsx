@@ -48,32 +48,6 @@ import {
   resolveTerminalDestination,
 } from "./terminal-destination";
 
-/**
- * Reposisi ikon kalender/jam dari kiri ke kanan (sesuai mockup Claude
- * Design `templates/draft-editor.html`) — `row-reverse` di root
- * `.astryx-date-input` / `.astryx-time-input` membalik urutan visual
- * SEMUA direct children secara flexbox, tanpa menyentuh classname
- * internal Astryx.
- *
- * Dipakai lewat `className` Tailwind (bukan `xstyle`+`stylex.create()`):
- * project ini punya dependency `@stylexjs/stylex` tapi belum di-wire
- * babel-plugin/Next.js-plugin-nya (tidak ada di `next.config.ts`, tidak
- * ada usage lain di `apps/web/src`), jadi `stylex.create()` gagal di
- * runtime ("Unexpected 'stylex.create' call ... must be compiled by
- * '@stylexjs/babel-plugin'"). `flex-row-reverse` adalah utility Tailwind
- * layout-only (bukan styling komponen/token) sehingga tetap sesuai
- * aturan "Tailwind layout-only" — dilaporkan ke King Rezi sebagai gap
- * tooling terpisah, bukan diputuskan diam-diam sebagai perubahan baseline.
- *
- * PENTING untuk usage masa depan: `row-reverse` membalik urutan visual
- * seluruh direct children — termasuk trailing slot (clear button /
- * status icon) kalau nanti `hasClear` atau `status` dipakai di sini.
- * Untuk usage saat ini (tidak ada `hasClear`, belum ada `status` di
- * kedua input) ini aman. Kalau nanti ditambah `hasClear`, verifikasi
- * ulang urutannya tidak kebalik salah.
- */
-const SCHEDULE_ICON_RIGHT_CLASSNAME = "flex-row-reverse";
-
 /** Akun terhubung dari `WorkspaceConnectedAccount` (ADR-059) — bukan lagi mock. */
 type ConnectedAccount = ConnectedAccountDto;
 
@@ -380,6 +354,24 @@ function DraftEditorForm({
     }
   }
 
+  /**
+   * Dipakai bersama oleh Schedule dan Publish Now — dulu masing-masing
+   * handler menulis ulang `selectedAccounts.map(...)` sendiri-sendiri
+   * (termasuk cabang `platformOptions` khusus Pinterest), berisiko
+   * divergen diam-diam kalau salah satu diubah tapi yang lain terlewat.
+   */
+  function buildTargetsPayload() {
+    return selectedAccounts.map((account) => ({
+      connectedAccountId: account.id,
+      contentFormat:
+        formatByAccount[account.id] ?? getDefaultFormat(account.platform),
+      platformOptions:
+        account.platform === SocialPlatform.Pinterest
+          ? { pinTitle, pinLink }
+          : undefined,
+    }));
+  }
+
   async function handleConfirmSchedule() {
     setIsScheduling(true);
     try {
@@ -391,15 +383,7 @@ function DraftEditorForm({
         postId: savedPostId,
         caption,
         scheduledAt,
-        targets: selectedAccounts.map((account) => ({
-          connectedAccountId: account.id,
-          contentFormat:
-            formatByAccount[account.id] ?? getDefaultFormat(account.platform),
-          platformOptions:
-            account.platform === SocialPlatform.Pinterest
-              ? { pinTitle, pinLink }
-              : undefined,
-        })),
+        targets: buildTargetsPayload(),
       });
 
       setSavedPostId(result.postId);
@@ -429,15 +413,7 @@ function DraftEditorForm({
       const result = await publishNowAction({
         postId: savedPostId,
         caption,
-        targets: selectedAccounts.map((account) => ({
-          connectedAccountId: account.id,
-          contentFormat:
-            formatByAccount[account.id] ?? getDefaultFormat(account.platform),
-          platformOptions:
-            account.platform === SocialPlatform.Pinterest
-              ? { pinTitle, pinLink }
-              : undefined,
-        })),
+        targets: buildTargetsPayload(),
       });
 
       setSavedPostId(result.postId);
@@ -682,7 +658,6 @@ function DraftEditorForm({
                           size="sm"
                           value={scheduleDate as never}
                           onChange={(value) => setScheduleDate(value)}
-                          className={SCHEDULE_ICON_RIGHT_CLASSNAME}
                         />
                         <TimeInput
                           label="Waktu"
@@ -693,7 +668,6 @@ function DraftEditorForm({
                           increment={15}
                           value={scheduleTime as never}
                           onChange={(value) => setScheduleTime(value)}
-                          className={SCHEDULE_ICON_RIGHT_CLASSNAME}
                         />
                       </HStack>
                     </VStack>
