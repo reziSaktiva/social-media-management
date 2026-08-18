@@ -102,21 +102,47 @@ export interface IPublishingRepository {
   /**
    * Update satu `PublishingPostTarget` by id dengan outcome dari
    * OutstandAdapter. `outstandJobId` opsional karena target yang gagal
-   * (`status: "failed"`) belum tentu punya job id dari Outstand. `userId`
-   * (RLS, KI-026 follow-up) — acting user for `withCurrentUser`; called
-   * once per target AFTER that target's `outstandAdapter.schedulePost()`
-   * network call has already resolved/rejected — never inside the same
-   * transaction as the network call (connection pool exhaustion risk).
+   * (`status: "failed"`) belum tentu punya job id dari Outstand.
+   * `publishedUrl` hanya relevan untuk outcome Publish Now (T-029) yang
+   * sukses — dipersist untuk detail post nanti (T-034). `userId` (RLS,
+   * KI-026 follow-up) — acting user for `withCurrentUser`; called once per
+   * target AFTER that target's `outstandAdapter.schedulePost()` /
+   * `publishNow()` network call has already resolved/rejected — never
+   * inside the same transaction as the network call (connection pool
+   * exhaustion risk).
    */
   updateTargetOutcome(
     input: {
       postTargetId: PostTargetId;
       outstandJobId?: string;
-      status: "scheduled" | "failed";
+      status: "scheduled" | "published" | "failed";
+      publishedUrl?: string;
       error?: string;
     },
     userId: UserId,
   ): Promise<void>;
+
+  /**
+   * Publish Now (T-029, ADR-047) — sama pola guard dengan `schedulePost`
+   * (status Draft/ReadyToSchedule → Published, ownership anti-IDOR wajib
+   * dalam transaksi atomik yang sama), bedanya tidak ada `scheduledAt` dan
+   * post langsung ditandai `publishedAt` alih-alih `scheduledAt`. Returns
+   * `null` kalau salah satu guard gagal — caller memperlakukan sama seperti
+   * `schedulePost` (`ConflictError` generik).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   * Caller (`PublishNowUseCase.execute`) MUST NOT wrap the subsequent
+   * `outstandAdapter.publishNow()` network call in the same transaction
+   * this opens — sama alasan seperti `schedulePost`/`updateTargetOutcome`.
+   */
+  publishNow(
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      targets: SchedulePostTargetInput[];
+    },
+    userId: UserId,
+  ): Promise<PublishingScheduleRecord | null>;
 
   /**
    * Batch count of scheduled `PublishingPostTarget` rows per

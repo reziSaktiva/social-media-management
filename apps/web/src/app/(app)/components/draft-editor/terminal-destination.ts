@@ -6,11 +6,12 @@
  * manapun, jadi salah destinasi tidak lagi kelihatan sebagai bug lokal di
  * Publish — pengguna hanya "tertinggal" di Home/Analyze tanpa jejak aksi.
  *
- * `publish-now` sengaja belum ada di sini: implementasinya belum dibuat
- * (T-029), dan ADR-054 menetapkan tujuan sementaranya Calendar sampai layar
- * History dibangun.
+ * `publish-now` (T-029, T-031.4): destinasi sementara `/publish/calendar` —
+ * History belum jadi layar terdokumentasi (KSP-D10 belum ada), ADR-054
+ * menetapkan Calendar sebagai tujuan sementara sampai layar History
+ * dibangun (T-034).
  */
-export type TerminalAction = "save-draft" | "schedule";
+export type TerminalAction = "save-draft" | "schedule" | "publish-now";
 
 export function resolveTerminalDestination(action: TerminalAction): string {
   switch (action) {
@@ -18,6 +19,8 @@ export function resolveTerminalDestination(action: TerminalAction): string {
       return "/publish/drafts";
     case "schedule":
       return "/publish/queue";
+    case "publish-now":
+      return "/publish/calendar";
   }
 }
 

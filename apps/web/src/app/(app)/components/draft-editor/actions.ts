@@ -5,7 +5,9 @@ import { asPostId, asUserId } from "@social/shared";
 import { redirect } from "next/navigation";
 import type { ScheduleTargetRequest } from "@/domains/publishing";
 import {
+  assertActorCanPublishNow,
   PublishingService,
+  PublishNowUseCase,
   resolveScheduleTargets,
   SchedulePostsUseCase,
 } from "@/domains/publishing";
@@ -179,4 +181,74 @@ export async function scheduleDraftAction(
   });
 
   return { postId: scheduled.id };
+}
+
+export interface PublishNowInput {
+  postId?: string;
+  caption: string;
+  targets: ScheduleDraftTargetInput[];
+}
+
+/**
+ * Orkestrasi Server Action untuk tombol "Konfirmasi & Publish" (T-029,
+ * ADR-047) — sengaja mengikuti struktur `scheduleDraftAction` persis
+ * (persist caption terbaru dulu, resolve akun terhubung dari DB, lalu
+ * delegasikan ke use-case) supaya kedua aksi publish tetap konsisten.
+ * Business logic (RBAC, format-matrix, guard status+ownership, panggilan
+ * OutstandAdapter) hidup di `PublishNowUseCase.execute` — action ini hanya
+ * wiring: resolve workspace context/session (termasuk `role` yang sudah
+ * tervalidasi oleh `proxy.ts` per request), memastikan draft tersimpan,
+ * resolve identitas akun yang otentik dari DB (bukan dari client), lalu
+ * delegasikan.
+ */
+export async function publishNowAction(
+  input: PublishNowInput,
+): Promise<{ postId: string }> {
+  const { workspaceId, role } = await getWorkspaceContext();
+  // RBAC dulu, sebelum side effect apapun (saveDraft/updateDraft) — supaya
+  // actor yang tidak berhak tidak sempat mempersist perubahan caption
+  // walau `PublishNowUseCase.execute` juga mengulang guard yang sama.
+  assertActorCanPublishNow(role);
+
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const publishingService = new PublishingService(publishingRepository);
+  const workspaceService = new WorkspaceService(workspaceRepository);
+
+  const actingUserId = asUserId(session.user.id);
+
+  const [post, connectedAccounts] = await Promise.all([
+    input.postId
+      ? publishingService.updateDraft(
+          {
+            workspaceId,
+            postId: asPostId(input.postId),
+            caption: input.caption,
+          },
+          actingUserId,
+        )
+      : publishingService.saveDraft({
+          workspaceId,
+          authorId: actingUserId,
+          caption: input.caption,
+        }),
+    workspaceService.listConnectedAccounts(workspaceId, actingUserId),
+  ]);
+  const targets = resolveScheduleTargets(connectedAccounts, input.targets);
+
+  const published = await new PublishNowUseCase(
+    publishingRepository,
+    getOutstandAdapter(),
+  ).execute({
+    workspaceId,
+    postId: post.id,
+    targets,
+    actorRole: role,
+    actingUserId,
+  });
+
+  return { postId: published.id };
 }

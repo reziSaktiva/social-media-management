@@ -14,6 +14,10 @@ describe("resolveTerminalDestination", () => {
     expect(resolveTerminalDestination("schedule")).toBe("/publish/queue");
   });
 
+  it("mengarahkan Publish Now ke Publish > Calendar (T-029, ADR-054 — sementara sampai History dibangun)", () => {
+    expect(resolveTerminalDestination("publish-now")).toBe("/publish/calendar");
+  });
+
   it("tujuannya sama dari section manapun — tidak bergantung asal (ADR-053)", () => {
     // Inti T-011.3: CTA sidebar membuat asalnya bisa Home/Engage/Analyze,
     // dan destinasi tidak boleh ikut berubah mengikuti asal itu. Sejak

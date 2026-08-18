@@ -17,6 +17,34 @@ describe("fakeOutstandAdapter.fetchPostMetrics", () => {
   });
 });
 
+describe("fakeOutstandAdapter.publishNow", () => {
+  it("resolves instantly with a publishedUrl derived from the returned outstandJobId (T-029)", async () => {
+    const result = await fakeOutstandAdapter.publishNow({
+      outstandAccountId: "acc-1",
+      caption: "Hello world",
+      contentFormat: "post" as never,
+    });
+
+    expect(result.outstandJobId).toMatch(/^fake-/);
+    expect(result.publishedUrl).toContain(result.outstandJobId);
+  });
+
+  it("returns a different outstandJobId on every call (no delay/failure simulation, ADR-059)", async () => {
+    const first = await fakeOutstandAdapter.publishNow({
+      outstandAccountId: "acc-1",
+      caption: "Hello world",
+      contentFormat: "post" as never,
+    });
+    const second = await fakeOutstandAdapter.publishNow({
+      outstandAccountId: "acc-1",
+      caption: "Hello world",
+      contentFormat: "post" as never,
+    });
+
+    expect(first.outstandJobId).not.toEqual(second.outstandJobId);
+  });
+});
+
 describe("fakeOutstandAdapter.fetchWorkspaceMetrics", () => {
   it("is deterministic — same (outstandAccountId, period) returns identical numbers every call (T-041.5)", async () => {
     const first = await fakeOutstandAdapter.fetchWorkspaceMetrics(

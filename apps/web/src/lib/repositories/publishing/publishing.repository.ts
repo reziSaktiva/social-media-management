@@ -206,15 +206,99 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async updateTargetOutcome(
-    { postTargetId, outstandJobId, status, error },
+    { postTargetId, outstandJobId, status, publishedUrl, error },
     userId,
   ) {
     await withCurrentUser(userId, (tx) =>
       tx.publishingPostTarget.update({
         where: { id: postTargetId },
-        data: { outstandJobId, status, error },
+        data: { outstandJobId, status, publishedUrl, error },
       }),
     );
+  },
+
+  async publishNow({ workspaceId, postId, targets }, userId) {
+    let result;
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        // Sama alasan dengan `schedulePost` — guard ownership anti-IDOR di
+        // bawah wajib atomik dengan updateMany status, jadi tidak bisa
+        // memakai `withCurrentUser` (transaksi terpisah).
+        await setCurrentUserId(tx, userId);
+
+        const { count } = await tx.publishingPost.updateMany({
+          where: {
+            id: postId,
+            workspaceId,
+            status: {
+              in: [ContentStatus.Draft, ContentStatus.ReadyToSchedule],
+            },
+            deletedAt: null,
+          },
+          data: { status: ContentStatus.Published, publishedAt: new Date() },
+        });
+
+        if (count === 0) {
+          return null;
+        }
+
+        const uniqueConnectedAccountIds = Array.from(
+          new Set(targets.map((target) => target.connectedAccountId)),
+        );
+        const ownedAccountCount = await tx.workspaceConnectedAccount.count({
+          where: {
+            id: { in: uniqueConnectedAccountIds },
+            workspaceId,
+          },
+        });
+        if (ownedAccountCount !== uniqueConnectedAccountIds.length) {
+          throw new ScheduleOwnershipGuardFailed();
+        }
+
+        await tx.publishingPostTarget.deleteMany({ where: { postId } });
+
+        await tx.publishingPostTarget.createMany({
+          data: targets.map((target) => ({
+            postId,
+            connectedAccountId: target.connectedAccountId,
+            platform: target.platform,
+            contentFormat: target.contentFormat,
+            platformOptions: (target.platformOptions ?? undefined) as
+              Prisma.InputJsonValue | undefined,
+            status: "pending",
+          })),
+        });
+
+        const post = await tx.publishingPost.findUniqueOrThrow({
+          where: { id: postId },
+        });
+        const createdTargets = await tx.publishingPostTarget.findMany({
+          where: { postId },
+          select: { id: true, connectedAccountId: true },
+        });
+
+        return { post, createdTargets };
+      });
+    } catch (error) {
+      if (error instanceof ScheduleOwnershipGuardFailed) {
+        return null;
+      }
+      throw error;
+    }
+
+    if (!result) {
+      return null;
+    }
+
+    const record: PublishingScheduleRecord = {
+      ...mapPost(result.post),
+      targets: result.createdTargets.map((target) => ({
+        id: asPostTargetId(target.id),
+        connectedAccountId: asConnectedAccountId(target.connectedAccountId),
+      })),
+    };
+
+    return record;
   },
 
   async countScheduledByAccount({ workspaceId, connectedAccountIds }, userId) {
