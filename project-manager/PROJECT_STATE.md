@@ -270,6 +270,31 @@ EM-D02; lihat catatan di `COMPLETE_TASK.md` 2026-08-14). Baseline
 jalur production masih rencana, belum ada realisasi. Tidak memblokir M8,
 tapi wajib dituntaskan sebelum rilis production.
 
+### KI-029 · `@stylexjs/babel-plugin` belum di-wire — prop `xstyle` Astryx tidak bisa dipakai
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-029, ADR-041 |
+
+Ditemukan 2026-08-18 saat mengerjakan T-029 (Publish Now) — reposisi ikon kalender/jam di `DateInput`/`TimeInput` Draft Editor awalnya dicoba lewat `xstyle`+`stylex.create()` (mekanisme kustomisasi resmi Astryx, dikonfirmasi via `astryx docs styling`), tapi gagal di runtime: `"Unexpected 'stylex.create' call ... must be compiled by '@stylexjs/babel-plugin'"`. Dependency `@stylexjs/stylex` ada di `package.json` `apps/web`, tapi babel-plugin/Next.js-plugin-nya **tidak pernah di-wire** di `next.config.ts`, dan tidak ada satupun file lain di `apps/web/src` yang memakai `stylex.create()` — jadi prop `xstyle` yang didokumentasikan resmi oleh Astryx **belum benar-benar bisa dipakai** di project ini. Workaround sementara: pakai `className` Tailwind layout-only (sudah disahkan rule 14 AGENTS.md) untuk kasus yang bisa diselesaikan lewat class utility biasa (contoh: `flex-row-reverse` di `apps/web/src/app/(app)/components/draft-editor/Modal.tsx`). Tidak memblokir M8, tapi membatasi kustomisasi Astryx yang butuh `xstyle` sampai plugin build-nya dipasang (task terpisah, belum ada nomor).
+
+### KI-030 · `TimeInput` Astryx tidak membatasi input real-time (bisa ketik >4 digit/huruf bebas)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-029, ADR-041 |
+
+Ditemukan 2026-08-18 saat King Rezi menguji Schedule Picker Draft Editor secara langsung: field `TimeInput` menerima ketikan bebas tanpa batas — dikonfirmasi lewat inspeksi DOM, elemen `<input>` internalnya `type="text"` tanpa `maxLength`/`pattern` sama sekali (bukan salah konfigurasi kita). Astryx TimeInput didesain sebagai field yang di-parse saat blur (bukan masking real-time per-keystroke seperti native `<input type="time">`), dan **tidak ada prop resmi** (`maxLength`, `pattern`, `onKeyDown`, dll) untuk membatasi ini. Opsi mitigasi yang dipertimbangkan:
+
+- **Wrapper `onKeyDownCapture`/`onPaste`** untuk intercept keystroke dari luar (level "wrapper selektif", bukan swizzle) — secara arsitektur boleh, tapi tidak solid (tidak menangkap paste/drag-drop/IME sepenuhnya tanpa handler tambahan) dan berisiko konflik dengan state internal `TimeInput` yang tidak kita kontrol. Sempat diimplementasikan (varian: `status` error saat blur untuk feedback, bukan mencegah ketik) tapi **dihapus atas keputusan King Rezi** (2026-08-18) — dianggap belum sesuai harapan, bukan solusi final.
+- Menunggu Astryx menambah prop resmi untuk ini (masih Beta, KI-005) — solusi paling bersih, tidak instan.
+
+Tidak memblokir M8. Icon kalender/jam Draft Editor sudah diperbaiki terpisah (posisi kanan, sesuai mockup, lihat `COMPLETE_TASK.md`) — sisa gap di KI ini murni soal pembatasan input real-time, belum ada solusi yang disetujui.
+
 ---
 
 ## Blockers

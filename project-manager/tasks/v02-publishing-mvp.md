@@ -152,7 +152,7 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress                                                |
 | **Domain**    | publishing                                                   |
 | **ADR**       | ADR-047, ADR-039, ADR-049                                    |
 | **Depends**   | T-025                                                        |

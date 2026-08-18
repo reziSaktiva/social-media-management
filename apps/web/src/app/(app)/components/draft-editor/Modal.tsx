@@ -31,6 +31,7 @@ import type { ConnectedAccountDto } from "./actions";
 import {
   getConnectedAccountsAction,
   getDraftAction,
+  publishNowAction,
   saveDraftAction,
   scheduleDraftAction,
   updateDraftAction,
@@ -46,6 +47,32 @@ import {
   isAlreadyAtDestination,
   resolveTerminalDestination,
 } from "./terminal-destination";
+
+/**
+ * Reposisi ikon kalender/jam dari kiri ke kanan (sesuai mockup Claude
+ * Design `templates/draft-editor.html`) — `row-reverse` di root
+ * `.astryx-date-input` / `.astryx-time-input` membalik urutan visual
+ * SEMUA direct children secara flexbox, tanpa menyentuh classname
+ * internal Astryx.
+ *
+ * Dipakai lewat `className` Tailwind (bukan `xstyle`+`stylex.create()`):
+ * project ini punya dependency `@stylexjs/stylex` tapi belum di-wire
+ * babel-plugin/Next.js-plugin-nya (tidak ada di `next.config.ts`, tidak
+ * ada usage lain di `apps/web/src`), jadi `stylex.create()` gagal di
+ * runtime ("Unexpected 'stylex.create' call ... must be compiled by
+ * '@stylexjs/babel-plugin'"). `flex-row-reverse` adalah utility Tailwind
+ * layout-only (bukan styling komponen/token) sehingga tetap sesuai
+ * aturan "Tailwind layout-only" — dilaporkan ke King Rezi sebagai gap
+ * tooling terpisah, bukan diputuskan diam-diam sebagai perubahan baseline.
+ *
+ * PENTING untuk usage masa depan: `row-reverse` membalik urutan visual
+ * seluruh direct children — termasuk trailing slot (clear button /
+ * status icon) kalau nanti `hasClear` atau `status` dipakai di sini.
+ * Untuk usage saat ini (tidak ada `hasClear`, belum ada `status` di
+ * kedua input) ini aman. Kalau nanti ditambah `hasClear`, verifikasi
+ * ulang urutannya tidak kebalik salah.
+ */
+const SCHEDULE_ICON_RIGHT_CLASSNAME = "flex-row-reverse";
 
 /** Akun terhubung dari `WorkspaceConnectedAccount` (ADR-059) — bukan lagi mock. */
 type ConnectedAccount = ConnectedAccountDto;
@@ -196,9 +223,16 @@ function DraftEditorForm({
   // dialog instead"); a previous version of this file did nest a confirm
   // Dialog inside this one, which QA found silently never opened in real
   // usage.
-  const [isConfirmStep, setIsConfirmStep] = useState(false);
+  //
+  // `null` = form step. Confirmation Summary (UXP-04) is shared between
+  // Schedule and Publish Now (KSP-05-F12, ADR-047) — only the "Waktu" row
+  // and the confirm button label differ between the two variants.
+  const [pendingAction, setPendingAction] = useState<
+    "schedule" | "publish-now" | null
+  >(null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
+  const [isPublishingNow, setIsPublishingNow] = useState(false);
   const [notice, setNotice] = useState<{
     status: "success" | "info" | "error";
     title: string;
@@ -291,6 +325,11 @@ function DraftEditorForm({
     Boolean(scheduleDate) &&
     Boolean(scheduleTime);
 
+  // Publish Now (KSP-05-F12) skips the Schedule Picker entirely — tanggal/
+  // waktu tidak relevan sama sekali, beda dari `isReadyToSchedule`.
+  const isReadyToPublishNow =
+    caption.trim().length > 0 && selectedAccounts.length > 0;
+
   function toggleAccount(account: ConnectedAccount, checked: boolean) {
     setSelectedAccountIds((prev) =>
       checked ? [...prev, account.id] : prev.filter((id) => id !== account.id),
@@ -365,7 +404,7 @@ function DraftEditorForm({
 
       setSavedPostId(result.postId);
       setStatus(ContentStatus.Scheduled);
-      setIsConfirmStep(false);
+      setPendingAction(null);
       // Schedule → Publish > Queue (ADR-054). Queue sendiri masih placeholder
       // sampai T-032; tujuannya tetap dipakai karena ADR-054 sudah menetapkan
       // destinasi ini, dan mendarat di Queue lebih masuk akal daripada
@@ -384,23 +423,67 @@ function DraftEditorForm({
     }
   }
 
+  async function handleConfirmPublishNow() {
+    setIsPublishingNow(true);
+    try {
+      const result = await publishNowAction({
+        postId: savedPostId,
+        caption,
+        targets: selectedAccounts.map((account) => ({
+          connectedAccountId: account.id,
+          contentFormat:
+            formatByAccount[account.id] ?? getDefaultFormat(account.platform),
+          platformOptions:
+            account.platform === SocialPlatform.Pinterest
+              ? { pinTitle, pinLink }
+              : undefined,
+        })),
+      });
+
+      setSavedPostId(result.postId);
+      setStatus(ContentStatus.Published);
+      setPendingAction(null);
+      // Publish Now → Publish > Calendar (T-029, ADR-054) — History belum
+      // jadi layar terdokumentasi, Calendar dipakai sementara sampai T-034.
+      finishTerminalAction("publish-now");
+    } catch (error) {
+      setNotice({
+        status: "error",
+        title:
+          error instanceof Error
+            ? error.message
+            : "Gagal mempublikasikan post. Coba lagi.",
+      });
+    } finally {
+      setIsPublishingNow(false);
+    }
+  }
+
   return (
     <Layout
       header={
         <DialogHeader
           title={
-            isConfirmStep
+            pendingAction === "schedule"
               ? "Konfirmasi Jadwal"
-              : isEdit
-                ? "Edit Draft"
-                : "New Post"
+              : pendingAction === "publish-now"
+                ? "Konfirmasi Publish"
+                : isEdit
+                  ? "Edit Draft"
+                  : "New Post"
           }
           endContent={
-            isConfirmStep ? undefined : (
+            pendingAction ? undefined : (
               <HStack gap={2} align="center">
                 <Badge
                   label={CONTENT_STATUS_LABEL[status]}
                   variant={CONTENT_STATUS_BADGE_VARIANT[status]}
+                  icon={
+                    <span
+                      aria-hidden="true"
+                      className="inline-block size-1.5 rounded-full bg-current"
+                    />
+                  }
                 />
                 <Button
                   label={
@@ -418,7 +501,7 @@ function DraftEditorForm({
       }
       content={
         <LayoutContent>
-          {isConfirmStep ? (
+          {pendingAction ? (
             <VStack gap={3}>
               {notice?.status === "error" ? (
                 <Banner status="error" title={notice.title} />
@@ -438,9 +521,13 @@ function DraftEditorForm({
                   </Text>
                 ))}
               </VStack>
-              <Text>
-                Waktu: {scheduleDate ?? "-"} {scheduleTime ?? ""}
-              </Text>
+              {pendingAction === "publish-now" ? (
+                <Text>Waktu: Sekarang</Text>
+              ) : (
+                <Text>
+                  Waktu: {scheduleDate ?? "-"} {scheduleTime ?? ""}
+                </Text>
+              )}
             </VStack>
           ) : (
             <VStack gap={4}>
@@ -586,17 +673,27 @@ function DraftEditorForm({
                     </VStack>
 
                     <VStack gap={3}>
-                      <Heading level={2}>Schedule Picker</Heading>
+                      <Heading level={2}>Jadwal</Heading>
                       <HStack gap={2}>
                         <DateInput
                           label="Tanggal"
+                          isLabelHidden
+                          placeholder="Pilih tanggal"
+                          size="sm"
                           value={scheduleDate as never}
                           onChange={(value) => setScheduleDate(value)}
+                          className={SCHEDULE_ICON_RIGHT_CLASSNAME}
                         />
                         <TimeInput
                           label="Waktu"
+                          isLabelHidden
+                          placeholder="Pilih waktu"
+                          size="sm"
+                          hourFormat="24h"
+                          increment={15}
                           value={scheduleTime as never}
                           onChange={(value) => setScheduleTime(value)}
+                          className={SCHEDULE_ICON_RIGHT_CLASSNAME}
                         />
                       </HStack>
                     </VStack>
@@ -610,12 +707,12 @@ function DraftEditorForm({
       footer={
         isLoadingDraft ? undefined : (
           <LayoutFooter>
-            {isConfirmStep ? (
+            {pendingAction === "schedule" ? (
               <HStack gap={3} justify="end" width="100%">
                 <Button
                   label="Batal"
                   variant="secondary"
-                  onClick={() => setIsConfirmStep(false)}
+                  onClick={() => setPendingAction(null)}
                   isDisabled={isScheduling}
                 />
                 <Button
@@ -623,6 +720,21 @@ function DraftEditorForm({
                   variant="primary"
                   onClick={handleConfirmSchedule}
                   isLoading={isScheduling}
+                />
+              </HStack>
+            ) : pendingAction === "publish-now" ? (
+              <HStack gap={3} justify="end" width="100%">
+                <Button
+                  label="Batal"
+                  variant="secondary"
+                  onClick={() => setPendingAction(null)}
+                  isDisabled={isPublishingNow}
+                />
+                <Button
+                  label="Konfirmasi & Publish"
+                  variant="primary"
+                  onClick={handleConfirmPublishNow}
+                  isLoading={isPublishingNow}
                 />
               </HStack>
             ) : (
@@ -638,11 +750,20 @@ function DraftEditorForm({
                 </StackItem>
                 <StackItem size="fill">
                   <Button
+                    label="Publish Now"
+                    variant="secondary"
+                    width="100%"
+                    isDisabled={!isReadyToPublishNow}
+                    onClick={() => setPendingAction("publish-now")}
+                  />
+                </StackItem>
+                <StackItem size="fill">
+                  <Button
                     label="Schedule"
                     variant="primary"
                     width="100%"
                     isDisabled={!isReadyToSchedule}
-                    onClick={() => setIsConfirmStep(true)}
+                    onClick={() => setPendingAction("schedule")}
                   />
                 </StackItem>
               </HStack>

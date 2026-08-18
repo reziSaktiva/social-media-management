@@ -15,6 +15,8 @@ export type {
   FetchWorkspaceMetricsResult,
   IOutstandAdapter,
   OutstandMetricsPeriod,
+  PublishNowOutstandPostInput,
+  PublishNowOutstandPostResult,
   ScheduleOutstandPostInput,
   ScheduleOutstandPostResult,
 } from "@social/shared";

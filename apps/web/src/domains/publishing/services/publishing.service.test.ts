@@ -37,6 +37,7 @@ function createFakeRepository(
     findDraftById: async () => null,
     updateDraftCaption: async () => null,
     schedulePost: async () => null,
+    publishNow: async () => null,
     updateTargetOutcome: async () => undefined,
     countScheduledByAccount: async () => new Map(),
     ...overrides,
