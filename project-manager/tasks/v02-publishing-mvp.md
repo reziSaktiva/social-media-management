@@ -158,14 +158,19 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 | **Depends**   | T-025                                                        |
 | **Baca dulu** | `04-ux/key-screen-patterns.md` (KSP-05-F12) · `04-ux/user-flows.md` (UXP-04) · `02-product/roles-permissions.md` |
 
-Belum ada di kode **maupun** di App Prototype Claude Design. Grep `publishNow` nol hasil di seluruh `src/`.
+**Update 2026-08-18 — koreksi:** belum ada di kode (`grep publishNow` nol hasil di `src/`), tapi desainnya **sudah ada** di Claude Design (project "Social Media Management") — catatan lama di sini ("belum ada... maupun di App Prototype") salah dan sudah usang:
+- Tombol "Publish Now" sudah ada di `templates/draft-editor.html`, berdampingan dengan "Save as Draft" dan "Schedule".
+- Dialog Confirmation Summary varian Publish Now ("Konfirmasi & Publish") sudah wired interaktif di `templates/app-prototype/AppPrototype.dc.html` (`openPublishNowDialog`, `data-proto="draft-publishnow"`/`publishnow-confirm`), termasuk role switcher untuk visibility per role dan redirect ke Calendar/History setelah konfirmasi.
+- Component pattern dialog-nya juga didokumentasikan di `components/dialog.html` (purpose=`form`, disebut eksplisit dipakai bersama Schedule).
+
+Jadi T-029.4/.5/.6 di bawah **desainnya sudah tersedia** — sisa pekerjaan murni implementasi kode (Server Action + service + wiring ke komponen Astryx nyata), bukan menunggu desain baru.
 
 - [ ] **T-029.1** `PublishingService.publishNow()` — RBAC semua role (Owner/Admin/Creator, ADR-074)
 - [ ] **T-029.2** Validasi `ContentFormat` (ADR-039) sebelum panggil adapter
 - [ ] **T-029.3** Server Action + panggil `OutstandAdapter.publishNow`
-- [ ] **T-029.4** Tombol "Publish Now" di Draft Editor berdampingan dengan Schedule (KSP-05-F12)
-- [ ] **T-029.5** Dialog Confirmation Summary varian Publish Now (UXP-04)
-- [ ] **T-029.6** Tambahkan tombolnya di App Prototype Claude Design — role switcher yang sudah ada dipakai untuk membatasi visibility Creator
+- [ ] **T-029.4** Tombol "Publish Now" di Draft Editor berdampingan dengan Schedule (KSP-05-F12) — desain sudah ada, tinggal implementasi komponen Astryx nyata
+- [ ] **T-029.5** Dialog Confirmation Summary varian Publish Now (UXP-04) — desain sudah ada di App Prototype, tinggal implementasi komponen Astryx nyata
+- [ ] **T-029.6** ~~Tambahkan tombolnya di App Prototype Claude Design~~ — sudah ada di App Prototype, task ini selesai dari sisi desain
 
 ### T-030 · Cancel Schedule + dialog konfirmasi
 
