@@ -8,6 +8,110 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-19 — KI-031 resolved: ikon Date/TimeInput dikonfirmasi permanen kiri + mockup Claude Design diperbaiki (DateTimeInput + calendar popover)
+
+### Context
+
+Kelanjutan diskusi KI-029/ADR-082 (entri di bawah). Fix kode untuk KI-031
+sendiri (`flex-row-reverse` dihapus, ikon kembali ke posisi default kiri
+Astryx demi a11y/WCAG 2.4.3) sudah diterapkan sejak 2026-08-18 — sisa gap
+yang belum ditutup murni soal mockup Claude Design (`templates/draft-editor.html`,
+`components/forms.html`, `templates/app-prototype/AppPrototype.dc.html`)
+yang masih menampilkan pola lama (native `<input type="date"/"time">`,
+posisi ikon tidak konsisten) dan tidak mencerminkan keputusan final.
+
+### Perbaikan mockup Claude Design (project "Social Media Management")
+
+Tiga putaran revisi sebelum konvergen ke bentuk yang benar (dicatat supaya
+tidak diulang):
+
+1. **Percobaan 1 (ditolak King Rezi):** satu box gabungan (`.dt-input`,
+   ikon kalender tunggal + segmen tanggal/waktu). Salah interpretasi
+   anatomi `DateTimeInput` — dikoreksi setelah King Rezi mengirim
+   screenshot rendering resmi `astryx.atmeta.com/components/DateTimeInput`
+   yang menunjukkan **dua kotak terpisah** berdampingan (bukan satu box).
+2. **Percobaan 2:** dua kotak terpisah (`.sched-field` × 2, ikon kalender +
+   ikon jam masing-masing, `type="text"` bukan native date/time) — sudah
+   benar strukturnya, tapi belum ada calendar popover interaktif.
+3. **Percobaan 3 (ditambah fitur):** King Rezi minta field tanggal bisa
+   diklik untuk memunculkan calendar popover (bulan/tahun + navigasi prev/
+   next + grid hari), sesuai anatomi resmi `DateInput`'s "Calendar popover".
+   Implementasi pertama pakai class `.cal-day`/`.cal-popover` dst — **bug
+   ditemukan dari screenshot King Rezi**: grid kalender rusak (baris
+   raksasa, header/weekday hilang) karena `.cal-day` **bentrok** dengan
+   class `.cal-day` yang sudah ada untuk layar Publish → Calendar (KSP-02,
+   `min-height: 150px` untuk kartu jadwal harian) — nama class sama,
+   properti CSS saling menimpa sebagian (cascade per-property, bukan
+   per-block). **Fix:** dibangun ulang dari state bersih (sebelum fitur
+   kalender ditambahkan), semua class calendar-popover diberi prefix unik
+   `schedcal-*` (bukan `cal-*`), arah buka popover diubah dari ke-atas jadi
+   ke-bawah (hindari clipping oleh `.dialog-fs-body{overflow-y:auto}`).
+   Diverifikasi: `node --check` sintaks JS ketiga file lolos, dan `diff`
+   terhadap rules `.cal-*` original (KSP-02) di `styles.css` menunjukkan
+   **nol perubahan** — dijamin tidak ada regresi ke layar Calendar.
+
+### Keputusan final
+
+KI-031 ditutup **Resolved** — bukan cuma "sebagian":
+- Kode `apps/web`: posisi ikon kiri permanen (a11y, sejak 2026-08-18).
+- Mockup Claude Design: sudah sinkron, merepresentasikan `DateTimeInput`
+  Astryx asli (dua kotak + ikon kiri masing-masing + calendar popover
+  fungsional), bukan lagi native browser input yang menyesatkan.
+- Opsi swizzle (satu dari dua opsi solusi lama) tertutup permanen sejak
+  ADR-082; opsi lain (tunggu Astryx tambah prop resmi) tidak lagi relevan
+  karena posisi kiri sudah diterima sebagai final, bukan trade-off
+  sementara yang menunggu sesuatu.
+
+### File yang berubah
+
+- `project-manager/PROJECT_STATE.md` — KI-031 dihapus dari daftar Known
+  Issues (status Resolved, sesuai aturan KI di section tersebut).
+- Claude Design project "Social Media Management" (`DesignSync`):
+  `templates/draft-editor.html`, `components/forms.html`,
+  `templates/app-prototype/AppPrototype.dc.html`, `styles.css`.
+- Tidak ada perubahan kode `apps/web` di sesi ini (fix kodenya sudah lama
+  ada sejak 2026-08-18; sesi ini murni menyinkronkan mockup + menutup
+  status).
+
+---
+
+## 2026-08-19 — KI-029 ditutup Won't Fix (ADR-082): Astryx Tailwind-only, dependency StyleX dihapus
+
+### Context
+
+Kelanjutan investigasi KI-029 (lihat entri tepat di bawah ini untuk detail 3 putaran investigasi teknis). Setelah putaran investigasi berakhir negatif dan sesi jeda, King Rezi melanjutkan diskusi dengan membaca ulang dokumentasi resmi:
+
+1. `astryx.atmeta.com/docs/styling` — dikonfirmasi Astryx punya hirarki resmi (`xstyle` prioritas #1 untuk override komponen, Tailwind untuk layout/wrapper).
+2. `astryx.atmeta.com/docs/styling-libraries` — tidak memihak Tailwind vs StyleX, menyarankan "integrasi paling sempit sesuai kebutuhan".
+3. `stylexjs.com/docs/learn/installation/nextjs` — ditemukan jalur resmi StyleX alternatif (`@stylexjs/postcss-plugin`) yang diklaim kompatibel Turbopack sejak Next.js 16.0.3 (belum pernah diuji di 3 putaran sebelumnya, yang semuanya memakai jembatan komunitas `@stylexswc/nextjs-plugin`).
+4. `github.com/facebook/astryx/tree/main/apps/example-nextjs-tailwind` — dikonfirmasi Astryx (repo resmi `facebook/astryx`) mendukung resmi pola konsumsi tanpa compiler StyleX sama sekali (`package.json` contoh ini tidak punya dependency StyleX apapun).
+
+King Rezi juga sempat menanyakan apakah `astryx.atmeta.com` benar-benar Meta — dikonfirmasi ya (repo `facebook/astryx`, footer "©2026 Meta Platforms, Inc.").
+
+Dua file diskusi dibuat sebagai catatan proses: `project-manager/reports/KI-029-astryx-styling-gaps.md` (konversi dari `.html` sebelumnya) dan `project-manager/reports/KI-029-xstyle-diskusi.md` (rangkuman hirarki styling resmi + akar masalah teknis `xstyle`).
+
+### Keputusan final
+
+King Rezi memutuskan **tidak melanjutkan investigasi teknis apapun** untuk `xstyle` (termasuk opsi jalur resmi `@stylexjs/postcss-plugin` yang belum diuji) dan menutup KI-029 sebagai **Won't Fix** — bukan bug yang di-fix, melainkan keputusan arsitektur sadar untuk berhenti memakai `xstyle`/StyleX sepenuhnya, mengikuti pola resmi Meta (`example-nextjs-tailwind`). Didokumentasikan formal di **ADR-082** (amandemen ADR-041).
+
+Konsekuensi yang disadari dan diterima: opsi "restrukturisasi DOM manual via `astryx swizzle`" untuk KI-031 (reposisi ikon `DateInput`/`TimeInput`) ikut tertutup, karena swizzle butuh compiler StyleX yang sama untuk hasilnya ter-styling. Satu-satunya opsi tersisa untuk KI-031 adalah menunggu Astryx menambah prop resmi posisi ikon.
+
+### Eksekusi
+
+- Dependency `@stylexjs/stylex` (`"0.19.0"`) dihapus dari `apps/web/package.json` — tidak pernah dipakai aktif di kode (seluruh percobaan 3 putaran sudah di-revert bersih sebelumnya). `@stylexjs/stylex` tetap ada di `bun.lock` sebagai peer dependency transitif `@astryxdesign/core` (dipakai internal Astryx untuk CSS pre-compiled-nya) — ini normal, bukan sisa dependency kita.
+- `bun install` dijalankan ulang — lockfile ter-update bersih (24 packages resolved), tidak ada perubahan lain.
+- `tsc --noEmit` dikonfirmasi bersih pasca-penghapusan.
+
+### File yang berubah
+
+- `apps/web/package.json`, `bun.lock` — hapus dependency `@stylexjs/stylex`.
+- `project-manager/decisions/ADR-082-astryx-tailwind-only-hapus-stylex-xstyle-amandemen-adr-041.md` — ADR baru.
+- `project-manager/DECISIONS.md` — indeks ADR-082 ditambahkan; ADR-041 ditandai `Amended by ADR-082`.
+- `project-manager/PROJECT_STATE.md` — KI-029 dihapus dari daftar Known Issues (status Resolved, sesuai aturan KI di baris pembuka section tersebut); KI-031 diperbarui merefleksikan penutupan opsi swizzle.
+- `project-manager/reports/KI-029-astryx-styling-gaps.md`, `project-manager/reports/KI-029-xstyle-diskusi.md` — catatan diskusi (dibuat sesi ini).
+
+---
+
 ## 2026-08-19 — Upgrade Astryx 0.4.3 (selesai bersih) + investigasi KI-029 putaran 2 & 3 (hasil negatif, dihentikan sementara)
 
 ### Context
