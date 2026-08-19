@@ -1,0 +1,468 @@
+<title>Astryx Styling Gaps</title>
+<style>
+  :root {
+    --bg: #eef1f2;
+    --surface: #ffffff;
+    --surface-sunken: #e4e8ea;
+    --border: #d2d9dc;
+    --text: #1b2226;
+    --text-muted: #55636b;
+    --text-faint: #7c8890;
+    --accent: #ab5b2a;
+    --accent-strong: #8a4720;
+    --accent-soft: #f3e3d4;
+    --accent-soft-border: #e2c4a3;
+    --status-open-bg: #f7e2df;
+    --status-open-text: #8a2f22;
+    --status-open-border: #e6b8b0;
+    --mono-bg: #1b2226;
+    --mono-text: #dfe6e8;
+    --mono-accent: #e8a466;
+    --mono-border: #333d42;
+    --link: #8a4720;
+    --shadow: 0 1px 2px rgba(27,34,38,0.06), 0 8px 24px rgba(27,34,38,0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14181a;
+      --surface: #1b2124;
+      --surface-sunken: #23292c;
+      --border: #343c40;
+      --text: #e8ecee;
+      --text-muted: #a7b1b6;
+      --text-faint: #7c8890;
+      --accent: #dd9256;
+      --accent-strong: #eaad78;
+      --accent-soft: #33261c;
+      --accent-soft-border: #55402c;
+      --status-open-bg: #3a201d;
+      --status-open-text: #e8a89e;
+      --status-open-border: #5c342c;
+      --mono-bg: #0e1214;
+      --mono-text: #dfe6e8;
+      --mono-accent: #eaad78;
+      --mono-border: #2c3438;
+      --link: #eaad78;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #14181a;
+    --surface: #1b2124;
+    --surface-sunken: #23292c;
+    --border: #343c40;
+    --text: #e8ecee;
+    --text-muted: #a7b1b6;
+    --text-faint: #7c8890;
+    --accent: #dd9256;
+    --accent-strong: #eaad78;
+    --accent-soft: #33261c;
+    --accent-soft-border: #55402c;
+    --status-open-bg: #3a201d;
+    --status-open-text: #e8a89e;
+    --status-open-border: #5c342c;
+    --mono-bg: #0e1214;
+    --mono-text: #dfe6e8;
+    --mono-accent: #eaad78;
+    --mono-border: #2c3438;
+    --link: #eaad78;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 20px 96px;
+  }
+
+  h1, h2, h3 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+    font-weight: 600;
+    text-wrap: balance;
+    color: var(--text);
+    margin: 0;
+  }
+
+  .wrap { max-width: 780px; margin: 0 auto; }
+
+  code, .mono, .num {
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- header ---- */
+  header.report-head {
+    padding: 56px 0 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .eyebrow {
+    display: inline-block;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 12px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent-strong);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-soft-border);
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 18px;
+  }
+  h1.title {
+    font-size: 34px;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    margin-top: 12px;
+    color: var(--text-muted);
+    font-size: 16.5px;
+    max-width: 60ch;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    margin-top: 24px;
+    font-size: 13.5px;
+    color: var(--text-faint);
+  }
+  .meta-row span b { color: var(--text-muted); font-weight: 600; }
+
+  /* ---- verdict banner ---- */
+  .verdict {
+    margin-top: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 20px 24px;
+    box-shadow: var(--shadow);
+  }
+  .verdict h2 { font-size: 17px; margin-bottom: 8px; }
+  .verdict p { margin: 0; color: var(--text-muted); font-size: 15px; }
+  .verdict p + p { margin-top: 8px; }
+
+  /* ---- nav ---- */
+  nav.toc {
+    display: flex;
+    gap: 10px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+  nav.toc a {
+    font-size: 13.5px;
+    text-decoration: none;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 7px 13px;
+    border-radius: 999px;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  nav.toc a:hover { border-color: var(--accent); color: var(--accent-strong); }
+  nav.toc a b { color: var(--text); font-family: ui-monospace, monospace; }
+
+  /* ---- sections ---- */
+  section.ki {
+    margin-top: 56px;
+    scroll-margin-top: 24px;
+  }
+  .ki-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+  .ki-id {
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    color: var(--text-faint);
+    letter-spacing: 0.03em;
+  }
+  h2.ki-title { font-size: 24px; margin-top: 4px; }
+  .status-chip {
+    font-family: ui-monospace, monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--status-open-bg);
+    color: var(--status-open-text);
+    border: 1px solid var(--status-open-border);
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .ki-summary { margin-top: 18px; font-size: 15.5px; color: var(--text); max-width: 66ch; }
+  .ki-summary strong { color: var(--text); }
+
+  h3.block-label {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-top: 30px;
+    margin-bottom: 12px;
+  }
+
+  ul.findings { margin: 0; padding-left: 20px; color: var(--text); font-size: 15px; }
+  ul.findings li { margin-bottom: 8px; }
+  ul.findings li::marker { color: var(--accent); }
+
+  /* evidence quote block */
+  .evidence {
+    background: var(--mono-bg);
+    color: var(--mono-text);
+    border: 1px solid var(--mono-border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 14px 0;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 1.65;
+    overflow-x: auto;
+  }
+  .evidence .src {
+    display: block;
+    font-family: -apple-system, sans-serif;
+    font-size: 12px;
+    color: var(--mono-accent);
+    margin-bottom: 10px;
+    letter-spacing: 0.02em;
+  }
+  .evidence .q { color: var(--mono-text); }
+  .evidence .hl { color: var(--mono-accent); font-weight: 600; }
+
+  a.src-link { color: var(--link); text-decoration: underline; text-decoration-color: var(--accent-soft-border); text-underline-offset: 2px; }
+  a.src-link:hover { text-decoration-color: var(--accent); }
+
+  /* data table */
+  .data-table-wrap { overflow-x: auto; margin: 14px 0; border: 1px solid var(--border); border-radius: 8px; }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: var(--surface); }
+  table.data-table th, table.data-table td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+  table.data-table th { background: var(--surface-sunken); color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.data-table tr:last-child td { border-bottom: none; }
+  .ok { color: #3b7a4a; font-weight: 600; }
+  :root[data-theme="dark"] .ok { color: #7fc98d; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ok { color: #7fc98d; } }
+  .fail { color: var(--status-open-text); font-weight: 600; }
+
+  /* conclusion box */
+  .conclusion {
+    margin-top: 20px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-soft-border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 14.5px;
+    color: var(--text);
+  }
+  .conclusion b { color: var(--accent-strong); }
+
+  .options { margin-top: 14px; }
+  .options ol { padding-left: 20px; margin: 0; font-size: 14.5px; color: var(--text-muted); }
+  .options li { margin-bottom: 6px; }
+
+  footer.report-foot {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text-faint);
+    font-size: 13px;
+  }
+  footer.report-foot a { color: var(--text-muted); }
+
+  @media (max-width: 560px) {
+    h1.title { font-size: 27px; }
+    body { padding: 0 14px 72px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="report-head">
+    <span class="eyebrow">Known Issue Report</span>
+    <h1 class="title">Astryx Styling Gaps</h1>
+    <p class="subtitle">Ringkasan KI-029, KI-030, dan KI-031 — tiga Known Issue yang muncul dari batasan resmi Astryx (masih Beta) dan bug pihak ketiga di ekosistem StyleX, bukan kesalahan konfigurasi implementasi kita.</p>
+    <div class="meta-row">
+      <span><b>Branch</b> fix/ki-029-stylex-babel-plugin</span>
+      <span><b>Astryx</b> v0.4.3</span>
+      <span><b>Diperbarui</b> 2026-08-19</span>
+      <span><b>Sumber</b> project-manager/PROJECT_STATE.md</span>
+    </div>
+
+    <div class="verdict">
+      <h2>Verdict singkat</h2>
+      <p>Ketiga isu ini terbukti berasal dari <b>batas resmi dokumentasi Astryx</b> (KI-029, sebagian KI-031) atau <b>gap prop yang memang belum disediakan Astryx</b> (KI-030, KI-031) — bukan dari cara kita memakai komponennya. Setiap klaim di bawah disertai kutipan langsung dari dokumentasi resmi (`astryx docs`, `astryx component`) atau rilis upstream, dicek ulang lewat CLI lokal dan registry publik, bukan diasumsikan dari memori.</p>
+      <p><b>KI-031 hanya sebagian terkait KI-029</b> — hanya opsi "swizzle DOM manual" yang terhalang; opsi "tunggu Astryx tambah trailing-icon" berdiri sendiri.</p>
+    </div>
+
+    <nav class="toc">
+      <a href="#ki-029"><b>KI-029</b> &nbsp;xstyle / StyleX</a>
+      <a href="#ki-030"><b>KI-030</b> &nbsp;TimeInput input guard</a>
+      <a href="#ki-031"><b>KI-031</b> &nbsp;Icon position / tab order</a>
+    </nav>
+  </header>
+
+  <!-- ============ KI-029 ============ -->
+  <section class="ki" id="ki-029">
+    <div class="ki-head">
+      <div>
+        <div class="ki-id">KI-029 · Tech-Debt · Terkait T-029, ADR-041</div>
+        <h2 class="ki-title">Prop <code>xstyle</code> belum bisa dipakai</h2>
+      </div>
+      <span class="status-chip">Open</span>
+    </div>
+
+    <p class="ki-summary">Astryx mendokumentasikan <code>xstyle</code> + <code>stylex.create()</code> sebagai cara resmi kustomisasi komponen. Tapi dokumentasi Astryx sendiri secara eksplisit memperingatkan bahwa jalur "obvious" (Babel plugin) <b>tidak kompatibel</b> dengan Next.js App Router — dan jalur alternatif yang mereka rekomendasikan (SWC-based, pihak ketiga) ternyata punya bug ekstraksi CSS yang terbukti lewat pengujian langsung, tiga putaran, dua versi paket berbeda.</p>
+
+    <h3 class="block-label">Bukti resmi — Astryx memperingatkan sendiri</h3>
+    <div class="evidence">
+      <span class="src">astryx docs styling — CLI resmi, Astryx v0.4.3, dijalankan lokal via <code>bun run astryx -- docs styling</code></span>
+      <span class="q">Next.js (App Router) is the sharp edge. StyleX's canonical compiler is a Babel plugin, but introducing a Babel config in Next.js disables the SWC compiler, which in turn breaks SWC-dependent features like <span class="hl">next/font</span>. So the "obvious" Babel setup is actively incompatible with a standard Next 15 App Router app.</span><br><br>
+      <span class="q">- Symptom of a missing compiler: swizzled component renders with no styles, but no build or runtime error.<br>
+- Do NOT add @stylexjs/babel-plugin to a Next.js App Router app; it disables SWC and breaks next/font.</span>
+    </div>
+
+    <div class="evidence">
+      <span class="src">Astryx changelog resmi — <a class="src-link" href="https://astryx.atmeta.com/changelog" target="_blank" rel="noopener">astryx.atmeta.com/changelog</a>, entri #3373</span>
+      <span class="q">astryx swizzle: swizzled components ship raw StyleX source that needs a build-time StyleX compiler, and without one they render unstyled with no error. The command now prints a StyleX build-setup note after copying (including the Next.js caveat that the <span class="hl">StyleX Babel plugin disables SWC and breaks next/font</span>, so an SWC-based transform is required).</span>
+    </div>
+
+    <h3 class="block-label">Yang sudah dicoba (3 putaran, semua di-revert bersih)</h3>
+    <ul class="findings">
+      <li><b>Putaran 1 — <code>@stylexjs/nextjs-plugin</code></b> (jalur webpack lama): gagal total. Next.js 16 project ini pakai Turbopack secara default, dan hook <code>webpack()</code> paket ini tidak pernah terpanggil.</li>
+      <li><b>Putaran 2 — <code>@stylexswc/nextjs-plugin@0.18.3</code></b> (SWC-based, dist-tag <code>latest</code> resmi npm): compiler jalan, tidak ada error build — tapi nilai numerik dan warna hilang dari CSS hasil ekstraksi.</li>
+      <li><b>Putaran 3 — <code>@stylexswc/nextjs-plugin@0.18.4-rc.2</code></b> (pre-release, changelog upstream menyebut "fix number rendering"): bug tetap identik, dikonfirmasi lewat perbandingan classname baseline-vs-<code>xstyle</code>, bukan dugaan.</li>
+    </ul>
+
+    <h3 class="block-label">Bukti pengukuran putaran 2 &amp; 3 — identik</h3>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Properti</th><th>Jenis nilai</th><th>Hasil ekstraksi CSS</th></tr></thead>
+        <tbody>
+          <tr><td><code>borderStyle: 'dashed'</code></td><td>keyword string</td><td class="ok">Ter-extract</td></tr>
+          <tr><td><code>marginInline: 'auto'</code></td><td>keyword string</td><td class="ok">Ter-extract</td></tr>
+          <tr><td><code>maxWidth: 420</code></td><td>numerik</td><td class="fail">Hilang total</td></tr>
+          <tr><td><code>marginBlock: 48</code></td><td>numerik</td><td class="fail">Hilang total</td></tr>
+          <tr><td><code>borderWidth: 4</code></td><td>numerik</td><td class="fail">Hilang total</td></tr>
+          <tr><td><code>backgroundColor: 'rgb(255,0,128)'</code></td><td>fungsi warna</td><td class="fail">Hilang total</td></tr>
+          <tr><td><code>borderColor: 'rgb(0,0,0)'</code></td><td>fungsi warna</td><td class="fail">Hilang total</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="evidence">
+      <span class="src">GitHub release upstream — <a class="src-link" href="https://github.com/Dwlad90/stylex-swc-plugin/releases/tag/0.18.4-rc.2" target="_blank" rel="noopener">Dwlad90/stylex-swc-plugin @ 0.18.4-rc.2</a>, publish 2026-08-17</span>
+      <span class="q">Bug Fixes 🐛<br>* <span class="hl">Fix number rendering, rounding, and unsupported value handling</span> by @Dwlad90 in #1258</span><br><br>
+      <span class="q">— fix ini secara eksplisit menyasar masalah yang sama persis dengan yang kami temukan, tapi pengujian langsung membuktikan bug tetap ada di code path PostCSS+Turbopack yang kami pakai.</span>
+    </div>
+
+    <div class="conclusion">
+      <b>Kenapa ini bukan salah implementasi kami:</b> kami mengikuti persis panduan resmi Astryx (bukan jalur yang mereka larang), lalu memverifikasi tiga kombinasi package berbeda dengan bukti terukur (bukan "tidak error" saja) — computed style, isi CSS terkirim, dan perbandingan classname baseline. Bug tetap konsisten di seluruh percobaan, dan changelog upstream sendiri mengonfirmasi ini area yang masih aktif diperbaiki.
+    </div>
+    <div class="options">
+      <ol>
+        <li>Lapor issue ke upstream <code>Dwlad90/stylex-swc-plugin</code> dengan reproduksi minimal.</li>
+        <li>Uji jalur <code>--webpack</code> (kehilangan Turbopack — trade-off arsitektur, butuh ADR).</li>
+        <li>Tunggu rilis stable <code>0.18.4</code>, cek ulang.</li>
+        <li>Tunda — lanjut pakai <code>className</code> Tailwind untuk kustomisasi yang tidak butuh nilai numerik/warna kustom.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ KI-030 ============ -->
+  <section class="ki" id="ki-030">
+    <div class="ki-head">
+      <div>
+        <div class="ki-id">KI-030 · Tech-Debt · Terkait T-029, ADR-041</div>
+        <h2 class="ki-title"><code>TimeInput</code> tak membatasi input real-time</h2>
+      </div>
+      <span class="status-chip">Open</span>
+    </div>
+
+    <p class="ki-summary">Field <code>TimeInput</code> menerima ketikan bebas tanpa batas (bisa &gt;4 digit atau huruf apa saja). Ini bukan salah konfigurasi kita — Astryx mendesain komponen ini untuk di-parse saat blur, bukan masking real-time per-keystroke, dan tabel props resminya <b>memang tidak menyediakan</b> prop untuk membatasi input saat mengetik.</p>
+
+    <h3 class="block-label">Bukti resmi — daftar props lengkap TimeInput</h3>
+    <div class="evidence">
+      <span class="src">astryx component TimeInput --dense — CLI resmi, Astryx v0.4.3, dijalankan lokal</span>
+      <span class="q">label · isLabelHidden · description · isOptional · isRequired · isDisabled · disabledMessage · value · onChange · changeAction · isLoading · min · max · hasSeconds · hasClear · hourFormat · increment · placeholder · size · status · statusVariant · labelTooltip · width · <span class="hl">xstyle</span></span><br><br>
+      <span class="q">— tidak ada satupun dari 24 prop resmi ini (<code>maxLength</code>, <code>pattern</code>, <code>onKeyDown</code>, atau sejenisnya) yang berfungsi membatasi keystroke individual saat mengetik.</span>
+    </div>
+
+    <h3 class="block-label">Konfirmasi tambahan di level DOM</h3>
+    <ul class="findings">
+      <li>Inspeksi elemen <code>&lt;input&gt;</code> internal: <code>type="text"</code> tanpa <code>maxLength</code>/<code>pattern</code> sama sekali — bukan atribut yang sengaja dilepas oleh kode kita, memang tidak pernah diset oleh komponennya.</li>
+      <li>Wrapper <code>onKeyDownCapture</code>/<code>onPaste</code> sempat dicoba sebagai mitigasi level "wrapper selektif" (bukan swizzle) — tapi tidak solid (tidak menangkap paste/IME sepenuhnya) dan dihapus atas keputusan King Rezi.</li>
+    </ul>
+
+    <div class="conclusion">
+      <b>Kenapa ini bukan gap implementasi kami:</b> daftar props di atas adalah permukaan API lengkap yang diekspos Astryx sendiri untuk versi yang ter-install — tidak ada prop pembatas input yang "terlewat" dipakai, karena memang belum ada.
+    </div>
+    <div class="options">
+      <ol>
+        <li>Tunggu Astryx menambah prop resmi untuk ini (masih Beta, KI-005).</li>
+        <li>Coba ulang mitigasi wrapper dengan pendekatan berbeda, jika prioritas naik.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ KI-031 ============ -->
+  <section class="ki" id="ki-031">
+    <div class="ki-head">
+      <div>
+        <div class="ki-id">KI-031 · Tech-Debt · Terkait T-029, ADR-041</div>
+        <h2 class="ki-title">Ikon kalender/jam tak bisa pindah kanan tanpa merusak tab order</h2>
+      </div>
+      <span class="status-chip">Open</span>
+    </div>
+
+    <p class="ki-summary">Memindah ikon <code>DateInput</code>/<code>TimeInput</code> ke kanan lewat <code>flex-row-reverse</code> hanya membalik urutan visual — ikon tetap jadi elemen DOM pertama, sehingga keyboard Tab dan screen reader tetap mengunjunginya lebih dulu. Ini mismatch WCAG 2.4.3 (Focus Order), dan Astryx tidak menyediakan prop resmi untuk mengatur posisi ikon.</p>
+
+    <h3 class="block-label">Bukti resmi — anatomi komponen tidak menyediakan opsi posisi</h3>
+    <div class="evidence">
+      <span class="src">astryx component DateInput --dense — CLI resmi, Astryx v0.4.3</span>
+      <span class="q">Anatomy: Label (required) → Text input (required) → <span class="hl">Calendar icon (required)</span> → Calendar popover → Clear button → Status message</span><br><br>
+      <span class="q">Props: label · isLabelHidden · description · isOptional · isRequired · isDisabled · disabledMessage · value · onChange · changeAction · isLoading · min · max · dateConstraints · placeholder · size · status · statusVariant · labelTooltip · hasClear · numberOfMonths · weekStartsOn · format · width · xstyle</span><br><br>
+      <span class="q">— tidak ada prop seperti <code>iconPosition</code> atau <code>trailingIcon</code> di kedua komponen (<code>DateInput</code> maupun <code>TimeInput</code>); urutan anatomi ikon-lalu-input bersifat tetap di versi ini.</span>
+    </div>
+
+    <h3 class="block-label">Konfirmasi platform — kenapa CSS saja tak cukup</h3>
+    <div class="evidence">
+      <span class="src">MDN Web Docs — properti CSS <code>order</code></span>
+      <span class="q">The order property does not affect layout order used for other purposes, such as speech order for accessibility tools, or the navigation order when pressing the Tab key</span>
+    </div>
+    <ul class="findings">
+      <li>Source komponen Astryx yang ter-install dicek langsung: tidak ada <code>tabIndex</code> maupun CSS <code>order</code> pada ikon — mengonfirmasi urutan DOM memang tetap fixed.</li>
+    </ul>
+
+    <h3 class="block-label">Hubungan dengan KI-029 — hanya sebagian</h3>
+    <p class="ki-summary" style="max-width: none;">Ada dua opsi yang tersisa untuk kasus ini, dan hanya satu yang terhalang KI-029:</p>
+    <ul class="findings">
+      <li><b>Restrukturisasi DOM manual (swizzle)</b> — <i>terhalang KI-029</i>. <code>astryx swizzle</code> meng-eject raw StyleX source yang butuh compiler StyleX yang benar-benar jalan (persis yang gagal diverifikasi di KI-029) supaya hasilnya ter-styling, bukan render tanpa style.</li>
+      <li><b>Menunggu Astryx menambah opsi trailing-icon resmi</b> — <i>berdiri sendiri</i>, tidak butuh swizzle maupun <code>xstyle</code> sama sekali.</li>
+    </ul>
+
+    <div class="conclusion">
+      <b>Kenapa ini bukan bug implementasi kami:</b> fix yang diterapkan (revert ke posisi default kiri) sudah benar secara a11y berdasarkan spesifikasi CSS <code>order</code> di MDN dan anatomi resmi Astryx — trade-off yang tersisa (kecocokan visual vs a11y) murni menunggu Astryx menambah API resmi, bukan sesuatu yang bisa diselesaikan lewat konfigurasi kita.
+    </div>
+  </section>
+
+  <footer class="report-foot">
+    Sumber lengkap &amp; log investigasi per-putaran: <a href="../PROJECT_STATE.md">project-manager/PROJECT_STATE.md</a> (entri KI-029, KI-030, KI-031) di branch <code>fix/ki-029-stylex-babel-plugin</code>. Semua kutipan diverifikasi langsung lewat CLI lokal (<code>astryx docs</code>, <code>astryx component</code>), npm registry, dan GitHub Releases upstream pada 2026-08-18 — bukan dari memori/asumsi.
+  </footer>
+
+</div>

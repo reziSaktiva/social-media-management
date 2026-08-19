@@ -8,6 +8,34 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-19 — Upgrade Astryx 0.4.3 (selesai bersih) + investigasi KI-029 putaran 2 & 3 (hasil negatif, dihentikan sementara)
+
+### Context
+
+Branch `fix/ki-029-stylex-babel-plugin`. Dua pekerjaan berbeda terjadi di branch yang sama:
+
+1. **Upgrade Astryx `0.1.8 → 0.4.3`** (core, cli, theme-neutral) — dilakukan sebagai bagian eksplorasi apakah versi baru sudah punya rekomendasi resmi berbeda untuk wiring StyleX (lihat poin 2). Selesai bersih: `astryx upgrade --apply` melaporkan "No changes needed" untuk 156 komponen (tidak ada breaking change yang menyentuh kode existing). File berubah: `apps/web/package.json`, `bun.lock`, `apps/web/.claude/CLAUDE.md` (regenerated otomatis via `bunx astryx init --features agents --agent claude`). Diverifikasi `tsc --noEmit`, `bun run build`, smoke-test browser — semua lolos, tidak ada regresi.
+2. **Investigasi lanjutan KI-029** (putaran 2 & 3, melanjutkan putaran 1 yang sudah tercatat sebelumnya) — dicoba paket resmi baru yang direkomendasikan `astryx docs styling` versi 0.4.3, **`@stylexswc/nextjs-plugin`** (compiler berbasis SWC/Rust NAPI-RS, gantinya `@stylexjs/nextjs-plugin` lama yang gagal total di putaran 1 karena Turbopack tidak memanggil hook webpack). Putaran 2 (`v0.18.3` stable): compiler berhasil jalan (bug resolusi modul `@stylexswc/turbopack-plugin/loader` ditemukan & diperbaiki sendiri), tapi nilai numerik (`maxWidth: 420`, dst.) dan fungsi warna (`rgb(...)`) hilang total dari CSS hasil ekstraksi — hanya nilai keyword string yang ter-extract. Putaran 3 (`v0.18.4-rc.2`, pre-release, changelog eksplisit menyebut fix "number rendering, rounding, unsupported value handling" PR #1258 upstream): dicoba atas persetujuan eksplisit King Rezi untuk ambil risiko pre-release — **bug identik, tidak fixed**, dikonfirmasi definitif lewat perbandingan classList baseline-vs-xstyle dan grep langsung isi CSS terkirim. Semua perubahan percobaan (`next.config.ts`, `postcss.config.mjs`, `package.json`+`bun.lock` untuk paket `@stylexswc/*`, halaman test) **sudah di-revert bersih** di kedua putaran — tidak ada sisa kode permanen dari investigasi ini.
+
+### Keputusan penutup
+
+Setelah 3 putaran investigasi teknis lengkap (webpack-based gagal total → SWC-based stable ada bug ekstraksi → SWC-based pre-release bug identik), King Rezi memutuskan **berhenti melanjutkan investigasi teknis KI-029/KI-030/KI-031 untuk saat ini** dan **menempuh jalan lain** (kata beliau langsung). Belum ada detail spesifik jalur alternatif yang dimaksud pada momen keputusan ini diambil. Ini **bukan** keputusan Resolved — ketiga Known Issue (KI-029, KI-030, KI-031) tetap berstatus `Open` di `PROJECT_STATE.md`, workaround existing (`className` Tailwind untuk KI-029, ikon posisi default kiri untuk KI-031) tetap berlaku.
+
+### Referensi bukti lengkap
+
+Laporan investigasi lengkap (seluruh 3 putaran KI-029: kutipan resmi `astryx docs styling`, output `astryx component TimeInput/DateInput --dense`, changelog Astryx, GitHub Releases upstream `Dwlad90/stylex-swc-plugin`, tabel pengukuran computed style browser + grep CSS chunk) didokumentasikan sebagai file HTML mandiri: `project-manager/reports/KI-029-astryx-styling-gaps.html`.
+
+### File yang berubah
+
+- `apps/web/package.json`, `bun.lock` — upgrade Astryx 0.4.3.
+- `apps/web/.claude/CLAUDE.md` — regenerated (auto, mengikuti `@astryxdesign/cli` v0.4.3).
+- `project-manager/PROJECT_STATE.md` — catatan penutup investigasi di KI-029/030/031 + entri "Completed (Ringkasan)" untuk upgrade Astryx.
+- `project-manager/reports/KI-029-astryx-styling-gaps.html` — laporan bukti (dibuat di sesi sebelumnya, direferensikan di sini).
+
+Tidak ada perubahan pada `TASKS.md`/`tasks/vXX-*.md` (KI-029/030/031 bukan task formal bernomor) maupun `DECISIONS.md` (tidak ada perubahan baseline arsitektur — investigasi berakhir tanpa solusi yang diadopsi).
+
+---
+
 ## 2026-08-18 — T-029 Publish Now selesai + perbaikan UI Schedule Picker Draft Editor (KI-029, KI-030)
 
 ### Context
