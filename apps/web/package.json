@@ -11,7 +11,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs",
+    "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
     "db:generate": "bunx prisma generate",
     "db:validate": "bunx prisma validate",
     "db:migrate": "bun --env-file=.env.local x prisma migrate dev",
@@ -20,8 +20,8 @@
     "postinstall": "bunx prisma generate"
   },
   "dependencies": {
-    "@astryxdesign/core": "0.1.8",
-    "@astryxdesign/theme-neutral": "0.1.8",
+    "@astryxdesign/core": "0.4.3",
+    "@astryxdesign/theme-neutral": "0.4.3",
     "@better-auth/infra": "^0.3.7",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
@@ -38,7 +38,7 @@
     "react-icons": "^5.7.0"
   },
   "devDependencies": {
-    "@astryxdesign/cli": "0.1.8",
+    "@astryxdesign/cli": "0.4.3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.15.5",
