@@ -127,14 +127,14 @@ Setelah 3 putaran investigasi teknis lengkap (webpack-based gagal total → SWC-
 
 ### Referensi bukti lengkap
 
-Laporan investigasi lengkap (seluruh 3 putaran KI-029: kutipan resmi `astryx docs styling`, output `astryx component TimeInput/DateInput --dense`, changelog Astryx, GitHub Releases upstream `Dwlad90/stylex-swc-plugin`, tabel pengukuran computed style browser + grep CSS chunk) didokumentasikan sebagai file HTML mandiri: `project-manager/reports/KI-029-astryx-styling-gaps.html`.
+Laporan investigasi lengkap (seluruh 3 putaran KI-029: kutipan resmi `astryx docs styling`, output `astryx component TimeInput/DateInput --dense`, changelog Astryx, GitHub Releases upstream `Dwlad90/stylex-swc-plugin`, tabel pengukuran computed style browser + grep CSS chunk) didokumentasikan sebagai file mandiri: `project-manager/reports/KI-029-astryx-styling-gaps.md` (dibuat sebagai `.html`, dikonversi ke `.md` dan `.html`-nya dihapus 2026-08-19 — lihat entri di atas).
 
 ### File yang berubah
 
 - `apps/web/package.json`, `bun.lock` — upgrade Astryx 0.4.3.
 - `apps/web/.claude/CLAUDE.md` — regenerated (auto, mengikuti `@astryxdesign/cli` v0.4.3).
 - `project-manager/PROJECT_STATE.md` — catatan penutup investigasi di KI-029/030/031 + entri "Completed (Ringkasan)" untuk upgrade Astryx.
-- `project-manager/reports/KI-029-astryx-styling-gaps.html` — laporan bukti (dibuat di sesi sebelumnya, direferensikan di sini).
+- `project-manager/reports/KI-029-astryx-styling-gaps.md` — laporan bukti (dibuat di sesi sebelumnya sebagai `.html`, direferensikan di sini; dikonversi ke `.md` 2026-08-19).
 
 Tidak ada perubahan pada `TASKS.md`/`tasks/vXX-*.md` (KI-029/030/031 bukan task formal bernomor) maupun `DECISIONS.md` (tidak ada perubahan baseline arsitektur — investigasi berakhir tanpa solusi yang diadopsi).
 

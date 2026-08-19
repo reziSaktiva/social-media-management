@@ -85,3 +85,5 @@ Opsi paling menjanjikan yang belum dieksplorasi: **jalur resmi StyleX #2** (`@st
 4. **Tunggu rilis stable** `@stylexswc` `0.18.4` — pantau berkala.
 
 Belum ada keputusan final — menunggu arahan King Rezi.
+
+**Update 2026-08-19:** keputusan sudah final — opsi 3 diambil. KI-029 ditutup **Won't Fix** (lihat ADR-082), KI-031 ditutup **Resolved**. Detail: `PROJECT_STATE.md`, `COMPLETE_TASK.md`.
