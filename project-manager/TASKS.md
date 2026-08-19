@@ -106,7 +106,6 @@ Task yang **menghasilkan ADR**, bukan sekadar mengikuti ADR. Semuanya menunggu k
 | **T-005** | Transactional email provider (AS-D04)                     | Email verification; invite member T-007.7 (jalur "Kirim via Email") — T-007.1 "Copy Link" (ADR-080) tidak terhambat |
 | **T-060** | Provider + model AI                                       | Seluruh v0.5                   |
 | **T-070** | Strategi route publik tanpa auth (+ custom domain?)       | Seluruh v0.6                   |
-| **T-032** | Semantik queue slot — slot waktu berulang vs urutan antrean | Queue management               |
 | **T-081** | Framework E2E test                                        | Verifikasi golden path         |
 | **T-086** | Tool observability / monitoring                           | Visibilitas kegagalan job      |
 | —         | **Billing** belum muncul di release manapun               | Belum masuk backlog sama sekali |

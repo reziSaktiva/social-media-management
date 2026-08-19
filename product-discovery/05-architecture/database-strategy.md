@@ -701,7 +701,7 @@ Detail implementasi migrasi didefinisikan di Engineering Planning (M6). Poin ars
 | `ConnectedAccount` | `workspace_connected_accounts` | BC-02 |
 | `Post` | `publishing_posts` | BC-03 |
 | `PostTarget` | `publishing_post_targets` | BC-03 |
-| `QueueSlot` | `publishing_queue_slots` | BC-03 |
+| ~~`QueueSlot`~~ | ~~`publishing_queue_slots`~~ | BC-03 — **deprecated (ADR-083, 2026-08-19):** entity dihapus dari `domain-model.md`, Queue jadi computed view atas `Post`/`PostTarget`. Tabel fisik masih ada di DB (nol referensi kode), dijadwalkan dihapus lewat migration saat T-032.2 dikerjakan |
 | `AIRequest` | `ai_requests` | BC-04 |
 | `AIResult` | `ai_results` | BC-04 |
 | `InboxItem` | `engagement_inbox_items` | BC-05 |

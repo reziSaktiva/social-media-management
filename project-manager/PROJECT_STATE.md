@@ -328,12 +328,11 @@ Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `C
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-083** — Queue (KSP-03) murni urutan waktu publish — hapus reorder manual & status chip per item, entity `QueueSlot` dihapus dari baseline (`domain-model.md`/`application-layer.md`), amandemen `key-screen-patterns.md`/`user-flows.md`.
+* **ADR-082** — Astryx Tailwind-only — hapus dependency StyleX, `xstyle` tidak dipakai (amandemen ADR-041).
+* **ADR-081** — Project Supabase Cloud existing ("Sosial Media Management") resmi ditetapkan sebagai staging — amandemen EM-D02 (ADR-033).
+* **ADR-080** — Invite member dua metode (Email + Copy Link), email-bound wajib, bulk invite ditolak — amandemen ADR-072.
 * **ADR-079** — Promosi `IOutstandAdapter` jadi cross-domain shared contract (`packages/shared`) + Fake metric ingestion untuk T-041 — amandemen ADR-059.
-* **ADR-078** — Amandemen ADR-018: port lokal + composition root untuk cross-domain service call (`ScheduledCountsPort` / T-012.2).
-* **ADR-077** — Settings pakai sidebar tunggal yang menggantikan main sidebar (pola Buffer) — amandemen mekanisme render ADR-076.
-* **ADR-076** — Workspace context pindah ke cookie (hapus dynamic segment `[slug]`, route group `(app)`) + Settings dikonsolidasi jadi Organization + Account dengan entry point avatar tunggal — menggantikan Workspace Selector yang tidak pernah dibangun (KI-023).
-* **ADR-075** — Amandemen ADR-071: sinkronisasi kutipan `migration.sql` bucket `avatars` (resolusi KI-018).
-* **ADR-074** — Reduksi struktur role dari 4 jadi 3 (Account Owner, Admin, Creator) — resolusi KI-017.
 
 ---
 
