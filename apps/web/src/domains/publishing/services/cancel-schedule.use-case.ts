@@ -27,8 +27,10 @@ import type {
  * Beda dari `SchedulePostsUseCase`/`PublishNowUseCase`: kegagalan
  * `cancelScheduledPost` per target tidak ditulis balik ke
  * `PublishingPostTarget` (baris itu sudah dihapus oleh
- * `repository.cancelSchedule`) — cukup best-effort, gagal salah satu target
- * tidak menggagalkan keseluruhan aksi (post di DB sudah pasti Draft).
+ * `repository.cancelSchedule`) — best-effort, gagal salah satu target tidak
+ * menggagalkan keseluruhan aksi (post di DB sudah pasti Draft), tapi TETAP
+ * di-log via `console.error` (bukan ditelan diam-diam) supaya kegagalan
+ * reconcile ke Outstand tidak hilang tanpa jejak sama sekali.
  */
 export class CancelScheduleUseCase {
   constructor(
@@ -57,24 +59,33 @@ export class CancelScheduleUseCase {
       );
     }
 
-    await Promise.all(
+    const outcomes = await Promise.allSettled(
       record.cancelledTargets
         .filter(
           (target): target is { outstandJobId: string } =>
             target.outstandJobId !== null,
         )
-        .map(async (target) => {
-          try {
-            await this.outstandAdapter.cancelScheduledPost(
-              target.outstandJobId,
-            );
-          } catch {
-            // Best-effort — tidak ada baris PublishingPostTarget lagi untuk
-            // dicatat outcome-nya (sudah dihapus oleh repository.cancelSchedule),
-            // dan post di DB sudah pasti Draft terlepas dari hasil ini.
-          }
-        }),
+        .map((target) =>
+          this.outstandAdapter.cancelScheduledPost(target.outstandJobId),
+        ),
     );
+
+    // Best-effort by design — tidak ada baris PublishingPostTarget lagi
+    // untuk dicatat outcome-nya (sudah dihapus oleh
+    // repository.cancelSchedule), dan post di DB sudah pasti Draft terlepas
+    // dari hasil ini. Tapi kegagalan tetap WAJIB di-log (bukan ditelan
+    // sepenuhnya) — kalau tidak, job yang gagal dibatalkan di sisi Outstand
+    // bisa tetap tayang tanpa jejak error di mana pun.
+    const failures = outcomes.filter(
+      (outcome): outcome is PromiseRejectedResult =>
+        outcome.status === "rejected",
+    );
+    if (failures.length > 0) {
+      console.error(
+        `[CancelScheduleUseCase] postId=${input.postId} — ${failures.length} panggilan cancelScheduledPost gagal (post tetap Draft di DB, tapi job terkait mungkin masih aktif di Outstand):`,
+        failures.map((failure) => failure.reason),
+      );
+    }
 
     return {
       id: record.id,

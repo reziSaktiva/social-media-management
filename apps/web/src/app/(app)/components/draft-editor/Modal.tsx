@@ -322,9 +322,11 @@ function DraftEditorForm({
   // `key={sessionKey}` di `DraftEditorModal`), jadi tidak memaksa balik ke
   // step konfirmasi kalau user sengaja kembali ke form setelah itu. Kalau
   // belum ready (mis. akun target belum valid — Edit Draft saat ini tidak
-  // preload akun yang sebelumnya dijadwalkan, lihat catatan T-032.4),
-  // pengecekan ini sengaja TIDAK memaksa — dibiarkan fallback ke form biasa
-  // supaya user bisa lihat kenapa belum bisa publish.
+  // preload akun yang sebelumnya dijadwalkan, KI-032), pengecekan ini
+  // sengaja TIDAK memaksa — dibiarkan fallback ke form biasa. Supaya
+  // fallback ini tidak terasa seperti klik "Publish Now" tidak berefek sama
+  // sekali, tampilkan notice info yang menjelaskan kenapa (bukan gagal diam
+  // tanpa sinyal apapun) sambil user memilih ulang akun secara manual.
   const [hasCheckedAutoAdvance, setHasCheckedAutoAdvance] = useState(false);
   if (
     !hasCheckedAutoAdvance &&
@@ -336,6 +338,12 @@ function DraftEditorForm({
     setHasCheckedAutoAdvance(true);
     if (isReadyToPublishNow) {
       setPendingAction("publish-now");
+    } else {
+      setNotice({
+        status: "info",
+        title:
+          "Publish Now belum bisa langsung dikonfirmasi — pilih ulang akun tujuan untuk melanjutkan (akun yang sebelumnya dijadwalkan belum otomatis dimuat).",
+      });
     }
   }
 

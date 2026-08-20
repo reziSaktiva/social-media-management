@@ -360,15 +360,9 @@ export const publishingRepository: IPublishingRepository = {
 
   async cancelSchedule({ workspaceId, postId }, userId) {
     const result = await withCurrentUser(userId, async (tx) => {
-      // Ambil outstandJobId SEBELUM dihapus — dibutuhkan use-case pemanggil
-      // untuk membatalkan job yang sama di sisi Outstand setelah transaksi
-      // ini commit (adapter call tidak boleh terjadi di dalam transaksi,
-      // sama alasan dengan schedulePost/publishNow).
-      const existingTargets = await tx.publishingPostTarget.findMany({
-        where: { postId },
-        select: { outstandJobId: true },
-      });
-
+      // Guard dulu — kalau post bukan Scheduled di workspace ini (double
+      // klik, UI basi, salah workspace), keluar lebih awal tanpa membuang
+      // query findMany di bawah untuk data yang tidak akan dipakai.
       const { count } = await tx.publishingPost.updateMany({
         where: {
           id: postId,
@@ -383,9 +377,40 @@ export const publishingRepository: IPublishingRepository = {
         return null;
       }
 
+      // Ambil outstandJobId (+ status/error untuk log diagnostik di bawah)
+      // SEBELUM dihapus — outstandJobId dibutuhkan use-case pemanggil untuk
+      // membatalkan job yang sama di sisi Outstand setelah transaksi ini
+      // commit (adapter call tidak boleh terjadi di dalam transaksi, sama
+      // alasan dengan schedulePost/publishNow).
+      const existingTargets = await tx.publishingPostTarget.findMany({
+        where: { postId },
+        select: {
+          outstandJobId: true,
+          platform: true,
+          status: true,
+          error: true,
+        },
+      });
+
       // Post kembali ke Draft tidak punya target persisten — sama seperti
       // Draft yang belum pernah dijadwalkan (schedulePost selalu
-      // deleteMany + recreate saat (re)schedule).
+      // deleteMany + recreate saat (re)schedule). Target yang sempat
+      // tercatat `failed` (partial-publish sebelum dibatalkan) kehilangan
+      // baris diagnostiknya di sini — log dulu supaya tidak hilang tanpa
+      // jejak sama sekali (tidak ada audit trail lain untuk kasus ini).
+      const failedTargets = existingTargets.filter(
+        (target) => target.status === "failed",
+      );
+      if (failedTargets.length > 0) {
+        console.warn(
+          `[cancelSchedule] postId=${postId} membatalkan ${failedTargets.length} target yang sudah berstatus "failed" sebelum sempat dibatalkan — riwayat error akan terhapus:`,
+          failedTargets.map((target) => ({
+            platform: target.platform,
+            error: target.error,
+          })),
+        );
+      }
+
       await tx.publishingPostTarget.deleteMany({ where: { postId } });
 
       const post = await tx.publishingPost.findUniqueOrThrow({
