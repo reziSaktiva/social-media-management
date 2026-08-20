@@ -5,28 +5,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { CancelScheduleUseCase } from "@/domains/publishing";
-import {
-  AuthorizationError,
-  ConflictError,
-  NotFoundError,
-  ValidationError,
-} from "@/lib/utils/errors";
+import { toActionError } from "@/lib/utils/errors";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
 import { publishingRepository } from "@/lib/repositories/publishing";
-
-function toActionError(error: unknown): { error: string } {
-  if (
-    error instanceof AuthorizationError ||
-    error instanceof NotFoundError ||
-    error instanceof ValidationError ||
-    error instanceof ConflictError
-  ) {
-    return { error: error.message };
-  }
-  throw error;
-}
 
 /**
  * Cancel Schedule (T-030, T-032.4) — dipanggil dari dialog konfirmasi Tier 2

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { MemberRole, MemberStatus } from "@social/shared";
@@ -20,6 +19,7 @@ import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 
 import type { WorkspaceMemberWithUser } from "@/domains/workspace";
+import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 
 import { removeMemberAction, updateMemberRoleAction } from "../actions";
 
@@ -167,52 +167,14 @@ export function MembersTable({
   currentUserId: string;
   headerAction?: ReactNode;
 }) {
-  const [removeTarget, setRemoveTarget] =
-    useState<WorkspaceMemberWithUser | null>(null);
-  const [isRemoving, setIsRemoving] = useState(false);
-  const [removeError, setRemoveError] = useState<string | null>(null);
+  const removeConfirm = useConfirmAction<WorkspaceMemberWithUser>((member) =>
+    removeMemberAction(member.id),
+  );
 
-  const [roleChange, setRoleChange] = useState<{
+  const roleConfirm = useConfirmAction<{
     member: WorkspaceMemberWithUser;
     newRole: MemberRole;
-  } | null>(null);
-  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
-  const [roleError, setRoleError] = useState<string | null>(null);
-
-  async function handleConfirmRemove() {
-    if (!removeTarget) return;
-    setIsRemoving(true);
-    setRemoveError(null);
-    try {
-      const result = await removeMemberAction(removeTarget.id);
-      if (result.error) {
-        setRemoveError(result.error);
-        return;
-      }
-      setRemoveTarget(null);
-    } finally {
-      setIsRemoving(false);
-    }
-  }
-
-  async function handleConfirmRoleChange() {
-    if (!roleChange) return;
-    setIsUpdatingRole(true);
-    setRoleError(null);
-    try {
-      const result = await updateMemberRoleAction(
-        roleChange.member.id,
-        roleChange.newRole,
-      );
-      if (result.error) {
-        setRoleError(result.error);
-        return;
-      }
-      setRoleChange(null);
-    } finally {
-      setIsUpdatingRole(false);
-    }
-  }
+  }>((change) => updateMemberRoleAction(change.member.id, change.newRole));
 
   return (
     <Section>
@@ -222,8 +184,12 @@ export function MembersTable({
           {headerAction}
         </HStack>
 
-        {removeError ? <Banner status="error" title={removeError} /> : null}
-        {roleError ? <Banner status="error" title={roleError} /> : null}
+        {removeConfirm.error ? (
+          <Banner status="error" title={removeConfirm.error} />
+        ) : null}
+        {roleConfirm.error ? (
+          <Banner status="error" title={roleConfirm.error} />
+        ) : null}
 
         {members.length === 0 ? (
           <EmptyState
@@ -236,14 +202,8 @@ export function MembersTable({
             data={members as MemberRow[]}
             columns={buildColumns(
               currentUserId,
-              (member) => {
-                setRemoveError(null);
-                setRemoveTarget(member);
-              },
-              (member, newRole) => {
-                setRoleError(null);
-                setRoleChange({ member, newRole });
-              },
+              (member) => removeConfirm.open(member),
+              (member, newRole) => roleConfirm.open({ member, newRole }),
             )}
             idKey="id"
             density="balanced"
@@ -253,38 +213,38 @@ export function MembersTable({
       </VStack>
 
       <AlertDialog
-        isOpen={removeTarget !== null}
+        isOpen={removeConfirm.isOpen}
         onOpenChange={(open) => {
-          if (!open) setRemoveTarget(null);
+          if (!open) removeConfirm.close();
         }}
         title="Keluarkan anggota ini?"
         description={
-          removeTarget
-            ? `Keluarkan ${removeTarget.name} dari workspace ini? Mereka akan kehilangan akses (ADR-049, Tier 2).`
+          removeConfirm.target
+            ? `Keluarkan ${removeConfirm.target.name} dari workspace ini? Mereka akan kehilangan akses (ADR-049, Tier 2).`
             : ""
         }
         cancelLabel="Batal"
         actionLabel="Keluarkan"
-        isActionLoading={isRemoving}
-        onAction={handleConfirmRemove}
+        isActionLoading={removeConfirm.isLoading}
+        onAction={removeConfirm.confirm}
       />
 
       <AlertDialog
-        isOpen={roleChange !== null}
+        isOpen={roleConfirm.isOpen}
         onOpenChange={(open) => {
-          if (!open) setRoleChange(null);
+          if (!open) roleConfirm.close();
         }}
         title="Ubah role anggota ini?"
         description={
-          roleChange
-            ? `Ubah role ${roleChange.member.name} dari ${ROLE_LABEL[roleChange.member.role]} ke ${ROLE_LABEL[roleChange.newRole]}?`
+          roleConfirm.target
+            ? `Ubah role ${roleConfirm.target.member.name} dari ${ROLE_LABEL[roleConfirm.target.member.role]} ke ${ROLE_LABEL[roleConfirm.target.newRole]}?`
             : ""
         }
         cancelLabel="Batal"
         actionLabel="Ubah Role"
         actionVariant="primary"
-        isActionLoading={isUpdatingRole}
-        onAction={handleConfirmRoleChange}
+        isActionLoading={roleConfirm.isLoading}
+        onAction={roleConfirm.confirm}
       />
     </Section>
   );

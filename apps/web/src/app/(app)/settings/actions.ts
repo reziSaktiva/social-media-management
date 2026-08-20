@@ -13,11 +13,7 @@ import { getCachedSession } from "@/lib/better-auth/session";
 import { notificationRepository } from "@/lib/repositories/notification";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
-import {
-  AuthorizationError,
-  NotFoundError,
-  ValidationError,
-} from "@/lib/utils/errors";
+import { toActionError } from "@/lib/utils/errors";
 
 // Server Actions untuk Workspace Settings → General + Danger Zone (T-008.2,
 // T-008.3, ADR-049, ADR-050). Entry point ini HANYA memanggil
@@ -29,17 +25,6 @@ import {
 // `components/WorkspaceGeneralSettings.tsx`. `renameWorkspaceAction` di
 // bawah juga T-008.4 (field "Nama Workspace" di card General, tanpa
 // konfirmasi — reversible/low-stakes).
-
-function toActionError(error: unknown): { error: string } {
-  if (
-    error instanceof AuthorizationError ||
-    error instanceof NotFoundError ||
-    error instanceof ValidationError
-  ) {
-    return { error: error.message };
-  }
-  throw error;
-}
 
 /**
  * Guard sesi + workspace context yang sebelumnya diulang identik di tiap

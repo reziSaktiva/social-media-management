@@ -8,12 +8,7 @@ import { getCachedSession } from "@/lib/better-auth/session";
 import { getServerEnv } from "@/lib/env";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
-import {
-  AuthorizationError,
-  ConflictError,
-  NotFoundError,
-  ValidationError,
-} from "@/lib/utils/errors";
+import { toActionError } from "@/lib/utils/errors";
 
 // ADR-076 (T-039.1-3): `resolveWorkspaceAndSession(slug)` lokal dihapus —
 // workspaceId sekarang dari getWorkspaceContext() (header proxy.ts),
@@ -28,18 +23,6 @@ import {
 // PR #73).
 function isValidMemberRole(value: unknown): value is MemberRole {
   return Object.values(MemberRole).includes(value as MemberRole);
-}
-
-function toActionError(error: unknown): { error: string } {
-  if (
-    error instanceof AuthorizationError ||
-    error instanceof NotFoundError ||
-    error instanceof ValidationError ||
-    error instanceof ConflictError
-  ) {
-    return { error: error.message };
-  }
-  throw error;
 }
 
 export async function removeMemberAction(

@@ -51,3 +51,18 @@ export class ExternalServiceError extends ApplicationError {
     this.name = "ExternalServiceError";
   }
 }
+
+/**
+ * Shared Server Action error mapper — sebelumnya diduplikasi identik di
+ * beberapa file `actions.ts` (settings, settings/members, sidebar-channels,
+ * publish/queue). `ApplicationError` sudah jadi base class seluruh error
+ * domain (Authorization/NotFound/Validation/Conflict/ExternalService), jadi
+ * satu `instanceof` di sini menggantikan allowlist per-file yang harus
+ * disinkronkan manual tiap ada error type baru.
+ */
+export function toActionError(error: unknown): { error: string } {
+  if (error instanceof ApplicationError) {
+    return { error: error.message };
+  }
+  throw error;
+}
