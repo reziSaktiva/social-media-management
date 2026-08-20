@@ -5,10 +5,11 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Avatar } from "@astryxdesign/core/Avatar";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
 import { FileInput } from "@astryxdesign/core/FileInput";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
-import { Section } from "@astryxdesign/core/Section";
+import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { VStack } from "@astryxdesign/core/VStack";
 
@@ -88,59 +89,69 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
   }
 
   return (
-    <Section>
-      <VStack gap={5}>
-        <Heading level={2}>Profil</Heading>
+    <VStack gap={4}>
+      <VStack gap={0.5}>
+        <Heading level={2}>Settings</Heading>
+        <Text type="supporting">Account / Profile</Text>
+      </VStack>
 
-        {error ? <Banner status="error" title={error} /> : null}
-        {isSuccess ? (
-          <Banner status="success" title="Profil berhasil diperbarui." />
-        ) : null}
+      {error ? <Banner status="error" title={error} /> : null}
+      {isSuccess ? (
+        <Banner status="success" title="Profil berhasil diperbarui." />
+      ) : null}
 
+      <Card className="p-4">
         <form onSubmit={handleSubmit}>
-          <VStack gap={5}>
-            <HStack gap={4} align="center">
-              <Avatar name={name} src={avatarPreviewUrl} size="xl" />
-              <FileInput
-                label="Foto Profil"
-                value={avatarFile}
-                onChange={handleAvatarChange}
-                accept={ALLOWED_AVATAR_ACCEPT}
-                maxSize={MAX_AVATAR_BYTES}
-                placeholder="Upload Foto"
-                description="JPG/PNG, maks 2MB"
-              />
+          <VStack gap={6}>
+            <HStack gap={5} align="center">
+              <Avatar name={name} src={avatarPreviewUrl} size={96} />
+              <VStack gap={1.5}>
+                <FileInput
+                  label="Foto Profil"
+                  isLabelHidden
+                  value={avatarFile}
+                  onChange={handleAvatarChange}
+                  accept={ALLOWED_AVATAR_ACCEPT}
+                  maxSize={MAX_AVATAR_BYTES}
+                  placeholder="Upload Foto"
+                />
+                <Text type="supporting">JPG/PNG, maks 2MB</Text>
+              </VStack>
             </HStack>
 
-            <TextInput
-              type="text"
-              label="Nama"
-              value={name}
-              onChange={setName}
-              isRequired
-              width="100%"
-              htmlName="name"
-            />
+            <VStack gap={5}>
+              <TextInput
+                type="text"
+                label="Nama"
+                value={name}
+                onChange={setName}
+                isRequired
+                width="100%"
+                htmlName="name"
+              />
 
-            <TextInput
-              type="email"
-              label="Email"
-              value={profile.email}
-              onChange={() => {}}
-              isDisabled
-              disabledMessage="Email tidak dapat diubah di sini"
-              width="100%"
-            />
+              <TextInput
+                type="email"
+                label="Email"
+                value={profile.email}
+                onChange={() => {}}
+                isDisabled
+                disabledMessage="Email tidak dapat diubah di sini"
+                width="100%"
+              />
 
-            <Button
-              type="submit"
-              label="Simpan Perubahan"
-              variant="primary"
-              isLoading={isSubmitting}
-            />
+              <HStack>
+                <Button
+                  type="submit"
+                  label="Simpan Perubahan"
+                  variant="primary"
+                  isLoading={isSubmitting}
+                />
+              </HStack>
+            </VStack>
           </VStack>
         </form>
-      </VStack>
-    </Section>
+      </Card>
+    </VStack>
   );
 }
