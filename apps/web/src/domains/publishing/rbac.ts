@@ -31,3 +31,26 @@ export function assertActorCanPublishNow(actorRole: MemberRole): void {
     );
   }
 }
+
+/**
+ * RBAC untuk Cancel Schedule (T-030.1, ADR-049 Tier 2).
+ * `roles-permissions.md` (Aturan Transisi Status per Role, ADR-074) baris
+ * `Scheduled → Draft (tarik jadwal)` menetapkan ketiga role — Account
+ * Owner, Admin, Creator — sama-sama boleh ✅, tidak ada pembatasan khusus
+ * untuk aksi ini (sama seperti Publish Now/Schedule). Assertion tetap
+ * eksplisit untuk alasan yang sama seperti `assertActorCanPublishNow` di
+ * atas.
+ */
+const ROLES_ALLOWED_TO_CANCEL_SCHEDULE: ReadonlySet<MemberRole> = new Set([
+  MemberRole.Owner,
+  MemberRole.Admin,
+  MemberRole.Creator,
+]);
+
+export function assertActorCanCancelSchedule(actorRole: MemberRole): void {
+  if (!ROLES_ALLOWED_TO_CANCEL_SCHEDULE.has(actorRole)) {
+    throw new AuthorizationError(
+      "Anda tidak memiliki izin untuk membatalkan jadwal post ini (Cancel Schedule).",
+    );
+  }
+}

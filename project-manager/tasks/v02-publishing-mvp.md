@@ -178,15 +178,17 @@ Jadi T-029.4/.5/.6 di bawah **desainnya sudah tersedia** — sisa pekerjaan murn
 
 | Field         | Value                                            |
 | ------------- | ------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                    |
+| **Status**    | 🟡 In Progress — bagian Queue selesai via T-032.4, bagian Calendar menunggu T-033 |
 | **Domain**    | publishing                                       |
 | **ADR**       | ADR-049 (Tier 2)                                 |
-| **Depends**   | T-028 ✅, T-032 (aksi dipicu dari Queue), T-033 (aksi dipicu dari Calendar) |
+| **Depends**   | T-028 ✅, T-032 ✅ (aksi dipicu dari Queue — selesai), T-033 (aksi dipicu dari Calendar — belum) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                    |
 
-- [ ] **T-030.1** `PublishingService.cancelSchedule` + batalkan di Outstand (T-025)
-- [ ] **T-030.2** Dialog konfirmasi Tier 2 — referensi copy & interaksi sudah ada di prototipe Claude Design (`openCancelScheduleDialog`/`applyCancelSchedule`, `templates/app-prototype/AppPrototype.dc.html`, dibuat via T-032.0 2026-08-19): warning "Post kembali menjadi Draft dan tidak akan dipublikasikan otomatis" + tombol `btn-danger` "Batalkan Jadwal" — tinggal diimplementasikan sebagai Dialog Astryx nyata, bukan didesain dari nol
-- [ ] **T-030.3** Aksi tersedia dari Queue (tombol icon merah `.icon-btn-danger` per row, desain final T-032.0) + Calendar
+**Catatan (2026-08-20):** T-030.1/.2/.3 sudah diimplementasikan penuh sebagai bagian **T-032.4** (lihat catatan di sana) — bukan pekerjaan terpisah. Ditutup untuk konteks Queue; ketiga checkbox di bawah ditandai selesai untuk bagian itu. Kalau T-033 (Calendar) nanti butuh Cancel Schedule juga, itu tinggal reuse `cancelScheduleAction`/`AlertDialog` yang sama, bukan re-implementasi — status task ini tetap `🟡 In Progress` sampai T-033 menyediakan entry point Calendar-nya.
+
+- [x] **T-030.1** `PublishingService.cancelSchedule` + batalkan di Outstand (T-025) — diimplementasikan via `cancel-schedule.use-case.ts` + `IOutstandAdapter.cancelScheduledPost` (Fake, ADR-059) di T-032.4
+- [x] **T-030.2** Dialog konfirmasi Tier 2 — referensi copy & interaksi sudah ada di prototipe Claude Design (`openCancelScheduleDialog`/`applyCancelSchedule`, `templates/app-prototype/AppPrototype.dc.html`, dibuat via T-032.0 2026-08-19): warning "Post kembali menjadi Draft dan tidak akan dipublikasikan otomatis" + tombol `btn-danger` "Batalkan Jadwal" — diimplementasikan nyata sebagai `AlertDialog` Astryx di T-032.4
+- [ ] **T-030.3** Aksi tersedia dari Queue (tombol icon merah `.icon-btn-danger` per row, desain final T-032.0) + Calendar — **Queue selesai** (T-032.4, 2026-08-20); **Calendar belum**, menunggu T-033
 
 ### T-031 · Redirect otomatis ke sub-screen tujuan setelah aksi terminal
 
@@ -215,10 +217,11 @@ Ketiga screen ini masih placeholder "Scaffold — implementasi fitur di M8".
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing                                                   |
 | **ADR**       | ADR-046, ADR-083                                             |
 | **Depends**   | T-028 ✅                                                      |
+| **Terkait**   | KI-032 (Publish Now dari Queue belum auto-advance — `getDraftAction` belum preload target akun terjadwal) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md` (KSP-03, amandemen ADR-083) · `05-architecture/domain-model.md` (entity `QueueSlot` sudah dihapus dari baseline) |
 
 Model Prisma `PublishingQueueSlot` sudah ada di schema **tanpa service apapun** — **jangan dipakai** untuk implementasi T-032.2 (ADR-083 menganggapnya deprecated, Queue dihitung langsung dari `PublishingPost`/`PublishingPostTarget`).
@@ -231,10 +234,12 @@ Model Prisma `PublishingQueueSlot` sudah ada di schema **tanpa service apapun** 
 
   **Interaksi diwire nyata di prototipe** (`templates/app-prototype/AppPrototype.dc.html`, bukan cuma visual statis): tombol Publish Now → reuse `openPublishNowDialog` (dialog Confirmation Summary yang sama dengan Draft Editor, T-029); tombol Edit → reuse `triggerEditDraft` (buka modal Edit Draft yang sudah ada); tombol Cancel Schedule → dialog konfirmasi baru `openCancelScheduleDialog`/`applyCancelSchedule` (pola sama `openDisconnectDialog`: warning + tombol `btn-danger`, menghapus card dari Queue + toast "Jadwal dibatalkan — post kembali ke Drafts" — desain interaksi untuk T-030). Dead code `reorder-up`/`reorder-down` di `route()` sekalian dibersihkan (tombolnya sudah tidak ada sejak putaran 1). Kedua file diverifikasi baca-ulang dari remote setelah tiap `write_files` (scope-discipline skill poin 6) — tidak ada drift/perubahan King Rezi yang tertimpa.
 - [x] **T-032.1** ~~Putuskan semantik queue slot~~ — **Resolved 2026-08-19**: queue murni urutan waktu publish (ascending), tanpa reorder manual, mengikuti referensi UX Buffer (lihat T-032.0). Tidak perlu ADR (bukan perubahan baseline, cuma keputusan implementasi UI yang sebelumnya terbuka)
-- [ ] **T-032.2** `PublishingService.listQueue` + repository — query `PublishingPost`/`PublishingPostTarget` status `Scheduled` langsung, grouped by tanggal, urutan murni `scheduledAt` ascending. **Jangan pakai model Prisma `PublishingQueueSlot`** (ADR-083: dianggap deprecated)
-- [ ] **T-032.3** UI daftar antrean per akun/waktu — implementasi Astryx nyata dari mockup final T-032.0 (`apps/web`): grouping per tanggal, 1 Card per schedule, tanpa status chip
-- [ ] **T-032.4** Aksi per item: **Publish Now, Edit, Cancel Schedule** — 3 tombol icon eksplisit langsung di row (bukan dropdown More options, desain final T-032.0). Cancel Schedule = implementasi nyata T-030 di `apps/web`, copy dialog konfirmasi mengikuti referensi prototipe `openCancelScheduleDialog`. **Reorder dihapus dari scope** (lihat T-032.0/.1)
-- [ ] **T-032.5** Migration drop model Prisma `PublishingQueueSlot` + tabel `publishing_queue_slots` (ADR-083) — **cek dulu** `apps/web/src/lib/repositories/workspace/workspace.repository.delete-cascade.test.ts` (baris 81, 129, masih memakai `tx.publishingQueueSlot`/`prisma.publishingQueueSlot` untuk test cascade-delete T-008.2), sesuaikan/hapus assertion itu dulu sebelum migration dijalankan. Bukan bagian T-032.2 — subtask sendiri supaya tidak keliru dianggap selesai begitu `listQueue` jalan
+- [x] **T-032.2** `PublishingService.listQueue` + repository — query `PublishingPost`/`PublishingPostTarget` status `Scheduled` langsung, grouped by tanggal, urutan murni `scheduledAt` ascending. **Jangan pakai model Prisma `PublishingQueueSlot`** (ADR-083: dianggap deprecated)
+- [x] **T-032.3** UI daftar antrean per akun/waktu — implementasi Astryx nyata dari mockup final T-032.0 (`apps/web`): grouping per tanggal, 1 Card per schedule, tanpa status chip
+- [x] **T-032.4** Aksi per item: **Publish Now, Edit, Cancel Schedule** — 3 tombol icon eksplisit langsung di row (bukan dropdown More options, desain final T-032.0). Cancel Schedule = implementasi nyata T-030 di `apps/web`, copy dialog konfirmasi mengikuti referensi prototipe `openCancelScheduleDialog`. **Reorder dihapus dari scope** (lihat T-032.0/.1)
+- [x] **T-032.5** Migration drop model Prisma `PublishingQueueSlot` + tabel `publishing_queue_slots` (ADR-083) — **cek dulu** `apps/web/src/lib/repositories/workspace/workspace.repository.delete-cascade.test.ts` (baris 81, 129, masih memakai `tx.publishingQueueSlot`/`prisma.publishingQueueSlot` untuk test cascade-delete T-008.2), sesuaikan/hapus assertion itu dulu sebelum migration dijalankan. Bukan bagian T-032.2 — subtask sendiri supaya tidak keliru dianggap selesai begitu `listQueue` jalan
+
+**Selesai (2026-08-20):** Empat subtask sisa ditutup dalam satu sesi. **T-032.2** (Prabowo): `PublishingService.listQueue` + repository query langsung ke `PublishingPost`/`PublishingPostTarget` status `Scheduled` (bukan `PublishingQueueSlot`), grouped per tanggal via helper baru `group-queue-items.ts` (+ test), ascending `scheduledAt`. **T-032.5** (Elon): migration `20260820024619_drop_publishing_queue_slot` men-drop model `PublishingQueueSlot` + tabel `publishing_queue_slots` + 3 field relasi balik (ADR-083); `workspace.repository.delete-cascade.test.ts` disesuaikan dan cascade-delete T-008.2 diverifikasi ulang dengan koneksi DB asli. **T-032.3** (Mark): UI nyata `apps/web/src/app/(app)/publish/queue/page.tsx` + `components/QueueList.tsx` — grouping per tanggal (heading nama hari + tanggal), 1 Card per schedule tanpa status chip, filter akun client-side; judul halaman dikoreksi jadi "Publish" (bukan "Queue") setelah verifikasi ulang ke mockup Claude Design. **T-032.4** (Prabowo): wiring 3 aksi + implementasi nyata **T-030** (Cancel Schedule) untuk bagian Queue — kontrak ACL baru `IOutstandAdapter.cancelScheduledPost` + `FakeOutstandAdapter` (ADR-059), RBAC `assertActorCanCancelSchedule` (ADR-074), use-case `cancel-schedule.use-case.ts` (persist dulu baru panggil adapter, pola sama `PublishNowUseCase`), Server Action `cancelScheduleAction`, UI `QueueScreen.tsx` (`AlertDialog` Tier 2 + `useToast` — pemakaian pertama toast Astryx di codebase). Publish Now dari Queue diperbaiki agar auto-advance ke Confirmation Summary (`initialPendingAction?: "publish-now"` di `DraftEditorState`/`openEditDraft`) — **known limitation** yang sengaja dibiarkan: `getDraftAction` belum preload target akun terjadwal, jadi kadang jatuh ke form biasa alih-alih auto-advance (**KI-032**, `PROJECT_STATE.md`). Diverifikasi: Ridwan (Architecture Reviewer) 0 temuan; Najwa (QA) Vitest 153 passed/3 skipped (butuh DB asli), `tsc --noEmit` bersih, `eslint` bersih, E2E browser lengkap — 1 bug kosmetik (double `@` di label akun filter/target) ditemukan dan diperbaiki di sesi yang sama, diverifikasi ulang via browser. Detail lengkap: `COMPLETE_TASK.md`.
 
 ### T-033 · Calendar view
 

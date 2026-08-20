@@ -5,14 +5,23 @@ import {
   asUserId,
   asWorkspaceId,
   type ConnectedAccountId,
+  type ContentFormat,
   ContentStatus,
+  type SocialPlatform,
 } from "@social/shared";
 import type {
   IPublishingRepository,
+  PublishingCancelScheduleRecord,
   PublishingPostRecord,
   PublishingScheduleRecord,
+  QueueItemRecord,
 } from "@/domains/publishing";
-import type { Prisma, PublishingPost } from "@/generated/prisma/client";
+import type {
+  Prisma,
+  PublishingPost,
+  PublishingPostTarget,
+  WorkspaceConnectedAccount,
+} from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import {
   setCurrentUserId,
@@ -39,6 +48,30 @@ function mapPost(post: PublishingPost): PublishingPostRecord {
     status: post.status as ContentStatus,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
+  };
+}
+
+type QueuePostWithTargets = PublishingPost & {
+  targets: (PublishingPostTarget & {
+    connectedAccount: WorkspaceConnectedAccount;
+  })[];
+};
+
+function mapQueueItem(post: QueuePostWithTargets): QueueItemRecord {
+  return {
+    id: asPostId(post.id),
+    caption: post.caption,
+    // Non-null: query di bawah menyaring status Scheduled, yang hanya
+    // ditetapkan bersamaan dengan `scheduledAt` (lihat `schedulePost`).
+    scheduledAt: post.scheduledAt as Date,
+    createdAt: post.createdAt,
+    targets: post.targets.map((target) => ({
+      id: asPostTargetId(target.id),
+      connectedAccountId: asConnectedAccountId(target.connectedAccountId),
+      platform: target.platform as SocialPlatform,
+      contentFormat: target.contentFormat as ContentFormat,
+      accountHandle: target.connectedAccount.handle,
+    })),
   };
 }
 
@@ -323,5 +356,101 @@ export const publishingRepository: IPublishingRepository = {
         row._count._all,
       ]),
     ) as Map<ConnectedAccountId, number>;
+  },
+
+  async cancelSchedule({ workspaceId, postId }, userId) {
+    const result = await withCurrentUser(userId, async (tx) => {
+      // Guard dulu — kalau post bukan Scheduled di workspace ini (double
+      // klik, UI basi, salah workspace), keluar lebih awal tanpa membuang
+      // query findMany di bawah untuk data yang tidak akan dipakai.
+      const { count } = await tx.publishingPost.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          status: ContentStatus.Scheduled,
+          deletedAt: null,
+        },
+        data: { status: ContentStatus.Draft, scheduledAt: null },
+      });
+
+      if (count === 0) {
+        return null;
+      }
+
+      // Ambil outstandJobId (+ status/error untuk log diagnostik di bawah)
+      // SEBELUM dihapus — outstandJobId dibutuhkan use-case pemanggil untuk
+      // membatalkan job yang sama di sisi Outstand setelah transaksi ini
+      // commit (adapter call tidak boleh terjadi di dalam transaksi, sama
+      // alasan dengan schedulePost/publishNow).
+      const existingTargets = await tx.publishingPostTarget.findMany({
+        where: { postId },
+        select: {
+          outstandJobId: true,
+          platform: true,
+          status: true,
+          error: true,
+        },
+      });
+
+      // Post kembali ke Draft tidak punya target persisten — sama seperti
+      // Draft yang belum pernah dijadwalkan (schedulePost selalu
+      // deleteMany + recreate saat (re)schedule). Target yang sempat
+      // tercatat `failed` (partial-publish sebelum dibatalkan) kehilangan
+      // baris diagnostiknya di sini — log dulu supaya tidak hilang tanpa
+      // jejak sama sekali (tidak ada audit trail lain untuk kasus ini).
+      const failedTargets = existingTargets.filter(
+        (target) => target.status === "failed",
+      );
+      if (failedTargets.length > 0) {
+        console.warn(
+          `[cancelSchedule] postId=${postId} membatalkan ${failedTargets.length} target yang sudah berstatus "failed" sebelum sempat dibatalkan — riwayat error akan terhapus:`,
+          failedTargets.map((target) => ({
+            platform: target.platform,
+            error: target.error,
+          })),
+        );
+      }
+
+      await tx.publishingPostTarget.deleteMany({ where: { postId } });
+
+      const post = await tx.publishingPost.findUniqueOrThrow({
+        where: { id: postId },
+      });
+
+      return { post, existingTargets };
+    });
+
+    if (!result) {
+      return null;
+    }
+
+    const record: PublishingCancelScheduleRecord = {
+      ...mapPost(result.post),
+      cancelledTargets: result.existingTargets.map((target) => ({
+        outstandJobId: target.outstandJobId,
+      })),
+    };
+
+    return record;
+  },
+
+  async listQueue({ workspaceId }, userId) {
+    const posts = await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.findMany({
+        where: {
+          workspaceId,
+          status: ContentStatus.Scheduled,
+          deletedAt: null,
+        },
+        orderBy: { scheduledAt: "asc" },
+        include: {
+          targets: {
+            include: { connectedAccount: true },
+          },
+        },
+      }),
+    );
+
+    return posts.map(mapQueueItem);
   },
 };

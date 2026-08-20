@@ -1,10 +1,27 @@
-import { ScaffoldPlaceholder } from "@/components/ScaffoldPlaceholder";
+import { asUserId } from "@social/shared";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return (
-    <ScaffoldPlaceholder
-      title="Queue"
-      message="Placeholder — implementasi direncanakan di T-032 (Queue management)."
-    />
+import { PublishingService } from "@/domains/publishing";
+import { getCachedSession } from "@/lib/better-auth/session";
+import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
+import { publishingRepository } from "@/lib/repositories/publishing";
+
+import { QueueScreen } from "./components/QueueScreen";
+
+export default async function Page() {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const publishingService = new PublishingService(publishingRepository);
+  const groups = await publishingService.listQueue(
+    workspaceId,
+    asUserId(session.user.id),
   );
+
+  // QueueScreen (client) owns Cancel Schedule dialog state (T-030, T-032.4)
+  // dan wires it into QueueList's onCancelSchedule prop.
+  return <QueueScreen groups={groups} />;
 }

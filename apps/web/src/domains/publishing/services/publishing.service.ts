@@ -9,6 +9,7 @@ import type {
   IPublishingRepository,
   PublishingPostRecord,
 } from "../repositories/publishing.repository";
+import { groupQueueItemsByDate, type QueueGroup } from "./group-queue-items";
 
 export class PublishingService {
   constructor(private readonly repository: IPublishingRepository) {}
@@ -87,5 +88,20 @@ export class PublishingService {
       { workspaceId, connectedAccountIds },
       userId,
     );
+  }
+
+  /**
+   * Queue (T-032.2, KSP-03, ADR-083) — semua post terjadwal (status
+   * Scheduled) milik workspace, dikelompokkan per tanggal kalender
+   * `scheduledAt`, murni urutan ascending waktu publish (tanpa reorder
+   * manual, tanpa status chip — cakupan Queue seragam Scheduled saja).
+   * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`.
+   */
+  async listQueue(
+    workspaceId: WorkspaceId,
+    userId: UserId,
+  ): Promise<QueueGroup[]> {
+    const items = await this.repository.listQueue({ workspaceId }, userId);
+    return groupQueueItemsByDate(items);
   }
 }

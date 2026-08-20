@@ -8,6 +8,111 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-20 — T-032 Queue management selesai (implementasi penuh) + T-030 (Cancel Schedule) ditutup untuk konteks Queue
+
+### Context
+
+Lanjutan dari T-032.0/.1 (ADR-083, 2026-08-19) yang menyelaraskan Design
+System halaman Queue. Sesi ini mengerjakan 4 subtask implementasi kode yang
+tersisa (T-032.2–.5) lewat delegasi paralel/sekuensial beberapa subagent
+(Prabowo Feature Engineer ×2, Elon Backend Engineer, Mark UI Engineer),
+diikuti review Ridwan (Architecture Reviewer) dan QA Najwa, ditutup 2
+putaran fix dari sesi utama.
+
+### Pekerjaan per subtask
+
+- **T-032.2** (Prabowo) — `PublishingService.listQueue` + repository: query
+  `PublishingPost`/`PublishingPostTarget` status `Scheduled` langsung (bukan
+  `PublishingQueueSlot`, ADR-083), grouped per tanggal via helper baru
+  `apps/web/src/domains/publishing/services/group-queue-items.ts` (+ test),
+  ascending `scheduledAt`. File diubah: `publishing.repository.ts` (interface
+  + tipe `QueueItemRecord`/`QueueItemTargetRecord`), `publishing.service.ts`,
+  `index.ts`, implementasi Prisma di
+  `apps/web/src/lib/repositories/publishing/publishing.repository.ts`.
+- **T-032.5** (Elon) — Migration `20260820024619_drop_publishing_queue_slot`
+  men-drop model Prisma `PublishingQueueSlot` + tabel `publishing_queue_slots`
+  + 3 field relasi balik (ADR-083). Test
+  `workspace.repository.delete-cascade.test.ts` disesuaikan (assertion
+  queue-slot dihapus, cascade-delete T-008.2 diverifikasi ulang dengan
+  koneksi DB asli).
+- **T-032.3** (Mark) — UI Astryx nyata di
+  `apps/web/src/app/(app)/publish/queue/page.tsx` (RSC) +
+  `components/QueueList.tsx` (client): grouping per tanggal (heading nama
+  hari + tanggal, mis. "Senin, 14 Juli"), 1 Card per schedule tanpa status
+  chip, filter akun client-side, 3 tombol icon (Publish Now/Edit/Cancel
+  Schedule). Judul halaman dikoreksi dari "Queue" jadi **"Publish"** di sesi
+  utama, setelah verifikasi ulang terhadap mockup Claude Design
+  (`templates/publish-queue.html` via `DesignSync`) — cocok dengan pola
+  existing `DraftsList.tsx`.
+- **T-032.4** (Prabowo) — Wiring 3 aksi + **implementasi nyata T-030 (Cancel
+  Schedule) secara penuh** untuk bagian Queue (menutup T-030.1/.2/.3 —
+  bagian Calendar dari T-030.3 menyusul di T-033):
+  - Kontrak ACL baru `IOutstandAdapter.cancelScheduledPost`
+    (`packages/shared/src/contracts/outstand-adapter.ts`) + implementasi
+    `FakeOutstandAdapter` (instan always-success, ADR-059).
+  - Repository: method cancel (status `Scheduled` → `Draft`, `scheduledAt`
+    di-null-kan, `PublishingPostTarget` dihapus).
+  - RBAC: `assertActorCanCancelSchedule` (Owner/Admin/Creator, ADR-074) di
+    `rbac.ts`.
+  - Use-case baru `cancel-schedule.use-case.ts` (persist dulu baru panggil
+    adapter, best-effort per target — pola sama `PublishNowUseCase`).
+  - Server Action `cancelScheduleAction`
+    (`apps/web/src/app/(app)/publish/queue/actions.ts`, file baru).
+  - UI: `QueueScreen.tsx` (client wrapper baru) — `AlertDialog` Tier 2 (pola
+    sama `MembersTable.tsx`), copy "Batalkan jadwal ini?" / "Post kembali
+    menjadi Draft dan tidak akan dipublikasikan otomatis." / tombol
+    "Batal"/"Batalkan Jadwal", toast sukses "Jadwal dibatalkan — post
+    kembali ke Drafts" (pemakaian pertama `useToast` Astryx di codebase).
+  - Gap tambahan ditemukan & diselesaikan: tombol "Publish Now" di Queue
+    awalnya cuma reuse `openEditDraft` (sama seperti Edit) — diperbaiki
+    dengan menambah `initialPendingAction?: "publish-now"` ke
+    `DraftEditorState`/`openEditDraft` (`Context.tsx`, `Modal.tsx`) supaya
+    modal auto-advance ke step Confirmation Summary begitu draft ready.
+    **Known limitation, sengaja dibiarkan** (dicatat sebagai **KI-032**):
+    `getDraftAction` belum preload target akun yang sudah dijadwalkan, jadi
+    `isReadyToPublishNow` sering `false` saat dibuka dari Queue → jatuh ke
+    form biasa alih-alih auto-advance.
+
+### Verifikasi
+
+- **Ridwan (Architecture Reviewer):** review lengkap — entry point bersih,
+  domain tidak import Prisma/Supabase/HTTP, cross-domain lewat public API,
+  shared types murni, RBAC fail-fast, urutan persist-then-adapter benar,
+  `PublishingQueueSlot` bersih total, UI Astryx murni — **0 temuan**.
+- **Najwa (QA):** Vitest 153 passed/3 skipped (skip disengaja, butuh DB
+  asli), `tsc --noEmit` bersih, `eslint` bersih, E2E browser lengkap (golden
+  path, filter, Edit, Publish Now fallback yang diharapkan, Cancel Schedule
+  + dialog + toast + DB state, empty state, regresi Drafts, regresi Publish
+  Now lama dari Draft Editor langsung, light/dark mode) — **semua pass**, 1
+  bug kosmetik ditemukan: double `@` di label akun (`@@qaqueue.demo`).
+- **Fix sesi utama (2 putaran):** (1) judul halaman "Queue" → "Publish"
+  setelah verifikasi ulang mockup; (2) bug double-`@` diperbaiki di
+  `QueueList.tsx` (label filter + label target, hapus prefix `@` duplikat)
+  dan diverifikasi ulang via browser (`tsc --noEmit` bersih, screenshot
+  mengonfirmasi label benar `@qaqueue.demo`, toast dan alur cancel bekerja).
+
+### Keputusan ADR
+
+**Tidak ada ADR baru.** Seluruh keputusan sesi ini murni implementasi
+mengikuti ADR yang sudah ada (ADR-083 queue tanpa `QueueSlot`, ADR-059 pola
+Fake adapter, ADR-049 Tier 2 dialog, ADR-074 RBAC). Dua keputusan kecil yang
+dipertimbangkan tapi dinilai tidak cukup material untuk ADR tersendiri:
+"Publish Now Queue auto-advance via `initialPendingAction`" (detail wiring
+UI, bukan perubahan arsitektur/kontrak) dan "Cancel Schedule menghapus
+`PublishingPostTarget` alih-alih soft-reset" (konsisten dengan pola create
+row-per-target di `SchedulePostsUseCase`, tidak mengubah domain model/ACL).
+
+### Status
+
+T-032 (parent task) → **✅ Done** (seluruh subtask T-032.0–.5). T-030
+(Cancel Schedule) → **🟡 In Progress**: T-030.1/.2/.3 selesai untuk konteks
+Queue, sisa scope Calendar menunggu T-033. Dokumentasi governance
+diperbarui dalam perubahan yang sama: `tasks/v02-publishing-mvp.md` (T-032,
+T-030), `TASKS.md` (indeks v0.2: 8 ✅ · 1 🟡 · 10 ⏳, Total 22 selesai/142
+subtask), `PROJECT_STATE.md` (Completed Ringkasan + KI-032 baru).
+
+---
+
 ## 2026-08-19 — ADR-083: baseline `04-ux`/`05-architecture` direkonsiliasi dengan desain final Queue
 
 ### Context

@@ -108,7 +108,6 @@ model Workspace {
   invitations        WorkspaceInvitation[]
   connectedAccounts  WorkspaceConnectedAccount[]
   posts              PublishingPost[]
-  queueSlots         PublishingQueueSlot[]
   aiRequests         AiRequest[]
   inboxItems         EngagementInboxItem[]
   analyticsSnapshots AnalyticsWorkspaceSnapshot[]
@@ -176,7 +175,6 @@ model WorkspaceConnectedAccount {
 
   workspace     Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   postTargets   PublishingPostTarget[]
-  queueSlots    PublishingQueueSlot[]
   inboxItems    EngagementInboxItem[]
   channelOrders WorkspaceChannelOrder[]
 
@@ -229,9 +227,8 @@ model PublishingPost {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace  Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  targets    PublishingPostTarget[]
-  queueSlots PublishingQueueSlot[]
+  workspace Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  targets   PublishingPostTarget[]
 
   @@index([workspaceId])
   @@index([workspaceId, status])
@@ -262,24 +259,10 @@ model PublishingPostTarget {
   @@map("publishing_post_targets")
 }
 
-model PublishingQueueSlot {
-  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspaceId        String   @map("workspace_id") @db.Uuid
-  connectedAccountId String   @map("connected_account_id") @db.Uuid
-  scheduledAt        DateTime @map("scheduled_at") @db.Timestamptz(6)
-  postId             String?  @map("post_id") @db.Uuid
-  order              Int      @map("order")
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  workspace        Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id], onDelete: Cascade)
-  post             PublishingPost?           @relation(fields: [postId], references: [id], onDelete: SetNull)
-
-  @@unique([connectedAccountId, scheduledAt])
-  @@index([workspaceId])
-  @@map("publishing_queue_slots")
-}
+// PublishingQueueSlot dropped (ADR-083, T-032.5) — Queue is a computed view
+// over PublishingPost/PublishingPostTarget (status Scheduled), not a
+// persisted slot entity. See database-strategy.md for the historical
+// mapping note.
 
 // ─────────────────────────────────────────────
 // BC-04 — AI Assistant
