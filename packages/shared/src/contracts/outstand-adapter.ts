@@ -100,6 +100,17 @@ export interface IOutstandAdapter {
   ): Promise<PublishNowOutstandPostResult>;
 
   /**
+   * Publishing (T-030, ADR-049 Tier 2) — batalkan job yang sudah dijadwalkan
+   * di Outstand ("Cancel Schedule"). `outstandJobId` adalah external
+   * reference dari `PublishingPostTarget.outstandJobId`, BUKAN `PostId`
+   * internal — sama pola dengan `fetchPostMetrics`. Tidak mengembalikan
+   * apa pun (`void`): repository sudah menjadi source of truth begitu post
+   * kembali ke status Draft, panggilan ini murni membersihkan sisi
+   * Outstand supaya job yang dibatalkan tidak tetap tayang di sana.
+   */
+  cancelScheduledPost(outstandJobId: string): Promise<void>;
+
+  /**
    * Analytics (T-041) — metrik satu post yang sudah dipublikasikan.
    * `outstandJobId` adalah external reference dari `PublishingPostTarget`,
    * BUKAN `PostId` internal — ACL tidak mengenal ID internal domain.

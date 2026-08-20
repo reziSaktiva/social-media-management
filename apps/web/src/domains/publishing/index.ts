@@ -8,4 +8,6 @@ export * from "./repositories/publishing.repository";
 export * from "./services/publishing.service";
 export * from "./services/schedule-posts.use-case";
 export * from "./services/publish-now.use-case";
+export * from "./services/cancel-schedule.use-case";
 export * from "./services/resolve-schedule-targets";
+export * from "./services/group-queue-items";

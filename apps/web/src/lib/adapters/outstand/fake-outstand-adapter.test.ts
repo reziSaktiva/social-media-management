@@ -45,6 +45,14 @@ describe("fakeOutstandAdapter.publishNow", () => {
   });
 });
 
+describe("fakeOutstandAdapter.cancelScheduledPost", () => {
+  it("resolves instantly without throwing, regardless of the outstandJobId (T-030, no delay/failure simulation ADR-059)", async () => {
+    await expect(
+      fakeOutstandAdapter.cancelScheduledPost("fake-job-1"),
+    ).resolves.toBeUndefined();
+  });
+});
+
 describe("fakeOutstandAdapter.fetchWorkspaceMetrics", () => {
   it("is deterministic — same (outstandAccountId, period) returns identical numbers every call (T-041.5)", async () => {
     const first = await fakeOutstandAdapter.fetchWorkspaceMetrics(

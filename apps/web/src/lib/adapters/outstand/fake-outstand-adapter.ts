@@ -57,6 +57,17 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
     };
   },
 
+  /**
+   * Cancel Schedule (T-030, ADR-049 Tier 2) — sama fidelitasnya dengan
+   * `schedulePost`/`publishNow`: instant always-success, tanpa simulasi
+   * delay/gagal, tanpa network call. Tidak ada state untuk dibersihkan di
+   * sisi Fake (tidak pernah benar-benar membuat job eksternal), jadi cukup
+   * resolve tanpa efek apa pun.
+   */
+  async cancelScheduledPost() {
+    return undefined;
+  },
+
   async fetchPostMetrics(outstandJobId) {
     const impressions =
       500 + deterministicInt(outstandJobId, "impressions", 4500);

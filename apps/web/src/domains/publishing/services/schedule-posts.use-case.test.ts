@@ -46,6 +46,8 @@ function createFakeRepository(
     publishNow: async () => null,
     updateTargetOutcome: async () => undefined,
     countScheduledByAccount: async () => new Map(),
+    listQueue: async () => [],
+    cancelSchedule: async () => null,
     ...overrides,
   };
 }
@@ -59,6 +61,7 @@ function createFakeOutstandAdapter(
       outstandJobId: "fake-job",
       publishedUrl: "https://fake.outstand.local/posts/fake-job",
     }),
+    cancelScheduledPost: async () => undefined,
     fetchPostMetrics: async () => ({
       impressions: 0,
       reach: 0,
