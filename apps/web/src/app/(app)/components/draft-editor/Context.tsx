@@ -29,7 +29,19 @@ export type DraftEditorState =
   | { mode: "closed" }
   | { mode: "resume-check"; unsaved: UnsavedNewPost }
   | { mode: "create"; prefillCaption?: string; preSelectedAccountId?: string }
-  | { mode: "edit"; postId: string };
+  | {
+      mode: "edit";
+      postId: string;
+      /**
+       * Publish Now dari Queue (T-032.4) — begitu data post selesai dimuat
+       * di `Modal.tsx` dan siap (`isReadyToPublishNow`), lompat otomatis ke
+       * step konfirmasi Publish Now, bukan berhenti di form edit dulu.
+       * Kalau belum ready (mis. akun target belum valid), `Modal.tsx`
+       * sengaja TIDAK memaksa lompat — fallback ke form biasa supaya user
+       * tetap bisa lihat kenapa belum bisa publish.
+       */
+      initialPendingAction?: "publish-now";
+    };
 
 interface DraftEditorContextValue {
   state: DraftEditorState;
@@ -41,7 +53,7 @@ interface DraftEditorContextValue {
    * context (a specific account) than the generic "+ New Post" CTA.
    */
   openNewPost: (preSelectedAccountId?: string) => void;
-  openEditDraft: (postId: string) => void;
+  openEditDraft: (postId: string, initialPendingAction?: "publish-now") => void;
   resume: () => void;
   discardAndStartNew: () => void;
   close: () => void;
@@ -92,9 +104,12 @@ export function DraftEditorProvider({
     [workspaceId],
   );
 
-  const openEditDraft = useCallback((postId: string) => {
-    setState({ mode: "edit", postId });
-  }, []);
+  const openEditDraft = useCallback(
+    (postId: string, initialPendingAction?: "publish-now") => {
+      setState({ mode: "edit", postId, initialPendingAction });
+    },
+    [],
+  );
 
   const resume = useCallback(() => {
     setState((prev) =>

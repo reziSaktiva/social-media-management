@@ -151,6 +151,7 @@ function DraftEditorForm({
   postId,
   prefillCaption,
   preSelectedAccountId,
+  initialPendingAction,
   onOpenChange,
   onLatestChange,
   dialogVariant,
@@ -166,6 +167,11 @@ function DraftEditorForm({
    * soon as `getConnectedAccountsAction` resolves.
    */
   preSelectedAccountId?: string;
+  /**
+   * Publish Now dari Queue (T-032.4) — lihat effect di bawah yang
+   * memanfaatkan nilai ini begitu data selesai dimuat.
+   */
+  initialPendingAction?: "publish-now";
   onOpenChange: (open: boolean) => void;
   onLatestChange: (snapshot: LatestFormSnapshot) => void;
   dialogVariant: "standard" | "fullscreen";
@@ -303,6 +309,35 @@ function DraftEditorForm({
   // waktu tidak relevan sama sekali, beda dari `isReadyToSchedule`.
   const isReadyToPublishNow =
     caption.trim().length > 0 && selectedAccounts.length > 0;
+
+  // Publish Now dari Queue (T-032.4) — lompat otomatis ke step konfirmasi
+  // begitu draft (caption/status) DAN daftar akun terhubung selesai dimuat,
+  // supaya `isReadyToPublishNow` di atas sudah final saat pengecekan ini
+  // berjalan. Diadaptasi selama render (bukan di dalam `useEffect`) —
+  // pola yang sama dengan penyesuaian `resumeData`/`dialogVariant` di
+  // `DraftEditorModal` di bawah, supaya tidak memicu render effect
+  // tambahan (`react-hooks/set-state-in-effect`) untuk state turunan
+  // sederhana seperti ini. `hasCheckedAutoAdvance` memastikan ini hanya
+  // dievaluasi sekali per sesi (component ini remount penuh per sesi lewat
+  // `key={sessionKey}` di `DraftEditorModal`), jadi tidak memaksa balik ke
+  // step konfirmasi kalau user sengaja kembali ke form setelah itu. Kalau
+  // belum ready (mis. akun target belum valid — Edit Draft saat ini tidak
+  // preload akun yang sebelumnya dijadwalkan, lihat catatan T-032.4),
+  // pengecekan ini sengaja TIDAK memaksa — dibiarkan fallback ke form biasa
+  // supaya user bisa lihat kenapa belum bisa publish.
+  const [hasCheckedAutoAdvance, setHasCheckedAutoAdvance] = useState(false);
+  if (
+    !hasCheckedAutoAdvance &&
+    isEdit &&
+    initialPendingAction === "publish-now" &&
+    !isLoadingDraft &&
+    !isLoadingAccounts
+  ) {
+    setHasCheckedAutoAdvance(true);
+    if (isReadyToPublishNow) {
+      setPendingAction("publish-now");
+    }
+  }
 
   function toggleAccount(account: ConnectedAccount, checked: boolean) {
     setSelectedAccountIds((prev) =>
@@ -874,6 +909,9 @@ export function DraftEditorModal() {
             }
             preSelectedAccountId={
               state.mode === "create" ? state.preSelectedAccountId : undefined
+            }
+            initialPendingAction={
+              state.mode === "edit" ? state.initialPendingAction : undefined
             }
             onOpenChange={handleOpenChange}
             dialogVariant={dialogVariant}
