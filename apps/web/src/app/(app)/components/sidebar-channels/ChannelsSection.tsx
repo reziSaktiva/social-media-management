@@ -116,7 +116,7 @@ function ChannelRow({
         // baris bergeser via margin-inline-start bertransisi (override
         // eksplisit dari "no-shift" yang berlaku untuk swap count<->"+" di
         // poin 4-5 asli).
-        "relative transition-[margin-inline-start]",
+        "relative my-1 transition-[margin-inline-start]",
         TRANSITION_FAST,
         isRevealed ? "ms-4" : "ms-0",
         isDragging ? "opacity-50" : "opacity-100",
@@ -303,7 +303,7 @@ export function ChannelsSection({
 
   return (
     <SideNavSection title="Channels">
-      <VStack gap={1} isScrollable className={LIST_CLASSNAME}>
+      <VStack gap={2} isScrollable className={LIST_CLASSNAME}>
         {orderedChannels.map((account) => (
           <ChannelRow
             key={account.id}
