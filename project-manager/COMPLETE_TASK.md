@@ -19,74 +19,16 @@ ui/ux yang berlawanan dengan design system yang baru?" — mencakup
 referensi Queue/`QueueSlot`/KSP-03 di project dan menemukan **konflik nyata
 di 3 dokumen baseline inti**, bukan cuma gap kecil.
 
-### Temuan audit
+### Temuan audit & Resolusi
 
-1. **`04-ux/key-screen-patterns.md` KSP-03** — `KSP-03-F02` ("Status ...
-   Scheduled, In Review, Ready to Schedule, Draft, Failed") dan
-   `KSP-03-F05` ("Reorder Item ... memindahkan item ke slot waktu berbeda")
-   eksplisit bertentangan dengan keputusan hapus status chip & reorder.
-   Wireframe ASCII, Zona list, State Handling, dan baris "Ringkasan Pola
-   per Layar" juga sudah usang.
-2. **`04-ux/user-flows.md` UF-02** — langkah "Raka mengubah urutan item"
-   dan prinsip UXP-04 ("Status yang selalu terlihat di Queue") bertentangan
-   langsung. Ditemukan juga klaim "Queue diperbarui secara real-time"
-   (bertentangan ADR-023, ditemukan saat menulis ulang paragraf yang sama).
-3. **`05-architecture/domain-model.md`** (entity `QueueSlot`, field
-   `order: number`) + **`application-layer.md`** (`getQueueSlots`/
-   `setQueueSlots`, "Konfigurasi slot antrian harian") — model arsitektur
-   "slot waktu berulang" yang berbeda dari "murni urutan waktu publish
-   tanpa reorder". Model Prisma `PublishingQueueSlot` yang cocok pola lama
-   ini sudah ada di schema (`apps/web/prisma/schema.prisma`) tapi nol
-   referensi kode — dikonfirmasi sebagai deprecated di ADR baru, bukan
-   dihapus diam-diam.
-4. **`project-manager/TASKS.md`** — section "Keputusan terbuka" masih
-   mencantumkan T-032 sebagai keputusan yang belum diambil, padahal
-   `v02-publishing-mvp.md` T-032.1 sudah Resolved — drift tracking murni.
-5. **`04-ux/information-architecture.md`** — frasa "antrean berurutan per
-   akun" agak menyesatkan vs grouping tanggal/jam yang jadi struktur utama.
-
-Ditemukan juga pertanyaan prinsip yang perlu dijawab sebelum menghapus
-status chip: apakah ini melanggar UXP-04/UXP-06 (status harus selalu
-terlihat) secara produk, bukan cuma di satu layar? Jawaban: tidak, dengan
-syarat cakupan Queue dipersempit jadi hanya status `Scheduled` (homogen) —
-item `Failed` pindah ke History (T-034, sudah merencanakan status
-published/error), `Draft`/`Ready to Schedule` tetap di Drafts (T-022).
-
-### Resolusi — ADR-083 + amandemen baseline
-
-King Rezi memilih opsi "Buat ADR + update baseline" (dari 3 opsi yang
-diajukan). **ADR-083** ditulis
-(`project-manager/decisions/ADR-083-queue-murni-urutan-waktu-publish-hapus-reorder-status-chip-queueslot.md`)
-mendokumentasikan keputusan lengkap + alasan + alternatif yang
-dipertimbangkan. Baseline yang diamandemen mengikuti ADR ini:
-
-- `key-screen-patterns.md` KSP-03: Tujuan, `KSP-03-F02` (diamandemen),
-  `KSP-03-F05` (dihapus, ID tidak didaur ulang), `KSP-03-F07` (baru, 3
-  tombol aksi eksplisit), wireframe ASCII digambar ulang, Zona list, State
-  Handling, baris Ringkasan Pola per Layar.
-- `user-flows.md` UF-02: Happy Path, Alternate Path (Cancel Schedule
-  menggantikan alur manual buka-Draft-Editor), UXP-04 ditulis ulang;
-  sekalian dikoreksi klaim "real-time" yang salah (harusnya manual refresh,
-  ADR-023).
-- `domain-model.md`: diagram bounded context (kotak "Queue Slot" dihapus),
-  tabel Core Entities (`QueueSlot` dihapus), Key Attributes diganti catatan
-  computed-view, branded type `QueueSlotId` dihapus.
-- `application-layer.md`: `IQueueSlotRepository` dihapus,
-  `getQueueSlots`/`setQueueSlots` diganti `listQueue`.
-- `information-architecture.md`: frasa Queue diperjelas + rujuk ADR-083.
-- `project-manager/TASKS.md`: baris "Keputusan terbuka" T-032 dihapus.
-- `project-manager/tasks/v02-publishing-mvp.md`: field ADR T-032 tambah
-  ADR-083, T-032.2 ditambah instruksi eksplisit "jangan pakai
-  `PublishingQueueSlot`".
-- `project-manager/PROJECT_STATE.md` § Recent Decisions: sekalian
-  diperbaiki — ternyata sudah stale duluan (belum mencakup ADR-080/081/082
-  yang sudah ada sebelum sesi ini), diganti 5 ADR terbaru yang benar
-  (083/082/081/080/079).
-
-**Belum disentuh (disengaja, di luar scope sesi dokumentasi ini):** model
-Prisma `PublishingQueueSlot` di `schema.prisma` — dijadwalkan dihapus lewat
-migration nyata saat T-032.2 dikerjakan, dicatat eksplisit di ADR-083 §
-Impact supaya tidak terlewat.
+Audit menemukan konflik nyata di 3 dokumen baseline inti (`key-screen-patterns.md`
+KSP-03, `user-flows.md` UF-02, `domain-model.md`/`application-layer.md`
+entity `QueueSlot`) plus 2 drift kecil (`TASKS.md` "Keputusan terbuka" stale,
+`information-architecture.md` frasa Queue). King Rezi memilih opsi "Buat ADR
++ update baseline". Detail lengkap temuan, keputusan, alasan, alternatif
+yang dipertimbangkan, dan daftar file yang diamandemen: lihat
+**`project-manager/decisions/ADR-083-queue-murni-urutan-waktu-publish-hapus-reorder-status-chip-queueslot.md`**
+(§ Context, § Decision, § Impact / Baseline yang diamandemen).
 
 ### Status
 

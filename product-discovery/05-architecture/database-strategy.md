@@ -298,7 +298,12 @@ Tabel BC-01 Identity dikelola sepenuhnya oleh **Better Auth**. Better Auth dikon
 | `created_at` | `timestamptz NOT NULL DEFAULT now()` | |
 | `updated_at` | `timestamptz NOT NULL DEFAULT now()` | |
 
-### `publishing_queue_slots`
+### ~~`publishing_queue_slots`~~ — deprecated (ADR-083, 2026-08-19)
+
+Tabel fisik masih ada di DB, tapi entity `QueueSlot` sudah dihapus dari
+`domain-model.md` — Queue sekarang computed view atas `Post`/`PostTarget`.
+Dijadwalkan dihapus lewat migration saat T-032.5 dikerjakan. Skema di bawah
+dipertahankan sebagai referensi historis, bukan aktif dipakai.
 
 | Kolom | Tipe | Keterangan |
 |-------|------|-----------|
@@ -598,7 +603,7 @@ Kolom `workspace_id` pada semua tabel multi-tenant wajib diindex untuk performa 
 CREATE INDEX ON {table_name}(workspace_id);
 ```
 
-Berlaku untuk: `workspace_members`, `workspace_connected_accounts`, `publishing_posts`, `publishing_queue_slots`, `ai_requests`, `engagement_inbox_items`, `analytics_workspace_snapshots`, `media_items`, `notifications`, `start_page_pages`.
+Berlaku untuk: `workspace_members`, `workspace_connected_accounts`, `publishing_posts`, ~~`publishing_queue_slots`~~ (deprecated, ADR-083), `ai_requests`, `engagement_inbox_items`, `analytics_workspace_snapshots`, `media_items`, `notifications`, `start_page_pages`.
 
 ## Index Query-Driven
 
@@ -608,7 +613,7 @@ Berlaku untuk: `workspace_members`, `workspace_connected_accounts`, `publishing_
 | `publishing_posts` | `scheduled_at` | Sort dan filter konten terjadwal |
 | `publishing_posts` | `deleted_at` | Filter soft delete (partial index: `WHERE deleted_at IS NULL`) |
 | `publishing_post_targets` | `post_id` | Lookup targets per post |
-| `publishing_queue_slots` | `(connected_account_id, scheduled_at)` | Queue lookup per account |
+| ~~`publishing_queue_slots`~~ | `(connected_account_id, scheduled_at)` | Deprecated (ADR-083) — Queue lookup sekarang langsung ke `publishing_posts` |
 | `engagement_inbox_items` | `(workspace_id, status)` | Filter inbox by status |
 | `engagement_inbox_items` | `(workspace_id, connected_account_id, external_id)` | Upsert idempoten hasil sync |
 | `outstand_webhook_events` | `outstand_event_id` | Durable receipt/idempotency (sudah UNIQUE) |
@@ -701,7 +706,7 @@ Detail implementasi migrasi didefinisikan di Engineering Planning (M6). Poin ars
 | `ConnectedAccount` | `workspace_connected_accounts` | BC-02 |
 | `Post` | `publishing_posts` | BC-03 |
 | `PostTarget` | `publishing_post_targets` | BC-03 |
-| ~~`QueueSlot`~~ | ~~`publishing_queue_slots`~~ | BC-03 — **deprecated (ADR-083, 2026-08-19):** entity dihapus dari `domain-model.md`, Queue jadi computed view atas `Post`/`PostTarget`. Tabel fisik masih ada di DB (nol referensi kode), dijadwalkan dihapus lewat migration saat T-032.2 dikerjakan |
+| ~~`QueueSlot`~~ | ~~`publishing_queue_slots`~~ | BC-03 — **deprecated (ADR-083, 2026-08-19):** entity dihapus dari `domain-model.md`, Queue jadi computed view atas `Post`/`PostTarget`. Tabel fisik masih ada di DB (nol referensi kode), dijadwalkan dihapus lewat migration saat T-032.5 dikerjakan |
 | `AIRequest` | `ai_requests` | BC-04 |
 | `AIResult` | `ai_results` | BC-04 |
 | `InboxItem` | `engagement_inbox_items` | BC-05 |

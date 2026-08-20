@@ -55,10 +55,14 @@ seperti sempat dicatat di `tasks/v02-publishing-mvp.md` T-032.1:
   arsitektur "slot waktu berulang yang bisa diisi + disusun ulang" — konsep
   yang berbeda dari "murni urutan waktu publish, tanpa reorder, tanpa
   slot". Model Prisma `PublishingQueueSlot` yang cocok dengan definisi lama
-  ini **sudah ada secara fisik** di `apps/web/prisma/schema.prisma`, tapi
-  nol referensi di kode aplikasi (dikonfirmasi di `tasks/v02-publishing-mvp.md`
-  T-032: "Model `PublishingQueueSlot` sudah ada di schema tanpa service
-  apapun").
+  ini **sudah ada secara fisik** di `apps/web/prisma/schema.prisma`. Nol
+  referensi di kode **service/aplikasi** (dikonfirmasi di
+  `tasks/v02-publishing-mvp.md` T-032: "Model `PublishingQueueSlot` sudah
+  ada di schema tanpa service apapun") — tapi **tetap dipakai langsung**
+  di `apps/web/src/lib/repositories/workspace/workspace.repository.delete-cascade.test.ts`
+  (baris 81, 129) sebagai bagian test integrasi cascade-delete T-008.2.
+  Migration penghapusan di T-032.5 wajib mengecek/menyesuaikan test ini
+  dulu, bukan berasumsi aman dihapus begitu saja.
 
 Pertanyaan kunci yang perlu dijawab sebelum menghapus status chip: apakah
 ini melanggar **UXP-04** (Publishing Trust — "Status konten harus selalu
@@ -93,9 +97,11 @@ mekanismenya berpindah dari "badge per item di satu layar campuran" menjadi
    `application-layer.md` diganti `listQueue` (Server Component) yang
    query langsung `Post`/`PostTarget`.
 5. Model Prisma `PublishingQueueSlot` (kolom `order`, `postId?` nullable)
-   **dianggap deprecated** — dijadwalkan dihapus lewat migration saat
-   `T-032.2` (`PublishingService.listQueue`) benar-benar dikerjakan, bukan
-   dihapus sekarang (di luar scope sesi dokumentasi ini) dan bukan dibiarkan
+   **dianggap deprecated** — dijadwalkan dihapus lewat migration di subtask
+   terpisah `T-032.5` (bukan bagian `T-032.2`/`PublishingService.listQueue`,
+   supaya kewajiban cek `workspace.repository.delete-cascade.test.ts` dulu
+   tidak keliru dianggap selesai begitu `listQueue` jalan), bukan dihapus
+   sekarang (di luar scope sesi dokumentasi ini) dan bukan dibiarkan
    selamanya sebagai sumber kebenaran kedua yang membingungkan.
 6. Cancel Schedule (T-030) menjadi jalur resmi untuk menarik post kembali
    ke Draft dari Queue — tombol icon merah eksplisit + dialog konfirmasi
@@ -177,7 +183,10 @@ mekanismenya berpindah dari "badge per item di satu layar campuran" menjadi
   ini alih-alih dianggap "bukan perubahan baseline").
 * `apps/web/prisma/schema.prisma` — model `PublishingQueueSlot` **belum**
   dihapus di ADR ini (tidak ada migration dijalankan) — dijadwalkan sebagai
-  bagian pekerjaan `T-032.2`, dicatat di sini supaya tidak terlewat.
+  subtask terpisah `T-032.5` (bukan `T-032.2`, karena `PublishingQueueSlot`
+  masih dipakai `workspace.repository.delete-cascade.test.ts` dan butuh
+  penyesuaian test dulu sebelum drop), dicatat di sini supaya tidak
+  terlewat.
 * Tidak menyentuh `04-ux/navigation-patterns.md` (tab bar Calendar/Queue/
   Drafts/History tidak berubah) maupun ADR-023 (Realtime tetap dibatasi
   tabel `notifications`; Queue tetap manual refresh seperti Calendar).

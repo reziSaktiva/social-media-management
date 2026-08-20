@@ -277,7 +277,7 @@ secara definitif.
 Model Prisma `PublishingQueueSlot` (kolom `order`, `postId?` nullable, dll.)
 masih ada secara fisik di `apps/web/prisma/schema.prisma` tapi **nol
 referensi di kode aplikasi** — dianggap deprecated per ADR ini, dijadwalkan
-dihapus lewat migration saat T-032.2 (`PublishingService.listQueue`)
+dihapus lewat migration saat T-032.5
 dikerjakan, bukan dibiarkan jadi sumber kebenaran kedua yang membingungkan.
 
 ### Aturan Domain
