@@ -53,6 +53,11 @@ function createFakeOutstandAdapter(
 ): IOutstandAdapter {
   return {
     schedulePost: async () => ({ outstandJobId: "fake-job" }),
+    publishNow: async () => ({
+      outstandJobId: "fake-job",
+      publishedUrl: "https://fake.outstand.local/posts/fake-job",
+    }),
+    cancelScheduledPost: async () => undefined,
     fetchPostMetrics: async () => ({
       impressions: 1000,
       reach: 700,

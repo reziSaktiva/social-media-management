@@ -18,6 +18,18 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-08-18 — Batas wrapper Astryx: `TimeInput` real-time constraint ditolak King Rezi
+
+**Phase:** M8 Development
+
+**Summary:** Saat implementasi T-029 (Schedule Picker Draft Editor), ditemukan `TimeInput` Astryx tidak membatasi input real-time (elemen internal `<input type="text">` tanpa `maxLength`/`pattern`, tanpa prop resmi untuk itu). Sempat dicoba mitigasi via wrapper `onKeyDownCapture`/`onPaste` (level "wrapper selektif", bukan swizzle — secara arsitektur diizinkan ADR-041) dengan varian `status` error saat blur untuk feedback.
+
+**Key Insight / Decision:** King Rezi menolak wrapper ini secara eksplisit — dianggap belum sesuai harapan (tidak menangkap paste/drag-drop/IME sepenuhnya, berisiko konflik dengan state internal `TimeInput` yang tidak dikontrol), bukan solusi final meski secara teknis "boleh" dalam batas ADR-041. Wrapper dihapus dari kode, gap dicatat sebagai KI-030 (Open) — menunggu Astryx menambah prop resmi. Preseden: batas wrapper selektif bukan cuma soal "boleh secara arsitektur", tapi juga soal kualitas hasil — kalau workaround-nya rapuh, lebih baik dicatat sebagai gap terbuka daripada dipaksakan.
+
+**Impact:** `project-manager/PROJECT_STATE.md` § KI-030, `project-manager/COMPLETE_TASK.md` (entri 2026-08-18 T-029).
+
+---
+
 ## 2026-08-10 — Dua keputusan turunan untuk rencana hapus `[slug]` dari routing
 
 **Phase:** M8 Development

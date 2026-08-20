@@ -41,6 +41,33 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
     return { outstandJobId: `fake-${crypto.randomUUID()}` };
   },
 
+  /**
+   * Publish Now (T-029) — sama fidelitasnya dengan `schedulePost`: instant
+   * always-success, tanpa simulasi delay/gagal. `publishedUrl` sengaja
+   * bukan URL Outstand asli (Fake tidak pernah memanggil network) — hanya
+   * placeholder deterministik dari `outstandJobId` supaya UI (T-034 detail
+   * post) punya sesuatu yang bisa ditampilkan sebagai link "lihat di
+   * platform" selama kredensial Outstand asli belum ada.
+   */
+  async publishNow() {
+    const outstandJobId = `fake-${crypto.randomUUID()}`;
+    return {
+      outstandJobId,
+      publishedUrl: `https://fake.outstand.local/posts/${outstandJobId}`,
+    };
+  },
+
+  /**
+   * Cancel Schedule (T-030, ADR-049 Tier 2) — sama fidelitasnya dengan
+   * `schedulePost`/`publishNow`: instant always-success, tanpa simulasi
+   * delay/gagal, tanpa network call. Tidak ada state untuk dibersihkan di
+   * sisi Fake (tidak pernah benar-benar membuat job eksternal), jadi cukup
+   * resolve tanpa efek apa pun.
+   */
+  async cancelScheduledPost() {
+    return undefined;
+  },
+
   async fetchPostMetrics(outstandJobId) {
     const impressions =
       500 + deterministicInt(outstandJobId, "impressions", 4500);

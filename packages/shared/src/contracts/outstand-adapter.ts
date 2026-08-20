@@ -32,6 +32,23 @@ export interface ScheduleOutstandPostResult {
 }
 
 /**
+ * Publish Now (T-029, ADR-047) — sama dengan `ScheduleOutstandPostInput`
+ * tanpa `scheduledAt`, karena aksi ini tayang langsung tanpa jeda jadwal.
+ */
+export interface PublishNowOutstandPostInput {
+  outstandAccountId: string;
+  caption: string;
+  contentFormat: ContentFormat;
+  platformOptions?: Record<string, unknown>;
+}
+
+export interface PublishNowOutstandPostResult {
+  outstandJobId: string;
+  /** URL post asli di platform — dipersist ke `PublishingPostTarget.publishedUrl` (T-034 detail post). */
+  publishedUrl: string;
+}
+
+/**
  * Period yang dikenali Outstand untuk `fetchWorkspaceMetrics`
  * (`background-jobs.md` JOB-04 payload) — vocabulary eksternal Outstand,
  * SENGAJA dibedakan dari `SnapshotPeriod` domain internal analytics
@@ -71,6 +88,27 @@ export interface IOutstandAdapter {
   schedulePost(
     input: ScheduleOutstandPostInput,
   ): Promise<ScheduleOutstandPostResult>;
+
+  /**
+   * Publishing (T-029, ADR-047) — publish langsung tanpa jadwal ("Publish
+   * Now"). Fake adapter (amandemen ADR-059, dicatat sebagai ADR baru oleh
+   * Gibran Project Manager) mengembalikan hasil instan always-success,
+   * sama seperti `schedulePost`.
+   */
+  publishNow(
+    input: PublishNowOutstandPostInput,
+  ): Promise<PublishNowOutstandPostResult>;
+
+  /**
+   * Publishing (T-030, ADR-049 Tier 2) — batalkan job yang sudah dijadwalkan
+   * di Outstand ("Cancel Schedule"). `outstandJobId` adalah external
+   * reference dari `PublishingPostTarget.outstandJobId`, BUKAN `PostId`
+   * internal — sama pola dengan `fetchPostMetrics`. Tidak mengembalikan
+   * apa pun (`void`): repository sudah menjadi source of truth begitu post
+   * kembali ke status Draft, panggilan ini murni membersihkan sisi
+   * Outstand supaya job yang dibatalkan tidak tetap tayang di sana.
+   */
+  cancelScheduledPost(outstandJobId: string): Promise<void>;
 
   /**
    * Analytics (T-041) — metrik satu post yang sudah dipublikasikan.

@@ -31,6 +31,7 @@ import type { ConnectedAccountDto } from "./actions";
 import {
   getConnectedAccountsAction,
   getDraftAction,
+  publishNowAction,
   saveDraftAction,
   scheduleDraftAction,
   updateDraftAction,
@@ -150,6 +151,7 @@ function DraftEditorForm({
   postId,
   prefillCaption,
   preSelectedAccountId,
+  initialPendingAction,
   onOpenChange,
   onLatestChange,
   dialogVariant,
@@ -165,6 +167,11 @@ function DraftEditorForm({
    * soon as `getConnectedAccountsAction` resolves.
    */
   preSelectedAccountId?: string;
+  /**
+   * Publish Now dari Queue (T-032.4) — lihat effect di bawah yang
+   * memanfaatkan nilai ini begitu data selesai dimuat.
+   */
+  initialPendingAction?: "publish-now";
   onOpenChange: (open: boolean) => void;
   onLatestChange: (snapshot: LatestFormSnapshot) => void;
   dialogVariant: "standard" | "fullscreen";
@@ -196,9 +203,16 @@ function DraftEditorForm({
   // dialog instead"); a previous version of this file did nest a confirm
   // Dialog inside this one, which QA found silently never opened in real
   // usage.
-  const [isConfirmStep, setIsConfirmStep] = useState(false);
+  //
+  // `null` = form step. Confirmation Summary (UXP-04) is shared between
+  // Schedule and Publish Now (KSP-05-F12, ADR-047) — only the "Waktu" row
+  // and the confirm button label differ between the two variants.
+  const [pendingAction, setPendingAction] = useState<
+    "schedule" | "publish-now" | null
+  >(null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
+  const [isPublishingNow, setIsPublishingNow] = useState(false);
   const [notice, setNotice] = useState<{
     status: "success" | "info" | "error";
     title: string;
@@ -291,6 +305,48 @@ function DraftEditorForm({
     Boolean(scheduleDate) &&
     Boolean(scheduleTime);
 
+  // Publish Now (KSP-05-F12) skips the Schedule Picker entirely — tanggal/
+  // waktu tidak relevan sama sekali, beda dari `isReadyToSchedule`.
+  const isReadyToPublishNow =
+    caption.trim().length > 0 && selectedAccounts.length > 0;
+
+  // Publish Now dari Queue (T-032.4) — lompat otomatis ke step konfirmasi
+  // begitu draft (caption/status) DAN daftar akun terhubung selesai dimuat,
+  // supaya `isReadyToPublishNow` di atas sudah final saat pengecekan ini
+  // berjalan. Diadaptasi selama render (bukan di dalam `useEffect`) —
+  // pola yang sama dengan penyesuaian `resumeData`/`dialogVariant` di
+  // `DraftEditorModal` di bawah, supaya tidak memicu render effect
+  // tambahan (`react-hooks/set-state-in-effect`) untuk state turunan
+  // sederhana seperti ini. `hasCheckedAutoAdvance` memastikan ini hanya
+  // dievaluasi sekali per sesi (component ini remount penuh per sesi lewat
+  // `key={sessionKey}` di `DraftEditorModal`), jadi tidak memaksa balik ke
+  // step konfirmasi kalau user sengaja kembali ke form setelah itu. Kalau
+  // belum ready (mis. akun target belum valid — Edit Draft saat ini tidak
+  // preload akun yang sebelumnya dijadwalkan, KI-032), pengecekan ini
+  // sengaja TIDAK memaksa — dibiarkan fallback ke form biasa. Supaya
+  // fallback ini tidak terasa seperti klik "Publish Now" tidak berefek sama
+  // sekali, tampilkan notice info yang menjelaskan kenapa (bukan gagal diam
+  // tanpa sinyal apapun) sambil user memilih ulang akun secara manual.
+  const [hasCheckedAutoAdvance, setHasCheckedAutoAdvance] = useState(false);
+  if (
+    !hasCheckedAutoAdvance &&
+    isEdit &&
+    initialPendingAction === "publish-now" &&
+    !isLoadingDraft &&
+    !isLoadingAccounts
+  ) {
+    setHasCheckedAutoAdvance(true);
+    if (isReadyToPublishNow) {
+      setPendingAction("publish-now");
+    } else {
+      setNotice({
+        status: "info",
+        title:
+          "Publish Now belum bisa langsung dikonfirmasi — pilih ulang akun tujuan untuk melanjutkan (akun yang sebelumnya dijadwalkan belum otomatis dimuat).",
+      });
+    }
+  }
+
   function toggleAccount(account: ConnectedAccount, checked: boolean) {
     setSelectedAccountIds((prev) =>
       checked ? [...prev, account.id] : prev.filter((id) => id !== account.id),
@@ -341,6 +397,24 @@ function DraftEditorForm({
     }
   }
 
+  /**
+   * Dipakai bersama oleh Schedule dan Publish Now — dulu masing-masing
+   * handler menulis ulang `selectedAccounts.map(...)` sendiri-sendiri
+   * (termasuk cabang `platformOptions` khusus Pinterest), berisiko
+   * divergen diam-diam kalau salah satu diubah tapi yang lain terlewat.
+   */
+  function buildTargetsPayload() {
+    return selectedAccounts.map((account) => ({
+      connectedAccountId: account.id,
+      contentFormat:
+        formatByAccount[account.id] ?? getDefaultFormat(account.platform),
+      platformOptions:
+        account.platform === SocialPlatform.Pinterest
+          ? { pinTitle, pinLink }
+          : undefined,
+    }));
+  }
+
   async function handleConfirmSchedule() {
     setIsScheduling(true);
     try {
@@ -352,20 +426,12 @@ function DraftEditorForm({
         postId: savedPostId,
         caption,
         scheduledAt,
-        targets: selectedAccounts.map((account) => ({
-          connectedAccountId: account.id,
-          contentFormat:
-            formatByAccount[account.id] ?? getDefaultFormat(account.platform),
-          platformOptions:
-            account.platform === SocialPlatform.Pinterest
-              ? { pinTitle, pinLink }
-              : undefined,
-        })),
+        targets: buildTargetsPayload(),
       });
 
       setSavedPostId(result.postId);
       setStatus(ContentStatus.Scheduled);
-      setIsConfirmStep(false);
+      setPendingAction(null);
       // Schedule → Publish > Queue (ADR-054). Queue sendiri masih placeholder
       // sampai T-032; tujuannya tetap dipakai karena ADR-054 sudah menetapkan
       // destinasi ini, dan mendarat di Queue lebih masuk akal daripada
@@ -384,23 +450,59 @@ function DraftEditorForm({
     }
   }
 
+  async function handleConfirmPublishNow() {
+    setIsPublishingNow(true);
+    try {
+      const result = await publishNowAction({
+        postId: savedPostId,
+        caption,
+        targets: buildTargetsPayload(),
+      });
+
+      setSavedPostId(result.postId);
+      setStatus(ContentStatus.Published);
+      setPendingAction(null);
+      // Publish Now → Publish > Calendar (T-029, ADR-054) — History belum
+      // jadi layar terdokumentasi, Calendar dipakai sementara sampai T-034.
+      finishTerminalAction("publish-now");
+    } catch (error) {
+      setNotice({
+        status: "error",
+        title:
+          error instanceof Error
+            ? error.message
+            : "Gagal mempublikasikan post. Coba lagi.",
+      });
+    } finally {
+      setIsPublishingNow(false);
+    }
+  }
+
   return (
     <Layout
       header={
         <DialogHeader
           title={
-            isConfirmStep
+            pendingAction === "schedule"
               ? "Konfirmasi Jadwal"
-              : isEdit
-                ? "Edit Draft"
-                : "New Post"
+              : pendingAction === "publish-now"
+                ? "Konfirmasi Publish"
+                : isEdit
+                  ? "Edit Draft"
+                  : "New Post"
           }
           endContent={
-            isConfirmStep ? undefined : (
+            pendingAction ? undefined : (
               <HStack gap={2} align="center">
                 <Badge
                   label={CONTENT_STATUS_LABEL[status]}
                   variant={CONTENT_STATUS_BADGE_VARIANT[status]}
+                  icon={
+                    <span
+                      aria-hidden="true"
+                      className="inline-block size-1.5 rounded-full bg-current"
+                    />
+                  }
                 />
                 <Button
                   label={
@@ -418,7 +520,7 @@ function DraftEditorForm({
       }
       content={
         <LayoutContent>
-          {isConfirmStep ? (
+          {pendingAction ? (
             <VStack gap={3}>
               {notice?.status === "error" ? (
                 <Banner status="error" title={notice.title} />
@@ -438,9 +540,13 @@ function DraftEditorForm({
                   </Text>
                 ))}
               </VStack>
-              <Text>
-                Waktu: {scheduleDate ?? "-"} {scheduleTime ?? ""}
-              </Text>
+              {pendingAction === "publish-now" ? (
+                <Text>Waktu: Sekarang</Text>
+              ) : (
+                <Text>
+                  Waktu: {scheduleDate ?? "-"} {scheduleTime ?? ""}
+                </Text>
+              )}
             </VStack>
           ) : (
             <VStack gap={4}>
@@ -586,15 +692,23 @@ function DraftEditorForm({
                     </VStack>
 
                     <VStack gap={3}>
-                      <Heading level={2}>Schedule Picker</Heading>
+                      <Heading level={2}>Jadwal</Heading>
                       <HStack gap={2}>
                         <DateInput
                           label="Tanggal"
+                          isLabelHidden
+                          placeholder="Pilih tanggal"
+                          size="sm"
                           value={scheduleDate as never}
                           onChange={(value) => setScheduleDate(value)}
                         />
                         <TimeInput
                           label="Waktu"
+                          isLabelHidden
+                          placeholder="Pilih waktu"
+                          size="sm"
+                          hourFormat="24h"
+                          increment={15}
                           value={scheduleTime as never}
                           onChange={(value) => setScheduleTime(value)}
                         />
@@ -610,12 +724,12 @@ function DraftEditorForm({
       footer={
         isLoadingDraft ? undefined : (
           <LayoutFooter>
-            {isConfirmStep ? (
+            {pendingAction === "schedule" ? (
               <HStack gap={3} justify="end" width="100%">
                 <Button
                   label="Batal"
                   variant="secondary"
-                  onClick={() => setIsConfirmStep(false)}
+                  onClick={() => setPendingAction(null)}
                   isDisabled={isScheduling}
                 />
                 <Button
@@ -623,6 +737,21 @@ function DraftEditorForm({
                   variant="primary"
                   onClick={handleConfirmSchedule}
                   isLoading={isScheduling}
+                />
+              </HStack>
+            ) : pendingAction === "publish-now" ? (
+              <HStack gap={3} justify="end" width="100%">
+                <Button
+                  label="Batal"
+                  variant="secondary"
+                  onClick={() => setPendingAction(null)}
+                  isDisabled={isPublishingNow}
+                />
+                <Button
+                  label="Konfirmasi & Publish"
+                  variant="primary"
+                  onClick={handleConfirmPublishNow}
+                  isLoading={isPublishingNow}
                 />
               </HStack>
             ) : (
@@ -638,11 +767,20 @@ function DraftEditorForm({
                 </StackItem>
                 <StackItem size="fill">
                   <Button
+                    label="Publish Now"
+                    variant="secondary"
+                    width="100%"
+                    isDisabled={!isReadyToPublishNow}
+                    onClick={() => setPendingAction("publish-now")}
+                  />
+                </StackItem>
+                <StackItem size="fill">
+                  <Button
                     label="Schedule"
                     variant="primary"
                     width="100%"
                     isDisabled={!isReadyToSchedule}
-                    onClick={() => setIsConfirmStep(true)}
+                    onClick={() => setPendingAction("schedule")}
                   />
                 </StackItem>
               </HStack>
@@ -779,6 +917,9 @@ export function DraftEditorModal() {
             }
             preSelectedAccountId={
               state.mode === "create" ? state.preSelectedAccountId : undefined
+            }
+            initialPendingAction={
+              state.mode === "edit" ? state.initialPendingAction : undefined
             }
             onOpenChange={handleOpenChange}
             dialogVariant={dialogVariant}

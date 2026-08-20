@@ -6,25 +6,10 @@ import { WorkspaceService } from "@/domains/workspace";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
-import {
-  AuthorizationError,
-  NotFoundError,
-  ValidationError,
-} from "@/lib/utils/errors";
+import { toActionError } from "@/lib/utils/errors";
 
 // Pola sama seperti settings/members/actions.ts — workspaceId dari
 // getWorkspaceContext() (header proxy.ts), actorUserId dari getCachedSession().
-
-function toActionError(error: unknown): { error: string } {
-  if (
-    error instanceof AuthorizationError ||
-    error instanceof NotFoundError ||
-    error instanceof ValidationError
-  ) {
-    return { error: error.message };
-  }
-  throw error;
-}
 
 /**
  * Persist urutan channel sidebar personal user (T-012.1) — dipanggil

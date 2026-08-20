@@ -43,8 +43,11 @@ function createFakeRepository(
     findDraftById: async () => null,
     updateDraftCaption: async () => null,
     schedulePost: async () => null,
+    publishNow: async () => null,
     updateTargetOutcome: async () => undefined,
     countScheduledByAccount: async () => new Map(),
+    listQueue: async () => [],
+    cancelSchedule: async () => null,
     ...overrides,
   };
 }
@@ -54,6 +57,11 @@ function createFakeOutstandAdapter(
 ): IOutstandAdapter {
   return {
     schedulePost: async () => ({ outstandJobId: "fake-job" }),
+    publishNow: async () => ({
+      outstandJobId: "fake-job",
+      publishedUrl: "https://fake.outstand.local/posts/fake-job",
+    }),
+    cancelScheduledPost: async () => undefined,
     fetchPostMetrics: async () => ({
       impressions: 0,
       reach: 0,

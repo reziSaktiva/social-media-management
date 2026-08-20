@@ -8,6 +8,466 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-20 — Swap warna sidebar ↔ konten AppShell (light mode saja) — ADR-084
+
+### Context
+
+Permintaan ad-hoc King Rezi (bukan bagian task backlog `TASKS.md`/
+`tasks/vXX-*.md` manapun), dikerjakan di branch `feature/swap-appshell-bg-light-mode`
+(dibuat dari `staging`, belum commit). Minta swap warna background AppShell
+untuk **light mode saja** — dark mode sengaja tidak disentuh:
+
+- Sidebar: abu (`#f1f1f1`) → **putih** (`#ffffff`).
+- Area konten utama (semua halaman: Home, Publish/Queue/Calendar/Drafts/
+  History, Engage, Analyze, Settings): putih (`#ffffff`) → **abu**
+  (`#f1f1f1`).
+
+### Pekerjaan
+
+Investigasi menemukan warna sidebar (`.astryx-app-shell-sidenav`) dan
+konten (`.astryx-layout-content`, komponen generik `Layout`/`LayoutContent`
+Astryx) bukan elemen unik AppShell — component key yang sama dipakai ulang
+di **seluruh dialog** aplikasi (Cancel Schedule Queue, Transfer Ownership &
+Hapus Workspace Settings > General, Invite Member Settings > Members,
+Draft Editor Modal). Override lewat jalur resmi `defineTheme({ components:
+{ 'layout-content': {...} } })` akan ikut mengubah warna konten semua
+dialog itu — ditolak.
+
+Solusi: 1 blok `@layer components` baru ditambahkan di akhir
+`apps/web/src/app/globals.css` — CSS selector ter-scope presisi ke slot
+AppShell (`.astryx-app-shell[data-variant="elevated"]`,
+`.astryx-app-shell-sidenav[data-variant="elevated"]`) + exclusion
+`:not(dialog .astryx-layout-content)` supaya konten dialog manapun (semua
+dirender via elemen native `<dialog>`, dikonfirmasi lewat inspeksi DOM)
+tidak ikut ter-match. Nilai warna pakai `light-dark(#ffffff, #1b1b1b)`
+untuk shell/sidenav dan `light-dark(#f1f1f1, #262626)` untuk konten —
+mempertahankan dark mode identik nilai lama di selector yang sama. Semua
+nilai HEX diverifikasi dari *computed style* browser (bukan tabel
+`astryx docs tokens` yang ternyata tidak akurat terhadap built theme yang
+sebenarnya jalan) — bukan warna baru/brand baru.
+
+Pendekatan ini sah menurut dokumentasi resmi Astryx (`astryx docs styling`
+→ "Preferred Selector Surface: Data Attributes") — bukan swizzle (ADR-041)
+dan bukan StyleX/`xstyle` (dihapus, ADR-082).
+
+### Verifikasi
+
+Browser: light mode Queue + Settings (warna tertukar sesuai permintaan);
+dialog Hapus Workspace dicek eksplisit **tidak berubah**; dark mode dicek
+identik sebelum/sesudah (shell/sidenav `#1b1b1b`, konten `#262626`). Tidak
+ada Vitest/`tsc`/`eslint` tambahan — perubahan murni CSS, tidak menyentuh
+logic/TypeScript.
+
+### Keputusan ADR
+
+**ADR-084** dibuat — mencatat alasan penolakan `defineTheme` component
+override, detail selector CSS yang dipakai, dan keputusan sekali-pakai
+soal urutan kerja (implementasi dulu, dokumentasi menyusul setelah acc
+visual — dibalik dari rule 17 `AGENTS.md`, eksplisit bukan preseden
+permanen untuk task UI lain).
+
+### Status
+
+Selesai, sudah di-acc visual King Rezi. Bukan task backlog, sehingga tidak
+ada entri baru di `TASKS.md`/`tasks/vXX-*.md`. Dokumentasi governance
+diperbarui dalam perubahan yang sama: `DECISIONS.md` + `decisions/ADR-084-*.md`,
+`PROJECT_STATE.md` (Recent Decisions + Completed Ringkasan). Next step
+(di luar cakupan sesi ini): sinkronisasi ke Claude Design oleh Neymar
+Product Designer. Commit/push belum dilakukan — menunggu instruksi
+eksplisit King Rezi.
+
+---
+
+## 2026-08-20 — T-032 Queue management selesai (implementasi penuh) + T-030 (Cancel Schedule) ditutup untuk konteks Queue
+
+### Context
+
+Lanjutan dari T-032.0/.1 (ADR-083, 2026-08-19) yang menyelaraskan Design
+System halaman Queue. Sesi ini mengerjakan 4 subtask implementasi kode yang
+tersisa (T-032.2–.5) lewat delegasi paralel/sekuensial beberapa subagent
+(Prabowo Feature Engineer ×2, Elon Backend Engineer, Mark UI Engineer),
+diikuti review Ridwan (Architecture Reviewer) dan QA Najwa, ditutup 2
+putaran fix dari sesi utama.
+
+### Pekerjaan per subtask
+
+- **T-032.2** (Prabowo) — `PublishingService.listQueue` + repository: query
+  `PublishingPost`/`PublishingPostTarget` status `Scheduled` langsung (bukan
+  `PublishingQueueSlot`, ADR-083), grouped per tanggal via helper baru
+  `apps/web/src/domains/publishing/services/group-queue-items.ts` (+ test),
+  ascending `scheduledAt`. File diubah: `publishing.repository.ts` (interface
+  + tipe `QueueItemRecord`/`QueueItemTargetRecord`), `publishing.service.ts`,
+  `index.ts`, implementasi Prisma di
+  `apps/web/src/lib/repositories/publishing/publishing.repository.ts`.
+- **T-032.5** (Elon) — Migration `20260820024619_drop_publishing_queue_slot`
+  men-drop model Prisma `PublishingQueueSlot` + tabel `publishing_queue_slots`
+  + 3 field relasi balik (ADR-083). Test
+  `workspace.repository.delete-cascade.test.ts` disesuaikan (assertion
+  queue-slot dihapus, cascade-delete T-008.2 diverifikasi ulang dengan
+  koneksi DB asli).
+- **T-032.3** (Mark) — UI Astryx nyata di
+  `apps/web/src/app/(app)/publish/queue/page.tsx` (RSC) +
+  `components/QueueList.tsx` (client): grouping per tanggal (heading nama
+  hari + tanggal, mis. "Senin, 14 Juli"), 1 Card per schedule tanpa status
+  chip, filter akun client-side, 3 tombol icon (Publish Now/Edit/Cancel
+  Schedule). Judul halaman dikoreksi dari "Queue" jadi **"Publish"** di sesi
+  utama, setelah verifikasi ulang terhadap mockup Claude Design
+  (`templates/publish-queue.html` via `DesignSync`) — cocok dengan pola
+  existing `DraftsList.tsx`.
+- **T-032.4** (Prabowo) — Wiring 3 aksi + **implementasi nyata T-030 (Cancel
+  Schedule) secara penuh** untuk bagian Queue (menutup T-030.1/.2/.3 —
+  bagian Calendar dari T-030.3 menyusul di T-033):
+  - Kontrak ACL baru `IOutstandAdapter.cancelScheduledPost`
+    (`packages/shared/src/contracts/outstand-adapter.ts`) + implementasi
+    `FakeOutstandAdapter` (instan always-success, ADR-059).
+  - Repository: method cancel (status `Scheduled` → `Draft`, `scheduledAt`
+    di-null-kan, `PublishingPostTarget` dihapus).
+  - RBAC: `assertActorCanCancelSchedule` (Owner/Admin/Creator, ADR-074) di
+    `rbac.ts`.
+  - Use-case baru `cancel-schedule.use-case.ts` (persist dulu baru panggil
+    adapter, best-effort per target — pola sama `PublishNowUseCase`).
+  - Server Action `cancelScheduleAction`
+    (`apps/web/src/app/(app)/publish/queue/actions.ts`, file baru).
+  - UI: `QueueScreen.tsx` (client wrapper baru) — `AlertDialog` Tier 2 (pola
+    sama `MembersTable.tsx`), copy "Batalkan jadwal ini?" / "Post kembali
+    menjadi Draft dan tidak akan dipublikasikan otomatis." / tombol
+    "Batal"/"Batalkan Jadwal", toast sukses "Jadwal dibatalkan — post
+    kembali ke Drafts" (pemakaian pertama `useToast` Astryx di codebase).
+  - Gap tambahan ditemukan & diselesaikan: tombol "Publish Now" di Queue
+    awalnya cuma reuse `openEditDraft` (sama seperti Edit) — diperbaiki
+    dengan menambah `initialPendingAction?: "publish-now"` ke
+    `DraftEditorState`/`openEditDraft` (`Context.tsx`, `Modal.tsx`) supaya
+    modal auto-advance ke step Confirmation Summary begitu draft ready.
+    **Known limitation, sengaja dibiarkan** (dicatat sebagai **KI-032**):
+    `getDraftAction` belum preload target akun yang sudah dijadwalkan, jadi
+    `isReadyToPublishNow` sering `false` saat dibuka dari Queue → jatuh ke
+    form biasa alih-alih auto-advance.
+
+### Verifikasi
+
+- **Ridwan (Architecture Reviewer):** review lengkap — entry point bersih,
+  domain tidak import Prisma/Supabase/HTTP, cross-domain lewat public API,
+  shared types murni, RBAC fail-fast, urutan persist-then-adapter benar,
+  `PublishingQueueSlot` bersih total, UI Astryx murni — **0 temuan**.
+- **Najwa (QA):** Vitest 153 passed/3 skipped (skip disengaja, butuh DB
+  asli), `tsc --noEmit` bersih, `eslint` bersih, E2E browser lengkap (golden
+  path, filter, Edit, Publish Now fallback yang diharapkan, Cancel Schedule
+  + dialog + toast + DB state, empty state, regresi Drafts, regresi Publish
+  Now lama dari Draft Editor langsung, light/dark mode) — **semua pass**, 1
+  bug kosmetik ditemukan: double `@` di label akun (`@@qaqueue.demo`).
+- **Fix sesi utama (2 putaran):** (1) judul halaman "Queue" → "Publish"
+  setelah verifikasi ulang mockup; (2) bug double-`@` diperbaiki di
+  `QueueList.tsx` (label filter + label target, hapus prefix `@` duplikat)
+  dan diverifikasi ulang via browser (`tsc --noEmit` bersih, screenshot
+  mengonfirmasi label benar `@qaqueue.demo`, toast dan alur cancel bekerja).
+
+### Keputusan ADR
+
+**Tidak ada ADR baru.** Seluruh keputusan sesi ini murni implementasi
+mengikuti ADR yang sudah ada (ADR-083 queue tanpa `QueueSlot`, ADR-059 pola
+Fake adapter, ADR-049 Tier 2 dialog, ADR-074 RBAC). Dua keputusan kecil yang
+dipertimbangkan tapi dinilai tidak cukup material untuk ADR tersendiri:
+"Publish Now Queue auto-advance via `initialPendingAction`" (detail wiring
+UI, bukan perubahan arsitektur/kontrak) dan "Cancel Schedule menghapus
+`PublishingPostTarget` alih-alih soft-reset" (konsisten dengan pola create
+row-per-target di `SchedulePostsUseCase`, tidak mengubah domain model/ACL).
+
+### Status
+
+T-032 (parent task) → **✅ Done** (seluruh subtask T-032.0–.5). T-030
+(Cancel Schedule) → **🟡 In Progress**: T-030.1/.2/.3 selesai untuk konteks
+Queue, sisa scope Calendar menunggu T-033. Dokumentasi governance
+diperbarui dalam perubahan yang sama: `tasks/v02-publishing-mvp.md` (T-032,
+T-030), `TASKS.md` (indeks v0.2: 8 ✅ · 1 🟡 · 10 ⏳, Total 22 selesai/142
+subtask), `PROJECT_STATE.md` (Completed Ringkasan + KI-032 baru).
+
+---
+
+## 2026-08-19 — ADR-083: baseline `04-ux`/`05-architecture` direkonsiliasi dengan desain final Queue
+
+### Context
+
+Setelah T-032.0 (mockup Queue diselaraskan ke pola Buffer, entri di bawah)
+selesai, King Rezi meminta audit eksplisit: "apakah aman tidak ada gap atau
+ui/ux yang berlawanan dengan design system yang baru?" — mencakup
+`context/` dan `product-discovery/`. Explore agent menelusuri seluruh
+referensi Queue/`QueueSlot`/KSP-03 di project dan menemukan **konflik nyata
+di 3 dokumen baseline inti**, bukan cuma gap kecil.
+
+### Temuan audit & Resolusi
+
+Audit menemukan konflik nyata di 3 dokumen baseline inti (`key-screen-patterns.md`
+KSP-03, `user-flows.md` UF-02, `domain-model.md`/`application-layer.md`
+entity `QueueSlot`) plus 2 drift kecil (`TASKS.md` "Keputusan terbuka" stale,
+`information-architecture.md` frasa Queue). King Rezi memilih opsi "Buat ADR
++ update baseline". Detail lengkap temuan, keputusan, alasan, alternatif
+yang dipertimbangkan, dan daftar file yang diamandemen: lihat
+**`project-manager/decisions/ADR-083-queue-murni-urutan-waktu-publish-hapus-reorder-status-chip-queueslot.md`**
+(§ Context, § Decision, § Impact / Baseline yang diamandemen).
+
+### Status
+
+Audit + ADR + amandemen baseline selesai. T-032 (parent task) tetap ⏳ Not
+Started — T-032.2/.3/.4 (implementasi kode) belum dikerjakan. Kerja masih
+di branch `feature/t-032-0-queue-design-buffer-alignment`, belum di-commit.
+
+---
+
+## 2026-08-19 — T-032.0 selesai: mockup Claude Design halaman Queue diselaraskan ke referensi UX Buffer
+
+### Context
+
+Investigasi awal sesi (deployment Railway staging stuck sejak commit lama)
+berujung ke diskusi task apa yang bisa dikerjakan sekarang — King Rezi
+memilih T-032 (Queue management). Sebelum implementasi kode, T-032.1
+(semantik queue slot) masih jadi keputusan terbuka di `TASKS.md`. King Rezi
+menunjukkan screenshot halaman Queue Buffer (`publish.buffer.com/schedule`)
+sebagai referensi UX yang diinginkan, memicu subtask baru **T-032.0**
+(selaraskan Design System dulu sebelum kode) yang dikerjakan dalam 2 putaran
+di sesi yang sama.
+
+### Putaran 1 — adopsi elemen Buffer yang tidak butuh ADR/fitur baru
+
+Analisis perbandingan mockup lama (`templates/publish-queue.html`) vs
+Buffer: grouping per tanggal, aksi per-post (Publish Now/Edit/More options),
+tanpa reorder manual, filter Channels/Tags/Timezone, tab Approvals, badge
+count. King Rezi diminta memilih cakupan lewat AskUserQuestion — hasilnya
+**adopsi hanya 4 elemen** yang tidak mengubah baseline: grouping per
+tanggal, urutan murni waktu publish (tombol reorder ↑/↓ dihapus total —
+**closes T-032.1**, tidak perlu ADR), timestamp "Dibuat X lalu". Elemen yang
+sengaja di-skip (butuh ADR atau fitur baru di luar backlog manapun): toggle
+List/Calendar, tab "Approvals" (fitur approval workflow tidak ada di
+`roles-permissions.md`), filter "Tags"/"Timezone" (tidak ada di domain
+model/backlog).
+
+### Putaran 2 — revisi detail layout & aksi (9 poin King Rezi)
+
+Setelah preview hasil putaran 1, King Rezi minta 9 perbaikan lebih detail
+dari screenshot Buffer yang sama. Dua poin ambigu diklarifikasi lewat
+AskUserQuestion sebelum eksekusi (menghindari rework): (a) apakah "Cancel
+Schedule" dan "Delete" di poin 5 & 8 adalah 1 tombol atau 2 — dipilih **1
+tombol merah** (Cancel Schedule saja); (b) posisi filter channel relatif
+tombol New Post — dipilih **baris terpisah** (New Post naik ke baris judul,
+filter tetap di baris lama tapi dipindah kanan + diperkecil).
+
+Hasil final `templates/publish-queue.html`: filter channel kecil rata kanan
+di baris tersendiri; tombol **New Post** pindah ke baris judul
+(`justify-content:space-between` dengan title+subtitle, memanfaatkan
+`.page-head` yang sudah flex-between secara default); **1 Card Astryx per
+schedule** (`.card.card-pad.queue-card` per row, bukan 1 card menaungi
+seluruh list); status chip (Scheduled/Failed/Ready to Schedule) **dihapus
+total** (tidak relevan untuk halaman ini); dropdown "More options (⋮)" dari
+putaran 1 **dihapus**, diganti 3 tombol icon eksplisit: Publish Now, Edit,
+**Cancel Schedule** (icon merah, class baru `.icon-btn-danger`); heading
+tanggal dirapikan (nama bulan lengkap, semibold, border-bottom pemisah).
+
+### Interaksi diwire nyata di prototipe (bukan cuma visual statis)
+
+`templates/app-prototype/AppPrototype.dc.html` diedit supaya 3 tombol baru
+benar-benar berfungsi saat diklik di App Prototype interaktif (bukan cuma
+mockup diam): tombol Publish Now → reuse `openPublishNowDialog` (dialog
+Confirmation Summary yang sama dengan Draft Editor, T-029); tombol Edit →
+reuse `triggerEditDraft`; tombol Cancel Schedule → dialog konfirmasi baru
+`openCancelScheduleDialog`/`applyCancelSchedule` (pola sama
+`openDisconnectDialog`: warning + tombol `btn-danger`, menghapus card dari
+Queue + toast konfirmasi) — desain interaksi ini jadi referensi siap pakai
+untuk implementasi nyata T-030 (Cancel Schedule) di `apps/web`. Dead code
+`reorder-up`/`reorder-down` di `route()` dibersihkan sekalian (tombolnya
+sudah tidak ada sejak putaran 1). Kedua file diverifikasi baca-ulang dari
+remote setelah tiap `write_files` (scope-discipline skill poin 6) — tidak
+ada drift/perubahan King Rezi yang tertimpa.
+
+### Dokumentasi
+
+`project-manager/tasks/v02-publishing-mvp.md` § T-032 diperbarui: T-032.0
+ditandai selesai dengan ringkasan 2 putaran di atas, T-032.1 tetap resolved
+(urutan murni waktu publish, tanpa reorder), T-032.2/.3/.4 disesuaikan
+referensinya ke desain final (grouped by date, 1 Card per schedule, 3 tombol
+icon eksplisit tanpa dropdown). § T-030 (Cancel Schedule) ditambah
+cross-reference ke `openCancelScheduleDialog` sebagai referensi copy &
+interaksi siap pakai untuk implementasi nyata.
+
+### Status
+
+T-032.0 (subtask desain) selesai. T-032 (parent task) tetap **⏳ Not
+Started** — T-032.2 (`PublishingService.listQueue`), T-032.3 (implementasi
+UI Astryx nyata di `apps/web`), dan T-032.4 (wiring aksi ke service) belum
+dikerjakan. Kerja ada di branch `feature/t-032-0-queue-design-buffer-alignment`,
+belum di-commit.
+
+---
+
+## 2026-08-19 — KI-031 resolved: ikon Date/TimeInput dikonfirmasi permanen kiri + mockup Claude Design diperbaiki (DateTimeInput + calendar popover)
+
+### Context
+
+Kelanjutan diskusi KI-029/ADR-082 (entri di bawah). Fix kode untuk KI-031
+sendiri (`flex-row-reverse` dihapus, ikon kembali ke posisi default kiri
+Astryx demi a11y/WCAG 2.4.3) sudah diterapkan sejak 2026-08-18 — sisa gap
+yang belum ditutup murni soal mockup Claude Design (`templates/draft-editor.html`,
+`components/forms.html`, `templates/app-prototype/AppPrototype.dc.html`)
+yang masih menampilkan pola lama (native `<input type="date"/"time">`,
+posisi ikon tidak konsisten) dan tidak mencerminkan keputusan final.
+
+### Perbaikan mockup Claude Design (project "Social Media Management")
+
+Tiga putaran revisi sebelum konvergen ke bentuk yang benar (dicatat supaya
+tidak diulang):
+
+1. **Percobaan 1 (ditolak King Rezi):** satu box gabungan (`.dt-input`,
+   ikon kalender tunggal + segmen tanggal/waktu). Salah interpretasi
+   anatomi `DateTimeInput` — dikoreksi setelah King Rezi mengirim
+   screenshot rendering resmi `astryx.atmeta.com/components/DateTimeInput`
+   yang menunjukkan **dua kotak terpisah** berdampingan (bukan satu box).
+2. **Percobaan 2:** dua kotak terpisah (`.sched-field` × 2, ikon kalender +
+   ikon jam masing-masing, `type="text"` bukan native date/time) — sudah
+   benar strukturnya, tapi belum ada calendar popover interaktif.
+3. **Percobaan 3 (ditambah fitur):** King Rezi minta field tanggal bisa
+   diklik untuk memunculkan calendar popover (bulan/tahun + navigasi prev/
+   next + grid hari), sesuai anatomi resmi `DateInput`'s "Calendar popover".
+   Implementasi pertama pakai class `.cal-day`/`.cal-popover` dst — **bug
+   ditemukan dari screenshot King Rezi**: grid kalender rusak (baris
+   raksasa, header/weekday hilang) karena `.cal-day` **bentrok** dengan
+   class `.cal-day` yang sudah ada untuk layar Publish → Calendar (KSP-02,
+   `min-height: 150px` untuk kartu jadwal harian) — nama class sama,
+   properti CSS saling menimpa sebagian (cascade per-property, bukan
+   per-block). **Fix:** dibangun ulang dari state bersih (sebelum fitur
+   kalender ditambahkan), semua class calendar-popover diberi prefix unik
+   `schedcal-*` (bukan `cal-*`), arah buka popover diubah dari ke-atas jadi
+   ke-bawah (hindari clipping oleh `.dialog-fs-body{overflow-y:auto}`).
+   Diverifikasi: `node --check` sintaks JS ketiga file lolos, dan `diff`
+   terhadap rules `.cal-*` original (KSP-02) di `styles.css` menunjukkan
+   **nol perubahan** — dijamin tidak ada regresi ke layar Calendar.
+
+### Keputusan final
+
+KI-031 ditutup **Resolved** — bukan cuma "sebagian":
+- Kode `apps/web`: posisi ikon kiri permanen (a11y, sejak 2026-08-18).
+- Mockup Claude Design: sudah sinkron, merepresentasikan `DateTimeInput`
+  Astryx asli (dua kotak + ikon kiri masing-masing + calendar popover
+  fungsional), bukan lagi native browser input yang menyesatkan.
+- Opsi swizzle (satu dari dua opsi solusi lama) tertutup permanen sejak
+  ADR-082; opsi lain (tunggu Astryx tambah prop resmi) tidak lagi relevan
+  karena posisi kiri sudah diterima sebagai final, bukan trade-off
+  sementara yang menunggu sesuatu.
+
+### File yang berubah
+
+- `project-manager/PROJECT_STATE.md` — KI-031 dihapus dari daftar Known
+  Issues (status Resolved, sesuai aturan KI di section tersebut).
+- Claude Design project "Social Media Management" (`DesignSync`):
+  `templates/draft-editor.html`, `components/forms.html`,
+  `templates/app-prototype/AppPrototype.dc.html`, `styles.css`.
+- Tidak ada perubahan kode `apps/web` di sesi ini (fix kodenya sudah lama
+  ada sejak 2026-08-18; sesi ini murni menyinkronkan mockup + menutup
+  status).
+
+---
+
+## 2026-08-19 — KI-029 ditutup Won't Fix (ADR-082): Astryx Tailwind-only, dependency StyleX dihapus
+
+### Context
+
+Kelanjutan investigasi KI-029 (lihat entri tepat di bawah ini untuk detail 3 putaran investigasi teknis). Setelah putaran investigasi berakhir negatif dan sesi jeda, King Rezi melanjutkan diskusi dengan membaca ulang dokumentasi resmi:
+
+1. `astryx.atmeta.com/docs/styling` — dikonfirmasi Astryx punya hirarki resmi (`xstyle` prioritas #1 untuk override komponen, Tailwind untuk layout/wrapper).
+2. `astryx.atmeta.com/docs/styling-libraries` — tidak memihak Tailwind vs StyleX, menyarankan "integrasi paling sempit sesuai kebutuhan".
+3. `stylexjs.com/docs/learn/installation/nextjs` — ditemukan jalur resmi StyleX alternatif (`@stylexjs/postcss-plugin`) yang diklaim kompatibel Turbopack sejak Next.js 16.0.3 (belum pernah diuji di 3 putaran sebelumnya, yang semuanya memakai jembatan komunitas `@stylexswc/nextjs-plugin`).
+4. `github.com/facebook/astryx/tree/main/apps/example-nextjs-tailwind` — dikonfirmasi Astryx (repo resmi `facebook/astryx`) mendukung resmi pola konsumsi tanpa compiler StyleX sama sekali (`package.json` contoh ini tidak punya dependency StyleX apapun).
+
+King Rezi juga sempat menanyakan apakah `astryx.atmeta.com` benar-benar Meta — dikonfirmasi ya (repo `facebook/astryx`, footer "©2026 Meta Platforms, Inc.").
+
+Dua file diskusi dibuat sebagai catatan proses: `project-manager/reports/KI-029-astryx-styling-gaps.md` (konversi dari `.html` sebelumnya) dan `project-manager/reports/KI-029-xstyle-diskusi.md` (rangkuman hirarki styling resmi + akar masalah teknis `xstyle`).
+
+### Keputusan final
+
+King Rezi memutuskan **tidak melanjutkan investigasi teknis apapun** untuk `xstyle` (termasuk opsi jalur resmi `@stylexjs/postcss-plugin` yang belum diuji) dan menutup KI-029 sebagai **Won't Fix** — bukan bug yang di-fix, melainkan keputusan arsitektur sadar untuk berhenti memakai `xstyle`/StyleX sepenuhnya, mengikuti pola resmi Meta (`example-nextjs-tailwind`). Didokumentasikan formal di **ADR-082** (amandemen ADR-041).
+
+Konsekuensi yang disadari dan diterima: opsi "restrukturisasi DOM manual via `astryx swizzle`" untuk KI-031 (reposisi ikon `DateInput`/`TimeInput`) ikut tertutup, karena swizzle butuh compiler StyleX yang sama untuk hasilnya ter-styling. Satu-satunya opsi tersisa untuk KI-031 adalah menunggu Astryx menambah prop resmi posisi ikon.
+
+### Eksekusi
+
+- Dependency `@stylexjs/stylex` (`"0.19.0"`) dihapus dari `apps/web/package.json` — tidak pernah dipakai aktif di kode (seluruh percobaan 3 putaran sudah di-revert bersih sebelumnya). `@stylexjs/stylex` tetap ada di `bun.lock` sebagai peer dependency transitif `@astryxdesign/core` (dipakai internal Astryx untuk CSS pre-compiled-nya) — ini normal, bukan sisa dependency kita.
+- `bun install` dijalankan ulang — lockfile ter-update bersih (24 packages resolved), tidak ada perubahan lain.
+- `tsc --noEmit` dikonfirmasi bersih pasca-penghapusan.
+
+### File yang berubah
+
+- `apps/web/package.json`, `bun.lock` — hapus dependency `@stylexjs/stylex`.
+- `project-manager/decisions/ADR-082-astryx-tailwind-only-hapus-stylex-xstyle-amandemen-adr-041.md` — ADR baru.
+- `project-manager/DECISIONS.md` — indeks ADR-082 ditambahkan; ADR-041 ditandai `Amended by ADR-082`.
+- `project-manager/PROJECT_STATE.md` — KI-029 dihapus dari daftar Known Issues (status Resolved, sesuai aturan KI di baris pembuka section tersebut); KI-031 diperbarui merefleksikan penutupan opsi swizzle.
+- `project-manager/reports/KI-029-astryx-styling-gaps.md`, `project-manager/reports/KI-029-xstyle-diskusi.md` — catatan diskusi (dibuat sesi ini).
+
+---
+
+## 2026-08-19 — Upgrade Astryx 0.4.3 (selesai bersih) + investigasi KI-029 putaran 2 & 3 (hasil negatif, dihentikan sementara)
+
+### Context
+
+Branch `fix/ki-029-stylex-babel-plugin`. Dua pekerjaan berbeda terjadi di branch yang sama:
+
+1. **Upgrade Astryx `0.1.8 → 0.4.3`** (core, cli, theme-neutral) — dilakukan sebagai bagian eksplorasi apakah versi baru sudah punya rekomendasi resmi berbeda untuk wiring StyleX (lihat poin 2). Selesai bersih: `astryx upgrade --apply` melaporkan "No changes needed" untuk 156 komponen (tidak ada breaking change yang menyentuh kode existing). File berubah: `apps/web/package.json`, `bun.lock`, `apps/web/.claude/CLAUDE.md` (regenerated otomatis via `bunx astryx init --features agents --agent claude`). Diverifikasi `tsc --noEmit`, `bun run build`, smoke-test browser — semua lolos, tidak ada regresi.
+2. **Investigasi lanjutan KI-029** (putaran 2 & 3, melanjutkan putaran 1 yang sudah tercatat sebelumnya) — dicoba paket resmi baru yang direkomendasikan `astryx docs styling` versi 0.4.3, **`@stylexswc/nextjs-plugin`** (compiler berbasis SWC/Rust NAPI-RS, gantinya `@stylexjs/nextjs-plugin` lama yang gagal total di putaran 1 karena Turbopack tidak memanggil hook webpack). Putaran 2 (`v0.18.3` stable): compiler berhasil jalan (bug resolusi modul `@stylexswc/turbopack-plugin/loader` ditemukan & diperbaiki sendiri), tapi nilai numerik (`maxWidth: 420`, dst.) dan fungsi warna (`rgb(...)`) hilang total dari CSS hasil ekstraksi — hanya nilai keyword string yang ter-extract. Putaran 3 (`v0.18.4-rc.2`, pre-release, changelog eksplisit menyebut fix "number rendering, rounding, unsupported value handling" PR #1258 upstream): dicoba atas persetujuan eksplisit King Rezi untuk ambil risiko pre-release — **bug identik, tidak fixed**, dikonfirmasi definitif lewat perbandingan classList baseline-vs-xstyle dan grep langsung isi CSS terkirim. Semua perubahan percobaan (`next.config.ts`, `postcss.config.mjs`, `package.json`+`bun.lock` untuk paket `@stylexswc/*`, halaman test) **sudah di-revert bersih** di kedua putaran — tidak ada sisa kode permanen dari investigasi ini.
+
+### Keputusan penutup
+
+Setelah 3 putaran investigasi teknis lengkap (webpack-based gagal total → SWC-based stable ada bug ekstraksi → SWC-based pre-release bug identik), King Rezi memutuskan **berhenti melanjutkan investigasi teknis KI-029/KI-030/KI-031 untuk saat ini** dan **menempuh jalan lain** (kata beliau langsung). Belum ada detail spesifik jalur alternatif yang dimaksud pada momen keputusan ini diambil. Ini **bukan** keputusan Resolved — ketiga Known Issue (KI-029, KI-030, KI-031) tetap berstatus `Open` di `PROJECT_STATE.md`, workaround existing (`className` Tailwind untuk KI-029, ikon posisi default kiri untuk KI-031) tetap berlaku.
+
+### Referensi bukti lengkap
+
+Laporan investigasi lengkap (seluruh 3 putaran KI-029: kutipan resmi `astryx docs styling`, output `astryx component TimeInput/DateInput --dense`, changelog Astryx, GitHub Releases upstream `Dwlad90/stylex-swc-plugin`, tabel pengukuran computed style browser + grep CSS chunk) didokumentasikan sebagai file mandiri: `project-manager/reports/KI-029-astryx-styling-gaps.md` (dibuat sebagai `.html`, dikonversi ke `.md` dan `.html`-nya dihapus 2026-08-19 — lihat entri di atas).
+
+### File yang berubah
+
+- `apps/web/package.json`, `bun.lock` — upgrade Astryx 0.4.3.
+- `apps/web/.claude/CLAUDE.md` — regenerated (auto, mengikuti `@astryxdesign/cli` v0.4.3).
+- `project-manager/PROJECT_STATE.md` — catatan penutup investigasi di KI-029/030/031 + entri "Completed (Ringkasan)" untuk upgrade Astryx.
+- `project-manager/reports/KI-029-astryx-styling-gaps.md` — laporan bukti (dibuat di sesi sebelumnya sebagai `.html`, direferensikan di sini; dikonversi ke `.md` 2026-08-19).
+
+Tidak ada perubahan pada `TASKS.md`/`tasks/vXX-*.md` (KI-029/030/031 bukan task formal bernomor) maupun `DECISIONS.md` (tidak ada perubahan baseline arsitektur — investigasi berakhir tanpa solusi yang diadopsi).
+
+---
+
+## 2026-08-18 — T-029 Publish Now selesai + perbaikan UI Schedule Picker Draft Editor (KI-029, KI-030)
+
+### Context
+
+T-029 (Publish Now, ADR-047) sebelumnya salah tercatat sebagai "belum ada desain apapun" — koreksi (commit `c967b47`) menemukan tombol "Publish Now" dan dialog konfirmasinya sudah ada di Claude Design (`templates/draft-editor.html`, `templates/app-prototype/AppPrototype.dc.html`), jadi sisa pekerjaan murni implementasi kode. Implementasi dikerjakan oleh Prabowo Feature Engineer (backend/use-case) dan Mark UI Engineer (komponen Astryx di Draft Editor), commit `1c35004`, branch `feature/t-029-publish-now`, PR #80 ke base `staging`.
+
+### Yang diubah — Backend
+
+- **`apps/web/src/domains/publishing/services/publish-now.use-case.ts`** (baru) — `PublishNowUseCase`, mengikuti pola `SchedulePostsUseCase` (T-028/ADR-059). RBAC eksplisit (`assertActorCanPublishNow`) dijalankan fail-fast sebelum validasi `ContentFormat` (ADR-039, `assertContentFormatAllowed`). Urutan kritis: persist dulu (`PublishingPostTarget` status `pending`, post → `Published`) lewat `repository.publishNow`, baru panggil adapter per target, baru update outcome — mencegah job Outstand orphan tanpa jejak DB.
+- **`apps/web/src/domains/publishing/rbac.ts`** (baru) — `assertActorCanPublishNow`, role diizinkan (ADR-074): Owner, Admin, Creator — sama persis dengan Schedule, dieksplisitkan di kode (bukan implicit "semua boleh") karena `getWorkspaceContext()` men-cast `role` dari header tanpa validasi runtime.
+- **`apps/web/src/domains/publishing/repositories/publishing.repository.ts`** + **`apps/web/src/lib/repositories/publishing/publishing.repository.ts`** — tambah method `publishNow` (interface + implementasi Prisma).
+- **`apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts`** + **`apps/web/src/domains/publishing/adapters/outstand-adapter.ts`** + **`packages/shared/src/contracts/outstand-adapter.ts`** — perluasan `IOutstandAdapter`/`FakeOutstandAdapter` dengan `publishNow`, pola ADR-059 (auto-switch via env var, fidelity instan tanpa simulasi delay/failure). Jalur produksi tetap `FakeOutstandAdapter` — T-025 real adapter masih blocked kredensial (KI-003).
+- **`apps/web/src/domains/publishing/index.ts`** — expose public API baru.
+
+### Yang diubah — UI Draft Editor
+
+- **`apps/web/src/app/(app)/components/draft-editor/Modal.tsx`** — tombol "Publish Now" berdampingan "Save as Draft"/"Schedule" (KSP-05-F12), dialog Confirmation Summary varian Publish Now (UXP-04). Sebagai bagian commit yang sama: Schedule Picker dirapikan menyamai mockup Claude Design — heading tunggal "Jadwal" (sebelumnya duplikat), label individual field disembunyikan, placeholder Bahasa Indonesia, ikon kalender/jam dipindah ke kanan lewat Tailwind `flex-row-reverse` (bukan `xstyle`/`stylex.create()` — lihat KI-029 di bawah), dan dot indicator ditambahkan ke `Badge` status lewat slot icon resmi (`currentColor`, otomatis menyesuaikan variant).
+- **`apps/web/src/app/(app)/components/draft-editor/actions.ts`** — Server Action `publishNowAction`, satu-satunya call site `PublishNowUseCase`.
+- **`apps/web/src/app/(app)/components/draft-editor/terminal-destination.ts`** (+ test) — redirect setelah konfirmasi Publish Now diarahkan ke Publish/Calendar lewat `finishTerminalAction`, menutup T-031.4 sekaligus (dipakai seragam dengan Save as Draft dan Schedule).
+
+### Known Issues baru
+
+- **KI-029** — `@stylexjs/babel-plugin` tidak pernah di-wire di `next.config.ts` `apps/web`, sehingga prop `xstyle`+`stylex.create()` (mekanisme kustomisasi resmi Astryx) gagal di runtime (`"Unexpected 'stylex.create' call ... must be compiled by '@stylexjs/babel-plugin'"`). Workaround sementara: `className` Tailwind layout-only (rule 14 AGENTS.md) untuk kasus yang bisa diselesaikan lewat class utility biasa.
+- **KI-030** — `TimeInput` Astryx tidak membatasi input real-time (elemen `<input>` internal `type="text"` tanpa `maxLength`/`pattern`), tidak ada prop resmi untuk membatasinya. Mitigasi wrapper `onKeyDownCapture`/`onPaste` sempat dicoba tapi **dihapus atas keputusan King Rezi** (2026-08-18) karena belum solid (tidak menangkap paste/drag-drop/IME) — menunggu Astryx menambah prop resmi.
+
+### Verifikasi
+
+- `tsc --noEmit` bersih.
+- Vitest: `publish-now.use-case.test.ts` (baru, 357 baris), `fake-outstand-adapter.test.ts` (tambahan test `publishNow`), plus test terkait lain yang disesuaikan (`publishing.repository.ts`, `schedule-posts.use-case.test.ts`, `terminal-destination.test.ts`, `analytics-ingestion.use-case.test.ts`) — semua lulus.
+- End-to-end browser: New Post → isi caption/target → klik "Publish Now" → dialog Confirmation Summary → konfirmasi → redirect ke Publish/Calendar → data di DB berstatus `published`.
+
+### Dokumentasi terkait
+
+- `project-manager/tasks/v02-publishing-mvp.md` § T-029 (Status ✅ Done, seluruh subtask T-029.1–.6 dicentang) dan § T-031 (T-031.4 dicentang, Status task ✅ Done).
+- `project-manager/TASKS.md` — indeks v0.2 (7 ✅ · 12 ⏳), Total (21 selesai · 140 subtask), Fokus sekarang (T-029 dipindah jadi catatan Done, tersisa T-025).
+- `project-manager/PROJECT_STATE.md` — Completed (Ringkasan) + Top Next Tasks diperbarui.
+
+---
+
 ## 2026-08-14 — Bug fix: redirect `localhost:8080` di proxy/onboarding (root cause dari `request.url` di balik reverse proxy Railway)
 
 ### Context

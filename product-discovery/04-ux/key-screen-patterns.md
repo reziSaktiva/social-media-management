@@ -211,7 +211,9 @@ Calendar adalah **tampilan default** saat pengguna masuk ke Publish. Layar ini m
 
 ### Tujuan
 
-Queue menampilkan konten terjadwal dalam urutan linear per akun — Raka memindai coverage, mengatur ulang urutan, dan mengidentifikasi gap atau masalah dengan cepat.
+Queue menampilkan konten yang **sudah terjadwal** (status `Scheduled`), dikelompokkan per tanggal lalu per jam, murni berurutan berdasarkan waktu publish — Raka memindai coverage jadwal ke depan dan mengidentifikasi gap dengan cepat. Item yang gagal publish (`Failed`) tidak lagi ditampilkan di sini — begitu percobaan publish selesai, item pindah ke **History** (KSP di luar 8 layar kritis, T-034), yang tetap menampilkan status heterogen per item.
+
+**Amandemen 2026-08-19 (ADR-083):** cakupan layar ini dipersempit sengaja dari desain awal — Queue kini murni "antrean linear berdasarkan waktu publish" (status seragam Scheduled), bukan daftar campuran berbagai status dengan kemampuan atur-urutan manual. Perubahan ini diambil setelah King Rezi meminta penyelarasan dengan pola Buffer (`publish.buffer.com/schedule`).
 
 ---
 
@@ -219,12 +221,13 @@ Queue menampilkan konten terjadwal dalam urutan linear per akun — Raka meminda
 
 | ID | Fungsi | Deskripsi | Prinsip |
 | -- | ------ | --------- | ------- |
-| KSP-03-F01 | Daftar Konten Terurut | Semua post terjadwal ditampilkan berurutan berdasarkan waktu publish | UXP-01 |
-| KSP-03-F02 | Status per Item | Status setiap item terlihat jelas: Scheduled, In Review, Ready to Schedule, Draft, Failed | UXP-04, UXP-06 |
-| KSP-03-F03 | Filter per Akun | Pengguna dapat memfilter tampilan untuk satu akun tertentu | UXP-03 |
-| KSP-03-F04 | Klik Item → Draft Editor | Klik item membuka Draft Editor untuk item tersebut | UXP-01 |
-| KSP-03-F05 | Reorder Item | Pengguna dapat memindahkan item ke slot waktu yang berbeda | UXP-01 |
-| KSP-03-F06 | New Post dari Queue | CTA New Post tersedia langsung dari Queue | UXP-01 |
+| KSP-03-F01 | Daftar Konten Terurut | Semua post terjadwal ditampilkan berurutan berdasarkan waktu publish, dikelompokkan per tanggal lalu per jam | UXP-01 |
+| KSP-03-F02 | ~~Status per Item~~ — **Dioverride oleh F07 (ADR-083, 2026-08-19)**. Alasan asli: satu layar campuran status (Scheduled/Failed/Draft/dst.) butuh badge supaya tiap item terbedakan. Diputuskan cakupan Queue dipersempit jadi hanya `Scheduled` (seragam) — badge jadi tidak perlu. `Failed` pindah ke History (T-034), `Draft`/`Ready to Schedule` tetap di Drafts (T-022, sudah menampilkan status heterogen di sana) | UXP-04, UXP-06 (dipenuhi lewat cakupan homogen + aksi eksplisit F07, bukan badge status) |
+| KSP-03-F03 | Filter per Akun | Pengguna dapat memfilter tampilan untuk satu akun tertentu — kontrol kecil, rata kanan, baris terpisah dari judul halaman | UXP-03 |
+| KSP-03-F04 | Klik Item → Draft Editor | Klik card membuka Draft Editor (mode Edit) untuk item tersebut | UXP-01 |
+| KSP-03-F05 | ~~Reorder Item~~ — **Dioverride oleh F01 (ADR-083, 2026-08-19)**, tanpa ID pengganti baru. Alasan asli: urutan dianggap perlu bisa disusun manual, independen dari waktu. Diputuskan urutan murni `scheduledAt` ascending (F01) sudah cukup; memindahkan jadwal berarti mengedit `scheduledAt` lewat Draft Editor (F04), bukan menyusun ulang urutan tampilan | — |
+| KSP-03-F06 | New Post dari Queue | CTA New Post tersedia langsung dari Queue — sejajar judul halaman (`justify-between` dengan title/subtitle), bukan di baris filter | UXP-01 |
+| KSP-03-F07 | Aksi eksplisit per item (ADR-083) | 3 tombol icon per card: **Publish Now** (reuse KSP-05-F12), **Edit** (buka Draft Editor, sama dengan F04), **Cancel Schedule** (icon merah, dialog konfirmasi Tier 2 — T-030, ADR-049) — menggantikan kombinasi badge status + klik generik | UXP-01, UXP-04 |
 
 ---
 
@@ -232,26 +235,32 @@ Queue menampilkan konten terjadwal dalam urutan linear per akun — Raka meminda
 
 ```
 ┌──────────────────────────────────────────────────┐
+│  Publish                              [+ New Post]│
+│  Antrean linear berdasarkan waktu publish          │
+├──────────────────────────────────────────────────┤
 │  [Tab: Calendar] [Queue] [Drafts] [History]       │
 ├──────────────────────────────────────────────────┤
-│  Filter: [Semua Akun ▼]              [+ New Post]│
+│                                [Semua Akun ▼]     │
 ├──────────────────────────────────────────────────┤
-│  Senin, 14 Jul — 10:00               Scheduled   │
-│  Instagram @brandname | Caption preview...   [>] │
+│  Senin, 14 Juli                                    │
+│  ┌────────────────────────────────────────────┐  │
+│  │ 10:00 · Instagram   Caption preview...       │  │
+│  │                        [Publish][Edit][✕]    │  │
+│  └────────────────────────────────────────────┘  │
 ├──────────────────────────────────────────────────┤
-│  Senin, 14 Jul — 15:00                  Failed   │
-│  X @brandname | Caption preview...          [>] │
-├──────────────────────────────────────────────────┤
-│  Selasa, 15 Jul — 09:00              Scheduled   │
-│  LinkedIn @brandname | Caption preview...    [>] │
+│  Selasa, 15 Juli                                   │
+│  ┌────────────────────────────────────────────┐  │
+│  │ 09:00 · Facebook    Caption preview...       │  │
+│  │                        [Publish][Edit][✕]    │  │
+│  └────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────┘
 ```
 
-**Zona filter:** Memilih akun untuk mempersempit tampilan Queue.
+**Zona judul:** Title + subtitle "Antrean linear berdasarkan waktu publish" di kiri, New Post di kanan (`justify-between`).
 
-**Zona list:** Setiap item menampilkan tanggal/waktu, platform + nama akun, potongan caption, dan status. Item dengan status Failed mendapat visual berbeda.
+**Zona filter:** Baris terpisah di bawah tab, filter akun kecil rata kanan — bukan menyatu dengan CTA New Post.
 
-**Zona CTA:** New Post selalu tersedia tanpa scroll.
+**Zona list:** Dikelompokkan per tanggal (heading), lalu per jam di dalamnya. Setiap item = 1 Card Astryx sendiri (bukan satu card menaungi seluruh list), berisi waktu, platform + nama akun, potongan caption, dan 3 tombol aksi (F07). Tidak ada badge status.
 
 ---
 
@@ -259,10 +268,11 @@ Queue menampilkan konten terjadwal dalam urutan linear per akun — Raka meminda
 
 | State | Tampilan |
 | ----- | -------- |
-| Ada konten terjadwal | Daftar item berurutan |
+| Ada konten terjadwal | Card per item, dikelompokkan per tanggal |
 | Queue kosong | _"Tidak ada konten terjadwal"_ + CTA New Post |
-| Item Failed | Item ditandai jelas dengan status Failed |
 | Filter aktif — tidak ada item | _"Tidak ada konten untuk akun ini"_ |
+
+Item `Failed` **tidak muncul** di state manapun pada layar ini (amandemen ADR-083) — lihat History (T-034) untuk state kegagalan publish.
 
 ---
 
@@ -906,7 +916,7 @@ Keputusan desain yang dibuat dalam dokumen ini.
 | ----- | ---------- | ------------ |
 | KSP-01 Home | 4 zona informatif + deep link | Failed post di Recent Activity |
 | KSP-02 Calendar | Grid per hari × waktu + klik → Editor | Item Failed, Disconnected warning |
-| KSP-03 Queue | Daftar linear berurutan + filter | Item Failed, Queue kosong |
+| KSP-03 Queue | Daftar linear berurutan (grouped by tanggal) + 1 card per item + filter | Queue kosong, filter tidak ada hasil (Item Failed pindah ke History) |
 | KSP-04 Drafts | Daftar draft + CTA New Post | Drafts kosong |
 | KSP-05 Draft Editor | Dua zona (Caption / Konfigurasi) + AI inline + Confirmation Summary | Akun Disconnected, Status Failed |
 | KSP-06 Inbox | Master-detail + sync status + Manual Refresh | Badge setelah sync, refresh gagal, Inbox kosong |

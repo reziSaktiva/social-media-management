@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** T-029 Publish Now · T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus (T-029 Publish Now sudah ✅ Done, 2026-08-18)
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 71 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -156,7 +156,7 @@ Alignment dokumentasi dan schema/migration sudah selesai, tetapi handler webhook
 |-------|-------|
 | Status | Open |
 | Kategori | Process |
-| Terkait | — |
+| Terkait | [astryx.atmeta.com](https://astryx.atmeta.com) |
 
 Kompatibilitas dasar Next.js 16 sudah dibuktikan lewat smoke test dan production build, tetapi risiko perubahan API tetap dikelola dengan exact pin, tanpa canary/swizzle, wrapper selektif, update manual, dan verifikasi ulang saat upgrade.
 
@@ -270,6 +270,33 @@ EM-D02; lihat catatan di `COMPLETE_TASK.md` 2026-08-14). Baseline
 jalur production masih rencana, belum ada realisasi. Tidak memblokir M8,
 tapi wajib dituntaskan sebelum rilis production.
 
+### KI-030 · `TimeInput` Astryx tidak membatasi input real-time (bisa ketik >4 digit/huruf bebas)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-029, ADR-041 |
+
+Ditemukan 2026-08-18 saat King Rezi menguji Schedule Picker Draft Editor secara langsung: field `TimeInput` menerima ketikan bebas tanpa batas — dikonfirmasi lewat inspeksi DOM, elemen `<input>` internalnya `type="text"` tanpa `maxLength`/`pattern` sama sekali (bukan salah konfigurasi kita). Astryx TimeInput didesain sebagai field yang di-parse saat blur (bukan masking real-time per-keystroke seperti native `<input type="time">`), dan **tidak ada prop resmi** (`maxLength`, `pattern`, `onKeyDown`, dll) untuk membatasi ini. Opsi mitigasi yang dipertimbangkan:
+
+- **Wrapper `onKeyDownCapture`/`onPaste`** untuk intercept keystroke dari luar (level "wrapper selektif", bukan swizzle) — secara arsitektur boleh, tapi tidak solid (tidak menangkap paste/drag-drop/IME sepenuhnya tanpa handler tambahan) dan berisiko konflik dengan state internal `TimeInput` yang tidak kita kontrol. Sempat diimplementasikan (varian: `status` error saat blur untuk feedback, bukan mencegah ketik) tapi **dihapus atas keputusan King Rezi** (2026-08-18) — dianggap belum sesuai harapan, bukan solusi final.
+- Menunggu Astryx menambah prop resmi untuk ini (masih Beta, KI-005) — solusi paling bersih, tidak instan.
+
+Tidak memblokir M8. Icon kalender/jam Draft Editor sempat diperbaiki terpisah (posisi kanan, sesuai mockup) tapi **direvert** 2026-08-18 karena masalah a11y — resolved 2026-08-19 (lihat `COMPLETE_TASK.md`), posisi kiri sekarang final. Sisa gap di KI ini murni soal pembatasan input real-time, belum ada solusi yang disetujui.
+
+**Catatan penutup sesi 2026-08-19:** King Rezi memutuskan menghentikan investigasi lebih lanjut untuk saat ini. Status tetap `Open`, bukan Resolved — gap ini murni soal behavior/validasi keystroke, tidak terkait keputusan Astryx Tailwind-only (ADR-082, lihat `DECISIONS.md`) yang menutup KI-029.
+
+### KI-032 · Publish Now dari Queue belum auto-advance ke Confirmation Summary
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-032 (§ T-032.4, `tasks/v02-publishing-mvp.md`) |
+
+Ditemukan 2026-08-20 saat wiring tombol "Publish Now" di Queue (T-032.4): tombol ini reuse modal Draft Editor via `openEditDraft` dengan `initialPendingAction: "publish-now"` supaya modal auto-advance ke step Confirmation Summary begitu draft ready — tapi `getDraftAction` **belum preload target akun** yang sudah dijadwalkan, sehingga `isReadyToPublishNow` sering `false` saat dibuka dari Queue. Efeknya: modal jatuh ke form biasa (bukan langsung ke Confirmation Summary) — bukan bug fungsional (Publish Now tetap bisa dilakukan lewat form), murni gap UX auto-advance. Sengaja dibiarkan (di luar scope T-032.4) — perlu subtask terpisah nanti (preload target akun untuk Edit Draft) kalau UX ini mau disempurnakan. Tidak memblokir M8.
+
 ---
 
 ## Blockers
@@ -300,23 +327,22 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
-* **Bug fix — redirect `localhost:8080` di proxy/onboarding (2026-08-14)** — Ditemukan saat test login manual di staging: sesekali browser di-redirect ke `http://localhost:8080` (bind internal container Railway) alih-alih domain publik. Root cause: `proxy.ts` (5 titik) dan `app/onboarding/resume/route.ts` (2 titik) membangun redirect pakai `new URL(path, request.url)` — `request.url` tidak bisa dipercaya di balik reverse proxy Railway saat race container baru start. Fix: origin redirect sekarang selalu dari `getServerEnv().BETTER_AUTH_URL` (pola sama dengan invite link di `settings/members/actions.ts`). Diverifikasi: `tsc --noEmit` bersih, login lokal (akun test Raka Pratama) tetap normal tanpa regresi. Bukan task bernomor — perbaikan ad-hoc, tidak ada ADR baru (bug fix, bukan perubahan baseline arsitektur).
-* **KI-025 resolved — Railway staging live (2026-08-14)** — Project Railway `social-media-management` (workspace Insvire, region Singapore) dibuat, environment `staging` deploy sukses: service `web` (Next.js, domain `web-staging-60d7.up.railway.app`, health check `/api/health` 200 OK) dan service `cron` (`* * * * *` trigger `POST /api/jobs/run`, 2x run SUCCESS berturut-turut). Env var staging lengkap (DATABASE_URL, DIRECT_URL, Supabase, Better Auth, `JOB_SECRET` generated asli); `GOOGLE_CLIENT_ID/SECRET`, `OUTSTAND_API_KEY/WEBHOOK_SECRET` masih placeholder dummy (KI-015 sebagian resolved, KI-003 tetap open). Database staging memakai project Supabase Cloud existing "Sosial Media Management" (ref `ndcrkzqgqukqfmekgoze`) — bukan project baru terpisah; production Railway environment & production Supabase project belum dibuat (gap baru, KI-028). Branch `staging` dibuat & di-push; branch protection GitHub diaktifkan untuk `main`+`staging` (wajib PR + status check CI hijau). Detail: `COMPLETE_TASK.md`.
-* **T-007.1/.5/.6 selesai (2026-08-14)** — Members management: **pembuatan** invitation jalur Copy Link (`WorkspaceService.inviteMember`, ADR-080 — bukan alur invite-to-membership yang utuh, halaman accept-invite `/invite/[token]` belum dibuat), dialog konfirmasi Remove Member + Update Member Role (ADR-049 Tier 2), dan UI dialog invite 2 metode (Copy Link aktif, Kirim via Email disabled — email-bound wajib). Lolos review Ridwan (bersih, tanpa temuan) dan QA Najwa (126 test passed + 3 skip pre-existing; gating UI & radio group terverifikasi browser — submit generate-link gagal karena `JOB_SECRET` belum diisi, belum pernah dibuktikan sukses visual, dikoreksi setelah review CodeRabbit PR #73). Heading duplikat "Members" yang sempat muncul saat implementasi sudah diperbaiki lewat slot `headerAction` di `MembersTable`. Remove/Update Role tidak bisa diuji end-to-end penuh karena dev DB baru punya 1 member (known gap, KI-015). T-007 tetap 🟡 In Progress — sisa T-007.7 (jalur Kirim via Email) blocked T-005, plus halaman accept-invite (task terpisah, belum ada nomor). Detail: `tasks/v01-foundation.md` § T-007, `COMPLETE_TASK.md`.
-* **T-008 implementasi selesai (2026-08-13)** — Workspace Settings General + Danger Zone: backend `deleteWorkspace`/`transferOwnership`/`acceptOwnershipTransfer`/`cancelOwnershipTransfer` (Prabowo Feature Engineer, 2 putaran perbaikan review Ridwan termasuk cascade FK tambahan & ekstraksi `listTransferEligibleMembers`) + UI Danger Zone/rename (Mark UI Engineer). Lolos QA Najwa (full suite hijau, golden path + edge case inti PASS; 3 item minor tidak diverifikasi live karena T-007.1 invite member belum selesai, bukan bug). **Belum ditutup `✅ Done`** — ada 1 open item desain (Selector target Admin di dialog Transfer Ownership ditambahkan sebagai keputusan implementasi Mark, belum eksplisit di mockup Claude Design, belum dikonfirmasi King Rezi — lihat KI-027). Detail: `tasks/v01-foundation.md` § T-008, `COMPLETE_TASK.md`.
-* **KI-026 resolved (2026-08-13)** — RLS tidak efektif karena role koneksi `postgres` BYPASSRLS di Supabase. King Rezi membuat role `app_runtime` baru (tanpa BYPASSRLS) via SQL Editor, `DATABASE_URL` dipindah ke role itu (`DIRECT_URL` sengaja tetap `postgres` untuk privilege DDL migrate). Setelah RLS aktif, ditemukan & diperbaiki 2 bug desain policy yang sebelumnya tersembunyi: infinite recursion pada policy `workspace_members` (fix: `SECURITY DEFINER` function `current_user_workspace_ids()`) dan INSERT bootstrap gap saat owner baru bikin workspace (fix: pecah `FOR ALL` jadi policy terpisah + self-visibility clause). 3 migration baru applied ke DB nyata, `WorkspaceRepository.createWithOwner` diupdate set `app.current_user_id` di awal transaksi, 2 assertion "KNOWN GAP" di `with-current-user.test.ts` dibalik jadi assertion positif. Full suite 105 passed + 1 skipped, `tsc --noEmit` bersih. Detail: `tasks/v01-foundation.md` § T-017, `COMPLETE_TASK.md`.
+* **Swap warna sidebar ↔ konten AppShell, light mode saja (2026-08-20, ADR-084)** — Sidebar abu → putih, konten utama putih → abu (`#f1f1f1`), dark mode tidak disentuh. Diterapkan via 1 blok `@layer components` baru di `apps/web/src/app/globals.css` dengan CSS selector ter-scope + `:not(dialog ...)` (bukan `defineTheme` component override, karena `LayoutContent` dipakai ulang di seluruh dialog). Permintaan ad-hoc King Rezi, sudah di-acc visual (browser, light + dark mode, dialog dicek tidak berubah). Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-084-*.md`.
+* **T-032 Queue management selesai (2026-08-20)** — `listQueue` dari data asli `PublishingPost`/`PublishingPostTarget` (bukan `PublishingQueueSlot`, dihapus lewat migration ADR-083), UI Astryx nyata (grouping per tanggal, 1 Card per schedule, tanpa status chip), dan 3 aksi per item (Publish Now, Edit, Cancel Schedule). Cancel Schedule sekaligus menutup sebagian besar **T-030** (implementasi nyata untuk konteks Queue — RBAC ADR-074, `AlertDialog` Tier 2, `useToast` pertama di codebase); sisa scope Calendar menunggu T-033. Lolos review Ridwan (0 temuan) + QA Najwa (Vitest, `tsc`, `eslint`, E2E browser lengkap, 1 bug kosmetik ditemukan & diperbaiki di sesi yang sama). 1 Known Issue baru: **KI-032** (Publish Now dari Queue belum auto-advance ke konfirmasi). Detail: `tasks/v02-publishing-mvp.md` § T-032, `COMPLETE_TASK.md`.
+* **KI-031 resolved — mockup Claude Design disinkronkan ke DateTimeInput Astryx (2026-08-19)** — Fix kode a11y (ikon kiri permanen) sudah ada sejak 2026-08-18; sesi ini menyinkronkan mockup Claude Design (`templates/draft-editor.html`, `components/forms.html`, `templates/app-prototype/AppPrototype.dc.html`, `styles.css`) supaya merepresentasikan anatomi `DateTimeInput` Astryx asli (dua kotak terpisah + ikon kiri + calendar popover fungsional), bukan native `<input type="date"/"time">` yang menyesatkan. Sempat ada bug regresi (class `.cal-day` bentrok dengan class calendar KSP-02 yang sudah ada, merusak grid) — diperbaiki dengan prefix unik `schedcal-*`, diverifikasi `diff` nol perubahan ke rules `.cal-*` original. Konsekuensi opsi swizzle tertutup permanen (ADR-082) dicatat final. Detail: `COMPLETE_TASK.md`.
+* **KI-029 ditutup Won't Fix — Astryx Tailwind-only (2026-08-19, ADR-082)** — Setelah 3 putaran investigasi teknis gagal (jalur Babel plugin dilarang Astryx, jalur jembatan komunitas `@stylexswc/nextjs-plugin` buggy untuk nilai numerik/warna di 2 versi berbeda), King Rezi memutuskan berhenti memakai `xstyle`/StyleX sepenuhnya — mengikuti pola resmi Meta (`facebook/astryx/apps/example-nextjs-tailwind`). Dependency `@stylexjs/stylex` yang menganggur dihapus dari `apps/web/package.json`; `bun install` + `tsc --noEmit` bersih. Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-082-*.md`.
+* **Upgrade Astryx 0.1.8 → 0.4.3 (2026-08-19)** — `apps/web/package.json` (`@astryxdesign/core`, `@astryxdesign/cli`, `@astryxdesign/theme-neutral`) dinaikkan ke 0.4.3; `astryx upgrade --apply` melaporkan "No changes needed" untuk 156 komponen (tidak ada breaking change yang menyentuh kode existing). `apps/web/.claude/CLAUDE.md` regenerated otomatis via `bunx astryx init --features agents --agent claude`. Diverifikasi `tsc --noEmit`, `bun run build`, dan smoke-test browser semua lolos. Selesai bersih, tidak ada gap terbuka dari upgrade ini sendiri. Detail: `COMPLETE_TASK.md`.
 ---
 
 ## Recent Decisions (Ringkasan)
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
-* **ADR-079** — Promosi `IOutstandAdapter` jadi cross-domain shared contract (`packages/shared`) + Fake metric ingestion untuk T-041 — amandemen ADR-059.
-* **ADR-078** — Amandemen ADR-018: port lokal + composition root untuk cross-domain service call (`ScheduledCountsPort` / T-012.2).
-* **ADR-077** — Settings pakai sidebar tunggal yang menggantikan main sidebar (pola Buffer) — amandemen mekanisme render ADR-076.
-* **ADR-076** — Workspace context pindah ke cookie (hapus dynamic segment `[slug]`, route group `(app)`) + Settings dikonsolidasi jadi Organization + Account dengan entry point avatar tunggal — menggantikan Workspace Selector yang tidak pernah dibangun (KI-023).
-* **ADR-075** — Amandemen ADR-071: sinkronisasi kutipan `migration.sql` bucket `avatars` (resolusi KI-018).
-* **ADR-074** — Reduksi struktur role dari 4 jadi 3 (Account Owner, Admin, Creator) — resolusi KI-017.
+* **ADR-084** — Swap warna sidebar ↔ konten AppShell (light mode saja) via CSS selector ter-scope, bukan `defineTheme` component override (`LayoutContent` dipakai ulang di seluruh dialog).
+* **ADR-083** — Queue (KSP-03) murni urutan waktu publish — hapus reorder manual & status chip per item, entity `QueueSlot` dihapus dari baseline (`domain-model.md`/`application-layer.md`), amandemen `key-screen-patterns.md`/`user-flows.md`.
+* **ADR-082** — Astryx Tailwind-only — hapus dependency StyleX, `xstyle` tidak dipakai (amandemen ADR-041).
+* **ADR-081** — Project Supabase Cloud existing ("Sosial Media Management") resmi ditetapkan sebagai staging — amandemen EM-D02 (ADR-033).
+* **ADR-080** — Invite member dua metode (Email + Copy Link), email-bound wajib, bulk invite ditolak — amandemen ADR-072.
 
 ---
 

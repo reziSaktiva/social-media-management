@@ -17,6 +17,16 @@ import type { withCurrentUser as withCurrentUserFn } from "@/lib/prisma/with-cur
  * automatically when `DATABASE_URL` isn't a real connection (fresh checkout,
  * or CI's dummy `DATABASE_URL` per CI-D06 — see that file's doc comment for
  * the full explanation of the `SKIP_ENV_VALIDATION` check below).
+ *
+ * **Update (2026-08-20, T-032.5 / ADR-083):** `publishing_queue_slots` /
+ * `PublishingQueueSlot` has been dropped entirely — Queue is now a computed
+ * view over `PublishingPost`/`PublishingPostTarget`, never a persisted slot
+ * entity (ADR-083). The queue-slot creation + assertion this test used to
+ * run for that FK gap has been removed below since the table no longer
+ * exists; there is nothing left to cascade. The other FK gaps this test
+ * still exercises (`engagement_inbox_items`.`connected_account_id` and
+ * `engagement_replies.inbox_item_id`, via the inbox item + reply created
+ * below) are unaffected.
  */
 const hasDb =
   Boolean(process.env.DATABASE_URL) && process.env.SKIP_ENV_VALIDATION !== "1";
@@ -38,7 +48,7 @@ describe.skipIf(!hasDb)("deleteWorkspace cascade (T-008.2)", () => {
     }
   });
 
-  it("deletes a workspace that has engagement replies and a queue slot without an FK violation", async () => {
+  it("deletes a workspace that has engagement replies without an FK violation", async () => {
     ({ prisma } = await import("@/lib/prisma/client"));
     ({ withCurrentUser } = await import("@/lib/prisma/with-current-user"));
     const { workspaceRepository } = await import("./workspace.repository");
@@ -72,18 +82,6 @@ describe.skipIf(!hasDb)("deleteWorkspace cascade (T-008.2)", () => {
           platform: "instagram",
           outstandAccountId: `t008-cascade-${suffix}`,
           handle: "@t008-cascade-test",
-        },
-      }),
-    );
-
-    // publishing_queue_slots — direct RESTRICT gap Ridwan found (#1/#2).
-    await withCurrentUser(ownerId, (tx) =>
-      tx.publishingQueueSlot.create({
-        data: {
-          workspaceId: workspace.id,
-          connectedAccountId: connectedAccount.id,
-          scheduledAt: new Date(),
-          order: 0,
         },
       }),
     );
@@ -124,20 +122,15 @@ describe.skipIf(!hasDb)("deleteWorkspace cascade (T-008.2)", () => {
     ).resolves.toBeUndefined();
 
     // And every dependent row is actually gone, not left orphaned.
-    const [remainingSlot, remainingInboxItem, remainingReply] =
-      await Promise.all([
-        prisma.publishingQueueSlot.findFirst({
-          where: { connectedAccountId: connectedAccount.id },
-        }),
-        prisma.engagementInboxItem.findUnique({
-          where: { id: inboxItem.id },
-        }),
-        prisma.engagementReply.findFirst({
-          where: { inboxItemId: inboxItem.id },
-        }),
-      ]);
+    const [remainingInboxItem, remainingReply] = await Promise.all([
+      prisma.engagementInboxItem.findUnique({
+        where: { id: inboxItem.id },
+      }),
+      prisma.engagementReply.findFirst({
+        where: { inboxItemId: inboxItem.id },
+      }),
+    ]);
 
-    expect(remainingSlot).toBeNull();
     expect(remainingInboxItem).toBeNull();
     expect(remainingReply).toBeNull();
 

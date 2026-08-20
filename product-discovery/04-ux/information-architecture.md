@@ -127,7 +127,7 @@ Area kerja utama harian. Ini adalah section terbesar dalam produk.
 Publish
 ├── Calendar                  — tampilan jadwal konten per hari / minggu / bulan
 │   └── Draft Item            — buka item dari calendar → masuk ke Draft Editor
-├── Queue                     — antrean posting berurutan per akun
+├── Queue                     — antrean posting terjadwal, berurutan murni berdasarkan waktu publish (ADR-083; filter per akun tersedia sebagai kontrol terpisah, bukan struktur pengelompokan utama)
 │   └── Draft Item            — buka item dari queue → masuk ke Draft Editor
 ├── Drafts                    — semua draft yang belum dijadwalkan
 │   └── Draft Editor          — buat / edit konten
