@@ -45,8 +45,10 @@ const TRANSITION_FAST =
   "duration-[var(--duration-fast)] ease-[var(--ease-standard)]";
 
 // Scroll independen dari SideNavSection "Menu" di atasnya — max-height
-// token-based (spacing-12 = 48px x 5 baris = 240px = spacing unit x60).
-const LIST_CLASSNAME = "max-h-60 overflow-y-auto";
+// token-based. Row ~42px + my-1 (8px) + gap-2 (8px) ≈ 56.4px/baris x 5 =
+// 282px, jadi spacing unit x72 (288px) — bukan lagi x60/240px sejak gap
+// dan margin per row dinaikkan (lihat commit spacing sidebar).
+const LIST_CLASSNAME = "max-h-72 overflow-y-auto";
 
 function PlatformBadge({ platform }: { platform: SocialPlatform }) {
   const entry = PLATFORM_ICON[platform];
