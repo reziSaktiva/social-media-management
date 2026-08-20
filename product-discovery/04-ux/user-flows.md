@@ -132,11 +132,10 @@ Setiap flow memiliki struktur:
 ### Happy Path
 
 1. Raka membuka **Publish → Queue**.
-2. Queue menampilkan daftar konten terjadwal berurutan per akun — status setiap item terlihat (`Scheduled`, `In Review`, `Ready to Schedule`, `Draft`, `Failed`).
-3. Raka memindai coverage: melihat apakah ada hari tanpa posting, atau slot yang terlalu berdekatan untuk akun tertentu.
-4. Raka mengubah urutan item jika diperlukan — memindahkan jadwal ke slot yang lebih tepat.
-5. Jika ada gap yang perlu diisi, Raka langsung membuat konten baru melalui **New Post** (kembali ke UF-01).
-6. Queue diperbarui secara real-time setelah setiap perubahan.
+2. Queue menampilkan post yang **sudah terjadwal** (status `Scheduled`), dikelompokkan per tanggal lalu per jam, murni berurutan berdasarkan waktu publish — tanpa badge status per item karena seluruh isi Queue statusnya seragam (amandemen ADR-083, 2026-08-19). Item `Failed` tidak muncul di sini — pindah ke **History** begitu percobaan publish selesai.
+3. Raka memindai coverage: melihat apakah ada hari tanpa posting, atau jadwal yang terlalu berdekatan untuk akun tertentu.
+4. Jika ada gap yang perlu diisi, Raka langsung membuat konten baru melalui **New Post** (kembali ke UF-01).
+5. Queue diperbarui setelah manual refresh (ADR-023 — bukan realtime; Realtime dibatasi tabel `notifications`).
 
 **Outcome:** Queue terorganisir dengan coverage yang sehat untuk periode berjalan.
 
@@ -146,20 +145,19 @@ Setiap flow memiliki struktur:
 
 **Kondisi:** Raka menemukan konten yang belum siap namun sudah terjadwal — misalnya caption belum final atau aset berubah.
 
-1. Raka memilih item di Queue dengan status `Scheduled` yang perlu ditarik.
-2. Raka membuka Draft Editor item tersebut.
-3. Raka mengubah status menjadi `Draft` — post kembali ke **Publish → Drafts**.
-4. Slot waktu di Queue dan Calendar menjadi kosong.
-5. Raka menyelesaikan konten dan menjadwalkannya kembali melalui UF-01.
+1. Raka menekan tombol **Cancel Schedule** (icon merah) pada item Queue yang perlu ditarik — dikonfirmasi lewat dialog Tier 2 (ADR-049, T-030). Tidak lagi lewat membuka Draft Editor dan mengubah status manual.
+2. Post kembali ke status `Draft` — muncul di **Publish → Drafts**.
+3. Waktu publish yang sebelumnya terisi menjadi kosong di Queue dan Calendar.
+4. Raka menyelesaikan konten dan menjadwalkannya kembali melalui UF-01.
 
-**Outcome:** Konten yang belum siap tidak ikut antrian, slot aman untuk diisi ulang.
+**Outcome:** Konten yang belum siap tidak ikut antrian, waktu publish itu aman diisi ulang oleh post lain.
 
 ---
 
 ### UX Principles
 
 * **UXP-01** — Queue adalah representasi visual dari kelangsungan siklus kerja Raka; melihat gap di sini langsung memicu aksi buat konten baru.
-* **UXP-04** — Status yang selalu terlihat di Queue (`Scheduled`, `In Review`, `Ready to Schedule`, `Draft`, `Failed`) membangun kepercayaan bahwa tidak ada posting yang "hilang" atau salah status.
+* **UXP-04** — **Diamandemen ADR-083 (2026-08-19):** Publishing Trust di Queue kini dipenuhi lewat cakupan yang homogen (isi Queue selalu berarti "akan tayang sesuai jadwal", bukan campuran status) ditambah 3 aksi eksplisit (Publish Now/Edit/Cancel Schedule) yang langsung bisa dieksekusi dari list — bukan lewat badge status pasif seperti sebelumnya. Post yang gagal (`Failed`) pindah ke History, yang tetap wajib menampilkan status jelas per item sesuai UXP-04/UXP-06.
 
 ---
 

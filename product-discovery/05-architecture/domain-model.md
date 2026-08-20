@@ -47,11 +47,11 @@ Dokumen ini menjadi fondasi seluruh dokumen architecture berikutnya dan berfungs
 │                                                                           │
 │  ┌─────────────┐   ┌──────────────────────────────────────────────────┐  │
 │  │             │   │  BC-03 Publishing                                 │  │
-│  │ BC-01       │   │  ┌─────────┐  ┌────────┐  ┌──────────────────┐  │  │
-│  │ Identity    │   │  │  Post   │  │ Queue  │  │ Publishing       │  │  │
-│  │             │   │  │ Draft   │  │ Slot   │  │ Target           │  │  │
-│  │ User        │   │  │ Schedule│  │        │  │ (per account)    │  │  │
-│  │ Session     │   │  │ Publish │  └────────┘  └──────────────────┘  │  │
+│  │ BC-01       │   │  ┌─────────┐        ┌──────────────────────────┐ │  │
+│  │ Identity    │   │  │  Post   │        │ Publishing               │ │  │
+│  │             │   │  │ Draft   │        │ Target                   │ │  │
+│  │ User        │   │  │ Schedule│        │ (per account)            │ │  │
+│  │ Session     │   │  │ Publish │        └──────────────────────────┘ │  │
 │  │             │   │  └─────────┘                                     │  │
 │  └──────┬──────┘   └──────────────────────┬───────────────────────────┘  │
 │         │                                  │                               │
@@ -201,7 +201,6 @@ Publishing bertanggung jawab atas status konten kanonikal: `Draft → In Review 
 |---------|------|-----------|
 | `Post` | Aggregate Root | Unit konten yang akan atau sudah dipublikasikan |
 | `PostTarget` | Entity | Target publikasi spesifik per connected account |
-| `QueueSlot` | Entity | Slot antrian untuk konten terjadwal |
 
 ### Key Attributes
 
@@ -262,13 +261,24 @@ Field diisi hanya jika platform membutuhkannya. Mapping ke API Outstand tetap di
 
 **Default `contentFormat` saat target dibuat:** ditentukan Application Service per platform (Pinterest → `pin`; lainnya → `post` jika diizinkan). Default kolom DB `post` hanyalah fallback teknis migrasi — **bukan** izin untuk menyimpan `post` pada Pinterest.
 
-**QueueSlot**
-- `id: QueueSlotId`
-- `workspaceId: WorkspaceId`
-- `connectedAccountId: ConnectedAccountId`
-- `scheduledAt: Date` — waktu slot dalam queue
-- `postId: PostId?` — null jika slot kosong
-- `order: number` — urutan dalam queue
+**Queue bukan entity terpisah (amandemen ADR-083, 2026-08-19)**
+
+Layar Publish → Queue (KSP-03) **tidak** didukung entity persisten
+`QueueSlot` — dihapus dari baseline. Queue adalah **computed view**: query
+`Post`/`PostTarget` dengan `status = Scheduled`, diurutkan murni ascending
+berdasarkan `Post.scheduledAt` (dikelompokkan per tanggal lalu per jam di
+UI). Tidak ada mekanisme reorder manual — memindahkan jadwal berarti
+mengedit `scheduledAt` post itu sendiri lewat Draft Editor, bukan menyusun
+ulang urutan slot. Alasan: konsep "slot" (waktu kosong yang bisa diisi,
+dengan `order` independen dari waktu) tidak dipakai — setiap Post yang
+Scheduled sudah punya `scheduledAt` sendiri yang menentukan urutannya
+secara definitif.
+
+Model Prisma `PublishingQueueSlot` (kolom `order`, `postId?` nullable, dll.)
+masih ada secara fisik di `apps/web/prisma/schema.prisma` tapi **nol
+referensi di kode aplikasi** — dianggap deprecated per ADR ini, dijadwalkan
+dihapus lewat migration saat T-032.5
+dikerjakan, bukan dibiarkan jadi sumber kebenaran kedua yang membingungkan.
 
 ### Aturan Domain
 
@@ -658,7 +668,6 @@ type MemberId = string & { readonly _brand: 'MemberId' };
 type ConnectedAccountId = string & { readonly _brand: 'ConnectedAccountId' };
 type PostId = string & { readonly _brand: 'PostId' };
 type PostTargetId = string & { readonly _brand: 'PostTargetId' };
-type QueueSlotId = string & { readonly _brand: 'QueueSlotId' };
 type MediaId = string & { readonly _brand: 'MediaId' };
 type InboxItemId = string & { readonly _brand: 'InboxItemId' };
 type ReplyId = string & { readonly _brand: 'ReplyId' };

@@ -144,7 +144,6 @@ PrismaPostRepository implements IPostRepository
 | Aggregate Root | Repository Interface |
 |----------------|---------------------|
 | `Post` | `IPostRepository` |
-| `QueueSlot` | `IQueueSlotRepository` |
 | `Workspace` | `IWorkspaceRepository` |
 | `Member` | `IMemberRepository` |
 | `ConnectedAccount` | `IConnectedAccountRepository` |
@@ -477,8 +476,7 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 | `getScheduledPosts` | Server Component | Load post untuk Calendar view |
 | `getDraftPosts` | Server Component | Load post untuk Draft list |
 | `applyTargetOutcomes` | JOB-01 internal | Setelah `post.published`/`post.error`, baca outcome Outstand per akun lalu update setiap `PostTarget` secara independen; notifikasi internal boleh `post_published`/`post_failed` |
-| `getQueueSlots` | Server Component | Load slot antrian |
-| `setQueueSlots` | Server Action | Konfigurasi slot antrian harian |
+| `listQueue` | Server Component | Load daftar Queue (KSP-03) — `Post`/`PostTarget` status `Scheduled`, grouped by tanggal, urutan murni ascending `scheduledAt`. Bukan entity `QueueSlot` terpisah, tidak ada reorder manual (amandemen ADR-083) |
 
 ## AIAssistantService
 

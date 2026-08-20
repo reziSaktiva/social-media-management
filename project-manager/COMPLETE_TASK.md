@@ -8,6 +8,120 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-19 — ADR-083: baseline `04-ux`/`05-architecture` direkonsiliasi dengan desain final Queue
+
+### Context
+
+Setelah T-032.0 (mockup Queue diselaraskan ke pola Buffer, entri di bawah)
+selesai, King Rezi meminta audit eksplisit: "apakah aman tidak ada gap atau
+ui/ux yang berlawanan dengan design system yang baru?" — mencakup
+`context/` dan `product-discovery/`. Explore agent menelusuri seluruh
+referensi Queue/`QueueSlot`/KSP-03 di project dan menemukan **konflik nyata
+di 3 dokumen baseline inti**, bukan cuma gap kecil.
+
+### Temuan audit & Resolusi
+
+Audit menemukan konflik nyata di 3 dokumen baseline inti (`key-screen-patterns.md`
+KSP-03, `user-flows.md` UF-02, `domain-model.md`/`application-layer.md`
+entity `QueueSlot`) plus 2 drift kecil (`TASKS.md` "Keputusan terbuka" stale,
+`information-architecture.md` frasa Queue). King Rezi memilih opsi "Buat ADR
++ update baseline". Detail lengkap temuan, keputusan, alasan, alternatif
+yang dipertimbangkan, dan daftar file yang diamandemen: lihat
+**`project-manager/decisions/ADR-083-queue-murni-urutan-waktu-publish-hapus-reorder-status-chip-queueslot.md`**
+(§ Context, § Decision, § Impact / Baseline yang diamandemen).
+
+### Status
+
+Audit + ADR + amandemen baseline selesai. T-032 (parent task) tetap ⏳ Not
+Started — T-032.2/.3/.4 (implementasi kode) belum dikerjakan. Kerja masih
+di branch `feature/t-032-0-queue-design-buffer-alignment`, belum di-commit.
+
+---
+
+## 2026-08-19 — T-032.0 selesai: mockup Claude Design halaman Queue diselaraskan ke referensi UX Buffer
+
+### Context
+
+Investigasi awal sesi (deployment Railway staging stuck sejak commit lama)
+berujung ke diskusi task apa yang bisa dikerjakan sekarang — King Rezi
+memilih T-032 (Queue management). Sebelum implementasi kode, T-032.1
+(semantik queue slot) masih jadi keputusan terbuka di `TASKS.md`. King Rezi
+menunjukkan screenshot halaman Queue Buffer (`publish.buffer.com/schedule`)
+sebagai referensi UX yang diinginkan, memicu subtask baru **T-032.0**
+(selaraskan Design System dulu sebelum kode) yang dikerjakan dalam 2 putaran
+di sesi yang sama.
+
+### Putaran 1 — adopsi elemen Buffer yang tidak butuh ADR/fitur baru
+
+Analisis perbandingan mockup lama (`templates/publish-queue.html`) vs
+Buffer: grouping per tanggal, aksi per-post (Publish Now/Edit/More options),
+tanpa reorder manual, filter Channels/Tags/Timezone, tab Approvals, badge
+count. King Rezi diminta memilih cakupan lewat AskUserQuestion — hasilnya
+**adopsi hanya 4 elemen** yang tidak mengubah baseline: grouping per
+tanggal, urutan murni waktu publish (tombol reorder ↑/↓ dihapus total —
+**closes T-032.1**, tidak perlu ADR), timestamp "Dibuat X lalu". Elemen yang
+sengaja di-skip (butuh ADR atau fitur baru di luar backlog manapun): toggle
+List/Calendar, tab "Approvals" (fitur approval workflow tidak ada di
+`roles-permissions.md`), filter "Tags"/"Timezone" (tidak ada di domain
+model/backlog).
+
+### Putaran 2 — revisi detail layout & aksi (9 poin King Rezi)
+
+Setelah preview hasil putaran 1, King Rezi minta 9 perbaikan lebih detail
+dari screenshot Buffer yang sama. Dua poin ambigu diklarifikasi lewat
+AskUserQuestion sebelum eksekusi (menghindari rework): (a) apakah "Cancel
+Schedule" dan "Delete" di poin 5 & 8 adalah 1 tombol atau 2 — dipilih **1
+tombol merah** (Cancel Schedule saja); (b) posisi filter channel relatif
+tombol New Post — dipilih **baris terpisah** (New Post naik ke baris judul,
+filter tetap di baris lama tapi dipindah kanan + diperkecil).
+
+Hasil final `templates/publish-queue.html`: filter channel kecil rata kanan
+di baris tersendiri; tombol **New Post** pindah ke baris judul
+(`justify-content:space-between` dengan title+subtitle, memanfaatkan
+`.page-head` yang sudah flex-between secara default); **1 Card Astryx per
+schedule** (`.card.card-pad.queue-card` per row, bukan 1 card menaungi
+seluruh list); status chip (Scheduled/Failed/Ready to Schedule) **dihapus
+total** (tidak relevan untuk halaman ini); dropdown "More options (⋮)" dari
+putaran 1 **dihapus**, diganti 3 tombol icon eksplisit: Publish Now, Edit,
+**Cancel Schedule** (icon merah, class baru `.icon-btn-danger`); heading
+tanggal dirapikan (nama bulan lengkap, semibold, border-bottom pemisah).
+
+### Interaksi diwire nyata di prototipe (bukan cuma visual statis)
+
+`templates/app-prototype/AppPrototype.dc.html` diedit supaya 3 tombol baru
+benar-benar berfungsi saat diklik di App Prototype interaktif (bukan cuma
+mockup diam): tombol Publish Now → reuse `openPublishNowDialog` (dialog
+Confirmation Summary yang sama dengan Draft Editor, T-029); tombol Edit →
+reuse `triggerEditDraft`; tombol Cancel Schedule → dialog konfirmasi baru
+`openCancelScheduleDialog`/`applyCancelSchedule` (pola sama
+`openDisconnectDialog`: warning + tombol `btn-danger`, menghapus card dari
+Queue + toast konfirmasi) — desain interaksi ini jadi referensi siap pakai
+untuk implementasi nyata T-030 (Cancel Schedule) di `apps/web`. Dead code
+`reorder-up`/`reorder-down` di `route()` dibersihkan sekalian (tombolnya
+sudah tidak ada sejak putaran 1). Kedua file diverifikasi baca-ulang dari
+remote setelah tiap `write_files` (scope-discipline skill poin 6) — tidak
+ada drift/perubahan King Rezi yang tertimpa.
+
+### Dokumentasi
+
+`project-manager/tasks/v02-publishing-mvp.md` § T-032 diperbarui: T-032.0
+ditandai selesai dengan ringkasan 2 putaran di atas, T-032.1 tetap resolved
+(urutan murni waktu publish, tanpa reorder), T-032.2/.3/.4 disesuaikan
+referensinya ke desain final (grouped by date, 1 Card per schedule, 3 tombol
+icon eksplisit tanpa dropdown). § T-030 (Cancel Schedule) ditambah
+cross-reference ke `openCancelScheduleDialog` sebagai referensi copy &
+interaksi siap pakai untuk implementasi nyata.
+
+### Status
+
+T-032.0 (subtask desain) selesai. T-032 (parent task) tetap **⏳ Not
+Started** — T-032.2 (`PublishingService.listQueue`), T-032.3 (implementasi
+UI Astryx nyata di `apps/web`), dan T-032.4 (wiring aksi ke service) belum
+dikerjakan. Kerja ada di branch `feature/t-032-0-queue-design-buffer-alignment`,
+belum di-commit.
+
+---
+
 ## 2026-08-19 — KI-031 resolved: ikon Date/TimeInput dikonfirmasi permanen kiri + mockup Claude Design diperbaiki (DateTimeInput + calendar popover)
 
 ### Context

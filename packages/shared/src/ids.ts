@@ -9,7 +9,6 @@ export type ConnectedAccountId = string & {
 };
 export type PostId = string & { readonly _brand: "PostId" };
 export type PostTargetId = string & { readonly _brand: "PostTargetId" };
-export type QueueSlotId = string & { readonly _brand: "QueueSlotId" };
 export type MediaId = string & { readonly _brand: "MediaId" };
 export type InboxItemId = string & { readonly _brand: "InboxItemId" };
 export type ReplyId = string & { readonly _brand: "ReplyId" };
