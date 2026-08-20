@@ -45,8 +45,10 @@ const TRANSITION_FAST =
   "duration-[var(--duration-fast)] ease-[var(--ease-standard)]";
 
 // Scroll independen dari SideNavSection "Menu" di atasnya — max-height
-// token-based (spacing-12 = 48px x 5 baris = 240px = spacing unit x60).
-const LIST_CLASSNAME = "max-h-60 overflow-y-auto";
+// token-based. Row ~42px + my-1 (8px) + gap-2 (8px) ≈ 56.4px/baris x 5 =
+// 282px, jadi spacing unit x72 (288px) — bukan lagi x60/240px sejak gap
+// dan margin per row dinaikkan (lihat commit spacing sidebar).
+const LIST_CLASSNAME = "max-h-72 overflow-y-auto";
 
 function PlatformBadge({ platform }: { platform: SocialPlatform }) {
   const entry = PLATFORM_ICON[platform];
@@ -116,7 +118,7 @@ function ChannelRow({
         // baris bergeser via margin-inline-start bertransisi (override
         // eksplisit dari "no-shift" yang berlaku untuk swap count<->"+" di
         // poin 4-5 asli).
-        "relative transition-[margin-inline-start]",
+        "relative my-1 transition-[margin-inline-start]",
         TRANSITION_FAST,
         isRevealed ? "ms-4" : "ms-0",
         isDragging ? "opacity-50" : "opacity-100",
@@ -303,7 +305,7 @@ export function ChannelsSection({
 
   return (
     <SideNavSection title="Channels">
-      <VStack gap={1} isScrollable className={LIST_CLASSNAME}>
+      <VStack gap={2} isScrollable className={LIST_CLASSNAME}>
         {orderedChannels.map((account) => (
           <ChannelRow
             key={account.id}
