@@ -8,6 +8,76 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-20 — Swap warna sidebar ↔ konten AppShell (light mode saja) — ADR-084
+
+### Context
+
+Permintaan ad-hoc King Rezi (bukan bagian task backlog `TASKS.md`/
+`tasks/vXX-*.md` manapun), dikerjakan di branch `feature/swap-appshell-bg-light-mode`
+(dibuat dari `staging`, belum commit). Minta swap warna background AppShell
+untuk **light mode saja** — dark mode sengaja tidak disentuh:
+
+- Sidebar: abu (`#f1f1f1`) → **putih** (`#ffffff`).
+- Area konten utama (semua halaman: Home, Publish/Queue/Calendar/Drafts/
+  History, Engage, Analyze, Settings): putih (`#ffffff`) → **abu**
+  (`#f1f1f1`).
+
+### Pekerjaan
+
+Investigasi menemukan warna sidebar (`.astryx-app-shell-sidenav`) dan
+konten (`.astryx-layout-content`, komponen generik `Layout`/`LayoutContent`
+Astryx) bukan elemen unik AppShell — component key yang sama dipakai ulang
+di **seluruh dialog** aplikasi (Cancel Schedule Queue, Transfer Ownership &
+Hapus Workspace Settings > General, Invite Member Settings > Members,
+Draft Editor Modal). Override lewat jalur resmi `defineTheme({ components:
+{ 'layout-content': {...} } })` akan ikut mengubah warna konten semua
+dialog itu — ditolak.
+
+Solusi: 1 blok `@layer components` baru ditambahkan di akhir
+`apps/web/src/app/globals.css` — CSS selector ter-scope presisi ke slot
+AppShell (`.astryx-app-shell[data-variant="elevated"]`,
+`.astryx-app-shell-sidenav[data-variant="elevated"]`) + exclusion
+`:not(dialog .astryx-layout-content)` supaya konten dialog manapun (semua
+dirender via elemen native `<dialog>`, dikonfirmasi lewat inspeksi DOM)
+tidak ikut ter-match. Nilai warna pakai `light-dark(#ffffff, #1b1b1b)`
+untuk shell/sidenav dan `light-dark(#f1f1f1, #262626)` untuk konten —
+mempertahankan dark mode identik nilai lama di selector yang sama. Semua
+nilai HEX diverifikasi dari *computed style* browser (bukan tabel
+`astryx docs tokens` yang ternyata tidak akurat terhadap built theme yang
+sebenarnya jalan) — bukan warna baru/brand baru.
+
+Pendekatan ini sah menurut dokumentasi resmi Astryx (`astryx docs styling`
+→ "Preferred Selector Surface: Data Attributes") — bukan swizzle (ADR-041)
+dan bukan StyleX/`xstyle` (dihapus, ADR-082).
+
+### Verifikasi
+
+Browser: light mode Queue + Settings (warna tertukar sesuai permintaan);
+dialog Hapus Workspace dicek eksplisit **tidak berubah**; dark mode dicek
+identik sebelum/sesudah (shell/sidenav `#1b1b1b`, konten `#262626`). Tidak
+ada Vitest/`tsc`/`eslint` tambahan — perubahan murni CSS, tidak menyentuh
+logic/TypeScript.
+
+### Keputusan ADR
+
+**ADR-084** dibuat — mencatat alasan penolakan `defineTheme` component
+override, detail selector CSS yang dipakai, dan keputusan sekali-pakai
+soal urutan kerja (implementasi dulu, dokumentasi menyusul setelah acc
+visual — dibalik dari rule 17 `AGENTS.md`, eksplisit bukan preseden
+permanen untuk task UI lain).
+
+### Status
+
+Selesai, sudah di-acc visual King Rezi. Bukan task backlog, sehingga tidak
+ada entri baru di `TASKS.md`/`tasks/vXX-*.md`. Dokumentasi governance
+diperbarui dalam perubahan yang sama: `DECISIONS.md` + `decisions/ADR-084-*.md`,
+`PROJECT_STATE.md` (Recent Decisions + Completed Ringkasan). Next step
+(di luar cakupan sesi ini): sinkronisasi ke Claude Design oleh Neymar
+Product Designer. Commit/push belum dilakukan — menunggu instruksi
+eksplisit King Rezi.
+
+---
+
 ## 2026-08-20 — T-032 Queue management selesai (implementasi penuh) + T-030 (Cancel Schedule) ditutup untuk konteks Queue
 
 ### Context

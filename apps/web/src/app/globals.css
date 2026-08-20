@@ -16,3 +16,21 @@
 body {
   font-family: var(--font-geist-sans), sans-serif;
 }
+
+@layer components {
+  /* Swap AppShell sidebar vs main-content bg, light mode only (dark
+     unchanged) — permintaan eksplisit King Rezi, berlaku semua halaman.
+     :not(dialog ...) mencegah Cancel Schedule/Transfer Ownership/Invite
+     Member/Draft Editor Modal ikut berubah, karena semuanya berbagi
+     component key LayoutContent yang sama dengan AppShell. */
+  .astryx-app-shell[data-variant="elevated"],
+  .astryx-app-shell-sidenav[data-variant="elevated"] {
+    background-color: light-dark(#ffffff, #1b1b1b);
+  }
+
+  .astryx-app-shell[data-variant="elevated"]
+    > .astryx-layout.fill
+    .astryx-layout-content:not(dialog .astryx-layout-content) {
+    background-color: light-dark(#f1f1f1, #262626);
+  }
+}
