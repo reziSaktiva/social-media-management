@@ -1,11 +1,12 @@
 import { Avatar } from "@astryxdesign/core/Avatar";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { List, ListItem } from "@astryxdesign/core/List";
-import { Section } from "@astryxdesign/core/Section";
+import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 
 import {
@@ -126,13 +127,16 @@ export function ConnectedAccountsList({
   accounts: ConnectedAccountRecord[];
 }) {
   return (
-    <Section>
-      <VStack gap={4}>
-        <HStack justify="between" align="center">
-          <Heading level={2}>Connected Accounts</Heading>
-          <ConnectPlatformMenu />
-        </HStack>
+    <VStack gap={4}>
+      <HStack justify="between" align="start">
+        <VStack gap={0.5}>
+          <Heading level={2}>Settings</Heading>
+          <Text type="supporting">Organization / Connected Accounts</Text>
+        </VStack>
+        <ConnectPlatformMenu />
+      </HStack>
 
+      <Card className="p-4">
         {accounts.length === 0 ? (
           <EmptyState
             title="Belum ada akun terhubung"
@@ -146,7 +150,7 @@ export function ConnectedAccountsList({
             ))}
           </List>
         )}
-      </VStack>
-    </Section>
+      </Card>
+    </VStack>
   );
 }
