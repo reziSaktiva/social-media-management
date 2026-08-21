@@ -6,6 +6,12 @@ import { Text } from "@astryxdesign/core/Text";
 import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import { VStack } from "@astryxdesign/core/VStack";
 
+/** Segmen breadcrumb tingkat atas yang berulang di tiap halaman Settings. */
+export const SETTINGS_BREADCRUMB_GROUP = {
+  organization: "Organization",
+  account: "Account",
+} as const;
+
 /**
  * Header bersama untuk tiap halaman Settings — sebelumnya blok ini
  * disalin identik di ProfileForm/MembersTable/ConnectedAccountsList

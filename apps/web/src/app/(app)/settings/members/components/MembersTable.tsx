@@ -8,11 +8,9 @@ import { Avatar } from "@astryxdesign/core/Avatar";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
-import { Card } from "@astryxdesign/core/Card";
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { HStack } from "@astryxdesign/core/HStack";
-import { Section } from "@astryxdesign/core/Section";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import type { TableColumn } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
@@ -21,7 +19,11 @@ import { VStack } from "@astryxdesign/core/VStack";
 import type { WorkspaceMemberWithUser } from "@/domains/workspace";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 
-import { SettingsPageHead } from "../../components/SettingsPageHead";
+import {
+  SETTINGS_BREADCRUMB_GROUP,
+  SettingsPageHead,
+} from "../../components/SettingsPageHead";
+import { SettingsSectionCard } from "../../components/SettingsSectionCard";
 import { removeMemberAction, updateMemberRoleAction } from "../actions";
 
 const ROLE_LABEL: Record<MemberRole, string> = {
@@ -115,7 +117,7 @@ function buildColumns(
       width: proportional(2),
       renderCell: (member) => (
         <HStack gap={3} align="center">
-          <Avatar name={member.name} size={32} />
+          <Avatar name={member.name} size="md" />
           <VStack gap={0}>
             <Text type="body">{member.name}</Text>
             <Text type="supporting">{member.email}</Text>
@@ -181,7 +183,7 @@ export function MembersTable({
     <VStack gap={4} padding={4}>
       <SettingsPageHead
         pageName="Members"
-        breadcrumb="Organization / Members"
+        breadcrumb={`${SETTINGS_BREADCRUMB_GROUP.organization} / Members`}
         action={headerAction}
       />
 
@@ -192,29 +194,27 @@ export function MembersTable({
         <Banner status="error" title={roleConfirm.error} />
       ) : null}
 
-      <Section padding={0}>
-        <Card padding={4}>
-          {members.length === 0 ? (
-            <EmptyState
-              title="Belum ada anggota"
-              description="Workspace ini belum memiliki anggota."
-              isCompact
-            />
-          ) : (
-            <Table
-              data={members as MemberRow[]}
-              columns={buildColumns(
-                currentUserId,
-                (member) => removeConfirm.open(member),
-                (member, newRole) => roleConfirm.open({ member, newRole }),
-              )}
-              idKey="id"
-              density="balanced"
-              dividers="rows"
-            />
-          )}
-        </Card>
-      </Section>
+      <SettingsSectionCard>
+        {members.length === 0 ? (
+          <EmptyState
+            title="Belum ada anggota"
+            description="Workspace ini belum memiliki anggota."
+            isCompact
+          />
+        ) : (
+          <Table
+            data={members as MemberRow[]}
+            columns={buildColumns(
+              currentUserId,
+              (member) => removeConfirm.open(member),
+              (member, newRole) => roleConfirm.open({ member, newRole }),
+            )}
+            idKey="id"
+            density="balanced"
+            dividers="rows"
+          />
+        )}
+      </SettingsSectionCard>
 
       <AlertDialog
         isOpen={removeConfirm.isOpen}

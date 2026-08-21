@@ -1,11 +1,9 @@
 import { Avatar } from "@astryxdesign/core/Avatar";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
-import { Card } from "@astryxdesign/core/Card";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { HStack } from "@astryxdesign/core/HStack";
 import { List, ListItem } from "@astryxdesign/core/List";
-import { Section } from "@astryxdesign/core/Section";
 import { VStack } from "@astryxdesign/core/VStack";
 
 import {
@@ -17,7 +15,11 @@ import {
 import { formatConnectedDate } from "@/lib/utils/format-date";
 
 import { PLATFORM_ICON } from "../../../components/platform-icons";
-import { SettingsPageHead } from "../../components/SettingsPageHead";
+import {
+  SETTINGS_BREADCRUMB_GROUP,
+  SettingsPageHead,
+} from "../../components/SettingsPageHead";
+import { SettingsSectionCard } from "../../components/SettingsSectionCard";
 
 import { ConnectPlatformMenu } from "./ConnectPlatformMenu";
 
@@ -130,27 +132,25 @@ export function ConnectedAccountsList({
     <VStack gap={4} padding={4}>
       <SettingsPageHead
         pageName="Connected Accounts"
-        breadcrumb="Organization / Connected Accounts"
+        breadcrumb={`${SETTINGS_BREADCRUMB_GROUP.organization} / Connected Accounts`}
         action={<ConnectPlatformMenu />}
       />
 
-      <Section padding={0}>
-        <Card padding={4}>
-          {accounts.length === 0 ? (
-            <EmptyState
-              title="Belum ada akun terhubung"
-              description="Hubungkan akun media sosial pertama lewat tombol Connect Account di atas."
-              isCompact
-            />
-          ) : (
-            <List hasDividers density="balanced">
-              {accounts.map((account) => (
-                <ConnectedAccountRow key={account.id} account={account} />
-              ))}
-            </List>
-          )}
-        </Card>
-      </Section>
+      <SettingsSectionCard>
+        {accounts.length === 0 ? (
+          <EmptyState
+            title="Belum ada akun terhubung"
+            description="Hubungkan akun media sosial pertama lewat tombol Connect Account di atas."
+            isCompact
+          />
+        ) : (
+          <List hasDividers density="balanced">
+            {accounts.map((account) => (
+              <ConnectedAccountRow key={account.id} account={account} />
+            ))}
+          </List>
+        )}
+      </SettingsSectionCard>
     </VStack>
   );
 }
