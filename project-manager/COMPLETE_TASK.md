@@ -8,6 +8,259 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-21 — Ganti theme Astryx dari Neutral ke Stone (ADR-087)
+
+### Context
+
+King Rezi meminta secara eksplisit mengganti theme Astryx project ini dari
+Neutral ke Stone ("Warm stone and slate tones; Montserrat + Figtree type" —
+deskripsi resmi `astryx docs theme`). Ini murni preferensi visual King Rezi,
+bukan temuan bug/audit. King Rezi eksplisit meminta: proses sekarang tapi
+**jangan sentuh Claude Design dulu** — fokus hanya code dan dokumentasi;
+rule 17 `AGENTS.md` (gate Claude Design sebelum implementasi UI/UX) sengaja
+dilewati untuk task ini atas instruksi eksplisit tersebut.
+
+### Pekerjaan
+
+Perubahan kode (diterapkan di sesi terpisah, sudah diverifikasi: computed
+style browser menunjukkan `data-astryx-theme="stone"`, font heading/body
+sudah Montserrat/Figtree, dan `bun run build` production build hijau tanpa
+error untuk seluruh 30 route):
+
+1. `apps/web/package.json` — field `"astryx": { "theme": ... }` diubah dari
+   `"@astryxdesign/theme-neutral"` ke `"@astryxdesign/theme-stone"`;
+   dependency `@astryxdesign/theme-neutral` dihapus (`bun remove`), diganti
+   `@astryxdesign/theme-stone` versi `0.4.3` (sama seperti versi
+   `@astryxdesign/core`/`@astryxdesign/cli` yang sudah ter-pin).
+2. `apps/web/src/app/globals.css` — `@import
+   "@astryxdesign/theme-neutral/theme.css";` diganti `@import
+   "@astryxdesign/theme-stone/theme.css";`.
+3. `apps/web/src/components/Providers.tsx` — import `neutralTheme` dari
+   `@astryxdesign/theme-neutral/built` diganti `stoneTheme` dari
+   `@astryxdesign/theme-stone/built`; pemakaian `<Theme mode={mode}
+   theme={neutralTheme}>` diganti `<Theme mode={mode} theme={stoneTheme}>`.
+4. Dikonfirmasi tidak ada sisa referensi `theme-neutral`/`neutralTheme` di
+   `apps/web/src` maupun `package.json` (grep bersih).
+
+Perubahan dokumentasi (sesi ini, oleh Gibran Project Manager):
+
+5. ADR baru dibuat:
+   `project-manager/decisions/ADR-087-ganti-theme-astryx-neutral-ke-stone.md`,
+   mendokumentasikan keputusan, alasan (permintaan eksplisit, bukan bug),
+   detail perubahan kode, alasan rule 17 `AGENTS.md` sengaja dilewati, dan
+   item terbuka (Claude Design belum disinkronkan).
+6. `project-manager/DECISIONS.md` — baris index `ADR-087` ditambahkan di
+   posisi teratas.
+7. `AGENTS.md` § Stack & layout — baris "neutral theme selama M8" diganti
+   "Stone theme (ADR-087)".
+8. `context/ctx-technical-context.md` — baris "Astryx — neutral theme
+   selama M8" diganti menjadi Stone theme + rujukan ADR-087.
+9. `context/ctx-design.md` — baris yang menyebut "gunakan neutral theme
+   Astryx" dan penjelasan Light/Dark Mode Toggle (ADR-055) terkait
+   `@astryxdesign/theme-neutral` disesuaikan ke Stone theme; makna kalimat
+   asli tidak berubah, hanya nama tema.
+10. `project-manager/PROJECT_STATE.md` — section Completed (Ringkasan)
+    ditambah bullet baru di posisi teratas (tetap 5 item, item terlama
+    digeser keluar). Section Recent Decisions (Ringkasan) ditambah
+    `ADR-087` di posisi teratas, `ADR-082` digeser keluar dari 5 ADR
+    terakhir.
+
+### Hasil
+
+Dokumentasi konsisten dengan perubahan kode yang sudah diterapkan &
+diverifikasi di sesi terpisah. **Item terbuka eksplisit:** Claude Design
+(seluruh KSP + App Prototype project "Social Media Management") belum
+disinkronkan mengikuti theme Stone ini — perlu langkah lanjutan terpisah,
+kemungkinan lewat Neymar Product Designer. Tidak ada baseline
+`product-discovery/` yang diamandemen (murni ganti theme package Astryx).
+
+---
+
+## 2026-08-21 — Revert total swap warna AppShell, kembali ke default Astryx (ADR-086, membatalkan ADR-084)
+
+### Context
+
+Lanjutan audit menyeluruh King Rezi terhadap seluruh override warna custom
+di project ini (satu rangkaian dengan pembatalan pola `Section > Card` di
+Settings, ADR-085, pada hari yang sama). King Rezi memutuskan AppShell tidak
+perlu kustomisasi warna apapun — kembali murni ke default `neutralTheme`
+bawaan Astryx, membatalkan penuh ADR-084 (2026-08-20).
+
+### Pekerjaan
+
+Perubahan kode (diterapkan di sesi terpisah, sudah diverifikasi King Rezi
+lewat browser untuk light mode dan dark mode — tidak ada regresi):
+
+1. `apps/web/src/app/globals.css` — seluruh blok `@layer components` yang
+   ditambahkan ADR-084 (2 rule CSS untuk `.astryx-app-shell`/
+   `.astryx-app-shell-sidenav` dan `.astryx-layout-content`, beserta
+   comment penjelasannya) **dihapus total**. File sekarang hanya berisi
+   `@layer` declaration, `@import`, `@theme inline` font vars, dan style
+   `body { font-family: ... }`.
+2. AppShell kembali ke default `neutralTheme` Astryx sepenuhnya: sidebar
+   abu-abu, konten putih di light mode (sama seperti sebelum ADR-084);
+   dark mode tidak berubah.
+
+Perubahan dokumentasi (sesi ini, oleh Gibran Project Manager):
+
+3. ADR baru dibuat:
+   `project-manager/decisions/ADR-086-revert-swap-warna-appshell-kembali-ke-default-astryx.md`.
+4. `project-manager/DECISIONS.md` — baris index `ADR-086` ditambahkan di
+   posisi teratas; baris index `ADR-084` kolom `Status` diubah menjadi
+   `Accepted — Reverted by ADR-086 (2026-08-21)`.
+5. `project-manager/decisions/ADR-084-swap-warna-appshell-light-mode-css-selector-scoped-bukan-defineTheme.md`
+   — **hanya** header `### Status` diubah menjadi
+   `Accepted — Reverted by ADR-086 (2026-08-21)`; isi body lainnya (Context,
+   Decision, Reason, Alternatives, Impact) tidak diedit sama sekali,
+   mengikuti pola append-only (ADR-084 tidak dihapus karena sudah jadi
+   rujukan di `PROJECT_STATE.md` dan `.claude/agents/README.md`, berbeda
+   dari kasus ADR-085/086 versi lama yang baru dibuat hari yang sama dan
+   belum jadi preseden).
+6. `project-manager/PROJECT_STATE.md` — section Completed (Ringkasan)
+   diperbarui: bullet lama "Swap warna sidebar ↔ konten AppShell" dihapus
+   dan digantikan bullet baru "Revert total swap warna AppShell" di posisi
+   teratas (tetap 5 item terakhir). Section Recent Decisions (Ringkasan)
+   diperbarui: `ADR-086` ditambahkan di posisi teratas, `ADR-081` digeser
+   keluar dari 5 ADR terakhir, baris `ADR-084` diberi catatan
+   "Reverted by ADR-086".
+7. `.claude/agents/README.md` dan body `project-manager/decisions/ADR-085-*.md`
+   dicek — keduanya hanya menyebut ADR-084 sebagai catatan kronologi
+   historis (insiden `DesignSync` gagal dimuat; urutan penulisan baris
+   index), bukan klaim tentang state warna AppShell saat ini, sehingga
+   tidak diubah (tidak menyesatkan pembaca).
+
+### Hasil
+
+Tidak ada perubahan kode di sesi ini (kode sudah diterapkan & diverifikasi
+di sesi terpisah sebelumnya). Dokumentasi konsisten: ADR-084 tetap utuh
+sebagai jejak historis dengan status Reverted, ADR-086 baru menjelaskan
+pembatalannya, dan `PROJECT_STATE.md` tidak lagi menyesatkan pembaca soal
+state warna AppShell saat ini.
+
+---
+
+## 2026-08-21 — `SettingsSectionCard` dihapus total (bukan wrapper tipis) — lanjutan ADR-085
+
+### Context
+
+Lanjutan langsung dari entri ADR-085 di bawah ini (dibuat hari yang sama).
+Setelah `SettingsSectionCard` direstrukturisasi jadi wrapper tipis
+`<Section>{children}</Section>` (tanpa `Card`), King Rezi menilai wrapper
+ini trivial — tidak menambah value apapun dibanding memakai `<Section>`
+langsung — sehingga diputuskan komponennya **dihapus total**, bukan
+dipertahankan sebagai wrapper tipis.
+
+### Pekerjaan
+
+Perubahan kode (diterapkan di sesi terpisah, sudah diverifikasi King Rezi
+lewat browser preview untuk ketiga halaman, light mode):
+
+1. File dihapus: `apps/web/src/app/(app)/settings/components/SettingsSectionCard.tsx`.
+2. `apps/web/src/app/(app)/settings/account/components/ProfileForm.tsx` —
+   import `SettingsSectionCard` dihapus, ganti
+   `import { Section } from "@astryxdesign/core/Section";`. `<SettingsSectionCard>`
+   yang membungkus `<form>` diganti `<Section>` langsung.
+3. `apps/web/src/app/(app)/settings/members/components/MembersTable.tsx` —
+   pola sama: import `Section` langsung, `<SettingsSectionCard>` yang
+   membungkus `EmptyState`/`Table` diganti `<Section>` langsung.
+4. `apps/web/src/app/(app)/settings/connected-accounts/components/ConnectedAccountsList.tsx` —
+   pola sama: import `Section` langsung, `<SettingsSectionCard>` yang
+   membungkus `EmptyState`/`List` diganti `<Section>` langsung.
+5. Dikonfirmasi tidak ada sisa referensi `SettingsSectionCard` di
+   `apps/web/src` (grep bersih) dan `tsc --noEmit` tidak ada error terkait
+   file-file ini.
+
+Dokumentasi (sesi ini):
+
+- `project-manager/decisions/ADR-085-settings-section-murni-tanpa-card-kepatuhan-aturan-astryx.md` —
+  diupdate in-place (bukan ADR baru) di bagian Decision dan Impact untuk
+  mencerminkan keputusan final: `SettingsSectionCard` tidak dipertahankan
+  sebagai wrapper tipis, tapi dihapus total.
+- `project-manager/DECISIONS.md` — ringkasan satu-baris ADR-085 diupdate
+  agar menyebut penghapusan total komponen wrapper, bukan cuma
+  restrukturisasi jadi `Section` murni.
+
+### Catatan
+
+Tidak ada ADR baru dibuat untuk langkah ini — dianggap kelanjutan langsung
+keputusan ADR-085 yang baru dibuat pada hari yang sama, bukan keputusan
+material terpisah.
+
+---
+
+## 2026-08-21 — Settings pakai `Section` murni tanpa `Card` — ADR-085 & ADR-086 lama dihapus total
+
+### Context
+
+Entri ini menggantikan entri lama "Fix `Section variant` (DashboardHome,
+SettingsSectionCard) + aturan verifikasi dual-mode — ADR-086" yang
+**dihapus total** dari file ini (bukan diamandemen) karena diskusi lanjutan
+dengan King Rezi menemukan pendekatan ADR-085 dan ADR-086 (versi lama,
+sama-sama dibuat 2026-08-21) melanggar aturan resmi Astryx.
+
+Dikonfirmasi lewat `bunx astryx docs layout` (section "Cards vs Rows":
+dense data harus rows, "✗ Nesting Cards inside Cards", "✗ Wrapping each
+list item in a Card") dan `bunx astryx docs shape` (`Section` = page region
+flat/`radius: none`, `Card` = widget diskrit rounded `--radius-container`
+12px — dua komponen ini tidak didesain untuk ditumpuk). Artifact border
+siku Section menonjol dari lengkungan Card di `SettingsSectionCard.tsx`
+ternyata bukan soal kontras warna (dugaan versi lama ADR-086), melainkan
+konsekuensi struktural dari pola `Section > Card` itu sendiri (pola versi
+lama ADR-085) yang salah dari awal untuk dense data.
+
+### Pekerjaan
+
+Perubahan kode (diterapkan di sesi terpisah sebelum dokumentasi ini
+ditulis, sudah diverifikasi King Rezi):
+
+1. `apps/web/src/app/(app)/settings/components/SettingsSectionCard.tsx` —
+   direstrukturisasi total, `Card` dihapus sepenuhnya. Sekarang `Section`
+   (default, tanpa `variant`) langsung membungkus `children` — dipakai
+   oleh `ProfileForm`/`MembersTable`/`ConnectedAccountsList`.
+2. `apps/web/src/app/(app)/components/DashboardHome.tsx` — Section
+   "Analytics Snapshot" dikembalikan ke default (tanpa
+   `variant="transparent"`), revert total dari perbaikan versi lama
+   ADR-086.
+
+Dokumentasi (sesi ini):
+
+- **ADR-085 dan ADR-086 versi lama dihapus total**: file
+  `decisions/ADR-085-section-card-dense-data-settings-pengecualian-aturan-astryx.md`
+  dan `decisions/ADR-086-section-transparent-fit-content-dan-verifikasi-dual-mode-light-dark-wajib.md`
+  dihapus; baris indeksnya di `DECISIONS.md` dihapus. Pengecualian eksplisit
+  dari pola append-only ADR — kedua ADR itu baru lahir hari yang sama dan
+  belum jadi preseden di tempat lain, sehingga King Rezi memilih hapus
+  bersih alih-alih menumpuk amandemen di atas keputusan yang salah dari
+  awal.
+- **ADR baru dibuat, nomor dipakai ulang jadi `ADR-085`** (bukan
+  `ADR-087`) karena nomor lama sudah kosong sebelum ADR baru ini ditulis —
+  isinya: keputusan final Settings pakai `Section` murni, plus catatan
+  eksplisit riwayat penghapusan total ADR-085/086 versi lama untuk jejak
+  audit di masa depan.
+- `context/ctx-development.md` — item checklist "verifikasi visual light
+  DAN dark mode wajib" (mengacu ADR-086 versi lama) dihapus total dari
+  "Checklist sebelum selesai task kode". Item lama soal smoke test UI +
+  dark mode khusus upgrade/penambahan Astryx (sudah ada sebelum ADR-086
+  versi lama dibuat) **tetap dipertahankan**, tidak ikut terhapus.
+
+### Dampak
+
+- File dihapus: `project-manager/decisions/ADR-085-section-card-dense-data-settings-pengecualian-aturan-astryx.md`,
+  `project-manager/decisions/ADR-086-section-transparent-fit-content-dan-verifikasi-dual-mode-light-dark-wajib.md`.
+- File baru: `project-manager/decisions/ADR-085-settings-section-murni-tanpa-card-kepatuhan-aturan-astryx.md`.
+- `project-manager/DECISIONS.md` — baris indeks ADR-085/086 versi lama
+  diganti satu baris `ADR-085` baru.
+- `context/ctx-development.md` — item checklist dual-mode dihapus total.
+- Konsekuensi visual produk disadari: 3 halaman Settings (Profile,
+  Members, Connected Accounts) sekarang flat/persegi mengikuti bentuk asli
+  `Section`, menyimpang dari mockup Claude Design yang sebelumnya minta
+  tampilan kotak rounded — belum disinkronkan ulang ke Claude Design (next
+  step terpisah).
+- Tidak ada task `TASKS.md`/`tasks/vXX-*.md` yang terdampak — ini
+  perbaikan bug ad-hoc di luar backlog, sama seperti pola ADR-084.
+
+---
+
 ## 2026-08-20 — Swap warna sidebar ↔ konten AppShell (light mode saja) — ADR-084
 
 ### Context

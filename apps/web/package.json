@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "astryx": {
-    "theme": "@astryxdesign/theme-neutral"
+    "theme": "@astryxdesign/theme-stone"
   },
   "scripts": {
     "dev": "next dev",
@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@astryxdesign/core": "0.4.3",
-    "@astryxdesign/theme-neutral": "0.4.3",
+    "@astryxdesign/theme-stone": "0.4.3",
     "@better-auth/infra": "^0.3.7",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
