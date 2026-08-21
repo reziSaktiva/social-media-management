@@ -56,7 +56,7 @@ export default async function Layout({
   return (
     <DraftEditorProvider workspaceId={workspaceId}>
       <AppShell
-        contentPadding={8}
+        contentPadding={4}
         // Eksplisit (bukan andalkan default Astryx): globals.css (ADR-084)
         // punya selector `[data-variant="elevated"]` + `.astryx-layout.fill`
         // yang menargetkan swap warna sidebar/konten — kalau salah satu

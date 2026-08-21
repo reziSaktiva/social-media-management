@@ -11,8 +11,8 @@ import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
-import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
+import { Section } from "@astryxdesign/core/Section";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import type { TableColumn } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
@@ -21,6 +21,7 @@ import { VStack } from "@astryxdesign/core/VStack";
 import type { WorkspaceMemberWithUser } from "@/domains/workspace";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 
+import { SettingsPageHead } from "../../components/SettingsPageHead";
 import { removeMemberAction, updateMemberRoleAction } from "../actions";
 
 const ROLE_LABEL: Record<MemberRole, string> = {
@@ -177,14 +178,12 @@ export function MembersTable({
   }>((change) => updateMemberRoleAction(change.member.id, change.newRole));
 
   return (
-    <VStack gap={4}>
-      <HStack justify="between" align="start">
-        <VStack gap={0.5}>
-          <Heading level={2}>Settings</Heading>
-          <Text type="supporting">Organization / Members</Text>
-        </VStack>
-        {headerAction}
-      </HStack>
+    <VStack gap={4} padding={4}>
+      <SettingsPageHead
+        pageName="Members"
+        breadcrumb="Organization / Members"
+        action={headerAction}
+      />
 
       {removeConfirm.error ? (
         <Banner status="error" title={removeConfirm.error} />
@@ -193,27 +192,29 @@ export function MembersTable({
         <Banner status="error" title={roleConfirm.error} />
       ) : null}
 
-      <Card className="p-4">
-        {members.length === 0 ? (
-          <EmptyState
-            title="Belum ada anggota"
-            description="Workspace ini belum memiliki anggota."
-            isCompact
-          />
-        ) : (
-          <Table
-            data={members as MemberRow[]}
-            columns={buildColumns(
-              currentUserId,
-              (member) => removeConfirm.open(member),
-              (member, newRole) => roleConfirm.open({ member, newRole }),
-            )}
-            idKey="id"
-            density="balanced"
-            dividers="rows"
-          />
-        )}
-      </Card>
+      <Section padding={0}>
+        <Card className="p-4">
+          {members.length === 0 ? (
+            <EmptyState
+              title="Belum ada anggota"
+              description="Workspace ini belum memiliki anggota."
+              isCompact
+            />
+          ) : (
+            <Table
+              data={members as MemberRow[]}
+              columns={buildColumns(
+                currentUserId,
+                (member) => removeConfirm.open(member),
+                (member, newRole) => roleConfirm.open({ member, newRole }),
+              )}
+              idKey="id"
+              density="balanced"
+              dividers="rows"
+            />
+          )}
+        </Card>
+      </Section>
 
       <AlertDialog
         isOpen={removeConfirm.isOpen}
