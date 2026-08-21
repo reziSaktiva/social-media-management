@@ -4,6 +4,7 @@ import { Button } from "@astryxdesign/core/Button";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { HStack } from "@astryxdesign/core/HStack";
 import { List, ListItem } from "@astryxdesign/core/List";
+import { Section } from "@astryxdesign/core/Section";
 import { VStack } from "@astryxdesign/core/VStack";
 
 import {
@@ -19,8 +20,6 @@ import {
   SETTINGS_BREADCRUMB_GROUP,
   SettingsPageHead,
 } from "../../components/SettingsPageHead";
-import { SettingsSectionCard } from "../../components/SettingsSectionCard";
-
 import { ConnectPlatformMenu } from "./ConnectPlatformMenu";
 
 const STATUS_BADGE_VARIANT: Record<
@@ -136,7 +135,7 @@ export function ConnectedAccountsList({
         action={<ConnectPlatformMenu />}
       />
 
-      <SettingsSectionCard>
+      <Section>
         {accounts.length === 0 ? (
           <EmptyState
             title="Belum ada akun terhubung"
@@ -150,7 +149,7 @@ export function ConnectedAccountsList({
             ))}
           </List>
         )}
-      </SettingsSectionCard>
+      </Section>
     </VStack>
   );
 }

@@ -7,6 +7,7 @@ import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { FileInput } from "@astryxdesign/core/FileInput";
 import { HStack } from "@astryxdesign/core/HStack";
+import { Section } from "@astryxdesign/core/Section";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { VStack } from "@astryxdesign/core/VStack";
@@ -22,7 +23,6 @@ import {
   SETTINGS_BREADCRUMB_GROUP,
   SettingsPageHead,
 } from "../../components/SettingsPageHead";
-import { SettingsSectionCard } from "../../components/SettingsSectionCard";
 import { updateProfileAction } from "../actions";
 
 // Dipakai dua kali (description sr-only FileInput + Text visual di sampingnya,
@@ -107,7 +107,7 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
         <Banner status="success" title="Profil berhasil diperbarui." />
       ) : null}
 
-      <SettingsSectionCard>
+      <Section>
         <form onSubmit={handleSubmit}>
           <VStack gap={6}>
             <HStack gap={5} align="center">
@@ -159,7 +159,7 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
             </VStack>
           </VStack>
         </form>
-      </SettingsSectionCard>
+      </Section>
     </VStack>
   );
 }

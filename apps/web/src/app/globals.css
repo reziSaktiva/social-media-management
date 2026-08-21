@@ -4,7 +4,7 @@
 @import "tailwindcss/preflight.css" layer(base);
 @import "@astryxdesign/core/reset.css";
 @import "@astryxdesign/core/astryx.css";
-@import "@astryxdesign/theme-neutral/theme.css";
+@import "@astryxdesign/theme-stone/theme.css";
 @import "@astryxdesign/core/tailwind-theme.css";
 @import "tailwindcss/utilities.css" layer(utilities);
 
@@ -15,35 +15,4 @@
 
 body {
   font-family: var(--font-geist-sans), sans-serif;
-}
-
-@layer components {
-  /* Swap AppShell sidebar vs main-content bg, light mode only (dark
-     unchanged) — permintaan eksplisit King Rezi, berlaku semua halaman.
-     :not(dialog ...) mencegah Cancel Schedule/Transfer Ownership/Invite
-     Member/Draft Editor Modal ikut berubah, karena semuanya berbagi
-     component key LayoutContent yang sama dengan AppShell. */
-  /* Hex di-hardcode, bukan var(--color-background-*): light diambil dari
-     token lawan (surface), dark dibekukan dari nilai token lama elemen ini
-     (body) — tidak bisa dicapai dengan var() tunggal manapun tanpa ikut
-     mengubah sisi dark juga. Kalau @astryxdesign/theme-neutral di-upgrade,
-     re-verify hex ini via computed style terhadap --color-background-surface
-     / --color-background-body (lihat ADR-084) sebelum asumsi swap ini masih
-     berlaku. */
-  .astryx-app-shell[data-variant="elevated"],
-  .astryx-app-shell-sidenav[data-variant="elevated"] {
-    background-color: light-dark(
-      #ffffff,
-      #1b1b1b
-    ); /* light = --color-background-surface (light), dark = --color-background-body (dark, dibekukan) */
-  }
-
-  .astryx-app-shell[data-variant="elevated"]
-    > .astryx-layout.fill
-    .astryx-layout-content:not(dialog .astryx-layout-content) {
-    background-color: light-dark(
-      #f1f1f1,
-      #262626
-    ); /* light = --color-background-body (light), dark = --color-background-surface (dark, dibekukan) */
-  }
 }
