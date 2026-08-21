@@ -125,11 +125,22 @@ export const workspaceRepository: IWorkspaceRepository = {
   },
 
   async findDefaultWorkspaceForUser(userId) {
-    const membership = await prisma.workspaceMember.findFirst({
-      where: { userId, status: MemberStatus.Active },
-      orderBy: { joinedAt: "asc" },
-      include: { workspace: { select: { id: true, name: true, slug: true } } },
-    });
+    // Sama seperti `getMember` (lihat catatan di atasnya) — tanpa
+    // `withCurrentUser`, `app.current_user_id` tidak ter-set sehingga RLS
+    // policy default-deny di `workspace_members` membuat query ini selalu
+    // balik 0 baris walau membership-nya benar-benar ada. Ditemukan saat
+    // debugging live: user dengan workspace aktif tetap diarahkan ke
+    // halaman "buat workspace pertama" karena fungsi ini kelewatan saat
+    // migrasi PR #71 mem-wrap seluruh method lain di file ini.
+    const membership = await withCurrentUser(userId, (tx) =>
+      tx.workspaceMember.findFirst({
+        where: { userId, status: MemberStatus.Active },
+        orderBy: { joinedAt: "asc" },
+        include: {
+          workspace: { select: { id: true, name: true, slug: true } },
+        },
+      }),
+    );
 
     if (!membership) {
       return null;

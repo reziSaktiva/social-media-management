@@ -10,17 +10,20 @@ import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
-import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { pixel, proportional, Table } from "@astryxdesign/core/Table";
 import type { TableColumn } from "@astryxdesign/core/Table";
-import { Section } from "@astryxdesign/core/Section";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 
 import type { WorkspaceMemberWithUser } from "@/domains/workspace";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 
+import {
+  SETTINGS_BREADCRUMB_GROUP,
+  SettingsPageHead,
+} from "../../components/SettingsPageHead";
+import { SettingsSectionCard } from "../../components/SettingsSectionCard";
 import { removeMemberAction, updateMemberRoleAction } from "../actions";
 
 const ROLE_LABEL: Record<MemberRole, string> = {
@@ -177,20 +180,21 @@ export function MembersTable({
   }>((change) => updateMemberRoleAction(change.member.id, change.newRole));
 
   return (
-    <Section>
-      <VStack gap={4}>
-        <HStack justify="between" align="center">
-          <Heading level={2}>Members</Heading>
-          {headerAction}
-        </HStack>
+    <VStack gap={4} padding={4}>
+      <SettingsPageHead
+        pageName="Members"
+        breadcrumb={`${SETTINGS_BREADCRUMB_GROUP.organization} / Members`}
+        action={headerAction}
+      />
 
-        {removeConfirm.error ? (
-          <Banner status="error" title={removeConfirm.error} />
-        ) : null}
-        {roleConfirm.error ? (
-          <Banner status="error" title={roleConfirm.error} />
-        ) : null}
+      {removeConfirm.error ? (
+        <Banner status="error" title={removeConfirm.error} />
+      ) : null}
+      {roleConfirm.error ? (
+        <Banner status="error" title={roleConfirm.error} />
+      ) : null}
 
+      <SettingsSectionCard>
         {members.length === 0 ? (
           <EmptyState
             title="Belum ada anggota"
@@ -210,7 +214,7 @@ export function MembersTable({
             dividers="rows"
           />
         )}
-      </VStack>
+      </SettingsSectionCard>
 
       <AlertDialog
         isOpen={removeConfirm.isOpen}
@@ -246,6 +250,6 @@ export function MembersTable({
         isActionLoading={roleConfirm.isLoading}
         onAction={roleConfirm.confirm}
       />
-    </Section>
+    </VStack>
   );
 }
