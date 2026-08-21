@@ -99,6 +99,7 @@ function ConnectedAccountRow({ account }: { account: ConnectedAccountRecord }) {
 
   return (
     <ListItem
+      className="[&:last-child]:border-b-0!"
       startContent={
         <Avatar
           name={account.handle}
