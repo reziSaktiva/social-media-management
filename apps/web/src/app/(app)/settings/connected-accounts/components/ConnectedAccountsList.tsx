@@ -136,7 +136,7 @@ export function ConnectedAccountsList({
       />
 
       <Section padding={0}>
-        <Card className="p-4">
+        <Card padding={4}>
           {accounts.length === 0 ? (
             <EmptyState
               title="Belum ada akun terhubung"

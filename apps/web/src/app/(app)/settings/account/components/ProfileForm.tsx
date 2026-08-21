@@ -23,6 +23,10 @@ import {
 import { SettingsPageHead } from "../../components/SettingsPageHead";
 import { updateProfileAction } from "../actions";
 
+// Dipakai dua kali (description sr-only FileInput + Text visual di sampingnya,
+// lihat komentar di JSX) -- satu sumber supaya tidak drift kalau berubah.
+const AVATAR_HINT_TEXT = "JPG/PNG, maks 2MB";
+
 export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
   const [name, setName] = useState(profile.name);
   const [image, setImage] = useState(profile.image);
@@ -99,7 +103,7 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
       ) : null}
 
       <Section padding={0}>
-        <Card className="p-4">
+        <Card padding={4}>
           <form onSubmit={handleSubmit}>
             <VStack gap={6}>
               <HStack gap={5} align="center">
@@ -108,7 +112,7 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
                   <FileInput
                     label="Foto Profil"
                     isLabelHidden
-                    description="JPG/PNG, maks 2MB"
+                    description={AVATAR_HINT_TEXT}
                     value={avatarFile}
                     onChange={handleAvatarChange}
                     accept={ALLOWED_AVATAR_ACCEPT}
@@ -116,7 +120,7 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
                     placeholder="Upload Foto"
                   />
                   <Text type="supporting" aria-hidden="true">
-                    JPG/PNG, maks 2MB
+                    {AVATAR_HINT_TEXT}
                   </Text>
                 </VStack>
               </HStack>

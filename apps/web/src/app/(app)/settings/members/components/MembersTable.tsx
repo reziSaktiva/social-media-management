@@ -193,7 +193,7 @@ export function MembersTable({
       ) : null}
 
       <Section padding={0}>
-        <Card className="p-4">
+        <Card padding={4}>
           {members.length === 0 ? (
             <EmptyState
               title="Belum ada anggota"
