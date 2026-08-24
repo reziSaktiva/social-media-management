@@ -132,21 +132,26 @@ Session Better Auth **tidak menyimpan** `workspaceId` secara langsung. Workspace
 - Cookie tetap divalidasi ulang terhadap `workspace_members` di setiap request (bukan dipercaya mentah) — mencegah cookie yang stale atau dimanipulasi memberi akses ke workspace yang salah.
 - Jika cookie hilang atau tidak valid (mis. browser baru, cookie terhapus), user diarahkan kembali ke picker workspace di alur onboarding (lihat "Onboarding Flow" di bawah) — ini kasus *recovery*, berbeda dari switch yang disengaja (lihat "Deliberate Workspace Switch" di bawah).
 
-**Deliberate Workspace Switch (ADR-088):** selama cookie masih valid, user
-yang jadi anggota lebih dari satu workspace bisa berpindah workspace aktif
-secara sengaja lewat Settings → Account → Workspaces — daftar workspace yang
-diikutinya, workspace aktif ditandai chip "Aktif", workspace lain bisa
-diklik untuk pindah. Mekanismenya: (1) validasi ulang bahwa user memang
-member workspace tujuan, (2) **overwrite langsung** cookie
-`active-workspace-id` ke id workspace tujuan (tanpa langkah hapus cookie
-terpisah), (3) redirect ke Home. Halaman ini juga menyediakan tombol "Buat
-Workspace Baru" (dialog form nama workspace, tanpa tier konfirmasi ADR-049
-karena non-destruktif). Ini kasus yang berbeda dari picker `/onboarding` di
-bawah — switch dipicu sengaja oleh user yang masih punya cookie valid,
-bukan oleh cookie yang hilang di luar kendalinya. Scope ini sengaja narrow:
-hanya switch antar membership yang sudah ada + create workspace tambahan;
-"Multi Workspace Management" yang lebih luas (bulk actions, billing
-gabungan, dst.) tetap Out of Scope (`../../02-product/mvp-definition.md`).
+**Deliberate Workspace Switch (ADR-088, amandemen ADR-089):** selama cookie
+masih valid, user yang jadi anggota lebih dari satu workspace bisa
+berpindah workspace aktif secara sengaja lewat Settings → Account →
+Workspaces — daftar workspace yang diikutinya, workspace aktif ditandai
+chip "Aktif", workspace lain bisa diklik untuk pindah. Klik row memicu
+dialog konfirmasi Tier 2 (`AlertDialog`, ADR-049 — "Pindah ke workspace
+[nama]?" + Batal/Pindah, ADR-089) dulu; baru setelah user menekan "Pindah"
+mekanisme switch berjalan: (1) validasi ulang bahwa user memang member
+workspace tujuan, (2) **overwrite langsung** cookie `active-workspace-id`
+ke id workspace tujuan (tanpa langkah hapus cookie terpisah), (3) redirect
+ke Home. Halaman ini juga menyediakan tombol "Buat Workspace Baru" (dialog
+form nama workspace, tanpa tier konfirmasi ADR-049 karena non-destruktif —
+beda dari switch yang sekarang dipagari Tier 2 meski juga non-destruktif,
+karena switch mengganti seluruh konteks kerja yang sedang dilihat user).
+Ini kasus yang berbeda dari picker `/onboarding` di bawah — switch dipicu
+sengaja oleh user yang masih punya cookie valid, bukan oleh cookie yang
+hilang di luar kendalinya. Scope ini sengaja narrow: hanya switch antar
+membership yang sudah ada + create workspace tambahan; "Multi Workspace
+Management" yang lebih luas (bulk actions, billing gabungan, dst.) tetap
+Out of Scope (`../../02-product/mvp-definition.md`).
 
 ## Session Validation
 
@@ -418,7 +423,7 @@ Login berhasil / Middleware redirect ke /onboarding (cookie active-workspace-id 
 |----|-----------|--------|
 | AU-D01 | Better Auth sebagai auth library | Sudah ditetapkan sebagai keputusan pra-architecture; menghindari implementasi auth dari nol |
 | AU-D02 | HTTP-only cookie untuk session token | Mencegah XSS attack; session tidak dapat diakses oleh JavaScript di browser |
-| AU-D03 | Workspace context disimpan di cookie `active-workspace-id`, divalidasi ulang oleh Middleware terhadap `workspace_members` di setiap request | Cookie tidak dipercaya mentah — tetap divalidasi ke database agar tidak stale atau bisa dimanipulasi; cookie hilang → re-entry via picker onboarding; switch disengaja antar membership → overwrite cookie langsung via Settings → Account → Workspaces (ADR-088) |
+| AU-D03 | Workspace context disimpan di cookie `active-workspace-id`, divalidasi ulang oleh Middleware terhadap `workspace_members` di setiap request | Cookie tidak dipercaya mentah — tetap divalidasi ke database agar tidak stale atau bisa dimanipulasi; cookie hilang → re-entry via picker onboarding; switch disengaja antar membership → dialog konfirmasi Tier 2 lalu overwrite cookie langsung via Settings → Account → Workspaces (ADR-088, amandemen ADR-089) |
 | AU-D04 | Inject workspace context via custom request headers | Memungkinkan Application Service membaca context tanpa query database ulang; tidak dapat dimanipulasi client |
 | AU-D05 | Authorization check di Application Service layer | Selaras dengan DDD — domain service yang mengetahui aturan bisnis; Entry Point tetap thin |
 | AU-D06 | RLS sebagai defense-in-depth, bukan primary enforcement | Application-enforced lebih fleksibel dan testable; RLS sebagai safety net jika ada bug di layer atas |

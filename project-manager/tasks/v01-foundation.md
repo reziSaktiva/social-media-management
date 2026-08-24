@@ -383,10 +383,10 @@ bawah untuk detail.
 
 | Field         | Value                                                                  |
 | ------------- | ----------------------------------------------------------------------- |
-| **Status**    | ✅ Done — seluruh subtask T-089.1–.5 selesai (2026-08-24): T-089.2/.3/.4 (kode `apps/web`) lolos review arsitektur Ridwan (tidak ada temuan) dan QA Najwa (58/58 unit test + full suite 157 passed/3 skipped/0 gagal + golden path browser end-to-end) |
+| **Status**    | ✅ Done — seluruh subtask T-089.1–.6 selesai (2026-08-24): T-089.2/.3/.4 (kode `apps/web`) lolos review arsitektur Ridwan (tidak ada temuan) dan QA Najwa (58/58 unit test + full suite 157 passed/3 skipped/0 gagal + golden path browser end-to-end); T-089.6 (dialog konfirmasi Tier 2, ADR-089) diverifikasi end-to-end browser oleh AI utama, **belum** lewat proses QA Najwa formal — lihat KI-034 |
 | **Domain**    | workspace · UI                                                          |
-| **ADR**       | ADR-088 (amandemen ADR-076 poin 4)                                      |
-| **Terkait**   | T-039 (reuse mekanisme cookie `active-workspace-id`), KI-023 (`PROJECT_STATE.md`, catatan update 2026-08-24), KI-033 (`PROJECT_STATE.md`, 2 workspace test tersisa dari QA sesi ini) |
+| **ADR**       | ADR-088 (amandemen ADR-076 poin 4), ADR-089 (amandemen ADR-088 — dialog konfirmasi Tier 2 sebelum switch) |
+| **Terkait**   | T-039 (reuse mekanisme cookie `active-workspace-id`), KI-023 (`PROJECT_STATE.md`, catatan update 2026-08-24), KI-033 (`PROJECT_STATE.md`, 2 workspace test tersisa dari QA sesi ini), KI-034 (`PROJECT_STATE.md`, QA Najwa belum retest golden path switch dengan dialog konfirmasi baru) |
 | **Depends**   | T-039 🟡 (cookie `active-workspace-id` + validasi ulang `workspace_members`), T-006 ✅ (`WorkspaceService.createWorkspace` existing, dipakai ulang dialog "Buat Workspace Baru") |
 | **Baca dulu** | `decisions/ADR-088-amandemen-adr-076-workspace-switcher-deliberate-via-settings-account-workspaces.md` · `decisions/ADR-076-workspace-context-via-cookie-hapus-slug-konsolidasi-settings-organization-account.md` · `05-architecture/auth-architecture.md` (Workspace Context Resolution, Onboarding Flow, AU-D03) · `05-architecture/application-layer.md` (kontrak `switchWorkspace` baru di `WorkspaceService`) · `04-ux/information-architecture.md` (Settings → Account → Workspaces) |
 
@@ -398,15 +398,20 @@ cara sengaja pindah workspace di luar skenario itu. **ADR-088**
 mengamandemen poin ini: halaman baru **Settings → Account → Workspaces**
 (posisi teratas grup Account, di atas Profile) — list seluruh workspace
 milik user (workspace aktif = chip "Aktif" non-interactive, lainnya = row
-klik untuk switch, reuse `.ws-pick-item` dari `templates/onboarding.html`)
+klik yang membuka dialog konfirmasi Tier 2 sebelum switch — lihat
+**ADR-089**, T-089.6 — reuse `.ws-pick-item` dari `templates/onboarding.html`)
 + tombol "Buat Workspace Baru" (dialog form sederhana, non-destruktif,
 kolom ke-5 baru di `components/dialog.html`).
 
 **Koreksi mekanisme (penting, jangan disalahpahami sebagai "hapus cookie
-dulu"):** switch yang disengaja ini **langsung overwrite** cookie
+dulu"):** switch yang disengaja ini **overwrite** cookie
 `active-workspace-id` ke workspace baru (setelah validasi ulang
 membership terhadap `workspace_members`), lalu redirect ke Home — **tidak
-ada** langkah delete cookie atau alur ulang lewat `/onboarding`.
+ada** langkah delete cookie atau alur ulang lewat `/onboarding`. **Update
+2026-08-24 (ADR-089):** overwrite ini sekarang digating di belakang
+dialog konfirmasi Tier 2 (`AlertDialog`, ADR-049) yang terbuka begitu row
+workspace diklik — bukan langsung tereksekusi seperti versi awal ADR-088;
+lihat T-089.6.
 
 **Scope MVP sengaja narrow (ADR-088):** hanya (a) switch active workspace
 antar membership yang sudah ada, (b) create workspace tambahan dari
@@ -440,9 +445,10 @@ Templates list. Keduanya terverifikasi via `DesignSync get_file`/grep.
 
 - [x] **T-089.1** Desain Claude Design — halaman `settings-workspaces.html` (list workspace + switch) dan kolom dialog "Buat Workspace Baru" di `components/dialog.html`. **Catatan (2026-08-24):** fix CSS `.dialog-backdrop.hidden` yang kelupaan saat desain awal (bug dialog langsung terbuka/tidak bisa ditutup) sudah diperbaiki King Rezi sendiri — lihat detail di atas.
 - [x] **T-089.2** `WorkspaceService.switchWorkspace` — validasi membership user ke workspace target, overwrite cookie `active-workspace-id`, redirect Home
-- [x] **T-089.3** UI halaman `/settings/account/workspaces` — list workspace (chip "Aktif" untuk current, row klik untuk switch pada workspace lain)
+- [x] **T-089.3** UI halaman `/settings/account/workspaces` — list workspace (chip "Aktif" untuk current, row klik pada workspace lain membuka dialog konfirmasi Tier 2 — lihat T-089.6 — baru melanjutkan switch setelah dikonfirmasi)
 - [x] **T-089.4** Dialog "Buat Workspace Baru" di halaman ini — reuse `WorkspaceService.createWorkspace` (T-006) yang sudah ada
 - [x] **T-089.5** Wire halaman baru ke `templates/app-prototype/AppPrototype.dc.html` (interactive runner Claude Design) — selesai (2026-08-24), dikerjakan King Rezi sendiri, entry `SCREENS` terverifikasi ada
+- [x] **T-089.6** Dialog konfirmasi Tier 2 sebelum switch workspace (ADR-089, amandemen ADR-088) — King Rezi mengubah rancangan di Claude Design (`components/dialog.html`, dicatat sebagai reuse pola AlertDialog Tier 2 di `templates/settings-workspaces.html`); kode `WorkspacesSettingsView.tsx` diselaraskan: klik row workspace membuka `AlertDialog` Astryx (pola sama Logout/Remove Member, lihat `apps/web/src/app/(app)/components/WorkspaceSideNav.tsx:142-159`) — title dinamis "Pindah ke workspace [nama]?", description "Anda akan keluar dari workspace saat ini dan berpindah konteks kerja.", `actionVariant="primary"` (non-destruktif, bukan destructive) — switch baru dijalankan setelah user klik "Pindah". Diverifikasi end-to-end browser oleh AI utama (Batal & Pindah keduanya bekerja benar, redirect Home sukses) — **belum** lewat proses QA Najwa formal, lihat KI-034.
 
 **Catatan eksekusi T-089.2/.3/.4 (2026-08-24):** Dikerjakan 2 track paralel
 — Prabowo Feature Engineer (T-089.2: `WorkspaceService.switchWorkspace`
@@ -473,6 +479,20 @@ hapus workspace bersifat ireversibel dan di luar wewenang eksekusi otonom
 Najwa; ditemukan juga **"QA Queue Test"**, sisa sesi QA sebelumnya (bukan
 dari sesi ini). Keduanya perlu dibersihkan manual oleh King Rezi via
 Settings → General → Danger Zone kalau perlu.
+
+**Update T-089.6 (2026-08-24, ADR-089) — dialog konfirmasi Tier 2 sebelum
+switch:** King Rezi mengubah rancangan `settings-workspaces.html` di
+Claude Design setelah T-089.1–.5 ditutup `✅ Done` — klik row workspace
+sekarang membuka dialog konfirmasi (`components/dialog.html`, kolom
+Tier 2/AlertDialog yang sama dipakai ulang untuk Switch Workspace) alih-
+alih langsung overwrite cookie. Kode `WorkspacesSettingsView.tsx`
+diselaraskan mengikuti pola `AlertDialog` yang sudah ada (Logout/Remove
+Member) — lihat detail di checklist T-089.6 di atas. Diikuti perubahan
+visual kecil di luar scope keputusan material: `Density` List halaman ini
+diubah `balanced` → `spacious` (murni spacing antar item, tidak berdampak
+behavior, tidak butuh ADR). Diverifikasi end-to-end browser oleh AI utama
+(bukan proses QA Najwa formal) — lihat **KI-034** untuk gap retest QA yang
+masih terbuka.
 
 ---
 

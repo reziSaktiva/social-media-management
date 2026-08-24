@@ -8,6 +8,76 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-24 — T-089.6 (ADR-089): dialog konfirmasi Tier 2 sebelum switch workspace
+
+### Context
+
+Lanjutan dari T-089.1–.5 (sudah `✅ Done`, entri di bawah). Setelah kode
+T-089.2/.3/.4 lolos review Ridwan + QA Najwa, King Rezi mengubah rancangan
+`settings-workspaces.html` di Claude Design: klik row workspace lain tidak
+lagi langsung overwrite cookie `active-workspace-id` + redirect Home tanpa
+konfirmasi (versi awal ADR-088 poin 2 & 4) — sekarang membuka dialog
+konfirmasi Tier 2 (`AlertDialog`, ADR-049) lebih dulu, reuse pola yang
+sama dengan Logout (T-016.5) dan Remove Member. King Rezi mencatat
+perubahan rancangan ini di `readme.md` project Claude Design: kolom
+ketiga `components/dialog.html` dipakai ulang tanpa variant baru untuk
+konfirmasi Switch Workspace di `templates/settings-workspaces.html`.
+
+### Perubahan kode
+
+`apps/web/src/app/(app)/settings/account/workspaces/components/WorkspacesSettingsView.tsx`
+diselaraskan mengikuti rancangan baru:
+
+1. **Dialog konfirmasi Tier 2** — klik row workspace membuka `AlertDialog`
+   Astryx (pola sama dengan `apps/web/src/app/(app)/components/WorkspaceSideNav.tsx:142-159`):
+   title dinamis `"Pindah ke workspace [nama]?"`, description
+   `"Anda akan keluar dari workspace saat ini dan berpindah konteks
+   kerja."`, `cancelLabel="Batal"`, `actionLabel="Pindah"`,
+   `actionVariant="primary"` (non-destruktif, bukan `destructive`) — switch
+   (`switchWorkspaceAction`) baru dijalankan setelah user klik "Pindah".
+2. **Density List** `balanced` → `spacious` — murni visual/spacing antar
+   item, tidak berdampak behavior, tidak dianggap keputusan material
+   (tidak butuh ADR).
+
+Diverifikasi end-to-end di browser oleh AI utama (bukan lewat proses QA
+Najwa formal): Batal dan Pindah keduanya bekerja benar, redirect ke Home
+sukses setelah konfirmasi. Gap retest formal oleh Najwa QA Engineer
+dicatat sebagai **KI-034** (baru) di `PROJECT_STATE.md` — tidak
+memblokir M8.
+
+### Governance
+
+- **ADR-089** (baru) dibuat mengamandemen **ADR-088** poin 2 & 4 (append-only —
+  body ADR-088 tidak diedit, hanya header `### Status` ditambah catatan
+  "Amended by ADR-089"). `DECISIONS.md` baris tabel ADR-088 ikut ditambah
+  catatan Status yang sama.
+- **Koreksi penomoran subtask:** rancangan Claude Design mencatat label
+  "T-016.6" untuk perubahan ini — dicek, T-016 di `tasks/v01-foundation.md`
+  hanya sampai subtask `.5` (Dialog Logout), tidak ada `.6`. Diputuskan
+  dicatat sebagai **T-089.6** (subtask baru di bawah T-089, task yang
+  memang membahas mekanisme switch workspace ini), bukan T-016.6 — detail
+  alasan di ADR-089.
+- `tasks/v01-foundation.md` § T-089: subtask baru T-089.6 ditambahkan
+  (checked), body task diperbarui (gap description, koreksi mekanisme,
+  acceptance T-089.3, field Status/Terkait/ADR) agar tidak lagi
+  menyiratkan switch langsung tanpa konfirmasi.
+- `TASKS.md`: total subtask terdefinisi naik dari 147 → 148 (dihitung
+  ulang langsung dari `tasks/vXX-*.md`, bukan increment manual); v0.1
+  58 → 59 subtask. Task-level tetap 22 selesai (T-089 sudah `✅ Done`
+  sebelumnya).
+- `PROJECT_STATE.md`: KI-034 baru; KI-023 (Terkait ditambah ADR-089,
+  catatan update lanjutan); Completed (Ringkasan) dan Recent Decisions
+  (Ringkasan) dirotasi (masing-masing tetap 5 item).
+
+### Catatan pembagian kerja
+
+`product-discovery/05-architecture/auth-architecture.md` (section
+Workspace Context/Onboarding Flow) **sengaja tidak disentuh** pada sesi
+governance ini — diserahkan ke main agent untuk diupdate setelah nomor
+ADR-089 ini dikonfirmasi, supaya tidak race condition antar sesi.
+
+---
+
 ## 2026-08-24 — T-089.2/.3/.4 selesai: Workspace Switcher deliberate (ADR-088) diimplementasikan, direview, lolos QA
 
 ### Context

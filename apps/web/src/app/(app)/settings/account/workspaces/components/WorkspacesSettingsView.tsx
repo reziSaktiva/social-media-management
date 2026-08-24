@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { FaPlus } from "react-icons/fa6";
 
+import { AlertDialog } from "@astryxdesign/core/AlertDialog";
 import { Avatar } from "@astryxdesign/core/Avatar";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
@@ -64,11 +65,11 @@ function ActiveBadge() {
 function WorkspaceRow({
   workspace,
   isSwitchPending,
-  onSwitch,
+  onRequestSwitch,
 }: {
   workspace: WorkspaceSummary;
   isSwitchPending: boolean;
-  onSwitch: (workspaceId: string) => void;
+  onRequestSwitch: (workspace: WorkspaceSummary) => void;
 }) {
   if (workspace.isActive) {
     return (
@@ -91,7 +92,7 @@ function WorkspaceRow({
       }
       startContent={<Avatar name={workspace.name} size="md" />}
       endContent={<Icon icon="chevronRight" color="tertiary" size="sm" />}
-      onClick={() => onSwitch(workspace.id)}
+      onClick={() => onRequestSwitch(workspace)}
       isDisabled={isSwitchPending}
     />
   );
@@ -109,6 +110,8 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
     string | null
   >(null);
   const [switchError, setSwitchError] = useState<string | null>(null);
+  const [pendingSwitchWorkspace, setPendingSwitchWorkspace] =
+    useState<WorkspaceSummary | null>(null);
 
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
@@ -123,6 +126,7 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
       if (result?.error) {
         setSwitchError(result.error);
         setSwitchingWorkspaceId(null);
+        setPendingSwitchWorkspace(null);
       }
       // Kalau sukses: Server Action redirect("/") di server, komponen ini
       // akan unmount — tidak perlu reset state manual.
@@ -172,7 +176,7 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
       <Section>
         <List
           hasDividers
-          density="balanced"
+          density="spacious"
           header={<Heading level={3}>Workspace Anda</Heading>}
         >
           {workspaces.map((workspace) => (
@@ -182,11 +186,27 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
               isSwitchPending={
                 isSwitchPending && switchingWorkspaceId === workspace.id
               }
-              onSwitch={handleSwitch}
+              onRequestSwitch={setPendingSwitchWorkspace}
             />
           ))}
         </List>
       </Section>
+
+      <AlertDialog
+        isOpen={pendingSwitchWorkspace !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingSwitchWorkspace(null);
+        }}
+        title={`Pindah ke workspace ${pendingSwitchWorkspace?.name ?? ""}?`}
+        description="Anda akan keluar dari workspace saat ini dan berpindah konteks kerja."
+        cancelLabel="Batal"
+        actionLabel="Pindah"
+        actionVariant="primary"
+        isActionLoading={isSwitchPending}
+        onAction={() => {
+          if (pendingSwitchWorkspace) handleSwitch(pendingSwitchWorkspace.id);
+        }}
+      />
 
       <Dialog
         isOpen={isDialogOpen}

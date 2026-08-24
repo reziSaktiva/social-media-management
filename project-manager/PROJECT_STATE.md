@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.53     |
+| Version      | 1.0.54     |
 | Status       | Active     |
 | Last Updated | 2026-08-24 |
 
@@ -189,7 +189,7 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003):
 |-------|-------|
 | Status | Sebagian Resolved — sisa scope: T-039.4 (onboarding picker workspace); T-089 (workspace switcher, ADR-088) sudah ✅ Done (2026-08-24), tidak lagi bagian sisa scope |
 | Kategori | Tech-Debt |
-| Terkait | T-009, T-039, T-089, ADR-076, ADR-077, ADR-088 |
+| Terkait | T-009, T-039, T-089, ADR-076, ADR-077, ADR-088, ADR-089 |
 
 Ditemukan awalnya sebagai gap "Workspace Selector tidak pernah
 diimplementasikan" (baseline navigasi lama, IA-D05/NP-D07 versi lama).
@@ -243,6 +243,16 @@ cookie `active-workspace-id` setelah validasi membership + redirect Home
 fitur (T-039.4 dan T-089 switcher baru) masih sama-sama belum
 dikerjakan** — hanya desain + ADR yang selesai di sesi ini. Detail:
 `COMPLETE_TASK.md`.
+
+**Update 2026-08-24 (lanjutan lagi) — T-089 diimplementasikan lalu
+mekanismenya diamandemen, ADR-089:** T-089.2/.3/.4 (kode `apps/web`) sudah
+diselesaikan, lolos review Ridwan + QA Najwa, T-089 ditutup `✅ Done`.
+Setelah itu King Rezi mengubah rancangan switch di Claude Design —
+klik row workspace sekarang membuka dialog konfirmasi Tier 2 (reuse
+`AlertDialog`, pola Logout/Remove Member) sebelum overwrite cookie
+dieksekusi, bukan langsung switch seperti versi awal ADR-088. Diamandemen
+lewat **ADR-089**, dicatat subtask baru **T-089.6**. Lihat **KI-034**
+untuk gap QA retest formal yang masih terbuka.
 
 ### KI-024 · Header sidebar Settings belum sesuai spec Design System (back-button vs judul)
 
@@ -335,6 +345,25 @@ dihapus oleh Najwa karena hapus workspace bersifat ireversibel dan di luar
 wewenang eksekusi otonom QA. Perlu dibersihkan manual oleh King Rezi via
 Settings → General → Danger Zone kalau perlu. Tidak memblokir M8.
 
+### KI-034 · QA Najwa belum retest golden path switch workspace dengan dialog konfirmasi Tier 2 baru (T-089.6, ADR-089)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Process |
+| Terkait | T-089 (`tasks/v01-foundation.md` § T-089), ADR-089 |
+
+Setelah T-089.1–.5 lolos QA Najwa (golden path switch versi awal, tanpa
+konfirmasi), King Rezi mengubah rancangan di Claude Design menambahkan
+dialog konfirmasi Tier 2 sebelum switch (**ADR-089**, dicatat sebagai
+subtask baru **T-089.6**). Kode `WorkspacesSettingsView.tsx` sudah
+diselaraskan dan diverifikasi end-to-end di browser — Batal dan Pindah
+keduanya bekerja benar, redirect ke Home sukses — tetapi verifikasi ini
+dilakukan AI utama, **bukan** lewat proses QA Najwa formal (unit test +
+full suite + golden path browser terstruktur seperti T-089.2–.4
+sebelumnya). Perlu retest formal oleh Najwa QA Engineer sebelum gap ini
+ditutup. Tidak memblokir M8.
+
 ---
 
 ## Blockers
@@ -365,22 +394,22 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-089.6 Dialog konfirmasi Tier 2 sebelum switch workspace (2026-08-24, ADR-089)** — King Rezi mengubah rancangan `settings-workspaces.html` di Claude Design setelah T-089.1–.5 ditutup `✅ Done`: klik row workspace lain sekarang membuka dialog konfirmasi (reuse `AlertDialog` Tier 2, pola Logout/Remove Member) alih-alih langsung overwrite cookie tanpa konfirmasi. Kode `WorkspacesSettingsView.tsx` diselaraskan (title dinamis "Pindah ke workspace [nama]?", `actionVariant="primary"` non-destruktif); diikuti perubahan visual kecil (`Density` List `balanced` → `spacious`, tanpa ADR). Diverifikasi end-to-end browser oleh AI utama, **belum** lewat QA Najwa formal — lihat **KI-034**. ADR-089 mengamandemen ADR-088 poin 2 & 4. Detail: `tasks/v01-foundation.md` § T-089, `COMPLETE_TASK.md`.
 * **T-089.2–.4 Workspace Switcher deliberate selesai (2026-08-24, ADR-088)** — Halaman Settings → Account → Workspaces resmi ditutup `✅ Done`: `WorkspaceService.switchWorkspace` (validasi membership aktif) + `listWorkspacesForUser` (Prabowo), route `/settings/account/workspaces` + dialog "Buat Workspace Baru" reuse `createWorkspace` T-006 (Mark, paralel), lolos review Ridwan (0 temuan) + QA Najwa (58/58 unit test, full suite 157 passed/0 gagal, golden path browser end-to-end, tidak ada bug). Catatan sisa: 2 workspace test QA belum dibersihkan — lihat **KI-033**. Detail: `tasks/v01-foundation.md` § T-089, `COMPLETE_TASK.md`.
 * **Ganti theme Astryx dari Neutral ke Stone (2026-08-21, ADR-087)** — Atas permintaan eksplisit King Rezi (preferensi visual, bukan bug), theme Astryx diganti dari `@astryxdesign/theme-neutral` ke `@astryxdesign/theme-stone` (versi `0.4.3`): `apps/web/package.json` (field `astryx.theme` + dependency), `apps/web/src/app/globals.css` (`@import`), `apps/web/src/components/Providers.tsx` (`stoneTheme`). Sudah diverifikasi computed style browser (`data-astryx-theme="stone"`, font Montserrat/Figtree) dan `bun run build` hijau 30 route. Rule 17 `AGENTS.md` (gate Claude Design) sengaja dilewati atas instruksi King Rezi — **item terbuka:** Claude Design belum disinkronkan ke theme Stone. Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-087-*.md`.
 * **Revert total swap warna AppShell, kembali ke default Astryx (2026-08-21, ADR-086)** — Membatalkan ADR-084 (2026-08-20): blok `@layer components` di `apps/web/src/app/globals.css` yang menukar warna sidebar (abu→putih) dan konten (putih→abu) dihapus total. AppShell kembali ke default `neutralTheme` Astryx sepenuhnya — sidebar abu-abu, konten putih di light mode; dark mode tidak berubah. Bagian dari audit menyeluruh King Rezi terhadap seluruh override warna custom (satu rangkaian dengan ADR-085 di hari yang sama). ADR-084 tidak dihapus (sudah jadi rujukan di dokumen lain), hanya ditandai Reverted. Sudah diverifikasi visual browser (light & dark mode), tidak ada regresi. Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-086-*.md`.
 * **Settings pakai `Section` murni tanpa `Card` (2026-08-21, ADR-085)** — `SettingsSectionCard` direstrukturisasi total (Card dihapus), `DashboardHome.tsx` "Analytics Snapshot" dikembalikan ke default — mengoreksi pola `Section > Card` yang melanggar aturan resmi Astryx ("dense data jangan Card-wrapped", `bunx astryx docs layout`/`docs shape`). ADR-085 & ADR-086 versi lama (dibuat hari yang sama) **dihapus total** (bukan diamandemen) — pengecualian eksplisit dari pola append-only ADR karena belum jadi preseden di tempat lain. Konsekuensi visual disadari: 3 halaman Settings jadi flat/persegi, menyimpang dari mockup Claude Design lama. Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-085-*.md`.
-* **T-032 Queue management selesai (2026-08-20)** — `listQueue` dari data asli `PublishingPost`/`PublishingPostTarget` (bukan `PublishingQueueSlot`, dihapus lewat migration ADR-083), UI Astryx nyata (grouping per tanggal, 1 Card per schedule, tanpa status chip), dan 3 aksi per item (Publish Now, Edit, Cancel Schedule). Cancel Schedule sekaligus menutup sebagian besar **T-030** (implementasi nyata untuk konteks Queue — RBAC ADR-074, `AlertDialog` Tier 2, `useToast` pertama di codebase); sisa scope Calendar menunggu T-033. Lolos review Ridwan (0 temuan) + QA Najwa (Vitest, `tsc`, `eslint`, E2E browser lengkap, 1 bug kosmetik ditemukan & diperbaiki di sesi yang sama). 1 Known Issue baru: **KI-032** (Publish Now dari Queue belum auto-advance ke konfirmasi). Detail: `tasks/v02-publishing-mvp.md` § T-032, `COMPLETE_TASK.md`.
 ---
 
 ## Recent Decisions (Ringkasan)
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
-* **ADR-088** — Amandemen ADR-076 (poin 4) — Deliberate Workspace Switcher via Settings → Account → Workspaces: halaman baru untuk switch antar membership + create workspace tambahan (scope MVP narrow, bukan multi-workspace management penuh); mekanisme switch overwrite cookie `active-workspace-id` langsung setelah validasi membership, bukan hapus-cookie-lalu-onboarding-ulang.
+* **ADR-089** — Amandemen ADR-088 — Dialog Konfirmasi Tier 2 Sebelum Switch Workspace: klik row workspace tidak lagi langsung overwrite cookie + redirect, sekarang membuka `AlertDialog` Tier 2 (reuse pola Logout/Remove Member) sebelum switch dieksekusi; dicatat sebagai T-089.6 (bukan T-016.6 — koreksi penomoran).
+* **ADR-088** — Amandemen ADR-076 (poin 4) — Deliberate Workspace Switcher via Settings → Account → Workspaces: halaman baru untuk switch antar membership + create workspace tambahan (scope MVP narrow, bukan multi-workspace management penuh); mekanisme switch overwrite cookie `active-workspace-id` langsung setelah validasi membership, bukan hapus-cookie-lalu-onboarding-ulang — **Amended by ADR-089 (2026-08-24)**.
 * **ADR-087** — Ganti theme Astryx dari Neutral ke Stone ("Warm stone and slate tones; Montserrat + Figtree type") — permintaan eksplisit King Rezi, rule 17 `AGENTS.md` (gate Claude Design) sengaja dilewati; item terbuka: Claude Design belum disinkronkan.
 * **ADR-086** — Revert total swap warna AppShell — kembali ke default `neutralTheme` Astryx murni, membatalkan ADR-084 (bagian dari audit menyeluruh override warna custom).
 * **ADR-085** — Settings pakai `Section` murni tanpa `Card` (kepatuhan aturan Astryx "dense data jangan Card-wrapped") — ADR-085/086 versi lama (pola `Section > Card`) dihapus total, bukan diamandemen.
-* **ADR-084** — Swap warna sidebar ↔ konten AppShell (light mode saja) via CSS selector ter-scope, bukan `defineTheme` component override (`LayoutContent` dipakai ulang di seluruh dialog) — **Reverted by ADR-086 (2026-08-21)**.
 
 ---
 

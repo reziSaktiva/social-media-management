@@ -7,7 +7,7 @@ Workspaces
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-089 (2026-08-24)
 
 ### Date
 
