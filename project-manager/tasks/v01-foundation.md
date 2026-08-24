@@ -383,10 +383,10 @@ bawah untuk detail.
 
 | Field         | Value                                                                  |
 | ------------- | ----------------------------------------------------------------------- |
-| **Status**    | ✅ Done — seluruh subtask T-089.1–.6 selesai (2026-08-24): T-089.2/.3/.4 (kode `apps/web`) lolos review arsitektur Ridwan (tidak ada temuan) dan QA Najwa (58/58 unit test + full suite 157 passed/3 skipped/0 gagal + golden path browser end-to-end); T-089.6 (dialog konfirmasi Tier 2, ADR-089) diverifikasi end-to-end browser oleh AI utama, **belum** lewat proses QA Najwa formal — lihat KI-034 |
+| **Status**    | ✅ Done — seluruh subtask T-089.1–.6 selesai (2026-08-24): T-089.2/.3/.4 (kode `apps/web`) lolos review arsitektur Ridwan (tidak ada temuan) dan QA Najwa (58/58 unit test + full suite 157 passed/3 skipped/0 gagal + golden path browser end-to-end); T-089.6 (dialog konfirmasi Tier 2, ADR-089) juga sudah lolos QA formal Najwa retest (2026-08-24) — unit test + full suite 157 passed/3 skipped/0 gagal + golden path browser end-to-end, tidak ada bug baru — **KI-034 closed (Resolved)** |
 | **Domain**    | workspace · UI                                                          |
 | **ADR**       | ADR-088 (amandemen ADR-076 poin 4), ADR-089 (amandemen ADR-088 — dialog konfirmasi Tier 2 sebelum switch) |
-| **Terkait**   | T-039 (reuse mekanisme cookie `active-workspace-id`), KI-023 (`PROJECT_STATE.md`, catatan update 2026-08-24), KI-033 (`PROJECT_STATE.md`, 2 workspace test tersisa dari QA sesi ini), KI-034 (`PROJECT_STATE.md`, QA Najwa belum retest golden path switch dengan dialog konfirmasi baru) |
+| **Terkait**   | T-039 (reuse mekanisme cookie `active-workspace-id`), KI-023 (`PROJECT_STATE.md`, catatan update 2026-08-24), KI-033 (`PROJECT_STATE.md`, 2 workspace test tersisa dari QA sesi ini), KI-034 (`PROJECT_STATE.md`, QA Najwa retest golden path switch dengan dialog konfirmasi baru — Resolved 2026-08-24) |
 | **Depends**   | T-039 🟡 (cookie `active-workspace-id` + validasi ulang `workspace_members`), T-006 ✅ (`WorkspaceService.createWorkspace` existing, dipakai ulang dialog "Buat Workspace Baru") |
 | **Baca dulu** | `decisions/ADR-088-amandemen-adr-076-workspace-switcher-deliberate-via-settings-account-workspaces.md` · `decisions/ADR-076-workspace-context-via-cookie-hapus-slug-konsolidasi-settings-organization-account.md` · `05-architecture/auth-architecture.md` (Workspace Context Resolution, Onboarding Flow, AU-D03) · `05-architecture/application-layer.md` (kontrak `switchWorkspace` baru di `WorkspaceService`) · `04-ux/information-architecture.md` (Settings → Account → Workspaces) |
 
@@ -448,7 +448,7 @@ Templates list. Keduanya terverifikasi via `DesignSync get_file`/grep.
 - [x] **T-089.3** UI halaman `/settings/account/workspaces` — list workspace (chip "Aktif" untuk current, row klik pada workspace lain membuka dialog konfirmasi Tier 2 — lihat T-089.6 — baru melanjutkan switch setelah dikonfirmasi)
 - [x] **T-089.4** Dialog "Buat Workspace Baru" di halaman ini — reuse `WorkspaceService.createWorkspace` (T-006) yang sudah ada
 - [x] **T-089.5** Wire halaman baru ke `templates/app-prototype/AppPrototype.dc.html` (interactive runner Claude Design) — selesai (2026-08-24), dikerjakan King Rezi sendiri, entry `SCREENS` terverifikasi ada
-- [x] **T-089.6** Dialog konfirmasi Tier 2 sebelum switch workspace (ADR-089, amandemen ADR-088) — King Rezi mengubah rancangan di Claude Design (`components/dialog.html`, dicatat sebagai reuse pola AlertDialog Tier 2 di `templates/settings-workspaces.html`); kode `WorkspacesSettingsView.tsx` diselaraskan: klik row workspace membuka `AlertDialog` Astryx (pola sama Logout/Remove Member, lihat `apps/web/src/app/(app)/components/WorkspaceSideNav.tsx:142-159`) — title dinamis "Pindah ke workspace [nama]?", description "Anda akan keluar dari workspace saat ini dan berpindah konteks kerja.", `actionVariant="primary"` (non-destruktif, bukan destructive) — switch baru dijalankan setelah user klik "Pindah". Diverifikasi end-to-end browser oleh AI utama (Batal & Pindah keduanya bekerja benar, redirect Home sukses) — **belum** lewat proses QA Najwa formal, lihat KI-034.
+- [x] **T-089.6** Dialog konfirmasi Tier 2 sebelum switch workspace (ADR-089, amandemen ADR-088) — King Rezi mengubah rancangan di Claude Design (`components/dialog.html`, dicatat sebagai reuse pola AlertDialog Tier 2 di `templates/settings-workspaces.html`); kode `WorkspacesSettingsView.tsx` diselaraskan: klik row workspace membuka `AlertDialog` Astryx (pola sama Logout/Remove Member, lihat `apps/web/src/app/(app)/components/WorkspaceSideNav.tsx:142-159`) — title dinamis "Pindah ke workspace [nama]?", description "Anda akan keluar dari workspace saat ini dan berpindah konteks kerja.", `actionVariant="primary"` (non-destruktif, bukan destructive) — switch baru dijalankan setelah user klik "Pindah". Diverifikasi end-to-end browser oleh AI utama (Batal & Pindah keduanya bekerja benar, redirect Home sukses), lalu diretest formal oleh Najwa QA Engineer (2026-08-24) — `bun run typecheck`/`lint`/`test` PASS (157 passed, 3 skipped, 0 gagal), golden path browser 6 langkah PASS, 2 edge case tambahan (Escape saat switch in-flight, refresh saat dialog terbuka) tidak reproducible sebagai bug, tidak ada bug baru ditemukan. **KI-034 closed (Resolved)** — detail lengkap di `COMPLETE_TASK.md`.
 
 **Catatan eksekusi T-089.2/.3/.4 (2026-08-24):** Dikerjakan 2 track paralel
 — Prabowo Feature Engineer (T-089.2: `WorkspaceService.switchWorkspace`
@@ -491,8 +491,13 @@ Member) — lihat detail di checklist T-089.6 di atas. Diikuti perubahan
 visual kecil di luar scope keputusan material: `Density` List halaman ini
 diubah `balanced` → `spacious` (murni spacing antar item, tidak berdampak
 behavior, tidak butuh ADR). Diverifikasi end-to-end browser oleh AI utama
-(bukan proses QA Najwa formal) — lihat **KI-034** untuk gap retest QA yang
-masih terbuka.
+(bukan proses QA Najwa formal) — sempat tercatat sebagai gap retest QA di
+**KI-034**.
+
+**Update 2026-08-24 — QA formal Najwa: lolos, KI-034 closed.** Retest
+formal (unit test + full suite 157 passed/3 skipped/0 gagal + golden path
+browser end-to-end + 2 edge case tambahan) selesai tanpa bug baru — lihat
+`COMPLETE_TASK.md` untuk detail lengkap.
 
 ---
 

@@ -8,6 +8,65 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-24 — QA formal Najwa T-089.6 (ADR-089): KI-034 closed (Resolved)
+
+### Context
+
+Lanjutan T-089.6 (entri di bawah): kode dialog konfirmasi Tier 2 sebelum
+switch workspace sudah diselaraskan dan diverifikasi end-to-end browser
+oleh AI utama, tetapi belum lewat proses QA Najwa formal seperti
+T-089.2–.4 sebelumnya — gap ini dicatat sebagai **KI-034**
+(`PROJECT_STATE.md`). King Rezi meminta Najwa QA Engineer menjalankan QA
+formal untuk menutup gap tersebut.
+
+### Hasil QA
+
+* `bun run typecheck`, `bun run lint`, `bun run test` — semua PASS (157
+  passed, 3 skipped, 0 gagal).
+* Golden path browser (localhost:3000, akun Raka Pratama/Insvire) — 6
+  langkah PASS: list workspace benar; klik row non-aktif membuka
+  `AlertDialog` dengan judul dinamis benar; Batal membatalkan tanpa efek;
+  Pindah berhasil redirect + workspace aktif berubah; chip Aktif berpindah
+  benar setelah kembali ke halaman; regresi dialog "Buat Workspace Baru"
+  aman.
+* 2 edge case tambahan (dari 3 temuan code-review low-severity
+  sebelumnya):
+  1. Escape + klik row lain saat switch masih in-flight — **tidak
+     reproducible** (request switch selesai ~1ms di localhost, jauh lebih
+     cepat dari race window). Catatan analisis: secara teoretis di
+     network production yang lambat, Escape bisa menutup `AlertDialog`
+     sebelum switch selesai (`AlertDialog` tidak punya guard tambahan
+     terhadap `isSwitchPending` di `onOpenChange`) — tapi dampaknya hanya
+     UX minor (row tetap menunjukkan "Memindahkan..." dan disabled sampai
+     selesai, redirect/error tetap jalan normal, tidak ada state korup
+     atau crash). Bukan bug baru, hanya konfirmasi ulang salah satu dari
+     3 temuan code-review low-severity yang sudah pernah dilaporkan
+     (sebagian — stale loading spinner — sudah diperbaiki sebelumnya).
+  2. Refresh saat dialog terbuka — PASS, tidak reproducible sebagai bug
+     (state dialog cuma `useState` client-side, hilang wajar saat reload,
+     workspace aktif tidak berubah).
+* Tidak ada bug baru ditemukan. Najwa tidak mengubah kode apa pun (murni
+  QA), dan mengembalikan workspace aktif ke kondisi semula ("Insvire")
+  setelah testing selesai.
+* Rekomendasi Najwa: KI-034 ditutup (Resolved). Opsional backlog kecil
+  (bukan blocker): guard `isSwitchPending` di `onOpenChange` `AlertDialog`
+  supaya Escape tidak menutup dialog selagi switch berjalan — murni
+  peningkatan UX, tidak wajib.
+
+### Dampak dokumentasi
+
+* `PROJECT_STATE.md` — blok Known Issue **KI-034** dihapus dari section
+  Known Issues (sudah Resolved & tercatat di sini, sesuai pola KI-025);
+  pointer "Resolved 2026-08-24" ditambah di section Blockers; referensi
+  KI-034 di catatan KI-023 diperbarui jadi Resolved.
+* `tasks/v01-foundation.md` § T-089 — status task diperbarui (T-089.6 kini
+  juga lolos QA formal Najwa), catatan checklist T-089.6 dan catatan
+  eksekusi diperbarui menyatakan KI-034 closed.
+* Tidak ada ADR baru — ini murni QA closure atas keputusan yang sudah ada
+  (ADR-089), bukan keputusan arsitektur baru.
+
+---
+
 ## 2026-08-24 — T-089.6 (ADR-089): dialog konfirmasi Tier 2 sebelum switch workspace
 
 ### Context

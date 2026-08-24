@@ -251,8 +251,9 @@ Setelah itu King Rezi mengubah rancangan switch di Claude Design —
 klik row workspace sekarang membuka dialog konfirmasi Tier 2 (reuse
 `AlertDialog`, pola Logout/Remove Member) sebelum overwrite cookie
 dieksekusi, bukan langsung switch seperti versi awal ADR-088. Diamandemen
-lewat **ADR-089**, dicatat subtask baru **T-089.6**. Lihat **KI-034**
-untuk gap QA retest formal yang masih terbuka.
+lewat **ADR-089**, dicatat subtask baru **T-089.6**. Gap QA retest formal
+sempat terbuka sebagai KI-034 — sudah Resolved 2026-08-24 (QA Najwa lolos
+penuh, tidak ada bug), lihat `COMPLETE_TASK.md`.
 
 ### KI-024 · Header sidebar Settings belum sesuai spec Design System (back-button vs judul)
 
@@ -345,25 +346,6 @@ dihapus oleh Najwa karena hapus workspace bersifat ireversibel dan di luar
 wewenang eksekusi otonom QA. Perlu dibersihkan manual oleh King Rezi via
 Settings → General → Danger Zone kalau perlu. Tidak memblokir M8.
 
-### KI-034 · QA Najwa belum retest golden path switch workspace dengan dialog konfirmasi Tier 2 baru (T-089.6, ADR-089)
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Process |
-| Terkait | T-089 (`tasks/v01-foundation.md` § T-089), ADR-089 |
-
-Setelah T-089.1–.5 lolos QA Najwa (golden path switch versi awal, tanpa
-konfirmasi), King Rezi mengubah rancangan di Claude Design menambahkan
-dialog konfirmasi Tier 2 sebelum switch (**ADR-089**, dicatat sebagai
-subtask baru **T-089.6**). Kode `WorkspacesSettingsView.tsx` sudah
-diselaraskan dan diverifikasi end-to-end di browser — Batal dan Pindah
-keduanya bekerja benar, redirect ke Home sukses — tetapi verifikasi ini
-dilakukan AI utama, **bukan** lewat proses QA Najwa formal (unit test +
-full suite + golden path browser terstruktur seperti T-089.2–.4
-sebelumnya). Perlu retest formal oleh Najwa QA Engineer sebelum gap ini
-ditutup. Tidak memblokir M8.
-
 ---
 
 ## Blockers
@@ -383,6 +365,12 @@ benar.
 **Resolved 2026-08-14:** KI-025 (Railway belum pernah dibuat) — staging
 sudah live & terverifikasi, lihat `COMPLETE_TASK.md`. Sisa gap production
 dicatat terpisah sebagai **KI-028** (tidak memblokir M8/T-027 staging).
+
+**Resolved 2026-08-24:** KI-034 (QA Najwa belum retest golden path switch
+workspace dengan dialog konfirmasi Tier 2 baru, T-089.6/ADR-089) — QA
+formal Najwa selesai, lolos penuh (unit test + full suite 157 passed/3
+skipped/0 gagal + golden path browser end-to-end, tidak ada bug baru),
+lihat `COMPLETE_TASK.md`.
 
 Detail masing-masing ada di section **Known Issues** di atas — tabel ini
 hanya pointer supaya blocker aktif langsung terlihat tanpa harus menyisir

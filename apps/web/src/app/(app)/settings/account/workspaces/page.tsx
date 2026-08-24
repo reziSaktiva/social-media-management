@@ -28,6 +28,7 @@ export default async function Page() {
   const workspaces = memberships.map((membership) => ({
     id: membership.workspaceId,
     name: membership.name,
+    slug: membership.slug,
     role: membership.role,
     isActive: membership.workspaceId === activeWorkspaceId,
   }));

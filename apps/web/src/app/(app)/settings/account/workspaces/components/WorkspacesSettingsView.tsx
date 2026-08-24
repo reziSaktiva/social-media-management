@@ -29,6 +29,7 @@ import { createWorkspaceAction, switchWorkspaceAction } from "../actions";
 export interface WorkspaceSummary {
   id: string;
   name: string;
+  slug: string;
   role: string;
   isActive: boolean;
 }
@@ -112,6 +113,12 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [pendingSwitchWorkspace, setPendingSwitchWorkspace] =
     useState<WorkspaceSummary | null>(null);
+  const [lastSwitchTargetName, setLastSwitchTargetName] = useState("");
+
+  function handleRequestSwitch(workspace: WorkspaceSummary) {
+    setPendingSwitchWorkspace(workspace);
+    setLastSwitchTargetName(workspace.name);
+  }
 
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
@@ -186,7 +193,7 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
               isSwitchPending={
                 isSwitchPending && switchingWorkspaceId === workspace.id
               }
-              onRequestSwitch={setPendingSwitchWorkspace}
+              onRequestSwitch={handleRequestSwitch}
             />
           ))}
         </List>
@@ -195,14 +202,18 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
       <AlertDialog
         isOpen={pendingSwitchWorkspace !== null}
         onOpenChange={(open) => {
-          if (!open) setPendingSwitchWorkspace(null);
+          if (!open && !isSwitchPending) setPendingSwitchWorkspace(null);
         }}
-        title={`Pindah ke workspace ${pendingSwitchWorkspace?.name ?? ""}?`}
+        title={`Pindah ke workspace ${
+          pendingSwitchWorkspace?.name ?? lastSwitchTargetName
+        }?`}
         description="Anda akan keluar dari workspace saat ini dan berpindah konteks kerja."
         cancelLabel="Batal"
         actionLabel="Pindah"
         actionVariant="primary"
-        isActionLoading={isSwitchPending}
+        isActionLoading={
+          isSwitchPending && switchingWorkspaceId === pendingSwitchWorkspace?.id
+        }
         onAction={() => {
           if (pendingSwitchWorkspace) handleSwitch(pendingSwitchWorkspace.id);
         }}
