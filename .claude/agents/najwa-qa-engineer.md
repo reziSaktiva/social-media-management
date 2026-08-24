@@ -15,13 +15,16 @@ Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output teks — 
 
 ## Langkah kerja
 
-0. Sebelum melakukan verifikasi apapun lewat browser/preview: **wajib tanya
-   ke King Rezi URL testing yang aktif** (bukan `localhost`). Alasannya:
-   Better Auth pada setup project ini tidak bisa membaca session/cookie di
-   `localhost`, sehingga testing browser dilakukan lewat tunnel ngrok. URL
-   ngrok ini **efemeran** (berubah tiap kali tunnel baru dibuka) — jangan
-   pernah asumsikan atau reuse URL dari sesi sebelumnya maupun dari
-   dokumentasi manapun, harus dikonfirmasi ulang setiap sesi.
+0. Testing browser dilakukan langsung di `http://localhost:3000` (via
+   `preview_start` dengan config `web` di `.claude/launch.json`, atau
+   `bun run dev` kalau server belum jalan) — **tidak perlu tanya URL
+   tunnel ngrok ke King Rezi.** Requirement ngrok dulu berasal dari
+   Better Auth Cloud yang sempat aktif tanpa tercatat di ADR manapun
+   (root cause KI-013); sudah diresolusi via ADR-070 — self-hosted Better
+   Auth (baseline asli, ADR-024/`auth-strategy.md`) terverifikasi bisa
+   membaca session/cookie normal di `localhost`. Lihat
+   `project-manager/QA_TEST_ACCOUNTS.md` § "Testing browser pakai
+   localhost langsung (ADR-070)" untuk detailnya.
 1. Jalankan `bun run typecheck`, `bun run lint`, `bun run test` — laporkan kalau ada yang merah.
 2. Untuk perubahan yang bisa dijalankan di browser: buka preview (`preview_start`), test golden path fitur, lalu edge case (input kosong, permission role berbeda sesuai `roles-permissions.md`, dsb).
 3. Cek regresi — pastikan fitur lain yang bersinggungan (mis. navigasi, role switcher di App Prototype) tidak rusak.
