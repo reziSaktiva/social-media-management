@@ -129,7 +129,7 @@ kedua tool — tidak ada instruksi khusus per-tool selain tabel di atas.
 - Auth: **Better Auth** · ORM: **Prisma 7** · DB/Storage/Realtime: **Supabase**
 - Integrasi sosial: **Outstand** (via Anti-Corruption Layer), bukan SDK network langsung
 - Arsitektur: **Modular Monolith + DDD** · domain di `apps/web/src/domains/`
-- UI: **Astryx** (ADR-041) · neutral theme selama M8 · **Tailwind layout-only**
+- UI: **Astryx** (ADR-041) · Stone theme (ADR-087) · **Tailwind layout-only**
 - Deploy: **Railway** (web + cron) · CI: **GitHub Actions**
 - Staging web: URL & detail deploy di `PROJECT_STATE.md` (KI-025) /
   `COMPLETE_TASK.md` — pakai untuk smoke test manual sebelum PR

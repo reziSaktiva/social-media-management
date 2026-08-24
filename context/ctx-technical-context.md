@@ -37,18 +37,18 @@ Implementasi di repo:
 
 ## Stack (ingat cepat)
 
-| Area                    | Pilihan                                                                                                    |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Runtime / PM            | Bun                                                                                                        |
-| App                     | Next.js (`apps/web`)                                                                                       |
-| Auth                    | Better Auth (email/password + Google)                                                                      |
-| ORM                     | Prisma **7.x** — migrate via `DIRECT_URL`, runtime via `@prisma/adapter-pg` + `DATABASE_URL`               |
-| DB / Storage / Realtime | Supabase                                                                                                   |
-| Social API              | Outstand (via ACL — lihat `ctx-architecture`)                                                              |
-| Deploy                  | Railway (web + cron)                                                                                       |
-| CI                      | GitHub Actions                                                                                             |
-| UI Components           | Astryx — neutral theme selama M8; wrapper selektif (ADR-041); Light/Dark Mode Toggle fitur resmi (ADR-055) |
-| Styling                 | Tailwind CSS — layout dan responsive composition saja                                                      |
+| Area                    | Pilihan                                                                                                  |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| Runtime / PM            | Bun                                                                                                      |
+| App                     | Next.js (`apps/web`)                                                                                     |
+| Auth                    | Better Auth (email/password + Google)                                                                    |
+| ORM                     | Prisma **7.x** — migrate via `DIRECT_URL`, runtime via `@prisma/adapter-pg` + `DATABASE_URL`             |
+| DB / Storage / Realtime | Supabase                                                                                                 |
+| Social API              | Outstand (via ACL — lihat `ctx-architecture`)                                                            |
+| Deploy                  | Railway (web + cron)                                                                                     |
+| CI                      | GitHub Actions                                                                                           |
+| UI Components           | Astryx — Stone theme (ADR-087); wrapper selektif (ADR-041); Light/Dark Mode Toggle fitur resmi (ADR-055) |
+| Styling                 | Tailwind CSS — layout dan responsive composition saja                                                    |
 
 ---
 

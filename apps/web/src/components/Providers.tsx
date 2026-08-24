@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import { LinkProvider } from "@astryxdesign/core/Link";
 import { Theme } from "@astryxdesign/core/theme";
-import { neutralTheme } from "@astryxdesign/theme-neutral/built";
+import { stoneTheme } from "@astryxdesign/theme-stone/built";
 import Link from "next/link";
 
 import {
@@ -62,7 +62,7 @@ export function Providers({
 
   return (
     <ThemeModeContext.Provider value={themeModeValue}>
-      <Theme mode={mode} theme={neutralTheme}>
+      <Theme mode={mode} theme={stoneTheme}>
         <LinkProvider component={Link}>{children}</LinkProvider>
       </Theme>
     </ThemeModeContext.Provider>
