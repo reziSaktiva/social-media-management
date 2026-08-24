@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.52     |
+| Version      | 1.0.53     |
 | Status       | Active     |
 | Last Updated | 2026-08-24 |
 
@@ -187,7 +187,7 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003):
 
 | Field | Value |
 |-------|-------|
-| Status | Sebagian Resolved — sisa scope: T-039.4 (onboarding picker workspace), T-089 (workspace switcher, ADR-088) |
+| Status | Sebagian Resolved — sisa scope: T-039.4 (onboarding picker workspace); T-089 (workspace switcher, ADR-088) sudah ✅ Done (2026-08-24), tidak lagi bagian sisa scope |
 | Kategori | Tech-Debt |
 | Terkait | T-009, T-039, T-089, ADR-076, ADR-077, ADR-088 |
 
@@ -319,6 +319,22 @@ Tidak memblokir M8. Icon kalender/jam Draft Editor sempat diperbaiki terpisah (p
 
 Ditemukan 2026-08-20 saat wiring tombol "Publish Now" di Queue (T-032.4): tombol ini reuse modal Draft Editor via `openEditDraft` dengan `initialPendingAction: "publish-now"` supaya modal auto-advance ke step Confirmation Summary begitu draft ready — tapi `getDraftAction` **belum preload target akun** yang sudah dijadwalkan, sehingga `isReadyToPublishNow` sering `false` saat dibuka dari Queue. Efeknya: modal jatuh ke form biasa (bukan langsung ke Confirmation Summary) — bukan bug fungsional (Publish Now tetap bisa dilakukan lewat form), murni gap UX auto-advance. Sengaja dibiarkan (di luar scope T-032.4) — perlu subtask terpisah nanti (preload target akun untuk Edit Draft) kalau UX ini mau disempurnakan. Tidak memblokir M8.
 
+### KI-033 · 2 workspace test tersisa dari QA T-089 belum dibersihkan
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Data Hygiene |
+| Terkait | T-089 (`tasks/v01-foundation.md` § T-089) |
+
+Ditemukan saat QA Najwa untuk T-089.2–.4 (2026-08-24): 2 workspace test
+tersisa di database — **"Najwa QA Test Workspace"** (sengaja dibuat untuk
+menguji `createWorkspaceAction`) dan **"QA Queue Test"** (sisa sesi QA
+sebelumnya, bukan dari sesi T-089). Bukan bug — keduanya sengaja tidak
+dihapus oleh Najwa karena hapus workspace bersifat ireversibel dan di luar
+wewenang eksekusi otonom QA. Perlu dibersihkan manual oleh King Rezi via
+Settings → General → Danger Zone kalau perlu. Tidak memblokir M8.
+
 ---
 
 ## Blockers
@@ -349,7 +365,7 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
-* **Desain + ADR-088 Workspace Switcher deliberate selesai (2026-08-24)** — Task baru **T-089**: halaman baru Settings → Account → Workspaces (switch antar membership + create workspace tambahan), lahir dari amandemen ADR-076 poin 4 setelah King Rezi menemukan gap "tidak ada cara sengaja pindah workspace" pasca desain T-039.4 (onboarding picker). Desain sudah selesai di Claude Design (AI utama via `DesignSync`, mengikuti pola delegasi T-039.4): `templates/settings-workspaces.html` + 6 halaman lain + kolom dialog baru + `styles.css`; belum diwire ke `AppPrototype.dc.html` (follow-up terbuka). Mekanisme switch dikoreksi: overwrite cookie `active-workspace-id` langsung setelah validasi membership, **bukan** hapus-cookie-lalu-onboarding-ulang. Implementasi kode `apps/web` untuk T-039.4 **dan** T-089 masih sama-sama belum dikerjakan. Detail: `tasks/v01-foundation.md` § T-089, `COMPLETE_TASK.md`, `project-manager/decisions/ADR-088-*.md`.
+* **T-089.2–.4 Workspace Switcher deliberate selesai (2026-08-24, ADR-088)** — Halaman Settings → Account → Workspaces resmi ditutup `✅ Done`: `WorkspaceService.switchWorkspace` (validasi membership aktif) + `listWorkspacesForUser` (Prabowo), route `/settings/account/workspaces` + dialog "Buat Workspace Baru" reuse `createWorkspace` T-006 (Mark, paralel), lolos review Ridwan (0 temuan) + QA Najwa (58/58 unit test, full suite 157 passed/0 gagal, golden path browser end-to-end, tidak ada bug). Catatan sisa: 2 workspace test QA belum dibersihkan — lihat **KI-033**. Detail: `tasks/v01-foundation.md` § T-089, `COMPLETE_TASK.md`.
 * **Ganti theme Astryx dari Neutral ke Stone (2026-08-21, ADR-087)** — Atas permintaan eksplisit King Rezi (preferensi visual, bukan bug), theme Astryx diganti dari `@astryxdesign/theme-neutral` ke `@astryxdesign/theme-stone` (versi `0.4.3`): `apps/web/package.json` (field `astryx.theme` + dependency), `apps/web/src/app/globals.css` (`@import`), `apps/web/src/components/Providers.tsx` (`stoneTheme`). Sudah diverifikasi computed style browser (`data-astryx-theme="stone"`, font Montserrat/Figtree) dan `bun run build` hijau 30 route. Rule 17 `AGENTS.md` (gate Claude Design) sengaja dilewati atas instruksi King Rezi — **item terbuka:** Claude Design belum disinkronkan ke theme Stone. Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-087-*.md`.
 * **Revert total swap warna AppShell, kembali ke default Astryx (2026-08-21, ADR-086)** — Membatalkan ADR-084 (2026-08-20): blok `@layer components` di `apps/web/src/app/globals.css` yang menukar warna sidebar (abu→putih) dan konten (putih→abu) dihapus total. AppShell kembali ke default `neutralTheme` Astryx sepenuhnya — sidebar abu-abu, konten putih di light mode; dark mode tidak berubah. Bagian dari audit menyeluruh King Rezi terhadap seluruh override warna custom (satu rangkaian dengan ADR-085 di hari yang sama). ADR-084 tidak dihapus (sudah jadi rujukan di dokumen lain), hanya ditandai Reverted. Sudah diverifikasi visual browser (light & dark mode), tidak ada regresi. Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-086-*.md`.
 * **Settings pakai `Section` murni tanpa `Card` (2026-08-21, ADR-085)** — `SettingsSectionCard` direstrukturisasi total (Card dihapus), `DashboardHome.tsx` "Analytics Snapshot" dikembalikan ke default — mengoreksi pola `Section > Card` yang melanggar aturan resmi Astryx ("dense data jangan Card-wrapped", `bunx astryx docs layout`/`docs shape`). ADR-085 & ADR-086 versi lama (dibuat hari yang sama) **dihapus total** (bukan diamandemen) — pengecualian eksplisit dari pola append-only ADR karena belum jadi preseden di tempat lain. Konsekuensi visual disadari: 3 halaman Settings jadi flat/persegi, menyimpang dari mockup Claude Design lama. Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-085-*.md`.

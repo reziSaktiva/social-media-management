@@ -42,6 +42,7 @@ function createFakeRepository(
       slug,
     }),
     findDefaultWorkspaceForUser: async () => null,
+    listWorkspacesForUser: async () => [],
     findById: async () => null,
     listConnectedAccounts: async () => [],
     countActiveConnectedAccounts: async () => 0,
@@ -1131,6 +1132,77 @@ describe("WorkspaceService.acceptOwnershipTransfer", () => {
     await expect(
       service.acceptOwnershipTransfer(WORKSPACE_ID, ADMIN_USER),
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("WorkspaceService.listWorkspacesForUser", () => {
+  it("delegates to the repository", async () => {
+    const summaries = [
+      {
+        workspaceId: WORKSPACE_ID,
+        name: "Acme",
+        slug: "acme",
+        role: MemberRole.Owner,
+      },
+    ];
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listWorkspacesForUser: async () => summaries,
+      }),
+    );
+
+    await expect(service.listWorkspacesForUser(USER_ID)).resolves.toBe(
+      summaries,
+    );
+  });
+});
+
+describe("WorkspaceService.switchWorkspace", () => {
+  const MEMBER_USER = asUserId("member-user");
+  const MEMBER_ID = asMemberId("member-1");
+
+  it("returns the membership record when the user is an active member", async () => {
+    const record = member(MEMBER_USER, MEMBER_ID, MemberRole.Admin);
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers([record])),
+    );
+
+    await expect(
+      service.switchWorkspace({
+        userId: MEMBER_USER,
+        targetWorkspaceId: WORKSPACE_ID,
+      }),
+    ).resolves.toEqual(record);
+  });
+
+  it("throws AuthorizationError when the user has no membership in the target workspace", async () => {
+    const service = new WorkspaceService(createFakeRepository());
+
+    await expect(
+      service.switchWorkspace({
+        userId: asUserId("stranger-user"),
+        targetWorkspaceId: WORKSPACE_ID,
+      }),
+    ).rejects.toThrow(AuthorizationError);
+  });
+
+  it("throws AuthorizationError when the membership is not Active", async () => {
+    const record = member(
+      MEMBER_USER,
+      MEMBER_ID,
+      MemberRole.Creator,
+      MemberStatus.Pending,
+    );
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers([record])),
+    );
+
+    await expect(
+      service.switchWorkspace({
+        userId: MEMBER_USER,
+        targetWorkspaceId: WORKSPACE_ID,
+      }),
+    ).rejects.toThrow(AuthorizationError);
   });
 });
 

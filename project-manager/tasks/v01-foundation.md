@@ -383,10 +383,10 @@ bawah untuk detail.
 
 | Field         | Value                                                                  |
 | ------------- | ----------------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress — T-089.1 (desain, termasuk 2 bug fix 2026-08-24) dan T-089.5 (wiring) sudah selesai; T-089.2/.3/.4 (kode `apps/web`: `switchWorkspace` service, UI, dialog) belum dikerjakan sama sekali |
+| **Status**    | ✅ Done — seluruh subtask T-089.1–.5 selesai (2026-08-24): T-089.2/.3/.4 (kode `apps/web`) lolos review arsitektur Ridwan (tidak ada temuan) dan QA Najwa (58/58 unit test + full suite 157 passed/3 skipped/0 gagal + golden path browser end-to-end) |
 | **Domain**    | workspace · UI                                                          |
 | **ADR**       | ADR-088 (amandemen ADR-076 poin 4)                                      |
-| **Terkait**   | T-039 (reuse mekanisme cookie `active-workspace-id`), KI-023 (`PROJECT_STATE.md`, catatan update 2026-08-24) |
+| **Terkait**   | T-039 (reuse mekanisme cookie `active-workspace-id`), KI-023 (`PROJECT_STATE.md`, catatan update 2026-08-24), KI-033 (`PROJECT_STATE.md`, 2 workspace test tersisa dari QA sesi ini) |
 | **Depends**   | T-039 🟡 (cookie `active-workspace-id` + validasi ulang `workspace_members`), T-006 ✅ (`WorkspaceService.createWorkspace` existing, dipakai ulang dialog "Buat Workspace Baru") |
 | **Baca dulu** | `decisions/ADR-088-amandemen-adr-076-workspace-switcher-deliberate-via-settings-account-workspaces.md` · `decisions/ADR-076-workspace-context-via-cookie-hapus-slug-konsolidasi-settings-organization-account.md` · `05-architecture/auth-architecture.md` (Workspace Context Resolution, Onboarding Flow, AU-D03) · `05-architecture/application-layer.md` (kontrak `switchWorkspace` baru di `WorkspaceService`) · `04-ux/information-architecture.md` (Settings → Account → Workspaces) |
 
@@ -439,10 +439,40 @@ Workspaces' }` ke array `SCREENS` di `AppPrototype.dc.html` + scope
 Templates list. Keduanya terverifikasi via `DesignSync get_file`/grep.
 
 - [x] **T-089.1** Desain Claude Design — halaman `settings-workspaces.html` (list workspace + switch) dan kolom dialog "Buat Workspace Baru" di `components/dialog.html`. **Catatan (2026-08-24):** fix CSS `.dialog-backdrop.hidden` yang kelupaan saat desain awal (bug dialog langsung terbuka/tidak bisa ditutup) sudah diperbaiki King Rezi sendiri — lihat detail di atas.
-- [ ] **T-089.2** `WorkspaceService.switchWorkspace` — validasi membership user ke workspace target, overwrite cookie `active-workspace-id`, redirect Home
-- [ ] **T-089.3** UI halaman `/settings/account/workspaces` — list workspace (chip "Aktif" untuk current, row klik untuk switch pada workspace lain)
-- [ ] **T-089.4** Dialog "Buat Workspace Baru" di halaman ini — reuse `WorkspaceService.createWorkspace` (T-006) yang sudah ada
+- [x] **T-089.2** `WorkspaceService.switchWorkspace` — validasi membership user ke workspace target, overwrite cookie `active-workspace-id`, redirect Home
+- [x] **T-089.3** UI halaman `/settings/account/workspaces` — list workspace (chip "Aktif" untuk current, row klik untuk switch pada workspace lain)
+- [x] **T-089.4** Dialog "Buat Workspace Baru" di halaman ini — reuse `WorkspaceService.createWorkspace` (T-006) yang sudah ada
 - [x] **T-089.5** Wire halaman baru ke `templates/app-prototype/AppPrototype.dc.html` (interactive runner Claude Design) — selesai (2026-08-24), dikerjakan King Rezi sendiri, entry `SCREENS` terverifikasi ada
+
+**Catatan eksekusi T-089.2/.3/.4 (2026-08-24):** Dikerjakan 2 track paralel
+— Prabowo Feature Engineer (T-089.2: `WorkspaceService.switchWorkspace`
+dengan validasi membership aktif via `AuthorizationError` kalau bukan
+member aktif, tanpa cookie/redirect di dalam service; `listWorkspacesForUser`
+di service & repository, `IWorkspaceRepository.listWorkspacesForUser`
+implementasi Prisma pakai `withCurrentUser`) dan Mark UI Engineer (T-089.3:
+route `apps/web/src/app/(app)/settings/account/workspaces/` — `page.tsx`,
+`actions.ts` dengan `switchWorkspaceAction`, komponen
+`WorkspacesSettingsView.tsx` pakai Astryx List/ListItem/Badge/StatusDot/
+Dialog; nav sidebar `SettingsSideNav.tsx` ditambah item "Workspaces" di
+posisi pertama grup Account; T-089.4: dialog "Buat Workspace Baru" dengan
+`createWorkspaceAction` reuse penuh `WorkspaceService.createWorkspace`
+T-006 tanpa modifikasi method itu sendiri) → review arsitektur **Ridwan**
+(8 file, tidak ada temuan pelanggaran — entry point bersih dari business
+logic, domain tidak import Prisma langsung, RLS/`withCurrentUser`
+konsisten, error handling via `toActionError`, reuse T-006 terkonfirmasi)
+→ QA **Najwa** (unit test 58/58 lulus `workspace.service.test.ts`, full
+suite project 157 passed/3 skipped/0 gagal, golden path browser
+end-to-end lulus semua — list, switch, create dialog, nav ordering — edge
+case refresh & konsistensi state lulus, tidak ada regresi di `/settings`
+dan `/settings/account`, **tidak ada bug**).
+
+**Catatan sisa (bukan bug, lihat KI-033 di `PROJECT_STATE.md`):** selama QA
+Najwa membuat workspace test **"Najwa QA Test Workspace"** (sengaja, untuk
+uji `createWorkspaceAction`) yang sengaja tidak dihapus setelahnya karena
+hapus workspace bersifat ireversibel dan di luar wewenang eksekusi otonom
+Najwa; ditemukan juga **"QA Queue Test"**, sisa sesi QA sebelumnya (bukan
+dari sesi ini). Keduanya perlu dibersihkan manual oleh King Rezi via
+Settings → General → Danger Zone kalau perlu.
 
 ---
 

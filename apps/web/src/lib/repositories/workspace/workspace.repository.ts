@@ -13,6 +13,7 @@ import type {
   IWorkspaceRepository,
   WorkspaceInvitationRecord,
   WorkspaceMemberRecord,
+  WorkspaceMembershipSummary,
 } from "@/domains/workspace";
 import {
   Prisma,
@@ -151,6 +152,31 @@ export const workspaceRepository: IWorkspaceRepository = {
       name: membership.workspace.name,
       slug: membership.workspace.slug,
     };
+  },
+
+  /**
+   * Seluruh workspace dengan membership AKTIF milik user ini (T-089.2,
+   * ADR-088) — dibungkus `withCurrentUser` sesuai pola method lain yang
+   * query berdasarkan `userId` (mis. `findDefaultWorkspaceForUser`), supaya
+   * `app.current_user_id` ter-set untuk RLS policy `workspace_members`.
+   */
+  async listWorkspacesForUser(userId): Promise<WorkspaceMembershipSummary[]> {
+    const memberships = await withCurrentUser(userId, (tx) =>
+      tx.workspaceMember.findMany({
+        where: { userId, status: MemberStatus.Active },
+        orderBy: { joinedAt: "asc" },
+        include: {
+          workspace: { select: { id: true, name: true, slug: true } },
+        },
+      }),
+    );
+
+    return memberships.map((membership) => ({
+      workspaceId: asWorkspaceId(membership.workspace.id),
+      name: membership.workspace.name,
+      slug: membership.workspace.slug,
+      role: membership.role as MemberRole,
+    }));
   },
 
   async findById(workspaceId) {

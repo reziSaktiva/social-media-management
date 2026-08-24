@@ -43,6 +43,19 @@ export interface WorkspaceMemberRecord {
   status: MemberStatus;
 }
 
+/**
+ * Satu baris hasil `listWorkspacesForUser` (T-089.2, ADR-088) — workspace +
+ * role membership user di dalamnya. `slug` disertakan karena berguna untuk
+ * render avatar/link di UI list Workspace Switcher, konsisten dengan
+ * `WorkspaceRecord`.
+ */
+export interface WorkspaceMembershipSummary {
+  workspaceId: WorkspaceId;
+  name: string;
+  slug: string;
+  role: MemberRole;
+}
+
 export interface WorkspaceInvitationRecord {
   id: InvitationId;
   workspaceId: WorkspaceId;
@@ -63,6 +76,17 @@ export interface IWorkspaceRepository {
 
   /** Membership aktif terlama milik user, dengan WorkspaceRecord lengkap. */
   findDefaultWorkspaceForUser(userId: UserId): Promise<WorkspaceRecord | null>;
+
+  /**
+   * Seluruh workspace dengan membership AKTIF milik satu user, beserta
+   * role-nya (T-089.2, ADR-088 — Workspace Switcher). Beda dengan
+   * `findDefaultWorkspaceForUser` (cuma 1 hasil, membership terlama) —
+   * method ini dipakai untuk render list "Settings → Account → Workspaces"
+   * (semua workspace yang bisa di-switch user, bukan cuma default-nya).
+   * Urutan tidak dispesifikasikan oleh domain (bebas bagi implementasi),
+   * `WorkspaceService.listWorkspacesForUser` sekadar meneruskan.
+   */
+  listWorkspacesForUser(userId: UserId): Promise<WorkspaceMembershipSummary[]>;
 
   /**
    * Dipakai `getWorkspaceContext()` (ADR-076) — resolve workspace by cookie

@@ -52,7 +52,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
-| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹ | 21   | 🟡 10 ✅ · 1 🚫 · 7 🟡 · 1 ⏸️ · 2 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
+| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹ | 21   | 🟡 11 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · 2 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038 | 19   | 🟡 8 ✅ · 1 🟡 · 10 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
@@ -60,9 +60,9 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 
-**Total:** 72 task · 21 selesai · 147 subtask terdefinisi (v0.1–v0.3).
+**Total:** 72 task · 22 selesai · 147 subtask terdefinisi (v0.1–v0.3).
 
-> **Koreksi hitungan (2026-08-24):** breakdown status v0.1 di atas sebelumnya "11 ✅ · 5 🟡" — sudah tidak cocok dengan `tasks/v01-foundation.md` aktual (10 ✅ · 6 🟡, sebelum T-089 ditambah) sejak entah kapan drift terjadi. Dihitung ulang langsung dari file saat menambah T-089 (bukan increment manual di atas angka lama yang sudah salah), sesuai aturan maintenance di bawah.
+> **Koreksi hitungan (2026-08-24):** breakdown status v0.1 di atas sebelumnya "11 ✅ · 5 🟡" — sudah tidak cocok dengan `tasks/v01-foundation.md` aktual (10 ✅ · 6 🟡, sebelum T-089 ditambah) sejak entah kapan drift terjadi. Dihitung ulang langsung dari file saat menambah T-089 (bukan increment manual di atas angka lama yang sudah salah), sesuai aturan maintenance di bawah. **Update sesi ini (2026-08-24):** T-089 (T-089.2/.3/.4 diimplementasikan, lolos review Ridwan + QA Najwa) ditutup `✅ Done` → v0.1 jadi 11 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · 2 ⏳, total keseluruhan jadi 22 selesai. Dihitung ulang langsung dari `tasks/v01-foundation.md` (bukan increment manual), sesuai aturan yang sama.
 
 ¹ **T-039** ID-nya dipinjam dari rentang v0.2 (bukan urutan lanjutan v0.1) — nomor kosong v0.1 sudah habis, jadi diambil ID global berikutnya yang belum pernah dipakai. Lihat Catatan Rilis di `tasks/v01-foundation.md` dan `tasks/v02-publishing-mvp.md` untuk detailnya. **T-089** (Workspace Switcher, ADR-088) memakai pola serupa — ID global berikutnya yang belum pernah dipakai sama sekali (rentang v1.0 T-080–T-088 sudah habis terisi), ditempatkan di file v0.1 karena lahir sebagai amandemen ADR-076/T-039. Detail: Catatan Rilis `tasks/v01-foundation.md`.
 
@@ -96,6 +96,8 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 > **T-029** (Publish Now) sudah ✅ **Done** (2026-08-18) — via `FakeOutstandAdapter` (ADR-059), jalur nyata tetap menunggu T-025. Detail: `tasks/v02-publishing-mvp.md` § T-029.
 
 > **T-012** (Sidebar "Channels") sudah ✅ **Done** (2026-08-12) — seluruh subtask termasuk T-012.1/2 selesai, lolos review Ridwan + QA Najwa. Detail: `tasks/v01-foundation.md` § T-012.
+
+> **T-089** (Workspace Switcher deliberate, ADR-088) sudah ✅ **Done** (2026-08-24) — seluruh subtask T-089.1–.5 selesai, lolos review Ridwan + QA Najwa. Detail: `tasks/v01-foundation.md` § T-089.
 
 **Rantai blocker terbesar:** T-025 (Real OutstandAdapter) → T-026 (webhook) → T-027 (job runner). Ketiganya mengunci sebagian besar v0.2, seluruh v0.3, dan seluruh v0.4. Menyelesaikan T-025 membuka lebih banyak pekerjaan daripada task lain manapun.
 

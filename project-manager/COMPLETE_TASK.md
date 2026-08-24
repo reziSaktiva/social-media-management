@@ -8,6 +8,73 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-24 — T-089.2/.3/.4 selesai: Workspace Switcher deliberate (ADR-088) diimplementasikan, direview, lolos QA
+
+### Context
+
+Lanjutan T-089.1 (desain) dan T-089.5 (wiring Claude Design) yang sudah
+selesai sebelumnya. Sesi ini menutup 3 subtask kode terakhir: T-089.2
+(`WorkspaceService.switchWorkspace`), T-089.3 (UI halaman
+`/settings/account/workspaces`), T-089.4 (dialog "Buat Workspace Baru").
+Task **T-089** sekarang `✅ Done` secara keseluruhan (seluruh T-089.1–.5).
+
+### Dikerjakan oleh
+
+- **Prabowo Feature Engineer** (T-089.2) — `WorkspaceService.switchWorkspace`:
+  validasi membership user ke workspace target, throw `AuthorizationError`
+  kalau bukan member aktif; **tanpa** cookie/redirect di dalam service
+  (tetap tanggung jawab entry point). Ditambah `listWorkspacesForUser` di
+  service & `IWorkspaceRepository` — implementasi Prisma pakai
+  `withCurrentUser`.
+- **Mark UI Engineer** (T-089.3 dan T-089.4, paralel dengan Prabowo) —
+  route baru `apps/web/src/app/(app)/settings/account/workspaces/`
+  (`page.tsx`, `actions.ts` dengan `switchWorkspaceAction`), komponen
+  `WorkspacesSettingsView.tsx` (Astryx List/ListItem/Badge/StatusDot/
+  Dialog). Nav sidebar `SettingsSideNav.tsx` ditambah item "Workspaces" di
+  posisi pertama grup Account. Dialog "Buat Workspace Baru" pakai
+  `createWorkspaceAction` yang reuse penuh `WorkspaceService.createWorkspace`
+  (T-006) tanpa modifikasi method itu sendiri.
+- **Ridwan Architecture Reviewer** (sekuensial setelah implementasi) —
+  review 8 file, **tidak ada temuan pelanggaran arsitektur**: entry point
+  bersih dari business logic, domain tidak mengimpor Prisma langsung,
+  RLS/`withCurrentUser` konsisten, error handling via `toActionError`,
+  reuse T-006 terkonfirmasi tanpa duplikasi logic.
+- **Najwa QA Engineer** (sekuensial setelah review) — unit test 58/58 lulus
+  `workspace.service.test.ts`, full suite project 157 passed/3 skipped/0
+  gagal, golden path browser end-to-end lulus semua (list workspace,
+  switch, create dialog, nav ordering), edge case (refresh, konsistensi
+  state) lulus, regresi di `/settings` dan `/settings/account` aman.
+  **Tidak ada bug** dilaporkan.
+
+### Catatan sisa (bukan bug) — KI-033 baru
+
+Selama QA, Najwa membuat workspace test **"Najwa QA Test Workspace"**
+(sengaja, untuk menguji `createWorkspaceAction`) yang sengaja tidak
+dihapus setelahnya — hapus workspace bersifat ireversibel dan di luar
+wewenang eksekusi otonom QA. Ditemukan juga **"QA Queue Test"**, sisa
+sesi QA sebelumnya (bukan dari sesi T-089 ini). Keduanya dicatat sebagai
+**KI-033** di `PROJECT_STATE.md` — perlu dibersihkan manual oleh King Rezi
+via Settings → General → Danger Zone kalau perlu.
+
+### Dokumentasi diupdate
+
+- `tasks/v01-foundation.md` § T-089 — checklist T-089.2/.3/.4 dicentang,
+  Status task jadi `✅ Done`, catatan eksekusi + catatan sisa KI-033
+  ditambahkan.
+- `TASKS.md` — Indeks release v0.1 dihitung ulang langsung dari
+  `tasks/v01-foundation.md` (11 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · 2 ⏳, dari
+  sebelumnya 10 ✅ · 7 🟡), Total keseluruhan jadi 22 selesai, pointer T-089
+  ditambahkan di "Fokus sekarang".
+- `PROJECT_STATE.md` — bullet "Completed (Ringkasan)" untuk T-089 diupdate
+  dari status desain-saja jadi selesai penuh (total tetap 5 item), KI-023
+  diupdate (T-089 tidak lagi bagian sisa scope, hanya T-039.4), Known Issue
+  baru **KI-033** ditambahkan, versi metadata → 1.0.53.
+
+Tidak ada ADR baru di sesi ini — murni implementasi sesuai ADR-088 yang
+sudah ada, tidak ada keputusan arsitektur/workflow baru.
+
+---
+
 ## 2026-08-24 — T-089: 2 bug fix pasca-review desain Workspace Switcher, dikerjakan King Rezi sendiri di Claude Design
 
 ### Context

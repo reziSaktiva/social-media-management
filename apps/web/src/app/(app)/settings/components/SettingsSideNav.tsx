@@ -43,6 +43,11 @@ const NAV_GROUPS = [
   {
     title: "Account",
     items: [
+      {
+        label: "Workspaces",
+        href: "/settings/account/workspaces",
+        exact: false,
+      },
       { label: "Profile", href: "/settings/account", exact: true },
       {
         label: "Notifications",
