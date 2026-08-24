@@ -6,7 +6,7 @@
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
 * **Top Next Tasks:** T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus (T-029 Publish Now sudah ✅ Done, 2026-08-18)
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
-* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 71 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
+* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 72 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
 ---
@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.51     |
+| Version      | 1.0.52     |
 | Status       | Active     |
-| Last Updated | 2026-08-14 |
+| Last Updated | 2026-08-24 |
 
 ---
 
@@ -117,7 +117,7 @@ amandemen ADR-038 & ADR-041).
 
 ## Next Tasks
 
-Daftar lengkap 71 task (v0.1 → v1.0) beserta subtask, dependency, rantai
+Daftar lengkap 72 task (v0.1 → v1.0) beserta subtask, dependency, rantai
 blocker, catatan urutan rilis, dan keputusan terbuka yang menunggu King
 Rezi — semuanya **hanya** di **[`TASKS.md`](TASKS.md)** (section **Fokus
 sekarang** + **Keputusan terbuka**). Snapshot di atas sudah menyalin ID +
@@ -187,9 +187,9 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003):
 
 | Field | Value |
 |-------|-------|
-| Status | Sebagian Resolved — sisa scope: T-039.4 (onboarding picker workspace) |
+| Status | Sebagian Resolved — sisa scope: T-039.4 (onboarding picker workspace), T-089 (workspace switcher, ADR-088) |
 | Kategori | Tech-Debt |
-| Terkait | T-009, T-039, ADR-076, ADR-077 |
+| Terkait | T-009, T-039, T-089, ADR-076, ADR-077, ADR-088 |
 
 Ditemukan awalnya sebagai gap "Workspace Selector tidak pernah
 diimplementasikan" (baseline navigasi lama, IA-D05/NP-D07 versi lama).
@@ -221,6 +221,28 @@ belum dikerjakan. Untuk skenario "cookie hilang, tepat 1 workspace",
 `onboarding/resume/route.ts` (bagian T-039.3) sudah menangani otomatis
 lewat `getDefaultWorkspaceForUser`; sisanya (>1 workspace, perlu pilihan
 eksplisit user) masih menunggu T-039.4.
+
+**Update 2026-08-24:** Desain T-039.4 sudah selesai di Claude Design
+(`templates/onboarding.html` + class `.ws-pick-*` di `styles.css`) —
+gate rule 17 `AGENTS.md` sudah terpenuhi untuk UI ini. Implementasi kode
+di `apps/web` masih belum dikerjakan, menunggu approval King Rezi atas
+desain tersebut. Detail: `tasks/v01-foundation.md` § T-039 (catatan
+T-039.4), `COMPLETE_TASK.md`.
+
+**Update 2026-08-24 (lanjutan) — gap terpisah ditemukan, ADR-088:** Setelah
+T-039.4 didesain, King Rezi menyadari tidak ada cara *sengaja* pindah
+workspace setelah user pernah memilih satu (picker T-039.4 hanya re-entry
+saat cookie hilang). Diamandemen lewat **ADR-088** — halaman baru Settings
+→ Account → Workspaces (switch antar membership + create workspace
+tambahan), desainnya sudah selesai di Claude Design
+(`templates/settings-workspaces.html` + 6 halaman lain + dialog + styles).
+Dipecah jadi task baru **T-089** (bukan subtask T-039.6), lihat
+`tasks/v01-foundation.md` § T-089. Mekanisme switch: overwrite langsung
+cookie `active-workspace-id` setelah validasi membership + redirect Home
+— bukan hapus-cookie-lalu-onboarding-ulang. **Implementasi kode kedua
+fitur (T-039.4 dan T-089 switcher baru) masih sama-sama belum
+dikerjakan** — hanya desain + ADR yang selesai di sesi ini. Detail:
+`COMPLETE_TASK.md`.
 
 ### KI-024 · Header sidebar Settings belum sesuai spec Design System (back-button vs judul)
 
@@ -327,22 +349,22 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **Desain + ADR-088 Workspace Switcher deliberate selesai (2026-08-24)** — Task baru **T-089**: halaman baru Settings → Account → Workspaces (switch antar membership + create workspace tambahan), lahir dari amandemen ADR-076 poin 4 setelah King Rezi menemukan gap "tidak ada cara sengaja pindah workspace" pasca desain T-039.4 (onboarding picker). Desain sudah selesai di Claude Design (AI utama via `DesignSync`, mengikuti pola delegasi T-039.4): `templates/settings-workspaces.html` + 6 halaman lain + kolom dialog baru + `styles.css`; belum diwire ke `AppPrototype.dc.html` (follow-up terbuka). Mekanisme switch dikoreksi: overwrite cookie `active-workspace-id` langsung setelah validasi membership, **bukan** hapus-cookie-lalu-onboarding-ulang. Implementasi kode `apps/web` untuk T-039.4 **dan** T-089 masih sama-sama belum dikerjakan. Detail: `tasks/v01-foundation.md` § T-089, `COMPLETE_TASK.md`, `project-manager/decisions/ADR-088-*.md`.
 * **Ganti theme Astryx dari Neutral ke Stone (2026-08-21, ADR-087)** — Atas permintaan eksplisit King Rezi (preferensi visual, bukan bug), theme Astryx diganti dari `@astryxdesign/theme-neutral` ke `@astryxdesign/theme-stone` (versi `0.4.3`): `apps/web/package.json` (field `astryx.theme` + dependency), `apps/web/src/app/globals.css` (`@import`), `apps/web/src/components/Providers.tsx` (`stoneTheme`). Sudah diverifikasi computed style browser (`data-astryx-theme="stone"`, font Montserrat/Figtree) dan `bun run build` hijau 30 route. Rule 17 `AGENTS.md` (gate Claude Design) sengaja dilewati atas instruksi King Rezi — **item terbuka:** Claude Design belum disinkronkan ke theme Stone. Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-087-*.md`.
 * **Revert total swap warna AppShell, kembali ke default Astryx (2026-08-21, ADR-086)** — Membatalkan ADR-084 (2026-08-20): blok `@layer components` di `apps/web/src/app/globals.css` yang menukar warna sidebar (abu→putih) dan konten (putih→abu) dihapus total. AppShell kembali ke default `neutralTheme` Astryx sepenuhnya — sidebar abu-abu, konten putih di light mode; dark mode tidak berubah. Bagian dari audit menyeluruh King Rezi terhadap seluruh override warna custom (satu rangkaian dengan ADR-085 di hari yang sama). ADR-084 tidak dihapus (sudah jadi rujukan di dokumen lain), hanya ditandai Reverted. Sudah diverifikasi visual browser (light & dark mode), tidak ada regresi. Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-086-*.md`.
 * **Settings pakai `Section` murni tanpa `Card` (2026-08-21, ADR-085)** — `SettingsSectionCard` direstrukturisasi total (Card dihapus), `DashboardHome.tsx` "Analytics Snapshot" dikembalikan ke default — mengoreksi pola `Section > Card` yang melanggar aturan resmi Astryx ("dense data jangan Card-wrapped", `bunx astryx docs layout`/`docs shape`). ADR-085 & ADR-086 versi lama (dibuat hari yang sama) **dihapus total** (bukan diamandemen) — pengecualian eksplisit dari pola append-only ADR karena belum jadi preseden di tempat lain. Konsekuensi visual disadari: 3 halaman Settings jadi flat/persegi, menyimpang dari mockup Claude Design lama. Detail: `COMPLETE_TASK.md`, `project-manager/decisions/ADR-085-*.md`.
 * **T-032 Queue management selesai (2026-08-20)** — `listQueue` dari data asli `PublishingPost`/`PublishingPostTarget` (bukan `PublishingQueueSlot`, dihapus lewat migration ADR-083), UI Astryx nyata (grouping per tanggal, 1 Card per schedule, tanpa status chip), dan 3 aksi per item (Publish Now, Edit, Cancel Schedule). Cancel Schedule sekaligus menutup sebagian besar **T-030** (implementasi nyata untuk konteks Queue — RBAC ADR-074, `AlertDialog` Tier 2, `useToast` pertama di codebase); sisa scope Calendar menunggu T-033. Lolos review Ridwan (0 temuan) + QA Najwa (Vitest, `tsc`, `eslint`, E2E browser lengkap, 1 bug kosmetik ditemukan & diperbaiki di sesi yang sama). 1 Known Issue baru: **KI-032** (Publish Now dari Queue belum auto-advance ke konfirmasi). Detail: `tasks/v02-publishing-mvp.md` § T-032, `COMPLETE_TASK.md`.
-* **KI-031 resolved — mockup Claude Design disinkronkan ke DateTimeInput Astryx (2026-08-19)** — Fix kode a11y (ikon kiri permanen) sudah ada sejak 2026-08-18; sesi ini menyinkronkan mockup Claude Design (`templates/draft-editor.html`, `components/forms.html`, `templates/app-prototype/AppPrototype.dc.html`, `styles.css`) supaya merepresentasikan anatomi `DateTimeInput` Astryx asli (dua kotak terpisah + ikon kiri + calendar popover fungsional), bukan native `<input type="date"/"time">` yang menyesatkan. Sempat ada bug regresi (class `.cal-day` bentrok dengan class calendar KSP-02 yang sudah ada, merusak grid) — diperbaiki dengan prefix unik `schedcal-*`, diverifikasi `diff` nol perubahan ke rules `.cal-*` original. Konsekuensi opsi swizzle tertutup permanen (ADR-082) dicatat final. Detail: `COMPLETE_TASK.md`.
 ---
 
 ## Recent Decisions (Ringkasan)
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-088** — Amandemen ADR-076 (poin 4) — Deliberate Workspace Switcher via Settings → Account → Workspaces: halaman baru untuk switch antar membership + create workspace tambahan (scope MVP narrow, bukan multi-workspace management penuh); mekanisme switch overwrite cookie `active-workspace-id` langsung setelah validasi membership, bukan hapus-cookie-lalu-onboarding-ulang.
 * **ADR-087** — Ganti theme Astryx dari Neutral ke Stone ("Warm stone and slate tones; Montserrat + Figtree type") — permintaan eksplisit King Rezi, rule 17 `AGENTS.md` (gate Claude Design) sengaja dilewati; item terbuka: Claude Design belum disinkronkan.
 * **ADR-086** — Revert total swap warna AppShell — kembali ke default `neutralTheme` Astryx murni, membatalkan ADR-084 (bagian dari audit menyeluruh override warna custom).
 * **ADR-085** — Settings pakai `Section` murni tanpa `Card` (kepatuhan aturan Astryx "dense data jangan Card-wrapped") — ADR-085/086 versi lama (pola `Section > Card`) dihapus total, bukan diamandemen.
 * **ADR-084** — Swap warna sidebar ↔ konten AppShell (light mode saja) via CSS selector ter-scope, bukan `defineTheme` component override (`LayoutContent` dipakai ulang di seluruh dialog) — **Reverted by ADR-086 (2026-08-21)**.
-* **ADR-083** — Queue (KSP-03) murni urutan waktu publish — hapus reorder manual & status chip per item, entity `QueueSlot` dihapus dari baseline (`domain-model.md`/`application-layer.md`), amandemen `key-screen-patterns.md`/`user-flows.md`.
 
 ---
 

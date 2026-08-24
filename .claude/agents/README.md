@@ -42,11 +42,13 @@ bukan keputusan delegasi (siapa yang membangun).
 
 ## Keterbatasan teknis: `DesignSync` di sesi subagent
 
-Tool `DesignSync` (akses Claude Design) tercatat gagal dimuat tiga kali di
+Tool `DesignSync` (akses Claude Design) tercatat gagal dimuat empat kali di
 sesi `neymar-product-designer` (Channels sidebar ADR-058, dan fix
 TikTok/Pinterest + Content Format Selector — keduanya 2026-07-31; lalu swap
-warna AppShell ADR-084, 2026-08-20), padahal tool yang sama berhasil di sesi
-utama pada waktu yang berdekatan setiap kali.
+warna AppShell ADR-084, 2026-08-20; lalu task T-039.4 Onboarding — Workspace
+Picker, 2026-08-24 — dicek via `ToolSearch` dengan beberapa query termasuk
+`select:DesignSync`, tidak ditemukan sama sekali di sesi ini), padahal tool
+yang sama berhasil di sesi utama pada waktu yang berdekatan setiap kali.
 
 **Ini pengecualian sementara terhadap mandat WAJIB di
 `neymar-product-designer.md`, bukan pembatalannya.** Selama keterbatasan ini

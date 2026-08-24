@@ -8,6 +8,243 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-24 — T-089: 2 bug fix pasca-review desain Workspace Switcher, dikerjakan King Rezi sendiri di Claude Design
+
+### Context
+
+Setelah desain T-089.1 (`templates/settings-workspaces.html` + kolom
+dialog ke-5 di `components/dialog.html`) selesai, AI melakukan review dan
+melaporkan 2 bug ke King Rezi. King Rezi memperbaiki keduanya **sendiri**
+langsung di Claude Design (project "Social Media Management") — bukan AI
+atau subagent yang mengerjakan fix-nya. Ini governance/docs murni; tidak
+ada kode `apps/web` yang disentuh.
+
+### Bug 1 — dialog "Buat Workspace Baru" langsung terbuka & tidak bisa ditutup
+
+Root cause: CSS `.dialog-backdrop.hidden{ display:none; }` tidak ada di
+`<style>` blok lokal `templates/settings-workspaces.html` (ada di file
+lain seperti `settings-members.html`, lupa disalin ke halaman baru ini
+saat T-089.1). King Rezi menambahkan baris CSS tersebut — sudah
+diverifikasi AI lewat `DesignSync get_file`, sudah ada di file sekarang.
+King Rezi juga sekaligus menambahkan peningkatan kecil di luar scope bug
+report: script halaman sekarang benar-benar memindahkan chip "Aktif" dari
+row lama ke row yang diklik (simulasi switch lebih hidup).
+
+### Bug 2 — nav "Workspaces" di App Prototype error "belum ada di scope: settings-workspaces"
+
+Root cause: halaman baru ini sengaja belum diwire ke
+`templates/app-prototype/AppPrototype.dc.html` (interactive runner) saat
+T-089.1 (dicatat sebagai T-089.5, follow-up terbuka). King Rezi menambahkan
+entry `{ key: 'settings-workspaces', file: 'settings-workspaces.html',
+code: 'SETTINGS', title: 'Settings → Account → Workspaces', menu:
+'Settings · Account · Workspaces' }` ke array `SCREENS` di runner tersebut,
+dan menambahkannya ke scope Templates list. Diverifikasi AI lewat
+`DesignSync get_file` + grep.
+
+### Dampak dokumentasi
+
+`tasks/v01-foundation.md` § T-089: T-089.5 dicentang selesai (dengan
+catatan pengerjaan oleh King Rezi), T-089.1 mendapat catatan tambahan soal
+fix CSS, field Status header T-089 diperbarui. Tidak ada perubahan di
+`TASKS.md` (hitungan task-level T-089 tetap 🟡 In Progress, T-089.2-.4
+belum dikerjakan) maupun `PROJECT_STATE.md` (status T-089 overall tidak
+berubah).
+
+---
+
+## 2026-08-24 — Desain + ADR-088 Deliberate Workspace Switcher (Settings → Account → Workspaces) — task baru T-089
+
+### Context
+
+Setelah T-039.4 (onboarding picker workspace) didesain di sesi sebelumnya
+hari ini, King Rezi menyadari gap nyata pada premis ADR-076 poin 4: picker
+`/onboarding` hanya muncul sebagai re-entry saat cookie `active-workspace-id`
+hilang, bukan mekanisme untuk **sengaja** pindah workspace kapan saja
+setelah user pernah memilih satu. King Rezi minta gap ini diperbaiki.
+
+AI memberi rekomendasi trade-off antara (a) halaman tersendiri vs
+(b) digabung ke General Settings existing. King Rezi memutuskan opsi (a):
+**bangun halaman tersendiri.**
+
+### Klasifikasi & gate rule 17 `AGENTS.md`
+
+Task ini UI/UX-related — dicek dulu ke Claude Design sebelum implementasi
+kode apa pun. Belum ada rancangannya, sehingga pekerjaan sesi ini murni
+desain (Claude Design) + keputusan arsitektur (ADR), bukan kode `apps/web`.
+
+### Pekerjaan — Design System (Claude Design, project "Social Media Management")
+
+Dikerjakan AI utama langsung via `DesignSync` (bukan subagent Neymar
+Product Designer — riwayat `DesignSync` gagal dimuat di sesi Neymar sudah
+tercatat 4x sebelumnya, sama seperti pola T-039.4 di sesi sebelumnya hari
+ini):
+
+1. File baru `templates/settings-workspaces.html` — halaman Settings, grup
+   **Account**, posisi teratas (di atas Profile). Isi: list seluruh
+   workspace milik user — workspace aktif dirender sebagai chip "Aktif"
+   non-interactive, workspace lain sebagai row yang bisa diklik untuk
+   switch (reuse `.ws-pick-item` yang sudah ada dari
+   `templates/onboarding.html`, T-039.4) — plus tombol "Buat Workspace
+   Baru".
+2. Dialog "Buat Workspace Baru" — form sederhana, non-destruktif (tanpa
+   tier konfirmasi type-to-confirm karena tidak ada risiko kehilangan
+   data). Ditambahkan sebagai kolom ke-5 baru di `components/dialog.html`.
+3. 6 halaman `settings-*.html` lain ditambah link navigasi "Workspaces" di
+   sidebar Settings grup Account, supaya halaman baru ini konsisten
+   ditemukan dari halaman Settings manapun.
+4. `styles.css` — modifier baru `.ws-pick-item.is-active` (state chip
+   "Aktif" pada row workspace saat ini, dibedakan dari row workspace lain
+   yang clickable).
+5. `readme.md` (Claude Design) diupdate dengan section penjelasan lengkap
+   halaman baru ini.
+6. **Belum diwire** ke `templates/app-prototype/AppPrototype.dc.html`
+   (interactive runner) — sengaja dibiarkan sebagai follow-up terbuka
+   (dicatat sebagai subtask T-089.5), bukan oversight.
+
+### Keputusan arsitektur — ADR-088
+
+**ADR-088** ("Amandemen ADR-076 — Deliberate Workspace Switcher via
+Settings → Account → Workspaces") dibuat oleh subagent Gibran Project
+Manager pada panggilan sebelumnya di sesi ini. Ringkasan:
+
+- Mengamandemen **ADR-076 poin 4** (append status "Accepted — Amended by
+  ADR-088 (2026-08-24, poin 4)", bukan ditulis ulang — append-only).
+- Scope MVP sengaja **narrow**: hanya (a) switch active workspace antar
+  membership yang sudah ada, (b) create workspace tambahan dari halaman
+  ini. **Bukan** bagian scope: multi-workspace management penuh (bulk
+  actions, billing gabungan, shared views) — tetap Out of Scope.
+- Baseline yang diamandemen: `mvp-definition.md`, `auth-architecture.md`
+  (Workspace Context + Onboarding Flow + AU-D03), `application-layer.md`
+  (kontrak `switchWorkspace` baru di `WorkspaceService`),
+  `information-architecture.md` (Settings → Account → Workspaces).
+- Baseline yang dicek tapi sengaja **tidak** diubah (tidak relevan — tidak
+  ada perubahan skema data/routing URL): `monorepo-setup.md`,
+  `auth-strategy.md`, `domain-model.md`, `database-strategy.md`.
+
+### Koreksi mekanisme penting
+
+Switch yang disengaja ini **bukan** "hapus cookie dulu, lalu ulang lewat
+`/onboarding`" (miskonsepsi awal King Rezi yang mengira begitu dan
+menganggapnya aneh). Mekanisme yang benar: **langsung overwrite** cookie
+`active-workspace-id` ke workspace target (setelah validasi ulang
+membership terhadap `workspace_members`), lalu redirect ke Home. Tidak ada
+langkah delete cookie di jalur ini.
+
+### Governance — task baru T-089 (bukan subtask T-039.6)
+
+Dipertimbangkan sebagai subtask T-039.6 (satu rumpun routing/workspace,
+ADR-076) vs task baru dengan nomor global sendiri. Diputuskan **task baru
+T-089** — ini fitur produk baru (switcher) yang lahir dari amandemen
+ADR-076, bukan subtask kecil dari migrasi routing lama T-039. ID `T-089`
+diambil karena rentang v1.0 (`T-080`–`T-088`) sudah habis terisi, jadi
+ini ID global berikutnya yang belum pernah dipakai sama sekali (berbeda
+dari T-039 yang meminjam dari cadangan v0.2). Ditempatkan di
+`tasks/v01-foundation.md` (bukan file rilis lain) karena scope-nya sejalan
+dengan rumpun Workspace/Settings T-009/T-016/T-039, bukan Publishing v0.2.
+
+Status T-089: `🟡 In Progress` — subtask desain (T-089.1) sudah selesai,
+4 subtask kode (T-089.2–.5) belum dikerjakan sama sekali. Branch
+`feature/t039-4-onboarding-workspace-picker` (dibuat sesi sebelumnya untuk
+T-039.4) belum ada commit kode apa pun untuk task ini juga — implementasi
+kode T-039.4 **dan** T-089 sama-sama masih menunggu approval King Rezi
+atas desain, sebelum eksekusi kode dimulai.
+
+### Diupdate
+
+- `tasks/v01-foundation.md` — section baru "Workspace Switcher (ADR-088)"
+  berisi T-089 (5 subtask, 1 selesai) + catatan spin-off di penutup § T-039
+  + Catatan Rilis (penomoran ID).
+- `TASKS.md` — indeks release v0.1 (Task 20→21, breakdown status
+  dihitung ulang dari file sumber — sekaligus mengoreksi drift lama "11 ✅
+  · 5 🟡" yang sudah tidak cocok dengan file aktual sebelum penambahan ini
+  menjadi "10 ✅ · 6 🟡"), **Total** (71→72 task, 22→21 selesai,
+  142→147 subtask), Aturan ID (`T-088`→`T-089`).
+- `PROJECT_STATE.md` — KI-023 (catatan update baru, append; field
+  `Terkait` ditambah T-089/ADR-088), Recent Decisions (ADR-088
+  ditambahkan di puncak, ADR-083 digeser keluar dari 5 item), Completed
+  Ringkasan (bullet baru ditambahkan, bullet KI-031 resolved digeser keluar
+  dari 5 item), Metadata (versi 1.0.52, tanggal 2026-08-24), Snapshot/Next
+  Tasks (jumlah task 71→72).
+- `DECISIONS.md` — entri ADR-088 (dibuat di panggilan sebelumnya, bukan
+  sesi ini) + status ADR-076 ditandai "Amended by ADR-088".
+
+---
+
+## 2026-08-24 — Desain T-039.4 (halaman `/onboarding` picker workspace) selesai di Claude Design — implementasi kode belum dimulai
+
+### Context
+
+T-039.4 ("Bangun halaman `/onboarding` dengan picker workspace") sebelumnya
+berstatus belum dikerjakan. Sesuai rule 17 `AGENTS.md`, task ini diklasifikasi
+UI/UX-related — sebelum kode ditulis, gate mewajibkan cek dulu ke Claude
+Design apakah screen ini sudah ada rancangannya. Belum ada, sehingga
+implementasi kode di-STOP dulu dan pekerjaan sesi ini murni membuat
+rancangannya di Claude Design (project "Social Media Management", projectId
+`84aded99-bb23-49b1-be9f-dd8f21c6873e`), mengikuti keputusan yang sudah ada
+sebelumnya (ADR-076, ADR-077) — bukan keputusan arsitektur baru, jadi tidak
+ada ADR baru untuk pekerjaan ini.
+
+### Proses delegasi
+
+Awalnya didelegasikan ke subagent Neymar Product Designer, tapi `DesignSync`
+gagal dimuat di sesi subagent tersebut — ini kejadian ke-4 dengan pola gagal
+yang sama, sudah dicatat sebelumnya di `.claude/agents/README.md` oleh Neymar
+sendiri di sesi sebelum sesi ini. King Rezi memberi izin eksplisit untuk
+melanjutkan pekerjaan desain di sesi utama (bukan subagent), dan `DesignSync`
+berhasil dimuat di sana. Seluruh pekerjaan desain di bawah ini dikerjakan di
+sesi utama.
+
+### Pekerjaan
+
+1. File baru `templates/onboarding.html` di Claude Design — 2 state referensi
+   side-by-side memakai pola `.state-tag` yang sudah baku di project ini:
+   - **"Belum Punya Workspace"** — form buat workspace baru (field Nama
+     Workspace + Button primary).
+   - **"Pilih Workspace (>1, cookie hilang)"** — list `.ws-pick-item` yang
+     bisa diklik (avatar inisial + nama workspace + role sebagai
+     description), masing-masing row langsung set active workspace +
+     redirect ke Home.
+2. `styles.css` (Claude Design) ditambah section baru "Onboarding — Workspace
+   Picker (T-039.4, ADR-076)" berisi class `.ws-pick-list`, `.ws-pick-item`,
+   `.ws-pick-avatar`, `.ws-pick-body`, `.ws-pick-name`, `.ws-pick-role`,
+   `.ws-pick-chevron` — semua mereplikasi Astryx `List`+`ListItem` (dibangun
+   dari primitive `Item`: startContent Avatar, label, description,
+   onClick/href). Verifikasi komponen dilakukan lewat MCP `xds`
+   (`get("ClickableCard")`, `get("Item")`, `get("List")`); dipilih
+   `List`/`Item` bukan `ClickableCard` karena beberapa row berbagi satu list
+   di dalam satu card, bukan masing-masing jadi card berdiri sendiri.
+3. `readme.md` (Claude Design) diupdate: entri baru di section "## Files"
+   untuk `templates/onboarding.html` dan class `.ws-pick-*`, plus section
+   naratif baru "## Onboarding — Workspace Picker (T-039.4, ADR-076/ADR-077,
+   2026-08-24)".
+4. Branch git `feature/t039-4-onboarding-workspace-picker` dibuat (checkout
+   dari `staging`) sebelum kerja ini dimulai — belum ada commit apa pun di
+   branch itu, karena seluruh pekerjaan sesi ini terjadi di Claude Design
+   (bukan file kode `apps/web`), jadi tidak ada perubahan file lokal yang
+   perlu di-commit.
+
+### Open gap yang dicatat, bukan bagian scope T-039.4
+
+Project Claude Design ini masih memakai token `@astryxdesign/theme-neutral`,
+sedangkan `apps/web` sudah pindah ke `@astryxdesign/theme-stone` sejak
+ADR-087 (2026-08-21) — ADR-087 sendiri sudah mencatat ini sebagai item
+terbuka ("Claude Design belum disinkronkan ke theme Stone"). Screen
+onboarding baru ini sengaja memakai token Neutral yang sudah ada apa adanya,
+**tidak** mencoba resync sebagian — dicatat ulang di `readme.md` Claude
+Design sebagai reminder, bukan ADR baru (ADR-087 sudah cukup mencakupnya).
+
+### Status setelah sesi ini
+
+- Desain T-039.4 selesai di Claude Design — gate rule 17 `AGENTS.md`
+  terpenuhi untuk screen ini.
+- Implementasi kode `/onboarding` di `apps/web` **belum dikerjakan sama
+  sekali** — menunggu approval King Rezi atas desain ini sebelum
+  dilanjutkan.
+- Diupdate: `tasks/v01-foundation.md` § T-039 (Status header + catatan
+  T-039.4), `PROJECT_STATE.md` (KI-023, update sisa scope).
+
+---
+
 ## 2026-08-21 — Ganti theme Astryx dari Neutral ke Stone (ADR-087)
 
 ### Context

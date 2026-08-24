@@ -270,7 +270,7 @@ Semua route `/account/*` dan `/settings/*` sebelumnya masih placeholder "Scaffol
 
 | Field         | Value                                                                  |
 | ------------- | ----------------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress — T-039.1/.2/.3/.5 selesai (review Ridwan + QA Najwa lolos); T-039.4 belum dikerjakan (terpisah) |
+| **Status**    | 🟡 In Progress — T-039.1/.2/.3/.5 selesai (review Ridwan + QA Najwa lolos); T-039.4 desain sudah selesai di Claude Design (2026-08-24), implementasi kode belum dikerjakan — menunggu approval King Rezi (rule 17 AGENTS.md) |
 | **Domain**    | workspace · platform                                                    |
 | **ADR**       | ADR-076                                                                  |
 | **Terkait**   | KI-023, KI-024 (`PROJECT_STATE.md`) — KI-024 ditemukan saat T-039.5, belum ada task formal |
@@ -291,6 +291,9 @@ task ini dieksekusi sudah akurat/up-to-date.
 - [x] **T-039.2** Gabungkan `apps/web/src/app/account/...` (saat ini terpisah) ke dalam `settings/account/*`, konsisten dengan konsolidasi Settings jadi dua grup "Organization" + "Account" (satu entry point avatar/user menu)
 - [x] **T-039.3** Ganti resolusi workspace di Middleware/`src/proxy.ts` dari parsing URL `[slug]` menjadi baca cookie `active-workspace-id` (HTTP-only), tetap divalidasi ulang terhadap `workspace_members` di setiap request
 - [ ] **T-039.4** Bangun halaman `/onboarding` dengan picker workspace — re-entry point untuk dua skenario: user baru tanpa workspace (buat workspace pertama) dan user existing yang kehilangan cookie workspace aktif (pilih dari daftar workspace)
+
+**Catatan T-039.4 (2026-08-24) — desain selesai, implementasi kode belum dimulai:** Rancangan sudah dibuat di Claude Design (project "Social Media Management") mengikuti gate rule 17 `AGENTS.md` — file baru `templates/onboarding.html` (2 state referensi: "Belum Punya Workspace" — form buat workspace baru; "Pilih Workspace (>1, cookie hilang)" — list `.ws-pick-item` yang bisa diklik, masing-masing langsung set active workspace + redirect ke Home) dan class baru di `styles.css` (`.ws-pick-list`, `.ws-pick-item`, `.ws-pick-avatar`, `.ws-pick-body`, `.ws-pick-name`, `.ws-pick-role`, `.ws-pick-chevron`, mereplikasi pola Astryx `List`+`ListItem`/`Item`). Implementasi kode di `apps/web` **belum dikerjakan sama sekali** — menunggu approval King Rezi atas desain ini sebelum dilanjutkan. Branch `feature/t039-4-onboarding-workspace-picker` sudah dibuat (checkout dari `staging`), belum ada commit. Detail lengkap proses & keputusan: `COMPLETE_TASK.md`.
+
 - [x] **T-039.5** (ADR-077) Migrasi kode pola sidebar Settings dari secondary nav ke sidebar tunggal pola Buffer: (a) `sideNav` di `AppShell` (`apps/web/src/app/(app)/layout.tsx`) jadi kondisional per-route — `WorkspaceSideNav` di luar `/settings`, `SettingsSideNav` di dalam `/settings`; (b) hapus `Layout`+`LayoutPanel role="navigation"` secondary nav di `apps/web/src/app/(app)/settings/layout.tsx`, content jadi full-width; (c) tambah header back-navigation ("← Settings" → Home) di `SettingsSideNav.tsx`; referensi visual sudah ada di readme.md Claude Design (`.settings-sidebar`)
 
 **Catatan eksekusi T-039.1–.3 (2026-08-11):** Dikerjakan 5 track paralel
@@ -363,6 +366,83 @@ langsung juga benar).
 T-039.5 menutup sisa gap render sidebar Settings di KI-023 (bersama ADR-077).
 Sisa scope terbuka KI-023/T-039 sekarang hanya **T-039.4** (onboarding
 picker workspace).
+
+**Catatan spin-off (2026-08-24):** Setelah T-039.4 didesain, King Rezi
+menemukan gap terpisah — tidak ada cara *sengaja* pindah workspace setelah
+user pernah memilih satu (picker T-039.4 cuma re-entry saat cookie hilang).
+Gap ini diamandemen lewat **ADR-088** dan dipecah jadi task baru
+**T-089** (bukan subtask T-039.6) karena scope-nya fitur produk baru
+(switcher), bukan bagian migrasi routing/Settings lama. Lihat § T-089 di
+bawah untuk detail.
+
+---
+
+## Workspace Switcher (ADR-088)
+
+### T-089 · Workspace Switcher deliberate — Settings → Account → Workspaces
+
+| Field         | Value                                                                  |
+| ------------- | ----------------------------------------------------------------------- |
+| **Status**    | 🟡 In Progress — T-089.1 (desain, termasuk 2 bug fix 2026-08-24) dan T-089.5 (wiring) sudah selesai; T-089.2/.3/.4 (kode `apps/web`: `switchWorkspace` service, UI, dialog) belum dikerjakan sama sekali |
+| **Domain**    | workspace · UI                                                          |
+| **ADR**       | ADR-088 (amandemen ADR-076 poin 4)                                      |
+| **Terkait**   | T-039 (reuse mekanisme cookie `active-workspace-id`), KI-023 (`PROJECT_STATE.md`, catatan update 2026-08-24) |
+| **Depends**   | T-039 🟡 (cookie `active-workspace-id` + validasi ulang `workspace_members`), T-006 ✅ (`WorkspaceService.createWorkspace` existing, dipakai ulang dialog "Buat Workspace Baru") |
+| **Baca dulu** | `decisions/ADR-088-amandemen-adr-076-workspace-switcher-deliberate-via-settings-account-workspaces.md` · `decisions/ADR-076-workspace-context-via-cookie-hapus-slug-konsolidasi-settings-organization-account.md` · `05-architecture/auth-architecture.md` (Workspace Context Resolution, Onboarding Flow, AU-D03) · `05-architecture/application-layer.md` (kontrak `switchWorkspace` baru di `WorkspaceService`) · `04-ux/information-architecture.md` (Settings → Account → Workspaces) |
+
+**Gap yang melahirkan task ini:** ADR-076 poin 4 (versi awal) menjadikan
+`/onboarding` picker (T-039.4) sebagai satu-satunya jalur "pilih workspace"
+— hanya muncul saat cookie hilang, bukan mekanisme switch kapan saja
+setelah user sudah punya workspace aktif. King Rezi menyadari tidak ada
+cara sengaja pindah workspace di luar skenario itu. **ADR-088**
+mengamandemen poin ini: halaman baru **Settings → Account → Workspaces**
+(posisi teratas grup Account, di atas Profile) — list seluruh workspace
+milik user (workspace aktif = chip "Aktif" non-interactive, lainnya = row
+klik untuk switch, reuse `.ws-pick-item` dari `templates/onboarding.html`)
++ tombol "Buat Workspace Baru" (dialog form sederhana, non-destruktif,
+kolom ke-5 baru di `components/dialog.html`).
+
+**Koreksi mekanisme (penting, jangan disalahpahami sebagai "hapus cookie
+dulu"):** switch yang disengaja ini **langsung overwrite** cookie
+`active-workspace-id` ke workspace baru (setelah validasi ulang
+membership terhadap `workspace_members`), lalu redirect ke Home — **tidak
+ada** langkah delete cookie atau alur ulang lewat `/onboarding`.
+
+**Scope MVP sengaja narrow (ADR-088):** hanya (a) switch active workspace
+antar membership yang sudah ada, (b) create workspace tambahan dari
+halaman ini. **Bukan** bagian scope: multi-workspace management penuh
+(bulk actions, billing gabungan, shared views) — tetap Out of Scope sesuai
+`mvp-definition.md`.
+
+**Status desain (2026-08-24):** Sudah dieksekusi di Claude Design (AI
+utama, langsung via `DesignSync` — bukan subagent Neymar, mengikuti pola
+delegasi T-039.4 di sesi yang sama): file baru `templates/settings-workspaces.html`,
+6 halaman `settings-*.html` lain ditambah link nav "Workspaces", kolom
+ke-5 baru di `components/dialog.html`, modifier `.ws-pick-item.is-active`
+di `styles.css`, `readme.md` diupdate. **Belum diwire** ke
+`templates/app-prototype/AppPrototype.dc.html` (interactive runner) —
+sengaja dibiarkan sebagai follow-up terbuka (T-089.5), bukan oversight.
+Detail lengkap: `COMPLETE_TASK.md`.
+
+**Update (2026-08-24) — 2 bug fix pasca-review, dikerjakan King Rezi sendiri
+langsung di Claude Design (bukan AI/subagent):** (1) dialog "Buat Workspace
+Baru" langsung terbuka & tidak bisa ditutup — root cause CSS
+`.dialog-backdrop.hidden{ display:none; }` lupa disalin ke `<style>` lokal
+`templates/settings-workspaces.html` saat T-089.1; King Rezi menambahkan
+baris CSS itu, plus peningkatan kecil di luar scope bug report: script
+halaman sekarang benar-benar memindahkan chip "Aktif" ke row yang diklik.
+(2) nav "Workspaces" di App Prototype error "belum ada di scope" — halaman
+belum diwire (T-089.5); King Rezi menambahkan entry `{ key:
+'settings-workspaces', file: 'settings-workspaces.html', code: 'SETTINGS',
+title: 'Settings → Account → Workspaces', menu: 'Settings · Account ·
+Workspaces' }` ke array `SCREENS` di `AppPrototype.dc.html` + scope
+Templates list. Keduanya terverifikasi via `DesignSync get_file`/grep.
+
+- [x] **T-089.1** Desain Claude Design — halaman `settings-workspaces.html` (list workspace + switch) dan kolom dialog "Buat Workspace Baru" di `components/dialog.html`. **Catatan (2026-08-24):** fix CSS `.dialog-backdrop.hidden` yang kelupaan saat desain awal (bug dialog langsung terbuka/tidak bisa ditutup) sudah diperbaiki King Rezi sendiri — lihat detail di atas.
+- [ ] **T-089.2** `WorkspaceService.switchWorkspace` — validasi membership user ke workspace target, overwrite cookie `active-workspace-id`, redirect Home
+- [ ] **T-089.3** UI halaman `/settings/account/workspaces` — list workspace (chip "Aktif" untuk current, row klik untuk switch pada workspace lain)
+- [ ] **T-089.4** Dialog "Buat Workspace Baru" di halaman ini — reuse `WorkspaceService.createWorkspace` (T-006) yang sudah ada
+- [x] **T-089.5** Wire halaman baru ke `templates/app-prototype/AppPrototype.dc.html` (interactive runner Claude Design) — selesai (2026-08-24), dikerjakan King Rezi sendiri, entry `SCREENS` terverifikasi ada
 
 ---
 
@@ -446,7 +526,7 @@ Alasan urgensinya: kalau jalur Bearer token baru dipasang setelah kode web matan
 
 ## Catatan Rilis
 
-* Nomor kosong v0.1 sudah terpakai semua (T-019 diisi task API mobile). Task v0.1 baru berikutnya memakai nomor global berikutnya yang belum pernah dipakai — jangan menggeser ID yang sudah ada. **T-039** (Migrasi Routing & Settings, ADR-076) memakai nomor ini: ID global berikutnya yang belum pernah dipakai, dipinjam dari ruang kosong yang sebelumnya dicadangkan untuk pertumbuhan v0.2 (lihat Catatan Rilis `tasks/v02-publishing-mvp.md`) — task tetap ditempatkan di file v0.1 karena scope-nya (Workspace/Settings routing) sejalan dengan T-009/T-016, bukan v0.2 Publishing.
+* Nomor kosong v0.1 sudah terpakai semua (T-019 diisi task API mobile). Task v0.1 baru berikutnya memakai nomor global berikutnya yang belum pernah dipakai — jangan menggeser ID yang sudah ada. **T-039** (Migrasi Routing & Settings, ADR-076) memakai nomor ini: ID global berikutnya yang belum pernah dipakai, dipinjam dari ruang kosong yang sebelumnya dicadangkan untuk pertumbuhan v0.2 (lihat Catatan Rilis `tasks/v02-publishing-mvp.md`) — task tetap ditempatkan di file v0.1 karena scope-nya (Workspace/Settings routing) sejalan dengan T-009/T-016, bukan v0.2 Publishing. **T-089** (Workspace Switcher, ADR-088, 2026-08-24) juga memakai pola yang sama: ID global berikutnya yang belum pernah dipakai sama sekali (bukan dipinjam dari cadangan release manapun, karena seluruh rentang T-080–T-088 v1.0 sudah terisi) — ditempatkan di file v0.1 karena lahir sebagai amandemen ADR-076/T-039 (Workspace context & Settings), bukan task baru terpisah dari rumpun ini.
 * **Definisi "Foundation selesai":** semua task di rilis ini `✅ Done` **kecuali** yang secara sadar ditunda dengan alasan tercatat — dan **kecuali tiga task yang menunggu v0.2** (lihat di bawah). **T-012** (Sidebar Channels) sebelumnya termasuk daftar ini tapi sudah ✅ Done (2026-08-12) — T-012.2 (scheduled count) ternyata tidak perlu menunggu real Outstand adapter, cukup data `PublishingPost`/`PublishingPostTarget` yang sudah ada sejak T-028.
 * **Task v0.1 yang tidak bisa ditutup sebelum v0.2 berjalan** (dependency lintas rilis, disengaja dan diketahui):
   * **T-013** Connect account — subtask T-013.1 butuh T-025 (Real OutstandAdapter, v0.2).
