@@ -8,6 +8,53 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-26 — T-033 Calendar view: Design System selesai (Claude Design)
+
+### Context
+
+Lanjutan sesi T-033 (dua entri di bawah: perencanaan UX + ADR-090, lalu
+koreksi ADR-091). Setelah dokumentasi disinkronkan, King Rezi lanjut
+eksekusi ke Design System (Claude Design, project "Social Media
+Management") — sebagian dikerjakan langsung oleh King Rezi memakai
+prompt yang disiapkan AI utama, sebagian dieksekusi AI utama langsung
+lewat `DesignSync` setelah King Rezi melaporkan hasil yang keliru.
+
+### Hasil akhir di Claude Design
+
+* `templates/publish-calendar.html` — dua state referensi (Week: grid
+  per-jam × 7 hari; Month: grid tanggal 1 bulan + badge "N More"),
+  **ditumpuk vertikal** (bukan side-by-side seperti percobaan pertama —
+  dikoreksi karena grid Calendar terlalu lebar untuk pola horizontal,
+  beda dari card auth 380px yang jadi acuan awal). Navigasi Today/‹/›/
+  label periode + filter Status/Channel per state. Tombol **New Post**
+  dipindah ke `.page-head` sejajar judul halaman di kanan atas (pola
+  sama `publish-queue.html`) — sebelumnya berdiri sendiri di bawah grid.
+* `components/popover.html` — komponen baru, anatomi Header+Body+Trigger
+  Astryx `Popover` (bukan `HoverCard`, ADR-091) terverifikasi
+  `astryx component --dense`, dengan tulisan penjelasan koreksi
+  HoverCard-vs-Popover di dalamnya.
+* `templates/app-prototype/AppPrototype.dc.html` — klik item Calendar
+  → `openPostPopover()` → CTA → `triggerEditDraft()` (Queue/Drafts tidak
+  berubah); toggle Minggu/Bulan diwire nyata via `applyCalendarView()`
+  (class `.cal-view-select`, sengaja **bukan** `data-proto` supaya tidak
+  bentrok delegated click-listener runner yang men-`preventDefault()`
+  semua elemen `[data-proto]` — pola sama dengan filter Engage yang
+  pakai id polos). Default Week, tidak persist antar navigasi (sama
+  seperti aturan Dark Mode toggle).
+* `readme.md` — bagian "Calendar — Week/Month States & Post Preview
+  Popover" diperbarui menjelaskan koreksi layout (stacked, bukan
+  side-by-side) dan status wiring toggle.
+
+### Status
+
+**Murni Design System — belum ada kode `apps/web`.** Checkbox
+T-033.1–.8 di `tasks/v02-publishing-mvp.md` tetap terbuka (rencana
+mockup ≠ implementasi kode); ditandai selesai satu per satu saat
+implementasi asli berjalan. Langkah berikut: design review, baru
+implementasi kode dimulai.
+
+---
+
 ## 2026-08-26 — Koreksi ADR-090: Popover (bukan HoverCard) untuk preview post Calendar (ADR-091)
 
 ### Context

@@ -91,12 +91,15 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
 
-> **T-033** (Calendar view) — masih `⏳ Not Started` (task-level), tapi sesi
-> perencanaan UX (2026-08-26, branch `feature/calendar-design-system`) sudah
-> memecah task ini jadi 8 subtask (T-033.1–.8) mengikuti referensi Buffer +
-> **ADR-090** (klik item → Popover Astryx sebelum Draft Editor, khusus
-> Calendar). Langkah berikut: Design System (Claude Design), baru
-> implementasi kode. Detail: `tasks/v02-publishing-mvp.md` § T-033.
+> **T-033** (Calendar view) — masih `⏳ Not Started` (task-level, belum ada
+> kode `apps/web`), tapi sesi 2026-08-26 (branch `feature/calendar-design-system`)
+> sudah menuntaskan **perencanaan UX + Design System**: dipecah jadi 8
+> subtask (T-033.1–.8) mengikuti referensi Buffer + **ADR-090/ADR-091**
+> (klik item → Popover Astryx sebelum Draft Editor, khusus Calendar), dan
+> Claude Design sudah punya mockup lengkap (grid Week/Month, Popover,
+> filter, navigasi, toggle interaktif di App Prototype). Langkah berikut:
+> design review, baru implementasi kode. Detail: `tasks/v02-publishing-mvp.md`
+> § T-033.
 
 > **T-032** (Queue management) sudah ✅ **Done** (2026-08-20) — listQueue dari data asli (bukan `PublishingQueueSlot`, ADR-083), UI Astryx nyata, 3 aksi (Publish Now/Edit/Cancel Schedule). Menutup sebagian besar **T-030** (Cancel Schedule) untuk konteks Queue — sisa scope Calendar masih di T-033. Detail: `tasks/v02-publishing-mvp.md` § T-032.
 
