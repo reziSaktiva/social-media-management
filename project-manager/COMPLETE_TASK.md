@@ -8,6 +8,114 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-26 — Redesain kontrak ACL Outstand (ADR-092)
+
+### Context
+
+Ditemukan saat verifikasi gap T-033 (Calendar): setelah membaca dokumentasi
+resmi Outstand API (create-a-post, get-post-details, list-posts,
+get-post-analytics, post-lifecycle), kontrak `IOutstandAdapter` yang ada
+sebelumnya ternyata tidak merefleksikan bentuk API asli — `create-a-post`
+menerima SEMUA akun target dalam satu call dan mengembalikan satu `post.id`
+(bukan satu job per akun), status per akun baru tersedia async, dan tidak
+ada endpoint retry resmi.
+
+### Perubahan
+
+- `IOutstandAdapter.schedulePost`/`publishNow` diredesain menjadi satu call
+  yang menerima `targets[]` dan mengembalikan satu `outstandPostId`.
+- Method baru `fetchPostOutcome(outstandPostId)` untuk resolve status per
+  akun (polling sekarang, webhook T-026 nanti tanpa rework kontrak).
+- `cancelScheduledPost` sekarang dipanggil sekali per post.
+- Schema Prisma: `PublishingPost.outstandPostId` (baru),
+  `PublishingPostTarget.outstandJobId`/`.publishedUrl` diganti
+  `.platformPostId`/`.platformPostUrl`. Migration
+  `20260826092111_redesign_outstand_acl_contract` sudah diterapkan ke DB
+  dev (`prisma migrate diff` bersih).
+- `IPublishingRepository.markPostFailed` diperluas: transisi dari
+  `Scheduled` juga didukung (sebelumnya hanya dari `Published`), karena
+  1-call-semua-target berarti gagalnya schedulePost bersifat all-or-nothing.
+- File yang berubah: `packages/shared/src/contracts/outstand-adapter.ts`,
+  `apps/web/src/domains/publishing/adapters/outstand-adapter.ts`,
+  `apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts`,
+  `apps/web/src/domains/publishing/repositories/publishing.repository.ts`
+  (+ implementasi Prisma), `schedule-posts.use-case.ts`,
+  `publish-now.use-case.ts`, `cancel-schedule.use-case.ts`,
+  `analytics-ingestion.use-case.ts` (rename parameter), Prisma schema +
+  migration.
+
+### Verifikasi
+
+`bun run test` (179 passed, 3 skip butuh DB asli), `typecheck`, `lint`
+bersih — dilakukan oleh Elon Backend Engineer di sesi ini.
+
+### Dokumentasi
+
+- ADR baru: **ADR-092** (`project-manager/decisions/ADR-092-redesain-kontrak-acl-outstand-1-call-semua-target-polling-outcome.md`).
+- Catatan follow-up ditambahkan di task **T-034** (`tasks/v02-publishing-mvp.md`)
+  soal retry manual (T-034.4) wajib mengikuti pola delete-lalu-create-ulang
+  Outstand, bukan re-trigger generik.
+- Gap diketahui, belum diselesaikan: bentuk hasil
+  `fetchPostMetrics`/`fetchWorkspaceMetrics` (T-041) belum direvisi
+  mengikuti response asli `get-post-analytics` — dievaluasi ulang saat
+  T-041 disentuh lagi.
+
+---
+
+## 2026-08-26 — Bug fix T-029 (Publish Now) + koreksi mockup T-033 Calendar
+
+### Context
+
+Ditemukan saat verifikasi T-033 (Calendar): `PublishNowUseCase` tidak
+pernah men-set `PublishingPost.status` jadi `Failed` walau semua target
+gagal publish — melanggar aturan yang sudah ada di
+`integration-layer.md:269-270,305`. Diperbaiki oleh Prabowo Feature
+Engineer di sesi ini. Terpisah, King Rezi juga mengonfirmasi koreksi
+mockup Claude Design untuk T-033 terkait status apa saja yang boleh
+muncul di grid Calendar.
+
+### Bug fix T-029 (Publish Now)
+
+* Repository method baru `markPostFailed` — idempoten, hanya update
+  baris yang masih status `Published` — ditambahkan ke interface
+  `IPublishingRepository`
+  (`apps/web/src/domains/publishing/repositories/publishing.repository.ts`)
+  + implementasi Prisma
+  (`apps/web/src/lib/repositories/publishing/publishing.repository.ts`).
+* `apps/web/src/domains/publishing/services/publish-now.use-case.ts`:
+  setelah `Promise.all` publish ke semua target selesai, kalau SEMUA
+  outcome gagal → panggil `markPostFailed`. Kalau minimal satu target
+  sukses (partial atau full) → tetap `Published`, tidak berubah dari
+  perilaku sebelumnya.
+* Test baru: 3 skenario (semua gagal, partial, semua sukses) — semua
+  pass. Diverifikasi: `tsc --noEmit` bersih, `eslint` bersih, tidak ada
+  regresi (151 test lain tetap pass).
+* Fitur inti T-029 tetap `✅ Done` — ini murni koreksi bug korektnes,
+  bukan perubahan status task. Detail: `tasks/v02-publishing-mvp.md`
+  § T-029.
+
+### Koreksi mockup Claude Design T-033 (Calendar)
+
+* `templates/publish-calendar.html` — 3 card yang sebelumnya berstatus
+  "Ready to Schedule" (Week: TikTok "Video latte art 15 detik"; Month:
+  X "Countdown grand launching" & TikTok "Tutorial latte art") diubah
+  jadi "Scheduled".
+* Alasan: dikonfirmasi dengan King Rezi bahwa status
+  `Draft`/`In Review`/`Ready to Schedule` tidak pernah punya
+  `scheduledAt` (`roles-permissions.md:131-136`), sehingga tidak
+  seharusnya muncul di grid Calendar sama sekali.
+* Keputusan implementasi final: grid Calendar (Week & Month) hanya
+  menampilkan post berstatus Scheduled, Published, Failed. Draft/In
+  Review/Ready to Schedule tidak pernah muncul di grid. Query
+  `listCalendarPosts` (T-033.1) sudah benar secara alami untuk aturan
+  ini, tidak ada perubahan kode. Filter dropdown status (T-033.6) tetap
+  6 opsi, tidak diubah — hanya contoh card di mockup yang dikoreksi.
+* Bukan perubahan baseline (menyelaraskan implementasi dengan
+  `roles-permissions.md` yang sudah ada), tidak ada ADR baru. Detail:
+  `tasks/v02-publishing-mvp.md` § T-033.
+
+---
+
 ## 2026-08-26 — T-033 Calendar view: Design System selesai (Claude Design)
 
 ### Context

@@ -174,6 +174,8 @@ Jadi T-029.4/.5/.6 di bawah **desainnya sudah tersedia** — sisa pekerjaan murn
 
 **Selesai (2026-08-18):** `PublishNowUseCase` (`apps/web/src/domains/publishing/services/publish-now.use-case.ts`) mengikuti pola `SchedulePostsUseCase` (T-028/ADR-059) — RBAC eksplisit lewat `assertActorCanPublishNow` (`apps/web/src/domains/publishing/rbac.ts`, ADR-074: Owner/Admin/Creator) dijalankan fail-fast sebelum validasi `ContentFormat` (ADR-039), lalu persist dulu (`PublishingPostTarget` status `pending`, post → `Published`) sebelum panggil adapter per target — supaya tidak ada job Outstand yang orphan tanpa jejak DB. Server Action `publishNowAction` di `apps/web/src/app/(app)/components/draft-editor/actions.ts` memanggil use-case ini lewat `OutstandAdapter.publishNow`, yang jalur produksinya masih `FakeOutstandAdapter` (pola ADR-059, T-025 real adapter belum ada — KI-003). UI Draft Editor (`apps/web/src/app/(app)/components/draft-editor/Modal.tsx`) menambahkan tombol "Publish Now" berdampingan Schedule + dialog Confirmation Summary varian Publish Now, dan redirect ke Publish/Calendar setelah konfirmasi (menutup T-031.4). Sebagai bagian commit yang sama, Schedule Picker Draft Editor dirapikan menyamai mockup (heading tunggal "Jadwal", placeholder Bahasa Indonesia, ikon kalender/jam dipindah ke kanan via Tailwind `flex-row-reverse`) dan dot indicator ditambahkan ke Badge status — dua temuan dari pekerjaan ini dicatat sebagai **KI-029** (xstyle Astryx belum bisa dipakai) dan **KI-030** (TimeInput Astryx tidak membatasi input real-time) di `PROJECT_STATE.md`. Diverifikasi: `tsc --noEmit` bersih, Vitest suite terkait lulus (`publish-now.use-case.test.ts`, `fake-outstand-adapter.test.ts`, dst), end-to-end browser (New Post → Publish Now → Confirmation Summary → redirect → data DB `published`).
 
+**Bug fix korektnes (2026-08-26, ditemukan saat verifikasi T-033):** `PublishNowUseCase` tidak pernah men-set `PublishingPost.status` jadi `Failed` walau SEMUA target gagal publish — melanggar aturan `integration-layer.md:269-270,305` ("post.error" hanya kalau semua target gagal; post tetap `Published` kalau minimal satu target sukses/partial success). Diperbaiki oleh Prabowo Feature Engineer: method baru `markPostFailed` di `IPublishingRepository` (idempoten, hanya update baris yang masih status `Published`) — interface `apps/web/src/domains/publishing/repositories/publishing.repository.ts`, implementasi Prisma `apps/web/src/lib/repositories/publishing/publishing.repository.ts`; `apps/web/src/domains/publishing/services/publish-now.use-case.ts` memanggil `markPostFailed` setelah `Promise.all` publish ke semua target selesai kalau seluruh outcome gagal, tanpa mengubah perilaku partial/full success. 3 skenario test baru (semua gagal, partial, semua sukses) — semua pass; `tsc`/`eslint` bersih, tidak ada regresi (151 test lain tetap pass). Fitur inti T-029 tetap dianggap selesai — ini murni koreksi bug, bukan perubahan status task.
+
 ### T-030 · Cancel Schedule + dialog konfirmasi
 
 | Field         | Value                                            |
@@ -245,7 +247,7 @@ Model Prisma `PublishingQueueSlot` sudah ada di schema **tanpa service apapun** 
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress                                                |
 | **Domain**    | publishing                                                   |
 | **ADR**       | ADR-023 (manual refresh, bukan realtime), ADR-046, **ADR-090** (Popover klik item, khusus Calendar; komponen dikoreksi **ADR-091** dari HoverCard menjadi Popover) |
 | **Depends**   | T-028 ✅                                                      |
@@ -258,6 +260,8 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 **Design System selesai (2026-08-26):** Claude Design (project "Social Media Management") sudah mengimplementasikan seluruh rancangan di atas — `templates/publish-calendar.html` (grid Week per-jam + grid Month dengan "N More", ditumpuk vertikal sesuai konvensi state referensi project — bukan side-by-side, dikoreksi setelah percobaan pertama), `components/popover.html` (Popover baru, anatomi Header+Body+Trigger terverifikasi CLI), navigasi Today/‹/›/label + filter Status/Channel per state, dan tombol New Post dipindah sejajar judul halaman (pola sama `publish-queue.html`). Toggle Minggu/Bulan diwire interaktif di `templates/app-prototype/AppPrototype.dc.html` (`applyCalendarView()`, class `.cal-view-select` — sengaja bukan `data-proto` supaya tidak bentrok delegated click-listener runner), default Week, tidak persist antar navigasi. **Ini murni Design System (mockup statis + prototype interaktif) — belum ada satu baris kode `apps/web` yang ditulis.** Checkbox T-033.1–.8 di bawah tetap terbuka; masing-masing baru ditandai selesai saat implementasi kode aslinya (bukan mockup-nya) selesai.
 
 **Design Review selesai (2026-08-26).** King Rezi sudah review langsung di Claude Design; revisi yang muncul selama review (layout stacked, koreksi Popover, posisi tombol New Post) sudah diterapkan pada sesi yang sama — tidak ada revisi tersisa. **Implementasi kode (T-033.1–.8) akan dikerjakan di sesi/room chat terpisah** dari sesi perencanaan+Design System ini (branch `feature/calendar-design-system` tetap jadi basis). Sesi implementasi wajib baca dulu section "Design System selesai" di atas + file Claude Design yang disebut (`templates/publish-calendar.html`, `components/popover.html`, `templates/app-prototype/AppPrototype.dc.html`) sebagai acuan visual sebelum mulai — bukan menebak ulang layout dari nol.
+
+**Keputusan implementasi — status yang muncul di grid Calendar (2026-08-26):** dikonfirmasi dengan King Rezi bahwa status `Draft`/`In Review`/`Ready to Schedule` TIDAK PERNAH punya `scheduledAt` (belum ada waktu tayang, sesuai `roles-permissions.md:131-136`), sehingga tidak seharusnya muncul di grid Calendar sama sekali. Grid Week & Month HANYA menampilkan post berstatus **Scheduled, Published, Failed** — bukan perubahan baseline, murni menyelaraskan implementasi dengan definisi yang sudah ada, jadi tidak perlu ADR baru. Mockup `templates/publish-calendar.html` di Claude Design dikoreksi (3 card yang sebelumnya "Ready to Schedule" diubah jadi "Scheduled" agar konsisten dengan aturan ini). Query `listCalendarPosts` (T-033.1) yang memfilter berdasarkan `scheduledAt`/`publishedAt` secara alami sudah benar untuk aturan ini — tidak ada perubahan kode tambahan diperlukan. Filter dropdown status di halaman Calendar (T-033.6) tetap menampilkan 6 opsi seperti rencana semula, tidak diubah — koreksi ini hanya berlaku ke contoh card di mockup dan ke perilaku grid.
 
 - [ ] **T-033.1** Query post per rentang tanggal + filter akun (`PublishingService`, query `PublishingPost`/`PublishingPostTarget`)
 - [ ] **T-033.2** State periode via query param (`?view=week|month&date=<timestamp>`) pada route tunggal `/publish/calendar` — tidak menambah route baru (konsisten ADR-046)
@@ -284,6 +288,12 @@ Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai place
 - [ ] **T-034.2** UI daftar riwayat + filter
 - [ ] **T-034.3** Halaman detail post: hasil per akun, pesan error, link ke post asli
 - [ ] **T-034.4** Aksi retry manual untuk target yang gagal
+
+**Catatan (ADR-092, 2026-08-26):** Outstand API tidak punya endpoint retry
+resmi — dokumentasi resminya merekomendasikan hapus post yang gagal
+(`delete-a-post-from-social-networks`) lalu buat post baru (`create-a-post`),
+bukan re-trigger job yang sama. T-034.4 wajib mengikuti pola
+delete-lalu-create-ulang ini saat dikerjakan.
 
 ### T-035 · Delete Post + dialog konfirmasi
 

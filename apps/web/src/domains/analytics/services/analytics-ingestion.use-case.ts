@@ -32,14 +32,24 @@ export interface SyncPostMetricsTargetInput {
   connectedAccountId: ConnectedAccountId;
   platform: SocialPlatform;
   /**
-   * `PublishingPostTarget.outstandJobId` — external reference dari domain
-   * `publishing`. Use Case ini TIDAK mengimpor domain `publishing`; caller
-   * (job handler / Route Handler `/api/jobs/run`) wajib me-resolve nilai ini
+   * `PublishingPost.outstandPostId` — external reference dari domain
+   * `publishing` (redesain ACL 2026-08-26: dulu `PublishingPostTarget.outstandJobId`
+   * per-target, sekarang post-level dan SAMA untuk semua target satu post,
+   * karena Outstand hanya mengenal satu id per post, bukan satu job per
+   * akun). Use Case ini TIDAK mengimpor domain `publishing`; caller (job
+   * handler / Route Handler `/api/jobs/run`) wajib me-resolve nilai ini
    * lebih dulu lewat public API `publishing`, persis pola
    * `SchedulePostsUseCase` (ADR-059) yang mewajibkan caller me-resolve
    * `outstandAccountId` dari domain `workspace` sebelum memanggil `execute`.
+   *
+   * **Gap diketahui (dicatat, bukan diselesaikan di redesain ini)** —
+   * `fetchPostMetrics` Outstand sebenarnya mengembalikan metrics PER-AKUN +
+   * `aggregated_metrics` untuk SATU `outstandPostId`, jadi memanggilnya
+   * sekali per target dengan id yang sama (seperti di bawah) tidak
+   * memanfaatkan bentuk response asli — follow-up T-041 mengevaluasi
+   * penyesuaian shape penuh (array per akun), bukan bagian ADR ini.
    */
-  outstandJobId: string;
+  outstandPostId: string;
 }
 
 export interface SyncWorkspaceSnapshotAccountInput {
@@ -82,7 +92,7 @@ export class AnalyticsIngestionUseCase {
 
     for (const target of targets) {
       const metrics = await this.outstandAdapter.fetchPostMetrics(
-        target.outstandJobId,
+        target.outstandPostId,
       );
 
       const record = await this.repository.upsertPostMetrics({

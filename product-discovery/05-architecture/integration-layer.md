@@ -86,6 +86,12 @@ Anti-Corruption Layer (ACL) adalah layer terjemahan yang:
 
 `OutstandAdapter` adalah modul khusus yang mengimplementasikan seluruh komunikasi dengan Outstand API.
 
+**(amandemen ADR-092)** `schedulePost`/`publishNow` menerima SEMUA target
+sekaligus dalam satu call dan mengembalikan SATU `outstandPostId` — bukan
+lagi satu call per akun. Status per akun (`platformPostId`,
+`platformPostUrl`, `status`, dsb.) tidak tersedia sinkron dari call ini;
+harus di-resolve belakangan lewat `fetchPostOutcome`.
+
 ```
 OutstandAdapter (Anti-Corruption Layer)
   ├── connectAccount(params) → ConnectedAccountData
@@ -93,14 +99,18 @@ OutstandAdapter (Anti-Corruption Layer)
   ├── requestMediaUpload(params) → OutstandUploadTarget
   ├── uploadMedia(uploadUrl, bytes, contentType) → void
   ├── confirmMediaUpload(uploadId) → OutstandMediaData
-  ├── schedulePost(params) → OutstandJobResult
-  │     // params mencakup: outstandAccountId, caption, outstandMediaUrls, scheduledAt,
+  ├── schedulePost(targets[], params) → { outstandPostId }
+  │     // targets: seluruh akun tujuan post ini sekaligus (1 call, 1 post.id)
+  │     // params mencakup: caption, outstandMediaUrls, scheduledAt,
   │     // contentFormat, platformOptions? — dipetakan ke override Outstand di ACL
-  ├── fetchPostOutcome(outstandJobId) → PostTargetOutcome[]
-  ├── cancelScheduledPost(outstandJobId) → void
+  ├── publishNow(targets[], params) → { outstandPostId }
+  ├── fetchPostOutcome(outstandPostId) → PostTargetOutcome[]
+  │     // wajib dipanggil untuk resolve status per akun (pending|published|failed);
+  │     // tidak diasumsikan sinkron dari schedulePost/publishNow
+  ├── cancelScheduledPost(outstandPostId) → void
   ├── fetchComments(outstandAccountId, cursor?) → CommentPage
   ├── replyToComment(outstandCommentId, text) → ReplyResult
-  ├── fetchPostMetrics(outstandJobId) → PostMetricsData
+  ├── fetchPostMetrics(outstandPostId) → PostMetricsData
   └── fetchWorkspaceMetrics(outstandAccountId, period) → WorkspaceMetricsData
 ```
 
@@ -191,22 +201,35 @@ Menghubungkan akun media sosial ke workspace dilakukan melalui OAuth flow yang d
 
 Publishing ke social media dilakukan melalui Outstand API — sistem internal tidak berinteraksi langsung dengan API platform social media.
 
+**(amandemen ADR-092)** Diagram dan langkah di bawah merefleksikan model
+1-call-semua-target: `schedulePost` dipanggil SEKALI untuk seluruh
+`PostTarget` pada post yang sama, mengembalikan SATU `outstandPostId` di
+level `Post`. Outcome per akun (`platformPostId`, `platformPostUrl`,
+`status`) TIDAK dikembalikan sinkron oleh call ini — harus diresolve
+belakangan lewat `OutstandAdapter.fetchPostOutcome(outstandPostId)` (polling
+sekarang, webhook di T-026 nanti).
+
 ```
 ┌──────────────────┐    ┌──────────────────────┐    ┌─────────────────┐
 │  PublishingService│    │  OutstandAdapter (ACL)│    │  Outstand API   │
 └────────┬─────────┘    └──────────┬───────────┘    └────────┬────────┘
          │                          │                          │
-         │  schedulePost(params)    │                          │
+         │  schedulePost(targets[]) │                          │
          │─────────────────────────►│                          │
          │                          │  POST /v1/posts/         │
+         │                          │  (accounts: [...])       │
          │                          │─────────────────────────►│
-         │                          │  Return { jobId, ... }   │
+         │                          │  Return { post.id, ... } │
          │                          │◄─────────────────────────│
-         │  Return OutstandJobResult │                          │
+         │  Return { outstandPostId}│                          │
          │◄─────────────────────────│                          │
          │                          │                          │
-         │  Save outstandJobId       │                          │
-         │  on PostTarget           │                          │
+         │  Save outstandPostId      │                          │
+         │  on Post (bukan PostTarget)│                        │
+         │                          │                          │
+         │  fetchPostOutcome(...)   │                          │
+         │  (async/polling, resolve │                          │
+         │  status per PostTarget)  │                          │
 ```
 
 **Trigger:** Status `Post` bertransisi ke `Scheduled` (setelah review approved atau user langsung schedule).
@@ -215,23 +238,24 @@ Publishing ke social media dilakukan melalui Outstand API — sistem internal ti
 1. `PublishingService` memvalidasi bahwa semua `PostTarget` memiliki `ConnectedAccount` yang `active`.
 2. `PublishingService` memvalidasi `contentFormat` tiap `PostTarget` terhadap matriks platform (ADR-039) serta kelengkapan media / `platformOptions` (mis. Pinterest pin).
 3. Untuk setiap media original dari Supabase Storage, `PublishingService` meminta working copy melalui ACL: request upload URL Outstand → `PUT` bytes ke URL tersebut → confirm upload → terima URL media Outstand.
-4. Per `PostTarget`, `PublishingService` memanggil `OutstandAdapter.schedulePost(params)` dengan:
-   - `outstandAccountId` dari `ConnectedAccount`.
+4. `PublishingService` memanggil `OutstandAdapter.schedulePost(targets[], params)` SEKALI untuk seluruh `PostTarget` pada post ini, dengan:
+   - `outstandAccountId` tiap target dari `ConnectedAccount`-nya.
    - Caption, URL working copy media dari Outstand, dan waktu tayang.
-   - `contentFormat` + `platformOptions` — diterjemahkan ACL ke override Outstand (Story/Reel/Pin, dll.).
-5. Outstand mengembalikan `outstandJobId`.
-6. `PublishingService` menyimpan `outstandJobId` pada `PostTarget` dan mengubah `PostTarget.status` ke `scheduled`.
+   - `contentFormat` + `platformOptions` per target — diterjemahkan ACL ke override Outstand (Story/Reel/Pin, dll.).
+5. Outstand mengembalikan SATU `post.id` untuk seluruh target (bukan job per akun).
+6. `PublishingService` menyimpan `outstandPostId` pada `Post` (bukan `PostTarget`) dan mengubah `Post.status` ke `Scheduled`. `PostTarget.status` tetap `pending` sampai outcome per akun diresolve.
+7. `PublishingService` memanggil `OutstandAdapter.fetchPostOutcome(outstandPostId)` (segera untuk Publish Now, atau lewat polling/webhook T-026 untuk Schedule) untuk mengisi `platformPostId`/`platformPostUrl`/`status` per `PostTarget`.
 
 **Catatan:**
 - Media original tetap menjadi milik aplikasi di bucket private Supabase Storage. Signed URL Supabase hanya boleh dipakai untuk akses internal/UI, **bukan** sebagai URL publishing ke Outstand.
 - URL/media ID working copy Outstand boleh disimpan sebagai metadata opsional untuk observability, reuse aman, atau cleanup; ia bukan source of truth aset original.
-- Jika salah satu `PostTarget` gagal dijadwalkan, `PostTarget` tersebut ditandai `failed`. `PostTarget` lain pada post yang sama tidak terpengaruh.
+- **(amandemen ADR-092)** Karena `schedulePost` sekarang 1 call untuk semua target (all-or-nothing di level call), kegagalan call tersebut menandai SEMUA `PostTarget` pada post itu `failed` sekaligus — bukan lagi kegagalan independen per target. Partial success (sebagian akun gagal publish setelah call berhasil) baru diketahui belakangan lewat `fetchPostOutcome`/webhook, dan itu ditandai per `PostTarget` secara independen.
 - **Content format (ADR-039):** Outstand memfasilitasi Post / Reel / Story (dan opsi platform lain seperti Pinterest board). Domain menyimpan `ContentFormat` per target; hanya `OutstandAdapter` yang mengetahui bentuk field API Outstand (mis. flag Story / routing Reel / metadata Pin).
 
 ## Alur Batalkan Post
 
 1. User membatalkan jadwal dari UI → `PublishingService.cancelScheduledPost(postId)`.
-2. Per `PostTarget` dengan status `scheduled`, `PublishingService` memanggil `OutstandAdapter.cancelScheduledPost(outstandJobId)`.
+2. **(amandemen ADR-092)** `PublishingService` memanggil `OutstandAdapter.cancelScheduledPost(outstandPostId)` SEKALI per post (bukan per `PostTarget`) — konsisten dengan model 1-post-banyak-target.
 3. `PostTarget.status` diubah ke `pending` (kembali ke antrean atau draft).
 
 ---
@@ -294,7 +318,7 @@ JOB-01
 
 **Prinsip pemrosesan webhook:**
 - Route Handler **tidak** mengandung business logic — hanya membaca raw body, memverifikasi HMAC, melakukan durable idempotent receipt, enqueue, lalu ACK.
-- `WebhookProcessor` memanggil Application Service yang tepat menggunakan `outstandJobId` atau `outstandAccountId` sebagai external reference.
+- `WebhookProcessor` memanggil Application Service yang tepat menggunakan `outstandPostId` (amandemen ADR-092, sebelumnya `outstandJobId`) atau `outstandAccountId` sebagai external reference.
 - Respons `2xx` hanya dikembalikan **setelah** receipt berhasil dipersistenkan. Kegagalan persistensi mengembalikan non-2xx agar Outstand dapat melakukan retry delivery.
 - Retry delivery dari Outstand berhenti pada boundary receipt/ACK. Retry pemrosesan internal dilakukan terpisah oleh `JOB-01`; kegagalan pemrosesan tidak meminta Outstand mengirim ulang event.
 
@@ -325,7 +349,7 @@ Engagement MVP hanya mencakup **komentar dan reply**. Direct Message dan mention
 - `platform` — dari `ConnectedAccount`.
 - `authorName` — nama pengirim komentar.
 - `content` — teks komentar.
-- `postId` — referensi ke `Post` jika komentar terkait post internal (matched via `outstandJobId`).
+- `postId` — referensi ke `Post` jika komentar terkait post internal (matched via `outstandPostId`, amandemen ADR-092, sebelumnya `outstandJobId`).
 - `receivedAt` — timestamp dari Outstand.
 
 ## Reply via Outstand API
@@ -354,7 +378,10 @@ Data analytics (metrics post dan metrics workspace) diambil melalui polling peri
 ```
 Background Job (scheduler)
     └── AnalyticsService.syncPostMetrics(workspaceId)
-            └── OutstandAdapter.fetchPostMetrics(outstandJobId)
+            └── OutstandAdapter.fetchPostMetrics(outstandPostId)
+                    // amandemen ADR-092: rename dari outstandJobId. Bentuk hasil
+                    // (per-akun metrics + aggregated_metrics) belum direvisi mengikuti
+                    // response asli get-post-analytics — follow-up saat T-041 disentuh.
                     └── AnalyticsService.upsertPostMetrics(postId, metricsData)
 
 Background Job (scheduler)

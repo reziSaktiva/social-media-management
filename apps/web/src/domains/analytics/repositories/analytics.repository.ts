@@ -81,6 +81,16 @@ export interface IAnalyticsRepository {
   findMetricsByPost(postId: PostId): Promise<PostMetricsRecord[]>;
 
   /**
+   * Batch varian `findMetricsByPost` untuk beberapa post sekaligus
+   * (T-033.1, Calendar view — popover metrik post Published, KSP-02-F08).
+   * Dipakai lewat `getPostMetricsByPosts` supaya caller lintas domain
+   * (`PublishingService`, via port lokal) tidak N+1 query satu post per
+   * item Calendar. Returns flat array (bukan grouped) — pengelompokan per
+   * `postId` jadi tanggung jawab `AnalyticsService.getPostMetricsByPosts`.
+   */
+  findMetricsByPosts(postIds: PostId[]): Promise<PostMetricsRecord[]>;
+
+  /**
    * Snapshot workspace terbaru untuk `period` tertentu (`periodStart`
    * paling akhir). Null kalau belum ada snapshot untuk period tsb —
    * dipakai Application Service untuk membedakan "belum ada data metrik

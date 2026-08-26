@@ -65,6 +65,19 @@ export const analyticsRepository: IAnalyticsRepository = {
     return rows.map(mapPostMetric);
   },
 
+  async findMetricsByPosts(postIds) {
+    if (postIds.length === 0) {
+      return [];
+    }
+
+    const rows = await prisma.analyticsPostMetric.findMany({
+      where: { postId: { in: postIds } },
+      orderBy: { fetchedAt: "desc" },
+    });
+
+    return rows.map(mapPostMetric);
+  },
+
   async findLatestWorkspaceSnapshot(workspaceId, period) {
     const row = await prisma.analyticsWorkspaceSnapshot.findFirst({
       where: { workspaceId, period },

@@ -10,6 +10,7 @@ import {
   type SocialPlatform,
 } from "@social/shared";
 import type {
+  CalendarItemRecord,
   IPublishingRepository,
   PublishingCancelScheduleRecord,
   PublishingPostRecord,
@@ -64,6 +65,24 @@ function mapQueueItem(post: QueuePostWithTargets): QueueItemRecord {
     // Non-null: query di bawah menyaring status Scheduled, yang hanya
     // ditetapkan bersamaan dengan `scheduledAt` (lihat `schedulePost`).
     scheduledAt: post.scheduledAt as Date,
+    createdAt: post.createdAt,
+    targets: post.targets.map((target) => ({
+      id: asPostTargetId(target.id),
+      connectedAccountId: asConnectedAccountId(target.connectedAccountId),
+      platform: target.platform as SocialPlatform,
+      contentFormat: target.contentFormat as ContentFormat,
+      accountHandle: target.connectedAccount.handle,
+    })),
+  };
+}
+
+function mapCalendarItem(post: QueuePostWithTargets): CalendarItemRecord {
+  return {
+    id: asPostId(post.id),
+    caption: post.caption,
+    status: post.status as ContentStatus,
+    scheduledAt: post.scheduledAt,
+    publishedAt: post.publishedAt,
     createdAt: post.createdAt,
     targets: post.targets.map((target) => ({
       id: asPostTargetId(target.id),
@@ -239,13 +258,22 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async updateTargetOutcome(
-    { postTargetId, outstandJobId, status, publishedUrl, error },
+    { postTargetId, platformPostId, status, platformPostUrl, error },
     userId,
   ) {
     await withCurrentUser(userId, (tx) =>
       tx.publishingPostTarget.update({
         where: { id: postTargetId },
-        data: { outstandJobId, status, publishedUrl, error },
+        data: { platformPostId, status, platformPostUrl, error },
+      }),
+    );
+  },
+
+  async setOutstandPostId({ workspaceId, postId, outstandPostId }, userId) {
+    await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.updateMany({
+        where: { id: postId, workspaceId },
+        data: { outstandPostId },
       }),
     );
   },
@@ -377,15 +405,18 @@ export const publishingRepository: IPublishingRepository = {
         return null;
       }
 
-      // Ambil outstandJobId (+ status/error untuk log diagnostik di bawah)
-      // SEBELUM dihapus — outstandJobId dibutuhkan use-case pemanggil untuk
-      // membatalkan job yang sama di sisi Outstand setelah transaksi ini
-      // commit (adapter call tidak boleh terjadi di dalam transaksi, sama
-      // alasan dengan schedulePost/publishNow).
+      // Status/error target diambil untuk log diagnostik target yang sempat
+      // gagal, SEBELUM dihapus. `post.outstandPostId` (dibaca di bawah lewat
+      // `findUniqueOrThrow`, sengaja TIDAK di-null-kan oleh `updateMany` di
+      // atas) dibutuhkan use-case pemanggil untuk membatalkan SATU post yang
+      // sama di sisi Outstand setelah transaksi ini commit (adapter call
+      // tidak boleh terjadi di dalam transaksi, sama alasan dengan
+      // schedulePost/publishNow) — nilai lama ini otomatis tergantikan kalau
+      // post dijadwalkan ulang (`setOutstandPostId` dipanggil lagi), jadi
+      // tidak masalah dibiarkan di kolom sampai itu terjadi.
       const existingTargets = await tx.publishingPostTarget.findMany({
         where: { postId },
         select: {
-          outstandJobId: true,
           platform: true,
           status: true,
           error: true,
@@ -426,12 +457,27 @@ export const publishingRepository: IPublishingRepository = {
 
     const record: PublishingCancelScheduleRecord = {
       ...mapPost(result.post),
-      cancelledTargets: result.existingTargets.map((target) => ({
-        outstandJobId: target.outstandJobId,
-      })),
+      outstandPostId: result.post.outstandPostId,
     };
 
     return record;
+  },
+
+  async markPostFailed({ workspaceId, postId }, userId) {
+    await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          // Redesain ACL 2026-08-26: sekarang juga dipanggil dari
+          // SchedulePostsUseCase (satu call schedulePost gagal total →
+          // semua target pasti gagal), bukan hanya PublishNowUseCase.
+          status: { in: [ContentStatus.Published, ContentStatus.Scheduled] },
+          deletedAt: null,
+        },
+        data: { status: ContentStatus.Failed },
+      }),
+    );
   },
 
   async listQueue({ workspaceId }, userId) {
@@ -452,5 +498,45 @@ export const publishingRepository: IPublishingRepository = {
     );
 
     return posts.map(mapQueueItem);
+  },
+
+  async listCalendarPosts(
+    { workspaceId, from, to, connectedAccountIds, statuses },
+    userId,
+  ) {
+    const posts = await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.findMany({
+        where: {
+          workspaceId,
+          deletedAt: null,
+          ...(statuses && statuses.length > 0
+            ? { status: { in: statuses } }
+            : {}),
+          ...(connectedAccountIds && connectedAccountIds.length > 0
+            ? {
+                targets: {
+                  some: { connectedAccountId: { in: connectedAccountIds } },
+                },
+              }
+            : {}),
+          // Rentang generik (T-033.1) — post yang JADWALNYA ATAU HASIL
+          // PUBLISHNYA jatuh di [from, to]. Draft/InReview/ReadyToSchedule
+          // tidak punya scheduledAt maupun publishedAt terisi di runtime
+          // manapun saat ini, jadi otomatis tidak lolos filter ini — lihat
+          // catatan gap di `CalendarItemRecord`.
+          OR: [
+            { scheduledAt: { gte: from, lte: to } },
+            { publishedAt: { gte: from, lte: to } },
+          ],
+        },
+        include: {
+          targets: {
+            include: { connectedAccount: true },
+          },
+        },
+      }),
+    );
+
+    return posts.map(mapCalendarItem);
   },
 };

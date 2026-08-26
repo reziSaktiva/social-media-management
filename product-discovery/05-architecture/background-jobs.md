@@ -208,7 +208,7 @@ pending → running → done
 
 **Handler:**
 1. Memanggil `OutstandAdapter.fetchWorkspaceMetrics(outstandAccountId, period)`.
-2. Memanggil `OutstandAdapter.fetchPostMetrics(outstandJobId)` per post yang belum memiliki snapshot.
+2. Memanggil `OutstandAdapter.fetchPostMetrics(outstandPostId)` per post yang belum memiliki snapshot (amandemen ADR-092, rename dari `outstandJobId` — sekarang ID post-level yang mencakup semua target).
 3. Menyimpan snapshot melalui `AnalyticsService`.
 
 **Retry:** Maksimal 2 kali. Interval: 30 menit.

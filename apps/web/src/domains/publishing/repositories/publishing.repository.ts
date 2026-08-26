@@ -66,27 +66,50 @@ export interface QueueItemRecord {
 }
 
 /**
- * Satu target yang ikut dibatalkan oleh `cancelSchedule` (T-030, ADR-049
- * Tier 2). `outstandJobId` dibawa keluar transaksi supaya use-case
- * (`CancelScheduleUseCase`) bisa memanggil `IOutstandAdapter.cancelScheduledPost`
- * per target SETELAH DB sudah commit — sama pola dengan `schedulePost`/
- * `publishNow` (persist dulu, network call sesudah, supaya tidak ada
- * inkonsistensi tanpa jejak DB). `null` kalau target belum pernah dapat
- * `outstandJobId` (mis. race jarang: baru saja dijadwalkan, adapter belum
- * sempat mengembalikan job id) — use-case cukup skip pemanggilan adapter
- * untuk target itu.
+ * Hasil `cancelSchedule` — post yang sudah kembali ke status Draft, plus
+ * `outstandPostId` post-level yang barusan dibaca (SEBELUM dihapus) supaya
+ * use-case (`CancelScheduleUseCase`) bisa memanggil
+ * `IOutstandAdapter.cancelScheduledPost` SEKALI SETELAH DB sudah commit —
+ * sama pola dengan `schedulePost`/`publishNow` (persist dulu, network call
+ * sesudah). Redesain 2026-08-26: dulu satu `outstandJobId` per target
+ * (`CancelledPostTargetRecord[]`) — sekarang satu `outstandPostId` untuk
+ * SELURUH post, konsisten dengan model baru "1 call Outstand mencakup semua
+ * target". `null` kalau post belum pernah dapat `outstandPostId` (mis. race
+ * jarang: baru saja dijadwalkan, adapter belum sempat mengembalikan id) —
+ * use-case cukup skip pemanggilan adapter.
  */
-export interface CancelledPostTargetRecord {
-  outstandJobId: string | null;
+export interface PublishingCancelScheduleRecord extends PublishingPostRecord {
+  outstandPostId: string | null;
 }
 
 /**
- * Hasil `cancelSchedule` — post yang sudah kembali ke status Draft, plus
- * daftar target yang barusan dihapus (untuk dibatalkan juga di sisi
- * Outstand oleh use-case).
+ * Satu `PublishingPost` untuk Calendar (T-033.1, KSP-02) — beda dari
+ * `QueueItemRecord` (khusus status Scheduled), Calendar mencakup semua
+ * status yang tampil di mockup (KSP-02-F02): Draft, In Review, Ready to
+ * Schedule, Scheduled, Published, Failed. `scheduledAt`/`publishedAt`
+ * dibawa mentah (bukan di-collapse ke satu field "tanggal tampil") supaya
+ * caller (`PublishingService.listCalendarPosts`) yang memutuskan urutan
+ * dan penempatan grid — lihat catatan gap di bawah.
+ *
+ * **Gap diketahui (dilaporkan ke King Rezi, bukan keputusan sepihak):**
+ * post berstatus Draft/InReview/ReadyToSchedule saat ini TIDAK punya
+ * `scheduledAt` maupun `publishedAt` terisi di runtime manapun (keduanya
+ * hanya diisi oleh `schedulePost`/`publishNow`) — jadi query rentang
+ * tanggal generik di bawah ini otomatis tidak akan mengembalikan post
+ * berstatus itu sama sekali walau tidak ada filter status eksplisit.
+ * Placement 3 status itu di grid Calendar (kalau memang harus muncul di
+ * grid, bukan di luar grid seperti daftar Drafts terpisah) adalah
+ * keputusan produk yang belum ada di baseline — perlu ADR/klarifikasi
+ * sebelum T-033.3/.4 (UI grid) diimplementasikan.
  */
-export interface PublishingCancelScheduleRecord extends PublishingPostRecord {
-  cancelledTargets: CancelledPostTargetRecord[];
+export interface CalendarItemRecord {
+  id: PostId;
+  caption: string;
+  status: ContentStatus;
+  scheduledAt: Date | null;
+  publishedAt: Date | null;
+  createdAt: Date;
+  targets: QueueItemTargetRecord[];
 }
 
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/publishing. */
@@ -153,24 +176,43 @@ export interface IPublishingRepository {
 
   /**
    * Update satu `PublishingPostTarget` by id dengan outcome dari
-   * OutstandAdapter. `outstandJobId` opsional karena target yang gagal
-   * (`status: "failed"`) belum tentu punya job id dari Outstand.
-   * `publishedUrl` hanya relevan untuk outcome Publish Now (T-029) yang
-   * sukses — dipersist untuk detail post nanti (T-034). `userId` (RLS,
-   * KI-026 follow-up) — acting user for `withCurrentUser`; called once per
-   * target AFTER that target's `outstandAdapter.schedulePost()` /
-   * `publishNow()` network call has already resolved/rejected — never
+   * OutstandAdapter. Redesain 2026-08-26: `platformPostId`/`platformPostUrl`
+   * menggantikan `outstandJobId`/`publishedUrl` lama — keduanya sekarang
+   * berasal dari `IOutstandAdapter.fetchPostOutcome` (per akun, dibaca
+   * belakangan), BUKAN dari hasil sinkron `schedulePost`/`publishNow` (yang
+   * sekarang hanya mengembalikan `outstandPostId` post-level, dipersist
+   * lewat `setOutstandPostId` di bawah). `platformPostId` opsional karena
+   * target yang gagal (`status: "failed"`) belum tentu punya id platform.
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`;
+   * called once per target AFTER the post-level
+   * `outstandAdapter.schedulePost()` / `publishNow()` (dan, untuk Publish
+   * Now, `fetchPostOutcome()`) network call sudah resolve/reject — never
    * inside the same transaction as the network call (connection pool
    * exhaustion risk).
    */
   updateTargetOutcome(
     input: {
       postTargetId: PostTargetId;
-      outstandJobId?: string;
+      platformPostId?: string;
       status: "scheduled" | "published" | "failed";
-      publishedUrl?: string;
+      platformPostUrl?: string;
       error?: string;
     },
+    userId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Persist `outstandPostId` post-level (redesain 2026-08-26) — dipanggil
+   * SETELAH `outstandAdapter.schedulePost()`/`publishNow()` resolve dengan
+   * SATU id yang mencakup semua target, sebelum (untuk Publish Now)
+   * `fetchPostOutcome` dipanggil dan sebelum `updateTargetOutcome` per
+   * target. Terpisah dari `updateTargetOutcome` karena field ini post-level,
+   * bukan per-target. `userId` (RLS, KI-026 follow-up) — acting user for
+   * `withCurrentUser`; sama seperti `updateTargetOutcome`, tidak dipanggil
+   * di dalam transaksi yang sama dengan network call.
+   */
+  setOutstandPostId(
+    input: { workspaceId: WorkspaceId; postId: PostId; outstandPostId: string },
     userId: UserId,
   ): Promise<void>;
 
@@ -231,6 +273,36 @@ export interface IPublishingRepository {
   ): Promise<QueueItemRecord[]>;
 
   /**
+   * Calendar (T-033.1, KSP-02) — post apa pun (lihat catatan gap status di
+   * `CalendarItemRecord`) di mana `scheduledAt` ATAU `publishedAt` jatuh
+   * dalam rentang `[from, to]` (inklusif). Rentang generik — pemanggil
+   * (Week 7 hari, Month 1 bulan + hari muted, T-033.2/.3/.4) yang
+   * menentukan `from`/`to`, bukan method ini. `statuses` opsional — kalau
+   * tidak diisi, SEMUA status ikut (beda dari `listQueue` yang selalu
+   * hardcode `Scheduled`). `connectedAccountIds` opsional — filter post
+   * yang punya minimal satu target ke salah satu akun itu.
+   *
+   * Urutan hasil TIDAK dijamin di sini (lihat implementasi Prisma — tidak
+   * ada satu kolom tanggal tunggal yang valid untuk semua status buat
+   * `orderBy`) — pengurutan final ("effective date" = `scheduledAt` ??
+   * `publishedAt`) dilakukan pure function di
+   * `PublishingService.listCalendarPosts` (`sortCalendarItemsByEffectiveDate`),
+   * sama pola dengan `groupQueueItemsByDate`.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  listCalendarPosts(
+    input: {
+      workspaceId: WorkspaceId;
+      from: Date;
+      to: Date;
+      connectedAccountIds?: ConnectedAccountId[];
+      statuses?: ContentStatus[];
+    },
+    userId: UserId,
+  ): Promise<CalendarItemRecord[]>;
+
+  /**
    * Cancel Schedule (T-030.1, ADR-049 Tier 2) — kebalikan dari
    * `schedulePost`: post kembali ke status Draft (`scheduledAt` di-null-kan)
    * dan seluruh `PublishingPostTarget` milik post itu dihapus (post Draft
@@ -257,4 +329,37 @@ export interface IPublishingRepository {
     input: { workspaceId: WorkspaceId; postId: PostId },
     userId: UserId,
   ): Promise<PublishingCancelScheduleRecord | null>;
+
+  /**
+   * Bug fix (2026-08-26, ditemukan saat T-033 Calendar) — dipanggil oleh
+   * `PublishNowUseCase.execute` SETELAH `Promise.all` target selesai, kalau
+   * SEMUA target gagal publish. Sebelum fix ini, `publishNow` sudah
+   * menandai post `Published` sebelum tahu hasil per target, dan tidak ada
+   * langkah yang mengoreksinya kalau semua target ternyata gagal — post
+   * tetap tercatat `Published` di DB meski tidak ada satu pun target yang
+   * sukses. Semantik ini konsisten dengan `post.error` webhook Outstand
+   * (`product-discovery/05-architecture/integration-layer.md:269-270`):
+   * "Semua target gagal setelah retry" → status domain `failed`.
+   *
+   * **Diperluas (redesain ACL 2026-08-26)** — sekarang juga dipanggil oleh
+   * `SchedulePostsUseCase.execute` saat SATU call
+   * `outstandAdapter.schedulePost` (yang sekarang mencakup semua target)
+   * gagal total: karena hanya ada satu call untuk semua target, gagalnya
+   * call itu berarti SEMUA target pasti gagal (all-or-nothing, beda dari
+   * model lama yang per-target dan bisa partial). Where-clause karena itu
+   * menerima status awal `Published` ATAU `Scheduled` — bukan hanya
+   * `Published`.
+   *
+   * Idempoten by design (`updateMany` hanya menyentuh baris yang masih di
+   * salah satu status awal itu) — aman dipanggil lebih dari sekali kalau
+   * use-case di-retry. Tidak menyentuh `PublishingPostTarget` — outcome per
+   * target sudah ditulis oleh `updateTargetOutcome` sebelum method ini
+   * dipanggil.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  markPostFailed(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<void>;
 }

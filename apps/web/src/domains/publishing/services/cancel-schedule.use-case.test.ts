@@ -42,9 +42,12 @@ function createFakeRepository(
     schedulePost: async () => null,
     publishNow: async () => null,
     updateTargetOutcome: async () => undefined,
+    setOutstandPostId: async () => undefined,
     countScheduledByAccount: async () => new Map(),
     listQueue: async () => [],
+    listCalendarPosts: async () => [],
     cancelSchedule: async () => null,
+    markPostFailed: async () => undefined,
     ...overrides,
   };
 }
@@ -53,11 +56,9 @@ function createFakeOutstandAdapter(
   overrides: Partial<IOutstandAdapter> = {},
 ): IOutstandAdapter {
   return {
-    schedulePost: async () => ({ outstandJobId: "fake-job" }),
-    publishNow: async () => ({
-      outstandJobId: "fake-job",
-      publishedUrl: "https://fake.outstand.local/posts/fake-job",
-    }),
+    schedulePost: async () => ({ outstandPostId: "fake-post" }),
+    publishNow: async () => ({ outstandPostId: "fake-post" }),
+    fetchPostOutcome: async () => [],
     cancelScheduledPost: async () => undefined,
     fetchPostMetrics: async () => ({
       impressions: 0,
@@ -79,7 +80,7 @@ function createFakeOutstandAdapter(
 }
 
 function baseCancelRecord(
-  cancelledTargets: PublishingCancelScheduleRecord["cancelledTargets"],
+  outstandPostId: string | null,
 ): PublishingCancelScheduleRecord {
   return {
     id: POST_ID,
@@ -89,23 +90,19 @@ function baseCancelRecord(
     status: ContentStatus.Draft,
     createdAt: new Date(0),
     updatedAt: new Date(0),
-    cancelledTargets,
+    outstandPostId,
   };
 }
 
 describe("CancelScheduleUseCase.execute", () => {
-  it("happy path: post kembali ke Draft, memanggil adapter.cancelScheduledPost untuk tiap target yang punya outstandJobId", async () => {
-    const cancelledJobIds: string[] = [];
+  it("happy path: post kembali ke Draft, memanggil adapter.cancelScheduledPost SEKALI dengan outstandPostId post-level (redesain 2026-08-26)", async () => {
+    const cancelledPostIds: string[] = [];
     const repository = createFakeRepository({
-      cancelSchedule: async () =>
-        baseCancelRecord([
-          { outstandJobId: "fake-job-1" },
-          { outstandJobId: "fake-job-2" },
-        ]),
+      cancelSchedule: async () => baseCancelRecord("fake-post-shared"),
     });
     const adapter = createFakeOutstandAdapter({
-      cancelScheduledPost: async (outstandJobId) => {
-        cancelledJobIds.push(outstandJobId);
+      cancelScheduledPost: async (outstandPostId) => {
+        cancelledPostIds.push(outstandPostId);
       },
     });
 
@@ -119,13 +116,13 @@ describe("CancelScheduleUseCase.execute", () => {
     });
 
     expect(result.status).toBe(ContentStatus.Draft);
-    expect(cancelledJobIds.sort()).toEqual(["fake-job-1", "fake-job-2"]);
+    expect(cancelledPostIds).toEqual(["fake-post-shared"]);
   });
 
-  it("skips adapter call for target tanpa outstandJobId (null)", async () => {
+  it("skips adapter call ketika outstandPostId null (belum pernah dijadwalkan sampai adapter)", async () => {
     let adapterCallCount = 0;
     const repository = createFakeRepository({
-      cancelSchedule: async () => baseCancelRecord([{ outstandJobId: null }]),
+      cancelSchedule: async () => baseCancelRecord(null),
     });
     const adapter = createFakeOutstandAdapter({
       cancelScheduledPost: async () => {
@@ -145,10 +142,9 @@ describe("CancelScheduleUseCase.execute", () => {
     expect(adapterCallCount).toBe(0);
   });
 
-  it("tetap mengembalikan record sukses walau adapter.cancelScheduledPost gagal untuk satu target (best-effort)", async () => {
+  it("tetap mengembalikan record sukses walau adapter.cancelScheduledPost gagal (best-effort)", async () => {
     const repository = createFakeRepository({
-      cancelSchedule: async () =>
-        baseCancelRecord([{ outstandJobId: "fake-job-1" }]),
+      cancelSchedule: async () => baseCancelRecord("fake-post-shared"),
     });
     const adapter = createFakeOutstandAdapter({
       cancelScheduledPost: async () => {
@@ -172,7 +168,7 @@ describe("CancelScheduleUseCase.execute", () => {
     "allows role %s (ADR-074 — Scheduled → Draft diizinkan untuk ketiga role)",
     async (role) => {
       const repository = createFakeRepository({
-        cancelSchedule: async () => baseCancelRecord([]),
+        cancelSchedule: async () => baseCancelRecord(null),
       });
       const adapter = createFakeOutstandAdapter();
       const useCase = new CancelScheduleUseCase(repository, adapter);

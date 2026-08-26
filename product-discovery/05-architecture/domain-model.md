@@ -212,6 +212,7 @@ Publishing bertanggung jawab atas status konten kanonikal: `Draft → In Review 
 - `caption: string`
 - `mediaIds: MediaId[]` — referensi ke Media BC (ID saja)
 - `targets: PostTarget[]` — daftar target publikasi
+- `outstandPostId: string?` — **(amandemen ADR-092)** SATU ID post dari Outstand API, mencakup seluruh `PostTarget` pada post ini sekaligus (1 call `schedulePost`/`publishNow` untuk semua target, bukan 1 job per target). Diisi post-level, bukan per `PostTarget`.
 - `scheduledAt: Date?` — waktu tayang yang diinginkan
 - `publishedAt: Date?` — waktu berhasil dipublikasikan
 - `failedAt: Date?`
@@ -226,9 +227,9 @@ Publishing bertanggung jawab atas status konten kanonikal: `Draft → In Review 
 - `platform: SocialPlatform`
 - `contentFormat: ContentFormat` — `post | reel | story | pin` (enum di `packages/shared`; ADR-039)
 - `platformOptions: PlatformPublishOptions?` — field khusus platform (mis. Pinterest: title, destination link, board)
-- `outstandJobId: string?` — ID job dari Outstand API setelah post dijadwalkan
+- `platformPostId: string?` — **(amandemen ADR-092)** ID post di platform ASLI (mis. Instagram) — BEDA dari `outstandPostId` post-level di `Post`. Diisi async lewat `OutstandAdapter.fetchPostOutcome`/webhook (T-026), bukan sinkron dari `schedulePost`/`publishNow`. Menggantikan `outstandJobId` lama.
 - `status: PostTargetStatus` — `pending | scheduled | published | failed`
-- `publishedUrl: string?` — URL post yang sudah dipublikasikan
+- `platformPostUrl: string?` — **(amandemen ADR-092)** URL post yang sudah dipublikasikan per akun, diisi async bersamaan dengan `platformPostId`. Menggantikan `publishedUrl` lama.
 - `error: string?`
 
 **ContentFormat per platform (MVP — ADR-039)**
@@ -285,7 +286,7 @@ dikerjakan, bukan dibiarkan jadi sumber kebenaran kedua yang membingungkan.
 1. Transisi status `Post` mengikuti aturan yang didefinisikan di `roles-permissions.md` — tidak boleh ada transisi yang tidak sah.
 2. `Post` dapat memiliki multiple `PostTarget` (multi-account posting).
 3. `Post` hanya menyimpan referensi `MediaId[]` — tidak embed data media. Detail media diambil dari Media BC secara terpisah.
-4. `outstandJobId` pada `PostTarget` hanya ada setelah konten dikirim ke Outstand API untuk dijadwalkan — dikelola oleh Integration Layer.
+4. **(amandemen ADR-092)** `outstandPostId` pada `Post` hanya ada setelah `schedulePost`/`publishNow` (1 call untuk semua target) dikirim ke Outstand API — dikelola oleh Integration Layer. `platformPostId` pada `PostTarget` baru terisi belakangan (async), setelah `fetchPostOutcome`/webhook meresolve status per akun.
 5. `contentFormat` pada `PostTarget` wajib valid untuk `platform` tersebut (matriks ADR-039). Application Service menolak create/update/schedule target jika format tidak diizinkan atau media tidak memenuhi syarat format (mis. Story/Reel membutuhkan media yang sesuai).
 6. Field khusus platform (Pinterest pin metadata) disimpan di `platformOptions` pada `PostTarget` — bukan di `Post` agar multi-target tetap independen.
 7. Default bisnis format: Pinterest = `pin`; platform lain = `post` (kecuali user memilih Reel/Story di IG/FB). Jangan mengandalkan default kolom DB saja saat menulis target baru.
@@ -625,7 +626,7 @@ Context Map mendokumentasikan bagaimana bounded context saling berinteraksi. Dal
      BC-03, BC-05 → BC-09 Notification
 
      External System:
-     BC-03 Publishing ──── Outstand API ────► PostTarget.outstandJobId
+     BC-03 Publishing ──── Outstand API ────► Post.outstandPostId (amandemen ADR-092)
      BC-05 Engagement ◄──── Outstand Comments API ─ JOB-03/manual pull
      BC-06 Analytics ◄──── Outstand API ───── PostMetrics (fetch)
 ```
@@ -869,7 +870,7 @@ Tabel berikut memetakan Bounded Context ke modul yang didefinisikan di Product B
 | Insight | Bounded Context yang Terdampak | Implikasi Domain |
 |---------|-------------------------------|-----------------|
 | I-01 — Workflow Consolidation | BC-03 Publishing, BC-05 Engagement, BC-06 Analytics | Ketiga BC harus dapat "membaca" dari satu workspace context tanpa context switch |
-| I-04 — Publishing Trust | BC-03 Publishing | `Post` dan `PostTarget` harus memodelkan status dengan granularitas tinggi — `outstandJobId` dan `PostTargetStatus` per account |
+| I-04 — Publishing Trust | BC-03 Publishing | `Post` dan `PostTarget` harus memodelkan status dengan granularitas tinggi — `outstandPostId` (post-level, amandemen ADR-092) dan `PostTargetStatus`/`platformPostId` per account |
 | I-06 — AI in-workflow | BC-04 AI Assistant | `AIRequest.postId` adalah optional field yang memungkinkan AI bekerja dalam konteks post tertentu |
 | I-08 — Lightweight Collaboration | BC-03 Publishing | `ContentStatus` memodelkan handoff ringan (`In Review`, `Ready to Schedule`) tanpa membangun approval workflow berlapis |
 

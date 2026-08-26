@@ -416,7 +416,8 @@ Outstand API kirim POST /api/webhooks/outstand
   │    └─ PublishingService.markPostPublished(...)
   │
   └─ [PublishingService]
-       ├─ Cari Post via outstandJobId
+       ├─ Cari Post via outstandPostId (amandemen ADR-092, rename dari outstandJobId — post-level, mencakup semua target)
+       ├─ Panggil OutstandAdapter.fetchPostOutcome(outstandPostId) untuk resolve status per PostTarget
        ├─ Update status "published"
        └─ NotificationService.notify(..., { type: "post_published" })
 ```

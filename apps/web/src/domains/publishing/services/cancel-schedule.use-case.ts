@@ -25,12 +25,16 @@ import type {
  * sesudahnya murni membersihkan sisi eksternal.
  *
  * Beda dari `SchedulePostsUseCase`/`PublishNowUseCase`: kegagalan
- * `cancelScheduledPost` per target tidak ditulis balik ke
- * `PublishingPostTarget` (baris itu sudah dihapus oleh
- * `repository.cancelSchedule`) — best-effort, gagal salah satu target tidak
- * menggagalkan keseluruhan aksi (post di DB sudah pasti Draft), tapi TETAP
- * di-log via `console.error` (bukan ditelan diam-diam) supaya kegagalan
- * reconcile ke Outstand tidak hilang tanpa jejak sama sekali.
+ * `cancelScheduledPost` tidak ditulis balik ke `PublishingPostTarget`
+ * (baris itu sudah dihapus oleh `repository.cancelSchedule`) — best-effort,
+ * gagal membatalkan tidak menggagalkan keseluruhan aksi (post di DB sudah
+ * pasti Draft), tapi TETAP di-log via `console.error` (bukan ditelan diam-diam)
+ * supaya kegagalan reconcile ke Outstand tidak hilang tanpa jejak sama
+ * sekali.
+ *
+ * **Redesain 2026-08-26** — `cancelScheduledPost` sekarang dipanggil SEKALI
+ * dengan `outstandPostId` post-level (bukan per target lagi, konsisten
+ * dengan `schedulePost`/`publishNow` yang juga 1-call-semua-target).
  */
 export class CancelScheduleUseCase {
   constructor(
@@ -59,32 +63,26 @@ export class CancelScheduleUseCase {
       );
     }
 
-    const outcomes = await Promise.allSettled(
-      record.cancelledTargets
-        .filter(
-          (target): target is { outstandJobId: string } =>
-            target.outstandJobId !== null,
-        )
-        .map((target) =>
-          this.outstandAdapter.cancelScheduledPost(target.outstandJobId),
-        ),
-    );
-
-    // Best-effort by design — tidak ada baris PublishingPostTarget lagi
-    // untuk dicatat outcome-nya (sudah dihapus oleh
-    // repository.cancelSchedule), dan post di DB sudah pasti Draft terlepas
-    // dari hasil ini. Tapi kegagalan tetap WAJIB di-log (bukan ditelan
-    // sepenuhnya) — kalau tidak, job yang gagal dibatalkan di sisi Outstand
-    // bisa tetap tayang tanpa jejak error di mana pun.
-    const failures = outcomes.filter(
-      (outcome): outcome is PromiseRejectedResult =>
-        outcome.status === "rejected",
-    );
-    if (failures.length > 0) {
-      console.error(
-        `[CancelScheduleUseCase] postId=${input.postId} — ${failures.length} panggilan cancelScheduledPost gagal (post tetap Draft di DB, tapi job terkait mungkin masih aktif di Outstand):`,
-        failures.map((failure) => failure.reason),
-      );
+    // Redesain 2026-08-26 — SATU call untuk seluruh post (bukan per target),
+    // konsisten dengan model baru "1 call Outstand mencakup semua target".
+    // `outstandPostId` bisa `null` (race jarang: baru saja dijadwalkan,
+    // adapter belum sempat mengembalikan id) — skip pemanggilan adapter
+    // untuk kasus itu, post di DB tetap sudah Draft.
+    if (record.outstandPostId !== null) {
+      try {
+        await this.outstandAdapter.cancelScheduledPost(record.outstandPostId);
+      } catch (error) {
+        // Best-effort by design — tidak ada baris PublishingPostTarget lagi
+        // untuk dicatat outcome-nya (sudah dihapus oleh
+        // repository.cancelSchedule), dan post di DB sudah pasti Draft
+        // terlepas dari hasil ini. Tapi kegagalan tetap WAJIB di-log (bukan
+        // ditelan sepenuhnya) — kalau tidak, post yang gagal dibatalkan di
+        // sisi Outstand bisa tetap tayang tanpa jejak error di mana pun.
+        console.error(
+          `[CancelScheduleUseCase] postId=${input.postId} outstandPostId=${record.outstandPostId} — cancelScheduledPost gagal (post tetap Draft di DB, tapi post terkait mungkin masih aktif di Outstand):`,
+          error,
+        );
+      }
     }
 
     return {
