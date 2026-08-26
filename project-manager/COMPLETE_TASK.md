@@ -8,6 +8,59 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-26 — Koreksi ADR-090: Popover (bukan HoverCard) untuk preview post Calendar (ADR-091)
+
+### Context
+
+Lanjutan sesi T-033 (entri di bawah). King Rezi mulai eksekusi ADR-090 di
+sesi Claude Design (Design System), dan agent di sana melaporkan tidak
+bisa menjalankan `astryx` CLI untuk verifikasi anatomi `HoverCard` (tidak
+ada akses shell di lingkungan Claude Design). King Rezi meneruskan
+pertanyaan itu ke AI utama, yang punya akses langsung ke `apps/web`.
+
+### Temuan
+
+AI utama menjalankan `astryx component HoverCard --dense` dan
+`astryx component Popover --dense` langsung dari `apps/web` (CLI resmi
+ter-pin v0.1.8, rule 15 AGENTS.md) dan menemukan **ADR-090 salah pilih
+komponen**:
+
+* `HoverCard` — trigger resminya hover/focus (`delay: 300ms`,
+  `hideDelay: 200ms`), **tidak punya prop `isOpen` controlled** (hanya
+  `isDefaultOpen` saat mount), dan guideline resminya eksplisit melarang
+  menaruh critical action (CTA "Edit" ke Draft Editor) di dalamnya.
+* `Popover` — click-triggered secara resmi, punya `isOpen`/
+  `onOpenChange` controlled, anatomi Header+Body+Trigger — cocok persis
+  dengan rencana awal King Rezi (klik item → ringkasan + CTA).
+
+King Rezi setuju amandemen ke Popover.
+
+### Perubahan
+
+* **ADR baru:** `project-manager/decisions/ADR-091-amandemen-adr-090-popover-bukan-hovercard-untuk-preview-post-calendar.md`.
+* `ADR-090` — Status diperbarui jadi "Accepted — Amended by ADR-091";
+  body (append-only) tidak diedit.
+* `DECISIONS.md` — entri ADR-091 ditambahkan, kolom Status ADR-090
+  diperbarui.
+* `product-discovery/04-ux/key-screen-patterns.md` — KSP-02-F04/F08 dan
+  seluruh sebutan di Zona Fungsional/State Handling: HoverCard → Popover.
+* `product-discovery/04-ux/navigation-patterns.md` — pola "Item →
+  Editor" (baris Calendar) dan NP-D15: HoverCard → Popover.
+* `project-manager/tasks/v02-publishing-mvp.md` § T-033 — field ADR,
+  catatan referensi UX, dan T-033.8: HoverCard → Popover (+ catatan
+  koreksi).
+* `project-manager/TASKS.md` — catatan T-033 dan koreksi hitungan:
+  HoverCard → Popover (jumlah subtask tidak berubah, tetap 8/152 total).
+
+### Status
+
+Ditemukan **sebelum** satu markup pun ditulis di Claude Design — tidak
+ada rework kode/desain, murni koreksi dokumentasi sebelum eksekusi
+lanjut. Interaksi dan konten yang disepakati King Rezi (klik item →
+ringkasan + CTA Edit) tidak berubah sama sekali.
+
+---
+
 ## 2026-08-26 — Perencanaan T-033 Calendar view: sinkronisasi dokumentasi vs referensi Buffer (ADR-090)
 
 ### Context

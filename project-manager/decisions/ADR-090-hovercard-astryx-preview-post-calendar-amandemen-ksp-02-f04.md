@@ -6,7 +6,7 @@ HoverCard Astryx untuk Preview Post di Calendar — Amandemen KSP-02-F04 (khusus
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-091 (2026-08-26)
 
 ### Date
 

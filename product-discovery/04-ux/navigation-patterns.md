@@ -246,15 +246,15 @@ Contextual navigation terjadi ketika pengguna mengklik elemen dalam layar yang m
 Terjadi di Publish. Klik satu item membuka Draft Editor untuk item tersebut.
 
 ```
-Publish → Calendar  → [klik item]  → HoverCard (ringkasan) → [CTA Edit] → Draft Editor (item X)
+Publish → Calendar  → [klik item]  → Popover (ringkasan) → [CTA Edit] → Draft Editor (item X)
 Publish → Queue     → [klik item]  → Draft Editor (item X)
 Publish → Drafts    → [klik item]  → Draft Editor (item X)
 Publish → Drafts    → [New Post]   → Draft Editor (item baru)
 ```
 
 **Khusus Calendar (ADR-090):** klik item tidak langsung membuka Draft
-Editor — membuka Astryx `HoverCard` (ringkasan post + metrik untuk yang
-sudah Published) dulu; Draft Editor dibuka lewat CTA di dalam HoverCard.
+Editor — membuka Astryx `Popover` (ringkasan post + metrik untuk yang
+sudah Published) dulu; Draft Editor dibuka lewat CTA di dalam Popover.
 Queue dan Drafts **tidak berubah** — tetap klik → langsung Draft Editor.
 
 **Transisi:** Draft Editor ditampilkan sebagai **modal overlay** di atas Publish — bukan lagi panel/layar penuh terpisah dalam section Publish (ADR-052, mengoverride NP-D02 versi awal). Tampilan default modal adalah variant **Standard** (floating card + backdrop redup di atas Calendar/Queue/Drafts, ADR-065); pengguna bisa beralih ke variant **Fullscreen** (menutupi sepenuhnya termasuk sidebar) lewat toggle resmi di header modal — lihat NP-D11.
@@ -435,7 +435,7 @@ Keputusan navigasi yang dibuat dalam dokumen ini.
 | NP-D12 | Sidebar mendapat CTA "+ New Post" pinned di puncak sidebar (di atas nav items), tersedia dari section manapun | Sebelumnya CTA New Post hanya ada di layar Calendar/Queue/Drafts (NP-D09) — pengguna di Home/Engage/Analyze harus pindah section dulu ke Publish untuk membuat post baru. Pola umum di tools sejenis (CTA utama di puncak sidebar) menghilangkan langkah ekstra ini (ADR-053) | UXP-01, NP-P01 |
 | NP-D13 | Setelah aksi terminal Draft Editor (Save as Draft / Schedule / Publish Now), pengguna diarahkan ke sub-screen **tujuan** (Drafts / Queue / History-sementara-Calendar) — bukan kembali ke sub-screen asal seperti tombol Close | Sidebar CTA (NP-D12) membuat Draft Editor bisa dibuka dari section manapun; pengguna perlu langsung melihat hasil aksinya di section Publish yang relevan, bukan tertinggal di section asal yang sudah tidak berkaitan dengan konten yang baru diproses (ADR-054). Tidak mengubah NP-D05 (kasus berbeda: link status error → Settings) | UXP-04 |
 | NP-D14 | Sidebar mendapat section "Channels" — quick-glance daftar akun terhubung (avatar bulat + badge logo brand overlay + nama akun + status), antara navigation items dan zona bawah, scroll independen. Default: scheduled-posts count. Hover: drag handle muncul di kiri baris (reorder personal per user, **shift-on-hover** — seluruh isi baris ikut bergeser, addendum ADR-058 mengoverride keputusan awal "no-shift") + tombol quick-compose "+" (buka Draft Editor, akun pre-selected — **tetap no-shift/fixed-slot**, tidak berubah). Klik channel bermasalah → Settings (perluasan pola existing) | King Rezi ingin visibilitas status channel + jalan pintas compose per akun tanpa keluar dari layar kerja; posisi di luar 5 nav item menjaga sidebar tetap berbasis alur kerja, bukan daftar entitas (P-IA-01); shift-on-hover drag handle dipilih ulang mengikuti referensi screenshot aplikasi lain atas permintaan eksplisit King Rezi (ADR-058) | UXP-01, UXP-04, NP-P01 |
-| NP-D15 | Klik item di Calendar membuka Astryx `HoverCard` (ringkasan post + metrik untuk yang sudah Published) dulu, bukan langsung Draft Editor — CTA di dalam HoverCard yang membuka Draft Editor. Khusus Calendar; Queue dan Drafts tidak berubah | King Rezi ingin pola Buffer: verifikasi cepat isi/metrik post tanpa membuka editor penuh setiap klik. Dibatasi ke Calendar saja mengikuti scope permintaan, tidak diperluas ke Queue/Drafts sebagai efek samping (ADR-090) | UXP-01, UXP-04 |
+| NP-D15 | Klik item di Calendar membuka Astryx `Popover` (ringkasan post + metrik untuk yang sudah Published) dulu, bukan langsung Draft Editor — CTA di dalam Popover yang membuka Draft Editor. Khusus Calendar; Queue dan Drafts tidak berubah | King Rezi ingin pola Buffer: verifikasi cepat isi/metrik post tanpa membuka editor penuh setiap klik. Dibatasi ke Calendar saja mengikuti scope permintaan, tidak diperluas ke Queue/Drafts sebagai efek samping (ADR-090, komponen dikoreksi ADR-091) | UXP-01, UXP-04 |
 
 ---
 

@@ -150,11 +150,11 @@ Calendar adalah **tampilan default** saat pengguna masuk ke Publish. Layar ini m
 | KSP-02-F01 | Weekly View Default | Calendar menampilkan semua konten terjadwal dalam rentang minggu berjalan | UXP-02, UXP-03 |
 | KSP-02-F02 | Status Visual per Item | Setiap item di Calendar menampilkan status: Scheduled, Published, In Review, Ready to Schedule, Draft, Failed | UXP-04, UXP-06 |
 | KSP-02-F03 | Identitas Akun per Item | Setiap item menampilkan identitas akun tujuan (platform + nama akun) | UXP-04 |
-| KSP-02-F04 | Klik Item → HoverCard → Draft Editor | ~~Klik item langsung membuka Draft Editor~~ — **Diamandemen ADR-090**: klik item membuka HoverCard (KSP-02-F08) dulu; CTA di dalam HoverCard yang membuka Draft Editor. Berlaku khusus Calendar — Queue dan Drafts tetap klik → langsung Draft Editor (tidak berubah) | UXP-01 |
+| KSP-02-F04 | Klik Item → Popover → Draft Editor | ~~Klik item langsung membuka Draft Editor~~ — **Diamandemen ADR-090, komponen dikoreksi ADR-091**: klik item membuka Astryx `Popover` (KSP-02-F08) dulu; CTA di dalam Popover yang membuka Draft Editor. Berlaku khusus Calendar — Queue dan Drafts tetap klik → langsung Draft Editor (tidak berubah) | UXP-01 |
 | KSP-02-F05 | Ganti Periode | Pengguna berpindah ke minggu/bulan lain lewat tombol Today, navigasi ‹ › (prev/next), dan toggle tampilan Minggu/Bulan. Label periode menyesuaikan (mis. "14–20 Jul" untuk minggu dalam 1 bulan, "28 Jul – 3 Ags" kalau minggu melintasi 2 bulan; "Agustus 2026" untuk tampilan bulan). State periode (`view=week\|month`, `date=<timestamp>`) dibawa lewat query param pada route tunggal `/publish/calendar` (tidak menambah route baru, konsisten ADR-046) | UXP-03 |
 | KSP-02-F06 | Status Failed yang Mencolok | Item dengan status Failed ditampilkan dengan visual yang berbeda dan tidak bisa diabaikan | UXP-04 |
 | KSP-02-F07 | Disconnected Account Warning | Jika akun dalam item berstatus Disconnected, indikator warning tampil di item tersebut | UXP-04, UXP-06 |
-| KSP-02-F08 | HoverCard Ringkasan Post | **Baru (ADR-090).** Klik item Calendar membuka Astryx `HoverCard` berisi: avatar + nama akun, platform, potongan caption, thumbnail media (kalau ada), status chip (reuse KSP-02-F02). Untuk post yang sudah Published, tambah section metrik (Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate` — field `PostMetrics` yang sudah ada, tanpa field baru) + tautan "Go to post". CTA di dalam HoverCard membuka Draft Editor (modal, ADR-052) untuk item tersebut | UXP-01, UXP-04 |
+| KSP-02-F08 | Popover Ringkasan Post | **Baru (ADR-090, komponen dikoreksi ADR-091: Popover, bukan HoverCard — trigger klik, punya `isOpen` controlled, CTA aman di dalamnya).** Klik item Calendar membuka Astryx `Popover` (anatomi: Header + Body + Trigger) berisi: avatar + nama akun, platform, potongan caption, thumbnail media (kalau ada), status chip (reuse KSP-02-F02). Untuk post yang sudah Published, tambah section metrik (Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate` — field `PostMetrics` yang sudah ada, tanpa field baru) + tautan "Go to post". CTA di dalam Popover membuka Draft Editor (modal, ADR-052) untuk item tersebut | UXP-01, UXP-04 |
 | KSP-02-F09 | Filter Status & Channel | Dropdown filter status post ("All Posts" / per status) dan filter akun (Channels) di atas grid. Filter Tags dan Timezone per-view dari referensi Buffer **tidak diadopsi** (tidak ada konsep Tag di domain model; Timezone bukan setting per-view di backlog — konsisten keputusan T-032.0 untuk Queue) | UXP-03 |
 
 ---
@@ -184,7 +184,7 @@ Calendar adalah **tampilan default** saat pengguna masuk ke Publish. Layar ini m
 
 **Zona period control:** Tombol Today, navigasi ‹ › (prev/next), label periode, filter Channels + Status, toggle Minggu/Bulan. Default: minggu berjalan (KSP-02-F01), state di query param (KSP-02-F05).
 
-**Zona grid:** Week view = grid hari × slot jam. Month view = grid hari × tanggal bulan penuh dengan "N More" untuk sel padat. Setiap item menampilkan thumbnail akun, potongan caption, dan status; klik item membuka HoverCard (KSP-02-F08).
+**Zona grid:** Week view = grid hari × slot jam. Month view = grid hari × tanggal bulan penuh dengan "N More" untuk sel padat. Setiap item menampilkan thumbnail akun, potongan caption, dan status; klik item membuka Popover (KSP-02-F08).
 
 **Zona New Post:** CTA tetap tersedia untuk langsung membuat konten baru.
 
@@ -200,7 +200,7 @@ Calendar adalah **tampilan default** saat pengguna masuk ke Publish. Layar ini m
 | Akun Disconnected | Indikator warning pada item yang terdampak + tautan ke Settings |
 | Item loading | Skeleton per item saat data sedang dimuat |
 | Sel Month view >3 item | Tampilkan maksimal item sesuai desain final + badge "N More" untuk expand — tidak boleh silently truncate tanpa indikator |
-| Klik item | HoverCard terbuka (KSP-02-F08); metrik hanya tampil untuk post Published |
+| Klik item | Popover terbuka (KSP-02-F08); metrik hanya tampil untuk post Published |
 
 ---
 

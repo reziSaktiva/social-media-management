@@ -247,13 +247,13 @@ Model Prisma `PublishingQueueSlot` sudah ada di schema **tanpa service apapun** 
 | ------------- | ------------------------------------------------------------ |
 | **Status**    | ⏳ Not Started                                                |
 | **Domain**    | publishing                                                   |
-| **ADR**       | ADR-023 (manual refresh, bukan realtime), ADR-046, **ADR-090** (HoverCard klik item, khusus Calendar) |
+| **ADR**       | ADR-023 (manual refresh, bukan realtime), ADR-046, **ADR-090** (Popover klik item, khusus Calendar; komponen dikoreksi **ADR-091** dari HoverCard menjadi Popover) |
 | **Depends**   | T-028 ✅                                                      |
 | **Baca dulu** | `04-ux/key-screen-patterns.md` (KSP-02, direvisi per ADR-090) · `04-ux/navigation-patterns.md` (NP-D15) · `05-architecture/realtime-strategy.md` |
 
 Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Realtime hanya untuk tabel `notifications`).
 
-**Referensi UX (2026-08-26):** breakdown di bawah disusun setelah sesi eksplorasi Calendar Buffer (King Rezi) di branch `feature/calendar-design-system`. Keputusan dari sesi itu: (a) **Tags & Timezone filter per-view tidak diadopsi** — alasan sama seperti T-032.0 (tidak ada konsep Tag di domain model, Timezone bukan setting per-view di backlog); (b) **satu route** `/publish/calendar` dengan state `?view=week|month&date=<timestamp>` di query param — tidak override ADR-046; (c) klik item Calendar buka **HoverCard** (Astryx) dulu sebelum Draft Editor — **ADR-090**, khusus Calendar, Queue/Drafts tidak berubah. Belum ada implementasi kode — sesi masih tahap dokumentasi (langkah berikut: Design System via Claude Design, baru implementasi `apps/web`).
+**Referensi UX (2026-08-26):** breakdown di bawah disusun setelah sesi eksplorasi Calendar Buffer (King Rezi) di branch `feature/calendar-design-system`. Keputusan dari sesi itu: (a) **Tags & Timezone filter per-view tidak diadopsi** — alasan sama seperti T-032.0 (tidak ada konsep Tag di domain model, Timezone bukan setting per-view di backlog); (b) **satu route** `/publish/calendar` dengan state `?view=week|month&date=<timestamp>` di query param — tidak override ADR-046; (c) klik item Calendar buka **Popover** (Astryx) dulu sebelum Draft Editor — **ADR-090**, khusus Calendar, Queue/Drafts tidak berubah. **Koreksi (ADR-091, sesi sama):** komponen semula ditulis "HoverCard", diperbaiki jadi **Popover** setelah verifikasi `astryx component --dense` — HoverCard trigger-nya hover/focus (bukan klik) dan tidak boleh berisi critical action (CTA Edit) per guideline resminya. Belum ada implementasi kode — sesi masih tahap dokumentasi (langkah berikut: Design System via Claude Design, baru implementasi `apps/web`).
 
 - [ ] **T-033.1** Query post per rentang tanggal + filter akun (`PublishingService`, query `PublishingPost`/`PublishingPostTarget`)
 - [ ] **T-033.2** State periode via query param (`?view=week|month&date=<timestamp>`) pada route tunggal `/publish/calendar` — tidak menambah route baru (konsisten ADR-046)
@@ -262,7 +262,7 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 - [ ] **T-033.5** Navigasi periode: tombol Today, ‹ › (prev/next), label periode (termasuk format lintas-bulan untuk Week), toggle Minggu/Bulan
 - [ ] **T-033.6** Filter status post (dropdown) + filter Channels (akun) di atas grid
 - [ ] **T-033.7** Manual refresh control
-- [ ] **T-033.8** Klik item → HoverCard (Astryx `HoverCard`, ADR-090): ringkasan post + metrik untuk post Published (mapping ke `PostMetrics`: Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate`) + CTA buka Draft Editor (modal, ADR-052)
+- [ ] **T-033.8** Klik item → Popover (Astryx `Popover`, ADR-090/ADR-091): ringkasan post + metrik untuk post Published (mapping ke `PostMetrics`: Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate`) + CTA buka Draft Editor (modal, ADR-052)
 
 ### T-034 · Publishing History + detail post
 
