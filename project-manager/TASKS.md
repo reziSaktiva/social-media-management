@@ -97,9 +97,13 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 > subtask (T-033.1–.8) mengikuti referensi Buffer + **ADR-090/ADR-091**
 > (klik item → Popover Astryx sebelum Draft Editor, khusus Calendar), dan
 > Claude Design sudah punya mockup lengkap (grid Week/Month, Popover,
-> filter, navigasi, toggle interaktif di App Prototype). Langkah berikut:
-> design review, baru implementasi kode. Detail: `tasks/v02-publishing-mvp.md`
-> § T-033.
+> filter, navigasi, toggle interaktif di App Prototype). **Design review
+> juga sudah selesai** (King Rezi review langsung di Claude Design,
+> semua revisi diterapkan sesi yang sama — tidak ada revisi tersisa).
+> **Implementasi kode (T-033.1–.8) akan dikerjakan di sesi/room chat
+> terpisah** — baca dulu section "Design System selesai" + "Design
+> Review selesai" di `tasks/v02-publishing-mvp.md` § T-033 sebelum
+> mulai, bukan menebak ulang layout dari nol.
 
 > **T-032** (Queue management) sudah ✅ **Done** (2026-08-20) — listQueue dari data asli (bukan `PublishingQueueSlot`, ADR-083), UI Astryx nyata, 3 aksi (Publish Now/Edit/Cancel Schedule). Menutup sebagian besar **T-030** (Cancel Schedule) untuk konteks Queue — sisa scope Calendar masih di T-033. Detail: `tasks/v02-publishing-mvp.md` § T-032.
 
