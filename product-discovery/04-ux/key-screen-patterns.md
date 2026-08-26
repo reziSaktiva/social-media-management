@@ -150,35 +150,41 @@ Calendar adalah **tampilan default** saat pengguna masuk ke Publish. Layar ini m
 | KSP-02-F01 | Weekly View Default | Calendar menampilkan semua konten terjadwal dalam rentang minggu berjalan | UXP-02, UXP-03 |
 | KSP-02-F02 | Status Visual per Item | Setiap item di Calendar menampilkan status: Scheduled, Published, In Review, Ready to Schedule, Draft, Failed | UXP-04, UXP-06 |
 | KSP-02-F03 | Identitas Akun per Item | Setiap item menampilkan identitas akun tujuan (platform + nama akun) | UXP-04 |
-| KSP-02-F04 | Klik Item → Draft Editor | Klik item membuka Draft Editor untuk item tersebut | UXP-01 |
-| KSP-02-F05 | Ganti Periode | Pengguna dapat berpindah ke minggu lain atau bulan | UXP-03 |
+| KSP-02-F04 | Klik Item → HoverCard → Draft Editor | ~~Klik item langsung membuka Draft Editor~~ — **Diamandemen ADR-090**: klik item membuka HoverCard (KSP-02-F08) dulu; CTA di dalam HoverCard yang membuka Draft Editor. Berlaku khusus Calendar — Queue dan Drafts tetap klik → langsung Draft Editor (tidak berubah) | UXP-01 |
+| KSP-02-F05 | Ganti Periode | Pengguna berpindah ke minggu/bulan lain lewat tombol Today, navigasi ‹ › (prev/next), dan toggle tampilan Minggu/Bulan. Label periode menyesuaikan (mis. "14–20 Jul" untuk minggu dalam 1 bulan, "28 Jul – 3 Ags" kalau minggu melintasi 2 bulan; "Agustus 2026" untuk tampilan bulan). State periode (`view=week\|month`, `date=<timestamp>`) dibawa lewat query param pada route tunggal `/publish/calendar` (tidak menambah route baru, konsisten ADR-046) | UXP-03 |
 | KSP-02-F06 | Status Failed yang Mencolok | Item dengan status Failed ditampilkan dengan visual yang berbeda dan tidak bisa diabaikan | UXP-04 |
 | KSP-02-F07 | Disconnected Account Warning | Jika akun dalam item berstatus Disconnected, indikator warning tampil di item tersebut | UXP-04, UXP-06 |
+| KSP-02-F08 | HoverCard Ringkasan Post | **Baru (ADR-090).** Klik item Calendar membuka Astryx `HoverCard` berisi: avatar + nama akun, platform, potongan caption, thumbnail media (kalau ada), status chip (reuse KSP-02-F02). Untuk post yang sudah Published, tambah section metrik (Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate` — field `PostMetrics` yang sudah ada, tanpa field baru) + tautan "Go to post". CTA di dalam HoverCard membuka Draft Editor (modal, ADR-052) untuk item tersebut | UXP-01, UXP-04 |
+| KSP-02-F09 | Filter Status & Channel | Dropdown filter status post ("All Posts" / per status) dan filter akun (Channels) di atas grid. Filter Tags dan Timezone per-view dari referensi Buffer **tidak diadopsi** (tidak ada konsep Tag di domain model; Timezone bukan setting per-view di backlog — konsisten keputusan T-032.0 untuk Queue) | UXP-03 |
 
 ---
 
 ### Zona Fungsional
 
 ```
-┌──────────────────────────────────────────────────┐
-│  [Tab: Calendar] [Queue] [Drafts] [History]       │
-├──────────────────────────────────────────────────┤
-│  PERIOD CONTROL: < Minggu Ini >   [Bulan]  [Hari]│
-├────────┬──────┬──────┬──────┬──────┬──────┬──────┤
-│  Sen   │ Sel  │ Rab  │ Kam  │ Jum  │ Sab  │ Ming │
-│        │      │      │      │      │      │      │
-│ [item] │      │[item]│      │[item]│      │      │
-│        │      │[item]│      │      │      │      │
-├────────┴──────┴──────┴──────┴──────┴──────┴──────┤
-│  [+ New Post]                                     │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  [Tab: Calendar] [Queue] [Drafts] [History]               │
+├──────────────────────────────────────────────────────────┤
+│  [Today] [‹ ›] Agustus 2026        [Channels▾][Status▾] [Minggu/Bulan▾] │
+├────────┬──────┬──────┬──────┬──────┬──────┬──────────────┤
+│  Sen   │ Sel  │ Rab  │ Kam  │ Jum  │ Sab  │ Ming         │
+│        │      │      │      │      │      │              │
+│ [item] │      │[item]│      │[item]│      │              │
+│        │      │[item]│      │      │      │              │
+├────────┴──────┴──────┴──────┴──────┴──────┴──────────────┤
+│  [+ New Post]                                             │
+└──────────────────────────────────────────────────────────┘
+  Week view: grid per hari × jam (baris waktu, mis. 12 AM/2 AM/.../10 PM).
+  Month view: grid per hari × tanggal penuh 1 bulan; sel dengan >3 item
+  memakai badge "N More" (expand, tidak overflow diam-diam); tanggal hari
+  ini ditandai badge bulat (bukan garis bawah seperti di Week view).
 ```
 
 **Zona tab bar:** Tab Calendar, Queue, Drafts, History selalu terlihat di bagian atas.
 
-**Zona period control:** Pengguna berpindah minggu/bulan. Default: minggu berjalan.
+**Zona period control:** Tombol Today, navigasi ‹ › (prev/next), label periode, filter Channels + Status, toggle Minggu/Bulan. Default: minggu berjalan (KSP-02-F01), state di query param (KSP-02-F05).
 
-**Zona grid:** Grid per hari × slot waktu. Setiap item menampilkan thumbnail akun, potongan caption, dan status.
+**Zona grid:** Week view = grid hari × slot jam. Month view = grid hari × tanggal bulan penuh dengan "N More" untuk sel padat. Setiap item menampilkan thumbnail akun, potongan caption, dan status; klik item membuka HoverCard (KSP-02-F08).
 
 **Zona New Post:** CTA tetap tersedia untuk langsung membuat konten baru.
 
@@ -188,11 +194,13 @@ Calendar adalah **tampilan default** saat pengguna masuk ke Publish. Layar ini m
 
 | State | Tampilan |
 | ----- | -------- |
-| Ada konten terjadwal | Grid terisi dengan item sesuai slot waktu |
-| Tidak ada konten minggu ini | Grid kosong + pesan _"Tidak ada konten minggu ini"_ + CTA ke Drafts → New Post |
+| Ada konten terjadwal | Grid terisi dengan item sesuai slot waktu (Week) atau tanggal (Month) |
+| Tidak ada konten minggu/bulan ini | Grid kosong + pesan _"Tidak ada konten minggu ini"_ (atau padanan Month) + CTA ke Drafts → New Post |
 | Item Failed | Item ditampilkan dengan visual berbeda (warna atau ikon khusus) — tidak disembunyikan |
 | Akun Disconnected | Indikator warning pada item yang terdampak + tautan ke Settings |
 | Item loading | Skeleton per item saat data sedang dimuat |
+| Sel Month view >3 item | Tampilkan maksimal item sesuai desain final + badge "N More" untuk expand — tidak boleh silently truncate tanpa indikator |
+| Klik item | HoverCard terbuka (KSP-02-F08); metrik hanya tampil untuk post Published |
 
 ---
 

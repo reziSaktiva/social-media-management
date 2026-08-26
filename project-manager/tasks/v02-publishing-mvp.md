@@ -247,16 +247,22 @@ Model Prisma `PublishingQueueSlot` sudah ada di schema **tanpa service apapun** 
 | ------------- | ------------------------------------------------------------ |
 | **Status**    | ⏳ Not Started                                                |
 | **Domain**    | publishing                                                   |
-| **ADR**       | ADR-023 (manual refresh, bukan realtime), ADR-046            |
+| **ADR**       | ADR-023 (manual refresh, bukan realtime), ADR-046, **ADR-090** (HoverCard klik item, khusus Calendar) |
 | **Depends**   | T-028 ✅                                                      |
-| **Baca dulu** | `04-ux/key-screen-patterns.md` · `05-architecture/realtime-strategy.md` |
+| **Baca dulu** | `04-ux/key-screen-patterns.md` (KSP-02, direvisi per ADR-090) · `04-ux/navigation-patterns.md` (NP-D15) · `05-architecture/realtime-strategy.md` |
 
 Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Realtime hanya untuk tabel `notifications`).
 
-- [ ] **T-033.1** Query post per rentang tanggal + filter akun
-- [ ] **T-033.2** Komponen kalender bulanan/mingguan (cek dulu apa yang tersedia di Astryx sebelum bikin sendiri)
-- [ ] **T-033.3** Manual refresh control
-- [ ] **T-033.4** Klik item → buka detail / Draft Editor
+**Referensi UX (2026-08-26):** breakdown di bawah disusun setelah sesi eksplorasi Calendar Buffer (King Rezi) di branch `feature/calendar-design-system`. Keputusan dari sesi itu: (a) **Tags & Timezone filter per-view tidak diadopsi** — alasan sama seperti T-032.0 (tidak ada konsep Tag di domain model, Timezone bukan setting per-view di backlog); (b) **satu route** `/publish/calendar` dengan state `?view=week|month&date=<timestamp>` di query param — tidak override ADR-046; (c) klik item Calendar buka **HoverCard** (Astryx) dulu sebelum Draft Editor — **ADR-090**, khusus Calendar, Queue/Drafts tidak berubah. Belum ada implementasi kode — sesi masih tahap dokumentasi (langkah berikut: Design System via Claude Design, baru implementasi `apps/web`).
+
+- [ ] **T-033.1** Query post per rentang tanggal + filter akun (`PublishingService`, query `PublishingPost`/`PublishingPostTarget`)
+- [ ] **T-033.2** State periode via query param (`?view=week|month&date=<timestamp>`) pada route tunggal `/publish/calendar` — tidak menambah route baru (konsisten ADR-046)
+- [ ] **T-033.3** Komponen grid Week view — hari × slot jam (cek dulu komponen `Calendar` Astryx sebelum bikin custom, `astryx component Calendar --dense`)
+- [ ] **T-033.4** Komponen grid Month view — hari × tanggal 1 bulan penuh, badge "N More" untuk sel padat (tidak silently truncate)
+- [ ] **T-033.5** Navigasi periode: tombol Today, ‹ › (prev/next), label periode (termasuk format lintas-bulan untuk Week), toggle Minggu/Bulan
+- [ ] **T-033.6** Filter status post (dropdown) + filter Channels (akun) di atas grid
+- [ ] **T-033.7** Manual refresh control
+- [ ] **T-033.8** Klik item → HoverCard (Astryx `HoverCard`, ADR-090): ringkasan post + metrik untuk post Published (mapping ke `PostMetrics`: Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate`) + CTA buka Draft Editor (modal, ADR-052)
 
 ### T-034 · Publishing History + detail post
 

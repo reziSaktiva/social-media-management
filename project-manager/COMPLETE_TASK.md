@@ -8,6 +8,72 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-26 — Perencanaan T-033 Calendar view: sinkronisasi dokumentasi vs referensi Buffer (ADR-090)
+
+### Context
+
+King Rezi memulai kerja pada T-033 (Calendar view, Publishing MVP) di
+branch baru `feature/calendar-design-system`, mengikuti alur kerja
+dokumentasi → Design System → implementasi kode (belum di tahap
+implementasi). Sebelum menyentuh Claude Design, King Rezi mengeksplorasi
+halaman Calendar Buffer (week view per-jam, month view + "N More", klik
+post → popover ringkasan metrik, filter Channels/Status/Tags/Timezone,
+navigasi Today/prev-next, state via URL) dan meminta agent mengecek
+kesesuaiannya dengan baseline `context/`/`product-discovery/` sebelum
+lanjut — sesuai rule 17 AGENTS.md (gate desain) dan alur kerja custom
+yang disepakati untuk sesi ini.
+
+### Riset & keputusan
+
+Riset dokumentasi (T-028, KSP-02, navigation-patterns, domain-model,
+ADR-046/052) menemukan beberapa gap antara referensi Buffer dan baseline
+existing. Setelah dikonfirmasi ke King Rezi:
+
+1. **Tags & Timezone filter per-view: tidak diadopsi** — konsisten
+   dengan alasan penolakan yang sama di T-032.0 (Queue): tidak ada
+   konsep Tag di domain model, Timezone bukan setting per-view di
+   backlog. Tidak ada perubahan baseline, tidak butuh ADR.
+2. **Route Calendar: tetap satu** `/publish/calendar` (ADR-046, tidak
+   diamandemen), state view (week/month) + date dibawa lewat query param
+   `?view=week|month&date=<timestamp>` — bukan dua route terpisah.
+3. **Klik item Calendar → Astryx `HoverCard` dulu, baru CTA ke Draft
+   Editor** — dikonfirmasi Astryx punya komponen ini via `astryx
+   component` sebelum diputuskan (rule 15 AGENTS.md). Ini mengubah pola
+   interaksi KSP-02-F04 yang sudah Accepted, sehingga dicatat sebagai
+   **ADR-090** (khusus Calendar; Queue dan Drafts tidak berubah, tetap
+   klik → langsung Draft Editor).
+
+### Dokumentasi yang disesuaikan
+
+* **ADR baru:** `project-manager/decisions/ADR-090-hovercard-astryx-preview-post-calendar-amandemen-ksp-02-f04.md`
+  + entri di `DECISIONS.md`.
+* `product-discovery/04-ux/key-screen-patterns.md` § KSP-02 — F04 direvisi
+  (HoverCard dulu), F08 baru (HoverCard Ringkasan Post, mapping metrik ke
+  `PostMetrics`: Views→`impressions`, Reach→`reach`, Replies→`comments`,
+  Eng. Rate→`engagementRate`), F09 baru (Filter Status & Channel, catat
+  Tags/Timezone tidak diadopsi), F05 diperluas (Today/prev-next/label
+  lintas-bulan/query param), Zona Fungsional & State Handling diperbarui
+  (grid per-jam Week, grid Month + "N More").
+* `product-discovery/04-ux/navigation-patterns.md` — baris Calendar di §
+  "Pola: Item → Editor" direvisi (lewat HoverCard), Queue/Drafts tidak
+  diubah; row **NP-D15** baru ditambahkan.
+* `project-manager/tasks/v02-publishing-mvp.md` § T-033 — ADR field +
+  ADR-090, subtask dipecah dari 4 jadi 8 (T-033.1–.8: query, query-param
+  view/date, grid Week, grid Month, navigasi periode, filter
+  status+channel, manual refresh, HoverCard+CTA Draft Editor).
+* `project-manager/TASKS.md` — total subtask 148 → **152** (v0.2: T-033
+  4 → 8 subtask), dihitung ulang langsung dari file task, bukan
+  increment manual.
+
+### Status
+
+Murni dokumentasi — **belum ada implementasi kode maupun perubahan
+Claude Design**. Langkah berikutnya menunggu arahan King Rezi: lanjut ke
+Design System (Claude Design, mengikuti breakdown T-033 di atas), lalu
+design review, baru implementasi `apps/web`.
+
+---
+
 ## 2026-08-24 — QA formal Najwa T-089.6 (ADR-089): KI-034 closed (Resolved)
 
 ### Context
