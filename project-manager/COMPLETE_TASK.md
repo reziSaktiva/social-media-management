@@ -8,6 +8,81 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-27 — T-033.2 State periode Calendar via query param selesai
+
+### Context
+
+Implementasi kode **T-033.2** (state periode Calendar via query param,
+`project-manager/tasks/v02-publishing-mvp.md` § T-033, domain `publishing`)
+sudah selesai oleh Prabowo Feature Engineer di branch
+`feature/calendar-design-system`, route tunggal `/publish/calendar` (ADR-046,
+tidak menambah route baru).
+
+### Perubahan
+
+File baru:
+- `apps/web/src/domains/publishing/services/parse-calendar-view-state.ts` —
+  pure function domain `publishing` (tanpa I/O, tidak import
+  Prisma/Supabase/HTTP) parsing & validasi `view`/`date` dari query param.
+  Tipe `CalendarViewMode` (`"week" | "month"`), `CalendarViewState`.
+- `apps/web/src/domains/publishing/services/parse-calendar-view-state.test.ts`
+  — 18 test case (default, valid, invalid, case-sensitivity, duplicate query
+  param/array, string kosong/whitespace, non-numeric, `Infinity`).
+- `apps/web/src/app/(app)/publish/calendar/components/CalendarScreen.tsx` —
+  placeholder Astryx (`Card`+`Badge`+`EmptyState`, bukan raw `<div>`)
+  menampilkan state `view`/`date` ter-parse; akan digantikan grid asli di
+  T-033.3/.4.
+- `apps/web/src/app/(app)/publish/calendar/hooks/useCalendarPeriodState.ts` —
+  fondasi client hook (`"use client"`, `usePathname`/`useRouter`/`useSearchParams`)
+  untuk T-033.5 nanti: baca state via `parseCalendarViewState` yang sama +
+  `setPeriod()` push ke URL via `router.replace` (bukan `push`, supaya
+  toggle/navigasi periode tidak menumpuk history). Belum dipakai di UI mana
+  pun — sengaja hanya fondasi, di luar scope UI T-033.2.
+
+File diubah:
+- `apps/web/src/app/(app)/publish/calendar/page.tsx` — Server Component
+  tipis: `await searchParams` → `parseCalendarViewState` → render
+  `CalendarScreen`. Tidak ada business logic di entry point (rule 5
+  `AGENTS.md`).
+- `apps/web/src/domains/publishing/index.ts` — tambah 1 baris export barrel.
+
+Parsing & fallback:
+- `view`: valid hanya kalau persis `"month"` (case-sensitive, lowercase) —
+  selain itu (termasuk `"week"`, hilang, typo, casing lain seperti
+  `"Month"`) → default `"week"`.
+- `date`: diperlakukan sebagai epoch milliseconds. Hilang/kosong/whitespace/
+  non-numeric/`Infinity`/`NaN` → default hari ini (jam server).
+- Query param diulang (array, mis. `?view=week&view=month`) → ambil elemen
+  pertama.
+
+### Verifikasi
+
+`bun run typecheck`, `bun run lint`, `bun run test` semua bersih (193
+passed, 3 skipped, tidak ada regresi). Verifikasi browser end-to-end (akun
+test Raka Pratama): golden path (tanpa query param → Tampilan Minggu + hari
+ini), `?view=month&date=<valid>` → Tampilan Bulan + tanggal sesuai,
+`?view=yearly&date=not-a-number` (invalid) → fallback benar ke default.
+
+### Keputusan implementasi (dikonfirmasi King Rezi di sesi ini)
+
+1. Format `date` pakai epoch milliseconds (bukan ISO string) — sesuai
+   literal task `?date=<timestamp>`, tidak ada precedent lain di codebase.
+2. `view` case-sensitive (lowercase only) — `?view=Month` invalid → fallback
+   week. Dikonfirmasi eksplisit, tidak diubah.
+3. Nama hook `useCalendarPeriodState`/method `setPeriod` — pilihan
+   sementara, mudah di-rename saat T-033.5 dikerjakan karena belum ada
+   consumer.
+
+### Dokumentasi
+
+- `project-manager/tasks/v02-publishing-mvp.md` — checkbox **T-033.2**
+  ditandai selesai (`[x]`). T-033 (task-level) tetap `🟡 In Progress` —
+  T-033.3–.8 masih terbuka.
+- `project-manager/TASKS.md` — tidak ada perubahan angka; jumlah subtask
+  T-033 tetap 8, task-level v0.2 tidak berubah.
+
+---
+
 ## 2026-08-27 — T-033.1 Calendar query selesai
 
 ### Context
