@@ -8,6 +8,28 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-27 — T-033.1 Calendar query selesai
+
+### Context
+
+Implementasi kode `PublishingService.listCalendarPosts` (query post per
+rentang tanggal + filter akun + filter status, hanya status
+Scheduled/Published/Failed sesuai keputusan yang sudah dicatat di section
+T-033 `tasks/v02-publishing-mvp.md`, 2026-08-26) sudah selesai, lolos test
+Vitest, `tsc`/`eslint` bersih, dan sudah di-commit + push ke PR #91
+(`feature/calendar-design-system` → `staging`, goal PR = T-033 penuh).
+
+### Perubahan dokumentasi
+
+- `project-manager/tasks/v02-publishing-mvp.md` — checkbox **T-033.1**
+  ditandai selesai (`[x]`). T-033 (task-level) tetap `⏳ Not Started` /
+  belum Done — T-033.2–.8 masih terbuka.
+- `project-manager/TASKS.md` — tidak ada perubahan angka; jumlah subtask
+  T-033 tetap 8 (tidak ada subtask ditambah/dihapus), task-level v0.2 tidak
+  berubah.
+
+---
+
 ## 2026-08-26 — Redesain kontrak ACL Outstand (ADR-092)
 
 ### Context
