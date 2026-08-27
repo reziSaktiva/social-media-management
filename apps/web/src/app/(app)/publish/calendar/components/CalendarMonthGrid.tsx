@@ -27,6 +27,7 @@ import {
   addDays,
   CALENDAR_DAY_COLUMNS,
   type CalendarCardEntry,
+  columnDividerClassName,
   CONTENT_FORMAT_ICON,
   CONTENT_FORMAT_LABEL,
   CONTENT_STATUS_DOT_VARIANT,
@@ -131,9 +132,13 @@ export function CalendarMonthGrid({ date, items }: CalendarMonthGridProps) {
   return (
     <Card padding={3}>
       <VStack gap={2}>
-        <Grid columns={CALENDAR_DAY_COLUMNS} gap={2}>
-          {DAY_LABELS.map((label) => (
-            <VStack key={label} align="center">
+        <Grid columns={CALENDAR_DAY_COLUMNS} gap={0}>
+          {DAY_LABELS.map((label, index) => (
+            <VStack
+              key={label}
+              align="center"
+              className={columnDividerClassName(index)}
+            >
               <Text type="supporting" size="xsm">
                 {label}
               </Text>
@@ -146,8 +151,8 @@ export function CalendarMonthGrid({ date, items }: CalendarMonthGridProps) {
         <VStack gap={0}>
           {weeks.map((week, weekIndex) => (
             <VStack gap={0} key={week[0]?.dateKey ?? weekIndex}>
-              <Grid columns={CALENDAR_DAY_COLUMNS} gap={2}>
-                {week.map((day) => {
+              <Grid columns={CALENDAR_DAY_COLUMNS} gap={0}>
+                {week.map((day, columnIndex) => {
                   const entries = entriesByDate.get(day.dateKey) ?? [];
                   const isExpanded = expandedDateKeys.has(day.dateKey);
                   const visibleEntries = isExpanded
@@ -171,7 +176,9 @@ export function CalendarMonthGrid({ date, items }: CalendarMonthGridProps) {
                       gap={1.5}
                       minHeight={MONTH_CELL_MIN_HEIGHT}
                       padding={1}
+                      paddingInline={2}
                       isScrollable
+                      className={columnDividerClassName(columnIndex)}
                     >
                       <Text
                         type="supporting"

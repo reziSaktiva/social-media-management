@@ -27,6 +27,7 @@ import {
   addDays,
   CALENDAR_DAY_COLUMNS,
   type CalendarCardEntry,
+  columnDividerClassName,
   CONTENT_FORMAT_ICON,
   CONTENT_FORMAT_LABEL,
   CONTENT_STATUS_DOT_VARIANT,
@@ -103,11 +104,16 @@ export function CalendarWeekGrid({ date, items }: CalendarWeekGridProps) {
             <VStack width={TIME_COLUMN_WIDTH} />
           </StackItem>
           <StackItem size="fill">
-            <Grid columns={CALENDAR_DAY_COLUMNS} gap={2}>
+            <Grid columns={CALENDAR_DAY_COLUMNS} gap={0}>
               {days.map((day, index) => {
                 const isToday = dayKeys[index] === todayKey;
                 return (
-                  <VStack key={dayKeys[index]} gap={0.5} align="center">
+                  <VStack
+                    key={dayKeys[index]}
+                    gap={0.5}
+                    align="center"
+                    className={columnDividerClassName(index)}
+                  >
                     <Text
                       type="supporting"
                       size="xsm"
@@ -143,7 +149,7 @@ export function CalendarWeekGrid({ date, items }: CalendarWeekGridProps) {
                   </VStack>
                 </StackItem>
                 <StackItem size="fill">
-                  <Grid columns={CALENDAR_DAY_COLUMNS} gap={2}>
+                  <Grid columns={CALENDAR_DAY_COLUMNS} gap={0}>
                     {dayKeys.map((dayKey, dayIndex) => {
                       const cellKey = `${dayIndex}-${hour}`;
                       const entries = cellEntries.get(cellKey) ?? [];
@@ -166,8 +172,9 @@ export function CalendarWeekGrid({ date, items }: CalendarWeekGridProps) {
                           key={dayKey}
                           gap={1.5}
                           minHeight={WEEK_CELL_MIN_HEIGHT}
-                          padding={1}
+                          padding={1.5}
                           isScrollable
+                          className={columnDividerClassName(dayIndex)}
                         >
                           {visibleEntries.map((entry) => {
                             const PlatformGlyph =

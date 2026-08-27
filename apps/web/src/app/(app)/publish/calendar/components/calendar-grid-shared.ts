@@ -148,6 +148,43 @@ export const WEEK_HOUR_LABELS = [
   "",
 ] as const;
 
+/**
+ * Class Tailwind border-kanan token-backed untuk pemisah vertikal antar
+ * kolom hari grid Week & Month (revisi keenam T-033 — sebelumnya grid cuma
+ * punya garis horizontal via `Divider variant="strong"` antar baris, tanpa
+ * pemisah vertikal apapun antar kolom Sen/Sel/Rab/dst). `VStack`/`Card`
+ * Astryx tidak punya prop border per-sisi (`astryx component VStack/Card
+ * --dense` sudah dicek, tidak ada), jadi fallback Tailwind utility
+ * token-backed sesuai urutan aturan `apps/web/.claude/CLAUDE.md`
+ * ("component props first; else Tailwind utilities backed by tokens").
+ *
+ * Warna diganti di revisi ketujuh T-033 (poin 2) — sebelumnya
+ * `border-border-strong` (`--color-border-emphasized`, sama dengan
+ * `Divider variant="strong"` horizontal) terlihat terlalu tegas dibanding
+ * border `Card`/`ClickableCard` post. Sekarang pakai `border-border` (tanpa
+ * suffix) → `--color-border` di `tailwind-theme.css`
+ * (`node_modules/@astryxdesign/core/src/tailwind-theme.css:87`,
+ * `--color-border: var(--color-border)`), token PERSIS sama yang dipakai
+ * `Card` untuk `borderColor` default
+ * (`node_modules/@astryxdesign/core/src/Card/Card.tsx:93`,
+ * `colorVars['--color-border']`) — diverifikasi lewat source CLI-terpin,
+ * bukan tebakan. Garis HORIZONTAL (`Divider variant="strong"`) sengaja
+ * TIDAK ikut berubah, tetap `--color-border-emphasized` seperti sebelumnya.
+ *
+ * Dipakai di HEADER (`DAY_LABELS`/hari) **dan** tiap baris body (week-row
+ * Month, hour-row Week) dengan index kolom yang sama, supaya garis vertikal
+ * tersambung dari atas ke bawah — bukan cuma sebagian baris. Kolom terakhir
+ * (`CALENDAR_DAY_COLUMNS - 1`, kolom Minggu) sengaja `undefined` (tanpa
+ * border kanan) supaya tidak ada garis nempel di tepi kanan card/grid.
+ */
+export function columnDividerClassName(
+  columnIndex: number,
+): string | undefined {
+  return columnIndex === CALENDAR_DAY_COLUMNS - 1
+    ? undefined
+    : "border-r border-border";
+}
+
 /** Format jam UTC (0-23) jadi label "HH:00" (mis. 7 → "07:00") — dipakai kartu Month (poin M2). */
 export function formatCalendarHour(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
