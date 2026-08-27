@@ -8,6 +8,80 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-27 — T-033.8 Popover ringkasan post + CTA Draft Editor Calendar view selesai
+
+### Context
+
+Implementasi kode **T-033.8** (klik item Calendar → Popover ringkasan post +
+CTA buka Draft Editor, `project-manager/tasks/v02-publishing-mvp.md` §
+T-033, domain `publishing`), branch `feature/calendar-design-system`.
+Direview arsitektur oleh Ridwan Architecture Reviewer (tanpa temuan) dan
+lolos QA Najwa QA Engineer (tanpa bug fungsional; satu catatan inconclusive
+soal tooling emulasi mobile viewport, bukan bug aplikasi). **T-033.7**
+(manual refresh control) **TIDAK** dikerjakan sesi ini — di-STOP karena
+tidak ada rancangannya sama sekali di Claude Design (AGENTS.md rule 17),
+menunggu konfirmasi desain dari King Rezi.
+
+### Perubahan
+
+Semua file di `apps/web/src`, kecuali disebutkan lain:
+
+- `app/(app)/publish/calendar/components/CalendarPostPopover.tsx` (BARU) —
+  client component, Astryx `Popover` (BUKAN HoverCard, ADR-090/ADR-091),
+  controlled `isOpen` lokal per kartu. Isi: header account+platform,
+  avatar+status chip, caption, media placeholder (domain belum punya field
+  media), 4 tile metrik untuk status Published (Views→`impressions`,
+  Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate`, format
+  "–" kalau belum ada data), link "Go to post" (kalau `platformPostUrl`
+  ada), CTA "Buka Draft Editor" (reuse `useDraftEditor().openEditDraft`,
+  pola sama Queue).
+- `app/(app)/publish/calendar/components/CalendarWeekGrid.tsx` dan
+  `CalendarMonthGrid.tsx` — TODO/no-op `onClick` sebelumnya diganti wrap
+  `ClickableCard` dengan `CalendarPostPopover`.
+- `domains/publishing/repositories/publishing.repository.ts` — interface
+  baru `CalendarItemTargetRecord extends QueueItemTargetRecord` + field
+  `platformPostUrl: string | null` (dari `PublishingPostTarget.platformPostUrl`,
+  kolom Prisma yang sudah ada tapi belum pernah di-expose ke domain — bukan
+  migrasi baru).
+- `lib/repositories/publishing/publishing.repository.ts` —
+  `mapCalendarItem` memetakan `platformPostUrl`.
+- `app/(app)/publish/calendar/page.tsx` — composition root sekarang
+  instansiasi `AnalyticsService` dan pass sebagai `PostMetricsPort` ke
+  `PublishingService` (sebelumnya tanpa argumen kedua, jadi `metrics`
+  selalu kosong) — supaya metrik Published benar-benar terisi.
+- `app/(app)/publish/calendar/components/calendar-grid-shared.ts` —
+  `CalendarCardEntry` (kartu per-target) diperluas `connectedAccountId`,
+  `metrics: PostMetricsRecord | null` (dicocokkan per
+  `connectedAccountId` target), `platformPostUrl: string | null` di
+  `flattenCalendarItemsToEntries`.
+- `domains/publishing/services/publishing.service.test.ts` — fixture
+  disesuaikan dengan field baru.
+
+### Verifikasi
+
+`bun run typecheck`, `bun run lint`, `bun run test` (root) — semua
+bersih/pass (209 test pass, 3 skipped; tidak ada test baru ditambah —
+pola project ini tidak unit-test file di folder "components" app-router,
+cek lewat browser preview manual sebagai gantinya, konsisten T-033.3–.6).
+Review arsitektur Ridwan — tanpa temuan. QA manual (main agent + Najwa):
+Week & Month view, popover Scheduled & Published, exclusivity/dismiss
+(klik kartu lain/klik luar/Escape), regresi toolbar (navigasi/filter),
+regresi Queue & Drafts (tetap langsung buka Draft Editor tanpa Popover —
+scope Popover khusus Calendar), dark mode, multi-target post (2 kartu
+platform berbeda dari 1 post — data tidak tertukar) — semua pass. Satu
+catatan non-blocking: emulasi mobile viewport di tooling browser pane
+sempat tidak stabil saat QA (bukan bug aplikasi, inconclusive) — follow-up
+verifikasi manual opsional, bukan bug tercatat.
+
+### Scope belum dikerjakan (sengaja, bukan bug)
+
+**T-033.7** (manual refresh control) — **blocked**, tidak ada rancangan
+sama sekali di Claude Design, menunggu King Rezi membuat/mengonfirmasi
+desain (AGENTS.md rule 17). Status task-level **T-033** tetap
+`🟡 In Progress`.
+
+---
+
 ## 2026-08-27 — T-033.5/.6 Navigasi periode + filter status/Channels Calendar view selesai
 
 ### Context

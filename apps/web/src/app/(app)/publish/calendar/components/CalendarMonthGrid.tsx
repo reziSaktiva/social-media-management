@@ -20,6 +20,7 @@ import {
   CONTENT_STATUS_LABEL,
 } from "../../../components/draft-editor/status-badge";
 import { PLATFORM_ICON } from "../../../components/platform-icons";
+import { CalendarPostPopover } from "./CalendarPostPopover";
 import {
   addDays,
   type CalendarCardEntry,
@@ -82,8 +83,8 @@ export interface CalendarMonthGridProps {
  * padding bulan sebelum/sesudah ditandai muted, tanpa post (Prabowo hanya
  * fetch bulan aktif). Maks 3 kartu tampil per sel, sisanya di balik
  * "+N More" yang expand/collapse di tempat (state lokal) — bukan modal
- * (di luar scope T-033.4). Klik kartu post masih no-op — Popover
- * (T-033.8, ADR-090/ADR-091) di luar scope task ini.
+ * (di luar scope T-033.4). Klik kartu post membuka Popover ringkasan
+ * (T-033.8, ADR-090/ADR-091, `CalendarPostPopover`).
  */
 export function CalendarMonthGrid({ date, items }: CalendarMonthGridProps) {
   const [expandedDateKeys, setExpandedDateKeys] = useState<ReadonlySet<string>>(
@@ -173,38 +174,41 @@ export function CalendarMonthGrid({ date, items }: CalendarMonthGridProps) {
                               const PlatformGlyph =
                                 PLATFORM_ICON[entry.platform].Icon;
                               return (
-                                <ClickableCard
+                                <CalendarPostPopover
                                   key={entry.key}
-                                  label={`${entry.accountHandle} — ${
-                                    entry.caption || "(Tanpa caption)"
-                                  }`}
-                                  padding={1}
-                                  onClick={() => {
-                                    // TODO(T-033.8): buka Popover ringkasan post (ADR-090/ADR-091) — belum diimplementasikan, di luar scope T-033.4.
-                                  }}
+                                  entry={entry}
                                 >
-                                  <VStack gap={0.5} align="start">
-                                    <HStack gap={1} align="center">
-                                      <PlatformGlyph
-                                        size={10}
-                                        color={
-                                          PLATFORM_ICON[entry.platform].color
+                                  <ClickableCard
+                                    label={`${entry.accountHandle} — ${
+                                      entry.caption || "(Tanpa caption)"
+                                    }`}
+                                    padding={1}
+                                  >
+                                    <VStack gap={0.5} align="start">
+                                      <HStack gap={1} align="center">
+                                        <PlatformGlyph
+                                          size={10}
+                                          color={
+                                            PLATFORM_ICON[entry.platform].color
+                                          }
+                                        />
+                                        <Text size="xsm" maxLines={1}>
+                                          {entry.caption || "(Tanpa caption)"}
+                                        </Text>
+                                      </HStack>
+                                      <Badge
+                                        variant={
+                                          CONTENT_STATUS_BADGE_VARIANT[
+                                            entry.status
+                                          ]
+                                        }
+                                        label={
+                                          CONTENT_STATUS_LABEL[entry.status]
                                         }
                                       />
-                                      <Text size="xsm" maxLines={1}>
-                                        {entry.caption || "(Tanpa caption)"}
-                                      </Text>
-                                    </HStack>
-                                    <Badge
-                                      variant={
-                                        CONTENT_STATUS_BADGE_VARIANT[
-                                          entry.status
-                                        ]
-                                      }
-                                      label={CONTENT_STATUS_LABEL[entry.status]}
-                                    />
-                                  </VStack>
-                                </ClickableCard>
+                                    </VStack>
+                                  </ClickableCard>
+                                </CalendarPostPopover>
                               );
                             })}
 

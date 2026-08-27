@@ -11,6 +11,7 @@ import {
 } from "@social/shared";
 import type {
   CalendarItemRecord,
+  CalendarItemTargetRecord,
   IPublishingRepository,
   PublishingCancelScheduleRecord,
   PublishingPostRecord,
@@ -84,12 +85,13 @@ function mapCalendarItem(post: QueuePostWithTargets): CalendarItemRecord {
     scheduledAt: post.scheduledAt,
     publishedAt: post.publishedAt,
     createdAt: post.createdAt,
-    targets: post.targets.map((target) => ({
+    targets: post.targets.map((target): CalendarItemTargetRecord => ({
       id: asPostTargetId(target.id),
       connectedAccountId: asConnectedAccountId(target.connectedAccountId),
       platform: target.platform as SocialPlatform,
       contentFormat: target.contentFormat as ContentFormat,
       accountHandle: target.connectedAccount.handle,
+      platformPostUrl: target.platformPostUrl,
     })),
   };
 }

@@ -18,6 +18,7 @@ import {
   CONTENT_STATUS_LABEL,
 } from "../../../components/draft-editor/status-badge";
 import { PLATFORM_ICON } from "../../../components/platform-icons";
+import { CalendarPostPopover } from "./CalendarPostPopover";
 import {
   addDays,
   type CalendarCardEntry,
@@ -40,8 +41,8 @@ export interface CalendarWeekGridProps {
 /**
  * Grid Week (T-033.3, KSP-02) — 7 kolom hari × 12 baris slot waktu (per 2
  * jam), acuan visual `templates/publish-calendar.html` (Claude Design).
- * Klik kartu post masih no-op — Popover ringkasan post baru dikerjakan di
- * T-033.8 (ADR-090/ADR-091), bukan scope task ini.
+ * Klik kartu post membuka Popover ringkasan (T-033.8, ADR-090/ADR-091,
+ * `CalendarPostPopover`).
  */
 export function CalendarWeekGrid({ date, items }: CalendarWeekGridProps) {
   const { from: weekStart } = getWeekRange(date);
@@ -129,43 +130,46 @@ export function CalendarWeekGrid({ date, items }: CalendarWeekGridProps) {
                             const PlatformGlyph =
                               PLATFORM_ICON[entry.platform].Icon;
                             return (
-                              <ClickableCard
+                              <CalendarPostPopover
                                 key={entry.key}
-                                label={`${entry.accountHandle} — ${
-                                  entry.caption || "(Tanpa caption)"
-                                }`}
-                                padding={1}
-                                onClick={() => {
-                                  // TODO(T-033.8): buka Popover ringkasan post (ADR-090/ADR-091) — belum diimplementasikan, di luar scope T-033.3.
-                                }}
+                                entry={entry}
                               >
-                                <VStack gap={0.5} align="start">
-                                  <HStack gap={1} align="center">
-                                    <PlatformGlyph
-                                      size={10}
-                                      color={
-                                        PLATFORM_ICON[entry.platform].color
-                                      }
-                                    />
-                                    <Text
-                                      type="supporting"
-                                      size="xsm"
-                                      maxLines={1}
-                                    >
-                                      {entry.accountHandle}
+                                <ClickableCard
+                                  label={`${entry.accountHandle} — ${
+                                    entry.caption || "(Tanpa caption)"
+                                  }`}
+                                  padding={1}
+                                >
+                                  <VStack gap={0.5} align="start">
+                                    <HStack gap={1} align="center">
+                                      <PlatformGlyph
+                                        size={10}
+                                        color={
+                                          PLATFORM_ICON[entry.platform].color
+                                        }
+                                      />
+                                      <Text
+                                        type="supporting"
+                                        size="xsm"
+                                        maxLines={1}
+                                      >
+                                        {entry.accountHandle}
+                                      </Text>
+                                    </HStack>
+                                    <Text size="xsm" maxLines={1}>
+                                      {entry.caption || "(Tanpa caption)"}
                                     </Text>
-                                  </HStack>
-                                  <Text size="xsm" maxLines={1}>
-                                    {entry.caption || "(Tanpa caption)"}
-                                  </Text>
-                                  <Badge
-                                    variant={
-                                      CONTENT_STATUS_BADGE_VARIANT[entry.status]
-                                    }
-                                    label={CONTENT_STATUS_LABEL[entry.status]}
-                                  />
-                                </VStack>
-                              </ClickableCard>
+                                    <Badge
+                                      variant={
+                                        CONTENT_STATUS_BADGE_VARIANT[
+                                          entry.status
+                                        ]
+                                      }
+                                      label={CONTENT_STATUS_LABEL[entry.status]}
+                                    />
+                                  </VStack>
+                                </ClickableCard>
+                              </CalendarPostPopover>
                             );
                           })}
                         </VStack>

@@ -364,6 +364,7 @@ function createCalendarItem(
         platform: SocialPlatform.Instagram,
         contentFormat: ContentFormat.Post,
         accountHandle: "@raka",
+        platformPostUrl: null,
       },
     ],
     ...overrides,

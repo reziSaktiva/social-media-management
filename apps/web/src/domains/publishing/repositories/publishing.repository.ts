@@ -102,6 +102,16 @@ export interface PublishingCancelScheduleRecord extends PublishingPostRecord {
  * keputusan produk yang belum ada di baseline — perlu ADR/klarifikasi
  * sebelum T-033.3/.4 (UI grid) diimplementasikan.
  */
+/**
+ * Target Calendar (T-033.8) — `QueueItemTargetRecord` + `platformPostUrl`
+ * (`PublishingPostTarget.platformPostUrl`, schema.prisma:264) untuk tautan
+ * "Go to post" di Popover (KSP-02-F08). Field baru di sini saja, bukan di
+ * `QueueItemTargetRecord` — Queue tidak butuh URL post asli.
+ */
+export interface CalendarItemTargetRecord extends QueueItemTargetRecord {
+  platformPostUrl: string | null;
+}
+
 export interface CalendarItemRecord {
   id: PostId;
   caption: string;
@@ -109,7 +119,7 @@ export interface CalendarItemRecord {
   scheduledAt: Date | null;
   publishedAt: Date | null;
   createdAt: Date;
-  targets: QueueItemTargetRecord[];
+  targets: CalendarItemTargetRecord[];
 }
 
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/publishing. */

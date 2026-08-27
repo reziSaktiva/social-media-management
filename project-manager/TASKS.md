@@ -100,8 +100,11 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 > revisi tersisa). Sesi implementasi 2026-08-27 menutup **T-033.1–.6**
 > (query rentang tanggal, state via query param, grid Week, grid Month,
 > navigasi periode Today/‹/›/toggle, filter status+akun — data asli,
-> lolos review Ridwan + QA Najwa). Sisa terbuka: **T-033.7** (manual
-> refresh), **T-033.8** (Popover klik item + CTA Draft Editor). Detail:
+> lolos review Ridwan + QA Najwa) dan **T-033.8** (Popover ringkasan post +
+> metrik Published + CTA buka Draft Editor, sesi terpisah, lolos review
+> Ridwan + QA Najwa). Sisa terbuka: **T-033.7** (manual refresh) —
+> **blocked**, tidak ada rancangan sama sekali di Claude Design (AGENTS.md
+> rule 17), menunggu King Rezi membuat/mengonfirmasi desain. Detail:
 > `tasks/v02-publishing-mvp.md` § T-033.
 
 > **T-032** (Queue management) sudah ✅ **Done** (2026-08-20) — listQueue dari data asli (bukan `PublishingQueueSlot`, ADR-083), UI Astryx nyata, 3 aksi (Publish Now/Edit/Cancel Schedule). Menutup sebagian besar **T-030** (Cancel Schedule) untuk konteks Queue — sisa scope Calendar masih di T-033. Detail: `tasks/v02-publishing-mvp.md` § T-032.

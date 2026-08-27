@@ -1,6 +1,7 @@
 import { asUserId } from "@social/shared";
 import { redirect } from "next/navigation";
 
+import { AnalyticsService } from "@/domains/analytics";
 import {
   getMonthRange,
   getWeekRange,
@@ -10,6 +11,7 @@ import {
 import { WorkspaceService } from "@/domains/workspace";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
+import { analyticsRepository } from "@/lib/repositories/analytics";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 
@@ -30,9 +32,10 @@ type CalendarPageSearchParams = {
  * `PublishingService.listCalendarPosts` dengan `statuses`/
  * `connectedAccountIds` (T-033.6) — semua pure function/Application
  * Service domain `publishing`, tidak ada business logic di sini
- * (AGENTS.md #5). Tanpa `PostMetricsPort` — metrik Popover baru dipakai
- * T-033.8, `PublishingService` diinstansiasi tanpa argumen kedua sesuai
- * desain aman `CalendarPostItem.metrics`.
+ * (AGENTS.md #5). `PublishingService` diinstansiasi dengan
+ * `AnalyticsService` sebagai `PostMetricsPort` (T-033.8, port lokal cross-
+ * domain `publishing` → `analytics`, AGENTS.md #7) supaya `metrics` post
+ * Published terisi untuk Popover.
  *
  * `WorkspaceService.listConnectedAccounts` (T-033.6) dipanggil di sini,
  * bukan di dalam domain `publishing` — cross-domain lewat public API
@@ -60,7 +63,10 @@ export default async function Page({
   const { from, to } =
     view === "month" ? getMonthRange(date) : getWeekRange(date);
 
-  const publishingService = new PublishingService(publishingRepository);
+  const publishingService = new PublishingService(
+    publishingRepository,
+    new AnalyticsService(analyticsRepository),
+  );
   const workspaceService = new WorkspaceService(workspaceRepository);
 
   const [items, accounts] = await Promise.all([

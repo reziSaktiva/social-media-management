@@ -1,6 +1,11 @@
-import type { PostId, SocialPlatform } from "@social/shared";
+import type {
+  ConnectedAccountId,
+  PostId,
+  SocialPlatform,
+} from "@social/shared";
 import type { ContentStatus } from "@social/shared";
 
+import type { PostMetricsRecord } from "@/domains/analytics";
 import {
   effectiveCalendarDate,
   type CalendarPostItem,
@@ -78,6 +83,7 @@ export function addMonths(date: Date, months: number): Date {
 export interface CalendarCardEntry {
   key: string;
   postId: PostId;
+  connectedAccountId: ConnectedAccountId;
   caption: string;
   status: ContentStatus;
   platform: SocialPlatform;
@@ -86,6 +92,18 @@ export interface CalendarCardEntry {
   dateKey: string;
   /** Jam UTC (0-23) dari tanggal efektif — dipakai grid Week untuk bucket slot 2 jam. */
   hour: number;
+  /**
+   * Metrik untuk TARGET INI SAJA (T-033.8, Popover KSP-02-F08) — dicocokkan
+   * dari `CalendarPostItem.metrics` (array per akun/platform milik post)
+   * lewat `connectedAccountId`, bukan array mentah. `null` untuk post
+   * non-Published (`item.metrics === null`, tidak pernah di-fetch) MAUPUN
+   * post Published yang belum punya baris metrik untuk target ini
+   * (`item.metrics` ada tapi tidak match) — Popover membedakan status lewat
+   * `entry.status`, bukan lewat `metrics`.
+   */
+  metrics: PostMetricsRecord | null;
+  /** `PublishingPostTarget.platformPostUrl` — tautan "Go to post" (Popover), null kalau belum dilaporkan Outstand. */
+  platformPostUrl: string | null;
 }
 
 /**
@@ -110,12 +128,18 @@ export function flattenCalendarItemsToEntries(
       entries.push({
         key: `${item.id}-${target.id}`,
         postId: item.id,
+        connectedAccountId: target.connectedAccountId,
         caption: item.caption,
         status: item.status,
         platform: target.platform,
         accountHandle: target.accountHandle,
         dateKey,
         hour,
+        metrics:
+          item.metrics?.find(
+            (metric) => metric.connectedAccountId === target.connectedAccountId,
+          ) ?? null,
+        platformPostUrl: target.platformPostUrl,
       });
     }
   }
