@@ -19,7 +19,10 @@ import {
 } from "../../../components/draft-editor/status-badge";
 import { useDraftEditor } from "../../../components/draft-editor/Context";
 import { PLATFORM_ICON } from "../../../components/platform-icons";
-import type { CalendarCardEntry } from "./calendar-grid-shared";
+import {
+  type CalendarCardEntry,
+  CONTENT_FORMAT_LABEL,
+} from "./calendar-grid-shared";
 
 const POPOVER_WIDTH = 296;
 
@@ -94,8 +97,17 @@ export function CalendarPostPopover({
             </Text>
           </VStack>
 
-          <HStack gap={2} align="center">
+          {/* `contentFormat` ditambahkan di sini (revisi keempat T-033, poin 5
+              opsional) — info yang jadi icon-only di footer card mobile
+              (≤768px) tetap punya representasi teks lengkap saat kartu
+              di-tap. `wrap="wrap"` berjaga-jaga kalau lebar Avatar+2 Badge
+              melebihi POPOVER_WIDTH di label status terpanjang. */}
+          <HStack gap={2} align="center" wrap="wrap">
             <Avatar name={entry.accountHandle} size="sm" tooltip={false} />
+            <Badge
+              variant="neutral"
+              label={CONTENT_FORMAT_LABEL[entry.contentFormat]}
+            />
             <Badge
               variant={CONTENT_STATUS_BADGE_VARIANT[entry.status]}
               label={CONTENT_STATUS_LABEL[entry.status]}

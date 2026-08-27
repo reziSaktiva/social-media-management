@@ -6,9 +6,11 @@ import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { ClickableCard } from "@astryxdesign/core/ClickableCard";
 import { Divider } from "@astryxdesign/core/Divider";
-import { EmptyState } from "@astryxdesign/core/EmptyState";
+import { Grid } from "@astryxdesign/core/Grid";
 import { HStack } from "@astryxdesign/core/HStack";
+import { Icon } from "@astryxdesign/core/Icon";
 import { StackItem } from "@astryxdesign/core/Stack";
+import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 
@@ -23,15 +25,27 @@ import { PLATFORM_ICON } from "../../../components/platform-icons";
 import { CalendarPostPopover } from "./CalendarPostPopover";
 import {
   addDays,
+  CALENDAR_DAY_COLUMNS,
   type CalendarCardEntry,
+  CONTENT_FORMAT_ICON,
+  CONTENT_FORMAT_LABEL,
+  CONTENT_STATUS_DOT_VARIANT,
   DAY_LABELS,
   flattenCalendarItemsToEntries,
+  formatCalendarHour,
+  MAX_VISIBLE_PER_CELL,
   MS_PER_DAY,
   toUtcDateKey,
 } from "./calendar-grid-shared";
 
-/** Maks kartu tampil langsung per sel sebelum "+N More" (mockup: 3 + "+1 More"). */
-const MAX_VISIBLE_PER_CELL = 3;
+/** Tinggi minimum sel Month, termasuk padding — lebar kolom sekarang responsive (`Grid columns={CALENDAR_DAY_COLUMNS}`), tinggi tetap fixed. */
+const MONTH_CELL_MIN_HEIGHT = 200;
+
+/** Sisi kotak avatar platform (Card berisi `PlatformGlyph` di tengah, poin 5 — bukan lagi box kosong terpisah dari icon). Dinaikkan di revisi kelima T-033 (poin 1) — ukuran sebelumnya (14) hasil pengecilan agresif revisi ketiga jadi terlalu kecil untuk dibaca. */
+const MONTH_THUMBNAIL_SIZE = 20;
+
+/** Sisi ikon platform di dalam `MONTH_THUMBNAIL_SIZE` — dinaikkan bersamaan (revisi kelima T-033, poin 1). */
+const MONTH_PLATFORM_ICON_SIZE = 13;
 
 interface MonthGridDay {
   date: Date;
@@ -94,7 +108,6 @@ export function CalendarMonthGrid({ date, items }: CalendarMonthGridProps) {
   const gridDays = buildMonthGridDays(date);
   const weeks = chunkIntoWeeks(gridDays);
   const todayKey = toUtcDateKey(new Date());
-  const hasAnyItem = items.length > 0;
 
   const entriesByDate = new Map<string, CalendarCardEntry[]>();
   for (const entry of flattenCalendarItemsToEntries(items)) {
@@ -118,123 +131,203 @@ export function CalendarMonthGrid({ date, items }: CalendarMonthGridProps) {
   return (
     <Card padding={3}>
       <VStack gap={2}>
-        <HStack gap={2}>
+        <Grid columns={CALENDAR_DAY_COLUMNS} gap={2}>
           {DAY_LABELS.map((label) => (
-            <StackItem size="fill" key={label}>
-              <VStack align="center">
-                <Text type="supporting" size="xsm">
-                  {label}
-                </Text>
-              </VStack>
-            </StackItem>
+            <VStack key={label} align="center">
+              <Text type="supporting" size="xsm">
+                {label}
+              </Text>
+            </VStack>
           ))}
-        </HStack>
+        </Grid>
 
         <Divider variant="strong" />
 
-        {!hasAnyItem ? (
-          <EmptyState
-            title="Belum ada post di bulan ini"
-            description="Post berstatus Scheduled/Published/Failed dengan jadwal di bulan ini akan muncul di grid."
-          />
-        ) : (
-          <VStack gap={0}>
-            {weeks.map((week, weekIndex) => (
-              <VStack gap={0} key={week[0]?.dateKey ?? weekIndex}>
-                <HStack gap={2} align="start">
-                  {week.map((day) => {
-                    const entries = entriesByDate.get(day.dateKey) ?? [];
-                    const isExpanded = expandedDateKeys.has(day.dateKey);
-                    const visibleEntries = isExpanded
-                      ? entries
-                      : entries.slice(0, MAX_VISIBLE_PER_CELL);
-                    const hiddenCount = entries.length - visibleEntries.length;
-                    const isToday = day.dateKey === todayKey;
+        <VStack gap={0}>
+          {weeks.map((week, weekIndex) => (
+            <VStack gap={0} key={week[0]?.dateKey ?? weekIndex}>
+              <Grid columns={CALENDAR_DAY_COLUMNS} gap={2}>
+                {week.map((day) => {
+                  const entries = entriesByDate.get(day.dateKey) ?? [];
+                  const isExpanded = expandedDateKeys.has(day.dateKey);
+                  const visibleEntries = isExpanded
+                    ? entries
+                    : entries.slice(0, MAX_VISIBLE_PER_CELL);
+                  const hiddenCount = entries.length - visibleEntries.length;
+                  const isToday = day.dateKey === todayKey;
 
-                    return (
-                      <StackItem size="fill" key={day.dateKey}>
-                        <VStack gap={1} minHeight={96} padding={1}>
-                          <Text
-                            type="supporting"
-                            size="xsm"
-                            color={
-                              !day.isCurrentMonth
-                                ? "disabled"
-                                : isToday
-                                  ? "accent"
-                                  : "secondary"
-                            }
-                            weight={isToday ? "bold" : "normal"}
-                          >
-                            {day.date.getUTCDate()}
-                          </Text>
+                  return (
+                    // `isScrollable` (bukan untuk scroll sungguhan — sel selalu tumbuh
+                    // vertikal via `minHeight`) dipakai supaya sel ini jadi scroll
+                    // container (`overflow: auto`), yang per spec CSS Grid membuat
+                    // "automatic minimum size"-nya sendiri jadi 0 — mencegah 1 kartu
+                    // dengan konten lebar "mencuri" lebar kolom dari kartu lain di
+                    // baris yang sama (root cause "grid tidak sejajar", revisi ketiga
+                    // T-033 Bagian A). Tanpa ini, `<Grid columns={7}>` (`repeat(7,
+                    // 1fr)` = `repeat(7, minmax(auto, 1fr))`) membiarkan 1 sel padat
+                    // menentukan lebar kolomnya sendiri, bukan 1/7 rata seperti header.
+                    <VStack
+                      key={day.dateKey}
+                      gap={1.5}
+                      minHeight={MONTH_CELL_MIN_HEIGHT}
+                      padding={1}
+                      isScrollable
+                    >
+                      <Text
+                        type="supporting"
+                        size="xsm"
+                        color={
+                          !day.isCurrentMonth
+                            ? "disabled"
+                            : isToday
+                              ? "accent"
+                              : "secondary"
+                        }
+                        weight={isToday ? "bold" : "normal"}
+                      >
+                        {day.date.getUTCDate()}
+                      </Text>
 
-                          {day.isCurrentMonth &&
-                            visibleEntries.map((entry) => {
-                              const PlatformGlyph =
-                                PLATFORM_ICON[entry.platform].Icon;
-                              return (
-                                <CalendarPostPopover
-                                  key={entry.key}
-                                  entry={entry}
-                                >
-                                  <ClickableCard
-                                    label={`${entry.accountHandle} — ${
-                                      entry.caption || "(Tanpa caption)"
-                                    }`}
-                                    padding={1}
-                                  >
-                                    <VStack gap={0.5} align="start">
-                                      <HStack gap={1} align="center">
+                      {day.isCurrentMonth &&
+                        visibleEntries.map((entry) => {
+                          const PlatformGlyph =
+                            PLATFORM_ICON[entry.platform].Icon;
+                          return (
+                            <CalendarPostPopover key={entry.key} entry={entry}>
+                              <ClickableCard
+                                label={`${entry.accountHandle} — ${
+                                  entry.caption || "(Tanpa caption)"
+                                }`}
+                                padding={1.5}
+                                width="100%"
+                              >
+                                <VStack gap={1}>
+                                  {/* Header: avatar+nama (kiri, menyusut/truncate lewat StackItem
+                                      "fill") sejajar dengan jam (kanan) — satu baris, bukan avatar
+                                      disandingkan seluruh blok teks seperti sebelum revisi ketiga. */}
+                                  <HStack gap={1} align="center">
+                                    <Card
+                                      variant="muted"
+                                      padding={0}
+                                      width={MONTH_THUMBNAIL_SIZE}
+                                      height={MONTH_THUMBNAIL_SIZE}
+                                    >
+                                      <VStack
+                                        align="center"
+                                        justify="center"
+                                        height="100%"
+                                      >
                                         <PlatformGlyph
-                                          size={10}
+                                          size={MONTH_PLATFORM_ICON_SIZE}
                                           color={
                                             PLATFORM_ICON[entry.platform].color
                                           }
                                         />
-                                        <Text size="xsm" maxLines={1}>
-                                          {entry.caption || "(Tanpa caption)"}
-                                        </Text>
-                                      </HStack>
-                                      <Badge
-                                        variant={
-                                          CONTENT_STATUS_BADGE_VARIANT[
-                                            entry.status
-                                          ]
-                                        }
-                                        label={
-                                          CONTENT_STATUS_LABEL[entry.status]
-                                        }
-                                      />
-                                    </VStack>
-                                  </ClickableCard>
-                                </CalendarPostPopover>
-                              );
-                            })}
+                                      </VStack>
+                                    </Card>
+                                    <StackItem size="fill">
+                                      <Text size="sm" maxLines={1}>
+                                        {entry.accountHandle}
+                                      </Text>
+                                    </StackItem>
+                                    <Text
+                                      type="supporting"
+                                      size="xsm"
+                                      color="secondary"
+                                    >
+                                      {formatCalendarHour(entry.hour)}
+                                    </Text>
+                                  </HStack>
 
-                          {day.isCurrentMonth &&
-                            entries.length > MAX_VISIBLE_PER_CELL && (
-                              <Button
-                                label={
-                                  isExpanded
-                                    ? "Tampilkan lebih sedikit"
-                                    : `+${hiddenCount} More`
-                                }
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleExpanded(day.dateKey)}
-                              />
-                            )}
-                        </VStack>
-                      </StackItem>
-                    );
-                  })}
-                </HStack>
-                <Divider variant="subtle" />
-              </VStack>
-            ))}
-          </VStack>
-        )}
+                                  {/* Footer, revisi keempat T-033 poin 2-3: ≤768px `Badge` teks
+                                      overflow di card sempit (Badge "Scheduled" 77px vs ruang
+                                      card ~22-39px di 375px, Badge tidak punya prop
+                                      size/truncation) — diganti StatusDot+Icon compact di bawah
+                                      768px (breakpoint sama dengan AppShell mobile nav,
+                                      `md: 768` di `AppShell.tsx`), 2 Badge tetap seperti semula
+                                      di >768px (tidak berubah). CSS murni (Tailwind `md:`), bukan
+                                      JS resize-hook — `useMediaQuery` Astryx eksplisit "always
+                                      returns false on first render" (SSR), berisiko hydration
+                                      mismatch/layout shift untuk switch yang harus benar di
+                                      first paint. Detail lengkap tetap ada lewat tap kartu →
+                                      `CalendarPostPopover` (tidak berubah). */}
+                                  <HStack
+                                    gap={1.5}
+                                    align="center"
+                                    className="flex md:hidden"
+                                  >
+                                    <StatusDot
+                                      variant={
+                                        CONTENT_STATUS_DOT_VARIANT[entry.status]
+                                      }
+                                      label={CONTENT_STATUS_LABEL[entry.status]}
+                                      tooltip={
+                                        CONTENT_STATUS_LABEL[entry.status]
+                                      }
+                                    />
+                                    <Icon
+                                      icon={
+                                        CONTENT_FORMAT_ICON[entry.contentFormat]
+                                      }
+                                      size="xsm"
+                                      color="secondary"
+                                      label={
+                                        CONTENT_FORMAT_LABEL[
+                                          entry.contentFormat
+                                        ]
+                                      }
+                                    />
+                                  </HStack>
+                                  <HStack
+                                    gap={1}
+                                    align="center"
+                                    wrap="wrap"
+                                    className="hidden md:flex"
+                                  >
+                                    <Badge
+                                      variant="neutral"
+                                      label={
+                                        CONTENT_FORMAT_LABEL[
+                                          entry.contentFormat
+                                        ]
+                                      }
+                                    />
+                                    <Badge
+                                      variant={
+                                        CONTENT_STATUS_BADGE_VARIANT[
+                                          entry.status
+                                        ]
+                                      }
+                                      label={CONTENT_STATUS_LABEL[entry.status]}
+                                    />
+                                  </HStack>
+                                </VStack>
+                              </ClickableCard>
+                            </CalendarPostPopover>
+                          );
+                        })}
+
+                      {day.isCurrentMonth &&
+                        entries.length > MAX_VISIBLE_PER_CELL && (
+                          <Button
+                            label={
+                              isExpanded
+                                ? "Tampilkan lebih sedikit"
+                                : `+${hiddenCount} More`
+                            }
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExpanded(day.dateKey)}
+                          />
+                        )}
+                    </VStack>
+                  );
+                })}
+              </Grid>
+              <Divider variant="strong" />
+            </VStack>
+          ))}
+        </VStack>
       </VStack>
     </Card>
   );

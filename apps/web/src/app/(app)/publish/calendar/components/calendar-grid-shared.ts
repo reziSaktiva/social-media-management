@@ -1,9 +1,13 @@
+import type { StatusDotVariant } from "@astryxdesign/core/StatusDot";
+import type { IconType } from "react-icons";
+import { FaFilm, FaRegClock, FaRegImage, FaThumbtack } from "react-icons/fa6";
+
 import type {
   ConnectedAccountId,
   PostId,
   SocialPlatform,
 } from "@social/shared";
-import type { ContentStatus } from "@social/shared";
+import { ContentFormat, ContentStatus } from "@social/shared";
 
 import type { PostMetricsRecord } from "@/domains/analytics";
 import {
@@ -21,6 +25,82 @@ import {
 
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/**
+ * Jumlah kolom hari grid Week & Month — 7 kolom sama lebar, responsive
+ * mengikuti lebar container (`Grid columns={CALENDAR_DAY_COLUMNS}`, bukan
+ * lagi lebar fixed px). Dipakai `CalendarWeekGrid`/`CalendarMonthGrid`
+ * untuk header + body grid supaya kolom header dan body selalu sejajar
+ * (revisi kedua T-033 — membatalkan `CALENDAR_COLUMN_WIDTH` fixed 200px
+ * dari revisi sebelumnya).
+ */
+export const CALENDAR_DAY_COLUMNS = 7;
+
+/**
+ * Maks kartu tampil langsung per sel sebelum "+N More" (mockup: 3 +
+ * "+1 More") — sama untuk grid Week & Month.
+ */
+export const MAX_VISIBLE_PER_CELL = 3;
+
+/**
+ * `ContentFormat` → label singkat untuk indikator compact di card Calendar
+ * (revisi ketiga T-033, Month poin 7 / Week poin 5) — belum ada mapping
+ * label existing untuk enum ini di codebase manapun, pola sama
+ * `CONTENT_STATUS_LABEL` (`components/draft-editor/status-badge.ts`).
+ */
+export const CONTENT_FORMAT_LABEL: Record<ContentFormat, string> = {
+  [ContentFormat.Post]: "Post",
+  [ContentFormat.Reel]: "Reel",
+  [ContentFormat.Story]: "Story",
+  [ContentFormat.Pin]: "Pin",
+};
+
+/**
+ * `ContentFormat` → icon untuk indikator compact footer card Calendar di
+ * layar ≤768px (revisi keempat T-033, poin 3) — pengganti `Badge
+ * variant="neutral"` yang overflow di card sempit mobile (`Badge` Astryx
+ * tidak punya prop size/truncation, sudah dicek CLI sebelumnya). Set icon
+ * dari `react-icons/fa6`, mengikuti pola `PLATFORM_ICON`
+ * (`../../../components/platform-icons.tsx`) — satu-satunya library icon
+ * non-semantik yang sudah dipakai di codebase ini (bukan dependency baru).
+ * Dibungkus Astryx `Icon` di pemanggil (bukan render langsung seperti
+ * `PLATFORM_ICON`) supaya dapat token color (`secondary`) dan `label`
+ * accessible bawaan Icon — beda dari brand icon platform yang sengaja pakai
+ * warna brand mentah (ADR-058 poin 6/10).
+ */
+export const CONTENT_FORMAT_ICON: Record<ContentFormat, IconType> = {
+  [ContentFormat.Post]: FaRegImage,
+  [ContentFormat.Reel]: FaFilm,
+  [ContentFormat.Story]: FaRegClock,
+  [ContentFormat.Pin]: FaThumbtack,
+};
+
+/**
+ * `ContentStatus` → `StatusDot` variant untuk indikator compact footer card
+ * Calendar di layar ≤768px (revisi keempat T-033, poin 2) — pengganti
+ * `Badge` status yang overflow di card sempit mobile (Badge "Scheduled"
+ * lebar 77px vs ruang card ~22-39px di 375px). `StatusDot` cuma punya 5
+ * variant (`success|warning|error|accent|neutral`) vs 6 `ContentStatus`,
+ * jadi tidak bisa 1:1 seperti `CONTENT_STATUS_BADGE_VARIANT`
+ * (`../../../components/draft-editor/status-badge.ts`, 6 Badge variant).
+ * `Draft` & `ReadyToSchedule` sengaja ditumpuk ke `neutral` — grid Calendar
+ * per definisi hanya PERNAH menampilkan `Scheduled`/`Published`/`Failed`
+ * (lihat catatan "status yang muncul di grid Calendar" di
+ * `project-manager/tasks/v02-publishing-mvp.md`, T-033), jadi 3 status itu
+ * yang dijaga tetap unik & semantik (`accent`/`success`/`error`); tumpukan
+ * di 2 status yang tidak pernah dirender di Calendar tidak berdampak visual.
+ */
+export const CONTENT_STATUS_DOT_VARIANT: Record<
+  ContentStatus,
+  StatusDotVariant
+> = {
+  [ContentStatus.Draft]: "neutral",
+  [ContentStatus.InReview]: "warning",
+  [ContentStatus.ReadyToSchedule]: "neutral",
+  [ContentStatus.Scheduled]: "accent",
+  [ContentStatus.Published]: "success",
+  [ContentStatus.Failed]: "error",
+};
+
 /** Senin di index 0 — minggu mulai Senin (sama seperti `getWeekRange`). */
 export const DAY_LABELS = [
   "Sen",
@@ -33,25 +113,45 @@ export const DAY_LABELS = [
 ] as const;
 
 /**
- * 12 label slot waktu grid Week (per 2 jam) — persis mockup
- * `templates/publish-calendar.html` (`cal-week-time`). Index slot ke-i
- * mencakup jam `[2i, 2i+1]` — post di-floor ke slot terdekat ke bawah
- * (`Math.floor(hour / 2)`).
+ * 24 label baris jam grid Week (revisi kedua T-033 — satu baris PER JAM,
+ * bukan lagi di-bucket per 2 jam). Index = jam UTC 0-23 (`entry.hour`
+ * langsung, tanpa `Math.floor(hour / 2)`). Label teks cuma diisi di index
+ * genap (jam genap); index ganjil string kosong `""` — barisnya tetap
+ * render (bukan dihilangkan), cuma kolom label waktunya kosong, supaya
+ * post jam ganjil (1 AM, 3 AM, dst) tidak numpuk 1 baris dengan jam genap
+ * sebelumnya seperti sebelum revisi ini.
  */
-export const TIME_SLOT_LABELS = [
+export const WEEK_HOUR_LABELS = [
   "12 AM",
+  "",
   "2 AM",
+  "",
   "4 AM",
+  "",
   "6 AM",
+  "",
   "8 AM",
+  "",
   "10 AM",
+  "",
   "12 PM",
+  "",
   "2 PM",
+  "",
   "4 PM",
+  "",
   "6 PM",
+  "",
   "8 PM",
+  "",
   "10 PM",
+  "",
 ] as const;
+
+/** Format jam UTC (0-23) jadi label "HH:00" (mis. 7 → "07:00") — dipakai kartu Month (poin M2). */
+export function formatCalendarHour(hour: number): string {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
 
 export function toUtcDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -87,6 +187,8 @@ export interface CalendarCardEntry {
   caption: string;
   status: ContentStatus;
   platform: SocialPlatform;
+  /** Post/Reel/Story/Pin (revisi ketiga T-033) — label lewat `CONTENT_FORMAT_LABEL`. */
+  contentFormat: ContentFormat;
   accountHandle: string;
   /** Kalender UTC "YYYY-MM-DD" dari tanggal efektif (`scheduledAt ?? publishedAt`). */
   dateKey: string;
@@ -132,6 +234,7 @@ export function flattenCalendarItemsToEntries(
         caption: item.caption,
         status: item.status,
         platform: target.platform,
+        contentFormat: target.contentFormat,
         accountHandle: target.accountHandle,
         dateKey,
         hour,
