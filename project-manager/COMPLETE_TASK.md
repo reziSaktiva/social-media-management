@@ -8,6 +8,76 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-27 — Polishing UI grid Calendar (Month & Week) sebelum T-033.7
+
+### Context
+
+Polishing/revisi UI di atas **T-033.1–.6 & T-033.8** (Calendar view, domain
+`publishing`, `project-manager/tasks/v02-publishing-mvp.md` § T-033) yang
+sudah `[x]` sebelumnya — **bukan** subtask baru, tidak mengubah checklist
+task. Dilakukan sebelum T-033.7 (manual refresh control), yang tetap
+**tidak** tersentuh sesi ini (masih blocked, tidak ada rancangan di Claude
+Design). Branch `feature/calendar-design-system`, 2 commit: `ab1932f` dan
+`8bba7ae`.
+
+### Perubahan
+
+Semua file di
+`apps/web/src/app/(app)/publish/calendar/components/`:
+
+- `CalendarMonthGrid.tsx`, `CalendarWeekGrid.tsx`, `calendar-grid-shared.ts`
+  (commit `ab1932f`) — fix bug CSS Grid: grid 7-kolom tidak sejajar antar
+  baris (track blowout — kolom dengan card lebar "mencuri" lebar kolom
+  lain), diperbaiki via `isScrollable` per sel + `StackItem size="fill"`
+  untuk truncation. **Bukan** `xstyle`/StyleX Astryx seperti rencana awal —
+  compiler StyleX belum ter-setup di `apps/web` (dependency ter-install,
+  babel/Next.js plugin belum), dicatat sebagai **KI-035**. Redesain kartu
+  post: avatar+nama akun sejajar 1 baris, waktu post pojok kanan atas
+  (Month), caption full-width baris terpisah (Week), indikator tipe konten
+  Post/Reel/Story/Pin (pakai field `contentFormat` yang sudah ada di
+  `CalendarItemTargetRecord`/`QueueItemTargetRecord`, bukan data baru).
+  Footer status+content-format di mobile (≤768px, breakpoint konsisten
+  collapse point `AppShell` mobile-nav) diganti `StatusDot`+`Icon` compact
+  — `Badge` Astryx tidak punya prop ukuran/truncation (dicatat di
+  **KI-035**), overflow di kolom sempit; `Badge`+`Badge` tetap dipakai
+  >768px.
+- `CalendarPostPopover.tsx` (commit `ab1932f`) — ditambah Badge
+  content-format.
+- `CalendarMonthGrid.tsx`, `CalendarWeekGrid.tsx`, `calendar-grid-shared.ts`
+  (commit `8bba7ae`) — garis pemisah vertikal antar kolom hari ditambahkan
+  (sebelumnya cuma horizontal antar baris), warna `border-border` (sama
+  border Card/ClickableCard, bukan `border-border-strong` Divider
+  horizontal). Gap grid dihapus (`gap={2}`→`{0}`, semua `<Grid columns=
+  {CALENDAR_DAY_COLUMNS}>`) dikompensasi padding cell dinaikkan: Week
+  `padding` sel jam 1→1.5, Month `paddingInline` +2 pada VStack sel hari
+  (padding uniform 1 dipertahankan sisi atas/bawah).
+
+### Temuan/rekomendasi dicatat sebagai Known Issue (KI-035, `PROJECT_STATE.md`)
+
+Bukan blocker M8, tidak ada keputusan arsitektur final jadi belum layak
+ADR — murni catatan referensi ke depan:
+
+1. StyleX ter-install sebagai dependency tapi compiler-nya belum ter-setup
+   di `apps/web` — kalau ke depan butuh `xstyle` Astryx (jalur resmi CLI
+   untuk override track template `Grid` dkk), harus disetup dulu.
+2. `Badge` Astryx tidak punya prop `size`/truncation — `StatusDot` dipakai
+   sebagai alternatif compact di Calendar mobile, beda pola dari `Badge`
+   yang dipakai Queue/Draft; perlu keputusan konsistensi kalau mau
+   diperluas ke UI lain.
+3. Layout Calendar di viewport sangat sempit (~375px, grid 7-kolom fixed)
+   masih padat — perbaikan lanjutan (mis. tampilan agenda/list khusus
+   mobile) butuh rancangan baru di Claude Design dulu (rule 17
+   `AGENTS.md`), bukan sekadar tweak CSS lagi.
+
+### Verifikasi
+
+Verifikasi manual browser (perubahan murni CSS/layout, tidak menyentuh
+domain/data-wiring — review arsitektur Ridwan & QA formal Najwa tidak
+dijalankan untuk sesi ini). Kode sudah di-push ke
+`feature/calendar-design-system` (commit `ab1932f`, `8bba7ae`).
+
+---
+
 ## 2026-08-27 — T-033.8 Popover ringkasan post + CTA Draft Editor Calendar view selesai
 
 ### Context

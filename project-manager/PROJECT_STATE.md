@@ -346,6 +346,36 @@ dihapus oleh Najwa karena hapus workspace bersifat ireversibel dan di luar
 wewenang eksekusi otonom QA. Perlu dibersihkan manual oleh King Rezi via
 Settings → General → Danger Zone kalau perlu. Tidak memblokir M8.
 
+### KI-035 · Gap infrastruktur ditemukan saat polishing UI Calendar (T-033)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt / Infra |
+| Terkait | T-033 (`tasks/v02-publishing-mvp.md` § T-033) |
+
+Ditemukan 2026-08-27 saat polishing grid Calendar (Month/Week, di atas
+T-033.1–.6/.8, sebelum T-033.7). Tiga temuan, dicatat sebagai referensi ke
+depan — bukan blocker M8, belum ada keputusan arsitektur final jadi belum
+layak ADR:
+
+1. **StyleX belum ter-setup.** `@stylexjs/stylex` ter-install sebagai
+   dependency, tapi compiler-nya (babel plugin/Next.js plugin) tidak
+   ter-setup di `apps/web`. Rencana awal memakai `xstyle` Astryx (jalur
+   resmi CLI untuk override track template `Grid`) urung dipakai — dipakai
+   `isScrollable`+`StackItem size="fill"` sebagai gantinya. Kalau ke depan
+   ada kebutuhan `xstyle`, compiler harus disetup dulu, jangan diasumsikan
+   tersedia.
+2. **`Badge` Astryx tanpa prop `size`/truncation** — overflow di kolom
+   sempit. Kartu Calendar mobile (≤768px) memakai `StatusDot`+`Icon`
+   compact sebagai workaround, beda pola dari `Badge` yang dipakai
+   Queue/Draft. Kalau mau diperluas ke UI lain, perlu keputusan konsistensi
+   dulu.
+3. **Layout Calendar di viewport sangat sempit (~375px)** masih padat
+   (grid 7-kolom fixed di-shrink). Perbaikan lanjutan (mis. tampilan
+   agenda/list khusus mobile) butuh rancangan baru di Claude Design dulu
+   (rule 17 `AGENTS.md`), bukan sekadar tweak CSS.
+
 ---
 
 ## Blockers
@@ -382,11 +412,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **Polishing UI grid Calendar selesai (2026-08-27)** — di atas T-033.1–.6/.8 yang sudah selesai, sebelum T-033.7: fix grid 7-kolom Month & Week tidak sejajar (CSS Grid track blowout, di-fix via `isScrollable`+`StackItem size="fill"`, bukan `xstyle`/StyleX — compiler-nya belum ter-setup, lihat **KI-035**), redesain kartu post (avatar+nama 1 baris, indikator Post/Reel/Story/Pin via `contentFormat`, footer mobile `StatusDot`+`Icon` compact ≤768px), garis pemisah vertikal antar kolom hari + padding cell disesuaikan (gap grid dihapus). T-033.7 (manual refresh) tetap belum dikerjakan — masih blocked. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 * **T-033.8 Popover ringkasan post + CTA Draft Editor Calendar view selesai (2026-08-27)** — `CalendarPostPopover.tsx` (baru): Astryx `Popover` (ADR-090/ADR-091), klik kartu Week/Month membuka ringkasan (header account+platform, caption, media placeholder, 4 tile metrik untuk status Published via `PostMetricsPort`, link "Go to post", CTA "Buka Draft Editor" reuse `useDraftEditor`). Data-wiring: field baru `platformPostUrl` di-expose ke domain publishing, `page.tsx` composition root sekarang pass `AnalyticsService` sebagai `PostMetricsPort` (sebelumnya kosong, jadi metrik Published sekarang benar-benar terisi). Lolos review Ridwan (tanpa temuan) + QA Najwa (tanpa bug fungsional; satu catatan inconclusive soal tooling emulasi mobile viewport, bukan bug). T-033.7 (manual refresh) **belum dikerjakan** — blocked, tidak ada rancangan di Claude Design, menunggu King Rezi. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 * **T-033.5/.6 Navigasi periode + filter status/Channels Calendar view selesai (2026-08-27)** — `CalendarToolbar.tsx` (baru): Today/‹/›, label periode (format lintas-bulan Week), toggle Minggu/Bulan, filter status (dropdown, 7 opsi) + filter Channels (akun asli workspace). Filter dieksekusi server-side lewat query Prisma, state via URL query param `?status=&accounts=` (konsisten pola `?view=&date=` T-033.2) — `CalendarViewState` diperluas (`statuses`, `connectedAccountIds`). Gap kecil ditemukan & ditutup di sesi sama: Month view belum punya `EmptyState` saat filter 0 post. Lolos review Ridwan (tanpa temuan) + QA Najwa (golden path + regresi pass). Sisa terbuka T-033.7 (manual refresh), T-033.8 (Popover klik item). Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 * **T-033.3/.4 Grid Week & Month Calendar view selesai (2026-08-27)** — Data-wiring (Prabowo) + grid UI (Mark) + review arsitektur (Ridwan, 1 temuan duplikasi logic langsung diperbaiki). File baru: `calendar-range.ts` (`getWeekRange`/`getMonthRange`, domain publishing), `CalendarWeekGrid.tsx` (7 hari × 12 slot 2 jam), `CalendarMonthGrid.tsx` (7 hari × N minggu, padding muted, badge "+N More"), `calendar-grid-shared.ts`. `page.tsx` jadi composition root nyata memakai `PublishingService.listCalendarPosts`. Diverifikasi `tsc`/`eslint` bersih, 45 test Vitest pass, browser preview (data asli). Sisa terbuka T-033.7/.8 (manual refresh, Popover) — status task-level **T-033 tetap `🟡 In Progress`**. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 * **T-089.6 Dialog konfirmasi Tier 2 sebelum switch workspace (2026-08-24, ADR-089)** — King Rezi mengubah rancangan `settings-workspaces.html` di Claude Design setelah T-089.1–.5 ditutup `✅ Done`: klik row workspace lain sekarang membuka dialog konfirmasi (reuse `AlertDialog` Tier 2, pola Logout/Remove Member) alih-alih langsung overwrite cookie tanpa konfirmasi. Kode `WorkspacesSettingsView.tsx` diselaraskan (title dinamis "Pindah ke workspace [nama]?", `actionVariant="primary"` non-destruktif); diikuti perubahan visual kecil (`Density` List `balanced` → `spacious`, tanpa ADR). Diverifikasi end-to-end browser oleh AI utama, **belum** lewat QA Najwa formal — lihat **KI-034**. ADR-089 mengamandemen ADR-088 poin 2 & 4. Detail: `tasks/v01-foundation.md` § T-089, `COMPLETE_TASK.md`.
-* **T-089.2–.4 Workspace Switcher deliberate selesai (2026-08-24, ADR-088)** — Halaman Settings → Account → Workspaces resmi ditutup `✅ Done`: `WorkspaceService.switchWorkspace` (validasi membership aktif) + `listWorkspacesForUser` (Prabowo), route `/settings/account/workspaces` + dialog "Buat Workspace Baru" reuse `createWorkspace` T-006 (Mark, paralel), lolos review Ridwan (0 temuan) + QA Najwa (58/58 unit test, full suite 157 passed/0 gagal, golden path browser end-to-end, tidak ada bug). Catatan sisa: 2 workspace test QA belum dibersihkan — lihat **KI-033**. Detail: `tasks/v01-foundation.md` § T-089, `COMPLETE_TASK.md`.
 ---
 
 ## Recent Decisions (Ringkasan)
