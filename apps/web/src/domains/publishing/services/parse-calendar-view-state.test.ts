@@ -80,10 +80,61 @@ describe("parseCalendarViewState", () => {
     });
   });
 
-  it("default view+date sekaligus kalau searchParams kosong total", () => {
+  describe("status", () => {
+    it("default array kosong kalau tidak ada (All Posts)", () => {
+      expect(parseCalendarViewState({}).statuses).toEqual([]);
+    });
+
+    it("mem-parse satu status valid", () => {
+      expect(parseCalendarViewState({ status: "scheduled" }).statuses).toEqual([
+        "scheduled",
+      ]);
+    });
+
+    it("mem-parse beberapa status dipisah koma", () => {
+      expect(
+        parseCalendarViewState({ status: "scheduled,published" }).statuses,
+      ).toEqual(["scheduled", "published"]);
+    });
+
+    it("drop token invalid (typo) diam-diam, sisakan yang valid", () => {
+      expect(
+        parseCalendarViewState({ status: "scheduled,typo,published" }).statuses,
+      ).toEqual(["scheduled", "published"]);
+    });
+
+    it("array kosong kalau semua token invalid", () => {
+      expect(
+        parseCalendarViewState({ status: "typo,another" }).statuses,
+      ).toEqual([]);
+    });
+  });
+
+  describe("accounts", () => {
+    it("default array kosong kalau tidak ada (Semua Akun)", () => {
+      expect(parseCalendarViewState({}).connectedAccountIds).toEqual([]);
+    });
+
+    it("mem-parse satu account id", () => {
+      expect(
+        parseCalendarViewState({ accounts: "acc-1" }).connectedAccountIds,
+      ).toEqual(["acc-1"]);
+    });
+
+    it("mem-parse beberapa account id dipisah koma, drop token kosong", () => {
+      expect(
+        parseCalendarViewState({ accounts: "acc-1,,acc-2" })
+          .connectedAccountIds,
+      ).toEqual(["acc-1", "acc-2"]);
+    });
+  });
+
+  it("default view+date+statuses+connectedAccountIds sekaligus kalau searchParams kosong total", () => {
     expect(parseCalendarViewState({})).toEqual({
       view: "week",
       date: new Date(),
+      statuses: [],
+      connectedAccountIds: [],
     });
   });
 });

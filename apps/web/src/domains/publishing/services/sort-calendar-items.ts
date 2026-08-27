@@ -15,7 +15,7 @@ import type { CalendarItemRecord } from "../repositories/publishing.repository";
  * (fallback ke `createdAt`) supaya fungsi ini tetap total, bukan partial,
  * kalau suatu saat dipanggil di luar hasil query berrentang.
  */
-function effectiveDate(item: CalendarItemRecord): Date {
+export function effectiveCalendarDate(item: CalendarItemRecord): Date {
   return item.scheduledAt ?? item.publishedAt ?? item.createdAt;
 }
 
@@ -30,6 +30,7 @@ export function sortCalendarItemsByEffectiveDate(
   items: CalendarItemRecord[],
 ): CalendarItemRecord[] {
   return [...items].sort(
-    (a, b) => effectiveDate(a).getTime() - effectiveDate(b).getTime(),
+    (a, b) =>
+      effectiveCalendarDate(a).getTime() - effectiveCalendarDate(b).getTime(),
   );
 }

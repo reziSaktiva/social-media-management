@@ -1,20 +1,11 @@
-import { Badge } from "@astryxdesign/core/Badge";
-import { Card } from "@astryxdesign/core/Card";
-import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { VStack } from "@astryxdesign/core/VStack";
 
-import type { CalendarViewMode } from "@/domains/publishing";
+import type { CalendarPostItem, CalendarViewMode } from "@/domains/publishing";
+import type { ConnectedAccountRecord } from "@/domains/workspace";
 
-const VIEW_LABEL: Record<CalendarViewMode, string> = {
-  week: "Minggu",
-  month: "Bulan",
-};
-
-const ANCHOR_DATE_FORMATTER = new Intl.DateTimeFormat("id-ID", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
+import { CalendarMonthGrid } from "./CalendarMonthGrid";
+import { CalendarToolbar } from "./CalendarToolbar";
+import { CalendarWeekGrid } from "./CalendarWeekGrid";
 
 type CalendarScreenProps = {
   /** Hasil parse `?view=` (T-033.2) — default `"week"` sudah diresolusi
@@ -23,27 +14,37 @@ type CalendarScreenProps = {
   /** Hasil parse `?date=` (T-033.2) — anchor periode, default hari ini
    * sudah diresolusi di `page.tsx`. */
   date: Date;
+  /** Hasil nyata `PublishingService.listCalendarPosts` (T-033.3/.4, sudah
+   * terfilter `statuses`/`connectedAccountIds` T-033.6) untuk rentang
+   * Week/Month yang memuat `date` (`getWeekRange`/`getMonthRange`) — sudah
+   * data asli dari database, bukan lagi placeholder. */
+  items: CalendarPostItem[];
+  /** Daftar akun terkoneksi workspace (T-033.6) — opsi filter Channels di `CalendarToolbar`. */
+  accounts: ConnectedAccountRecord[];
 };
 
 /**
- * Placeholder Calendar (T-033.2) — menampilkan state periode yang sudah
- * ter-parse dari query param URL supaya terlihat benar sebelum grid asli
- * ada. Grid Week/Month (hari × jam / hari × tanggal) menyusul di
- * T-033.3/.4 dan akan menggantikan `EmptyState` di sini, memakai `view`/
- * `date` props yang sama.
+ * Calendar (T-033.2 state periode + T-033.3/.4 grid Week/Month + T-033.5
+ * navigasi + T-033.6 filter) — `view`/`date`/`items`/`accounts` di sini
+ * data nyata dari `page.tsx` (`parseCalendarViewState` +
+ * `getWeekRange`/`getMonthRange` + `PublishingService.listCalendarPosts` +
+ * `WorkspaceService.listConnectedAccounts`). Popover klik item BELUM
+ * diimplementasikan — T-033.8, di luar scope task ini.
  */
-export function CalendarScreen({ view, date }: CalendarScreenProps) {
+export function CalendarScreen({
+  view,
+  date,
+  items,
+  accounts,
+}: CalendarScreenProps) {
   return (
-    <Card padding={4}>
-      <VStack gap={3} align="center">
-        <Badge variant="neutral" label={`Tampilan ${VIEW_LABEL[view]}`} />
-        <EmptyState
-          title="Grid Calendar segera hadir"
-          description={`Periode acuan: ${ANCHOR_DATE_FORMATTER.format(
-            date,
-          )}. Grid Week/Month, navigasi periode, dan filter menyusul di T-033.3–.7.`}
-        />
-      </VStack>
-    </Card>
+    <VStack gap={4}>
+      <CalendarToolbar accounts={accounts} />
+      {view === "month" ? (
+        <CalendarMonthGrid date={date} items={items} />
+      ) : (
+        <CalendarWeekGrid date={date} items={items} />
+      )}
+    </VStack>
   );
 }

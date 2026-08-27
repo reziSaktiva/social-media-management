@@ -8,6 +8,137 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-27 — T-033.5/.6 Navigasi periode + filter status/Channels Calendar view selesai
+
+### Context
+
+Implementasi kode **T-033.5** (navigasi periode: tombol Today, ‹ › prev/next,
+label periode termasuk format lintas-bulan untuk Week, toggle Minggu/Bulan)
+dan **T-033.6** (filter status post dropdown + filter Channels/akun di atas
+grid) untuk Calendar view (`/publish/calendar`,
+`project-manager/tasks/v02-publishing-mvp.md` § T-033, domain `publishing`),
+branch `feature/calendar-design-system`. Direview arsitektur oleh Ridwan
+Architecture Reviewer (tanpa temuan) dan lolos QA Najwa QA Engineer (golden
+path + regresi pass).
+
+### Perubahan
+
+Semua file di `apps/web/src`:
+
+- `domains/publishing/services/parse-calendar-view-state.ts` —
+  `CalendarViewState` diperluas: `statuses: ContentStatus[]`,
+  `connectedAccountIds: ConnectedAccountId[]`, parsing dari query param
+  `status`/`accounts` (comma-separated, drop token invalid diam-diam).
+- `domains/publishing/services/parse-calendar-view-state.test.ts` — test
+  baru untuk parsing status/accounts, semua pass.
+- `app/(app)/publish/calendar/page.tsx` — memanggil
+  `WorkspaceService.listConnectedAccounts` (cross-domain via public API
+  `@/domains/workspace`, pola sama `draft-editor/actions.ts`) untuk opsi
+  filter Channels, meneruskan `statuses`/`connectedAccountIds` ke
+  `PublishingService.listCalendarPosts`.
+- `app/(app)/publish/calendar/hooks/useCalendarPeriodState.ts` —
+  `setPeriod` diperluas untuk update `statuses`/`connectedAccountIds` di
+  URL (dihapus dari URL kalau array kosong, bukan `status=` kosong).
+- `app/(app)/publish/calendar/components/CalendarToolbar.tsx` (BARU) —
+  client component: Today/‹/›, label periode, toggle Minggu/Bulan, filter
+  status (7 opsi: All Posts + 6 `ContentStatus`, reuse
+  `CONTENT_STATUS_LABEL`), filter Channels (Semua Akun + akun asli
+  workspace). Semua Astryx (`Button`, `IconButton`, `Selector`).
+- `app/(app)/publish/calendar/components/calendar-grid-shared.ts` —
+  tambah `addMonths(date, months)` pure function.
+- `app/(app)/publish/calendar/components/CalendarScreen.tsx` — render
+  `CalendarToolbar` di atas grid, terima prop baru
+  `accounts: ConnectedAccountRecord[]`.
+- `app/(app)/publish/calendar/components/CalendarMonthGrid.tsx` —
+  tambahan di luar scope asli T-033.5/.6 tapi ditemukan Najwa saat QA:
+  Month view sebelumnya tidak punya `EmptyState` saat filter menghasilkan
+  0 post (beda dengan Week view yang sudah punya sejak T-033.3). Sudah
+  ditambahkan (`EmptyState` "Belum ada post di bulan ini").
+
+### Verifikasi
+
+`bun run typecheck`, `bun run lint`, `bun run test` (root) — semua
+bersih/pass (209 test pass, 3 skipped, termasuk 2 file test Calendar).
+Review arsitektur Ridwan — tanpa temuan (entry point bersih, domain logic
+tanpa Prisma/Supabase, cross-domain lewat public API, shared types
+konsisten). QA Najwa — semua golden path pass (navigasi lintas-bulan,
+toggle Minggu/Bulan mempertahankan anchor date, filter status+akun
+kombinasi, reload URL dengan query filter ter-restore benar, regresi ke
+Queue/Drafts/History bersih, dark mode oke); gap kecil (EmptyState Month
+view) ditemukan & ditutup di sesi yang sama, diverifikasi ulang browser.
+
+### Scope belum dikerjakan (sengaja, bukan bug)
+
+**T-033.7** (manual refresh control), **T-033.8** (Popover klik item +
+CTA Draft Editor). Status task-level **T-033** tetap `🟡 In Progress`.
+
+---
+
+## 2026-08-27 — T-033.3/.4 Grid Week & Month Calendar view selesai
+
+### Context
+
+Implementasi kode **T-033.3** (grid Week) dan **T-033.4** (grid Month) untuk
+Calendar view (`/publish/calendar`, `project-manager/tasks/v02-publishing-mvp.md`
+§ T-033, domain `publishing`), branch `feature/calendar-design-system`.
+Data-wiring dikerjakan Prabowo Feature Engineer, grid UI dikerjakan Mark UI
+Engineer, review arsitektur oleh Ridwan Architecture Reviewer (1 temuan
+duplikasi logic, diperbaiki langsung di sesi yang sama).
+
+### Perubahan
+
+File baru:
+- `apps/web/src/domains/publishing/services/calendar-range.ts` + `.test.ts`
+  — pure function domain `publishing`: `getWeekRange(date)` /
+  `getMonthRange(date)`, menghitung rentang tanggal awal/akhir untuk grid.
+- `apps/web/src/app/(app)/publish/calendar/components/CalendarWeekGrid.tsx`
+  — grid 7 hari × 12 slot waktu (per 2 jam).
+- `apps/web/src/app/(app)/publish/calendar/components/CalendarMonthGrid.tsx`
+  — grid 7 hari × N minggu, padding hari di luar bulan aktif (muted), badge
+  "+N More" untuk sel padat (maks 3 kartu per sel, expand di tempat —
+  bukan silently truncate).
+- `apps/web/src/app/(app)/publish/calendar/components/calendar-grid-shared.ts`
+  — util bersama Week/Month: flatten `CalendarPostItem[]` → kartu per
+  target akun, format tanggal (UTC).
+- `apps/web/.claude/launch.json` — config preview dev server, ditambahkan
+  untuk kebutuhan verifikasi browser Mark UI Engineer (belum ada
+  sebelumnya).
+
+File diubah:
+- `apps/web/src/domains/publishing/index.ts` — tambah export
+  `calendar-range` + `effectiveCalendarDate`.
+- `apps/web/src/domains/publishing/services/sort-calendar-items.ts` —
+  fungsi privat `effectiveDate` diekspor jadi `effectiveCalendarDate`
+  (public). **Perbaikan temuan Ridwan:** sebelumnya UI (`calendar-grid-shared.ts`)
+  menghitung ulang aturan "tanggal efektif" post secara terpisah dari
+  domain, dengan behavior yang mulai divergen — sekarang direuse dari satu
+  sumber kebenaran di domain.
+- `apps/web/src/app/(app)/publish/calendar/page.tsx` — composition root
+  nyata: `getWorkspaceContext` + `getCachedSession` + `getWeekRange`/
+  `getMonthRange` + `PublishingService.listCalendarPosts` (tanpa
+  `statuses`/`connectedAccountIds`/`PostMetricsPort` — sesuai scope; filter
+  & metrics itu T-033.6/.8 terpisah).
+- `apps/web/src/app/(app)/publish/calendar/components/CalendarScreen.tsx`
+  — dispatcher `view === "month" ? <CalendarMonthGrid/> : <CalendarWeekGrid/>`,
+  `EmptyState` placeholder (dari T-033.2) diganti grid asli.
+
+### Verifikasi
+
+`tsc --noEmit` bersih, `eslint` bersih (1 warning config eksisting tidak
+terkait), 45 test Vitest pass, review arsitektur Ridwan clean setelah 1
+fix, browser preview manual (Week & Month, data post asli, status
+Scheduled/Published, badge status, padding hari muted di Month, highlight
+hari-ini) OK.
+
+### Scope belum dikerjakan (sengaja, bukan bug)
+
+Subtask terpisah menyusul: **T-033.5** (navigasi Today/‹/›/toggle
+Minggu-Bulan), **T-033.6** (filter status+akun), **T-033.7** (manual
+refresh), **T-033.8** (Popover klik item + Draft Editor CTA). Status
+task-level **T-033** tetap `🟡 In Progress`.
+
+---
+
 ## 2026-08-27 — T-033.2 State periode Calendar via query param selesai
 
 ### Context

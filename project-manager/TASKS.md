@@ -91,19 +91,18 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
 
-> **T-033** (Calendar view) — masih `⏳ Not Started` (task-level, belum ada
-> kode `apps/web`), tapi sesi 2026-08-26 (branch `feature/calendar-design-system`)
-> sudah menuntaskan **perencanaan UX + Design System**: dipecah jadi 8
-> subtask (T-033.1–.8) mengikuti referensi Buffer + **ADR-090/ADR-091**
-> (klik item → Popover Astryx sebelum Draft Editor, khusus Calendar), dan
-> Claude Design sudah punya mockup lengkap (grid Week/Month, Popover,
-> filter, navigasi, toggle interaktif di App Prototype). **Design review
-> juga sudah selesai** (King Rezi review langsung di Claude Design,
-> semua revisi diterapkan sesi yang sama — tidak ada revisi tersisa).
-> **Implementasi kode (T-033.1–.8) akan dikerjakan di sesi/room chat
-> terpisah** — baca dulu section "Design System selesai" + "Design
-> Review selesai" di `tasks/v02-publishing-mvp.md` § T-033 sebelum
-> mulai, bukan menebak ulang layout dari nol.
+> **T-033** (Calendar view) — `🟡 In Progress` (task-level), branch
+> `feature/calendar-design-system`. Sesi 2026-08-26 menuntaskan
+> **perencanaan UX + Design System**: dipecah jadi 8 subtask (T-033.1–.8)
+> mengikuti referensi Buffer + **ADR-090/ADR-091** (klik item → Popover
+> Astryx sebelum Draft Editor, khusus Calendar), Claude Design sudah punya
+> mockup lengkap, dan Design Review King Rezi sudah selesai (tidak ada
+> revisi tersisa). Sesi implementasi 2026-08-27 menutup **T-033.1–.6**
+> (query rentang tanggal, state via query param, grid Week, grid Month,
+> navigasi periode Today/‹/›/toggle, filter status+akun — data asli,
+> lolos review Ridwan + QA Najwa). Sisa terbuka: **T-033.7** (manual
+> refresh), **T-033.8** (Popover klik item + CTA Draft Editor). Detail:
+> `tasks/v02-publishing-mvp.md` § T-033.
 
 > **T-032** (Queue management) sudah ✅ **Done** (2026-08-20) — listQueue dari data asli (bukan `PublishingQueueSlot`, ADR-083), UI Astryx nyata, 3 aksi (Publish Now/Edit/Cancel Schedule). Menutup sebagian besar **T-030** (Cancel Schedule) untuk konteks Queue — sisa scope Calendar masih di T-033. Detail: `tasks/v02-publishing-mvp.md` § T-032.
 
