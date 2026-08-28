@@ -35,6 +35,34 @@ export class AnalyticsService {
   }
 
   /**
+   * Batch varian `getPostMetrics` (T-033.1, Calendar view — popover metrik
+   * post Published, KSP-02-F08). Dikonsumsi lintas domain oleh
+   * `PublishingService` lewat port lokal (`PostMetricsPort`, pola sama
+   * `ScheduledCountsPort`/`ActiveAccountsPort`) supaya Calendar tidak
+   * query metrik satu post per satu (N+1). Skip query kalau tidak ada
+   * post yang perlu dicari metriknya.
+   */
+  async getPostMetricsByPosts(
+    postIds: PostId[],
+  ): Promise<Map<PostId, PostMetricsRecord[]>> {
+    if (postIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.repository.findMetricsByPosts(postIds);
+    const grouped = new Map<PostId, PostMetricsRecord[]>();
+    for (const row of rows) {
+      const existing = grouped.get(row.postId);
+      if (existing) {
+        existing.push(row);
+      } else {
+        grouped.set(row.postId, [row]);
+      }
+    }
+    return grouped;
+  }
+
+  /**
    * Ringkasan analytics workspace untuk Dashboard (T-042.2). Null berarti
    * belum ada snapshot untuk `period` ini sama sekali — caller (Server
    * Component) merender empty state (T-042.4), bukan angka nol.

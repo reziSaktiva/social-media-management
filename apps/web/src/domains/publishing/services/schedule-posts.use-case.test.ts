@@ -45,9 +45,12 @@ function createFakeRepository(
     schedulePost: async () => null,
     publishNow: async () => null,
     updateTargetOutcome: async () => undefined,
+    setOutstandPostId: async () => undefined,
     countScheduledByAccount: async () => new Map(),
     listQueue: async () => [],
+    listCalendarPosts: async () => [],
     cancelSchedule: async () => null,
+    markPostFailed: async () => undefined,
     ...overrides,
   };
 }
@@ -56,11 +59,9 @@ function createFakeOutstandAdapter(
   overrides: Partial<IOutstandAdapter> = {},
 ): IOutstandAdapter {
   return {
-    schedulePost: async () => ({ outstandJobId: "fake-job" }),
-    publishNow: async () => ({
-      outstandJobId: "fake-job",
-      publishedUrl: "https://fake.outstand.local/posts/fake-job",
-    }),
+    schedulePost: async () => ({ outstandPostId: "fake-post" }),
+    publishNow: async () => ({ outstandPostId: "fake-post" }),
+    fetchPostOutcome: async () => [],
     cancelScheduledPost: async () => undefined,
     fetchPostMetrics: async () => ({
       impressions: 0,
@@ -106,7 +107,7 @@ describe("SchedulePostsUseCase.execute", () => {
     };
   }
 
-  it("happy path: schedules 2 valid targets and records the outstandJobId from the adapter per target", async () => {
+  it("happy path: schedules 2 valid targets with ONE adapter call for all targets, persists the shared outstandPostId, and marks each target scheduled", async () => {
     const scheduleRecord = baseScheduleRecord([
       {
         id: asPostTargetId("target-1"),
@@ -121,16 +122,25 @@ describe("SchedulePostsUseCase.execute", () => {
     const outcomes: Parameters<
       IPublishingRepository["updateTargetOutcome"]
     >[0][] = [];
+    const outstandPostIdCalls: Parameters<
+      IPublishingRepository["setOutstandPostId"]
+    >[0][] = [];
+    let schedulePostCallCount = 0;
     const repository = createFakeRepository({
       schedulePost: async () => scheduleRecord,
       updateTargetOutcome: async (input) => {
         outcomes.push(input);
       },
+      setOutstandPostId: async (input) => {
+        outstandPostIdCalls.push(input);
+      },
     });
     const adapter = createFakeOutstandAdapter({
-      schedulePost: async ({ outstandAccountId }) => ({
-        outstandJobId: `fake-${outstandAccountId}`,
-      }),
+      schedulePost: async ({ targets }) => {
+        schedulePostCallCount += 1;
+        expect(targets).toHaveLength(2);
+        return { outstandPostId: "fake-post-shared" };
+      },
     });
 
     const useCase = new SchedulePostsUseCase(repository, adapter);
@@ -157,21 +167,92 @@ describe("SchedulePostsUseCase.execute", () => {
     });
 
     expect(result).toBe(scheduleRecord);
+    // SATU call ke adapter untuk semua target (redesain 2026-08-26) —
+    // bukan 1 call per target seperti model lama.
+    expect(schedulePostCallCount).toBe(1);
+    expect(outstandPostIdCalls).toEqual([
+      {
+        workspaceId: WORKSPACE_ID,
+        postId: POST_ID,
+        outstandPostId: "fake-post-shared",
+      },
+    ]);
+    expect(outcomes).toEqual(
+      expect.arrayContaining([
+        { postTargetId: asPostTargetId("target-1"), status: "scheduled" },
+        { postTargetId: asPostTargetId("target-2"), status: "scheduled" },
+      ]),
+    );
+    expect(outcomes).toHaveLength(2);
+  });
+
+  it("all targets are marked failed and the post is marked Failed when the single adapter call rejects", async () => {
+    const scheduleRecord = baseScheduleRecord([
+      {
+        id: asPostTargetId("target-1"),
+        connectedAccountId: CONNECTED_ACCOUNT_1,
+      },
+      {
+        id: asPostTargetId("target-2"),
+        connectedAccountId: CONNECTED_ACCOUNT_2,
+      },
+    ]);
+    const outcomes: Parameters<
+      IPublishingRepository["updateTargetOutcome"]
+    >[0][] = [];
+    let markPostFailedCalled = false;
+    const repository = createFakeRepository({
+      schedulePost: async () => scheduleRecord,
+      updateTargetOutcome: async (input) => {
+        outcomes.push(input);
+      },
+      markPostFailed: async () => {
+        markPostFailedCalled = true;
+      },
+    });
+    const adapter = createFakeOutstandAdapter({
+      schedulePost: async () => {
+        throw new Error("Outstand unreachable");
+      },
+    });
+    const useCase = new SchedulePostsUseCase(repository, adapter);
+
+    await useCase.execute({
+      workspaceId: WORKSPACE_ID,
+      postId: POST_ID,
+      scheduledAt: SCHEDULED_AT,
+      targets: [
+        {
+          connectedAccountId: CONNECTED_ACCOUNT_1,
+          platform: SocialPlatform.Instagram,
+          contentFormat: ContentFormat.Post,
+          outstandAccountId: "outstand-acc-1",
+        },
+        {
+          connectedAccountId: CONNECTED_ACCOUNT_2,
+          platform: SocialPlatform.Facebook,
+          contentFormat: ContentFormat.Reel,
+          outstandAccountId: "outstand-acc-2",
+        },
+      ],
+      actingUserId: AUTHOR_ID,
+    });
+
     expect(outcomes).toEqual(
       expect.arrayContaining([
         {
           postTargetId: asPostTargetId("target-1"),
-          outstandJobId: "fake-outstand-acc-1",
-          status: "scheduled",
+          status: "failed",
+          error: "Outstand unreachable",
         },
         {
           postTargetId: asPostTargetId("target-2"),
-          outstandJobId: "fake-outstand-acc-2",
-          status: "scheduled",
+          status: "failed",
+          error: "Outstand unreachable",
         },
       ]),
     );
-    expect(outcomes).toHaveLength(2);
+    expect(markPostFailedCalled).toBe(true);
   });
 
   it("rejects a content format not allowed for the platform before calling repository or adapter", async () => {
@@ -186,7 +267,7 @@ describe("SchedulePostsUseCase.execute", () => {
     const adapter = createFakeOutstandAdapter({
       schedulePost: async () => {
         adapterCalled = true;
-        return { outstandJobId: "should-not-happen" };
+        return { outstandPostId: "should-not-happen" };
       },
     });
     const useCase = new SchedulePostsUseCase(repository, adapter);
@@ -279,7 +360,7 @@ describe("SchedulePostsUseCase.execute", () => {
     const adapter = createFakeOutstandAdapter({
       schedulePost: async () => {
         adapterCalled = true;
-        return { outstandJobId: "should-not-happen" };
+        return { outstandPostId: "should-not-happen" };
       },
     });
     const useCase = new SchedulePostsUseCase(repository, adapter);

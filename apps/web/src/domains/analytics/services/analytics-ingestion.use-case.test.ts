@@ -27,6 +27,7 @@ function createFakeRepository(
 ): IAnalyticsRepository {
   return {
     findMetricsByPost: async () => [],
+    findMetricsByPosts: async () => [],
     findLatestWorkspaceSnapshot: async () => null,
     upsertPostMetrics: async (input) =>
       ({
@@ -52,11 +53,9 @@ function createFakeOutstandAdapter(
   overrides: Partial<IOutstandAdapter> = {},
 ): IOutstandAdapter {
   return {
-    schedulePost: async () => ({ outstandJobId: "fake-job" }),
-    publishNow: async () => ({
-      outstandJobId: "fake-job",
-      publishedUrl: "https://fake.outstand.local/posts/fake-job",
-    }),
+    schedulePost: async () => ({ outstandPostId: "fake-post" }),
+    publishNow: async () => ({ outstandPostId: "fake-post" }),
+    fetchPostOutcome: async () => [],
     cancelScheduledPost: async () => undefined,
     fetchPostMetrics: async () => ({
       impressions: 1000,
@@ -97,7 +96,7 @@ describe("AnalyticsIngestionUseCase.syncPostMetrics", () => {
         postId: POST_ID,
         connectedAccountId: CONNECTED_ACCOUNT_1,
         platform: SocialPlatform.Instagram,
-        outstandJobId: "outstand-job-1",
+        outstandPostId: "outstand-post-1",
       },
     ]);
 
@@ -136,7 +135,7 @@ describe("AnalyticsIngestionUseCase.syncPostMetrics", () => {
         Array.from(store.values()).filter((row) => row.postId === postId),
     });
     // Adapter deterministik (mengikuti pola fakeOutstandAdapter) — nilai
-    // yang sama untuk outstandJobId yang sama di kedua panggilan.
+    // yang sama untuk outstandPostId yang sama di kedua panggilan.
     const adapter = createFakeOutstandAdapter();
     const useCase = new AnalyticsIngestionUseCase(repository, adapter);
 
@@ -144,7 +143,7 @@ describe("AnalyticsIngestionUseCase.syncPostMetrics", () => {
       postId: POST_ID,
       connectedAccountId: CONNECTED_ACCOUNT_1,
       platform: SocialPlatform.Instagram,
-      outstandJobId: "outstand-job-1",
+      outstandPostId: "outstand-post-1",
     };
 
     await useCase.syncPostMetrics([target]);

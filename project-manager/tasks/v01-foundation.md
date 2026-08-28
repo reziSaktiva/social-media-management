@@ -96,6 +96,23 @@ Screen Workspace Settings → Members. Disepakati **desain minimal dulu**: cukup
 - [x] **T-007.6** UI dialog invite member dengan 2 opsi (Copy Link aktif, Kirim via Email disabled) + field email-bound wajib (ADR-080 poin 6) — UI sesuai desain Claude Design terverifikasi; submit sukses (generate+copy link) belum terbukti hidup karena gap `JOB_SECRET`
 - [ ] **T-007.7** `WorkspaceService.inviteMember` — jalur **Kirim via Email** (kirim email berisi link undangan yang sama, dipicu setelah invitation dibuat) — **blocked oleh T-005** (provider email belum ditetapkan), dipisah dari T-007.1 supaya jalur Copy Link tidak ikut tertahan (ADR-080)
 
+### T-093 · Accept Invite page — invite-to-membership utuh + verifikasi RBAC 2-akun
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | workspace                                                    |
+| **ADR**       | ADR-012 (roles), ADR-072 (tabel `workspace_invitations`), ADR-080 (dua metode invite) — tidak ada ADR baru, murni menutup gap yang sudah didokumentasikan |
+| **Depends**   | T-007.1/.6 ✅ (invitation + role sudah bisa dibuat), T-006 ✅ (workspace creation) |
+| **Baca dulu** | `02-product/roles-permissions.md` · `05-architecture/application-layer.md` · `decisions/ADR-080-invite-member-dua-metode-email-copy-link-amandemen-adr-072.md` |
+
+Ditemukan CodeRabbit saat review PR #73 (2026-08-14): halaman `/invite/[token]` (accept-invite) **belum pernah dibuat sama sekali** — link Copy Link yang dihasilkan T-007.1/.6 hari ini 404 kalau dibuka. Dicatat sebagai "future work terpisah, belum ada nomor T-XXX" di `COMPLETE_TASK.md`/ADR-080 sejak saat itu, baru dikonversi jadi task resmi di sini (2026-08-28, saat menyusun rantai dependency ADR-094 Realtime — Realtime butuh ≥2 akun nyata di satu workspace untuk bisa diuji maupun bermakna dipakai).
+
+- [ ] **T-093.1** Route `/invite/[token]` — validasi token (valid, belum expired/revoked, email undangan cocok)
+- [ ] **T-093.2** Alur buat akun baru **atau** login (kalau email sudah punya akun) via Better Auth — email harus sama persis dengan yang di-invite (email-bound, ADR-080)
+- [ ] **T-093.3** Insert `workspace_members` dengan **role diambil langsung dari invitation** (sudah dipilih lewat Selector Role saat invite dibuat, T-007.6) — bukan role kosong/default yang di-assign belakangan, lalu redirect ke workspace
+- [ ] **T-093.4** Verifikasi/hardening RBAC end-to-end dengan akun real kedua — Owner vs Admin vs Creator (Danger Zone hidden non-Owner, Transfer Ownership 2-akun, Update Role, Remove Member, RBAC assertion lain seperti `assertActorCanCancelSchedule`) yang sejauh ini cuma diverifikasi lewat code review, bukan browser dengan akun berbeda (lihat gap QA T-008); perbaiki di sini kalau ditemukan bug
+
 ### T-008 · Workspace Settings — General + Danger Zone
 
 | Field         | Value                                                     |
@@ -581,7 +598,7 @@ Alasan urgensinya: kalau jalur Bearer token baru dipasang setelah kode web matan
 
 ## Catatan Rilis
 
-* Nomor kosong v0.1 sudah terpakai semua (T-019 diisi task API mobile). Task v0.1 baru berikutnya memakai nomor global berikutnya yang belum pernah dipakai — jangan menggeser ID yang sudah ada. **T-039** (Migrasi Routing & Settings, ADR-076) memakai nomor ini: ID global berikutnya yang belum pernah dipakai, dipinjam dari ruang kosong yang sebelumnya dicadangkan untuk pertumbuhan v0.2 (lihat Catatan Rilis `tasks/v02-publishing-mvp.md`) — task tetap ditempatkan di file v0.1 karena scope-nya (Workspace/Settings routing) sejalan dengan T-009/T-016, bukan v0.2 Publishing. **T-089** (Workspace Switcher, ADR-088, 2026-08-24) juga memakai pola yang sama: ID global berikutnya yang belum pernah dipakai sama sekali (bukan dipinjam dari cadangan release manapun, karena seluruh rentang T-080–T-088 v1.0 sudah terisi) — ditempatkan di file v0.1 karena lahir sebagai amandemen ADR-076/T-039 (Workspace context & Settings), bukan task baru terpisah dari rumpun ini.
+* Nomor kosong v0.1 sudah terpakai semua (T-019 diisi task API mobile). Task v0.1 baru berikutnya memakai nomor global berikutnya yang belum pernah dipakai — jangan menggeser ID yang sudah ada. **T-039** (Migrasi Routing & Settings, ADR-076) memakai nomor ini: ID global berikutnya yang belum pernah dipakai, dipinjam dari ruang kosong yang sebelumnya dicadangkan untuk pertumbuhan v0.2 (lihat Catatan Rilis `tasks/v02-publishing-mvp.md`) — task tetap ditempatkan di file v0.1 karena scope-nya (Workspace/Settings routing) sejalan dengan T-009/T-016, bukan v0.2 Publishing. **T-089** (Workspace Switcher, ADR-088, 2026-08-24) juga memakai pola yang sama: ID global berikutnya yang belum pernah dipakai sama sekali (bukan dipinjam dari cadangan release manapun, karena seluruh rentang T-080–T-088 v1.0 sudah terisi) — ditempatkan di file v0.1 karena lahir sebagai amandemen ADR-076/T-039 (Workspace context & Settings), bukan task baru terpisah dari rumpun ini. **T-093** (Accept Invite page, 2026-08-28) memakai pola yang sama lagi — ID global berikutnya setelah T-092 (v0.2, ADR-094) — menutup gap yang sudah dicatat sejak ADR-080 (2026-08-14, halaman `/invite/[token]` belum pernah dibuat) tapi baru diberi nomor sekarang, saat King Rezi mengoreksi rantai dependency Realtime Calendar (invite-to-membership harus utuh dulu sebelum T-036/T-092 bisa diverifikasi dengan ≥2 akun nyata).
 * **Definisi "Foundation selesai":** semua task di rilis ini `✅ Done` **kecuali** yang secara sadar ditunda dengan alasan tercatat — dan **kecuali tiga task yang menunggu v0.2** (lihat di bawah). **T-012** (Sidebar Channels) sebelumnya termasuk daftar ini tapi sudah ✅ Done (2026-08-12) — T-012.2 (scheduled count) ternyata tidak perlu menunggu real Outstand adapter, cukup data `PublishingPost`/`PublishingPostTarget` yang sudah ada sejak T-028.
 * **Task v0.1 yang tidak bisa ditutup sebelum v0.2 berjalan** (dependency lintas rilis, disengaja dan diketahui):
   * **T-013** Connect account — subtask T-013.1 butuh T-025 (Real OutstandAdapter, v0.2).

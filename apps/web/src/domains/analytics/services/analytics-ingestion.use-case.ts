@@ -32,14 +32,24 @@ export interface SyncPostMetricsTargetInput {
   connectedAccountId: ConnectedAccountId;
   platform: SocialPlatform;
   /**
-   * `PublishingPostTarget.outstandJobId` — external reference dari domain
-   * `publishing`. Use Case ini TIDAK mengimpor domain `publishing`; caller
-   * (job handler / Route Handler `/api/jobs/run`) wajib me-resolve nilai ini
+   * `PublishingPost.outstandPostId` — external reference dari domain
+   * `publishing` (redesain ACL 2026-08-26: dulu `PublishingPostTarget.outstandJobId`
+   * per-target, sekarang post-level dan SAMA untuk semua target satu post,
+   * karena Outstand hanya mengenal satu id per post, bukan satu job per
+   * akun). Use Case ini TIDAK mengimpor domain `publishing`; caller (job
+   * handler / Route Handler `/api/jobs/run`) wajib me-resolve nilai ini
    * lebih dulu lewat public API `publishing`, persis pola
    * `SchedulePostsUseCase` (ADR-059) yang mewajibkan caller me-resolve
    * `outstandAccountId` dari domain `workspace` sebelum memanggil `execute`.
+   *
+   * **Gap diketahui (dicatat, bukan diselesaikan di redesain ini)** —
+   * `fetchPostMetrics` Outstand sebenarnya mengembalikan metrics PER-AKUN +
+   * `aggregated_metrics` untuk SATU `outstandPostId`, jadi memanggilnya
+   * sekali per target dengan id yang sama (seperti di bawah) tidak
+   * memanfaatkan bentuk response asli — follow-up T-041 mengevaluasi
+   * penyesuaian shape penuh (array per akun), bukan bagian ADR ini.
    */
-  outstandJobId: string;
+  outstandPostId: string;
 }
 
 export interface SyncWorkspaceSnapshotAccountInput {
@@ -80,10 +90,25 @@ export class AnalyticsIngestionUseCase {
   ): Promise<PostMetricsRecord[]> {
     const results: PostMetricsRecord[] = [];
 
+    // Semua target satu post berbagi `outstandPostId` yang sama (lihat catatan
+    // di `SyncPostMetricsTargetInput.outstandPostId`), jadi `fetchPostMetrics`
+    // di-fetch SEKALI per `outstandPostId` unik — bukan sekali per target —
+    // supaya post multi-akun tidak memanggil Outstand berkali-kali untuk hasil
+    // yang identik. Nilai per target tetap identik (gap diketahui, T-041)
+    // karena `FetchPostMetricsResult` belum dipecah per akun.
+    const metricsByOutstandPostId = new Map<
+      string,
+      Awaited<ReturnType<typeof this.outstandAdapter.fetchPostMetrics>>
+    >();
+
     for (const target of targets) {
-      const metrics = await this.outstandAdapter.fetchPostMetrics(
-        target.outstandJobId,
-      );
+      let metrics = metricsByOutstandPostId.get(target.outstandPostId);
+      if (!metrics) {
+        metrics = await this.outstandAdapter.fetchPostMetrics(
+          target.outstandPostId,
+        );
+        metricsByOutstandPostId.set(target.outstandPostId, metrics);
+      }
 
       const record = await this.repository.upsertPostMetrics({
         postId: target.postId,
