@@ -180,17 +180,19 @@ Jadi T-029.4/.5/.6 di bawah **desainnya sudah tersedia** — sisa pekerjaan murn
 
 | Field         | Value                                            |
 | ------------- | ------------------------------------------------ |
-| **Status**    | 🟡 In Progress — bagian Queue selesai via T-032.4, bagian Calendar menunggu T-033 |
+| **Status**    | 🟡 In Progress — bagian Queue selesai via T-032.4; bagian Calendar masih belum ada entry point Cancel Schedule (T-033 sudah ✅ Done tapi tidak mencakup ini — lihat catatan) |
 | **Domain**    | publishing                                       |
 | **ADR**       | ADR-049 (Tier 2)                                 |
-| **Depends**   | T-028 ✅, T-032 ✅ (aksi dipicu dari Queue — selesai), T-033 (aksi dipicu dari Calendar — belum) |
+| **Depends**   | T-028 ✅, T-032 ✅ (aksi dipicu dari Queue — selesai), T-033 ✅ (Calendar view selesai 2026-08-28, tapi tidak menambahkan entry point Cancel Schedule — lihat catatan) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                    |
 
-**Catatan (2026-08-20):** T-030.1/.2/.3 sudah diimplementasikan penuh sebagai bagian **T-032.4** (lihat catatan di sana) — bukan pekerjaan terpisah. Ditutup untuk konteks Queue; ketiga checkbox di bawah ditandai selesai untuk bagian itu. Kalau T-033 (Calendar) nanti butuh Cancel Schedule juga, itu tinggal reuse `cancelScheduleAction`/`AlertDialog` yang sama, bukan re-implementasi — status task ini tetap `🟡 In Progress` sampai T-033 menyediakan entry point Calendar-nya.
+**Catatan (2026-08-20):** T-030.1/.2/.3 sudah diimplementasikan penuh sebagai bagian **T-032.4** (lihat catatan di sana) — bukan pekerjaan terpisah. Ditutup untuk konteks Queue; ketiga checkbox di bawah ditandai selesai untuk bagian itu. Reuse `cancelScheduleAction`/`AlertDialog` yang sama untuk Calendar, bukan re-implementasi.
+
+**Catatan (2026-08-28):** T-033 (Calendar view) sudah `✅ Done`, tapi scope-nya berhenti di Popover ringkasan + CTA "Buka Draft Editor" (T-033.8) — **tidak** menambahkan entry point Cancel Schedule langsung di Calendar. Bagian Calendar task ini tetap `🟡 In Progress`, tidak lagi diblokir oleh T-033 yang belum selesai, melainkan menunggu implementasi entry point-nya sendiri (belum ada task terpisah untuk ini).
 
 - [x] **T-030.1** `PublishingService.cancelSchedule` + batalkan di Outstand (T-025) — diimplementasikan via `cancel-schedule.use-case.ts` + `IOutstandAdapter.cancelScheduledPost` (Fake, ADR-059) di T-032.4
 - [x] **T-030.2** Dialog konfirmasi Tier 2 — referensi copy & interaksi sudah ada di prototipe Claude Design (`openCancelScheduleDialog`/`applyCancelSchedule`, `templates/app-prototype/AppPrototype.dc.html`, dibuat via T-032.0 2026-08-19): warning "Post kembali menjadi Draft dan tidak akan dipublikasikan otomatis" + tombol `btn-danger` "Batalkan Jadwal" — diimplementasikan nyata sebagai `AlertDialog` Astryx di T-032.4
-- [ ] **T-030.3** Aksi tersedia dari Queue (tombol icon merah `.icon-btn-danger` per row, desain final T-032.0) + Calendar — **Queue selesai** (T-032.4, 2026-08-20); **Calendar belum**, menunggu T-033
+- [ ] **T-030.3** Aksi tersedia dari Queue (tombol icon merah `.icon-btn-danger` per row, desain final T-032.0) + Calendar — **Queue selesai** (T-032.4, 2026-08-20); **Calendar belum**, entry point-nya belum diimplementasikan meski T-033 sudah selesai
 
 ### T-031 · Redirect otomatis ke sub-screen tujuan setelah aksi terminal
 

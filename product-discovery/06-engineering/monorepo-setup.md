@@ -327,8 +327,9 @@ src/components/
 - Tailwind hanya untuk layout, wrapper, spacing, grid, flex, dan responsive page
   composition. Jangan memakai Tailwind untuk mengubah internal component part
   Astryx secara agresif.
-- Gunakan neutral theme Astryx selama development feature. Hindari canary,
-  `swizzle`, dan authoring StyleX pada tahap awal.
+- Gunakan Stone theme Astryx (ADR-087) selama development feature. Hindari
+  canary. `@stylexjs/stylex` dihapus total dari dependency project dan
+  `swizzle` tertutup permanen (ADR-082) — Astryx dipakai Tailwind-layout-only.
 - Feature components tidak boleh berisi business logic — logika ada di domain services.
 - **Penamaan mengikuti aturan yang sama dengan `components/` lokal di
   `src/app/`** (lihat "Penamaan & peletakan folder `components/` lokal

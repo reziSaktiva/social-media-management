@@ -53,7 +53,7 @@ Dokumen ini melengkapi `monorepo-setup.md` (workspace layout, `@social/shared`, 
 | Dependency npm publik | Caret range | `"next": "^15.0.0"`, `"prisma": "^6.0.0"` |
 | Workspace internal | Protocol workspace | `"@social/shared": "workspace:*"` |
 | Exact pin | Hanya jika ada alasan kuat (bug kritis, vendor minta pin) | `"some-lib": "1.2.3"` — dicatat di PR/ADR bila jangka panjang |
-| Astryx Beta | Exact stable version | `"@astryxdesign/core": "0.1.8"`, `"@astryxdesign/theme-neutral": "0.1.8"` |
+| Astryx Beta | Exact stable version | `"@astryxdesign/core": "0.1.8"`, `"@astryxdesign/theme-stone": "0.4.3"` (ADR-087) |
 
 **Prinsip:**
 - `package.json` menyatakan **rentang yang diterima**; `bun.lockb` menyatakan **versi yang terpasang**.
@@ -65,14 +65,14 @@ Dokumen ini melengkapi `monorepo-setup.md` (workspace layout, `@social/shared`, 
 ADR-041 mengamendemen aturan caret ADR-035 khusus untuk Astryx selama masih
 Beta:
 
-- `@astryxdesign/core`, `@astryxdesign/theme-neutral`, dan
-  `@astryxdesign/cli` memakai exact stable version yang sama; initial adoption
-  memakai `0.1.8`;
-- peer `@stylexjs/stylex` dipasang exact pada versi kompatibel yang diverifikasi
-  (`0.19.0`);
+- `@astryxdesign/core`, theme package aktif (`@astryxdesign/theme-stone`,
+  ADR-087), dan `@astryxdesign/cli` memakai exact stable version yang sama;
 - jangan memakai tag `latest`, wildcard, atau canary;
 - core dan theme selalu di-upgrade sebagai satu unit;
-- hindari `swizzle` dan authoring StyleX pada tahap awal; dan
+- `@stylexjs/stylex` **dihapus total** dari dependency project (ADR-082,
+  amandemen ADR-041) — Astryx dipakai Tailwind-layout-only; `swizzle` juga
+  tertutup permanen sebagai konsekuensinya (swizzle butuh compiler StyleX
+  yang sama); dan
 - setiap upgrade wajib melewati staging serta smoke test Button, Dialog, form
   controls, Table, dark mode, Tailwind cascade layer, typecheck, lint, test, dan
   Next.js production build.

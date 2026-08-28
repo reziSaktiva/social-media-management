@@ -86,6 +86,15 @@ Anti-Corruption Layer (ACL) adalah layer terjemahan yang:
 
 `OutstandAdapter` adalah modul khusus yang mengimplementasikan seluruh komunikasi dengan Outstand API.
 
+**(ADR-079)** Contract `IOutstandAdapter` dipromosikan dari lokasi domain-only
+(`domains/publishing/adapters/`) ke `packages/shared/src/contracts/` sebagai
+**cross-domain shared contract** — awalnya dibangun untuk kebutuhan Publishing
+(ADR-059), tapi Analytics BC (metric ingestion) juga butuh mengimplementasikan
+method yang sama (`fetchPostMetrics`, `fetchWorkspaceMetrics`). File lokasi
+lama di domain `publishing` dipertahankan sebagai re-export barrel. Ini
+pengecualian baru pada aturan `packages/shared` (AGENTS.md rule 8): port/ACL
+contract kini termasuk kategori yang boleh hidup di sana, selain shared types.
+
 **(amandemen ADR-092)** `schedulePost`/`publishNow` menerima SEMUA target
 sekaligus dalam satu call dan mengembalikan SATU `outstandPostId` — bukan
 lagi satu call per akun. Status per akun (`platformPostId`,
@@ -464,9 +473,9 @@ Domain internal **tidak pernah** melihat HTTP error code Outstand secara langsun
 
 # Related Documents
 
-* `domain-model.md` — definisi `ConnectedAccount`, `PostTarget`, `OutstandJobId` sebagai external reference
+* `domain-model.md` — definisi `ConnectedAccount`, `PostTarget`, `outstandPostId`/`platformPostId` sebagai external reference (ADR-092)
 * `database-strategy.md` — tabel `workspace_connected_accounts`, `publishing_post_targets`, `analytics_post_metrics`, `analytics_workspace_snapshots`
 * `application-layer.md` — Route Handler sebagai entry point webhook; Application Service sebagai pemanggil OutstandAdapter
 * `background-jobs.md` — strategi retry webhook event dan jadwal polling analytics
 * `auth-architecture.md` — workspace membership check pada setiap operasi ConnectedAccount
-* `../../project-manager/DECISIONS.md` — ADR-005, ADR-016, ADR-018, ADR-019, ADR-020, ADR-021
+* `../../project-manager/DECISIONS.md` — ADR-005, ADR-016, ADR-018, ADR-019, ADR-020, ADR-021, ADR-079, ADR-092

@@ -13,7 +13,7 @@ Bukan tempat pola folder domain atau aturan gaya kode (itu `ctx-implementation` 
 | [`monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)                       | Layout Hybrid Monorepo, Bun workspaces                                                                                            |
 | [`database-orm.md`](../product-discovery/06-engineering/database-orm.md)                           | Prisma 7, migrate, pooling, batas Supabase client (ADR-031)                                                                       |
 | [`auth-strategy.md`](../product-discovery/06-engineering/auth-strategy.md)                         | Better Auth, Google OAuth, JWT Realtime (ADR-030)                                                                                 |
-| [`environment-management.md`](../product-discovery/06-engineering/environment-management.md)       | Env vars, secrets, `social-media-local` (ADR-033)                                                                                 |
+| [`environment-management.md`](../product-discovery/06-engineering/environment-management.md)       | Env vars, secrets, local menumpang project staging (ADR-033, amandemen ADR-081)                                                   |
 | [`deployment-infrastructure.md`](../product-discovery/06-engineering/deployment-infrastructure.md) | Railway + Supabase SEA (ADR-028, ADR-029)                                                                                         |
 | [`cicd-pipeline.md`](../product-discovery/06-engineering/cicd-pipeline.md)                         | GitHub Actions gates, Railway CD (ADR-032)                                                                                        |
 | [`dependency-strategy.md`](../product-discovery/06-engineering/dependency-strategy.md)             | Caret default + exact pin Astryx Beta, lockfile, `@social/shared` (ADR-035, ADR-041)                                              |
@@ -64,12 +64,12 @@ Implementasi di repo:
 7. Jangan ubah Engineering Baseline tanpa ADR.
 8. Design tokens: SoT di `design-tokens.md`, co-equal dengan Claude Design
    (folder `design/` sudah dihapus dan tidak dibuat ulang, ADR-045, ADR-057
-   — tidak ada designer eksternal, permanen). Selama M8 gunakan neutral
-   theme Astryx dan jangan hardcode custom brand hex. Nilai final di-lock
+   — tidak ada designer eksternal, permanen). Gunakan Stone theme Astryx
+   (ADR-087) dan jangan hardcode custom brand hex. Nilai final di-lock
    iteratif kapan pun stabil (ADR-056), bukan menunggu event "designer
-   masuk". Light/Dark Mode Toggle (ADR-055) tetap berjalan di atas neutral
-   theme ini — bukan tema/token baru, murni expose mekanisme dark mode
-   bawaan Astryx.
+   masuk". Light/Dark Mode Toggle (ADR-055) tetap berjalan di atas Stone
+   theme Astryx (ADR-087) — bukan tema/token baru, murni expose mekanisme
+   dark mode bawaan Astryx.
 9. Outstand/X (**ADR-040**): Project Owner mengatur BYOK X secara manual di
    dashboard Outstand. Jangan menambah env var, form, tabel, atau secret store
    aplikasi untuk Client ID/Client Secret X.

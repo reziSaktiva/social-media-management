@@ -745,7 +745,7 @@ Detail implementasi migrasi didefinisikan di Engineering Planning (M6). Poin ars
 * `domain-model.md` — fondasi entitas dan relasi yang dipetakan ke tabel database ini
 * `application-layer.md` — bagaimana application layer berinteraksi dengan database *(dokumen berikutnya)*
 * `integration-layer.md` — Outstand Comments API/JOB-03 yang mengisi `engagement_inbox_items`, webhook receipt untuk status publishing/account, dan polling analytics
-* `background-jobs.md` — background job yang mengakses `publishing_queue_slots` dan `analytics_post_metrics`
+* `background-jobs.md` — background job yang mengakses ~~`publishing_queue_slots`~~ (deprecated, ADR-083) dan `analytics_post_metrics`
 * `realtime-strategy.md` — Supabase Realtime untuk `notifications`
 * `auth-architecture.md` — Better Auth dan RLS detail — `workspace_members` sebagai authorization table
 * `../02-product/roles-permissions.md` — roles dan content status kanonikal

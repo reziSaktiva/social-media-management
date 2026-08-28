@@ -369,11 +369,11 @@ Draft Editor adalah **layar kerja terpenting** dalam produk. Raka menulis, melen
 
 **Catatan (ADR-052):** Draft Editor sekarang dibuka sebagai modal di atas sub-screen Publish manapun yang aktif — bukan panel/layar penuh dengan route sendiri (mengoverride NP-D02, lihat NP-D11 di `navigation-patterns.md`). Berlaku untuk New Post dan Edit Draft.
 
-**Variant Dialog belum difinalkan** — sedang dibandingkan langsung di Claude Design lewat toggle di header modal (sejajar status chip, sebelah kiri tombol Close):
-- **`fullscreen` (default saat ini):** menutupi seluruh viewport — sidebar navigasi & Calendar/Queue/Drafts tertutup total selama modal terbuka. Trade-off yang disadari dan diterima demi kecepatan alur kerja, tapi berarti modal ini tidak punya backdrop gelap terlihat (tidak ada apa-apa di belakang untuk digelapkan).
-- **`standard` (alternatif):** card besar mengambang dengan backdrop gelap — layar di belakang (termasuk sidebar) tetap terlihat, redup.
+**Variant Dialog — final sejak ADR-065.** Toggle di header modal (sejajar status chip, sebelah kiri tombol Close) tetap ada sebagai fitur resmi produk, dengan default berikut:
+- **`standard` (default, ADR-065):** card besar mengambang dengan backdrop gelap — layar di belakang (termasuk sidebar) tetap terlihat, redup.
+- **`fullscreen` (alternatif via toggle):** menutupi seluruh viewport — sidebar navigasi & Calendar/Queue/Drafts tertutup total selama modal terbuka. Tidak punya backdrop gelap terlihat (tidak ada apa-apa di belakang untuk digelapkan).
 
-Keputusan final ditentukan sebelum implementasi kode (Tahap 3) dimulai; baseline ini akan diperbarui begitu variant final dipilih.
+Tidak dipersist antar sesi (session-only), sama seperti pola Light/Dark Mode Toggle (ADR-055).
 
 ---
 
@@ -401,7 +401,7 @@ Keputusan final ditentukan sebelum implementasi kode (Tahap 3) dimulai; baseline
 
 Draft Editor dibagi menjadi dua area utama:
 
-Layout di bawah ini kini dirender di dalam modal (ADR-052, default `variant="fullscreen"`, alternatif `variant="standard"` masih dibandingkan — lihat Catatan di Identitas) — bukan halaman route sendiri. Header modal menampilkan judul, status chip, toggle variant, dan tombol Close, bukan "← Kembali".
+Layout di bawah ini kini dirender di dalam modal (ADR-052, default `variant="standard"` sejak ADR-065, alternatif `variant="fullscreen"` via toggle — lihat Catatan di Identitas) — bukan halaman route sendiri. Header modal menampilkan judul, status chip, toggle variant, dan tombol Close, bukan "← Kembali".
 
 ```
 ┌─────────────────────────────────────────────────────────┐
