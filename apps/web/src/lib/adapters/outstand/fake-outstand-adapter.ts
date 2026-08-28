@@ -38,14 +38,27 @@ function deterministicInt(seed: string, salt: string, max: number): number {
  * (create lalu resolve outcome) tetap benar secara interface, konsisten
  * dengan bagaimana Outstand asli benar-benar menyimpan `accounts` di post.
  * Module-level Map ini cukup untuk proses tunggal (dev/test) — tidak perlu
- * persist lintas restart karena Fake bukan pengganti database.
+ * persist lintas restart karena Fake bukan pengganti database. Dibatasi
+ * `MAX_REMEMBERED_POSTS` dengan eviction FIFO (entry tertua dibuang lebih
+ * dulu — urutan insersi `Map` dijamin oleh spec) supaya proses staging yang
+ * berjalan lama (ADR-059 — Fake otomatis aktif tanpa `OUTSTAND_API_KEY`)
+ * tidak menumpuk memory tanpa batas seiring bertambahnya post.
  */
+const MAX_REMEMBERED_POSTS = 10_000;
+
 const targetsByOutstandPostId = new Map<string, OutstandPostTargetInput[]>();
 
 function rememberTargets(
   outstandPostId: string,
   targets: OutstandPostTargetInput[],
 ): void {
+  if (targetsByOutstandPostId.size >= MAX_REMEMBERED_POSTS) {
+    const oldestKey = targetsByOutstandPostId.keys().next().value;
+    if (oldestKey !== undefined) {
+      targetsByOutstandPostId.delete(oldestKey);
+    }
+  }
+
   targetsByOutstandPostId.set(outstandPostId, targets);
 }
 

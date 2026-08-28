@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import type { StatusDotVariant } from "@astryxdesign/core/StatusDot";
 import type { IconType } from "react-icons";
 import { FaFilm, FaRegClock, FaRegImage, FaThumbtack } from "react-icons/fa6";
@@ -185,7 +186,7 @@ export function columnDividerClassName(
     : "border-r border-border";
 }
 
-/** Format jam UTC (0-23) jadi label "HH:00" (mis. 7 → "07:00") — dipakai kartu Month (poin M2). */
+/** Format jam LOKAL browser (0-23) jadi label "HH:00" (mis. 7 → "07:00") — dipakai kartu Month (poin M2). */
 export function formatCalendarHour(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
@@ -229,7 +230,7 @@ export interface CalendarCardEntry {
   accountHandle: string;
   /** Kalender UTC "YYYY-MM-DD" dari tanggal efektif (`scheduledAt ?? publishedAt`). */
   dateKey: string;
-  /** Jam UTC (0-23) dari tanggal efektif — dipakai grid Week untuk bucket slot 2 jam. */
+  /** Jam LOKAL browser (0-23) dari tanggal efektif — dipakai grid Week untuk bucket per jam. */
   hour: number;
   /**
    * Metrik untuk TARGET INI SAJA (T-033.8, Popover KSP-02-F08) — dicocokkan
@@ -252,18 +253,37 @@ export interface CalendarCardEntry {
  * `sortCalendarItemsByEffectiveDate`, termasuk fallback `createdAt`-nya).
  * Item tanpa target dilewati (post tanpa `targets` tidak punya kartu untuk
  * ditampilkan).
+ *
+ * `connectedAccountIds` (opsional, array kosong = tanpa filter) dicocokkan
+ * ULANG per target di sini — filter Channels di repository (`listCalendarPosts`)
+ * hanya mensyaratkan post punya SALAH SATU target yang cocok (`targets: {
+ * some: {...} }`), jadi tanpa re-filter ini target lain milik post yang sama
+ * (mis. akun Facebook post multi-platform) tetap ikut tampil walau tidak
+ * dipilih di filter Channels.
  */
 export function flattenCalendarItemsToEntries(
   items: CalendarPostItem[],
+  connectedAccountIds: readonly ConnectedAccountId[] = [],
 ): CalendarCardEntry[] {
   const entries: CalendarCardEntry[] = [];
 
   for (const item of items) {
     const effectiveDate = effectiveCalendarDate(item);
     const dateKey = toUtcDateKey(effectiveDate);
-    const hour = effectiveDate.getUTCHours();
+    // Jam LOKAL browser (bukan UTC) — jadwal diinput sebagai waktu lokal lalu
+    // dikonversi ke UTC saat disimpan (`draft-editor/Modal.tsx`), jadi jam
+    // yang ditampilkan ke user harus dikonversi balik ke lokal supaya cocok
+    // dengan yang mereka ketik.
+    const hour = effectiveDate.getHours();
 
     for (const target of item.targets) {
+      if (
+        connectedAccountIds.length > 0 &&
+        !connectedAccountIds.includes(target.connectedAccountId)
+      ) {
+        continue;
+      }
+
       entries.push({
         key: `${item.id}-${target.id}`,
         postId: item.id,
@@ -285,4 +305,29 @@ export function flattenCalendarItemsToEntries(
   }
 
   return entries;
+}
+
+/**
+ * State expand/collapse "+N More" per sel (Month: `dateKey`, Week: `cellKey`)
+ * — logic identik dipakai `CalendarMonthGrid`/`CalendarWeekGrid`, sebelumnya
+ * duplikat verbatim di kedua file (beda cuma nama variabel).
+ */
+export function useExpandableKeys() {
+  const [expandedKeys, setExpandedKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+
+  const toggle = useCallback((key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
+  return { expandedKeys, toggle };
 }

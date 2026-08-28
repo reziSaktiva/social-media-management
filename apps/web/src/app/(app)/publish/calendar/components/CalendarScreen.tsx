@@ -1,5 +1,6 @@
 import { VStack } from "@astryxdesign/core/VStack";
 
+import type { ConnectedAccountId } from "@social/shared";
 import type { CalendarPostItem, CalendarViewMode } from "@/domains/publishing";
 import type { ConnectedAccountRecord } from "@/domains/workspace";
 
@@ -21,6 +22,9 @@ type CalendarScreenProps = {
   items: CalendarPostItem[];
   /** Daftar akun terkoneksi workspace (T-033.6) — opsi filter Channels di `CalendarToolbar`. */
   accounts: ConnectedAccountRecord[];
+  /** Filter Channels aktif dari `?accounts=` (T-033.6) — diteruskan ke grid supaya
+   * target yang tidak dipilih tidak ikut tampil (post multi-platform). */
+  connectedAccountIds: ConnectedAccountId[];
 };
 
 /**
@@ -36,14 +40,23 @@ export function CalendarScreen({
   date,
   items,
   accounts,
+  connectedAccountIds,
 }: CalendarScreenProps) {
   return (
     <VStack gap={4}>
       <CalendarToolbar accounts={accounts} />
       {view === "month" ? (
-        <CalendarMonthGrid date={date} items={items} />
+        <CalendarMonthGrid
+          date={date}
+          items={items}
+          connectedAccountIds={connectedAccountIds}
+        />
       ) : (
-        <CalendarWeekGrid date={date} items={items} />
+        <CalendarWeekGrid
+          date={date}
+          items={items}
+          connectedAccountIds={connectedAccountIds}
+        />
       )}
     </VStack>
   );

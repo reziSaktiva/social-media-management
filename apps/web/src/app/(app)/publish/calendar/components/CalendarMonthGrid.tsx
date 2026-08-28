@@ -1,42 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import { Badge } from "@astryxdesign/core/Badge";
+import { useMemo } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { ClickableCard } from "@astryxdesign/core/ClickableCard";
 import { Divider } from "@astryxdesign/core/Divider";
 import { Grid } from "@astryxdesign/core/Grid";
 import { HStack } from "@astryxdesign/core/HStack";
-import { Icon } from "@astryxdesign/core/Icon";
 import { StackItem } from "@astryxdesign/core/Stack";
-import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 
+import type { ConnectedAccountId } from "@social/shared";
 import type { CalendarPostItem } from "@/domains/publishing";
 import { getMonthRange } from "@/domains/publishing";
 
-import {
-  CONTENT_STATUS_BADGE_VARIANT,
-  CONTENT_STATUS_LABEL,
-} from "../../../components/draft-editor/status-badge";
 import { PLATFORM_ICON } from "../../../components/platform-icons";
+import { CalendarEntryFooter } from "./CalendarEntryFooter";
 import { CalendarPostPopover } from "./CalendarPostPopover";
 import {
   addDays,
   CALENDAR_DAY_COLUMNS,
   type CalendarCardEntry,
   columnDividerClassName,
-  CONTENT_FORMAT_ICON,
-  CONTENT_FORMAT_LABEL,
-  CONTENT_STATUS_DOT_VARIANT,
   DAY_LABELS,
   flattenCalendarItemsToEntries,
   formatCalendarHour,
   MAX_VISIBLE_PER_CELL,
   MS_PER_DAY,
   toUtcDateKey,
+  useExpandableKeys,
 } from "./calendar-grid-shared";
 
 /** Tinggi minimum sel Month, termasuk padding — lebar kolom sekarang responsive (`Grid columns={CALENDAR_DAY_COLUMNS}`), tinggi tetap fixed. */
@@ -90,6 +83,8 @@ export interface CalendarMonthGridProps {
   date: Date;
   /** Hasil `PublishingService.listCalendarPosts` untuk rentang bulan yang sama. */
   items: CalendarPostItem[];
+  /** Filter Channels aktif (T-033.6) — array kosong = tanpa filter. */
+  connectedAccountIds?: ConnectedAccountId[];
 }
 
 /**
@@ -101,33 +96,32 @@ export interface CalendarMonthGridProps {
  * (di luar scope T-033.4). Klik kartu post membuka Popover ringkasan
  * (T-033.8, ADR-090/ADR-091, `CalendarPostPopover`).
  */
-export function CalendarMonthGrid({ date, items }: CalendarMonthGridProps) {
-  const [expandedDateKeys, setExpandedDateKeys] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
+export function CalendarMonthGrid({
+  date,
+  items,
+  connectedAccountIds = [],
+}: CalendarMonthGridProps) {
+  const { expandedKeys: expandedDateKeys, toggle: toggleExpanded } =
+    useExpandableKeys();
 
-  const gridDays = buildMonthGridDays(date);
-  const weeks = chunkIntoWeeks(gridDays);
+  const gridDays = useMemo(() => buildMonthGridDays(date), [date]);
+  const weeks = useMemo(() => chunkIntoWeeks(gridDays), [gridDays]);
   const todayKey = toUtcDateKey(new Date());
 
-  const entriesByDate = new Map<string, CalendarCardEntry[]>();
-  for (const entry of flattenCalendarItemsToEntries(items)) {
-    const entries = entriesByDate.get(entry.dateKey) ?? [];
-    entries.push(entry);
-    entriesByDate.set(entry.dateKey, entries);
-  }
-
-  function toggleExpanded(dateKey: string) {
-    setExpandedDateKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(dateKey)) {
-        next.delete(dateKey);
-      } else {
-        next.add(dateKey);
-      }
-      return next;
-    });
-  }
+  const connectedAccountIdsKey = connectedAccountIds.join(",");
+  const entriesByDate = useMemo(() => {
+    const map = new Map<string, CalendarCardEntry[]>();
+    for (const entry of flattenCalendarItemsToEntries(
+      items,
+      connectedAccountIds,
+    )) {
+      const entries = map.get(entry.dateKey) ?? [];
+      entries.push(entry);
+      map.set(entry.dateKey, entries);
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, connectedAccountIdsKey]);
 
   return (
     <Card padding={3}>
@@ -246,68 +240,7 @@ export function CalendarMonthGrid({ date, items }: CalendarMonthGridProps) {
                                     </Text>
                                   </HStack>
 
-                                  {/* Footer, revisi keempat T-033 poin 2-3: ≤768px `Badge` teks
-                                      overflow di card sempit (Badge "Scheduled" 77px vs ruang
-                                      card ~22-39px di 375px, Badge tidak punya prop
-                                      size/truncation) — diganti StatusDot+Icon compact di bawah
-                                      768px (breakpoint sama dengan AppShell mobile nav,
-                                      `md: 768` di `AppShell.tsx`), 2 Badge tetap seperti semula
-                                      di >768px (tidak berubah). CSS murni (Tailwind `md:`), bukan
-                                      JS resize-hook — `useMediaQuery` Astryx eksplisit "always
-                                      returns false on first render" (SSR), berisiko hydration
-                                      mismatch/layout shift untuk switch yang harus benar di
-                                      first paint. Detail lengkap tetap ada lewat tap kartu →
-                                      `CalendarPostPopover` (tidak berubah). */}
-                                  <HStack
-                                    gap={1.5}
-                                    align="center"
-                                    className="flex md:hidden"
-                                  >
-                                    <StatusDot
-                                      variant={
-                                        CONTENT_STATUS_DOT_VARIANT[entry.status]
-                                      }
-                                      label={CONTENT_STATUS_LABEL[entry.status]}
-                                      tooltip={
-                                        CONTENT_STATUS_LABEL[entry.status]
-                                      }
-                                    />
-                                    <Icon
-                                      icon={
-                                        CONTENT_FORMAT_ICON[entry.contentFormat]
-                                      }
-                                      size="xsm"
-                                      color="secondary"
-                                      label={
-                                        CONTENT_FORMAT_LABEL[
-                                          entry.contentFormat
-                                        ]
-                                      }
-                                    />
-                                  </HStack>
-                                  <HStack
-                                    gap={1}
-                                    align="center"
-                                    wrap="wrap"
-                                    className="hidden md:flex"
-                                  >
-                                    <Badge
-                                      variant="neutral"
-                                      label={
-                                        CONTENT_FORMAT_LABEL[
-                                          entry.contentFormat
-                                        ]
-                                      }
-                                    />
-                                    <Badge
-                                      variant={
-                                        CONTENT_STATUS_BADGE_VARIANT[
-                                          entry.status
-                                        ]
-                                      }
-                                      label={CONTENT_STATUS_LABEL[entry.status]}
-                                    />
-                                  </HStack>
+                                  <CalendarEntryFooter entry={entry} />
                                 </VStack>
                               </ClickableCard>
                             </CalendarPostPopover>

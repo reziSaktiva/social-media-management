@@ -90,10 +90,25 @@ export class AnalyticsIngestionUseCase {
   ): Promise<PostMetricsRecord[]> {
     const results: PostMetricsRecord[] = [];
 
+    // Semua target satu post berbagi `outstandPostId` yang sama (lihat catatan
+    // di `SyncPostMetricsTargetInput.outstandPostId`), jadi `fetchPostMetrics`
+    // di-fetch SEKALI per `outstandPostId` unik — bukan sekali per target —
+    // supaya post multi-akun tidak memanggil Outstand berkali-kali untuk hasil
+    // yang identik. Nilai per target tetap identik (gap diketahui, T-041)
+    // karena `FetchPostMetricsResult` belum dipecah per akun.
+    const metricsByOutstandPostId = new Map<
+      string,
+      Awaited<ReturnType<typeof this.outstandAdapter.fetchPostMetrics>>
+    >();
+
     for (const target of targets) {
-      const metrics = await this.outstandAdapter.fetchPostMetrics(
-        target.outstandPostId,
-      );
+      let metrics = metricsByOutstandPostId.get(target.outstandPostId);
+      if (!metrics) {
+        metrics = await this.outstandAdapter.fetchPostMetrics(
+          target.outstandPostId,
+        );
+        metricsByOutstandPostId.set(target.outstandPostId, metrics);
+      }
 
       const record = await this.repository.upsertPostMetrics({
         postId: target.postId,

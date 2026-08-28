@@ -78,6 +78,12 @@ export default async function Page({
   ]);
 
   return (
-    <CalendarScreen view={view} date={date} items={items} accounts={accounts} />
+    <CalendarScreen
+      view={view}
+      date={date}
+      items={items}
+      accounts={accounts}
+      connectedAccountIds={connectedAccountIds}
+    />
   );
 }
