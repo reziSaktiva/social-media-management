@@ -102,13 +102,11 @@ identik** di beberapa file `actions.ts` (`settings`, `settings/members`,
 ulang logic mapping error manual per file baru** — selalu import
 `toActionError` dari `apps/web/src/lib/utils/errors.ts`.
 
-**Belum 100% universal (temuan review Ridwan, 2026-08-28):**
-`draft-editor/actions.ts` (6 fungsi) tidak punya `try/catch`/
-`toActionError` sama sekali, dan `settings/account/actions.ts` +
-`onboarding/components/actions.ts` masih pakai pola `instanceof` manual
-sendiri. Ini kontrak yang **wajib** diikuti untuk Server Action baru —
-3 file di atas dicatat sebagai technical debt pra-existing untuk migrasi
-terpisah, bukan pengecualian yang boleh ditiru.
+Ini kontrak yang **wajib** diikuti untuk Server Action baru. Status
+kepatuhan kode saat ini (file mana yang masih belum mengikuti pola ini)
+dicatat sebagai technical debt di `PROJECT_STATE.md` § KI-036 (CC-D02) —
+lihat di sana untuk daftar terkini, jangan jadikan gap yang tercatat di
+situ sebagai pengecualian yang boleh ditiru.
 
 Karena `toActionError` meneruskan `error.message` apa adanya ke client:
 **pesan error yang di-throw dari Application Service harus aman untuk

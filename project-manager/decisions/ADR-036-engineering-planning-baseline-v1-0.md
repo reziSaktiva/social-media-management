@@ -6,7 +6,7 @@ Engineering Planning Baseline v1.0
 
 ### Status
 
-Accepted — Amended by ADR-040 (2026-07-23)
+Accepted — Amended by ADR-040 (2026-07-23); Addendum by ADR-041 (2026-07-23)
 
 ### Date
 

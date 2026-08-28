@@ -57,8 +57,9 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
    canary.
 7. Tailwind hanya untuk layout, wrapper, spacing, grid, flex, dan responsive
    page composition.
-8. Wrapper Astryx dibuat selektif. Hindari `swizzle` dan authoring StyleX pada
-   tahap awal.
+8. Wrapper Astryx dibuat selektif. Hindari canary. `@stylexjs/stylex` sudah
+   dihapus total dari dependency project dan `swizzle` tertutup permanen
+   (ADR-082) — Astryx dipakai Tailwind-layout-only.
 
 ### Naming & file
 

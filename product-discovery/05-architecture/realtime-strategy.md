@@ -36,8 +36,7 @@ Sistem **tidak** membangun full real-time collaboration (seperti Google Docs). S
 | Fitur | Pendekatan | Alasan |
 |-------|-----------|--------|
 | Notifikasi in-app (badge, toast) | Supabase Realtime | Diperlukan untuk awareness tim tanpa polling |
-| Status post (published/failed) | Manual refresh + notifikasi | Data berubah setelah JOB-01 memproses receipt webhook — cukup dengan notifikasi |
-| Content calendar | Manual refresh | Data jarang berubah secara real-time selama sesi |
+| Calendar/Queue/Drafts/History (4 screen Publish) | Supabase Realtime, granular client-side patch (ADR-094) | Kolaborasi tim ala Buffer — user lain lihat perubahan tanpa refresh manual; scope ditambahkan setelah baseline awal ini (lihat § "Perluasan ke `publishing_posts`" di bawah) |
 | Engagement inbox (comments/replies) | JOB-03 pull 30 menit + manual refresh + badge | Sync internal mendeteksi komentar baru; tidak ada webhook Engagement MVP |
 | Analytics | Manual refresh | Data snapshot harian — tidak perlu real-time |
 | Presence (who's editing) | Post-MVP | Kompleksitas tinggi, bukan kebutuhan MVP |
@@ -129,11 +128,63 @@ notifications
 
 ---
 
+# Perluasan ke `publishing_posts` (ADR-094)
+
+**Amandemen RT-D01/RT-D02.** Baseline awal dokumen ini (di atas) membatasi
+Supabase Realtime hanya untuk tabel `notifications`, dengan Content Calendar
+manual-refresh-only. ADR-094 (2026-08-28) memperluas cakupan ke tabel
+`publishing_posts`, khusus untuk 4 screen Publish (Calendar, Queue, Drafts,
+History) — bukan aplikasi-wide, bukan tabel lain.
+
+**Subscription:**
+```
+Channel: publishing_posts:{workspaceId}
+Table:   publishing_posts
+Filter:  workspace_id = eq.{workspaceId}
+Event:   INSERT, UPDATE   -- tanpa DELETE, soft-delete tercermin sebagai UPDATE
+```
+
+Berbeda dari `notifications` (per-user), channel ini **per-workspace** — semua
+anggota workspace perlu tahu perubahan, bukan cuma pemilik post.
+
+**Strategi update: granular client-side patch** (bukan full-page refresh).
+Tiap screen menyimpan list datanya sendiri sebagai client state
+(diinisialisasi dari props Server Component awal). Saat event Realtime masuk
+(`{postId, eventType}`), screen memanggil fungsi fetch-1-record dari
+`PublishingService` (reuse, bukan refetch seluruh list), lalu **upsert atau
+remove** ke local state berdasarkan apakah post itu masih cocok kriteria
+tampilan screen tersebut (mis. Queue cuma tampilkan `Scheduled` — begitu
+status berubah jadi `Published`, item dihapus dari local state Queue, bukan
+di-update). Event dari aksi milik user sendiri (echo) diproses sama seperti
+event orang lain — tidak ada deteksi/skip khusus, karena fetch-and-patch
+sudah idempoten.
+
+**RLS policy baru khusus Realtime** (bukan reuse policy server-side yang
+sudah ada): `publishing_posts_realtime_workspace_members`, berbasis
+`auth.uid()` — lihat varian tambahan di `database-strategy.md` § RLS Policy
+Pattern.
+
+**Subscription lifecycle per-screen** — dibuat saat screen di-mount, dilepas
+saat unmount/pindah halaman/workspace (beda dari notification bell yang
+global sepanjang sesi).
+
+**Hard dependency ke T-036** (notification bell) — wiring generic Supabase
+Realtime client + Better Auth↔Supabase JWT bridge dibangun di T-036 lebih
+dulu; fitur ini murni reuse, bukan membangun ulang. History (T-034), karena
+belum dibangun, wajib menyertakan pola Realtime ini sejak desain awal.
+
+---
+
 # Pola Manual Refresh
 
 ## Content Calendar & Post List
 
-Content calendar tidak menggunakan Supabase Realtime. Alasannya:
+**Catatan:** section ini mendeskripsikan pola awal (pra-ADR-094). Untuk
+Calendar/Queue/Drafts/History, pola Supabase Realtime granular patch di atas
+kini berlaku begitu T-036 selesai — manual refresh di bawah ini tetap
+relevan sebagai fallback/state sebelum implementasi Realtime tersebut jalan.
+
+Sebelum ADR-094, content calendar tidak menggunakan Supabase Realtime. Alasannya saat itu:
 - Data berubah terutama via aksi user itu sendiri atau via webhook (post published/failed).
 - Notifikasi sudah menginformasikan perubahan status — user dapat refresh secara sadar.
 - Real-time calendar subscription menambah kompleksitas tanpa manfaat yang signifikan untuk MVP.
@@ -234,6 +285,7 @@ Fitur real-time berikut tidak masuk MVP tetapi perlu dipertimbangkan saat scalin
 | RT-D06 | Nama notifikasi internal memakai `snake_case`; ACL memisahkannya dari nama event vendor | Domain tidak bergantung pada kontrak Outstand; `post.error` tetap menghasilkan `post_failed` |
 | RT-D07 | Engagement notification hanya berasal dari JOB-03/manual sync | Tidak ada webhook comment/DM/mention dalam kontrak MVP |
 | RT-D08 | ADR-040 | RT-D06–D07 mengamandemen registry dan sumber notifikasi lama |
+| RT-D09 | ADR-094 | RT-D01/RT-D02 diamandemen: `publishing_posts` ditambahkan sebagai target Realtime kedua (channel per-workspace, granular client-side patch), khusus 4 screen Publish; hard dependency ke T-036 |
 
 ---
 
@@ -244,4 +296,4 @@ Fitur real-time berikut tidak masuk MVP tetapi perlu dipertimbangkan saat scalin
 * `background-jobs.md` — JOB-02 yang membuat notifikasi
 * `integration-layer.md` — webhook yang memicu chain ke notifikasi
 * `auth-architecture.md` — autentikasi diperlukan sebelum Realtime subscription
-* `../../project-manager/DECISIONS.md` — ADR-023
+* `../../project-manager/DECISIONS.md` — ADR-023, ADR-094

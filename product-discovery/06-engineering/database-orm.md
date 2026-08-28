@@ -178,7 +178,7 @@ Catatan arsitektur di `database-strategy.md` yang sebelumnya menyebut Supabase C
 
 ```
 1. Ubah prisma/schema.prisma
-2. prisma migrate dev --name <deskripsi>     ← terhadap social-media-local (EM-D02)
+2. prisma migrate dev --name <deskripsi>     ← terhadap project staging yang ditumpangi local (EM-D02, ADR-081)
 3. Review SQL di prisma/migrations/
 4. Merge via CI (gate kualitas — cicd-pipeline.md)
 5. Deploy ke staging → prisma migrate deploy (DIRECT_URL staging)
@@ -325,7 +325,7 @@ Repository domain **tidak** boleh bergantung pada `@supabase/supabase-js` untuk 
 
 | Aspek | Pendekatan MVP |
 |-------|----------------|
-| Target DB lokal | Project Supabase Cloud **`social-media-local`** (EM-D02, ADR-033) — bukan staging/prod |
+| Target DB lokal | Project Supabase Cloud yang sama dengan staging (EM-D02, ADR-033, amandemen ADR-081) — tidak ada isolasi local↔staging |
 | Migrate lokal | `prisma migrate dev` dengan `DIRECT_URL` dari `.env.local` |
 | Generate client | `prisma generate` setelah ubah schema (hook di install/bootstrap) |
 | Seed | Opsional pada local; jangan mengandalkan data staging/produksi |
@@ -357,7 +357,7 @@ Detail script Bun (`db:migrate`, `db:generate`) ditetapkan di `dx-tooling.md` (D
 * `auth-strategy.md` — Better Auth, dual-context RLS, `DATABASE_URL`
 * `deployment-infrastructure.md` — staging/prod Supabase, rollback expand-and-contract
 * `cicd-pipeline.md` — `prisma migrate deploy` di Railway release/pre-start (CI-D05, ADR-032)
-* `environment-management.md` — `DATABASE_URL`, `DIRECT_URL`, secrets, `social-media-local` (ADR-033)
+* `environment-management.md` — `DATABASE_URL`, `DIRECT_URL`, secrets, local menumpang project staging (ADR-033, ADR-081)
 * `dx-tooling.md` — script lokal migrate/generate (ADR-034)
 * `../05-architecture/database-strategy.md` — skema tabel, RLS, soft delete
 * `../05-architecture/application-layer.md` — Repository Pattern

@@ -23,7 +23,7 @@ Dokumen ini menkonkretkan perintah yang disebut di `cicd-pipeline.md` (`bun run 
 | Runtime / package manager | Bun | ADR-002 |
 | Monorepo | Hybrid — root scripts, app di `apps/web` | ADR-026 |
 | CI gates | install → prisma → typecheck → lint → test | CI-D02, ADR-032 |
-| Local DB | Supabase Cloud `social-media-local` + `.env.local` | EM-D02, EM-D03 |
+| Local DB | Supabase Cloud, menumpang project staging + `.env.local` | EM-D02, EM-D03, ADR-081 |
 | TypeScript | Base `tsconfig` di root | `monorepo-setup.md` |
 
 ---
@@ -166,7 +166,7 @@ Mapping Prisma di `apps/web` (acuan):
 | Script | Perintah |
 |--------|----------|
 | `db:generate` | `prisma generate` |
-| `db:migrate` | `prisma migrate dev` — **hanya** terhadap `social-media-local` (atau DB yang di `.env.local`) |
+| `db:migrate` | `prisma migrate dev` — **hanya** terhadap project staging yang ditumpangi local (ADR-081), sesuai kredensial di `.env.local` |
 | `db:deploy` | `prisma migrate deploy` — dipakai di Railway release; jarang dipanggil manual lokal |
 
 Perintah persis (path binary `bunx prisma` vs script) difinalkan di M7; nama script di atas adalah kontrak untuk CI dan dokumentasi.
@@ -179,7 +179,7 @@ Checklist setelah repo di-bootstrap (M7):
 
 1. **Prasyarat:** Bun (versi selaras ADR-002), Git, akses Supabase Cloud, akun Google Cloud (OAuth).
 2. **Clone & install:** `bun install` di root (frozen lockfile di CI; lokal biasa).
-3. **Env:** salin `.env.example` → `.env.local`, isi kredensial `social-media-local` (`environment-management.md`).
+3. **Env:** salin `.env.example` → `.env.local`, isi kredensial project staging yang ditumpangi local (ADR-081, `environment-management.md`).
 4. **Hooks:** pastikan Lefthook ter-install (`bunx lefthook install`).
 5. **DB:** `bun run db:generate` → `bun run db:migrate`.
 6. **Dev server:** `bun run dev` → `http://localhost:3000`.
@@ -235,7 +235,7 @@ Jangan arahkan `.env.local` ke project staging/prod (EM-D02, EM-D06).
 * `README.md` — scope dan workflow Engineering Planning
 * `monorepo-setup.md` — struktur workspace, `tsconfig`, aturan dependency root
 * `cicd-pipeline.md` — gates yang memanggil script ini (CI-D02)
-* `environment-management.md` — `.env.local`, project `social-media-local`
+* `environment-management.md` — `.env.local`, local menumpang project staging (ADR-081)
 * `database-orm.md` — Prisma generate/migrate di local
 * `dependency-strategy.md` — versi eksternal, lockfile, penempatan dep (ADR-035)
 * `../../project-manager/DECISIONS.md` — ADR-032, ADR-034, ADR-035

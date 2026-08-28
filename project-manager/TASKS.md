@@ -126,7 +126,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 > **T-012** (Sidebar "Channels") sudah ✅ **Done** (2026-08-12) — seluruh subtask termasuk T-012.1/2 selesai, lolos review Ridwan + QA Najwa. Detail: `tasks/v01-foundation.md` § T-012.
 
-> **T-089** (Workspace Switcher deliberate, ADR-088) sudah ✅ **Done** (2026-08-24) — seluruh subtask T-089.1–.5 selesai, lolos review Ridwan + QA Najwa; **T-089.6** ditambah sesi yang sama (dialog konfirmasi Tier 2 sebelum switch, ADR-089) — diverifikasi end-to-end browser oleh AI utama, belum lewat QA Najwa formal (KI-034). Detail: `tasks/v01-foundation.md` § T-089.
+> **T-089** (Workspace Switcher deliberate, ADR-088) sudah ✅ **Done** (2026-08-24) — seluruh subtask T-089.1–.5 selesai, lolos review Ridwan + QA Najwa; **T-089.6** ditambah sesi yang sama (dialog konfirmasi Tier 2 sebelum switch, ADR-089) — sudah lewat QA Najwa formal, KI-034 Resolved 2026-08-24. Detail: `tasks/v01-foundation.md` § T-089.
 
 **Rantai blocker terbesar:** T-025 (Real OutstandAdapter) → T-026 (webhook) → T-027 (job runner). Ketiganya mengunci sebagian besar v0.2, seluruh v0.3, dan seluruh v0.4. Menyelesaikan T-025 membuka lebih banyak pekerjaan daripada task lain manapun.
 

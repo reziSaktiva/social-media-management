@@ -68,6 +68,7 @@ Bukan berarti fitur tersebut tidak penting, tetapi bukan prioritas untuk mencapa
 ### Could Have
 
 * Multi Brand Management
+* Team Activity Feed
 
 ### Won't Have
 
@@ -163,6 +164,7 @@ Bukan berarti fitur tersebut tidak penting, tetapi bukan prioritas untuk mencapa
 
 * AI Content Calendar
 * AI Performance Suggestions
+* Hashtag Suggestions
 
 ### Won't Have
 

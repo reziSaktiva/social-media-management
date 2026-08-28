@@ -8,6 +8,68 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-28 — Follow-up PR #94: sisa drift setelah ganti base ke staging
+
+### Fixed
+
+* `context/ctx-technical-context.md` — kalimat Light/Dark Mode Toggle yang masih merujuk "neutral theme ini" diselaraskan ke Stone theme Astryx (ADR-087).
+* `project-manager/PROJECT_STATE.md` — Current Focus Draft Editor yang masih menulis "modal fullscreen" diselaraskan ke default Standard (ADR-065), Fullscreen via toggle (ADR-052).
+
+---
+
+## 2026-08-28 — Docs Consistency Audit (scope: all) + Perbaikan Temuan Kelas A/B
+
+### Context
+
+King Rezi menjalankan `/docs-consistency-audit for all` — audit menyeluruh atas `project-manager/`, `context/`, dan `product-discovery/` (~160 file termasuk 95 ADR). Dieksekusi via 7 subagent paralel (3 batch ekstraksi ADR, 1 untuk `context/`, 2 untuk `product-discovery/`, 1 untuk status/hitungan `project-manager/`), disintesis jadi laporan tunggal, lalu King Rezi mengonfirmasi seluruh temuan Kelas A untuk diperbaiki + 2 temuan Kelas B (F20, F21).
+
+### Fixed — Status/Hitungan Drift
+
+* `TASKS.md` — catatan T-089.6 diupdate (KI-034 sudah Resolved, bukan lagi "belum lewat QA formal").
+* `tasks/v02-publishing-mvp.md` — field Depends T-030 diupdate: T-033 sudah ✅ Done tapi tidak menambahkan entry point Cancel Schedule di Calendar (bukan lagi diblokir T-033).
+* `PROJECT_STATE.md` — hitungan task 72→77 (sinkron dengan `TASKS.md`), Top Next Tasks ditambah T-093, deskripsi tema Astryx di "Current Focus" diperbaiki (Stone, bukan neutral, ADR-087).
+* `ARCHITECTURE_OVERVIEW.md` — tabel Environment Topology diupdate (local menumpang staging, ADR-081), rentang ADR di "Source of Truth (Detail)" digeneralisasi (bukan lagi "s/d ADR-040" yang stale).
+
+### Fixed — ADR Amendment Belum Tercermin di Baseline
+
+* `realtime-strategy.md` — ditambahkan section baru "Perluasan ke `publishing_posts` (ADR-094)": channel per-workspace, granular client-side patch, RLS baru, dependency T-036; RT-D09 ditambahkan ke Decision Log.
+* `integration-layer.md` — ditambahkan catatan promosi `IOutstandAdapter` ke `packages/shared/src/contracts/` (ADR-079); referensi `OutstandJobId` basi diganti `outstandPostId`/`platformPostId` (ADR-092).
+* `database-strategy.md` — Related Documents diberi penanda deprecated untuk `publishing_queue_slots` (konsisten dengan badan dokumen, ADR-083).
+* `dependency-strategy.md`, `monorepo-setup.md`, `06-engineering/README.md`, `ctx-development.md`, `ctx-implementation.md`, `ctx-technical-context.md` — requirement/frasa StyleX ("hindari pada tahap awal") diperbaiki jadi "dihapus total, permanen" (ADR-082); referensi `theme-neutral` diganti `theme-stone` (ADR-087) di seluruh file ini plus `design-tokens.md` (4 lokasi) dan tabel dependency-strategy.md.
+* `dx-tooling.md`, `database-orm.md` — referensi project lokal terpisah `social-media-local` diperbaiki jadi "menumpang project staging" (ADR-081) di seluruh lokasi (tabel stack, script `db:migrate`, setup checklist, Related Documents).
+* ADR-072, ADR-036 (file + indeks `DECISIONS.md`) — Status header dilengkapi ("Amended by ADR-080" dan "Addendum by ADR-041").
+
+### Fixed — Terminologi & Referensi Mati
+
+* `key-screen-patterns.md` § KSP-05 — 2 bagian (Identitas, Zona Fungsional) yang masih bilang variant Dialog "belum difinalkan, fullscreen default" diperbaiki jadi konsisten dengan `navigation-patterns.md` NP-D11: **Standard** adalah default final (ADR-065), Fullscreen alternatif via toggle.
+* `ux-principles.md` — rujukan mati `CHANGELOG.md` (sudah dikonsolidasi ke `COMPLETE_TASK.md` sejak ADR-061) diperbaiki.
+
+### Fixed — Pelanggaran Source of Truth (status di baseline doc)
+
+* `success-metrics.md` — baris "Phase: Product Validation" (klaim fase proyek eksplisit di baseline) dihapus, diganti catatan pointer ke `PROJECT_STATE.md`.
+* `code-conventions.md` — temuan review Ridwan (gap `try/catch`/`toActionError`) yang tertanam tanpa pointer diganti rujukan ke `PROJECT_STATE.md` § KI-036 (CC-D02).
+* `pricing-strategy.md`, `mvp-definition.md`, `design-tokens.md` — field "Status: Draft/Baseline v1.0" level dokumen dihapus/disederhanakan atas keputusan eksplisit King Rezi (F20).
+
+### Fixed — Drift Penamaan Fitur (F21, diinvestigasi mandiri atas permintaan King Rezi)
+
+* `mvp-definition.md` diselaraskan dengan `feature-priority.md`: "AI Rewrite"→"Tone Rewrite", "Custom Analytics"→"Custom Reports", "AI Performance Insight"→"AI Performance Suggestions"; ditambahkan item yang sebelumnya cuma ada di salah satu dokumen ("Workspace Branding" ke `mvp-definition.md`; "AI Insights", "Team Activity Feed", "Hashtag Suggestions" ke `feature-priority.md`).
+
+### F22 — Resolved (follow-up sesi yang sama, setelah dibahas)
+
+Ambiguitas scope "Approval Workflow" (Could Have di `mvp-definition.md`) vs
+"Advanced Approval Workflow" (Won't Have di `feature-priority.md`) vs UXP-06
+("jangan approval berlapis") dibahas dan diputuskan: King Rezi mengonfirmasi
+struktur role dipertahankan seperti sekarang — semua role (termasuk Creator,
+role terbawah) tetap bebas Schedule/Publish sendiri tanpa gate approval dari
+role lain (`roles-permissions.md`), konsisten dengan UXP-06 dan
+`feature-priority.md`. `mvp-definition.md` diperbaiki: "Approval Workflow"
+dihapus dari Could Have, dipindah ke Out of Scope dengan catatan alasan
+(gate berlapis ditolak eksplisit oleh UXP-06; status konten `In
+Review`/`Ready to Schedule` tetap Must Have sebagai label koordinasi
+ringan, bukan gate).
+
+---
+
 ## 2026-08-28 — ADR-095 Follow-up: 2 Custom ESLint Rule Menutup Known Limitation
 
 ### Context

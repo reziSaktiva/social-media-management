@@ -4,9 +4,9 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** T-025 Real OutstandAdapter — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus (T-029 Publish Now sudah ✅ Done, 2026-08-18)
+* **Top Next Tasks:** T-025 Real OutstandAdapter, T-093 — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus (T-029 Publish Now sudah ✅ Done, 2026-08-18)
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
-* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 72 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
+* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 77 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
 ---
@@ -49,14 +49,15 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
   selesai. Implementasi runtime Outstand tetap bagian M8 dan belum dinyatakan
   selesai (T-025 → T-026 → T-027).
 * Alignment dokumentasi ADR-041 selesai: Engineering Baseline, Project
-  Overview, AGENTS, dan AI Context sudah memakai Astryx permanen, neutral theme
-  M8, Tailwind layout-only, wrapper selektif, serta exact pin Beta. Instalasi
-  dan smoke test Next.js 16 juga sudah selesai.
+  Overview, AGENTS, dan AI Context sudah memakai Astryx permanen (theme
+  Stone sejak ADR-087), Tailwind layout-only, wrapper selektif, serta exact
+  pin Beta. Instalasi dan smoke test Next.js 16 juga sudah selesai.
 * Fokus M8 saat ini: Auth Flows, Workspace Onboarding, App Shell, Draft
-  Editor (kini modal fullscreen, ADR-052), persistensi nyata "Save as
-  Draft"/"Edit Draft", Drafts List data asli, dan persistensi nyata
-  "Schedule" via Fake OutstandAdapter (ADR-059) sudah selesai; lanjut ke
-  integrasi Outstand runtime asli (ADR-040) begitu kredensial tersedia.
+  Editor (modal, default Standard per ADR-065; Fullscreen via toggle,
+  ADR-052), persistensi nyata "Save as Draft"/"Edit Draft", Drafts List
+  data asli, dan persistensi nyata "Schedule" via Fake OutstandAdapter
+  (ADR-059) sudah selesai; lanjut ke integrasi Outstand runtime asli
+  (ADR-040) begitu kredensial tersedia.
 * **Perencanaan task** kini berjenjang per release di [`TASKS.md`](TASKS.md) +
   `tasks/` (ADR-062), menggantikan flat list `Next Tasks` yang lama.
 

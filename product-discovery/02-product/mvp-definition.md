@@ -102,8 +102,9 @@ Fitur yang memberikan nilai tambahan namun bukan syarat utama MVP.
 * Brand Assets.
 * Content Templates.
 * Saved Captions.
-* AI Rewrite.
+* Tone Rewrite.
 * Basic Notifications.
+* Workspace Branding.
 
 ---
 
@@ -111,11 +112,11 @@ Fitur yang memberikan nilai tambahan namun bukan syarat utama MVP.
 
 Fitur yang dapat dikembangkan apabila waktu dan sumber daya memungkinkan.
 
-* Approval Workflow.
 * AI Content Calendar.
 * Team Activity Feed.
-* Custom Analytics.
-* AI Performance Insight.
+* Custom Reports.
+* AI Insights.
+* AI Performance Suggestions.
 * Hashtag Suggestions.
 
 ---
@@ -132,6 +133,13 @@ Fitur berikut tidak menjadi bagian dari MVP.
 * Plugin System.
 * Enterprise SSO.
 * Advanced Workflow Automation.
+* Approval Workflow (gate berlapis yang mengunci Schedule/Publish sampai
+  role lain approve) — ditolak eksplisit oleh UXP-06 (`04-ux/ux-principles.md`)
+  dan dikonfirmasi King Rezi (audit dokumentasi, 2026-08-28): semua role
+  (termasuk Creator) tetap bebas publish sendiri, lihat
+  `roles-permissions.md`. Status konten (`In Review`/`Ready to Schedule`)
+  tetap ada sebagai label koordinasi ringan — bukan gate — dan itu tetap
+  masuk Must Have.
 * Social Listening.
 * Direct Message dan mention di Engagement Inbox.
 * Webhook engagement.
@@ -167,14 +175,6 @@ Sebuah fitur hanya dapat masuk ke dalam MVP apabila:
 * Membantu memvalidasi Product-Market Fit.
 
 Apabila sebuah fitur tidak memenuhi kriteria tersebut, maka fitur harus dipertimbangkan untuk dimasukkan ke fase berikutnya.
-
----
-
-# Current Status
-
-* **Status:** Draft
-* **MVP Version:** v1
-* **Validation Status:** Belum divalidasi dengan pengguna.
 
 ---
 

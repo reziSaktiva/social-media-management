@@ -172,7 +172,7 @@ Secret X (ADR-040).
 | ----------- | ---------------- | ------------------------------------- |
 | Production  | `main`           | Project terpisah                      |
 | Staging     | `staging`        | Project terpisah                      |
-| Local       | developer machine| Project Cloud `social-media-local`    |
+| Local       | developer machine| Sama dengan project Staging (ADR-081) |
 
 Dua service Railway (`web` + `cron`) ada di **production dan staging**.
 
@@ -370,7 +370,7 @@ Ringkasan untuk legend / sidebar di Figma (selaras `PROJECT_OVERVIEW.md`):
 | Auth architecture  | `../product-discovery/05-architecture/auth-architecture.md`      |
 | Monorepo layout    | `../product-discovery/06-engineering/monorepo-setup.md`          |
 | Deploy topology    | `../product-discovery/06-engineering/deployment-infrastructure.md` |
-| Keputusan          | `DECISIONS.md` (ADR-001 s/d ADR-040)                             |
+| Keputusan          | `DECISIONS.md` (indeks lengkap, lihat file untuk rentang ADR terkini) |
 
 Jika diagram Figma bertentangan dengan dokumen di atas, **yang menang adalah dokumen product-discovery + ADR** — perbarui overview / Figma setelahnya.
 
