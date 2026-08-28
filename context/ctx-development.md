@@ -8,12 +8,14 @@ Stack & env → `ctx-technical-context.md`.
 
 ## Baca dulu
 
-| Dokumen                                                                                                  | Topik                                                |
-| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| [`../product-discovery/06-engineering/dx-tooling.md`](../product-discovery/06-engineering/dx-tooling.md) | ESLint, Prettier, Lefthook, Vitest, script (ADR-034) |
-| [`cicd-pipeline.md`](../product-discovery/06-engineering/cicd-pipeline.md)                               | Gates CI yang sama dengan lokal                      |
-| [`monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)                             | Layout workspace & TypeScript                        |
-| [`../README.md`](../README.md)                                                                           | Setup cepat root                                     |
+| Dokumen                                                                                                                  | Topik                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| [`../product-discovery/06-engineering/dx-tooling.md`](../product-discovery/06-engineering/dx-tooling.md)                 | ESLint, Prettier, Lefthook, Vitest, script (ADR-034)                                  |
+| [`../product-discovery/06-engineering/rendering-strategy.md`](../product-discovery/06-engineering/rendering-strategy.md) | Server Component vs Client, Server Actions, streaming, SSR/SSG/ISR (ADR-016, ADR-095) |
+| [`../product-discovery/06-engineering/code-conventions.md`](../product-discovery/06-engineering/code-conventions.md)     | Naming, error handling hierarchy (ADR-095)                                            |
+| [`cicd-pipeline.md`](../product-discovery/06-engineering/cicd-pipeline.md)                                               | Gates CI yang sama dengan lokal                                                       |
+| [`monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)                                             | Layout workspace & TypeScript                                                         |
+| [`../README.md`](../README.md)                                                                                           | Setup cepat root                                                                      |
 
 Config di repo: `eslint.config.*`, `prettier.config.*`, `lefthook.yml`, `vitest.config.ts` (root).
 
@@ -37,7 +39,7 @@ Sebelum menganggap pekerjaan selesai: typecheck + lint (+ test bila menyentuh lo
 
 ## Aturan coding (operasional)
 
-Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail arsitektur tetap di baseline.
+Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail arsitektur tetap di baseline. Detail penuh rendering & error handling: `rendering-strategy.md`, `code-conventions.md`.
 
 ### Umum
 

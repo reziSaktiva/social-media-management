@@ -188,11 +188,65 @@ Warna aksen jaringan sosial di Calendar / Account Pill. Jangan mendominasi UI.
 
 ---
 
-# Spacing, Radius, Elevation
+# Spacing
+
+**Locked (ADR-095).** Base unit: **1 Astryx unit = 4px**. Skala ini dikunci
+berdasarkan nilai yang sudah dipakai konsisten di kode nyata (prop `gap`/
+`padding` pada `VStack`/`HStack`/`Stack`/`Grid` Astryx) — bukan angka baru
+yang diciptakan dari nol.
+
+| Unit Astryx | Px | Status |
+| ----------- | -- | ------ |
+| 0 | 0px | Dipakai (reset spacing sengaja) |
+| 0.5 | 2px | Dipakai (dense UI, jarang) |
+| 1 | 4px | Dipakai (icon-to-label, paling rapat) |
+| 1.5 | 6px | Dipakai (dense UI) |
+| 2 | 8px | Dipakai (item list rapat) |
+| 3 | 12px | Dipakai (antar field) |
+| 4 | 16px | **Paling sering dipakai** — default antar field/dalam Card |
+| 5 | 20px | Dipakai (jarang) |
+| 6 | 24px | Dipakai (antar section) |
+| 8 | 32px | Dipakai (padding page-level) |
+
+Nilai lain (7, 9, 10+) belum dipakai — boleh dipakai kalau kebutuhan riil
+muncul, skala ini **tidak tertutup** ke daftar lama (4/8/12/16/24/32/48).
+Grid 4px dengan fleksibilitas kelipatan 0.5 di ujung bawah untuk dense UI
+(icon+label kecil) lebih akurat merefleksikan pemakaian nyata dibanding
+daftar tertutup klasik.
+
+## Panduan Penggunaan Semantik
+
+| Konteks | Prop | Nilai Astryx (px) | Alasan |
+| ------- | ---- | ------------------ | ------ |
+| Icon-to-label (Button, MenuItem, Badge) | `gap` | 1–1.5 (4–6px) | Elemen sangat dekat, jarak visual minimal |
+| Item dalam list/stack rapat (baris Table, item Menu) | `gap` | 2 (8px) | Grouping jelas tapi tetap padat |
+| Antar field form / antar komponen dalam satu Card/Section | `gap` | 3–4 (12–16px) | Pemisahan antar unit input yang related tapi berbeda |
+| Antar section/blok dalam satu page | `gap` | 6 (24px) | Pemisahan visual section yang lebih tegas |
+| Padding internal komponen kecil (Badge, Chip, Pill) | `padding` | 1–1.5 (4–6px) | Komponen dense, padding minimal |
+| Padding Card/Section/Container standar | `padding` | 4 (16px) | Default paling umum dipakai |
+| Padding Container/page-level wrapper besar | `padding` | 8 (32px) | Breathing room level page, dipakai sengaja lebih jarang |
+| Reset/no-space (Stack yang dibungkus komponen lain) | `gap`/`padding` | 0 | Sengaja tanpa spacing tambahan |
+
+## Larangan
+
+* **Tailwind spacing utility mentah** (`gap-`, `p-`, `m-`, `space-x/y-`)
+  langsung di komponen — gunakan prop `gap={n}`/`padding={n}` pada
+  `VStack`/`HStack`/`Stack`/`Grid`.
+* **Arbitrary value** (`gap-[13px]`, `p-[10px]`) — selalu pakai unit dari
+  skala di atas.
+* **`margin`** pada child untuk spacing antar sibling — spacing datang dari
+  `gap` milik parent Stack/Grid, bukan `margin` self.
+
+Dua exception historis ditemukan (`p-0`, `my-1` di `ChannelsSection.tsx`) —
+dicatat sebagai technical debt kecil untuk dirapikan, **bukan** preseden
+yang boleh diikuti di kode baru.
+
+---
+
+# Radius, Elevation
 
 | Sistem | Keputusan | Nilai |
 | ------ | --------- | ----- |
-| Spacing base | Grid 4px disarankan | `TBD` (konfirmasi skala: 4/8/12/16/24/32/48) |
 | Radius | Satu keluarga | `TBD` (contoh: 6 / 8 / 12) |
 | Elevation | 0–2 level bermakna | `TBD` — shadow terutama untuk overlay |
 
@@ -241,7 +295,7 @@ ADR-045, ADR-057).
 # Related Documents
 
 * `README.md` (folder Engineering)
-* `../../project-manager/DECISIONS.md` — ADR-038, ADR-041, ADR-056, ADR-057
+* `../../project-manager/DECISIONS.md` — ADR-038, ADR-041, ADR-056, ADR-057, ADR-095 (kunci skala Spacing)
 * `../../project-manager/PROJECT_OVERVIEW.md` — Astryx + Tailwind layout-only
 * `../04-ux/` — UX Baseline (alur & layar)
 * `../02-product/roles-permissions.md` — status konten kanonikal
