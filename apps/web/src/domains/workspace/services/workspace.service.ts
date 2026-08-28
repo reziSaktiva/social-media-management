@@ -23,6 +23,7 @@ import type {
   IWorkspaceRepository,
   WorkspaceInvitationRecord,
   WorkspaceMemberRecord,
+  WorkspaceMembershipSummary,
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
 import type { SidebarChannelAccount, WorkspaceMemberWithUser } from "../types";
@@ -131,6 +132,37 @@ export class WorkspaceService {
     userId: UserId,
   ): Promise<WorkspaceRecord | null> {
     return this.repository.findDefaultWorkspaceForUser(userId);
+  }
+
+  /**
+   * Seluruh workspace dengan membership aktif milik user (T-089.2,
+   * ADR-088) — dipakai halaman `settings/account/workspaces` untuk render
+   * list Workspace Switcher. Method tipis, meneruskan langsung ke
+   * repository (tidak ada business logic tambahan di sini).
+   */
+  async listWorkspacesForUser(
+    userId: UserId,
+  ): Promise<WorkspaceMembershipSummary[]> {
+    return this.repository.listWorkspacesForUser(userId);
+  }
+
+  /**
+   * Validasi Workspace Switcher (T-089.2, ADR-088) — memastikan user
+   * benar-benar anggota AKTIF dari `targetWorkspaceId` sebelum caller
+   * (Server Action `switchWorkspaceAction`) mengizinkan overwrite cookie
+   * `active-workspace-id` dan redirect. **Sengaja TIDAK** menyentuh
+   * cookie/redirect di sini — itu concern Entry Point (Server Action),
+   * bukan Application Service (AGENTS.md #5), pola sama seperti
+   * `createWorkspaceAction` di alur onboarding. Melempar
+   * `AuthorizationError` (pesan sama seperti `assertActiveMembership`) bila
+   * user bukan anggota aktif workspace target — mis. dihapus dari
+   * workspace di tab lain, atau id yang di-tamper dari client.
+   */
+  async switchWorkspace(input: {
+    userId: UserId;
+    targetWorkspaceId: WorkspaceId;
+  }): Promise<WorkspaceMemberRecord> {
+    return this.assertActiveMembership(input.targetWorkspaceId, input.userId);
   }
 
   /** Dipakai `getWorkspaceContext()` (ADR-076) — resolve workspace by cookie id. */

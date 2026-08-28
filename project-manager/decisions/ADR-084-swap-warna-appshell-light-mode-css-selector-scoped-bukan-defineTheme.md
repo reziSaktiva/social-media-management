@@ -6,7 +6,7 @@ Swap Warna Sidebar ↔ Konten AppShell (Light Mode Saja) via CSS Selector Ter-sc
 
 ### Status
 
-Accepted
+Accepted — Reverted by ADR-086 (2026-08-21)
 
 ### Date
 

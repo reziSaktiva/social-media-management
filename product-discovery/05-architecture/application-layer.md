@@ -416,7 +416,8 @@ Outstand API kirim POST /api/webhooks/outstand
   │    └─ PublishingService.markPostPublished(...)
   │
   └─ [PublishingService]
-       ├─ Cari Post via outstandJobId
+       ├─ Cari Post via outstandPostId (amandemen ADR-092, rename dari outstandJobId — post-level, mencakup semua target)
+       ├─ Panggil OutstandAdapter.fetchPostOutcome(outstandPostId) untuk resolve status per PostTarget
        ├─ Update status "published"
        └─ NotificationService.notify(..., { type: "post_published" })
 ```
@@ -452,6 +453,7 @@ Berikut adalah kontrak tingkat tinggi (method signature arsitektural) per servic
 | `createWorkspace` | Server Action | Buat workspace baru, otomatis tambah Owner |
 | `getWorkspace` | Server Component | Load data workspace + brand settings |
 | `updateWorkspace` | Server Action | Update nama, `slug` (internal unique identifier, tidak dipakai di routing/URL — `domain-model.md`), atau brand settings |
+| `switchWorkspace` | Server Action | Pindahkan workspace aktif user secara sengaja — validasi ulang bahwa user adalah member workspace tujuan, set cookie `active-workspace-id` ke workspace tujuan, redirect Home. Dipanggil dari Settings → Account → Workspaces (ADR-088) setelah user konfirmasi lewat dialog Tier 2 (ADR-089), berbeda dari alur recovery `/onboarding` saat cookie hilang (`auth-architecture.md`) |
 | `inviteMember` | Server Action | Kirim undangan ke email |
 | `acceptInvite` | Server Action | Terima undangan, aktivasi membership |
 | `removeMember` | Server Action | Hapus member dari workspace — wajib dialog konfirmasi Tier 2 sebelum eksekusi (ADR-049) |

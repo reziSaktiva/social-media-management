@@ -13,6 +13,7 @@ import type {
   IWorkspaceRepository,
   WorkspaceInvitationRecord,
   WorkspaceMemberRecord,
+  WorkspaceMembershipSummary,
 } from "@/domains/workspace";
 import {
   Prisma,
@@ -125,11 +126,22 @@ export const workspaceRepository: IWorkspaceRepository = {
   },
 
   async findDefaultWorkspaceForUser(userId) {
-    const membership = await prisma.workspaceMember.findFirst({
-      where: { userId, status: MemberStatus.Active },
-      orderBy: { joinedAt: "asc" },
-      include: { workspace: { select: { id: true, name: true, slug: true } } },
-    });
+    // Sama seperti `getMember` (lihat catatan di atasnya) — tanpa
+    // `withCurrentUser`, `app.current_user_id` tidak ter-set sehingga RLS
+    // policy default-deny di `workspace_members` membuat query ini selalu
+    // balik 0 baris walau membership-nya benar-benar ada. Ditemukan saat
+    // debugging live: user dengan workspace aktif tetap diarahkan ke
+    // halaman "buat workspace pertama" karena fungsi ini kelewatan saat
+    // migrasi PR #71 mem-wrap seluruh method lain di file ini.
+    const membership = await withCurrentUser(userId, (tx) =>
+      tx.workspaceMember.findFirst({
+        where: { userId, status: MemberStatus.Active },
+        orderBy: { joinedAt: "asc" },
+        include: {
+          workspace: { select: { id: true, name: true, slug: true } },
+        },
+      }),
+    );
 
     if (!membership) {
       return null;
@@ -140,6 +152,31 @@ export const workspaceRepository: IWorkspaceRepository = {
       name: membership.workspace.name,
       slug: membership.workspace.slug,
     };
+  },
+
+  /**
+   * Seluruh workspace dengan membership AKTIF milik user ini (T-089.2,
+   * ADR-088) — dibungkus `withCurrentUser` sesuai pola method lain yang
+   * query berdasarkan `userId` (mis. `findDefaultWorkspaceForUser`), supaya
+   * `app.current_user_id` ter-set untuk RLS policy `workspace_members`.
+   */
+  async listWorkspacesForUser(userId): Promise<WorkspaceMembershipSummary[]> {
+    const memberships = await withCurrentUser(userId, (tx) =>
+      tx.workspaceMember.findMany({
+        where: { userId, status: MemberStatus.Active },
+        orderBy: { joinedAt: "asc" },
+        include: {
+          workspace: { select: { id: true, name: true, slug: true } },
+        },
+      }),
+    );
+
+    return memberships.map((membership) => ({
+      workspaceId: asWorkspaceId(membership.workspace.id),
+      name: membership.workspace.name,
+      slug: membership.workspace.slug,
+      role: membership.role as MemberRole,
+    }));
   },
 
   async findById(workspaceId) {

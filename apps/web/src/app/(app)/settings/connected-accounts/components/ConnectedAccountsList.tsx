@@ -2,7 +2,6 @@ import { Avatar } from "@astryxdesign/core/Avatar";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
-import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { List, ListItem } from "@astryxdesign/core/List";
 import { Section } from "@astryxdesign/core/Section";
@@ -17,7 +16,10 @@ import {
 import { formatConnectedDate } from "@/lib/utils/format-date";
 
 import { PLATFORM_ICON } from "../../../components/platform-icons";
-
+import {
+  SETTINGS_BREADCRUMB_GROUP,
+  SettingsPageHead,
+} from "../../components/SettingsPageHead";
 import { ConnectPlatformMenu } from "./ConnectPlatformMenu";
 
 const STATUS_BADGE_VARIANT: Record<
@@ -126,13 +128,14 @@ export function ConnectedAccountsList({
   accounts: ConnectedAccountRecord[];
 }) {
   return (
-    <Section>
-      <VStack gap={4}>
-        <HStack justify="between" align="center">
-          <Heading level={2}>Connected Accounts</Heading>
-          <ConnectPlatformMenu />
-        </HStack>
+    <VStack gap={4} padding={4}>
+      <SettingsPageHead
+        pageName="Connected Accounts"
+        breadcrumb={`${SETTINGS_BREADCRUMB_GROUP.organization} / Connected Accounts`}
+        action={<ConnectPlatformMenu />}
+      />
 
+      <Section>
         {accounts.length === 0 ? (
           <EmptyState
             title="Belum ada akun terhubung"
@@ -146,7 +149,7 @@ export function ConnectedAccountsList({
             ))}
           </List>
         )}
-      </VStack>
-    </Section>
+      </Section>
+    </VStack>
   );
 }

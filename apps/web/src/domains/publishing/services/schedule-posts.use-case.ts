@@ -39,9 +39,21 @@ export interface SchedulePostsTargetInput {
  * `components/draft-editor/actions.ts`.
  *
  * Urutan kritis: persist dulu (`PublishingPostTarget` status `pending`)
- * lewat `repository.schedulePost`, baru panggil adapter per target, baru
- * update outcome — supaya tidak ada job Outstand yang "orphan" tanpa jejak
- * di DB kalau salah satu target gagal.
+ * lewat `repository.schedulePost`, baru panggil adapter, baru persist
+ * `outstandPostId` — supaya tidak ada job Outstand yang "orphan" tanpa
+ * jejak di DB kalau adapter gagal.
+ *
+ * **Redesain 2026-08-26** (ADR baru, mismatch dengan kontrak resmi
+ * Outstand `create-a-post`): SATU call `outstandAdapter.schedulePost`
+ * untuk SEMUA target sekaligus (bukan 1 call per target seperti
+ * sebelumnya) — Outstand menghasilkan SATU `outstandPostId` untuk seluruh
+ * target. Berbeda dari `PublishNowUseCase`: use-case ini SENGAJA TIDAK
+ * memanggil `fetchPostOutcome` setelahnya — post yang dijadwalkan ke masa
+ * depan belum punya outcome publish apa pun untuk dibaca (Outstand belum
+ * memprosesnya), jadi seluruh target tetap berstatus `scheduled` sampai
+ * outcome sungguhan diketahui belakangan lewat polling (T-027) atau
+ * webhook `post.published`/`post.error` (T-026) — konsisten dengan model
+ * async Outstand di `integration-layer.md`, bukan diagnosa instan Fake.
  */
 export class SchedulePostsUseCase {
   constructor(
@@ -82,49 +94,58 @@ export class SchedulePostsUseCase {
       );
     }
 
-    const targetInputByConnectedAccountId = new Map(
-      input.targets.map((target) => [target.connectedAccountId, target]),
-    );
+    try {
+      const result = await this.outstandAdapter.schedulePost({
+        caption: record.caption,
+        scheduledAt: input.scheduledAt,
+        targets: input.targets.map((target) => ({
+          outstandAccountId: target.outstandAccountId,
+          contentFormat: target.contentFormat,
+          platformOptions: target.platformOptions,
+        })),
+      });
 
-    await Promise.all(
-      record.targets.map(async (scheduledTarget) => {
-        const targetInput = targetInputByConnectedAccountId.get(
-          scheduledTarget.connectedAccountId,
-        );
-        // Selalu ada — targets di record berasal dari input.targets yang sama.
-        if (!targetInput) {
-          return;
-        }
+      await this.repository.setOutstandPostId(
+        {
+          workspaceId: input.workspaceId,
+          postId: input.postId,
+          outstandPostId: result.outstandPostId,
+        },
+        input.actingUserId,
+      );
 
-        try {
-          const result = await this.outstandAdapter.schedulePost({
-            outstandAccountId: targetInput.outstandAccountId,
-            caption: record.caption,
-            scheduledAt: input.scheduledAt,
-            contentFormat: targetInput.contentFormat,
-            platformOptions: targetInput.platformOptions,
-          });
-
-          await this.repository.updateTargetOutcome(
-            {
-              postTargetId: scheduledTarget.id,
-              outstandJobId: result.outstandJobId,
-              status: "scheduled",
-            },
+      await Promise.all(
+        record.targets.map((scheduledTarget) =>
+          this.repository.updateTargetOutcome(
+            { postTargetId: scheduledTarget.id, status: "scheduled" },
             input.actingUserId,
-          );
-        } catch (error) {
-          await this.repository.updateTargetOutcome(
+          ),
+        ),
+      );
+    } catch (error) {
+      // Satu call mencakup semua target (redesain 2026-08-26) — gagal
+      // berarti SEMUA target gagal bersamaan (all-or-nothing), beda dari
+      // model lama yang bisa partial per target. Post dikoreksi ke
+      // `Failed` (sama pola dengan bug fix `PublishNowUseCase`, lihat
+      // `IPublishingRepository.markPostFailed`).
+      const message = error instanceof Error ? error.message : String(error);
+      await Promise.all(
+        record.targets.map((scheduledTarget) =>
+          this.repository.updateTargetOutcome(
             {
               postTargetId: scheduledTarget.id,
               status: "failed",
-              error: error instanceof Error ? error.message : String(error),
+              error: message,
             },
             input.actingUserId,
-          );
-        }
-      }),
-    );
+          ),
+        ),
+      );
+      await this.repository.markPostFailed(
+        { workspaceId: input.workspaceId, postId: input.postId },
+        input.actingUserId,
+      );
+    }
 
     return record;
   }

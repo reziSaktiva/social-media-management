@@ -41,7 +41,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 
 ## Aturan ID
 
-* **Task:** `T-001` … `T-088`, nomor global berurutan. ID **tidak** memuat kode release, supaya task bisa berpindah antar release tanpa penomoran ulang dan tanpa membuat referensi lama jadi salah.
+* **Task:** `T-001` … `T-089`, nomor global berurutan. ID **tidak** memuat kode release, supaya task bisa berpindah antar release tanpa penomoran ulang dan tanpa membuat referensi lama jadi salah.
 * **Subtask:** `T-021.4` — nomor task diikuti nomor urut subtask.
 * ID **tidak pernah didaur ulang**. Task yang dibatalkan ditandai `⏸️ Deferred` beserta alasannya, bukan dihapus.
 * Setiap release menyisakan beberapa nomor kosong di akhir sebagai ruang tumbuh (per 2026-08-12: T-046–T-049 untuk v0.3, T-056–T-059 untuk v0.4, T-066–T-069 untuk v0.5, T-075–T-079 untuk v0.6 — v0.1/v0.2 sudah habis, lihat catatan kaki ¹).
@@ -52,17 +52,27 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
-| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹ | 20   | 🟡 11 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 2 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
-| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038 | 19   | 🟡 8 ✅ · 1 🟡 · 10 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
+| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹ | 22   | 🟡 11 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · 3 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
+| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 🟡 9 ✅ · 1 🟡 · 12 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 
-**Total:** 71 task · 22 selesai · 142 subtask terdefinisi (v0.1–v0.3).
+**Total:** 76 task · 23 selesai · 169 subtask terdefinisi (v0.1–v0.3).
 
-¹ **T-039** ID-nya dipinjam dari rentang v0.2 (bukan urutan lanjutan v0.1) — nomor kosong v0.1 sudah habis, jadi diambil ID global berikutnya yang belum pernah dipakai. Lihat Catatan Rilis di `tasks/v01-foundation.md` dan `tasks/v02-publishing-mvp.md` untuk detailnya.
+> **Update lanjutan #2 (2026-08-28):** King Rezi mengoreksi rantai dependency Realtime — sebelum T-036 bisa diverifikasi/dipakai penuh (butuh ≥2 akun nyata di satu workspace), invite-to-membership harus utuh dulu. Ditemukan halaman accept-invite (`/invite/[token]`) **belum pernah dibuat** (gap yang sudah dicatat sejak ADR-080 2026-08-14, tapi belum pernah diberi nomor task). Ditambahkan **T-093 · Accept Invite page** (4 subtask: route + validasi token, buat akun/login, insert `workspace_members` dengan role dari invitation, verifikasi RBAC end-to-end 2-akun) di `tasks/v01-foundation.md`, ID global berikutnya (pola sama T-039/T-089/T-090/T-091/T-092). **T-036** (`tasks/v02-publishing-mvp.md`) dependency-nya ditambah `T-093`. Rantai lengkap sekarang: **T-093 (invite+role) → T-036 (notification bell) → T-092 (Realtime 4 screen)**. Task naik 75 → **76**, subtask naik 165 → **169** (v0.1: 21 → 22 task, breakdown 11 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · **3 ⏳**).
+>
+> **Update lanjutan (2026-08-28, ADR-094):** task implementasi **T-092** (Realtime Calendar/Queue/Drafts/History, 6 subtask) ditulis ke `tasks/v02-publishing-mvp.md` — `Depends: T-036` (hard dependency, lihat ADR-094 poin 4) dan T-034 khusus subtask History (T-092.6). Nomor kosong v0.2 sudah habis, memakai ID global berikutnya (092) sama seperti T-090/T-091. Task naik 74 → **75**, subtask naik 159 → **165** (v0.2: 21 → 22 task, breakdown 9 ✅ · 1 🟡 · **12 ⏳**).
+>
+> **Update (2026-08-28, ADR-094):** **T-033** (Calendar view) ditutup `✅ Done` — T-033.7 (manual refresh control) dibatalkan total (bukan ditunda) setelah ADR-094 (perluasan Supabase Realtime ke `publishing_posts`) direncanakan; King Rezi memutuskan tidak perlu tombol refresh manual berdiri sendiri, sinkronisasi Calendar akan ditangani Realtime begitu task dari ADR-094 diimplementasikan. Detail: Catatan Rilis `tasks/v02-publishing-mvp.md` § T-033. Task selesai naik 22 → **23**; breakdown v0.2 dikoreksi jadi **9 ✅ · 1 🟡 · 11 ⏳** (T-030 tetap satu-satunya 🟡).
+>
+> **Update (2026-08-28, ADR-093):** dua task baru ditambahkan ke v0.2 — **T-090** (Import Posts dari Social Account, status `Imported` read-only, 5 subtask) dan **T-091** (Post `Published`/`Failed` jadi read-only, bug-fix terpisah ditemukan di sesi yang sama, 2 subtask). Nomor kosong v0.2 (T-020–T-038) sudah habis sejak T-039 dipinjam v0.1, jadi keduanya memakai nomor global berikutnya yang belum pernah dipakai (090, 091), pola sama T-039/T-089 — lihat Catatan Rilis `tasks/v02-publishing-mvp.md`. Task naik 72 → **74**, subtask naik 152 → **159** (v0.2: 19 → 21 task). Sekaligus dikoreksi drift breakdown status v0.2 yang sebelumnya "8 ✅ · 1 🟡 · 10 ⏳" (seharusnya 2 🟡 — T-030 dan T-033 keduanya In Progress — bukan 1) menjadi **8 ✅ · 2 🟡 · 11 ⏳**, dihitung ulang langsung dari `tasks/v02-publishing-mvp.md`.
+>
+> **Koreksi hitungan (2026-08-24):** breakdown status v0.1 di atas sebelumnya "11 ✅ · 5 🟡" — sudah tidak cocok dengan `tasks/v01-foundation.md` aktual (10 ✅ · 6 🟡, sebelum T-089 ditambah) sejak entah kapan drift terjadi. Dihitung ulang langsung dari file saat menambah T-089 (bukan increment manual di atas angka lama yang sudah salah), sesuai aturan maintenance di bawah. **Update sesi ini (2026-08-24):** T-089 (T-089.2/.3/.4 diimplementasikan, lolos review Ridwan + QA Najwa) ditutup `✅ Done` → v0.1 jadi 11 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · 2 ⏳, total keseluruhan jadi 22 selesai. Dihitung ulang langsung dari `tasks/v01-foundation.md` (bukan increment manual), sesuai aturan yang sama. **Update lanjutan sesi ini (2026-08-24, ADR-089):** T-089 mendapat subtask baru **T-089.6** (dialog konfirmasi Tier 2 sebelum switch workspace) — hitungan subtask dihitung ulang langsung dari `tasks/v01-foundation.md` (bukan increment manual): total naik dari 147 jadi **148** (v0.1: 58 → 59 subtask). Task-level tetap 22 selesai (T-089 sudah `✅ Done` sebelumnya, subtask baru ini tidak mengubah status task). **Update (2026-08-26, ADR-090):** T-033 (Calendar view, belum dikerjakan) dipecah dari 4 jadi 8 subtask setelah sesi perencanaan UX Buffer (Popover, query param view/date, filter status+channel, grid week/month terpisah) — total naik dari 148 jadi **152** (v0.2: subtask T-033 4 → 8). Dihitung ulang langsung dari `tasks/v02-publishing-mvp.md`, bukan increment manual. Task-level v0.2 tidak berubah (T-033 tetap ⏳ Not Started). **Koreksi (2026-08-26, ADR-091):** komponen semula ditulis "HoverCard", diperbaiki jadi **Popover** setelah verifikasi `astryx component --dense` (HoverCard trigger-nya hover/focus, bukan klik, dan tidak boleh berisi critical action) — tidak mengubah jumlah subtask (tetap 8, tetap 152 total).
+
+¹ **T-039** ID-nya dipinjam dari rentang v0.2 (bukan urutan lanjutan v0.1) — nomor kosong v0.1 sudah habis, jadi diambil ID global berikutnya yang belum pernah dipakai. Lihat Catatan Rilis di `tasks/v01-foundation.md` dan `tasks/v02-publishing-mvp.md` untuk detailnya. **T-089** (Workspace Switcher, ADR-088) memakai pola serupa — ID global berikutnya yang belum pernah dipakai sama sekali (rentang v1.0 T-080–T-088 sudah habis terisi), ditempatkan di file v0.1 karena lahir sebagai amandemen ADR-076/T-039. Detail: Catatan Rilis `tasks/v01-foundation.md`. **T-090**/**T-091** (Import Posts + read-only enforcement, ADR-093) memakai pola yang sama lagi — nomor kosong v0.2 (T-020–T-038) sudah habis, jadi keduanya memakai ID global berikutnya yang belum pernah dipakai. **T-092** (Realtime Calendar/Queue/Drafts/History, ADR-094) memakai pola yang sama sekali lagi, ID global berikutnya setelah T-091. **T-093** (Accept Invite page) memakai pola yang sama untuk v0.1 — nomor kosong v0.1 sudah habis sejak T-039/T-089, jadi memakai ID global berikutnya setelah T-092, ditempatkan di `tasks/v01-foundation.md` karena domain `workspace`/invite. Detail: Catatan Rilis di masing-masing file release.
 
 Urutan release mengikuti [`release-roadmap.md`](../product-discovery/02-product/release-roadmap.md). Perubahan urutan atau ruang lingkup release wajib lewat ADR.
 
@@ -88,12 +98,33 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
+| **T-093** | Accept Invite page                              | ⏳      | Root rantai baru (2026-08-28): **T-093 → T-036 → T-092**. Tidak ada blocker eksternal (tidak butuh kredensial apapun) — bisa dikerjakan kapan saja, tapi wajib selesai dulu sebelum T-036 (notification bell) bisa diverifikasi/dipakai dengan ≥2 akun nyata di satu workspace |
+
+> **T-033** (Calendar view) sudah ✅ **Done** (2026-08-28), branch
+> `feature/calendar-design-system`. Sesi 2026-08-26 menuntaskan
+> **perencanaan UX + Design System**: dipecah jadi 8 subtask (T-033.1–.8)
+> mengikuti referensi Buffer + **ADR-090/ADR-091** (klik item → Popover
+> Astryx sebelum Draft Editor, khusus Calendar), Claude Design sudah punya
+> mockup lengkap, dan Design Review King Rezi sudah selesai (tidak ada
+> revisi tersisa). Sesi implementasi 2026-08-27 menutup **T-033.1–.6**
+> (query rentang tanggal, state via query param, grid Week, grid Month,
+> navigasi periode Today/‹/›/toggle, filter status+akun — data asli,
+> lolos review Ridwan + QA Najwa) dan **T-033.8** (Popover ringkasan post +
+> metrik Published + CTA buka Draft Editor, sesi terpisah, lolos review
+> Ridwan + QA Najwa). **T-033.7** (manual refresh) — sempat blocked (tidak
+> ada rancangan di Claude Design), lalu **dibatalkan total** (2026-08-28)
+> setelah ADR-094 (perluasan Supabase Realtime ke `publishing_posts`)
+> direncanakan; Calendar untuk saat ini tetap manual-refresh apa adanya
+> (tanpa tombol eksplisit) sampai task dari ADR-094 diimplementasikan.
+> Detail: `tasks/v02-publishing-mvp.md` § T-033.
 
 > **T-032** (Queue management) sudah ✅ **Done** (2026-08-20) — listQueue dari data asli (bukan `PublishingQueueSlot`, ADR-083), UI Astryx nyata, 3 aksi (Publish Now/Edit/Cancel Schedule). Menutup sebagian besar **T-030** (Cancel Schedule) untuk konteks Queue — sisa scope Calendar masih di T-033. Detail: `tasks/v02-publishing-mvp.md` § T-032.
 
 > **T-029** (Publish Now) sudah ✅ **Done** (2026-08-18) — via `FakeOutstandAdapter` (ADR-059), jalur nyata tetap menunggu T-025. Detail: `tasks/v02-publishing-mvp.md` § T-029.
 
 > **T-012** (Sidebar "Channels") sudah ✅ **Done** (2026-08-12) — seluruh subtask termasuk T-012.1/2 selesai, lolos review Ridwan + QA Najwa. Detail: `tasks/v01-foundation.md` § T-012.
+
+> **T-089** (Workspace Switcher deliberate, ADR-088) sudah ✅ **Done** (2026-08-24) — seluruh subtask T-089.1–.5 selesai, lolos review Ridwan + QA Najwa; **T-089.6** ditambah sesi yang sama (dialog konfirmasi Tier 2 sebelum switch, ADR-089) — diverifikasi end-to-end browser oleh AI utama, belum lewat QA Najwa formal (KI-034). Detail: `tasks/v01-foundation.md` § T-089.
 
 **Rantai blocker terbesar:** T-025 (Real OutstandAdapter) → T-026 (webhook) → T-027 (job runner). Ketiganya mengunci sebagian besar v0.2, seluruh v0.3, dan seluruh v0.4. Menyelesaikan T-025 membuka lebih banyak pekerjaan daripada task lain manapun.
 

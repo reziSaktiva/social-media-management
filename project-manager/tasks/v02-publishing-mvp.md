@@ -174,6 +174,8 @@ Jadi T-029.4/.5/.6 di bawah **desainnya sudah tersedia** — sisa pekerjaan murn
 
 **Selesai (2026-08-18):** `PublishNowUseCase` (`apps/web/src/domains/publishing/services/publish-now.use-case.ts`) mengikuti pola `SchedulePostsUseCase` (T-028/ADR-059) — RBAC eksplisit lewat `assertActorCanPublishNow` (`apps/web/src/domains/publishing/rbac.ts`, ADR-074: Owner/Admin/Creator) dijalankan fail-fast sebelum validasi `ContentFormat` (ADR-039), lalu persist dulu (`PublishingPostTarget` status `pending`, post → `Published`) sebelum panggil adapter per target — supaya tidak ada job Outstand yang orphan tanpa jejak DB. Server Action `publishNowAction` di `apps/web/src/app/(app)/components/draft-editor/actions.ts` memanggil use-case ini lewat `OutstandAdapter.publishNow`, yang jalur produksinya masih `FakeOutstandAdapter` (pola ADR-059, T-025 real adapter belum ada — KI-003). UI Draft Editor (`apps/web/src/app/(app)/components/draft-editor/Modal.tsx`) menambahkan tombol "Publish Now" berdampingan Schedule + dialog Confirmation Summary varian Publish Now, dan redirect ke Publish/Calendar setelah konfirmasi (menutup T-031.4). Sebagai bagian commit yang sama, Schedule Picker Draft Editor dirapikan menyamai mockup (heading tunggal "Jadwal", placeholder Bahasa Indonesia, ikon kalender/jam dipindah ke kanan via Tailwind `flex-row-reverse`) dan dot indicator ditambahkan ke Badge status — dua temuan dari pekerjaan ini dicatat sebagai **KI-029** (xstyle Astryx belum bisa dipakai) dan **KI-030** (TimeInput Astryx tidak membatasi input real-time) di `PROJECT_STATE.md`. Diverifikasi: `tsc --noEmit` bersih, Vitest suite terkait lulus (`publish-now.use-case.test.ts`, `fake-outstand-adapter.test.ts`, dst), end-to-end browser (New Post → Publish Now → Confirmation Summary → redirect → data DB `published`).
 
+**Bug fix korektnes (2026-08-26, ditemukan saat verifikasi T-033):** `PublishNowUseCase` tidak pernah men-set `PublishingPost.status` jadi `Failed` walau SEMUA target gagal publish — melanggar aturan `integration-layer.md:269-270,305` ("post.error" hanya kalau semua target gagal; post tetap `Published` kalau minimal satu target sukses/partial success). Diperbaiki oleh Prabowo Feature Engineer: method baru `markPostFailed` di `IPublishingRepository` (idempoten, hanya update baris yang masih status `Published`) — interface `apps/web/src/domains/publishing/repositories/publishing.repository.ts`, implementasi Prisma `apps/web/src/lib/repositories/publishing/publishing.repository.ts`; `apps/web/src/domains/publishing/services/publish-now.use-case.ts` memanggil `markPostFailed` setelah `Promise.all` publish ke semua target selesai kalau seluruh outcome gagal, tanpa mengubah perilaku partial/full success. 3 skenario test baru (semua gagal, partial, semua sukses) — semua pass; `tsc`/`eslint` bersih, tidak ada regresi (151 test lain tetap pass). Fitur inti T-029 tetap dianggap selesai — ini murni koreksi bug, bukan perubahan status task.
+
 ### T-030 · Cancel Schedule + dialog konfirmasi
 
 | Field         | Value                                            |
@@ -245,18 +247,47 @@ Model Prisma `PublishingQueueSlot` sudah ada di schema **tanpa service apapun** 
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing                                                   |
-| **ADR**       | ADR-023 (manual refresh, bukan realtime), ADR-046            |
+| **ADR**       | ADR-023 (manual refresh, bukan realtime — **amandemen ADR-094** untuk Calendar), ADR-046, **ADR-090** (Popover klik item, khusus Calendar; komponen dikoreksi **ADR-091** dari HoverCard menjadi Popover) |
 | **Depends**   | T-028 ✅                                                      |
-| **Baca dulu** | `04-ux/key-screen-patterns.md` · `05-architecture/realtime-strategy.md` |
+| **Baca dulu** | `04-ux/key-screen-patterns.md` (KSP-02, direvisi per ADR-090) · `04-ux/navigation-patterns.md` (NP-D15) · `05-architecture/realtime-strategy.md` |
 
 Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Realtime hanya untuk tabel `notifications`).
 
-- [ ] **T-033.1** Query post per rentang tanggal + filter akun
-- [ ] **T-033.2** Komponen kalender bulanan/mingguan (cek dulu apa yang tersedia di Astryx sebelum bikin sendiri)
-- [ ] **T-033.3** Manual refresh control
-- [ ] **T-033.4** Klik item → buka detail / Draft Editor
+**Referensi UX (2026-08-26):** breakdown di bawah disusun setelah sesi eksplorasi Calendar Buffer (King Rezi) di branch `feature/calendar-design-system`. Keputusan dari sesi itu: (a) **Tags & Timezone filter per-view tidak diadopsi** — alasan sama seperti T-032.0 (tidak ada konsep Tag di domain model, Timezone bukan setting per-view di backlog); (b) **satu route** `/publish/calendar` dengan state `?view=week|month&date=<timestamp>` di query param — tidak override ADR-046; (c) klik item Calendar buka **Popover** (Astryx) dulu sebelum Draft Editor — **ADR-090**, khusus Calendar, Queue/Drafts tidak berubah. **Koreksi (ADR-091, sesi sama):** komponen semula ditulis "HoverCard", diperbaiki jadi **Popover** setelah verifikasi `astryx component --dense` — HoverCard trigger-nya hover/focus (bukan klik) dan tidak boleh berisi critical action (CTA Edit) per guideline resminya.
+
+**Design System selesai (2026-08-26):** Claude Design (project "Social Media Management") sudah mengimplementasikan seluruh rancangan di atas — `templates/publish-calendar.html` (grid Week per-jam + grid Month dengan "N More", ditumpuk vertikal sesuai konvensi state referensi project — bukan side-by-side, dikoreksi setelah percobaan pertama), `components/popover.html` (Popover baru, anatomi Header+Body+Trigger terverifikasi CLI), navigasi Today/‹/›/label + filter Status/Channel per state, dan tombol New Post dipindah sejajar judul halaman (pola sama `publish-queue.html`). Toggle Minggu/Bulan diwire interaktif di `templates/app-prototype/AppPrototype.dc.html` (`applyCalendarView()`, class `.cal-view-select` — sengaja bukan `data-proto` supaya tidak bentrok delegated click-listener runner), default Week, tidak persist antar navigasi. **Ini murni Design System (mockup statis + prototype interaktif) — belum ada satu baris kode `apps/web` yang ditulis.** Checkbox T-033.1–.8 di bawah tetap terbuka; masing-masing baru ditandai selesai saat implementasi kode aslinya (bukan mockup-nya) selesai.
+
+**Design Review selesai (2026-08-26).** King Rezi sudah review langsung di Claude Design; revisi yang muncul selama review (layout stacked, koreksi Popover, posisi tombol New Post) sudah diterapkan pada sesi yang sama — tidak ada revisi tersisa. **Implementasi kode (T-033.1–.8) akan dikerjakan di sesi/room chat terpisah** dari sesi perencanaan+Design System ini (branch `feature/calendar-design-system` tetap jadi basis). Sesi implementasi wajib baca dulu section "Design System selesai" di atas + file Claude Design yang disebut (`templates/publish-calendar.html`, `components/popover.html`, `templates/app-prototype/AppPrototype.dc.html`) sebagai acuan visual sebelum mulai — bukan menebak ulang layout dari nol.
+
+**Keputusan implementasi — status yang muncul di grid Calendar (2026-08-26):** dikonfirmasi dengan King Rezi bahwa status `Draft`/`In Review`/`Ready to Schedule` TIDAK PERNAH punya `scheduledAt` (belum ada waktu tayang, sesuai `roles-permissions.md:131-136`), sehingga tidak seharusnya muncul di grid Calendar sama sekali. Grid Week & Month HANYA menampilkan post berstatus **Scheduled, Published, Failed** — bukan perubahan baseline, murni menyelaraskan implementasi dengan definisi yang sudah ada, jadi tidak perlu ADR baru. Mockup `templates/publish-calendar.html` di Claude Design dikoreksi (3 card yang sebelumnya "Ready to Schedule" diubah jadi "Scheduled" agar konsisten dengan aturan ini). Query `listCalendarPosts` (T-033.1) yang memfilter berdasarkan `scheduledAt`/`publishedAt` secara alami sudah benar untuk aturan ini — tidak ada perubahan kode tambahan diperlukan. Filter dropdown status di halaman Calendar (T-033.6) tetap menampilkan 6 opsi seperti rencana semula, tidak diubah — koreksi ini hanya berlaku ke contoh card di mockup dan ke perilaku grid.
+
+- [x] **T-033.1** Query post per rentang tanggal + filter akun (`PublishingService`, query `PublishingPost`/`PublishingPostTarget`)
+- [x] **T-033.2** State periode via query param (`?view=week|month&date=<timestamp>`) pada route tunggal `/publish/calendar` — tidak menambah route baru (konsisten ADR-046)
+- [x] **T-033.3** Komponen grid Week view — hari × slot jam (cek dulu komponen `Calendar` Astryx sebelum bikin custom, `astryx component Calendar --dense`)
+- [x] **T-033.4** Komponen grid Month view — hari × tanggal 1 bulan penuh, badge "N More" untuk sel padat (tidak silently truncate)
+- [x] **T-033.5** Navigasi periode: tombol Today, ‹ › (prev/next), label periode (termasuk format lintas-bulan untuk Week), toggle Minggu/Bulan
+- [x] **T-033.6** Filter status post (dropdown) + filter Channels (akun) di atas grid
+- [x] **T-033.7** ~~Manual refresh control~~ — **Dibatalkan (2026-08-28)**: sempat blocked (tidak ada rancangan di Claude Design), lalu ditutup total (bukan cuma ditunda) setelah ADR-094 (Realtime Calendar) direncanakan — King Rezi memutuskan tidak perlu tombol refresh manual berdiri sendiri; sinkronisasi Calendar akan ditangani granular patch via Supabase Realtime (ADR-094) begitu itu diimplementasikan. Scope-nya (tombol + trigger refetch) sengaja **tidak** dipindah/digabung ke task Realtime baru — kalau nanti ternyata dibutuhkan lagi (mis. fallback recovery saat koneksi Realtime putus), itu jadi task baru terpisah dengan ID sendiri, bukan dihidupkan lagi di T-033.7 (ID tidak didaur ulang)
+- [x] **T-033.8** Klik item → Popover (Astryx `Popover`, ADR-090/ADR-091): ringkasan post + metrik untuk post Published (mapping ke `PostMetrics`: Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate`) + CTA buka Draft Editor (modal, ADR-052)
+
+**T-033 dinyatakan selesai (2026-08-28):** dengan T-033.7 dibatalkan (bukan diimplementasikan), seluruh subtask T-033.1–.8 tertutup (7 diimplementasikan + 1 dibatalkan by design) — task ini ditutup `✅ Done`. Data Calendar untuk saat ini **tetap manual-refresh** (tidak ada tombol refresh eksplisit maupun realtime) sampai task baru dari ADR-094 diimplementasikan.
+
+**Selesai T-033.3/.4 (2026-08-27, branch `feature/calendar-design-system`):** grid Week (`CalendarWeekGrid.tsx`, 7 hari × 12 slot 2 jam) dan grid Month (`CalendarMonthGrid.tsx`, 7 hari × N minggu, padding hari muted, badge "+N More" maks 3 kartu/sel) diimplementasikan nyata di `apps/web/src/app/(app)/publish/calendar/components/`, didukung fungsi domain baru `getWeekRange`/`getMonthRange` (`apps/web/src/domains/publishing/services/calendar-range.ts` + test) dan util bersama `calendar-grid-shared.ts` (flatten `CalendarPostItem[]` → kartu per target). `page.tsx` jadi composition root nyata (`getWorkspaceContext` + `getCachedSession` + `getWeekRange`/`getMonthRange` + `PublishingService.listCalendarPosts`), `CalendarScreen.tsx` dispatch `view === "month" ? CalendarMonthGrid : CalendarWeekGrid` menggantikan `EmptyState` placeholder. Review arsitektur Ridwan menemukan 1 duplikasi logic (UI menghitung ulang aturan "tanggal efektif" terpisah dari domain) — diperbaiki di sesi yang sama: fungsi privat `effectiveDate` di `sort-calendar-items.ts` diekspor jadi `effectiveCalendarDate` (public), direuse oleh `calendar-grid-shared.ts`. Diverifikasi: `tsc --noEmit` + `eslint` bersih, 45 test Vitest pass, browser preview manual (data post asli, status Scheduled/Published, badge status, highlight hari-ini). Scope sengaja belum termasuk (subtask terpisah, bukan bug): T-033.5 (navigasi), T-033.6 (filter), T-033.7 (manual refresh), T-033.8 (Popover klik item).
+
+**Selesai T-033.5/.6 (2026-08-27, branch `feature/calendar-design-system`):** navigasi periode + filter di atas grid diimplementasikan nyata. **T-033.5**: `CalendarToolbar.tsx` (baru, client component) — tombol Today/‹/›, label periode (format lintas-bulan untuk Week), toggle Minggu/Bulan, semua Astryx (`Button`, `IconButton`); util `addMonths(date, months)` ditambah ke `calendar-grid-shared.ts` untuk navigasi Month. **T-033.6**: filter status (dropdown 7 opsi: All Posts + 6 `ContentStatus`, reuse `CONTENT_STATUS_LABEL`) dan filter Channels (akun asli workspace via `WorkspaceService.listConnectedAccounts`, cross-domain lewat public API `@/domains/workspace`) — filter dieksekusi **server-side** lewat query Prisma (bukan client-side), state via URL query param `?status=&accounts=` (comma-separated), konsisten dengan pola `?view=&date=` dari T-033.2. `CalendarViewState` (`parse-calendar-view-state.ts`) diperluas: field `statuses: ContentStatus[]`, `connectedAccountIds: ConnectedAccountId[]`, drop token invalid diam-diam saat parsing (+ test baru, semua pass). `useCalendarPeriodState.ts` `setPeriod` diperluas untuk update `statuses`/`connectedAccountIds` di URL (dihapus dari URL kalau array kosong). `page.tsx` meneruskan `statuses`/`connectedAccountIds` ke `PublishingService.listCalendarPosts`; `CalendarScreen.tsx` render `CalendarToolbar` di atas grid, terima prop baru `accounts: ConnectedAccountRecord[]`. Review arsitektur Ridwan — tanpa temuan (entry point bersih, domain logic tanpa Prisma/Supabase, cross-domain lewat public API, shared types konsisten). QA Najwa — semua golden path pass (navigasi lintas-bulan, toggle Minggu/Bulan mempertahankan anchor date, filter status+akun kombinasi, reload URL dengan query filter ter-restore benar, regresi ke Queue/Drafts/History bersih, dark mode oke); satu gap kecil ditemukan & ditutup di sesi yang sama: Month view (`CalendarMonthGrid.tsx`) belum punya `EmptyState` saat filter menghasilkan 0 post (beda dari Week view yang sudah punya sejak T-033.3) — sudah ditambahkan (`EmptyState` "Belum ada post di bulan ini"). Diverifikasi: `bun run typecheck`/`lint`/`test` (root) bersih, 209 test pass/3 skipped. Sisa terbuka: T-033.7 (manual refresh), T-033.8 (Popover klik item).
+
+**Selesai T-033.8 (2026-08-27, branch `feature/calendar-design-system`):** klik kartu post di grid Week/Month sekarang membuka Popover ringkasan (`CalendarPostPopover.tsx`, baru, client component) — Astryx `Popover` (bukan HoverCard, ADR-090/ADR-091), controlled `isOpen` lokal per kartu, exclusive (kartu lain/klik luar/Escape menutup). Isi: header account+platform, avatar+status chip, caption, media placeholder (domain belum punya field media), 4 tile metrik untuk status Published (Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate`, format "–" kalau belum ada data), link "Go to post" (kalau `platformPostUrl` ada), CTA "Buka Draft Editor" (reuse `useDraftEditor().openEditDraft`, pola sama Queue). `CalendarWeekGrid.tsx`/`CalendarMonthGrid.tsx` — TODO/no-op onClick sebelumnya diganti wrap `ClickableCard` dengan `CalendarPostPopover`. Data-wiring: interface baru `CalendarItemTargetRecord extends QueueItemTargetRecord` + field `platformPostUrl: string | null` di `publishing.repository.ts` (dari kolom Prisma `PublishingPostTarget.platformPostUrl` yang sudah ada tapi belum pernah di-expose ke domain — bukan migrasi baru), dipetakan di implementasi Prisma (`mapCalendarItem`). `page.tsx` composition root sekarang instansiasi `AnalyticsService` dan pass sebagai `PostMetricsPort` ke `PublishingService` (sebelumnya tanpa argumen kedua, jadi `metrics` selalu kosong) — supaya metrik Published benar-benar terisi. `calendar-grid-shared.ts` — `CalendarCardEntry` diperluas `connectedAccountId`, `metrics: PostMetricsRecord | null` (dicocokkan per `connectedAccountId` target), `platformPostUrl: string | null`. Review arsitektur Ridwan — tanpa temuan. QA Najwa — tanpa bug fungsional (satu catatan inconclusive soal emulasi mobile viewport di tooling browser pane, bukan bug aplikasi); QA manual gabungan (main agent + Najwa) mencakup Week & Month view, popover Scheduled & Published, exclusivity/dismiss, regresi toolbar, regresi Queue & Drafts (tetap langsung buka Draft Editor tanpa Popover — scope Popover khusus Calendar), dark mode, multi-target post (data tidak tertukar antar kartu). Diverifikasi: `bun run typecheck`/`lint`/`test` (root) bersih, 209 test pass/3 skipped (tidak ada test baru — pola project ini tidak unit-test file di folder "components" app-router, verifikasi lewat browser preview manual, konsisten T-033.3–.6). Sisa terbuka: **T-033.7** (manual refresh) — **blocked**, tidak ada rancangan sama sekali di Claude Design, menunggu King Rezi.
+
+**Polishing UI selesai (2026-08-27, branch `feature/calendar-design-system`, di atas T-033.1–.6/.8 yang sudah `[x]` — bukan subtask baru, tidak mengubah checklist di atas):**
+
+- **Fix grid responsiveness (commit `ab1932f`):** grid 7-kolom Month & Week tidak sejajar antar baris (CSS Grid track blowout — kolom dengan card lebar "mencuri" lebar kolom lain) diperbaiki via `isScrollable` per sel + `StackItem size="fill"` untuk truncation. **Bukan** `xstyle`/StyleX Astryx seperti rencana awal — compiler StyleX belum ter-setup di `apps/web` (lihat catatan gap di bawah).
+- **Redesain kartu post:** avatar+nama akun sejajar 1 baris, waktu post pojok kanan atas (Month), caption full-width baris terpisah (Week), indikator tipe konten Post/Reel/Story/Pin (pakai field `contentFormat` yang sudah ada di `CalendarItemTargetRecord`/`QueueItemTargetRecord`, bukan data baru). Footer status+content-format di mobile (≤768px, breakpoint konsisten collapse point `AppShell` mobile-nav) diganti `StatusDot`+`Icon` compact — `Badge` Astryx tidak punya prop ukuran, overflow di kolom sempit. `CalendarPostPopover.tsx` ditambah Badge content-format.
+- **Pemisah vertikal grid + padding (commit `8bba7ae`):** garis vertikal antar kolom hari ditambahkan (sebelumnya cuma horizontal antar baris), warna `border-border` (sama dengan border Card/ClickableCard, bukan `border-border-strong` Divider horizontal — biar terasa halus). Gap grid dihapus (`gap={2}`→`{0}`, spacing murni dari padding internal cell) dikompensasi padding cell dinaikkan (Week `padding` 1→1.5, Month `paddingInline` +2) supaya konten tidak nempel garis.
+- Review arsitektur & QA sesi ini: verifikasi manual browser (Ridwan/Najwa tidak dijalankan formal untuk sesi polishing murni CSS/layout ini — tidak ada perubahan domain/data-wiring).
+- **Gap infrastruktur ditemukan, dicatat untuk referensi ke depan (lihat KI-035 di `PROJECT_STATE.md`):** (1) StyleX ter-install sebagai dependency tapi compiler-nya belum ter-setup di `apps/web`; (2) `Badge` Astryx tidak punya prop `size`/truncation; (3) layout Calendar di viewport sangat sempit (~375px) masih padat — kalau butuh tampilan mobile yang lebih nyaman, perlu rancangan alternatif (agenda/list) di Claude Design dulu (rule 17 `AGENTS.md`), bukan sekadar tweak CSS.
+- Sisa terbuka tidak berubah: **T-033.7** (manual refresh) — masih blocked, tidak tersentuh sesi ini.
 
 ### T-034 · Publishing History + detail post
 
@@ -274,6 +305,12 @@ Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai place
 - [ ] **T-034.2** UI daftar riwayat + filter
 - [ ] **T-034.3** Halaman detail post: hasil per akun, pesan error, link ke post asli
 - [ ] **T-034.4** Aksi retry manual untuk target yang gagal
+
+**Catatan (ADR-092, 2026-08-26):** Outstand API tidak punya endpoint retry
+resmi — dokumentasi resminya merekomendasikan hapus post yang gagal
+(`delete-a-post-from-social-networks`) lalu buat post baru (`create-a-post`),
+bukan re-trigger job yang sama. T-034.4 wajib mengikuti pola
+delete-lalu-create-ulang ini saat dikerjakan.
 
 ### T-035 · Delete Post + dialog konfirmasi
 
@@ -300,7 +337,7 @@ Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai place
 | **Status**    | ⏳ Not Started                                                |
 | **Domain**    | notification                                                 |
 | **ADR**       | ADR-023, ADR-030 (Supabase JWT)                              |
-| **Depends**   | T-026 (sumber event notifikasi)                              |
+| **Depends**   | T-026 (sumber event notifikasi) · **T-093** (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094) |
 | **Baca dulu** | `05-architecture/realtime-strategy.md` · `apps/web/src/lib/better-auth/supabase-jwt.ts` |
 
 `Basic Notifications` berstatus **Should Have** di `mvp-definition.md` — ditempatkan di rilis ini karena hasil publish (`post.published` / `post.error`) tidak berguna tanpa cara memberi tahu pengguna. Domain `notification/` masih stub kosong; model `Notification` sudah ada di schema.
@@ -333,7 +370,73 @@ Berjalan **kontinu** selama rilis ini, bukan sekali selesai: setiap kali konvens
 
 ---
 
+## Import
+
+### T-090 · Import Posts dari Social Account (status `Imported`, read-only)
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | publishing                                                   |
+| **ADR**       | ADR-093                                                      |
+| **Depends**   | T-013 ✅ (Connect Account — trigger otomatis) · T-025 (real adapter, Fake dulu pola ADR-059) · T-034 (History, untuk tampilan lengkap — bagian Calendar bisa jalan duluan tanpa menunggu) |
+| **Baca dulu** | `05-architecture/integration-layer.md` · `05-architecture/background-jobs.md` · `05-architecture/domain-model.md` · `decisions/ADR-093-import-posts-dari-social-account-status-imported-read-only.md` |
+
+Outstand punya endpoint berbayar `POST /v1/social-accounts/{id}/imports` untuk menarik post yang dibuat langsung di platform sosial (bukan lewat tool kita) — ditemukan saat diskusi Realtime Calendar (2026-08-28), dikerjakan sebagai fitur terpisah (ADR-093). Tiga jalur trigger (otomatis saat connect, periodik cron harian, manual dari Settings) dengan pengaman biaya berlapis karena endpoint ini berbayar — lihat ADR-093 untuk detail lengkap tiap keputusan.
+
+- [ ] **T-090.1** Shared enum `ContentStatus.Imported` (`packages/shared`) + migration: `PublishingPost.authorId` nullable, `WorkspaceConnectedAccount.lastImportedUntil`/`lastImportRequestedAt` baru (ADR-093 poin 1, 3, 6)
+- [ ] **T-090.2** Kontrak ACL `IOutstandAdapter.importPosts`/`fetchImportJobStatus` + `FakeOutstandAdapter.importPosts` (pola instant-success ADR-059, ADR-093 poin 5, 10)
+- [ ] **T-090.3** `JOB-05 — Import Posts Trigger`: 3 entry point (otomatis on-connect, periodik Railway Cron harian, manual Server Action dari Settings) + guard concurrent-import per akun + 3 lapis pengaman biaya jalur manual (RBAC Owner/Admin, cooldown 24 jam/akun, cap 1x/minggu/workspace via `background_jobs`) (ADR-093 poin 7, 8, 9)
+- [ ] **T-090.4** `JOB-06 — Import Posts Webhook Processing`: upsert `PublishingPost`/`PublishingPostTarget` status `Imported`, dedup via `platformPostId`, update watermark `lastImportedUntil` (ADR-093 poin 4, 7)
+- [ ] **T-090.5** UI: kartu `Imported` di Calendar/History + tombol "Sync Now" di Settings → Connected Accounts + state loading/hasil job — **blocked**, tidak ada rancangan sama sekali di Claude Design (AGENTS.md rule 17), menunggu King Rezi membuat/mengonfirmasi desain (ADR-093 poin 2, 11)
+
+---
+
+## Read-Only Enforcement
+
+### T-091 · Post `Published`/`Failed` jadi read-only (tidak bisa dibuka ke Draft Editor)
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | publishing                                                   |
+| **ADR**       | — (bug-fix, tidak mengubah baseline — ditemukan bersamaan sesi ADR-093 tapi sengaja ditrack terpisah, lihat ADR-093 Context) |
+| **Depends**   | T-033.8 ✅ (Popover, tempat celah ini ditemukan)              |
+| **Baca dulu** | `apps/web/src/app/(app)/publish/calendar/components/CalendarPostPopover.tsx` |
+
+Ditemukan saat diskusi ADR-093 (2026-08-28): post berstatus `Published`/`Failed` — dikirim lewat tool kita sendiri, **bukan** hasil import — saat ini masih bisa dibuka ke Draft Editor lewat CTA "Buka Draft Editor" di Popover Calendar (`CalendarPostPopover.tsx:174-182`, tidak ada pengecualian status). Post yang sudah live di platform sosial seharusnya tidak bisa diedit lagi dari sini.
+
+- [ ] **T-091.1** Guard read-only di level repository/service — tolak aksi mutasi (`updateDraft`, `deletePost`, `cancelSchedule`, `scheduleUpdate`, dst.) untuk post berstatus `Published`/`Failed`, pola defense-in-depth sama ADR-059 poin 6
+- [ ] **T-091.2** UI: sembunyikan/nonaktifkan CTA "Buka Draft Editor" di `CalendarPostPopover.tsx` untuk status `Published`/`Failed` (cek juga Queue/History kalau ada titik CTA serupa) — **blocked**, state ini belum ada di mockup Claude Design manapun (`components/popover.html`), menunggu King Rezi mengonfirmasi desainnya (AGENTS.md rule 17)
+
+---
+
+## Realtime Collaboration
+
+### T-092 · Realtime Calendar/Queue/Drafts/History via Supabase Realtime
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | publishing                                                   |
+| **ADR**       | ADR-094 (amandemen RT-D01/RT-D02)                            |
+| **Depends**   | **T-036** (hard dependency — wiring generic Supabase Realtime + Better Auth↔Supabase JWT bridge dibangun di sana dulu, task ini reuse) · T-034 (khusus T-092.6, History belum dibangun) |
+| **Baca dulu** | `05-architecture/realtime-strategy.md` · `05-architecture/database-strategy.md` (RLS Policy Pattern) · `05-architecture/auth-architecture.md` · `decisions/ADR-094-perluasan-supabase-realtime-publishing-posts-granular-patch.md` |
+
+Lahir dari diskusi King Rezi soal kolaborasi tim ala Buffer (user A ubah draft/schedule, user B lihat langsung tanpa refresh manual) — dirancang terpisah dari fitur Import Posts (T-090/T-091, ADR-093). Channel per-workspace (`publishing_posts:{workspaceId}`, event `INSERT`/`UPDATE`, filter `workspace_id`), strategi update **granular client-side patch** (bukan full `router.refresh()`) — lihat ADR-094 untuk detail lengkap tiap keputusan.
+
+- [ ] **T-092.1** RLS policy baru `publishing_posts_realtime_workspace_members` berbasis `auth.uid()` (migration Prisma) — terpisah dari policy server-side `current_setting` yang sudah ada (ADR-094 poin 3)
+- [ ] **T-092.2** Wiring subscription channel per-workspace (`publishing_posts:{workspaceId}`, `INSERT`/`UPDATE`, filter `workspace_id`) — reuse Supabase Realtime client generic + JWT bridge dari T-036, jangan dibangun ulang (ADR-094 poin 2, 4)
+- [ ] **T-092.3** Granular patch — Calendar: client state list per screen, fetch 1 record termapping saat event masuk, upsert/remove ke local state, subscription lifecycle per-mount screen (ADR-094 poin 5, 6)
+- [ ] **T-092.4** Granular patch — Queue (pola sama T-092.3, kriteria tampilan Queue: cuma status `Scheduled`)
+- [ ] **T-092.5** Granular patch — Drafts (pola sama T-092.3, kriteria tampilan Drafts: `Draft`/`InReview`/`ReadyToSchedule`)
+- [ ] **T-092.6** Granular patch — History (pola sama T-092.3) — **depends T-034**, wajib disertakan sejak desain awal History, bukan ditambah belakangan (ADR-094 poin 7)
+
+---
+
 ## Catatan Rilis
 
 * Ruang kosong v0.2 sebelumnya mencakup T-039, tapi nomor itu sudah dipakai untuk **T-039** (Migrasi Routing & Settings, ADR-076) di `tasks/v01-foundation.md`, bukan task v0.2 — lihat Catatan Rilis file tersebut. Tidak ada lagi ruang kosong tersisa untuk task v0.2 baru; task v0.2 berikutnya memakai nomor global berikutnya yang belum pernah dipakai (cek Indeks release di `TASKS.md`).
+* **T-090** dan **T-091** (ditambah 2026-08-28, sesi diskusi ADR-093) memakai pola yang sama seperti footnote di atas — nomor kosong v0.2 (T-020–T-038) sudah habis, jadi keduanya memakai nomor global berikutnya yang belum pernah dipakai (090, 091), sama seperti presedan **T-039**/**T-089** di `tasks/v01-foundation.md`. Ditempatkan di file ini (bukan file release lain) karena keduanya domain `publishing`, lahir dari diskusi Calendar/T-033.
+* **T-092** (ditambah 2026-08-28, sesi diskusi ADR-094) memakai pola nomor global yang sama lagi — berikutnya setelah T-091.
 * **Definition of Done rilis ini** (dari `release-roadmap.md`): pengguna dapat mengelola proses publikasi dari awal hingga selesai — draft → format per akun → schedule/publish → lihat queue/calendar → lihat hasil di history.

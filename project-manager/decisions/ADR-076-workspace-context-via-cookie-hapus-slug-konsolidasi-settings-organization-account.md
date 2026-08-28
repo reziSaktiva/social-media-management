@@ -6,7 +6,7 @@ Workspace Context via Cookie (Hapus Dynamic Segment `[slug]`) + Konsolidasi Sett
 
 ### Status
 
-Accepted
+Accepted — Poin 4 Diamandemen oleh ADR-088 (2026-08-24)
 
 ### Date
 
@@ -72,7 +72,13 @@ yang sama sebelum 14 file baseline ditulis ulang — juga tercatat di
    Preferences). Satu-satunya entry point: avatar/user menu — menggantikan
    baik Workspace Selector (yang tidak pernah dibangun, KI-023) maupun
    entry point User Settings yang terpisah sebelumnya.
-4. **`/onboarding` menangani dua skenario**: user baru tanpa workspace
+4. **Diamandemen oleh ADR-088 (2026-08-24)** — lihat ADR-088 untuk switcher
+   deliberate (halaman Settings → Account → Workspaces) yang menutup gap
+   pada poin ini. Poin 4 asli di bawah tetap berlaku apa adanya untuk
+   skenario cookie hilang; ADR-088 menambahkan mekanisme switch yang
+   disengaja sebagai kasus terpisah, bukan menggantikan isi poin ini.
+
+   **`/onboarding` menangani dua skenario**: user baru tanpa workspace
    (buat workspace pertama) dan user existing yang kehilangan cookie
    workspace aktif (tampilkan picker daftar workspace). Picker ini **bukan**
    fitur "Multi Workspace Management" — ia re-entry point saat cookie

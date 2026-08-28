@@ -213,19 +213,26 @@ model WorkspaceChannelOrder {
 // ─────────────────────────────────────────────
 
 model PublishingPost {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspaceId   String    @map("workspace_id") @db.Uuid
-  authorId      String    @map("author_id")
-  status        String    @default("draft")
-  caption       String    @default("")
-  mediaIds      String[]  @default([]) @map("media_ids") @db.Uuid
-  scheduledAt   DateTime? @map("scheduled_at") @db.Timestamptz(6)
-  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
-  failedAt      DateTime? @map("failed_at") @db.Timestamptz(6)
-  failureReason String?   @map("failure_reason")
-  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId    String    @map("workspace_id") @db.Uuid
+  authorId       String    @map("author_id")
+  status         String    @default("draft")
+  caption        String    @default("")
+  mediaIds       String[]  @default([]) @map("media_ids") @db.Uuid
+  scheduledAt    DateTime? @map("scheduled_at") @db.Timestamptz(6)
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz(6)
+  failedAt       DateTime? @map("failed_at") @db.Timestamptz(6)
+  failureReason  String?   @map("failure_reason")
+  // Redesain ACL Outstand (2026-08-26, ADR baru): SATU id post-level dari
+  // Outstand `create-a-post`, mencakup SEMUA target/akun dalam post ini —
+  // menggantikan model lama di mana tiap `PublishingPostTarget` punya
+  // job id sendiri (`outstandJobId`, sudah dihapus). Diisi lewat
+  // `IPublishingRepository.setOutstandPostId` setelah
+  // `OutstandAdapter.schedulePost`/`publishNow` resolve.
+  outstandPostId String?   @map("outstand_post_id")
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   workspace Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   targets   PublishingPostTarget[]
@@ -244,9 +251,17 @@ model PublishingPostTarget {
   platform           String
   contentFormat      String   @default("post") @map("content_format")
   platformOptions    Json?    @map("platform_options")
-  outstandJobId      String?  @map("outstand_job_id")
+  // Redesain ACL Outstand (2026-08-26, ADR baru): `outstandJobId` (dulu
+  // per-target job id, model yang salah — Outstand tidak punya job per
+  // akun) diganti `platformPostId` — ID post di platform ASLI (Instagram,
+  // dst.), BEDA dari `outstandPostId` post-level di `PublishingPost`.
+  // Diisi belakangan via `OutstandAdapter.fetchPostOutcome` (polling) atau
+  // webhook (T-026), bukan sinkron dari `schedulePost`/`publishNow`.
+  platformPostId     String?  @map("platform_post_id")
   status             String   @default("pending")
-  publishedUrl       String?  @map("published_url")
+  // Redesain 2026-08-26: `publishedUrl` → `platformPostUrl`, sumber data
+  // sama seperti `platformPostId` di atas (async, per akun).
+  platformPostUrl    String?  @map("platform_post_url")
   error              String?
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)

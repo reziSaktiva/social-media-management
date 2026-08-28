@@ -135,7 +135,11 @@ Fitur berikut tidak menjadi bagian dari MVP.
 * Social Listening.
 * Direct Message dan mention di Engagement Inbox.
 * Webhook engagement.
-* Multi Workspace Management.
+* Multi Workspace Management — **sebagian masuk MVP per ADR-088**: switch
+  active workspace di antara membership yang sudah dimiliki user, dan
+  create workspace tambahan, keduanya lewat Settings → Account →
+  Workspaces. Sisanya (cross-workspace bulk actions, billing gabungan,
+  shared views lintas workspace, dan sejenisnya) tetap Out of Scope.
 
 ---
 

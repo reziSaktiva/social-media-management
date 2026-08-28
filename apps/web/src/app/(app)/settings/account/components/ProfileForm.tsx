@@ -6,9 +6,9 @@ import { Avatar } from "@astryxdesign/core/Avatar";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { FileInput } from "@astryxdesign/core/FileInput";
-import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Section } from "@astryxdesign/core/Section";
+import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { VStack } from "@astryxdesign/core/VStack";
 
@@ -19,7 +19,15 @@ import {
   type UserProfileRecord,
 } from "@/domains/identity";
 
+import {
+  SETTINGS_BREADCRUMB_GROUP,
+  SettingsPageHead,
+} from "../../components/SettingsPageHead";
 import { updateProfileAction } from "../actions";
+
+// Dipakai dua kali (description sr-only FileInput + Text visual di sampingnya,
+// lihat komentar di JSX) -- satu sumber supaya tidak drift kalau berubah.
+const AVATAR_HINT_TEXT = "JPG/PNG, maks 2MB";
 
 export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
   const [name, setName] = useState(profile.name);
@@ -88,59 +96,70 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
   }
 
   return (
-    <Section>
-      <VStack gap={5}>
-        <Heading level={2}>Profil</Heading>
+    <VStack gap={4} padding={4}>
+      <SettingsPageHead
+        pageName="Profile"
+        breadcrumb={`${SETTINGS_BREADCRUMB_GROUP.account} / Profile`}
+      />
 
-        {error ? <Banner status="error" title={error} /> : null}
-        {isSuccess ? (
-          <Banner status="success" title="Profil berhasil diperbarui." />
-        ) : null}
+      {error ? <Banner status="error" title={error} /> : null}
+      {isSuccess ? (
+        <Banner status="success" title="Profil berhasil diperbarui." />
+      ) : null}
 
+      <Section>
         <form onSubmit={handleSubmit}>
-          <VStack gap={5}>
-            <HStack gap={4} align="center">
+          <VStack gap={6}>
+            <HStack gap={5} align="center">
               <Avatar name={name} src={avatarPreviewUrl} size="xl" />
-              <FileInput
-                label="Foto Profil"
-                value={avatarFile}
-                onChange={handleAvatarChange}
-                accept={ALLOWED_AVATAR_ACCEPT}
-                maxSize={MAX_AVATAR_BYTES}
-                placeholder="Upload Foto"
-                description="JPG/PNG, maks 2MB"
-              />
+              <VStack gap={1.5}>
+                <FileInput
+                  label="Foto Profil"
+                  isLabelHidden
+                  description={AVATAR_HINT_TEXT}
+                  value={avatarFile}
+                  onChange={handleAvatarChange}
+                  accept={ALLOWED_AVATAR_ACCEPT}
+                  maxSize={MAX_AVATAR_BYTES}
+                  placeholder="Upload Foto"
+                />
+                <Text type="supporting" aria-hidden="true">
+                  {AVATAR_HINT_TEXT}
+                </Text>
+              </VStack>
             </HStack>
 
-            <TextInput
-              type="text"
-              label="Nama"
-              value={name}
-              onChange={setName}
-              isRequired
-              width="100%"
-              htmlName="name"
-            />
+            <VStack gap={5}>
+              <TextInput
+                type="text"
+                label="Nama"
+                value={name}
+                onChange={setName}
+                isRequired
+                width="100%"
+                htmlName="name"
+              />
 
-            <TextInput
-              type="email"
-              label="Email"
-              value={profile.email}
-              onChange={() => {}}
-              isDisabled
-              disabledMessage="Email tidak dapat diubah di sini"
-              width="100%"
-            />
+              <TextInput
+                type="email"
+                label="Email"
+                value={profile.email}
+                onChange={() => {}}
+                isDisabled
+                disabledMessage="Email tidak dapat diubah di sini"
+                width="100%"
+              />
 
-            <Button
-              type="submit"
-              label="Simpan Perubahan"
-              variant="primary"
-              isLoading={isSubmitting}
-            />
+              <Button
+                type="submit"
+                label="Simpan Perubahan"
+                variant="primary"
+                isLoading={isSubmitting}
+              />
+            </VStack>
           </VStack>
         </form>
-      </VStack>
-    </Section>
+      </Section>
+    </VStack>
   );
 }
