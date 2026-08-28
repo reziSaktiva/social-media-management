@@ -8,6 +8,27 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-28 — ADR-095 Follow-up: 2 Custom ESLint Rule Menutup Known Limitation
+
+### Context
+
+Setelah PR #93 (ADR-095) dibuka, King Rezi menanyakan detail 2 known limitation yang didokumentasikan (`no-restricted-imports` tidak menjangkau dynamic import; `tailwindcss/no-arbitrary-value` tidak menjangkau arbitrary-value di variabel terpisah), lalu meminta keduanya ditutup dengan custom rule.
+
+### Added
+
+* `eslint.config.mjs` — 2 custom rule lokal (plugin inline, tanpa dependency baru): `local/no-dynamic-restricted-import` (block dynamic `import("@prisma/client")` dkk di domain layer, scope sama dengan `no-restricted-imports`) dan `local/no-arbitrary-value-in-variable` (block arbitrary-value Tailwind yang disimpan di `const`/assignment terpisah, scope sama dengan `tailwindcss/no-arbitrary-value`).
+
+### Fixed
+
+* `ChannelsSection.tsx` — `TRANSITION_FAST` (satu-satunya instans di seluruh codebase yang match pola ini, dikonfirmasi grep menyeluruh) sekarang tertangkap rule baru, diberi `eslint-disable-next-line local/no-arbitrary-value-in-variable` karena token-backed CSS var (legit, bukan magic number).
+* `project-manager/decisions/ADR-095-*.md` — section Decision poin 6 diupdate: 2 known limitation sebelumnya sekarang dicatat sebagai closed via custom rule, dengan catatan sisa limitation (re-export pass-through tidak langsung tetap tidak terjangkau, butuh analisis lintas-file).
+
+### Verification
+
+Rule diverifikasi bekerja lewat probe file nyata (dynamic import ke `@prisma/client` di domain layer → tertangkap, file dihapus lagi setelah diverifikasi). `bun run lint`/`typecheck`/`test` — semua hijau: 0 error, 209 test passed/3 skipped.
+
+---
+
 ## 2026-08-28 — ADR-095 Baseline Rendering Strategy, Code Conventions, Spacing Scale + ESLint Enforcement
 
 ### Context

@@ -6,6 +6,113 @@ import nextTs from "eslint-config-next/typescript";
 import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginTailwindcss from "eslint-plugin-tailwindcss";
 
+// ADR-095 follow-up (review Ridwan, 2026-08-28): 2 custom rule lokal untuk
+// menutup known-limitation `no-restricted-imports`/`tailwindcss/no-arbitrary-value`
+// bawaan (dynamic import dan arbitrary-value yang disimpan di variabel
+// terpisah tidak terjangkau rule standar). Tidak butuh dependency baru —
+// didefinisikan inline sebagai plugin lokal flat-config.
+const RESTRICTED_IMPORT_EXACT = ["@prisma/client", "@supabase/supabase-js"];
+const RESTRICTED_IMPORT_PATTERNS = [
+  /\/lib\/repositories\//,
+  /\/lib\/adapters\//,
+  /\/lib\/prisma\//,
+  /\/lib\/supabase\//,
+  /\/generated\//,
+];
+
+function isRestrictedImportSource(source) {
+  return (
+    RESTRICTED_IMPORT_EXACT.includes(source) ||
+    RESTRICTED_IMPORT_PATTERNS.some((pattern) => pattern.test(source))
+  );
+}
+
+// Cocok dengan satu class-token Tailwind arbitrary-value, mis. `p-[13px]`,
+// `shadow-[0_0_0_var(--x)]` — prefix identifier diikuti `-[...]`.
+const ARBITRARY_VALUE_PATTERN = /[a-zA-Z][\w-]*-\[[^\]\s"'`]+\]/;
+
+function findArbitraryValue(text) {
+  if (typeof text !== "string") return null;
+  const match = text.match(ARBITRARY_VALUE_PATTERN);
+  return match ? match[0] : null;
+}
+
+const localRules = {
+  rules: {
+    "no-dynamic-restricted-import": {
+      meta: {
+        type: "problem",
+        docs: {
+          description:
+            "ADR-095: larang dynamic import() ke Prisma/Supabase/implementasi infra dari domain layer — menutup celah no-restricted-imports yang hanya menjangkau static import.",
+        },
+        schema: [],
+        messages: {
+          restricted:
+            "Domain layer tidak boleh dynamic import '{{source}}' (AGENTS.md rule 6, ADR-095) — sama seperti static import, ini dilarang. Pakai interface yang didefinisikan di domain sendiri.",
+        },
+      },
+      create(context) {
+        return {
+          ImportExpression(node) {
+            if (
+              node.source?.type === "Literal" &&
+              typeof node.source.value === "string" &&
+              isRestrictedImportSource(node.source.value)
+            ) {
+              context.report({
+                node,
+                messageId: "restricted",
+                data: { source: node.source.value },
+              });
+            }
+          },
+        };
+      },
+    },
+    "no-arbitrary-value-in-variable": {
+      meta: {
+        type: "problem",
+        docs: {
+          description:
+            "ADR-095: larang Tailwind arbitrary-value yang disimpan di variabel terpisah — menutup celah tailwindcss/no-arbitrary-value yang hanya menganalisis literal langsung di atribut className.",
+        },
+        schema: [],
+        messages: {
+          restricted:
+            "Arbitrary-value Tailwind ('{{match}}') ditemukan di variabel, bukan langsung di className — tailwindcss/no-arbitrary-value tidak menjangkau pola ini. Kalau token-backed (CSS var) dan sudah direview, tambahkan eslint-disable-next-line local/no-arbitrary-value-in-variable dengan alasan.",
+        },
+      },
+      create(context) {
+        function check(node, text) {
+          const match = findArbitraryValue(text);
+          if (match) {
+            context.report({ node, messageId: "restricted", data: { match } });
+          }
+        }
+        function checkExpression(node) {
+          if (!node) return;
+          if (node.type === "Literal" && typeof node.value === "string") {
+            check(node, node.value);
+          } else if (node.type === "TemplateLiteral") {
+            for (const quasi of node.quasis) {
+              check(node, quasi.value.raw);
+            }
+          }
+        }
+        return {
+          VariableDeclarator(node) {
+            checkExpression(node.init);
+          },
+          AssignmentExpression(node) {
+            checkExpression(node.right);
+          },
+        };
+      },
+    },
+  },
+};
+
 /** Flat ESLint config for the monorepo (apps/web + packages/shared). */
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -24,6 +131,7 @@ const eslintConfig = defineConfig([
     // seharusnya `-start-4`), supaya tidak lolos manual review lagi.
     files: ["apps/web/**/*.{ts,tsx}", "packages/**/*.{ts,tsx}"],
     extends: [eslintPluginTailwindcss.configs.recommended],
+    plugins: { local: localRules },
     settings: {
       tailwindcss: {
         // Path absolut: plugin me-resolve cssConfigPath relatif ke direktori
@@ -56,22 +164,25 @@ const eslintConfig = defineConfig([
       // value di dalamnya) TIDAK terjangkau sama sekali, jadi bukan celah
       // yang butuh disable comment — tapi juga bukan celah yang tertutup
       // rule ini kalau ada magic-number baru ditaruh dengan pola yang sama.
-      // Belum ada solusi otomatis untuk ini di sesi ini (butuh custom
-      // rule) — kewaspadaan pola ini didelegasikan ke code review manual.
       "tailwindcss/no-arbitrary-value": "error",
+      // Menutup celah di atas: custom rule lokal yang menganalisis
+      // deklarasi/assignment variabel, bukan hanya atribut className.
+      "local/no-arbitrary-value-in-variable": "error",
     },
   },
   {
     // ADR-095: menegakkan AGENTS.md rule 6 — domain logic tidak boleh
     // import Prisma/Supabase/implementasi repository-adapter langsung.
     // Diverifikasi 0 pelanggaran existing sebelum diaktifkan sebagai error.
-    // Known limitation (temuan review Ridwan, 2026-08-28): `no-restricted-imports`
-    // tidak menganalisis dynamic import (`await import("@prisma/client")`)
-    // atau re-export pass-through tidak langsung — celah ini bawaan rule
-    // core ESLint, bukan salah konfigurasi, dan belum ada mitigasi
-    // otomatis di sesi ini.
+    // `local/no-dynamic-restricted-import` menutup celah dynamic import
+    // yang tidak terjangkau `no-restricted-imports` (temuan review Ridwan,
+    // 2026-08-28). Re-export pass-through tidak langsung via file
+    // perantara tetap tidak terjangkau — masih known limitation, karena
+    // butuh analisis lintas-file yang tidak dilakukan lint per-file.
     files: ["apps/web/src/domains/**/*.{ts,tsx}"],
+    plugins: { local: localRules },
     rules: {
+      "local/no-dynamic-restricted-import": "error",
       "no-restricted-imports": [
         "error",
         {

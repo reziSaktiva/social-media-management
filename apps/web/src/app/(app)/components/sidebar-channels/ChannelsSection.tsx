@@ -42,6 +42,7 @@ export type { SidebarChannelAccount };
 // arbitrary values that reference the token CSS var directly — never a raw
 // hex/px — which keeps them token-backed per project convention.
 const TRANSITION_FAST =
+  // eslint-disable-next-line local/no-arbitrary-value-in-variable -- token-backed CSS var (dijelaskan di komentar atas), bukan magic number.
   "duration-[var(--duration-fast)] ease-[var(--ease-standard)]";
 
 // Scroll independen dari SideNavSection "Menu" di atasnya — max-height

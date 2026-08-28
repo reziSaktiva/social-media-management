@@ -86,19 +86,29 @@ menyertakan enforcement tooling (ESLint) untuk sebagian aturan ini.
      `@prisma/client`, `@supabase/supabase-js`, dan import langsung ke
      `lib/repositories/**`/`lib/adapters/**`/`lib/prisma/**`/
      `lib/supabase/**`/`**/generated/**` (menegakkan AGENTS.md rule 6).
-     **Known limitation** (review Ridwan, 2026-08-28): rule ini tidak
-     menjangkau dynamic import atau re-export pass-through tidak langsung —
-     keterbatasan bawaan rule core ESLint, bukan salah konfigurasi.
    - `no-restricted-syntax` — block `<div>` mentah di
      `apps/web/src/app/**/*.tsx` dan `apps/web/src/components/**/*.tsx`
      (menegakkan `apps/web/.claude/CLAUDE.md`).
    - `tailwindcss/no-arbitrary-value: "error"` (sebelumnya `off` di
      `recommended` config) — 5 pemakaian token-backed di 2 file diberi
-     `eslint-disable-next-line` + komentar alasan. **Known limitation**
-     (review Ridwan, 2026-08-28): rule hanya menganalisis string literal
-     langsung di atribut `className`; 2 arbitrary-value lain yang ditaruh
-     di konstanta terpisah (`TRANSITION_FAST`, `ChannelsSection.tsx`) tidak
-     terjangkau sama sekali — belum ada mitigasi otomatis di sesi ini.
+     `eslint-disable-next-line` + komentar alasan.
+   - **Follow-up (2026-08-28) — 2 custom rule lokal ditambahkan** untuk
+     menutup known-limitation yang ditemukan review Ridwan, tanpa
+     dependency baru (didefinisikan inline sebagai plugin lokal di
+     `eslint.config.mjs`):
+     - `local/no-dynamic-restricted-import` — menutup celah
+       `no-restricted-imports` yang hanya menjangkau static import;
+       sekarang dynamic import (`await import("@prisma/client")`) ke
+       target yang sama juga tertangkap di domain layer. Diverifikasi
+       lewat probe file (dibuat lalu dihapus). Re-export pass-through
+       tidak langsung via file perantara **tetap** tidak terjangkau
+       (butuh analisis lintas-file, di luar scope lint per-file).
+     - `local/no-arbitrary-value-in-variable` — menutup celah
+       `tailwindcss/no-arbitrary-value` yang hanya menganalisis literal
+       langsung di atribut `className`; sekarang arbitrary-value yang
+       disimpan di `const`/assignment terpisah juga tertangkap. Menangkap
+       `TRANSITION_FAST` (`ChannelsSection.tsx`) yang sebelumnya lolos —
+       diberi `eslint-disable-next-line` karena token-backed, legit.
    - **Sengaja tidak dikerjakan** (dicatat sebagai deferred): boundary
      cross-domain via public API (AGENTS.md rule 7, butuh
      `eslint-plugin-boundaries` — dependency baru, perlu masuk
