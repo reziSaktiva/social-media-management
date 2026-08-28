@@ -8,6 +8,79 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-28 — ADR-094 Realtime Calendar + T-033 ditutup Done (T-033.7 dibatalkan)
+
+### Context
+
+Lanjutan diskusi ADR-093 (Import Posts) — King Rezi kembali ke rencana Realtime Calendar (opsi 1 dari diskusi awal sesi) dan meminta draft ADR untuk itu. Investigasi arsitektur menemukan 2 hal penting: (1) tidak ada Realtime subscription yang benar-benar hidup di aplikasi ini sekarang (T-036, satu-satunya konsumen bridge Better Auth↔Supabase JWT, masih Not Started); (2) RLS policy server-side existing (`current_setting`) tidak berlaku untuk koneksi Realtime client (butuh `auth.uid()`). Setelah ADR-094 disetujui, King Rezi menanyakan nasib T-033.7 (manual refresh control, sudah blocked karena tidak ada rancangan Claude Design) — apakah dihapus atau tetap dikerjakan mengingat Realtime akan menggantikan fungsi utamanya.
+
+### Decisions
+
+* **ADR-094** dibuat dan **Accepted**: mengamandemen RT-D01/RT-D02 (`realtime-strategy.md`) — tabel `publishing_posts` ditambahkan sebagai target Supabase Realtime kedua setelah `notifications`, khusus 4 screen Publish (Calendar, Queue, Drafts, History — History belum dibangun, wajib menyertakan pola ini sejak desain T-034). Channel per-workspace (`publishing_posts:{workspaceId}`, event INSERT/UPDATE, filter `workspace_id`), butuh RLS policy baru berbasis `auth.uid()` (varian baru dari RLS Policy Pattern, terpisah dari policy server-side yang sudah ada). Strategi update **granular client-side patch** (dipilih King Rezi meski lebih kompleks dari full `router.refresh()`, demi tidak mereset state lokal tiap screen) — tiap screen simpan state list sendiri, saat event masuk fetch 1 record termapping lalu upsert/remove ke local state; event echo dari aksi sendiri diproses sama (idempoten). **Hard dependency ke T-036** — wiring generic Supabase Realtime + JWT bridge dibangun di T-036 dulu (scope lebih kecil, sudah di backlog), fitur ini reuse, bukan jalan paralel/duluan.
+* Setelah ADR-094 disetujui, King Rezi memutuskan **T-033.7 dibatalkan total** (bukan didesain ulang jadi fallback seperti yang sempat saya usulkan) — Realtime akan menangani sinkronisasi Calendar, tombol refresh manual berdiri sendiri dianggap tidak perlu lagi. Subtask ditandai `[x]` dengan strikethrough + alasan (pola sama T-018.1/.2), **bukan dihapus** (ID tidak didaur ulang). Scope-nya sengaja **tidak** dipindah ke task Realtime baru — kalau dibutuhkan lagi nanti (mis. fallback recovery), jadi task baru dengan ID sendiri.
+* **T-033 ditutup `✅ Done`** — seluruh 8 subtask tertutup (7 diimplementasikan + 1 dibatalkan by design). Data Calendar untuk saat ini tetap manual-refresh apa adanya (tanpa tombol eksplisit) sampai task dari ADR-094 diimplementasikan.
+* `TASKS.md` diperbarui: v0.2 breakdown 8✅·2🟡·11⏳ → **9✅·1🟡·11⏳** (T-030 tetap satu-satunya 🟡), total selesai 22→**23**. Task baru untuk ADR-094 **belum** ditulis ke `TASKS.md`/`tasks/v02-publishing-mvp.md` — menunggu sesi berikutnya.
+
+### Files
+
+* `project-manager/decisions/ADR-094-perluasan-supabase-realtime-publishing-posts-granular-patch.md` (baru)
+* `project-manager/DECISIONS.md` (baris index ADR-094)
+* `project-manager/tasks/v02-publishing-mvp.md` (T-033 status → Done, T-033.7 dibatalkan, catatan penutup)
+* `project-manager/TASKS.md` (indeks release v0.2, Total, blok Fokus sekarang)
+
+### Status
+
+ADR-094 Accepted. T-033 `✅ Done`. Task implementasi dari ADR-094 (Realtime Calendar/Queue/Drafts/History) belum ditulis ke backlog — masih perlu sesi lanjutan.
+
+### Lanjutan (sesi sama) — T-092 ditulis ke backlog
+
+King Rezi minta lanjut menulis task implementasi ADR-094. **T-092 · Realtime Calendar/Queue/Drafts/History via Supabase Realtime** ditambahkan ke `tasks/v02-publishing-mvp.md` (6 subtask: T-092.1 RLS policy `auth.uid()`, T-092.2 wiring channel per-workspace reuse T-036, T-092.3–.5 granular patch Calendar/Queue/Drafts, T-092.6 granular patch History depends T-034). `Depends: T-036` (hard dependency, ADR-094 poin 4). ID global berikutnya setelah T-091 (nomor kosong v0.2 sudah habis, pola sama T-039/T-089/T-090/T-091). `TASKS.md` diperbarui: v0.2 21→22 task (breakdown 9✅·1🟡·12⏳), total 74→75 task, 159→165 subtask.
+
+**Files tambahan:** `project-manager/tasks/v02-publishing-mvp.md` (section baru "Realtime Collaboration" T-092, Catatan Rilis diperbarui), `project-manager/TASKS.md` (indeks v0.2, Total).
+
+**Status akhir:** ADR-093, ADR-094 Accepted. T-033 Done. T-090/T-091/T-092 `⏳ Not Started`, siap dikerjakan sesuai urutan dependency (T-092 menunggu T-036).
+
+### Lanjutan lagi (sesi sama) — T-093 ditambahkan, rantai dependency dikoreksi
+
+King Rezi mengoreksi rantai: sebelum T-036 → T-092, seharusnya ada **invite (add user to workspace) → user role** dulu. Investigasi menemukan halaman accept-invite (`/invite/[token]`) memang **belum pernah dibuat sama sekali** — gap yang sudah dicatat CodeRabbit di PR #73 (2026-08-14, ADR-080) sebagai "future work terpisah, belum ada nomor T-XXX", tapi tidak pernah dikonversi jadi task resmi sampai sekarang. Diklarifikasi ke King Rezi apakah "invite" dan "role" itu 1 atau 2 task — dipilih **1 task** dengan beberapa subtask (role sebenarnya sudah otomatis ter-assign dari invitation yang dibuat T-007.6, bukan langkah terpisah secara teknis).
+
+**T-093 · Accept Invite page** ditambahkan ke `tasks/v01-foundation.md` (setelah T-007, domain `workspace`) — 4 subtask: route `/invite/[token]` + validasi token, buat akun/login via Better Auth (email-bound), insert `workspace_members` dengan role dari invitation, dan verifikasi/hardening RBAC end-to-end dengan akun real kedua (menutup gap QA T-008 yang sebelumnya cuma bisa diverifikasi via code review karena dev DB cuma 1 member). Tidak ada ADR baru — murni menutup gap yang sudah didokumentasikan ADR-072/080.
+
+**Dependency chain diperbaiki:** T-036 (`tasks/v02-publishing-mvp.md`) sekarang `Depends: T-026, T-093`. Rantai lengkap: **T-093 → T-036 → T-092**. T-093 ditambahkan ke tabel "Fokus sekarang" `TASKS.md` sebagai root chain baru — tidak ada blocker eksternal (beda dari T-025 yang terhenti kredensial), bisa dikerjakan kapan saja.
+
+**Files:** `project-manager/tasks/v01-foundation.md` (T-093 baru, Catatan Rilis), `project-manager/tasks/v02-publishing-mvp.md` (Depends T-036 ditambah), `project-manager/TASKS.md` (indeks v0.1, Total, Fokus sekarang, footnote ¹).
+
+**Status akhir sesi:** v0.1 22 task (11✅·1🚫·6🟡·1⏸️·3⏳), v0.2 22 task (9✅·1🟡·12⏳). Total 76 task/169 subtask, 23 selesai. Rantai penuh menuju Realtime Calendar: T-093 → T-036 → T-092, ketiganya `⏳ Not Started`.
+
+---
+
+## 2026-08-28 — ADR-093 Import Posts + task T-090/T-091 ditambahkan ke backlog
+
+### Context
+
+Diskusi berawal dari perbandingan kode vs Claude Design untuk T-033 (Calendar), lalu meluas ke pertanyaan King Rezi soal fitur realtime ala Buffer (dua user melihat perubahan draft/schedule secara live). Investigasi arsitektur (`realtime-strategy.md`, RT-D01/RT-D02) mengonfirmasi Content Calendar saat ini manual-refresh, dan data post kita sendiri (Supabase/Prisma) adalah source of truth — Outstand cuma perantara publish via ACL. King Rezi lalu menemukan dokumentasi Outstand punya endpoint berbayar `POST /v1/social-accounts/{id}/imports` untuk menarik post yang dibuat langsung di platform (di luar tool kita), dan meminta ini dibangun sebagai fitur terpisah dari rencana Realtime Calendar (yang belum punya ADR sendiri, belum dieksekusi).
+
+### Decisions
+
+* **ADR-093** dibuat dan **Accepted**: status domain baru `ContentStatus.Imported` (terminal, immutable, read-only via guard repository), tampil di Calendar & History. Tiga jalur trigger — otomatis saat connect (sekali), periodik (Railway Cron harian, pola JOB-04), manual dari Settings "Sync Now" — ketiganya pakai watemark `lastImportedUntil` (kecuali trigger awal) supaya tidak mengulang seluruh rentang tiap kali. Dua job baru: `JOB-05` (trigger `import.sync`) dan `JOB-06` (processing webhook `import.completed`/`import.failed`, pola JOB-01). Guard concurrent-import per akun + **3 lapis pengaman biaya** khusus jalur manual (karena endpoint ini berbayar, kekhawatiran eksplisit King Rezi): RBAC Owner/Admin (reuse hak existing "kelola Connected Accounts", tanpa aturan baru), cooldown 24 jam per akun, dan cap **1x/minggu per workspace** (dihitung dari tabel `background_jobs` yang sudah ada sebagai audit log, tanpa skema counter baru — cap ini paling dominan, jauh lebih ketat dari cooldown). `PublishingPost.authorId` jadi nullable (null hanya untuk `Imported`). `FakeOutstandAdapter.importPosts` dipakai dulu (pola ADR-059) karena `OUTSTAND_API_KEY` asli belum ada.
+* Ditemukan sekaligus (di luar scope ADR-093, sengaja ditrack terpisah): post `Published`/`Failed` yang dikirim lewat tool kita sendiri saat ini masih bisa dibuka ke Draft Editor lewat CTA di `CalendarPostPopover.tsx` — seharusnya read-only juga begitu sudah live di platform. Bukan bagian ADR-093 (beda kebutuhan RBAC/asal-usul dari `Imported`), jadi jadi task independen T-091.
+* Dua task baru ditulis ke `TASKS.md` + `tasks/v02-publishing-mvp.md`: **T-090** (Import Posts, 5 subtask, ADR-093) dan **T-091** (read-only enforcement Published/Failed, 2 subtask, bug-fix tanpa ADR baru). Nomor kosong v0.2 (T-020–T-038) sudah habis sejak T-039 dipinjam v0.1, jadi keduanya memakai ID global berikutnya yang belum pernah dipakai (090, 091), pola sama T-039/T-089. Index `TASKS.md` diperbarui: v0.2 19→21 task, total 72→74 task/152→159 subtask; sekaligus dikoreksi drift breakdown status v0.2 (8✅·1🟡·10⏳ yang sudah tidak cocok dengan file aktual → 8✅·2🟡·11⏳, T-030 dan T-033 sama-sama In Progress).
+* Kedua task (T-090.5 UI Import + T-091.2 UI read-only Popover) di-gate rule 17 `AGENTS.md` — belum boleh dikode sampai rancangannya dikonfirmasi di Claude Design; tidak ada mockup sama sekali untuk kartu `Imported` maupun state read-only Popover saat ini.
+* Rencana Realtime Calendar (opsi Supabase Realtime ke `PublishingPost`, dibahas sebelum ADR-093) **belum** dituangkan jadi ADR/task — masih diskusi terbuka, disengaja dipisah dari sesi ini atas permintaan King Rezi ("jangan digabung dulu").
+
+### Files
+
+* `project-manager/decisions/ADR-093-import-posts-dari-social-account-status-imported-read-only.md` (baru)
+* `project-manager/DECISIONS.md` (baris index ADR-093)
+* `project-manager/tasks/v02-publishing-mvp.md` (section baru "Import" T-090, "Read-Only Enforcement" T-091, Catatan Rilis diperbarui)
+* `project-manager/TASKS.md` (indeks release v0.2, Total, footnote ¹)
+
+### Status
+
+ADR-093 Accepted, T-090/T-091 `⏳ Not Started` — belum ada implementasi kode. Realtime Calendar masih diskusi, belum jadi ADR/task.
+
+---
+
 ## 2026-08-27 — Polishing UI grid Calendar (Month & Week) sebelum T-033.7
 
 ### Context
