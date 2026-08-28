@@ -7,6 +7,7 @@ export default defineConfig({
     include: [
       "apps/web/**/*.{test,spec}.{ts,tsx}",
       "packages/shared/**/*.{test,spec}.{ts,tsx}",
+      "eslint-rules/**/*.{test,spec}.ts",
     ],
   },
   resolve: {

@@ -8,6 +8,103 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-28 — ADR-095 Follow-up: 2 Custom ESLint Rule Menutup Known Limitation
+
+### Context
+
+Setelah PR #93 (ADR-095) dibuka, King Rezi menanyakan detail 2 known limitation yang didokumentasikan (`no-restricted-imports` tidak menjangkau dynamic import; `tailwindcss/no-arbitrary-value` tidak menjangkau arbitrary-value di variabel terpisah), lalu meminta keduanya ditutup dengan custom rule.
+
+### Added
+
+* `eslint.config.mjs` — 2 custom rule lokal (plugin inline, tanpa dependency baru): `local/no-dynamic-restricted-import` (block dynamic `import("@prisma/client")` dkk di domain layer, scope sama dengan `no-restricted-imports`) dan `local/no-arbitrary-value-in-variable` (block arbitrary-value Tailwind yang disimpan di `const`/assignment terpisah, scope sama dengan `tailwindcss/no-arbitrary-value`).
+
+### Fixed
+
+* `ChannelsSection.tsx` — `TRANSITION_FAST` (satu-satunya instans di seluruh codebase yang match pola ini, dikonfirmasi grep menyeluruh) sekarang tertangkap rule baru, diberi `eslint-disable-next-line local/no-arbitrary-value-in-variable` karena token-backed CSS var (legit, bukan magic number).
+* `project-manager/decisions/ADR-095-*.md` — section Decision poin 6 diupdate: 2 known limitation sebelumnya sekarang dicatat sebagai closed via custom rule, dengan catatan sisa limitation (re-export pass-through tidak langsung tetap tidak terjangkau, butuh analisis lintas-file).
+
+### Verification
+
+Rule diverifikasi bekerja lewat probe file nyata (dynamic import ke `@prisma/client` di domain layer → tertangkap, file dihapus lagi setelah diverifikasi). `bun run lint`/`typecheck`/`test` — semua hijau: 0 error, 209 test passed/3 skipped.
+
+---
+
+## 2026-08-28 — ADR-095 Baseline Rendering Strategy, Code Conventions, Spacing Scale + ESLint Enforcement
+
+### Context
+
+King Rezi meminta "codify coding discipline" — menuliskan konvensi rendering, error handling, dan spacing yang sudah konsisten dipakai di kode nyata (Server Actions 100% mutation-only via `actions.ts`, hierarki error `AppError`/`ApplicationError`/`XxxDomainError`/`toActionError`, spacing 100% prop numerik Astryx kecuali 2 baris exception) sebagai baseline resmi, sekaligus menutup `TBD` skala Spacing yang menggantung sejak ADR-038, dan menambah enforcement tooling ESLint untuk mencegah drift ke depan.
+
+### Added
+
+* `product-discovery/06-engineering/rendering-strategy.md` — baru. Baseline rendering strategy Next.js (Server Component vs Client, Server Actions = mutation only/RS-D02, streaming, SSR/SSG/ISR).
+* `product-discovery/06-engineering/code-conventions.md` — baru. Baseline naming convention + hierarki error handling (`AppError`/`ApplicationError`/`XxxDomainError`/`toActionError`, CC-D01/CC-D02).
+* `project-manager/decisions/ADR-095-baseline-rendering-strategy-code-conventions-spacing-scale-server-actions-mutation-only.md` — baru, ADR lengkap. Indeks ditambahkan di `project-manager/DECISIONS.md` (baris paling atas, sebelum ADR-094).
+* **T-094** (`tasks/v01-foundation.md`, sibling T-001/T-002, domain `platform/tooling`) — task baru untuk mencatat deliverable ADR-095, ditutup `✅ Done` (4 subtask: 3 selesai + 1 dibiarkan terbuka, cleanup dashboard, lihat KI-036). `TASKS.md` diperbarui: indeks v0.1 22→23 task (11✅→12✅), Total 76→77 task/23→24 selesai/169→173 subtask.
+* **KI-036** (`PROJECT_STATE.md`) — dashboard (`app/(app)/page.tsx`) fetch data lewat Server Action, menyimpang RS-D02; Tech-Debt, tidak urgent, terkait ADR-095 + T-094.
+* **KI-037** (`PROJECT_STATE.md`) — `design-tokens.md` section Spacing baru dikunci, belum disinkronkan ke Claude Design (pola reminder ADR-056); Process, terkait ADR-095 + ADR-056.
+
+### Changed
+
+* `product-discovery/06-engineering/design-tokens.md` — section Spacing dikunci (sebelumnya `TBD` sejak ADR-038): base 1 unit Astryx = 4px, skala terpakai 0/0.5/1/1.5/2/3/4/5/6/8 (0–32px) + panduan semantik penggunaan. Section Radius/Elevation tidak berubah, tetap `TBD`.
+* `context/ctx-development.md`, `context/ctx-implementation.md`, `AGENTS.md` — pointer/index ditambahkan ke 2 dokumen baseline baru di atas.
+* `eslint.config.mjs` — 3 rule baru: `no-restricted-imports` di `apps/web/src/domains/**` (block `@prisma/client`, `@supabase/supabase-js`, import langsung `lib/repositories/**`/`lib/adapters/**`/`**/generated/**`, menegakkan AGENTS.md rule 6), `no-restricted-syntax` (block `<div>` mentah di `apps/web/src/app/**/*.tsx` dan `apps/web/src/components/**/*.tsx`), `tailwindcss/no-arbitrary-value: "error"` (sebelumnya `off`). 6 lokasi arbitrary-value token-backed existing (`ChannelsSection.tsx`, `ConnectedAccountsList.tsx`) diberi `eslint-disable-next-line` + komentar alasan. Diverifikasi 0 pelanggaran sebelum diaktifkan sebagai `"error"`.
+
+### Known deviation (sengaja tidak diperbaiki)
+
+`apps/web/src/app/(app)/page.tsx` (dashboard) mengambil data lewat Server Action (`getDashboardSummaryAction`) untuk pure read — seharusnya panggil Application Service langsung dari Server Component seperti `apps/web/src/app/(app)/publish/calendar/page.tsx` (pola benar sesuai AGENTS.md rule 5 dan RS-D02). Diakui sebagai exception pra-existing di ADR-095, sengaja tidak diperbaiki sebagai bagian ADR ini — dicatat KI-036 + subtask terbuka T-094.4.
+
+### Fixed (setelah review arsitektur Ridwan)
+
+Ridwan Architecture Reviewer (read-only) menemukan 6 temuan atas perubahan
+di atas — 4 langsung diperbaiki di sesi yang sama, 2 didokumentasikan
+sebagai known limitation (tidak ada mitigasi otomatis tersedia):
+
+* **Diperbaiki** — `eslint.config.mjs`: pattern `no-restricted-imports`
+  domain layer bolong untuk `**/lib/prisma/**` dan `**/lib/supabase/**`
+  (celah nyata dibuktikan Ridwan via probe file, sudah dihapus lagi) —
+  ditambahkan ke `patterns`. Diverifikasi ulang: masih 0 pelanggaran.
+* **Diperbaiki** — komentar jumlah arbitrary-value di `eslint.config.mjs`
+  dikoreksi (sebelumnya "6", akurat "5 diberi disable comment, 2 lagi di
+  `TRANSITION_FAST` tidak terjangkau rule sama sekali").
+* **Diperbaiki** — `rendering-strategy.md`: klaim "0 `use client` di
+  page.tsx/layout.tsx" salah — `settings/account/preferences/page.tsx`
+  adalah exception yang tidak tercatat. Teks dikoreksi + dicatat sebagai
+  known exception.
+* **Diperbaiki** — `code-conventions.md` + `ADR-095`: klaim `toActionError`
+  "sudah dipakai konsisten" dikoreksi — 3 file (`draft-editor/actions.ts`,
+  `settings/account/actions.ts`, `onboarding/components/actions.ts`) belum
+  migrasi, dicatat sebagai technical debt pra-existing.
+* **Didokumentasikan sebagai known limitation** (tidak diperbaiki, bawaan
+  keterbatasan rule) — `no-restricted-imports` tidak menjangkau dynamic
+  import/re-export pass-through; `tailwindcss/no-arbitrary-value` tidak
+  menjangkau arbitrary-value yang disimpan di konstanta string terpisah
+  (contoh nyata: `TRANSITION_FAST`). Keduanya butuh custom ESLint rule
+  untuk ditutup sepenuhnya — di luar scope sesi ini.
+
+### Verification
+
+`bun run lint` / `typecheck` / `test` — semua hijau: 0 error, 209 test passed / 3 skipped. Diverifikasi ulang setelah fix di atas, tetap hijau.
+
+### Files
+
+* `product-discovery/06-engineering/rendering-strategy.md` (baru)
+* `product-discovery/06-engineering/code-conventions.md` (baru)
+* `product-discovery/06-engineering/design-tokens.md` (section Spacing)
+* `project-manager/decisions/ADR-095-baseline-rendering-strategy-code-conventions-spacing-scale-server-actions-mutation-only.md` (baru)
+* `project-manager/DECISIONS.md` (baris index ADR-095)
+* `context/ctx-development.md`, `context/ctx-implementation.md`, `AGENTS.md` (pointer)
+* `eslint.config.mjs` (3 rule baru) + 2 file kode (`ChannelsSection.tsx`, `ConnectedAccountsList.tsx`, disable-comment)
+* `project-manager/tasks/v01-foundation.md` (T-094 baru)
+* `project-manager/TASKS.md` (indeks v0.1, Total, footnote ¹)
+* `project-manager/PROJECT_STATE.md` (KI-036, KI-037, Recent Decisions, Completed Ringkasan, Metadata)
+
+### Status
+
+ADR-095 Accepted. T-094 `✅ Done` (1 subtask terbuka, tidak memblokir). KI-036 dan KI-037 `Open`, tidak memblokir M8.
+
+---
+
 ## 2026-08-28 — ADR-094 Realtime Calendar + T-033 ditutup Done (T-033.7 dibatalkan)
 
 ### Context

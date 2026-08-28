@@ -251,17 +251,17 @@ fase aktif di file ini.
 
 ## Mapping task → baca dulu
 
-| Jenis task                   | Context dulu                                 | Baseline minimal                                                                  |
-| ---------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------- |
-| Fitur / use-case             | `ctx-domain` + `ctx-implementation`          | BC di `05-architecture/` + UX di `04-ux/` (+ `ctx-business` untuk roles/MVP)      |
-| Schema / migrasi             | `ctx-architecture` + `ctx-technical-context` | `database-strategy.md` + `database-orm.md` + `apps/web/prisma/schema.prisma`      |
-| Auth / session               | `ctx-architecture` + `ctx-technical-context` | `auth-architecture.md` + `auth-strategy.md`                                       |
-| Outstand / webhook / publish | `ctx-architecture`                           | `integration-layer.md`                                                            |
-| Jobs / cron                  | `ctx-architecture`                           | `background-jobs.md`                                                              |
-| Env / deploy / CI            | `ctx-technical-context`                      | `environment-management.md`, `deployment-infrastructure.md`, `cicd-pipeline.md`   |
-| Coding conventions / DX      | `ctx-development`                            | `dx-tooling.md`                                                                   |
-| UI component / styling       | `ctx-design` + `ctx-implementation`          | `apps/web/.claude/CLAUDE.md` + `monorepo-setup.md` + `design-tokens.md` + ADR-041 |
-| Desain / handoff UI          | `ctx-design`                                 | `04-ux/` + pointer Claude Design (folder `design/` dihapus, ADR-045)              |
+| Jenis task                   | Context dulu                                 | Baseline minimal                                                                                       |
+| ---------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Fitur / use-case             | `ctx-domain` + `ctx-implementation`          | BC di `05-architecture/` + UX di `04-ux/` + `rendering-strategy.md` (+ `ctx-business` untuk roles/MVP) |
+| Schema / migrasi             | `ctx-architecture` + `ctx-technical-context` | `database-strategy.md` + `database-orm.md` + `apps/web/prisma/schema.prisma`                           |
+| Auth / session               | `ctx-architecture` + `ctx-technical-context` | `auth-architecture.md` + `auth-strategy.md`                                                            |
+| Outstand / webhook / publish | `ctx-architecture`                           | `integration-layer.md`                                                                                 |
+| Jobs / cron                  | `ctx-architecture`                           | `background-jobs.md`                                                                                   |
+| Env / deploy / CI            | `ctx-technical-context`                      | `environment-management.md`, `deployment-infrastructure.md`, `cicd-pipeline.md`                        |
+| Coding conventions / DX      | `ctx-development`                            | `dx-tooling.md` + `code-conventions.md`                                                                |
+| UI component / styling       | `ctx-design` + `ctx-implementation`          | `apps/web/.claude/CLAUDE.md` + `monorepo-setup.md` + `design-tokens.md` + ADR-041                      |
+| Desain / handoff UI          | `ctx-design`                                 | `04-ux/` + pointer Claude Design (folder `design/` dihapus, ADR-045)                                   |
 
 ## Setelah mengubah sesuatu
 

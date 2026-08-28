@@ -8,12 +8,13 @@ Keputusan arsitektur → `ctx-architecture.md`.
 
 ## Baca dulu
 
-| Dokumen                                                                                                                  | Topik                                                     |
-| ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| [`../product-discovery/05-architecture/application-layer.md`](../product-discovery/05-architecture/application-layer.md) | Kontrak service, repository, entry points, error handling |
-| [`domain-model.md`](../product-discovery/05-architecture/domain-model.md)                                                | BC & boundary                                             |
-| [`integration-layer.md`](../product-discovery/05-architecture/integration-layer.md)                                      | Outstand ACL — saat sentuh publish/webhook/OAuth          |
-| [`../product-discovery/06-engineering/monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)         | Layout `apps/web`, `packages/shared`                      |
+| Dokumen                                                                                                                  | Topik                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| [`../product-discovery/05-architecture/application-layer.md`](../product-discovery/05-architecture/application-layer.md) | Kontrak service, repository, entry points, error handling                                |
+| [`../product-discovery/06-engineering/rendering-strategy.md`](../product-discovery/06-engineering/rendering-strategy.md) | Server Component/Server Action boundary saat menulis entry point baru (ADR-016, ADR-095) |
+| [`domain-model.md`](../product-discovery/05-architecture/domain-model.md)                                                | BC & boundary                                                                            |
+| [`integration-layer.md`](../product-discovery/05-architecture/integration-layer.md)                                      | Outstand ACL — saat sentuh publish/webhook/OAuth                                         |
+| [`../product-discovery/06-engineering/monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)         | Layout `apps/web`, `packages/shared`                                                     |
 
 ---
 
@@ -51,6 +52,9 @@ UI / Route / Server Action / Route Handler
         → Repository interface → Prisma implementation (infrastructure)
 ```
 
+Data fetching di Server Component (`page.tsx`) memanggil Application Service
+langsung, **bukan** Server Action — detail di `rendering-strategy.md` (RS-D02).
+
 Webhook / cron / eksternal → Route Handler atau job runner → Application Service
 (bukan logic di handler). Khusus webhook Outstand, receipt wajib durable sebelum
 ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
@@ -86,7 +90,7 @@ Structure` (ADR-069, resolusi KI-010).
 
 ## Aturan operasional
 
-1. **Entry points** (`app/`, Middleware, Route Handlers, Server Actions): wiring + auth guard tipis + panggil service. **Tanpa** business rules.
+1. **Entry points** (`app/`, Middleware, Route Handlers, Server Actions): wiring + auth guard tipis + panggil service. **Tanpa** business rules. (Server Actions khusus mutation — lihat `rendering-strategy.md`.)
 2. **Satu Application Service per BC** — orchestrasi, otorisasi (RBAC), koordinasi repo.
 3. **Domain logic** murni: tidak import Prisma, Supabase client, atau HTTP Outstand.
 4. **Repository**: interface di sisi domain; implementasi pakai Prisma di lapisan infrastructure domain tersebut.

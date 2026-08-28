@@ -42,6 +42,7 @@ export type { SidebarChannelAccount };
 // arbitrary values that reference the token CSS var directly — never a raw
 // hex/px — which keeps them token-backed per project convention.
 const TRANSITION_FAST =
+  // eslint-disable-next-line local/no-arbitrary-value-in-variable -- token-backed CSS var (dijelaskan di komentar atas), bukan magic number.
   "duration-[var(--duration-fast)] ease-[var(--ease-standard)]";
 
 // Scroll independen dari SideNavSection "Menu" di atasnya — max-height
@@ -60,6 +61,7 @@ function PlatformBadge({ platform }: { platform: SocialPlatform }) {
     <HStack
       hAlign="center"
       vAlign="center"
+      // eslint-disable-next-line tailwindcss/no-arbitrary-value -- shadow token-backed CSS var (--border-width/--color-border), tidak ada utility Tailwind native untuk ini.
       className="absolute -inset-e-1 -bottom-1 size-4 rounded-full bg-surface shadow-[0_0_0_var(--border-width)_var(--color-border)]"
       aria-hidden
     >
@@ -118,6 +120,7 @@ function ChannelRow({
         // baris bergeser via margin-inline-start bertransisi (override
         // eksplisit dari "no-shift" yang berlaku untuk swap count<->"+" di
         // poin 4-5 asli).
+        // eslint-disable-next-line tailwindcss/no-arbitrary-value -- transition-property arbitrary value, tidak ada utility Tailwind native untuk `margin-inline-start`.
         "relative my-1 transition-[margin-inline-start]",
         TRANSITION_FAST,
         isRevealed ? "ms-4" : "ms-0",
@@ -174,6 +177,7 @@ function ChannelRow({
           hAlign="center"
           align="center"
           className={cn(
+            // eslint-disable-next-line tailwindcss/no-arbitrary-value -- transition-property arbitrary value, tidak ada utility Tailwind native untuk multi-property ini.
             "absolute inset-0 transition-[opacity,visibility]",
             TRANSITION_FAST,
             isRevealed
@@ -189,6 +193,7 @@ function ChannelRow({
           hAlign="center"
           align="center"
           className={cn(
+            // eslint-disable-next-line tailwindcss/no-arbitrary-value -- transition-property arbitrary value, tidak ada utility Tailwind native untuk multi-property ini.
             "absolute inset-0 transition-[opacity,visibility]",
             TRANSITION_FAST,
             isRevealed

@@ -23,6 +23,23 @@ Bun + Next.js 16 + Astryx, workspace `apps/web` + `packages/shared`, ESLint/Pret
 
 > ⚠️ Schema jauh mendahului kode — 15 dari 22 model belum punya repository/service. Ini disengaja (schema-first), bukan utang.
 
+### T-094 · Baseline Rendering Strategy, Code Conventions, Spacing Scale + ESLint Enforcement (ADR-095)
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ✅ Done — baseline dokumentasi (`rendering-strategy.md`, `code-conventions.md`), penguncian Spacing scale di `design-tokens.md`, dan 3 rule ESLint enforcement sudah selesai & terverifikasi (lint/typecheck/test hijau: 0 error, 209 test passed/3 skipped). 1 subtask (cleanup dashboard) sengaja dibiarkan terbuka, tidak memblokir penutupan — di luar scope ADR-095, lihat **KI-036** |
+| **Domain**    | platform/tooling (bukan salah satu domain produk)             |
+| **ADR**       | ADR-095                                                      |
+| **Depends**   | —                                                             |
+| **Baca dulu** | `06-engineering/rendering-strategy.md` · `06-engineering/code-conventions.md` · `06-engineering/design-tokens.md` (§ Spacing) · `decisions/ADR-095-baseline-rendering-strategy-code-conventions-spacing-scale-server-actions-mutation-only.md` |
+
+Menuliskan konvensi rendering, error handling, dan spacing yang sudah konsisten dipakai di kode sebagai baseline resmi, sekaligus menegaskan ulang (bukan mengubah) ADR-016 bahwa Server Actions eksklusif untuk mutation. Ditemukan 1 inkonsistensi pra-existing (`app/(app)/page.tsx` dashboard fetch data lewat Server Action) yang sengaja tidak diperbaiki di sesi ini — dicatat sebagai subtask terbuka T-094.4 + **KI-036**.
+
+- [x] **T-094.1** Baseline baru `rendering-strategy.md` dan `code-conventions.md` di `product-discovery/06-engineering/`
+- [x] **T-094.2** Kunci section Spacing di `design-tokens.md` (base 1 unit = 4px, skala 0/0.5/1/1.5/2/3/4/5/6/8 = 0–32px, `TBD` sejak ADR-038 dihapus)
+- [x] **T-094.3** 3 rule ESLint enforcement di `eslint.config.mjs` (domain import boundary via `no-restricted-imports`, larangan `<div>` mentah via `no-restricted-syntax`, `tailwindcss/no-arbitrary-value: "error"`) — 6 lokasi arbitrary-value token-backed existing (`ChannelsSection.tsx`, `ConnectedAccountsList.tsx`) diberi `eslint-disable-next-line` + komentar alasan
+- [ ] **T-094.4** Cleanup `app/(app)/page.tsx` (dashboard) agar fetch data lewat Application Service langsung dari Server Component (RS-D02), bukan `getDashboardSummaryAction` — lihat **KI-036**
+
 ---
 
 ## Authentication

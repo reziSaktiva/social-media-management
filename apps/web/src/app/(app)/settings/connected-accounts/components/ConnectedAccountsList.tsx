@@ -46,6 +46,7 @@ function PlatformStatusDot({
     <HStack
       hAlign="center"
       vAlign="center"
+      // eslint-disable-next-line tailwindcss/no-arbitrary-value -- shadow token-backed CSS var (--border-width/--color-border), tidak ada utility Tailwind native untuk ini.
       className="absolute -inset-e-1 -bottom-1 size-4 rounded-full bg-surface shadow-[0_0_0_var(--border-width)_var(--color-border)]"
       aria-hidden
     >
