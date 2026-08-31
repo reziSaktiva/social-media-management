@@ -59,15 +59,17 @@ Admin vs Creator — belum dilakukan tuntas, masih terbuka).
 | Nama     | Sinta Wijaya                  |
 | Email    | `sinta.test@kopiselasar.com` |
 | Password | `Password123!`                |
-| Role     | (belum di-invite ke workspace manapun) |
+| Role     | Creator                       |
 
-Dibuat 2026-08-31 — **hanya registrasi akun** via `/register` (belum
-dilanjutkan ke onboarding buat workspace, langsung logout setelah sign-up
-berhasil), disiapkan sebagai calon **Creator** di workspace Insvire.
-Sengaja **belum di-invite** — atas permintaan eksplisit King Rezi, proses
-invite (Settings → Members → Invite Member → role Creator → buka link
-`/invite/{token}` dengan akun ini) akan dilakukan sendiri oleh King Rezi,
-bukan oleh AI.
+Dibuat 2026-08-31 — registrasi akun via `/register` oleh AI, invite ke
+workspace Insvire (role Creator) dilakukan sendiri oleh King Rezi lewat
+Settings → Members → Invite Member → link `/invite/{token}`, berhasil.
+
+Dengan ini workspace **Insvire** sudah punya akun real untuk **ketiga
+role** (Raka=Owner, Maya=Admin, Sinta=Creator) — melengkapi data yang
+dibutuhkan untuk verifikasi RBAC end-to-end (KI-038, T-093.4: Danger Zone
+hidden non-Owner, Transfer Ownership, Update Role, Remove Member) yang
+sebelumnya terhambat karena tidak ada ≥2 akun nyata di satu workspace.
 
 ---
 
