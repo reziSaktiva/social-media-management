@@ -147,7 +147,7 @@ function buildColumns(
     {
       key: "actions",
       header: "Actions",
-      width: pixel(180),
+      width: pixel(240),
       align: "end",
       renderCell: (member) => (
         <MemberActions
