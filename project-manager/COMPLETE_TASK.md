@@ -8,6 +8,89 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-31 — T-036.1/.2 In-app notification domain skeleton + Supabase Realtime subscribe
+
+### Context
+
+Branch `feature/t-036-notification-realtime` (dari `staging`). Mulai
+mengerjakan T-036 (In-app notification + Supabase Realtime) — rantai
+**T-093 → T-036 → T-092** sudah tidak lagi terhambat sejak T-093 ditutup
+Done (entri di atas). Dua subtask diselesaikan sesi ini: T-036.1 (domain
+skeleton) dan T-036.2 (subscribe Realtime).
+
+### T-036.1 — Domain skeleton: service + repository
+
+Skeleton `NotificationService.notify()` + `notificationRepository.create()`
+ternyata sudah ada sebelumnya (dibangun untuk fitur Transfer Ownership
+T-008.3), tapi belum pernah punya test — beda dengan domain lain
+(workspace, publishing, analytics) yang semuanya sudah punya
+`.service.test.ts`. Ditambahkan
+`apps/web/src/domains/notification/services/notification.service.test.ts`
+(2 test case: delegasi ke `repository.create()` + return record yang
+benar, termasuk kasus tanpa `relatedEntityType`/`relatedEntityId`
+opsional). Lulus semua, lint bersih, `tsc --noEmit` bersih. Method CRUD
+lain (list/markAsRead) sengaja tidak ditambah — ditunda ke T-036.4 (UI
+panel) supaya tidak menulis kode yang belum ada consumer-nya.
+
+### T-036.2 — Subscribe Supabase Realtime tabel `notifications`
+
+File baru:
+
+* `apps/web/src/lib/supabase/realtime/notifications.ts` —
+  `subscribeToNotificationInserts(client, userId, onInsert)`: subscribe
+  channel `notifications:{userId}`, event `postgres_changes` INSERT,
+  filter `user_id=eq.{userId}`, plus mapper payload snake_case Realtime →
+  `NotificationRecord` domain type. Return fungsi unsubscribe.
+* `apps/web/src/lib/hooks/use-notification-realtime.ts` — hook React
+  `useNotificationRealtime(userId, onInsert)`, pembungkus lifecycle
+  (subscribe on mount saat `userId` tersedia, unsubscribe on
+  unmount/`userId` berubah). Tidak merender JSX apa pun, jadi tidak masuk
+  kategori "UI/UX-related" yang butuh gate Claude Design (rule 17
+  AGENTS.md) — akan dipasang nanti oleh komponen bell (T-036.4).
+
+**Temuan infra penting** (dicek via MCP Supabase, project
+`ndcrkzqgqukqfmekgoze`): tabel `notifications` belum pernah dimasukkan ke
+publication `supabase_realtime` (tidak ada satu pun tabel di publication
+itu — Realtime tidak pernah broadcast apapun sebelumnya), dan RLS policy
+yang ada (`notifications_workspace_isolation`) berbasis
+`current_setting('app.current_user_id')` (pola server-side
+`withCurrentUser`), bukan `auth.uid()` — tanpa perbaikan, subscription
+Realtime akan tetap default-deny walau JWT bridge (T-036.3) sudah selesai
+nanti.
+
+**Perbaikan:** migration baru
+`apps/web/prisma/migrations/20260831150000_t036_notifications_realtime_setup/migration.sql`
+— (1) `ALTER PUBLICATION supabase_realtime ADD TABLE "notifications"`, (2)
+`CREATE POLICY "notifications_realtime_own_rows" ON "notifications" FOR
+SELECT USING ("user_id" = (auth.uid())::text)` (policy tambahan/permisif,
+berdampingan dengan policy lama, tidak menggantikan). Migration ini sudah
+dijalankan (`bun run db:deploy`) dan diverifikasi lewat MCP Supabase —
+publication dan policy baru sudah ada di database. Tidak ada ADR baru
+untuk temuan ini — ini closing gap yang memang sudah disyaratkan ADR-023
+(`realtime-strategy.md` § "RLS pada Supabase Realtime"), bukan keputusan
+arsitektur baru.
+
+### Sisa scope T-036 (belum dikerjakan)
+
+* **T-036.3** — sambungkan Supabase JWT dari session Better Auth ke hook
+  `useNotificationRealtime` (saat ini masih pakai anon key polos,
+  `createBrowserSupabaseClient()` tanpa JWT Realtime).
+* **T-036.4** — UI notification bell + panel daftar. **Blocked** —
+  dicek ke Claude Design (project "Social Media Management"), rancangan
+  Notifications Panel belum ada (App Prototype menampilkan toast "Panel
+  notifikasi belum ada layarnya" saat ikon bell diklik). Dicatat
+  **KI-039**. Menunggu King Rezi membuat/mengonfirmasi desain (langsung
+  atau lewat Neymar Product Designer).
+* **T-036.5** — trigger notifikasi dari webhook publish result. Belum
+  dikerjakan, depends T-026 yang juga belum selesai.
+
+### Status
+
+T-036 pindah dari `⏳ Not Started` ke `🟡 In Progress` (2/5 subtask
+selesai). Tidak ada ADR baru ditulis sesi ini.
+
+---
+
 ## 2026-08-31 — T-093 Accept Invite page ditutup Done (T-093.4 verifikasi RBAC end-to-end + fix bug Creator-akses-Members)
 
 ### Context

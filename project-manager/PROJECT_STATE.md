@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** T-025 Real OutstandAdapter, T-036 In-app notification + Supabase Realtime — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus (T-093 Accept Invite page sudah ✅ Done, 2026-08-31)
+* **Top Next Tasks:** T-025 Real OutstandAdapter, T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1/.2 selesai; T-036.4 blocked KI-039) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus (T-093 Accept Invite page sudah ✅ Done, 2026-08-31)
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 77 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -401,6 +401,16 @@ Ditemukan saat penulisan `rendering-strategy.md` (ADR-095, 2026-08-28): `app/(ap
 
 Section Spacing di `design-tokens.md` baru dikunci (base 1 unit = 4px, skala 0/0.5/1/1.5/2/3/4/5/6/8 = 0–32px, menggantikan `TBD` sejak ADR-038) lewat ADR-095. Mengikuti pola reminder ADR-056 (dokumen ini co-equal dengan Claude Design, perubahan salah satu wajib disinkronkan ke yang lain), sinkronisasi ke Claude Design belum dilakukan di sesi ADR-095 — perlu langkah lanjutan terpisah. Tidak memblokir M8.
 
+### KI-039 · Rancangan Notifications Panel belum ada di Claude Design (T-036.4)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Design Gap |
+| Terkait | T-036 |
+
+Ditemukan saat mengerjakan T-036 (2026-08-31): sesuai gate AGENTS.md rule 17, dicek dulu ke Claude Design (project "Social Media Management") sebelum menulis kode UI untuk T-036.4 (notification bell + panel daftar) — App Prototype interaktif menampilkan toast "Panel notifikasi belum ada layarnya" saat ikon bell diklik, jadi rancangannya belum ada sama sekali. T-036.1 dan T-036.2 (domain skeleton + subscribe Realtime, tidak ada permukaan visual) tetap bisa dikerjakan dan sudah selesai. T-036.4 berhenti sampai King Rezi membuat/mengonfirmasi desain (langsung atau lewat Neymar Product Designer). Tidak memblokir M8 secara keseluruhan, hanya subtask ini.
+
 ---
 
 ## Blockers
@@ -444,11 +454,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-036.1/.2 In-app notification domain + Supabase Realtime selesai (2026-08-31)** — T-036.1: skeleton `NotificationService.notify()`/`notificationRepository.create()` (sudah ada dari T-008.3) diberi unit test pertama kali. T-036.2: `subscribeToNotificationInserts` + hook `useNotificationRealtime` (subscribe channel per `user_id`, event `INSERT`, ADR-023); ditemukan gap infra (tabel `notifications` belum pernah masuk publication `supabase_realtime`, RLS belum berbasis `auth.uid()`) dan ditutup lewat migration `20260831150000_t036_notifications_realtime_setup`, sudah dijalankan & diverifikasi. T-036 pindah `⏳ → 🟡 In Progress`; T-036.4 (UI bell+panel) **blocked** menunggu rancangan Claude Design (**KI-039**). Detail: `tasks/v02-publishing-mvp.md` § T-036, `COMPLETE_TASK.md`.
 * **T-093 Accept Invite page selesai (2026-08-31)** — T-093.4 (verifikasi RBAC end-to-end) dituntaskan Najwa QA Engineer dengan 3 akun real (Owner/Admin/Creator) di satu workspace, seluruh skenario RBAC PASS. 1 bug ditemukan & diperbaiki selama verifikasi: Creator bisa mengakses `/settings/members` (information disclosure UI-level; backend RBAC sudah benar sejak awal) — fix `WorkspaceService.canManageMembers` + gate server-side sebelum fetch data member (commit `6fdf272`), diverifikasi ulang tanpa regresi. Task ditutup `✅ Done`, **KI-038 Resolved**. Detail: `tasks/v01-foundation.md` § T-093, `COMPLETE_TASK.md`.
 * **T-094 Baseline Rendering Strategy, Code Conventions, Spacing Scale + ESLint Enforcement selesai (2026-08-28, ADR-095)** — 2 dokumen baseline baru (`rendering-strategy.md`, `code-conventions.md`), skala Spacing `design-tokens.md` dikunci (`TBD` sejak ADR-038 ditutup), 3 rule ESLint enforcement (domain import boundary, larangan `<div>` mentah, `tailwindcss/no-arbitrary-value`) — diverifikasi 0 error lint/typecheck, 209 test passed/3 skipped. 1 subtask tersisa terbuka (cleanup dashboard, **KI-036**), tidak memblokir penutupan. Detail: `tasks/v01-foundation.md` § T-094, `COMPLETE_TASK.md`.
 * **Polishing UI grid Calendar selesai (2026-08-27)** — di atas T-033.1–.6/.8 yang sudah selesai, sebelum T-033.7: fix grid 7-kolom Month & Week tidak sejajar (CSS Grid track blowout, di-fix via `isScrollable`+`StackItem size="fill"`, bukan `xstyle`/StyleX — compiler-nya belum ter-setup, lihat **KI-035**), redesain kartu post (avatar+nama 1 baris, indikator Post/Reel/Story/Pin via `contentFormat`, footer mobile `StatusDot`+`Icon` compact ≤768px), garis pemisah vertikal antar kolom hari + padding cell disesuaikan (gap grid dihapus). T-033.7 (manual refresh) tetap belum dikerjakan — masih blocked. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 * **T-033.8 Popover ringkasan post + CTA Draft Editor Calendar view selesai (2026-08-27)** — `CalendarPostPopover.tsx` (baru): Astryx `Popover` (ADR-090/ADR-091), klik kartu Week/Month membuka ringkasan (header account+platform, caption, media placeholder, 4 tile metrik untuk status Published via `PostMetricsPort`, link "Go to post", CTA "Buka Draft Editor" reuse `useDraftEditor`). Data-wiring: field baru `platformPostUrl` di-expose ke domain publishing, `page.tsx` composition root sekarang pass `AnalyticsService` sebagai `PostMetricsPort` (sebelumnya kosong, jadi metrik Published sekarang benar-benar terisi). Lolos review Ridwan (tanpa temuan) + QA Najwa (tanpa bug fungsional; satu catatan inconclusive soal tooling emulasi mobile viewport, bukan bug). T-033.7 (manual refresh) **belum dikerjakan** — blocked, tidak ada rancangan di Claude Design, menunggu King Rezi. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
-* **T-033.5/.6 Navigasi periode + filter status/Channels Calendar view selesai (2026-08-27)** — `CalendarToolbar.tsx` (baru): Today/‹/›, label periode (format lintas-bulan Week), toggle Minggu/Bulan, filter status (dropdown, 7 opsi) + filter Channels (akun asli workspace). Filter dieksekusi server-side lewat query Prisma, state via URL query param `?status=&accounts=` (konsisten pola `?view=&date=` T-033.2) — `CalendarViewState` diperluas (`statuses`, `connectedAccountIds`). Gap kecil ditemukan & ditutup di sesi sama: Month view belum punya `EmptyState` saat filter 0 post. Lolos review Ridwan (tanpa temuan) + QA Najwa (golden path + regresi pass). Sisa terbuka T-033.7 (manual refresh), T-033.8 (Popover klik item). Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 ---
 
 ## Recent Decisions (Ringkasan)

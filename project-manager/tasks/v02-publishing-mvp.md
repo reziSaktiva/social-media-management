@@ -336,7 +336,7 @@ delete-lalu-create-ulang ini saat dikerjakan.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress                                                |
 | **Domain**    | notification                                                 |
 | **ADR**       | ADR-023, ADR-030 (Supabase JWT)                              |
 | **Depends**   | T-026 (sumber event notifikasi) · T-093 ✅ (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094; T-093 sudah Done 2026-08-31, tidak lagi memblokir) |
@@ -344,11 +344,31 @@ delete-lalu-create-ulang ini saat dikerjakan.
 
 `Basic Notifications` berstatus **Should Have** di `mvp-definition.md` — ditempatkan di rilis ini karena hasil publish (`post.published` / `post.error`) tidak berguna tanpa cara memberi tahu pengguna. Domain `notification/` masih stub kosong; model `Notification` sudah ada di schema.
 
-- [ ] **T-036.1** Domain skeleton: service + repository
-- [ ] **T-036.2** Subscribe Supabase Realtime pada tabel `notifications`, event `INSERT`, filter per `user_id` — **hanya** tabel ini (ADR-023)
+- [x] **T-036.1** Domain skeleton: service + repository
+- [x] **T-036.2** Subscribe Supabase Realtime pada tabel `notifications`, event `INSERT`, filter per `user_id` — **hanya** tabel ini (ADR-023)
 - [ ] **T-036.3** Sambungkan Supabase JWT dari session Better Auth (helper sudah ada, belum dipakai di route manapun)
-- [ ] **T-036.4** UI notification bell di sidebar footer + panel daftar
+- [ ] **T-036.4** UI notification bell di sidebar footer + panel daftar — **blocked**, belum ada rancangan di Claude Design (AGENTS.md rule 17), lihat **KI-039**
 - [ ] **T-036.5** Trigger notifikasi dari webhook publish result
+
+**Catatan (2026-08-31):** T-036.1 — skeleton `NotificationService.notify()` +
+`notificationRepository.create()` ternyata sudah ada sebelumnya (dibangun
+untuk Transfer Ownership T-008.3) tapi belum pernah punya test; ditambahkan
+`notification.service.test.ts` (2 test case). Method CRUD lain
+(list/markAsRead) sengaja ditunda ke T-036.4 supaya tidak menulis kode yang
+belum terpakai. T-036.2 — file baru
+`apps/web/src/lib/supabase/realtime/notifications.ts`
+(`subscribeToNotificationInserts`) dan
+`apps/web/src/lib/hooks/use-notification-realtime.ts`
+(`useNotificationRealtime`, tanpa JSX). Ditemukan gap infra saat pengerjaan:
+tabel `notifications` belum pernah masuk publication `supabase_realtime`
+(Realtime tidak pernah broadcast apapun sebelumnya), dan RLS yang ada
+berbasis `current_setting('app.current_user_id')`, bukan `auth.uid()` —
+ditutup lewat migration
+`20260831150000_t036_notifications_realtime_setup` (tambah tabel ke
+publication + policy permisif baru `notifications_realtime_own_rows`
+berbasis `auth.uid()`), sudah dijalankan (`db:deploy`) dan diverifikasi via
+MCP Supabase. Ini closing gap yang memang sudah disyaratkan ADR-023, bukan
+keputusan arsitektur baru — tidak ada ADR baru untuk ini.
 
 ---
 
