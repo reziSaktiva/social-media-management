@@ -43,3 +43,29 @@ export interface WorkspaceMemberWithUser {
   role: MemberRole;
   status: MemberStatus;
 }
+
+/**
+ * Detail undangan siap-render untuk halaman accept-invite (T-093.1,
+ * ADR-080). `isExistingUser` menentukan form mana yang ditampilkan (Buat
+ * Akun Baru vs Masuk) — hasil auto-detect `WorkspaceService.getInviteToAccept`,
+ * bukan pilihan user.
+ */
+export interface WorkspaceInviteAcceptDetails {
+  workspaceName: string;
+  invitedByName: string;
+  role: MemberRole;
+  email: string;
+  isExistingUser: boolean;
+}
+
+/**
+ * Discriminated union hasil validasi token accept-invite (T-093.1) — 3 dari
+ * 5 state UI Claude Design (`templates/accept-invite.html`) ditentukan di
+ * sini; 2 sisanya ("Email Baru"/"Email Terdaftar", dibedakan lewat
+ * `details.isExistingUser`) dan "Success" (hasil aksi submit, bukan hasil
+ * validasi token) ditentukan di layer UI.
+ */
+export type WorkspaceInviteAcceptView =
+  | { state: "valid"; details: WorkspaceInviteAcceptDetails }
+  | { state: "expired" }
+  | { state: "invalid" };

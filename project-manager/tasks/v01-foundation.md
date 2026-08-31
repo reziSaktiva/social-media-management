@@ -117,18 +117,20 @@ Screen Workspace Settings → Members. Disepakati **desain minimal dulu**: cukup
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress — T-093.1–.3 selesai + lolos review Ridwan; T-093.4 sebagian (test service-level + integration selesai, verifikasi RBAC end-to-end 2-akun browser belum dilakukan) |
 | **Domain**    | workspace                                                    |
-| **ADR**       | ADR-012 (roles), ADR-072 (tabel `workspace_invitations`), ADR-080 (dua metode invite) — tidak ada ADR baru, murni menutup gap yang sudah didokumentasikan |
+| **ADR**       | ADR-012 (roles), ADR-072 (tabel `workspace_invitations`), ADR-080 (dua metode invite), **ADR-096** (pola RLS SECURITY DEFINER + session-variable GUC untuk operasi pra-membership) |
 | **Depends**   | T-007.1/.6 ✅ (invitation + role sudah bisa dibuat), T-006 ✅ (workspace creation) |
-| **Baca dulu** | `02-product/roles-permissions.md` · `05-architecture/application-layer.md` · `decisions/ADR-080-invite-member-dua-metode-email-copy-link-amandemen-adr-072.md` |
+| **Baca dulu** | `02-product/roles-permissions.md` · `05-architecture/application-layer.md` · `decisions/ADR-080-invite-member-dua-metode-email-copy-link-amandemen-adr-072.md` · `decisions/ADR-096-*.md` |
 
 Ditemukan CodeRabbit saat review PR #73 (2026-08-14): halaman `/invite/[token]` (accept-invite) **belum pernah dibuat sama sekali** — link Copy Link yang dihasilkan T-007.1/.6 hari ini 404 kalau dibuka. Dicatat sebagai "future work terpisah, belum ada nomor T-XXX" di `COMPLETE_TASK.md`/ADR-080 sejak saat itu, baru dikonversi jadi task resmi di sini (2026-08-28, saat menyusun rantai dependency ADR-094 Realtime — Realtime butuh ≥2 akun nyata di satu workspace untuk bisa diuji maupun bermakna dipakai).
 
-- [ ] **T-093.1** Route `/invite/[token]` — validasi token (valid, belum expired/revoked, email undangan cocok)
-- [ ] **T-093.2** Alur buat akun baru **atau** login (kalau email sudah punya akun) via Better Auth — email harus sama persis dengan yang di-invite (email-bound, ADR-080)
-- [ ] **T-093.3** Insert `workspace_members` dengan **role diambil langsung dari invitation** (sudah dipilih lewat Selector Role saat invite dibuat, T-007.6) — bukan role kosong/default yang di-assign belakangan, lalu redirect ke workspace
-- [ ] **T-093.4** Verifikasi/hardening RBAC end-to-end dengan akun real kedua — Owner vs Admin vs Creator (Danger Zone hidden non-Owner, Transfer Ownership 2-akun, Update Role, Remove Member, RBAC assertion lain seperti `assertActorCanCancelSchedule`) yang sejauh ini cuma diverifikasi lewat code review, bukan browser dengan akun berbeda (lihat gap QA T-008); perbaiki di sini kalau ditemukan bug
+**Update 2026-08-31 — implementasi selesai, lolos review Ridwan (2 temuan security sudah diperbaiki):** UI auto-detect email baru vs sudah terdaftar (bukan pilihan manual, desain final Claude Design `templates/accept-invite.html`), method baru langsung di `WorkspaceService` (bukan use-case terpisah, konsisten pola existing), redirect sukses `router.push("/")` + cookie `active-workspace-id` (bukan `/[slug]`, ADR-076 sudah menghapus dynamic segment). 3 migrasi RLS baru diterapkan ke DB dev (`20260831035427_t093_accept_invite_rls`, `20260831042017_t093_invitation_select_visibility_fix`, `20260831044328_t093_code_review_rls_hardening`) — pola dan rasionalnya dicatat di **ADR-096**. 17 unit test baru (fake repository) + 1 integration test terhadap DB real (`workspace.repository.accept-invitation.test.ts`).
+
+- [x] **T-093.1** Route `/invite/[token]` — validasi token (valid, belum expired/revoked, email undangan cocok) + auto-detect `isExistingUser`
+- [x] **T-093.2** Alur buat akun baru **atau** login (kalau email sudah punya akun) via Better Auth — email harus sama persis dengan yang di-invite (email-bound, ADR-080), tidak bisa diedit manual di form
+- [x] **T-093.3** Insert `workspace_members` dengan **role diambil langsung dari invitation** (sudah dipilih lewat Selector Role saat invite dibuat, T-007.6) — bukan role kosong/default yang di-assign belakangan, lalu redirect ke workspace
+- [ ] **T-093.4** Verifikasi/hardening RBAC end-to-end dengan akun real kedua — Owner vs Admin vs Creator (Danger Zone hidden non-Owner, Transfer Ownership 2-akun, Update Role, Remove Member, RBAC assertion lain seperti `assertActorCanCancelSchedule`) yang sejauh ini cuma diverifikasi lewat code review, bukan browser dengan akun berbeda (lihat gap QA T-008); perbaiki di sini kalau ditemukan bug. **Sebagian selesai (2026-08-31):** 17 unit test service-level baru (fake repository) + 1 integration test DB real (`workspace.repository.accept-invitation.test.ts`) sudah ditulis dan lolos — **verifikasi RBAC end-to-end 2-akun browser nyata masih belum dilakukan**, dicatat sebagai catatan terpisah untuk Najwa QA Engineer (lihat **KI-038**).
 
 ### T-008 · Workspace Settings — General + Danger Zone
 

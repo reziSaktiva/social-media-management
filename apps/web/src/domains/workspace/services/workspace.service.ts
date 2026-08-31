@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import {
   EMAIL_PATTERN,
+  InvitationStatus,
   MemberRole,
   MemberStatus,
   NotificationType,
@@ -26,7 +27,11 @@ import type {
   WorkspaceMembershipSummary,
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
-import type { SidebarChannelAccount, WorkspaceMemberWithUser } from "../types";
+import type {
+  SidebarChannelAccount,
+  WorkspaceInviteAcceptView,
+  WorkspaceMemberWithUser,
+} from "../types";
 
 const MAX_NAME_LENGTH = 100;
 const MAX_SLUG_ATTEMPTS = 6;
@@ -469,6 +474,100 @@ export class WorkspaceService {
       token,
       expiresAt,
     });
+  }
+
+  /**
+   * Validasi token undangan untuk halaman `/invite/[token]` (T-093.1, ADR-080
+   * poin 1 & 6) — dipanggil dari Server Component (RSC boleh memanggil
+   * Application Service langsung, AGENTS.md #5), TANPA RBAC actor (invitee
+   * belum login/belum jadi member). 3 kondisi invalid/expired/valid:
+   * - Token tidak ditemukan, ATAU statusnya bukan lagi `pending`
+   *   (sudah `accepted`/`revoked`) → `invalid` (link rusak/dipakai/dibatalkan).
+   * - Statusnya masih `pending` tapi `expiresAt` sudah lewat (ADR-072, 7
+   *   hari) → `expired`.
+   * - Sisanya → `valid`, lengkap dengan nama workspace, nama pengundang, role
+   *   (langsung dari invitation, bukan default), email (terkunci di UI), dan
+   *   `isExistingUser` (auto-detect via `findUserByEmail` — menentukan form
+   *   "Buat Akun Baru" vs "Masuk" yang ditampilkan UI).
+   */
+  async getInviteToAccept(token: string): Promise<WorkspaceInviteAcceptView> {
+    const invitation = await this.repository.findInvitationByToken(token);
+    if (!invitation || invitation.status !== InvitationStatus.Pending) {
+      return { state: "invalid" };
+    }
+    if (invitation.expiresAt.getTime() < Date.now()) {
+      return { state: "expired" };
+    }
+
+    const workspace = await this.repository.findById(invitation.workspaceId);
+    if (!workspace) {
+      // Data korup (workspace terhapus tapi invitation masih ada) — tidak
+      // seharusnya terjadi (cascade delete, database-strategy.md), tapi
+      // diperlakukan sebagai link tidak valid daripada melempar 500.
+      return { state: "invalid" };
+    }
+
+    const [inviter] = await this.repository.findUsersByIds([
+      invitation.invitedByUserId,
+    ]);
+    const existingUser = await this.repository.findUserByEmail(
+      invitation.email,
+    );
+
+    return {
+      state: "valid",
+      details: {
+        workspaceName: workspace.name,
+        invitedByName: inviter?.name ?? "Anggota tim",
+        role: invitation.role,
+        email: invitation.email,
+        isExistingUser: Boolean(existingUser),
+      },
+    };
+  }
+
+  /**
+   * Finalisasi accept-invite (T-093.2/.3, ADR-080 poin 6) — dipanggil
+   * SETELAH sign-up/sign-in Better Auth berhasil di client (composition
+   * root: Server Action `acceptInviteAction`). Re-validasi token dari awal
+   * (bukan percaya state yang sudah dibaca `getInviteToAccept` sebelumnya —
+   * bisa sudah expired/dipakai orang lain di antara render halaman dan
+   * submit) DAN memastikan email akun yang baru sign-up/sign-in **sama
+   * persis** dengan `invitation.email` (email-bound, ADR-080 poin 6) —
+   * pertahanan defensif kalau composition root suatu saat salah pasang
+   * actor email (mis. lewat sesi lain yang aktif di tab yang sama).
+   */
+  async acceptInvite(input: {
+    token: string;
+    actorUserId: UserId;
+    actorEmail: string;
+  }): Promise<{ workspaceId: WorkspaceId; role: MemberRole }> {
+    const invitation = await this.repository.findInvitationByToken(input.token);
+    if (!invitation) {
+      throw new NotFoundError("Undangan tidak ditemukan.");
+    }
+    if (invitation.status !== InvitationStatus.Pending) {
+      throw new ConflictError(
+        "Undangan ini sudah pernah dipakai atau dibatalkan.",
+      );
+    }
+    if (invitation.expiresAt.getTime() < Date.now()) {
+      throw new ValidationError("Undangan ini sudah kedaluwarsa.");
+    }
+    if (input.actorEmail.trim().toLowerCase() !== invitation.email) {
+      throw new AuthorizationError(
+        "Email akun Anda tidak cocok dengan email undangan ini.",
+      );
+    }
+
+    const member = await this.repository.acceptInvitation({
+      workspaceId: invitation.workspaceId,
+      invitationId: invitation.id,
+      userId: input.actorUserId,
+      role: invitation.role,
+    });
+
+    return { workspaceId: invitation.workspaceId, role: member.role };
   }
 
   /**

@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.55     |
+| Version      | 1.0.56     |
 | Status       | Active     |
-| Last Updated | 2026-08-28 |
+| Last Updated | 2026-08-31 |
 
 ---
 
@@ -401,6 +401,16 @@ Ditemukan saat penulisan `rendering-strategy.md` (ADR-095, 2026-08-28): `app/(ap
 
 Section Spacing di `design-tokens.md` baru dikunci (base 1 unit = 4px, skala 0/0.5/1/1.5/2/3/4/5/6/8 = 0–32px, menggantikan `TBD` sejak ADR-038) lewat ADR-095. Mengikuti pola reminder ADR-056 (dokumen ini co-equal dengan Claude Design, perubahan salah satu wajib disinkronkan ke yang lain), sinkronisasi ke Claude Design belum dilakukan di sesi ADR-095 — perlu langkah lanjutan terpisah. Tidak memblokir M8.
 
+### KI-038 · T-093.4 verifikasi RBAC end-to-end 2-akun browser nyata belum dilakukan
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-093 (`tasks/v01-foundation.md` § T-093) |
+
+Ditemukan 2026-08-31 saat menutup implementasi T-093 (Accept Invite page): T-093.1–.3 selesai dan lolos review arsitektur Ridwan (2 temuan security RLS sudah diperbaiki, lihat ADR-096); T-093.4 (17 unit test service-level + 1 integration test terhadap DB real) juga sudah selesai. Namun bagian "verifikasi RBAC end-to-end dengan akun real kedua" (Owner vs Admin vs Creator, Danger Zone/Transfer Ownership/Update Role/Remove Member via browser dengan 2 akun nyata) — yang jadi tujuan utama T-093 dibuat sebagai task (rantai T-093 → T-036 → T-092 butuh ≥2 akun nyata di satu workspace) — **belum dilakukan** di sesi ini. Catatan untuk Najwa QA Engineer di sesi terpisah. Tidak memblokir M8, tapi T-093 sengaja belum ditutup `✅ Done` sampai ini selesai.
+
 ---
 
 ## Blockers
@@ -437,22 +447,22 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-093.1–.3 Accept Invite page diimplementasikan (2026-08-31)** — route `/invite/[token]` dengan validasi token + auto-detect `isExistingUser`, alur sign-up/sign-in Better Auth email-bound (ADR-080), insert `workspace_members` dengan role dari invitation. Lolos review arsitektur Ridwan (2 temuan security RLS diperbaiki, dicatat **ADR-096** — pola SECURITY DEFINER + session-variable GUC untuk operasi pra-membership). 17 unit test + 1 integration test DB real. T-093.4 (verifikasi RBAC end-to-end 2-akun browser nyata) belum dilakukan — **KI-038**, task tetap `🟡 In Progress`. Detail: `tasks/v01-foundation.md` § T-093, `COMPLETE_TASK.md`.
 * **T-094 Baseline Rendering Strategy, Code Conventions, Spacing Scale + ESLint Enforcement selesai (2026-08-28, ADR-095)** — 2 dokumen baseline baru (`rendering-strategy.md`, `code-conventions.md`), skala Spacing `design-tokens.md` dikunci (`TBD` sejak ADR-038 ditutup), 3 rule ESLint enforcement (domain import boundary, larangan `<div>` mentah, `tailwindcss/no-arbitrary-value`) — diverifikasi 0 error lint/typecheck, 209 test passed/3 skipped. 1 subtask tersisa terbuka (cleanup dashboard, **KI-036**), tidak memblokir penutupan. Detail: `tasks/v01-foundation.md` § T-094, `COMPLETE_TASK.md`.
 * **Polishing UI grid Calendar selesai (2026-08-27)** — di atas T-033.1–.6/.8 yang sudah selesai, sebelum T-033.7: fix grid 7-kolom Month & Week tidak sejajar (CSS Grid track blowout, di-fix via `isScrollable`+`StackItem size="fill"`, bukan `xstyle`/StyleX — compiler-nya belum ter-setup, lihat **KI-035**), redesain kartu post (avatar+nama 1 baris, indikator Post/Reel/Story/Pin via `contentFormat`, footer mobile `StatusDot`+`Icon` compact ≤768px), garis pemisah vertikal antar kolom hari + padding cell disesuaikan (gap grid dihapus). T-033.7 (manual refresh) tetap belum dikerjakan — masih blocked. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 * **T-033.8 Popover ringkasan post + CTA Draft Editor Calendar view selesai (2026-08-27)** — `CalendarPostPopover.tsx` (baru): Astryx `Popover` (ADR-090/ADR-091), klik kartu Week/Month membuka ringkasan (header account+platform, caption, media placeholder, 4 tile metrik untuk status Published via `PostMetricsPort`, link "Go to post", CTA "Buka Draft Editor" reuse `useDraftEditor`). Data-wiring: field baru `platformPostUrl` di-expose ke domain publishing, `page.tsx` composition root sekarang pass `AnalyticsService` sebagai `PostMetricsPort` (sebelumnya kosong, jadi metrik Published sekarang benar-benar terisi). Lolos review Ridwan (tanpa temuan) + QA Najwa (tanpa bug fungsional; satu catatan inconclusive soal tooling emulasi mobile viewport, bukan bug). T-033.7 (manual refresh) **belum dikerjakan** — blocked, tidak ada rancangan di Claude Design, menunggu King Rezi. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 * **T-033.5/.6 Navigasi periode + filter status/Channels Calendar view selesai (2026-08-27)** — `CalendarToolbar.tsx` (baru): Today/‹/›, label periode (format lintas-bulan Week), toggle Minggu/Bulan, filter status (dropdown, 7 opsi) + filter Channels (akun asli workspace). Filter dieksekusi server-side lewat query Prisma, state via URL query param `?status=&accounts=` (konsisten pola `?view=&date=` T-033.2) — `CalendarViewState` diperluas (`statuses`, `connectedAccountIds`). Gap kecil ditemukan & ditutup di sesi sama: Month view belum punya `EmptyState` saat filter 0 post. Lolos review Ridwan (tanpa temuan) + QA Najwa (golden path + regresi pass). Sisa terbuka T-033.7 (manual refresh), T-033.8 (Popover klik item). Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
-* **T-033.3/.4 Grid Week & Month Calendar view selesai (2026-08-27)** — Data-wiring (Prabowo) + grid UI (Mark) + review arsitektur (Ridwan, 1 temuan duplikasi logic langsung diperbaiki). File baru: `calendar-range.ts` (`getWeekRange`/`getMonthRange`, domain publishing), `CalendarWeekGrid.tsx` (7 hari × 12 slot 2 jam), `CalendarMonthGrid.tsx` (7 hari × N minggu, padding muted, badge "+N More"), `calendar-grid-shared.ts`. `page.tsx` jadi composition root nyata memakai `PublishingService.listCalendarPosts`. Diverifikasi `tsc`/`eslint` bersih, 45 test Vitest pass, browser preview (data asli). Sisa terbuka T-033.7/.8 (manual refresh, Popover) — status task-level **T-033 tetap `🟡 In Progress`**. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 ---
 
 ## Recent Decisions (Ringkasan)
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-096** — RLS untuk Operasi Pra-Membership — Pola SECURITY DEFINER + Session-Variable GUC (Accept Invite): GUC transaksi `app.invite_lookup_token` (default-deny), dual SELECT policy (token-lookup pra-auth + by-email paska-auth), role-locked INSERT `workspace_members` via `SECURITY DEFINER` function `has_accepted_invitation` — ditetapkan sebagai preseden untuk kasus RLS pra-membership serupa di masa depan.
 * **ADR-095** — Baseline Rendering Strategy, Code Conventions, dan Spacing Scale — Server Actions Khusus Mutation (Konkretisasi ADR-016): 2 dokumen baseline baru (`rendering-strategy.md`, `code-conventions.md`), skala Spacing di `design-tokens.md` dikunci (base 1 unit = 4px, 0/0.5/1/1.5/2/3/4/5/6/8 = 0–32px), menegaskan ulang Server Actions eksklusif mutation; 3 rule ESLint enforcement ditambahkan. Dashboard (`app/(app)/page.tsx`) dicatat exception pra-existing yang sengaja tidak diperbaiki (KI-036).
 * **ADR-089** — Amandemen ADR-088 — Dialog Konfirmasi Tier 2 Sebelum Switch Workspace: klik row workspace tidak lagi langsung overwrite cookie + redirect, sekarang membuka `AlertDialog` Tier 2 (reuse pola Logout/Remove Member) sebelum switch dieksekusi; dicatat sebagai T-089.6 (bukan T-016.6 — koreksi penomoran).
 * **ADR-088** — Amandemen ADR-076 (poin 4) — Deliberate Workspace Switcher via Settings → Account → Workspaces: halaman baru untuk switch antar membership + create workspace tambahan (scope MVP narrow, bukan multi-workspace management penuh); mekanisme switch overwrite cookie `active-workspace-id` langsung setelah validasi membership, bukan hapus-cookie-lalu-onboarding-ulang — **Amended by ADR-089 (2026-08-24)**.
 * **ADR-087** — Ganti theme Astryx dari Neutral ke Stone ("Warm stone and slate tones; Montserrat + Figtree type") — permintaan eksplisit King Rezi, rule 17 `AGENTS.md` (gate Claude Design) sengaja dilewati; item terbuka: Claude Design belum disinkronkan.
-* **ADR-086** — Revert total swap warna AppShell — kembali ke default `neutralTheme` Astryx murni, membatalkan ADR-084 (bagian dari audit menyeluruh override warna custom).
 
 ---
 

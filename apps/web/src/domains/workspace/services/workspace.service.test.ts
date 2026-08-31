@@ -86,12 +86,45 @@ function createFakeRepository(
         role: input.role,
         token: input.token,
         status: InvitationStatus.Pending,
+        invitedByUserId: input.invitedByUserId,
         expiresAt: input.expiresAt,
       };
       invitations.set(invitation.token, invitation);
       return invitation;
     },
     findInvitationByToken: async (token) => invitations.get(token) ?? null,
+    findUserByEmail: async () => null,
+    acceptInvitation: async ({ workspaceId, invitationId, userId, role }) => {
+      const entry = [...invitations.entries()].find(
+        ([, invitation]) => invitation.id === invitationId,
+      );
+      if (!entry || entry[1].status !== InvitationStatus.Pending) {
+        throw new ConflictError(
+          "Undangan ini sudah pernah dipakai atau dibatalkan.",
+        );
+      }
+      const [token, invitation] = entry;
+      invitations.set(token, {
+        ...invitation,
+        status: InvitationStatus.Accepted,
+      });
+
+      const existing = [...members.values()].find(
+        (candidate) =>
+          candidate.workspaceId === workspaceId && candidate.userId === userId,
+      );
+      const newMember: WorkspaceMemberRecord = existing
+        ? { ...existing, role, status: MemberStatus.Active }
+        : {
+            id: asMemberId(`member-${members.size + 1}`),
+            workspaceId,
+            userId,
+            role,
+            status: MemberStatus.Active,
+          };
+      members.set(newMember.id, newMember);
+      return newMember;
+    },
     ...overrides,
   };
 }
@@ -783,6 +816,259 @@ describe("WorkspaceService.inviteMember", () => {
         role: MemberRole.Creator,
       }),
     ).rejects.toThrow(ConflictError);
+  });
+});
+
+/** Invitation seed helper untuk describe blocks T-093 di bawah. */
+function pendingInvitation(
+  overrides: Partial<WorkspaceInvitationRecord> = {},
+): WorkspaceInvitationRecord {
+  return {
+    id: asInvitationId("invitation-1"),
+    workspaceId: WORKSPACE_ID,
+    email: "invitee@example.com",
+    role: MemberRole.Creator,
+    token: "a".repeat(64),
+    status: InvitationStatus.Pending,
+    invitedByUserId: asUserId("owner-user"),
+    expiresAt: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+    ...overrides,
+  };
+}
+
+describe("WorkspaceService.getInviteToAccept (T-093.1)", () => {
+  it("returns invalid when the token does not exist", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({ findInvitationByToken: async () => null }),
+    );
+
+    await expect(service.getInviteToAccept("does-not-exist")).resolves.toEqual({
+      state: "invalid",
+    });
+  });
+
+  it("returns invalid when the invitation was already accepted", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({ status: InvitationStatus.Accepted }),
+      }),
+    );
+
+    await expect(service.getInviteToAccept("token")).resolves.toEqual({
+      state: "invalid",
+    });
+  });
+
+  it("returns invalid when the invitation was revoked", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({ status: InvitationStatus.Revoked }),
+      }),
+    );
+
+    await expect(service.getInviteToAccept("token")).resolves.toEqual({
+      state: "invalid",
+    });
+  });
+
+  it("returns expired when the token is still pending but past expiresAt (ADR-072, 7 days)", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({
+            expiresAt: new Date(Date.now() - 1000),
+          }),
+      }),
+    );
+
+    await expect(service.getInviteToAccept("token")).resolves.toEqual({
+      state: "expired",
+    });
+  });
+
+  it("returns valid with isExistingUser=false when the email has no account yet", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () => pendingInvitation(),
+        findById: async () => ({
+          id: WORKSPACE_ID,
+          name: "Acme",
+          slug: "acme",
+        }),
+        findUsersByIds: async () => [
+          { id: asUserId("owner-user"), name: "Raka", email: "raka@acme.com" },
+        ],
+        findUserByEmail: async () => null,
+      }),
+    );
+
+    await expect(service.getInviteToAccept("token")).resolves.toEqual({
+      state: "valid",
+      details: {
+        workspaceName: "Acme",
+        invitedByName: "Raka",
+        role: MemberRole.Creator,
+        email: "invitee@example.com",
+        isExistingUser: false,
+      },
+    });
+  });
+
+  it("returns valid with isExistingUser=true when the email already has an account", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () => pendingInvitation(),
+        findById: async () => ({
+          id: WORKSPACE_ID,
+          name: "Acme",
+          slug: "acme",
+        }),
+        findUsersByIds: async () => [
+          { id: asUserId("owner-user"), name: "Raka", email: "raka@acme.com" },
+        ],
+        findUserByEmail: async () => ({ id: asUserId("existing-user") }),
+      }),
+    );
+
+    const result = await service.getInviteToAccept("token");
+    expect(result).toMatchObject({
+      state: "valid",
+      details: { isExistingUser: true },
+    });
+  });
+});
+
+describe("WorkspaceService.acceptInvite (T-093.2/.3)", () => {
+  it("throws NotFoundError when the token does not exist", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({ findInvitationByToken: async () => null }),
+    );
+
+    await expect(
+      service.acceptInvite({
+        token: "missing",
+        actorUserId: asUserId("new-user"),
+        actorEmail: "invitee@example.com",
+      }),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws ConflictError when the invitation was already accepted (no token reuse)", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({ status: InvitationStatus.Accepted }),
+      }),
+    );
+
+    await expect(
+      service.acceptInvite({
+        token: "token",
+        actorUserId: asUserId("new-user"),
+        actorEmail: "invitee@example.com",
+      }),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it("throws ValidationError when the invitation has expired", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({ expiresAt: new Date(Date.now() - 1000) }),
+      }),
+    );
+
+    await expect(
+      service.acceptInvite({
+        token: "token",
+        actorUserId: asUserId("new-user"),
+        actorEmail: "invitee@example.com",
+      }),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("throws AuthorizationError when the acting account's email does not match the invitation (email-bound, ADR-080)", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () => pendingInvitation(),
+      }),
+    );
+
+    await expect(
+      service.acceptInvite({
+        token: "token",
+        actorUserId: asUserId("new-user"),
+        actorEmail: "someone-else@example.com",
+      }),
+    ).rejects.toThrow(AuthorizationError);
+  });
+
+  it("accepts a new-account signup, assigns the role from the invitation (not a default), and returns the workspace id", async () => {
+    const captured: {
+      input?: Parameters<IWorkspaceRepository["acceptInvitation"]>[0];
+    } = {};
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({ role: MemberRole.Admin }),
+        acceptInvitation: async (input) => {
+          captured.input = input;
+          return {
+            id: asMemberId("member-new"),
+            workspaceId: input.workspaceId,
+            userId: input.userId,
+            role: input.role,
+            status: MemberStatus.Active,
+          };
+        },
+      }),
+    );
+
+    const result = await service.acceptInvite({
+      token: "token",
+      actorUserId: asUserId("new-user"),
+      // Email dari akun yang baru dibuat harus persis sama dengan
+      // invitation.email — case-insensitive (invitation di-lowercase saat
+      // dibuat, akun Better Auth mungkin mengembalikan casing asli).
+      actorEmail: "Invitee@Example.com",
+    });
+
+    expect(captured.input).toMatchObject({
+      workspaceId: WORKSPACE_ID,
+      invitationId: asInvitationId("invitation-1"),
+      userId: asUserId("new-user"),
+      role: MemberRole.Admin,
+    });
+    expect(result).toEqual({
+      workspaceId: WORKSPACE_ID,
+      role: MemberRole.Admin,
+    });
+  });
+
+  it("accepts an existing-account sign-in the same way as a new signup", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({ role: MemberRole.Creator }),
+        acceptInvitation: async (input) => ({
+          id: asMemberId("member-existing"),
+          workspaceId: input.workspaceId,
+          userId: input.userId,
+          role: input.role,
+          status: MemberStatus.Active,
+        }),
+      }),
+    );
+
+    await expect(
+      service.acceptInvite({
+        token: "token",
+        actorUserId: asUserId("existing-user"),
+        actorEmail: "invitee@example.com",
+      }),
+    ).resolves.toEqual({ workspaceId: WORKSPACE_ID, role: MemberRole.Creator });
   });
 });
 
