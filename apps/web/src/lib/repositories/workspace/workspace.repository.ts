@@ -408,21 +408,18 @@ export const workspaceRepository: IWorkspaceRepository = {
         );
       }
 
-      // Upsert (bukan create murni) — defensif kalau user ini kebetulan
-      // sudah pernah jadi member workspace yang sama sebelumnya (mis.
-      // dihapus lalu diundang lagi dengan email yang sama); role & status
-      // selalu diambil dari invitation ini, bukan dipertahankan dari baris
-      // lama.
-      const member = await tx.workspaceMember.upsert({
-        where: { workspaceId_userId: { workspaceId, userId } },
-        create: {
+      // `create` murni, bukan `upsert` — `removeMember` hard-delete baris
+      // `workspace_members` dan `WorkspaceInvitation` `@@unique([workspaceId,
+      // email])` mencegah invitation kedua untuk email yang sama di
+      // workspace ini, jadi baris `(workspaceId, userId)` tidak pernah ada
+      // sebelum titik ini. Kalau nanti ada fitur cancel-invitation atau
+      // soft-delete member (RLS `workspace_members` saat ini cuma
+      // meng-cover INSERT lewat `has_accepted_invitation`, tidak UPDATE),
+      // jalur reaktivasi perlu migrasi RLS baru dulu, bukan cukup upsert.
+      const member = await tx.workspaceMember.create({
+        data: {
           workspaceId,
           userId,
-          role,
-          status: MemberStatus.Active,
-          joinedAt: new Date(),
-        },
-        update: {
           role,
           status: MemberStatus.Active,
           joinedAt: new Date(),

@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { MemberRole } from "@social/shared";
-
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Icon } from "@astryxdesign/core/Icon";
@@ -12,16 +10,12 @@ import { Link } from "@astryxdesign/core/Link";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 
-import type { WorkspaceInviteAcceptView } from "@/domains/workspace";
+import {
+  MEMBER_ROLE_LABEL,
+  type WorkspaceInviteAcceptView,
+} from "@/domains/workspace";
 
 import { AcceptInviteForm } from "./AcceptInviteForm";
-
-/** Sama seperti `MembersTable.tsx` (settings/members) — satu-satunya tempat lain yang menampilkan role. */
-const ROLE_LABEL: Record<MemberRole, string> = {
-  [MemberRole.Owner]: "Account Owner",
-  [MemberRole.Admin]: "Admin",
-  [MemberRole.Creator]: "Creator",
-};
 
 /**
  * Delay tampilan state "Success" (Claude Design `templates/accept-invite.html`)
@@ -127,7 +121,7 @@ export function AcceptInvitePageClient({
         <Text type="supporting">
           <strong>{details.invitedByName}</strong> mengundang Anda bergabung ke
           workspace <strong>{details.workspaceName}</strong> sebagai{" "}
-          <strong>{ROLE_LABEL[details.role]}</strong>.
+          <strong>{MEMBER_ROLE_LABEL[details.role]}</strong>.
         </Text>
       </VStack>
 

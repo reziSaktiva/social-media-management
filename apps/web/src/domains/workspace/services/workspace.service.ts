@@ -337,24 +337,28 @@ export class WorkspaceService {
    * Gate akses halaman Members (Server Component) — true untuk Owner/Admin
    * aktif, false untuk selainnya (termasuk Creator, yang menurut matrix
    * `roles-permissions.md` "Tidak ada akses" ke Members sama sekali, bukan
-   * cuma tombol aksi disembunyikan). Reuse `assertActorCanManageMembers`
-   * (single source of truth RBAC Members, sudah dipakai removeMember/
-   * updateMemberRole/inviteMember) supaya kriteria role tidak terduplikasi
-   * di entry point.
+   * cuma tombol aksi disembunyikan). Reuse `canActorManageMembers` (core
+   * boolean, tanpa exception) supaya tidak perlu try/catch + sentinel
+   * string untuk pesan error yang tidak pernah dipakai di jalur ini.
    */
   async canManageMembers(
     workspaceId: WorkspaceId,
     actorUserId: UserId,
   ): Promise<boolean> {
-    try {
-      await this.assertActorCanManageMembers(workspaceId, actorUserId, "");
-      return true;
-    } catch (error) {
-      if (error instanceof AuthorizationError) {
-        return false;
-      }
-      throw error;
-    }
+    return this.canActorManageMembers(workspaceId, actorUserId);
+  }
+
+  /** Core boolean check — Owner/Admin aktif. Dipakai `canManageMembers` (public, tanpa pesan error) dan `assertActorCanManageMembers` (throwing wrapper, dengan pesan error spesifik per kasus). */
+  private async canActorManageMembers(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<boolean> {
+    const actor = await this.getMembership(workspaceId, actorUserId);
+    return (
+      !!actor &&
+      actor.status === MemberStatus.Active &&
+      (actor.role === MemberRole.Owner || actor.role === MemberRole.Admin)
+    );
   }
 
   /** Owner/Admin only; dipakai removeMember & updateMemberRole. */
@@ -523,20 +527,20 @@ export class WorkspaceService {
       return { state: "expired" };
     }
 
-    const workspace = await this.repository.findById(invitation.workspaceId);
+    // Ketiganya independen — hanya bergantung pada `invitation` yang sudah
+    // resolve di atas, bukan satu sama lain — dijalankan paralel (code
+    // review PR #95) daripada sequential.
+    const [workspace, [inviter], existingUser] = await Promise.all([
+      this.repository.findById(invitation.workspaceId),
+      this.repository.findUsersByIds([invitation.invitedByUserId]),
+      this.repository.findUserByEmail(invitation.email),
+    ]);
     if (!workspace) {
       // Data korup (workspace terhapus tapi invitation masih ada) — tidak
       // seharusnya terjadi (cascade delete, database-strategy.md), tapi
       // diperlakukan sebagai link tidak valid daripada melempar 500.
       return { state: "invalid" };
     }
-
-    const [inviter] = await this.repository.findUsersByIds([
-      invitation.invitedByUserId,
-    ]);
-    const existingUser = await this.repository.findUserByEmail(
-      invitation.email,
-    );
 
     return {
       state: "valid",

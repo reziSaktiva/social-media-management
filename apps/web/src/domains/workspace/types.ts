@@ -1,8 +1,8 @@
 /** Domain-specific types for workspace. */
 
+import { MemberRole } from "@social/shared";
 import type {
   MemberId,
-  MemberRole,
   MemberStatus,
   SocialPlatform,
   UserId,
@@ -69,3 +69,15 @@ export type WorkspaceInviteAcceptView =
   | { state: "valid"; details: WorkspaceInviteAcceptDetails }
   | { state: "expired" }
   | { state: "invalid" };
+
+/**
+ * Label tampilan role — satu sumber untuk semua UI (Settings → Members,
+ * halaman accept-invite, dst.) supaya tidak divergen antar layar (code
+ * review PR #95: sebelumnya `MembersTable.tsx` dan `AcceptInvitePageClient.tsx`
+ * masing-masing punya salinan sendiri, sempat berbeda untuk Owner).
+ */
+export const MEMBER_ROLE_LABEL: Record<MemberRole, string> = {
+  [MemberRole.Owner]: "Owner",
+  [MemberRole.Admin]: "Admin",
+  [MemberRole.Creator]: "Creator",
+};

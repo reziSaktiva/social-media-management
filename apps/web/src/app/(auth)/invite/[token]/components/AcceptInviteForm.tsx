@@ -76,33 +76,38 @@ export function AcceptInviteForm({
     setError(null);
     setIsSubmitting(true);
 
-    if (isExistingUser) {
-      const { error: signInError } = await authClient.signIn.email({
-        email,
-        password,
-      });
-      if (signInError) {
-        setIsSubmitting(false);
-        setError(
-          signInError.message ??
-            "Password salah. Coba lagi atau reset password Anda.",
-        );
-        return;
+    try {
+      if (isExistingUser) {
+        const { error: signInError } = await authClient.signIn.email({
+          email,
+          password,
+        });
+        if (signInError) {
+          setIsSubmitting(false);
+          setError(
+            signInError.message ??
+              "Password salah. Coba lagi atau reset password Anda.",
+          );
+          return;
+        }
+      } else {
+        const { error: signUpError } = await authClient.signUp.email({
+          name,
+          email,
+          password,
+        });
+        if (signUpError) {
+          setIsSubmitting(false);
+          setError(signUpError.message ?? "Gagal membuat akun. Coba lagi.");
+          return;
+        }
       }
-    } else {
-      const { error: signUpError } = await authClient.signUp.email({
-        name,
-        email,
-        password,
-      });
-      if (signUpError) {
-        setIsSubmitting(false);
-        setError(signUpError.message ?? "Gagal membuat akun. Coba lagi.");
-        return;
-      }
-    }
 
-    await finalizeMembership();
+      await finalizeMembership();
+    } catch {
+      setIsSubmitting(false);
+      setError("Terjadi kesalahan jaringan. Coba lagi.");
+    }
   }
 
   return (

@@ -93,7 +93,7 @@ function stripWorkspaceHeaders(request: NextRequest): Headers {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (BYPASS_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+  if (BYPASS_PREFIXES.some((prefix) => isUnderPath(pathname, prefix))) {
     return NextResponse.next({
       request: { headers: stripWorkspaceHeaders(request) },
     });
