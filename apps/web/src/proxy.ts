@@ -37,7 +37,19 @@ import {
  *    `runtime` di `config`; opsi itu tidak diizinkan di Proxy file).
  */
 
-const BYPASS_PREFIXES = ["/api/auth", "/api/jobs", "/api/health", "/api/v1"];
+// `/invite/[token]` (T-093.1, ADR-080) sengaja di-bypass sepenuhnya dari gate
+// session/workspace di bawah — bukan ditambahkan ke `PUBLIC_AUTH_PATHS`
+// (yang punya efek samping redirect user yang SUDAH login ke "/", tidak
+// cocok untuk invite link yang bisa dibuka siapa pun kapan pun, login atau
+// tidak). Halaman itu sendiri (Server Component) yang memvalidasi token dan
+// menentukan form mana yang tampil — proxy tidak perlu tahu detail itu.
+const BYPASS_PREFIXES = [
+  "/api/auth",
+  "/api/jobs",
+  "/api/health",
+  "/api/v1",
+  "/invite",
+];
 
 const PUBLIC_AUTH_PATHS = [
   "/login",
@@ -81,7 +93,7 @@ function stripWorkspaceHeaders(request: NextRequest): Headers {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (BYPASS_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+  if (BYPASS_PREFIXES.some((prefix) => isUnderPath(pathname, prefix))) {
     return NextResponse.next({
       request: { headers: stripWorkspaceHeaders(request) },
     });

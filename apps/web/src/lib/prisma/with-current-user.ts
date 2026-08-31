@@ -66,3 +66,27 @@ export async function setCurrentUserId(
 ): Promise<void> {
   await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`;
 }
+
+/**
+ * Second, narrower-purpose GUC — same `SET LOCAL` + `current_setting()`
+ * pattern as `app.current_user_id` above, but for the ONE anonymous
+ * (pre-membership) read path in the codebase: looking up a
+ * `workspace_invitations` row by its `token` (T-093.1, accept-invite,
+ * code review follow-up migration `20260831044328_t093_code_review_rls_hardening`).
+ *
+ * The invitee has no membership anywhere at that point, so `app.current_user_id`
+ * doesn't apply — but the RLS policy on `workspace_invitations` still must
+ * not let a caller read ANY `pending` row, only the one matching the exact
+ * token it's asking for. Setting this GUC to that specific token value lets
+ * the RLS policy (`workspace_invitations_public_pending_lookup`) compare
+ * against it directly: `token = current_invite_lookup_token()`. A caller
+ * that queries the table without ever calling this (raw SQL, a different
+ * tool, a future bug) gets `current_setting(..., true)` = NULL, which can't
+ * equal any real token — default-deny, not default-permit.
+ */
+export async function setInviteLookupToken(
+  tx: PrismaTransactionClient,
+  token: string,
+): Promise<void> {
+  await tx.$executeRaw`SELECT set_config('app.invite_lookup_token', ${token}, true)`;
+}

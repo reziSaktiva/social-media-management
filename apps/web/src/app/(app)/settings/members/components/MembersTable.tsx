@@ -17,7 +17,10 @@ import type { TableColumn } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 
-import type { WorkspaceMemberWithUser } from "@/domains/workspace";
+import {
+  MEMBER_ROLE_LABEL,
+  type WorkspaceMemberWithUser,
+} from "@/domains/workspace";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 
 import {
@@ -25,12 +28,6 @@ import {
   SettingsPageHead,
 } from "../../components/SettingsPageHead";
 import { removeMemberAction, updateMemberRoleAction } from "../actions";
-
-const ROLE_LABEL: Record<MemberRole, string> = {
-  [MemberRole.Owner]: "Owner",
-  [MemberRole.Admin]: "Admin",
-  [MemberRole.Creator]: "Creator",
-};
 
 const STATUS_LABEL: Record<MemberStatus, string> = {
   [MemberStatus.Active]: "Active",
@@ -86,7 +83,7 @@ function MemberActions({
       <DropdownMenu
         button={{ label: "Change Role", variant: "secondary", size: "sm" }}
         items={roleOptions.map((role) => ({
-          label: ROLE_LABEL[role],
+          label: MEMBER_ROLE_LABEL[role],
           onClick: () => onRequestRoleChange(member, role),
         }))}
       />
@@ -130,7 +127,7 @@ function buildColumns(
       header: "Role",
       width: proportional(1),
       renderCell: (member) => (
-        <Badge variant="neutral" label={ROLE_LABEL[member.role]} />
+        <Badge variant="neutral" label={MEMBER_ROLE_LABEL[member.role]} />
       ),
     },
     {
@@ -147,7 +144,7 @@ function buildColumns(
     {
       key: "actions",
       header: "Actions",
-      width: pixel(180),
+      width: pixel(240),
       align: "end",
       renderCell: (member) => (
         <MemberActions
@@ -241,7 +238,7 @@ export function MembersTable({
         title="Ubah role anggota ini?"
         description={
           roleConfirm.target
-            ? `Ubah role ${roleConfirm.target.member.name} dari ${ROLE_LABEL[roleConfirm.target.member.role]} ke ${ROLE_LABEL[roleConfirm.target.newRole]}?`
+            ? `Ubah role ${roleConfirm.target.member.name} dari ${MEMBER_ROLE_LABEL[roleConfirm.target.member.role]} ke ${MEMBER_ROLE_LABEL[roleConfirm.target.newRole]}?`
             : ""
         }
         cancelLabel="Batal"

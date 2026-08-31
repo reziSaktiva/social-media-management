@@ -8,6 +8,143 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-31 — T-093 Accept Invite page ditutup Done (T-093.4 verifikasi RBAC end-to-end + fix bug Creator-akses-Members)
+
+### Context
+
+Sesi lanjutan menutup T-093 (Accept Invite page) yang di sesi sebelumnya
+sudah menyelesaikan T-093.1–.3 (implementasi) tapi meninggalkan T-093.4
+(verifikasi RBAC end-to-end dengan akun real kedua) sebagian — hanya
+unit/integration test service-level, belum verifikasi browser dengan akun
+nyata (dicatat **KI-038**). Najwa QA Engineer menuntaskan verifikasi dengan
+**3 akun real** (Owner/Admin/Creator) di satu workspace ("Insvire").
+
+### Hasil verifikasi RBAC (Najwa)
+
+* Danger Zone hidden non-Owner — **PASS**
+* Transfer Ownership target eligible (hanya Admin, bukan Creator) — **PASS**
+* Update Role (siapa boleh ubah siapa) — **PASS** untuk Owner & Admin
+* Remove Member (proteksi Owner/diri sendiri) — **PASS** untuk Owner & Admin
+
+### Bug ditemukan & diperbaiki
+
+Creator seharusnya "Tidak ada akses" ke halaman `/settings/members`
+(`product-discovery/02-product/roles-permissions.md`), tapi sebelumnya
+halaman tetap terbuka penuh dan mengirim data member+email ke client —
+`MembersTable` cuma menyembunyikan tombol aksi per baris, tidak pernah
+mengecek role si pengunjung halaman. Backend (`assertActorCanManageMembers`)
+sudah benar sejak awal (tidak ada mutasi tidak sah yang berhasil saat
+dites) — ini murni information-disclosure di level UI, risiko rendah tapi
+nyata.
+
+**Fix (Prabowo Feature Engineer, commit `6fdf272`):**
+
+* `WorkspaceService.canManageMembers(workspaceId, actorUserId)` — method
+  publik baru, reuse `assertActorCanManageMembers` yang privat (sudah
+  dipakai `removeMember`/`updateMemberRole`/`inviteMember`), supaya
+  kriteria RBAC tidak terduplikasi.
+* `apps/web/src/app/(app)/settings/members/page.tsx` — gate
+  `canManageMembers` dipanggil **sebelum** `listMembersWithUser`; kalau
+  `false`, `redirect("/settings")` terjadi di server sebelum data member
+  pernah diambil sama sekali (menutup celah information disclosure).
+* 5 unit test baru di `workspace.service.test.ts` untuk `canManageMembers`
+  (Owner/Admin true, Creator/non-member/non-Active false).
+* Diverifikasi ulang live browser: Raka (Owner) & Maya (Admin) tetap akses
+  penuh Members (tidak ada regresi), Sinta (Creator) langsung redirect ke
+  `/settings` tanpa data member sempat tampil.
+* Full suite: 229 passed, 4 skipped. Typecheck & lint bersih.
+
+### Status
+
+T-093 ditutup **✅ Done** (4/4 subtask selesai). **KI-038 Resolved**.
+Rantai **T-093 → T-036 → T-092** tidak lagi terhambat T-093 — T-036
+(In-app notification + Supabase Realtime) sekarang giliran berikutnya di
+v0.1 tanpa blocker task lain. Dokumentasi diperbarui: `TASKS.md` (task
+selesai 24 → 25, breakdown v0.1 12 ✅ → 13 ✅ · 7 🟡 → 6 🟡),
+`tasks/v01-foundation.md` § T-093, `PROJECT_STATE.md` (Completed Ringkasan,
+Blockers § Resolved, Top Next Tasks).
+
+---
+
+## 2026-08-31 — T-093 Accept Invite page (T-093.1–.3) + ADR-096 (RLS pra-membership)
+
+### Context
+
+King Rezi menutup gap yang sudah dicatat sejak ADR-080 (2026-08-14):
+halaman `/invite/[token]` (accept-invite) belum pernah dibuat, sehingga link
+Copy Link yang dihasilkan T-007.1/.6 404 kalau dibuka. Rantai dependency
+Realtime (T-093 → T-036 → T-092, ADR-094) butuh invite-to-membership utuh
+dulu supaya bisa diuji/dipakai dengan ≥2 akun nyata di satu workspace.
+Dikerjakan Prabowo Feature Engineer (implementasi), lolos review arsitektur
+Ridwan (2 temuan security langsung diperbaiki).
+
+### Implemented
+
+* Route `/invite/[token]` (`apps/web/src/app/(auth)/invite/[token]/`) —
+  validasi token (valid/expired/invalid) + auto-detect `isExistingUser`
+  (email invitation sudah punya akun atau belum).
+* Alur Better Auth: sign-up (email baru) atau sign-in (email sudah
+  terdaftar) — email dikunci ke invitation, tidak bisa diedit manual
+  (email-bound, ADR-080). UI auto-detect (bukan pilihan manual user) sesuai
+  desain final Claude Design `templates/accept-invite.html`.
+* Insert `workspace_members` dengan role dari invitation (bukan default),
+  mark invitation `accepted`, redirect ke `/` + cookie
+  `active-workspace-id` (bukan `/[slug]`, ADR-076 sudah menghapus dynamic
+  segment itu).
+* Method baru langsung di `WorkspaceService` (bukan use-case terpisah),
+  konsisten pola method lain di file yang sama.
+* File: `apps/web/src/domains/workspace/{repositories/workspace.repository.ts, services/workspace.service.ts, services/workspace.service.test.ts, types.ts}`,
+  `apps/web/src/lib/repositories/workspace/workspace.repository.ts` + test
+  integrasi baru `workspace.repository.accept-invitation.test.ts`,
+  `apps/web/src/lib/prisma/with-current-user.ts` (helper baru
+  `setInviteLookupToken`), `apps/web/src/proxy.ts` (`/invite` masuk bypass
+  list), UI baru `apps/web/src/app/(auth)/invite/[token]/{page.tsx, actions.ts, components/AcceptInvitePageClient.tsx, components/AcceptInviteForm.tsx}`.
+* Test: 17 unit test baru (fake repository, service-level) + 1 integration
+  test terhadap DB real (`workspace.repository.accept-invitation.test.ts`).
+
+### ADR-096 — 3 migrasi RLS
+
+Pola RLS untuk operasi pra-membership (baca invitation by token, update
+status invitation, insert membership pertama) — SECURITY DEFINER function +
+session-variable GUC, ditetapkan sebagai preseden untuk kasus serupa di masa
+depan. 3 migrasi diterapkan ke DB dev, berurutan:
+
+1. `20260831035427_t093_accept_invite_rls` — 3 policy RLS awal: SELECT
+   invitation pending by token, UPDATE pending→accepted by invitee email
+   match, INSERT `workspace_members` via accepted invitation.
+2. `20260831042017_t093_invitation_select_visibility_fix` — bug fix:
+   Postgres mensyaratkan baris UPDATE juga lolos minimal satu policy SELECT
+   (bukan cukup WITH CHECK milik UPDATE-nya sendiri) — policy SELECT lama
+   berhenti meng-cover baris begitu status berubah jadi `accepted`; ditambah
+   policy SELECT baru: user selalu bisa lihat invitation yang emailnya
+   cocok dengan emailnya sendiri apa pun statusnya.
+3. `20260831044328_t093_code_review_rls_hardening` — 2 temuan review
+   Ridwan: (a) policy SELECT token-lookup awal terlalu longgar (buka baca
+   semua invitation pending, bukan cuma yang token-nya cocok) — diperbaiki
+   pakai session-variable GUC pattern (`app.invite_lookup_token`, konsisten
+   `app.current_user_id`), default-deny kalau GUC tidak di-set; (b) policy
+   INSERT `workspace_members` tidak mengunci `role` pada baris hasil
+   accept-invite — diperbaiki dengan menambah parameter role ke fungsi
+   `has_accepted_invitation` sehingga role yang di-insert harus sama persis
+   dengan role di invitation.
+
+### Belum selesai (dicatat sebagai KI-038)
+
+T-093.4 "verifikasi RBAC end-to-end dengan akun real kedua" (Owner vs Admin
+vs Creator, browser 2-akun nyata) belum dilakukan di sesi ini — di luar
+scope sesi implementasi, dicatat sebagai catatan terpisah untuk Najwa QA
+Engineer. T-093 tetap `🟡 In Progress`, belum ditutup `✅ Done`.
+
+### Docs
+
+`tasks/v01-foundation.md` § T-093 (checklist T-093.1–.3 `[x]`, status
+diupdate), `TASKS.md` (breakdown v0.1: 12 ✅ · 1 🚫 · 7 🟡 · 1 ⏸️ · 2 ⏳,
+T-093 pindah ⏳→🟡), `PROJECT_STATE.md` (Completed Ringkasan, Recent
+Decisions, KI-038 baru), `DECISIONS.md` + `decisions/ADR-096-*.md` (ADR
+baru).
+
+---
+
 ## 2026-08-28 — Follow-up PR #94: sisa drift setelah ganti base ke staging
 
 ### Fixed

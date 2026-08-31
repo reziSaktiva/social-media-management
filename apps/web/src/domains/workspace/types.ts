@@ -1,8 +1,8 @@
 /** Domain-specific types for workspace. */
 
+import { MemberRole } from "@social/shared";
 import type {
   MemberId,
-  MemberRole,
   MemberStatus,
   SocialPlatform,
   UserId,
@@ -43,3 +43,41 @@ export interface WorkspaceMemberWithUser {
   role: MemberRole;
   status: MemberStatus;
 }
+
+/**
+ * Detail undangan siap-render untuk halaman accept-invite (T-093.1,
+ * ADR-080). `isExistingUser` menentukan form mana yang ditampilkan (Buat
+ * Akun Baru vs Masuk) — hasil auto-detect `WorkspaceService.getInviteToAccept`,
+ * bukan pilihan user.
+ */
+export interface WorkspaceInviteAcceptDetails {
+  workspaceName: string;
+  invitedByName: string;
+  role: MemberRole;
+  email: string;
+  isExistingUser: boolean;
+}
+
+/**
+ * Discriminated union hasil validasi token accept-invite (T-093.1) — 3 dari
+ * 5 state UI Claude Design (`templates/accept-invite.html`) ditentukan di
+ * sini; 2 sisanya ("Email Baru"/"Email Terdaftar", dibedakan lewat
+ * `details.isExistingUser`) dan "Success" (hasil aksi submit, bukan hasil
+ * validasi token) ditentukan di layer UI.
+ */
+export type WorkspaceInviteAcceptView =
+  | { state: "valid"; details: WorkspaceInviteAcceptDetails }
+  | { state: "expired" }
+  | { state: "invalid" };
+
+/**
+ * Label tampilan role — satu sumber untuk semua UI (Settings → Members,
+ * halaman accept-invite, dst.) supaya tidak divergen antar layar (code
+ * review PR #95: sebelumnya `MembersTable.tsx` dan `AcceptInvitePageClient.tsx`
+ * masing-masing punya salinan sendiri, sempat berbeda untuk Owner).
+ */
+export const MEMBER_ROLE_LABEL: Record<MemberRole, string> = {
+  [MemberRole.Owner]: "Owner",
+  [MemberRole.Admin]: "Admin",
+  [MemberRole.Creator]: "Creator",
+};

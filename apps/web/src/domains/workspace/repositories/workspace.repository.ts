@@ -63,6 +63,7 @@ export interface WorkspaceInvitationRecord {
   role: MemberRole;
   token: string;
   status: InvitationStatus;
+  invitedByUserId: UserId;
   expiresAt: Date;
 }
 
@@ -193,6 +194,40 @@ export interface IWorkspaceRepository {
   findInvitationByToken(
     token: string,
   ): Promise<WorkspaceInvitationRecord | null>;
+
+  /**
+   * Lookup Better Auth `User` by email (T-093.1) — dipakai untuk auto-detect
+   * `isExistingUser` di halaman accept-invite (`/invite/[token]`): kalau
+   * email invitation sudah punya akun, tampilkan form "Masuk"; kalau belum,
+   * tampilkan form "Buat Akun Baru". Query langsung ke tabel `identity_user`
+   * lewat Prisma — konsisten dengan precedent `findUsersByIds` di atas
+   * (bounded context `workspace` sengaja boleh membaca `User` langsung,
+   * tidak ada relasi FK, dua bounded context berbeda tapi satu database).
+   * TIDAK dibungkus `withCurrentUser` — pemanggil (invitee) belum jadi
+   * member workspace mana pun, sama seperti alasan `findInvitationByToken`
+   * di atas tidak memakai RLS context.
+   */
+  findUserByEmail(email: string): Promise<{ id: UserId } | null>;
+
+  /**
+   * Terima invitation (T-093.3) — SATU transaksi atomik: (1) flip
+   * `WorkspaceInvitation.status` dari `pending` ke `accepted` + set
+   * `acceptedAt` HANYA kalau status saat ini masih `pending` (guard
+   * race/replay — token yang sudah dipakai tidak bisa dipakai ulang), (2)
+   * upsert `WorkspaceMember` dengan `role` yang diteruskan APA ADANYA dari
+   * `invitation.role` (bukan default) dan `status: active`. Implementasi
+   * WAJIB set `app.current_user_id` ke `userId` (RLS chicken-and-egg) —
+   * pola sama seperti `createWithOwner`, karena membership baru ini belum
+   * ada saat insert dieksekusi. Melempar `ConflictError` bila invitation
+   * sudah tidak `pending` lagi (accepted/revoked/expired) saat transaksi
+   * dieksekusi.
+   */
+  acceptInvitation(input: {
+    workspaceId: WorkspaceId;
+    invitationId: InvitationId;
+    userId: UserId;
+    role: MemberRole;
+  }): Promise<WorkspaceMemberRecord>;
 
   /**
    * Persist urutan channel sidebar personal user (T-012.1). Full rewrite
