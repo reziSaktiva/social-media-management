@@ -8,6 +8,64 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-08-31 — T-093 Accept Invite page ditutup Done (T-093.4 verifikasi RBAC end-to-end + fix bug Creator-akses-Members)
+
+### Context
+
+Sesi lanjutan menutup T-093 (Accept Invite page) yang di sesi sebelumnya
+sudah menyelesaikan T-093.1–.3 (implementasi) tapi meninggalkan T-093.4
+(verifikasi RBAC end-to-end dengan akun real kedua) sebagian — hanya
+unit/integration test service-level, belum verifikasi browser dengan akun
+nyata (dicatat **KI-038**). Najwa QA Engineer menuntaskan verifikasi dengan
+**3 akun real** (Owner/Admin/Creator) di satu workspace ("Insvire").
+
+### Hasil verifikasi RBAC (Najwa)
+
+* Danger Zone hidden non-Owner — **PASS**
+* Transfer Ownership target eligible (hanya Admin, bukan Creator) — **PASS**
+* Update Role (siapa boleh ubah siapa) — **PASS** untuk Owner & Admin
+* Remove Member (proteksi Owner/diri sendiri) — **PASS** untuk Owner & Admin
+
+### Bug ditemukan & diperbaiki
+
+Creator seharusnya "Tidak ada akses" ke halaman `/settings/members`
+(`product-discovery/02-product/roles-permissions.md`), tapi sebelumnya
+halaman tetap terbuka penuh dan mengirim data member+email ke client —
+`MembersTable` cuma menyembunyikan tombol aksi per baris, tidak pernah
+mengecek role si pengunjung halaman. Backend (`assertActorCanManageMembers`)
+sudah benar sejak awal (tidak ada mutasi tidak sah yang berhasil saat
+dites) — ini murni information-disclosure di level UI, risiko rendah tapi
+nyata.
+
+**Fix (Prabowo Feature Engineer, commit `6fdf272`):**
+
+* `WorkspaceService.canManageMembers(workspaceId, actorUserId)` — method
+  publik baru, reuse `assertActorCanManageMembers` yang privat (sudah
+  dipakai `removeMember`/`updateMemberRole`/`inviteMember`), supaya
+  kriteria RBAC tidak terduplikasi.
+* `apps/web/src/app/(app)/settings/members/page.tsx` — gate
+  `canManageMembers` dipanggil **sebelum** `listMembersWithUser`; kalau
+  `false`, `redirect("/settings")` terjadi di server sebelum data member
+  pernah diambil sama sekali (menutup celah information disclosure).
+* 5 unit test baru di `workspace.service.test.ts` untuk `canManageMembers`
+  (Owner/Admin true, Creator/non-member/non-Active false).
+* Diverifikasi ulang live browser: Raka (Owner) & Maya (Admin) tetap akses
+  penuh Members (tidak ada regresi), Sinta (Creator) langsung redirect ke
+  `/settings` tanpa data member sempat tampil.
+* Full suite: 229 passed, 4 skipped. Typecheck & lint bersih.
+
+### Status
+
+T-093 ditutup **✅ Done** (4/4 subtask selesai). **KI-038 Resolved**.
+Rantai **T-093 → T-036 → T-092** tidak lagi terhambat T-093 — T-036
+(In-app notification + Supabase Realtime) sekarang giliran berikutnya di
+v0.1 tanpa blocker task lain. Dokumentasi diperbarui: `TASKS.md` (task
+selesai 24 → 25, breakdown v0.1 12 ✅ → 13 ✅ · 7 🟡 → 6 🟡),
+`tasks/v01-foundation.md` § T-093, `PROJECT_STATE.md` (Completed Ringkasan,
+Blockers § Resolved, Top Next Tasks).
+
+---
+
 ## 2026-08-31 — T-093 Accept Invite page (T-093.1–.3) + ADR-096 (RLS pra-membership)
 
 ### Context

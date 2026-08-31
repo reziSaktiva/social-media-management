@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** T-025 Real OutstandAdapter, T-093 — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus (T-029 Publish Now sudah ✅ Done, 2026-08-18)
+* **Top Next Tasks:** T-025 Real OutstandAdapter, T-036 In-app notification + Supabase Realtime — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus (T-093 Accept Invite page sudah ✅ Done, 2026-08-31)
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 77 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.56     |
+| Version      | 1.0.57     |
 | Status       | Active     |
 | Last Updated | 2026-08-31 |
 
@@ -401,16 +401,6 @@ Ditemukan saat penulisan `rendering-strategy.md` (ADR-095, 2026-08-28): `app/(ap
 
 Section Spacing di `design-tokens.md` baru dikunci (base 1 unit = 4px, skala 0/0.5/1/1.5/2/3/4/5/6/8 = 0–32px, menggantikan `TBD` sejak ADR-038) lewat ADR-095. Mengikuti pola reminder ADR-056 (dokumen ini co-equal dengan Claude Design, perubahan salah satu wajib disinkronkan ke yang lain), sinkronisasi ke Claude Design belum dilakukan di sesi ADR-095 — perlu langkah lanjutan terpisah. Tidak memblokir M8.
 
-### KI-038 · T-093.4 verifikasi RBAC end-to-end 2-akun browser nyata belum dilakukan
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Tech-Debt |
-| Terkait | T-093 (`tasks/v01-foundation.md` § T-093) |
-
-Ditemukan 2026-08-31 saat menutup implementasi T-093 (Accept Invite page): T-093.1–.3 selesai dan lolos review arsitektur Ridwan (2 temuan security RLS sudah diperbaiki, lihat ADR-096); T-093.4 (17 unit test service-level + 1 integration test terhadap DB real) juga sudah selesai. Namun bagian "verifikasi RBAC end-to-end dengan akun real kedua" (Owner vs Admin vs Creator, Danger Zone/Transfer Ownership/Update Role/Remove Member via browser dengan 2 akun nyata) — yang jadi tujuan utama T-093 dibuat sebagai task (rantai T-093 → T-036 → T-092 butuh ≥2 akun nyata di satu workspace) — **belum dilakukan** di sesi ini. Catatan untuk Najwa QA Engineer di sesi terpisah. Tidak memblokir M8, tapi T-093 sengaja belum ditutup `✅ Done` sampai ini selesai.
-
 ---
 
 ## Blockers
@@ -437,6 +427,13 @@ formal Najwa selesai, lolos penuh (unit test + full suite 157 passed/3
 skipped/0 gagal + golden path browser end-to-end, tidak ada bug baru),
 lihat `COMPLETE_TASK.md`.
 
+**Resolved 2026-08-31:** KI-038 (T-093.4 verifikasi RBAC end-to-end 2-akun
+browser nyata belum dilakukan) — Najwa QA Engineer menuntaskan verifikasi
+dengan 3 akun real (Owner/Admin/Creator) di satu workspace, seluruh skenario
+RBAC PASS; 1 bug ditemukan (Creator bisa mengakses `/settings/members` yang
+seharusnya "Tidak ada akses") dan sudah diperbaiki + diverifikasi ulang
+(commit `6fdf272`), lihat `COMPLETE_TASK.md`.
+
 Detail masing-masing ada di section **Known Issues** di atas — tabel ini
 hanya pointer supaya blocker aktif langsung terlihat tanpa harus menyisir
 seluruh daftar Known Issues.
@@ -447,7 +444,7 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
-* **T-093.1–.3 Accept Invite page diimplementasikan (2026-08-31)** — route `/invite/[token]` dengan validasi token + auto-detect `isExistingUser`, alur sign-up/sign-in Better Auth email-bound (ADR-080), insert `workspace_members` dengan role dari invitation. Lolos review arsitektur Ridwan (2 temuan security RLS diperbaiki, dicatat **ADR-096** — pola SECURITY DEFINER + session-variable GUC untuk operasi pra-membership). 17 unit test + 1 integration test DB real. T-093.4 (verifikasi RBAC end-to-end 2-akun browser nyata) belum dilakukan — **KI-038**, task tetap `🟡 In Progress`. Detail: `tasks/v01-foundation.md` § T-093, `COMPLETE_TASK.md`.
+* **T-093 Accept Invite page selesai (2026-08-31)** — T-093.4 (verifikasi RBAC end-to-end) dituntaskan Najwa QA Engineer dengan 3 akun real (Owner/Admin/Creator) di satu workspace, seluruh skenario RBAC PASS. 1 bug ditemukan & diperbaiki selama verifikasi: Creator bisa mengakses `/settings/members` (information disclosure UI-level; backend RBAC sudah benar sejak awal) — fix `WorkspaceService.canManageMembers` + gate server-side sebelum fetch data member (commit `6fdf272`), diverifikasi ulang tanpa regresi. Task ditutup `✅ Done`, **KI-038 Resolved**. Detail: `tasks/v01-foundation.md` § T-093, `COMPLETE_TASK.md`.
 * **T-094 Baseline Rendering Strategy, Code Conventions, Spacing Scale + ESLint Enforcement selesai (2026-08-28, ADR-095)** — 2 dokumen baseline baru (`rendering-strategy.md`, `code-conventions.md`), skala Spacing `design-tokens.md` dikunci (`TBD` sejak ADR-038 ditutup), 3 rule ESLint enforcement (domain import boundary, larangan `<div>` mentah, `tailwindcss/no-arbitrary-value`) — diverifikasi 0 error lint/typecheck, 209 test passed/3 skipped. 1 subtask tersisa terbuka (cleanup dashboard, **KI-036**), tidak memblokir penutupan. Detail: `tasks/v01-foundation.md` § T-094, `COMPLETE_TASK.md`.
 * **Polishing UI grid Calendar selesai (2026-08-27)** — di atas T-033.1–.6/.8 yang sudah selesai, sebelum T-033.7: fix grid 7-kolom Month & Week tidak sejajar (CSS Grid track blowout, di-fix via `isScrollable`+`StackItem size="fill"`, bukan `xstyle`/StyleX — compiler-nya belum ter-setup, lihat **KI-035**), redesain kartu post (avatar+nama 1 baris, indikator Post/Reel/Story/Pin via `contentFormat`, footer mobile `StatusDot`+`Icon` compact ≤768px), garis pemisah vertikal antar kolom hari + padding cell disesuaikan (gap grid dihapus). T-033.7 (manual refresh) tetap belum dikerjakan — masih blocked. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 * **T-033.8 Popover ringkasan post + CTA Draft Editor Calendar view selesai (2026-08-27)** — `CalendarPostPopover.tsx` (baru): Astryx `Popover` (ADR-090/ADR-091), klik kartu Week/Month membuka ringkasan (header account+platform, caption, media placeholder, 4 tile metrik untuk status Published via `PostMetricsPort`, link "Go to post", CTA "Buka Draft Editor" reuse `useDraftEditor`). Data-wiring: field baru `platformPostUrl` di-expose ke domain publishing, `page.tsx` composition root sekarang pass `AnalyticsService` sebagai `PostMetricsPort` (sebelumnya kosong, jadi metrik Published sekarang benar-benar terisi). Lolos review Ridwan (tanpa temuan) + QA Najwa (tanpa bug fungsional; satu catatan inconclusive soal tooling emulasi mobile viewport, bukan bug). T-033.7 (manual refresh) **belum dikerjakan** — blocked, tidak ada rancangan di Claude Design, menunggu King Rezi. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.

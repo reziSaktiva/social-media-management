@@ -339,7 +339,7 @@ delete-lalu-create-ulang ini saat dikerjakan.
 | **Status**    | ⏳ Not Started                                                |
 | **Domain**    | notification                                                 |
 | **ADR**       | ADR-023, ADR-030 (Supabase JWT)                              |
-| **Depends**   | T-026 (sumber event notifikasi) · **T-093** (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094) |
+| **Depends**   | T-026 (sumber event notifikasi) · T-093 ✅ (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094; T-093 sudah Done 2026-08-31, tidak lagi memblokir) |
 | **Baca dulu** | `05-architecture/realtime-strategy.md` · `apps/web/src/lib/better-auth/supabase-jwt.ts` |
 
 `Basic Notifications` berstatus **Should Have** di `mvp-definition.md` — ditempatkan di rilis ini karena hasil publish (`post.published` / `post.error`) tidak berguna tanpa cara memberi tahu pengguna. Domain `notification/` masih stub kosong; model `Notification` sudah ada di schema.
