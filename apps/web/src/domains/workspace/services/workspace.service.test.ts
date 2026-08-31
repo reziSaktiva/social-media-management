@@ -539,6 +539,88 @@ describe("WorkspaceService.removeMember", () => {
   });
 });
 
+describe("WorkspaceService.canManageMembers", () => {
+  const OWNER_USER = asUserId("cmm-owner-user");
+  const ADMIN_USER = asUserId("cmm-admin-user");
+  const CREATOR_USER = asUserId("cmm-creator-user");
+
+  const OWNER_MEMBER_ID = asMemberId("cmm-member-owner");
+  const ADMIN_MEMBER_ID = asMemberId("cmm-member-admin");
+  const CREATOR_MEMBER_ID = asMemberId("cmm-member-creator");
+
+  function baseSeed(): WorkspaceMemberRecord[] {
+    return [
+      member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
+      member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
+      member(CREATOR_USER, CREATOR_MEMBER_ID, MemberRole.Creator),
+    ];
+  }
+
+  // Gate akses halaman Members (bukan cuma aksi kelola) — Creator harus
+  // "Tidak ada akses" sama sekali per roles-permissions.md, beda dari
+  // removeMember/updateMemberRole yang jadi target tapi bukan actor di
+  // sini. Regression test untuk bug KI-038 (halaman Members tetap
+  // terbuka + data member/email terkirim ke Creator).
+  it("returns true for Owner", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.canManageMembers(WORKSPACE_ID, OWNER_USER),
+    ).resolves.toBe(true);
+  });
+
+  it("returns true for Admin", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.canManageMembers(WORKSPACE_ID, ADMIN_USER),
+    ).resolves.toBe(true);
+  });
+
+  it("returns false for Creator", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.canManageMembers(WORKSPACE_ID, CREATOR_USER),
+    ).resolves.toBe(false);
+  });
+
+  it("returns false for a non-member / stranger", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.canManageMembers(WORKSPACE_ID, asUserId("cmm-stranger")),
+    ).resolves.toBe(false);
+  });
+
+  it("returns false when the actor's membership is not Active", async () => {
+    const seed = baseSeed();
+    seed.push(
+      member(
+        asUserId("cmm-pending-user"),
+        asMemberId("cmm-member-pending"),
+        MemberRole.Admin,
+        MemberStatus.Pending,
+      ),
+    );
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(seed)),
+    );
+
+    await expect(
+      service.canManageMembers(WORKSPACE_ID, asUserId("cmm-pending-user")),
+    ).resolves.toBe(false);
+  });
+});
+
 describe("WorkspaceService.updateMemberRole", () => {
   const OWNER_USER = asUserId("owner-user");
   const ADMIN_USER = asUserId("admin-user");

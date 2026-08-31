@@ -333,6 +333,30 @@ export class WorkspaceService {
     return result;
   }
 
+  /**
+   * Gate akses halaman Members (Server Component) — true untuk Owner/Admin
+   * aktif, false untuk selainnya (termasuk Creator, yang menurut matrix
+   * `roles-permissions.md` "Tidak ada akses" ke Members sama sekali, bukan
+   * cuma tombol aksi disembunyikan). Reuse `assertActorCanManageMembers`
+   * (single source of truth RBAC Members, sudah dipakai removeMember/
+   * updateMemberRole/inviteMember) supaya kriteria role tidak terduplikasi
+   * di entry point.
+   */
+  async canManageMembers(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<boolean> {
+    try {
+      await this.assertActorCanManageMembers(workspaceId, actorUserId, "");
+      return true;
+    } catch (error) {
+      if (error instanceof AuthorizationError) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
   /** Owner/Admin only; dipakai removeMember & updateMemberRole. */
   private async assertActorCanManageMembers(
     workspaceId: WorkspaceId,

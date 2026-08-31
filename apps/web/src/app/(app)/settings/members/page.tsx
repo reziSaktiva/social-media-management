@@ -14,6 +14,17 @@ import { MembersTable } from "./components/MembersTable";
 // dipanggil di sini (bukan cuma di layout) karena `currentUserId`-nya
 // dibutuhkan langsung oleh MembersTable, sama seperti pola
 // saveDraftAction di (app)/components/draft-editor/actions.ts.
+//
+// RBAC (roles-permissions.md): Creator "Tidak ada akses" ke Members sama
+// sekali — bukan cuma tombol aksi disembunyikan (beda dari Danger Zone di
+// Settings General, yang section-nya disembunyikan tapi halamannya sendiri
+// tetap bisa diakses semua role). Gate dicek di sini, SEBELUM
+// listMembersWithUser dipanggil, supaya data member (termasuk email
+// seluruh anggota) tidak pernah dikirim ke Creator sama sekali — bug
+// KI-038 sebelumnya cuma menyembunyikan tombol di client setelah data
+// sudah terkirim (information disclosure). Redirect ke "/settings"
+// (General) karena halaman itu bisa diakses semua role — tidak ada
+// preseden redirect khusus untuk halaman restricted lain di app ini.
 export default async function Page() {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -22,9 +33,19 @@ export default async function Page() {
   }
 
   const workspaceService = new WorkspaceService(workspaceRepository);
+  const actorUserId = asUserId(session.user.id);
+
+  const canAccessMembers = await workspaceService.canManageMembers(
+    workspaceId,
+    actorUserId,
+  );
+  if (!canAccessMembers) {
+    redirect("/settings");
+  }
+
   const members = await workspaceService.listMembersWithUser(
     workspaceId,
-    asUserId(session.user.id),
+    actorUserId,
   );
 
   return (
