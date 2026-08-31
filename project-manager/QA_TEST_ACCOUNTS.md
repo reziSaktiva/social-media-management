@@ -38,19 +38,36 @@ Akun ini sudah dipakai berkali-kali untuk verifikasi end-to-end M8 (lihat
 riwayat "akun test Raka Pratama" di `PROJECT_STATE.md` — ADR-046, Publishing
 MVP persistensi, ADR-052 Tahap 3, dll).
 
----
+| Field    | Value                        |
+| -------- | ---------------------------- |
+| Nama     | Maya Anggraini                |
+| Email    | `maya.test@kopiselasar.com`  |
+| Password | `Password123!`                |
+| Role     | Admin                         |
 
-## Akun Manager & Creator — ditunda
+Dibuat 2026-08-31 lewat alur **Accept Invite (T-093)** yang baru selesai
+diimplementasikan — Raka Pratama (Owner) invite via Settings → Members →
+Invite Member (role Admin, metode Copy Link), lalu link `/invite/{token}`
+dibuka untuk isi Nama + Password (state "Email Baru", email terkunci ke
+undangan). Berhasil landing di workspace yang sama (workspace "Insvire")
+dengan role Admin — dipakai sebagai bukti T-093 berfungsi end-to-end
+sekaligus akun kedua untuk verifikasi RBAC (KI-038, T-093.4: Owner vs
+Admin vs Creator — belum dilakukan tuntas, masih terbuka).
 
-King Rezi awalnya meminta 3 akun test (Owner/Manager/Creator). Setelah
-dicek, fitur invite member (`apps/web/src/app/[slug]/settings/members/
-page.tsx`) **masih scaffold placeholder** — belum ada alur invite yang
-benar-benar berjalan. Karena itu:
+| Field    | Value                        |
+| -------- | ---------------------------- |
+| Nama     | Sinta Wijaya                  |
+| Email    | `sinta.test@kopiselasar.com` |
+| Password | `Password123!`                |
+| Role     | (belum di-invite ke workspace manapun) |
 
-- Pembuatan akun Manager & Creator **ditunda** sampai fitur invite member
-  selesai diimplementasikan.
-- **Jangan** membuat akun ini via hack langsung ke database kecuali
-  diminta eksplisit oleh user nanti.
+Dibuat 2026-08-31 — **hanya registrasi akun** via `/register` (belum
+dilanjutkan ke onboarding buat workspace, langsung logout setelah sign-up
+berhasil), disiapkan sebagai calon **Creator** di workspace Insvire.
+Sengaja **belum di-invite** — atas permintaan eksplisit King Rezi, proses
+invite (Settings → Members → Invite Member → role Creator → buka link
+`/invite/{token}` dengan akun ini) akan dilakukan sendiri oleh King Rezi,
+bukan oleh AI.
 
 ---
 
