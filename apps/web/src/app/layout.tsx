@@ -7,7 +7,7 @@ import { Providers } from "@/components/Providers";
 import { THEME_COOKIE_NAME, parseThemeMode } from "@/lib/theme/theme-cookie";
 import { cn } from "@/lib/utils";
 
-const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
+const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
