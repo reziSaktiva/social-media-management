@@ -2,8 +2,6 @@ import { asUserId } from "@social/shared";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { AppShell } from "@astryxdesign/core/AppShell";
-
 import { NotificationService } from "@/domains/notification";
 import { PublishingService } from "@/domains/publishing";
 import { WorkspaceService } from "@/domains/workspace";
@@ -70,26 +68,55 @@ export default async function Layout({
   // Provider + modal duduk di level workspace (bukan lagi di `publish/`)
   // supaya CTA "+ New Post" di sidebar bisa membuka Draft Editor dari section
   // manapun — ADR-053, T-011.2.
+  //
+  // T-096.3: pengganti `AppShell` Astryx (`variant="elevated"`, satu titik
+  // pakai, dampak ke seluruh app). Dipilih layout custom Tailwind (bukan
+  // primitive `Sidebar` shadcn) karena isi slot sideNav (`AppSideNav` ->
+  // `WorkspaceSideNav`/`SettingsSideNav`) masih Astryx murni dan belum masuk
+  // scope T-096 (route-segment App Shell & Navigasi ada di T-098) — memaksa
+  // markup Astryx yang belum dimigrasi ke dalam struktur DOM `SidebarProvider`
+  // /`Sidebar` shadcn berisiko lebih tinggi daripada wrapper flex biasa.
+  // Struktur & warna meniru perilaku `variant="elevated"` yang sudah berjalan
+  // (bukan `variant="section"` yang sempat direferensikan di draft awal
+  // styles.css Claude Design — lihat catatan laporan T-096 ke King Rezi):
+  // shell + kolom sideNav pakai `bg-background` (canvas, sama seperti
+  // `navAreaWash` lama), area konten jadi "kartu" mengambang dengan sudut
+  // membulat memakai `bg-sidebar` (nilai hex-nya identik dengan
+  // `--color-background-surface` lama, lihat design-tokens.md § Engineering
+  // Mapping T-095.5).
+  //
+  // Gap yang disadari & sengaja tidak ditutup di sini: AppShell Astryx
+  // otomatis menyediakan hamburger + drawer mobile di bawah breakpoint `md`
+  // (prop `mobileNav` bawaan). Layout custom ini TIDAK mereplikasi itu —
+  // sideNav selalu tampil sebagai kolom kiri fixed-width di semua ukuran
+  // layar. Menutup gap ini dengan benar (Sheet shadcn untuk drawer mobile)
+  // lebih koheren dikerjakan bersamaan dengan migrasi isi sideNav itu
+  // sendiri di T-098 (App Shell & Navigasi), bukan stub parsial sekarang.
   return (
     <DraftEditorProvider workspaceId={workspaceId}>
-      <AppShell
-        contentPadding={4}
-        variant="elevated"
-        height="fill"
-        sideNav={
-          <AppSideNav
-            workspaceName={workspace.name}
-            userName={session.user.name}
-            userEmail={session.user.email}
-            channels={channels}
-            initialNotifications={notifications}
-            initialUnreadCount={unreadCount}
-            userId={session.user.id}
-          />
-        }
-      >
-        {children}
-      </AppShell>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-096.3: file ini
+          sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097 poin 4),
+          bukan lagi AppShell Astryx — <div> layout langsung, bukan
+          VStack/HStack. */}
+      <div className="relative flex h-dvh flex-col bg-background text-foreground">
+        {/* eslint-disable-next-line no-restricted-syntax -- T-096.3, sama seperti di atas */}
+        <div className="relative flex min-h-0 flex-1">
+          <aside className="flex w-64 shrink-0 flex-col overflow-y-auto bg-background">
+            <AppSideNav
+              workspaceName={workspace.name}
+              userName={session.user.name}
+              userEmail={session.user.email}
+              channels={channels}
+              initialNotifications={notifications}
+              initialUnreadCount={unreadCount}
+              userId={session.user.id}
+            />
+          </aside>
+          <main className="relative min-w-0 flex-1 overflow-y-auto rounded-tl-3xl bg-sidebar p-4">
+            {children}
+          </main>
+        </div>
+      </div>
       <DraftEditorMount />
     </DraftEditorProvider>
   );

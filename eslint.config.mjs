@@ -93,17 +93,39 @@ const eslintConfig = defineConfig([
   {
     // ADR-095: menegakkan apps/web/.claude/CLAUDE.md — "No <div>, komponen
     // yang menangani seluruh layout/spacing". Diverifikasi 0 pelanggaran
-    // existing sebelum diaktifkan sebagai error.
+    // existing sebelum diaktifkan sebagai error. Aturan ini era-Astryx
+    // (props layout VStack/HStack/Stack/Grid/Box) — ADR-097 poin 4 (migrasi
+    // shadcn/ui) sudah memutuskan "aturan lint ... disesuaikan ke konvensi
+    // shadcn", jadi `apps/web/src/components/ui/**` (satu-satunya direktori
+    // output CLI/MCP shadcn, lihat alias `ui` di components.json)
+    // dikecualikan di bawah — setiap komponen shadcn (Card, Dialog, dst.)
+    // memang dikomposisi dari `<div>` Tailwind langsung, bukan wrapper
+    // layout Astryx.
     files: ["apps/web/src/app/**/*.tsx", "apps/web/src/components/**/*.tsx"],
+    ignores: ["apps/web/src/components/ui/**"],
     rules: {
       "no-restricted-syntax": [
         "error",
         {
           selector: "JSXOpeningElement[name.name='div']",
           message:
-            "Jangan pakai <div> mentah — pakai komponen layout Astryx (VStack/HStack/Stack/Grid/Box). Lihat apps/web/.claude/CLAUDE.md.",
+            "Jangan pakai <div> mentah — pakai komponen layout Astryx (VStack/HStack/Stack/Grid/Box), kecuali file ini sudah dimigrasi ke shadcn/ui (ADR-097) dan boleh dikomposisi Tailwind langsung. Lihat apps/web/.claude/CLAUDE.md.",
         },
       ],
+    },
+  },
+  {
+    // Sama seperti override di atas — komponen shadcn CLI-generated di
+    // `components/ui/**` juga rutin memakai Tailwind arbitrary-value untuk
+    // hal yang belum punya padanan utility canonical (mis. `ring-[3px]`,
+    // `max-w-[calc(100%-2rem)]`, `grid-cols-[1fr_auto]`) — pola yang sama
+    // persis dengan yang sudah diberi `eslint-disable-next-line` manual di
+    // `button.tsx` sejak T-095.1. Dikecualikan di level direktori (bukan
+    // disable per baris) supaya `shadcn add`/CLI update berikutnya tidak
+    // butuh anotasi ulang setiap kali file di-regenerate.
+    files: ["apps/web/src/components/ui/**/*.tsx"],
+    rules: {
+      "tailwindcss/no-arbitrary-value": "off",
     },
   },
   globalIgnores([

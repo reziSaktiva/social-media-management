@@ -194,28 +194,49 @@ dulu** sebelum T-096 dimulai.
 
 ### T-096 · Migrasi Core Infra & Shared Primitives
 
-`⏳ Not Started` · **Domain** UI · **ADR** ADR-097 · **Depends** T-095
+`✅ Done` (2026-09-01) · **Domain** UI · **ADR** ADR-097 · **Depends** T-095
 **Baca dulu:** `ADR-097` · `product-discovery/06-engineering/design-tokens.md`
 
 Fondasi yang dipakai seluruh app tree — dikerjakan sebelum route-segment
 manapun karena blast radius-nya mencakup semua halaman. Highest-risk task
 di rilis ini (root layout + provider), verifikasi ekstra hati-hati.
 
-- [ ] **T-096.1** `globals.css` baru — hapus `@layer astryx-base,
+- [x] **T-096.1** `globals.css` baru — hapus `@layer astryx-base,
       astryx-theme` dan `@import` Astryx (`reset.css`, `astryx.css`,
       `theme-stone/theme.css`, `tailwind-theme.css`), pasang base
       Tailwind v4 + shadcn sesuai pemetaan token T-095.5
-- [ ] **T-096.2** `components/Providers.tsx` — ganti `Theme`/`stoneTheme`
+- [x] **T-096.2** `components/Providers.tsx` — ganti `Theme`/`stoneTheme`
       Astryx dengan pendekatan shadcn (Tailwind `dark:` class strategy);
       **pertahankan** `ThemeModeContext`/`useThemeMode` custom (cookie
       persisted) apa adanya — logic ini sudah independen dari Astryx
-- [ ] **T-096.3** Root `app/(app)/layout.tsx` — migrasi `AppShell` Astryx
+- [x] **T-096.3** Root `app/(app)/layout.tsx` — migrasi `AppShell` Astryx
       (1 titik pakai, tapi dampak ke seluruh app) ke komposisi shadcn
       (mis. `Sidebar` primitive shadcn atau layout custom Tailwind)
-- [ ] **T-096.4** Bangun primitive dasar yang dipakai lintas hampir semua
+- [x] **T-096.4** Bangun primitive dasar yang dipakai lintas hampir semua
       file lain: `Button`, `Text`/Typography, `Card`, `Input`, `Dialog` —
       prioritaskan berdasarkan frekuensi pakai di audit (Button/Text/
       VStack/HStack adalah yang paling sering muncul)
+- Catatan penting (2026-09-01, disetujui King Rezi):
+  * `@import` CSS Astryx di `globals.css` **sengaja dipertahankan**
+    (tidak dihapus sesuai rencana awal T-096.1) karena route-segment
+    yang belum dimigrasi (auth/settings/publish — T-097–T-101) masih
+    butuh CSS itu; akan dihapus di T-102 setelah semua route-segment
+    selesai migrasi.
+  * `<Theme>` Astryx di `Providers.tsx` **sengaja dipertahankan
+    berdampingan** dengan class `dark` shadcn (bukan pengganti) —
+    supaya dark/light mode tidak desync antara bagian yang sudah
+    shadcn dan yang masih Astryx; akan dilepas di T-102.
+  * Gap yang sengaja belum ditutup: sidebar mobile (hamburger+drawer)
+    di `(app)/layout.tsx` belum direplikasi di layout baru, menyusul
+    di T-098 bersamaan migrasi `WorkspaceSideNav`/`SettingsSideNav`
+    ke `Sheet`.
+  * Komponen primitive baru yang ditambahkan: `Button`, `Card`,
+    `Dialog`, `Input` (via CLI shadcn resmi), `Text`/Typography
+    (ditulis manual — shadcn tidak punya komponen Typography resmi).
+  * Verifikasi: typecheck bersih, lint bersih, verifikasi visual
+    manual di browser tidak menemukan regresi. Dikerjakan di branch
+    `feature/t-096-core-infra-migration`, dikonfirmasi King Rezi
+    ("aman").
 
 ---
 
