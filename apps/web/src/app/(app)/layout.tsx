@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@astryxdesign/core/AppShell";
 
+import { NotificationService } from "@/domains/notification";
 import { PublishingService } from "@/domains/publishing";
 import { WorkspaceService } from "@/domains/workspace";
 import { auth } from "@/lib/better-auth/auth";
+import { notificationRepository } from "@/lib/repositories/notification";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
@@ -50,6 +52,21 @@ export default async function Layout({
     asUserId(session.user.id),
   );
 
+  // Bell notifikasi sidebar footer (T-036.4) — data awal via Server
+  // Component (read), bukan Server Action (ADR-095, pola sama channels di
+  // atas). Realtime insert baru ditangani client-side oleh `NotificationBell`
+  // (`useNotificationRealtime`, T-036.2).
+  const notificationService = new NotificationService(notificationRepository);
+  const notifications = await notificationService.list(
+    asUserId(session.user.id),
+  );
+  // Query `count` terpisah dari `list` (yang dibatasi 50 baris) supaya badge
+  // unread di bell tidak under-count begitu user punya >50 notifikasi belum
+  // dibaca.
+  const unreadCount = await notificationService.countUnread(
+    asUserId(session.user.id),
+  );
+
   // Provider + modal duduk di level workspace (bukan lagi di `publish/`)
   // supaya CTA "+ New Post" di sidebar bisa membuka Draft Editor dari section
   // manapun — ADR-053, T-011.2.
@@ -65,6 +82,9 @@ export default async function Layout({
             userName={session.user.name}
             userEmail={session.user.email}
             channels={channels}
+            initialNotifications={notifications}
+            initialUnreadCount={unreadCount}
+            userId={session.user.id}
           />
         }
       >

@@ -1,4 +1,9 @@
-import type { NotificationType, UserId, WorkspaceId } from "@social/shared";
+import type {
+  NotificationId,
+  NotificationType,
+  UserId,
+  WorkspaceId,
+} from "@social/shared";
 import type { INotificationRepository } from "../repositories/notification.repository";
 import type { NotificationRecord } from "../types";
 
@@ -23,5 +28,25 @@ export class NotificationService {
     relatedEntityId?: string;
   }): Promise<NotificationRecord> {
     return this.repository.create(input);
+  }
+
+  /** Daftar notifikasi milik `userId` untuk bell (T-036.4) — delegasi tipis ke repository. */
+  async list(userId: UserId): Promise<NotificationRecord[]> {
+    return this.repository.list(userId);
+  }
+
+  /** Total notifikasi belum dibaca milik `userId` (tidak dibatasi 50 seperti `list`) — delegasi tipis ke repository. */
+  async countUnread(userId: UserId): Promise<number> {
+    return this.repository.countUnread(userId);
+  }
+
+  /** Tandai satu notifikasi sudah dibaca — delegasi tipis ke repository. */
+  async markAsRead(id: NotificationId, userId: UserId): Promise<void> {
+    return this.repository.markAsRead(id, userId);
+  }
+
+  /** Tandai seluruh notifikasi milik `userId` sebagai sudah dibaca — delegasi tipis ke repository. */
+  async markAllAsRead(userId: UserId): Promise<void> {
+    return this.repository.markAllAsRead(userId);
   }
 }
