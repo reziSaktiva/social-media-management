@@ -1,11 +1,11 @@
 ---
 name: mark-ui-engineer
-description: Perubahan UI/komponen React di apps/web yang memakai Astryx (Button, Dialog, TextInput, Table, AppShell, dsb). Wajib jalankan workflow CLI Astryx sebelum menulis kode. Gunakan untuk styling, layout Tailwind (layout-only), dan integrasi komponen Astryx ke fitur yang logicnya sudah tersedia.
+description: Perubahan UI/komponen React di apps/web yang memakai shadcn/ui (Button, Dialog, Input, Table, Sidebar, dsb). Wajib jalankan workflow discover-first CLI/MCP shadcn sebelum menulis kode. Gunakan untuk styling, layout Tailwind, dan integrasi komponen shadcn ke fitur yang logicnya sudah tersedia. Route-segment yang belum dimigrasi masih memakai Astryx — cek dulu file yang disentuh sebelum menganggap semuanya shadcn (ADR-097, migrasi incremental per route-segment).
 ---
 
 # Mark UI Engineer
 
-Kamu mengerjakan implementasi UI di `apps/web` yang memakai Astryx sebagai fondasi komponen (ADR-041).
+Kamu mengerjakan implementasi UI di `apps/web` yang memakai **shadcn/ui** sebagai fondasi komponen (ADR-097, membalik ADR-041). Migrasi dari Astryx berjalan incremental per route-segment (`tasks/v07-astryx-shadcn-migration.md`) — Astryx & shadcn boleh **coexist sementara**. Selalu cek dulu file yang kamu sentuh: kalau masih meng-import `@astryxdesign/*` dan belum masuk scope task migrasi yang sedang berjalan, jangan asumsikan sudah shadcn.
 
 ## Sebutan user
 
@@ -13,9 +13,10 @@ Panggil user dengan sebutan **King Rezi** di seluruh komunikasi/output teks — 
 
 ## Wajib dibaca sebelum kerja
 
-1. `AGENTS.md` (root) — terutama aturan keras #11, #12.
-2. `apps/web/.claude/CLAUDE.md` — agent docs resmi Astryx (auto-generated dari CLI v0.1.8), berisi workflow discovery, aturan styling/token, CLI reference. WAJIB dibaca ulang tiap sesi — jangan andalkan ingatan sesi sebelumnya karena bisa saja sudah di-regenerate setelah upgrade.
+1. `AGENTS.md` (root) — terutama aturan keras #11, #12, #14, #15.
+2. `apps/web/.claude/CLAUDE.md` — agent docs resmi shadcn/ui, berisi workflow discover-first, aturan styling/token, referensi CLI/MCP. WAJIB dibaca ulang tiap sesi — jangan andalkan ingatan sesi sebelumnya.
 3. `context/ctx-design.md` — pointer desain.
+4. Kalau task-nya migrasi Astryx→shadcn: `tasks/v07-astryx-shadcn-migration.md` untuk tahu subtask/route-segment mana yang jadi scope.
 
 ## Langkah pertama sebelum menulis kode
 
@@ -27,15 +28,18 @@ tetap kerjaan Gibran Project Manager di akhir sesi.
 
 ## Aturan keras
 
-- UI produk HANYA memakai Astryx. Wrapper dibuat selektif; JANGAN pakai canary atau swizzle Astryx pada tahap awal.
-- JANGAN menebak nama komponen, props, atau pola styling — jalankan CLI lokal (`bun run --cwd apps/web astryx -- <cmd>`, contoh: `astryx component <Name> --dense`) untuk verifikasi sebelum menulis kode.
-- Tailwind dibatasi ke layout-only, bukan styling komponen (itu tugas token Astryx).
-- MCP server `xds` boleh dipakai untuk eksplorasi awal saja — untuk keputusan final props/API di kode, tetap verifikasi lewat CLI lokal karena versi MCP bisa berbeda dari yang ter-pin di `apps/web`.
-- Jangan ubah requirement/baseline tanpa ADR baru — kalau menemukan gap/inkonsistensi saat kerja (misal spec desain bertentangan dengan komponen Astryx yang tersedia), **laporkan ke user, jangan putuskan sendiri**.
+- UI produk HANYA memakai shadcn/ui untuk komponen baru atau yang sedang dimigrasi. Wrapper dibuat selektif.
+- JANGAN menebak nama komponen, props, atau variant — discover-first: cek dulu apakah komponen sudah ada di `apps/web/src/components/ui/`, lalu MCP `search_items_in_registries`/`view_items_in_registries` (atau `bunx shadcn@latest search`/`view` sebagai fallback) untuk verifikasi sebelum menulis kode. Lihat `apps/web/.claude/CLAUDE.md` untuk langkah lengkap.
+- Tailwind adalah mekanisme styling utama (bukan layout-only seperti era Astryx) — komponen shadcn dikomposisi lewat Tailwind utility class yang token-backed (`bg-background`, `text-foreground`, `border-border`, dst. dari `globals.css`), bukan hex/px mentah atau arbitrary value.
+- `cn()` dari `@/lib/utils` untuk merge/conditional className — jangan concatenation string manual.
+- Variant (`variant`, `size`, dst.) adalah definisi `cva()` di dalam file komponen itu sendiri — baca blok `cva(...)`-nya untuk tahu variant yang benar-benar ada, jangan asumsikan API sama dengan komponen Astryx padanannya.
+- Icon: `hugeicons` adalah `iconLibrary` default preset Maia untuk komponen baru. `react-icons` (era Astryx) tetap coexist untuk kode yang belum migrasi — jangan campur keduanya dalam satu komponen yang baru ditulis.
+- Kalau kamu mengerjakan task migrasi (T-096–T-102) di file yang masih Astryx: ganti *seluruh* pemakaian Astryx di file itu ke shadcn sesuai scope subtask, jangan campur parsial dalam satu file kecuali subtask-nya memang scoped sebagian.
+- Jangan ubah requirement/baseline tanpa ADR baru — kalau menemukan gap/inkonsistensi saat kerja (misal spec desain bertentangan dengan komponen shadcn yang tersedia di registry), **laporkan ke user, jangan putuskan sendiri**.
 
 ## Workflow wajib tiap task UI
 
-`astryx build` (kalau perlu) → `astryx template` → `astryx component <Name> --dense` → baru tulis kode.
+Cek `components/ui/` dulu → MCP `search_items_in_registries` (atau `shadcn search`) → MCP `view_items_in_registries` (atau `shadcn view`) baca source/props asli → MCP `get_item_examples_from_registries` cek contoh pakai → install via MCP `get_add_command_for_items` (atau `shadcn add`) → tulis kode → MCP `get_audit_checklist` sebelum lapor selesai.
 
 ## Di luar scope kamu
 

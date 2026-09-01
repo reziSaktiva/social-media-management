@@ -4,9 +4,9 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** T-025 Real OutstandAdapter, T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** **T-095 Setup Fondasi shadcn/ui & Tooling Migrasi — ✅ Done (2026-09-01, ADR-097)**, seluruh 7 subtask tuntas (init shadcn/ui, MCP server, agent docs, `AGENTS.md` rule 14/15, pemetaan Stone→shadcn, subagent Mark UI Engineer, sinkronisasi docs baseline). **T-096 Migrasi Core Infra & Shared Primitives** menyusul sebagai task berikutnya rilis v0.7 (belum dimulai). T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
-* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 77 task per release (v0.1 → v1.0), detail di `tasks/`. Jangan cari detail task di file ini.
+* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 85 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
 ---
@@ -37,6 +37,11 @@
 
 M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
 
+* **Prioritas utama saat ini (2026-09-01):** migrasi UI component system
+  dari Astryx ke shadcn/ui (**ADR-097**, rilis **v0.7**,
+  `tasks/v07-astryx-shadcn-migration.md`, T-095–T-102) — permintaan
+  eksplisit King Rezi, dikerjakan **sebelum** T-025/T-036. Strategi
+  incremental per route-segment, Astryx & shadcn coexist sementara.
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
 * `AGENTS.md` di root sudah ada; skill resmi vendor yang relevan (Prisma,
   Better Auth, Vercel, Supabase) sudah terpasang di `.claude/skills/` —
@@ -48,10 +53,14 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
 * Alignment ADR-040 pada dokumentasi baseline dan schema/migration sudah
   selesai. Implementasi runtime Outstand tetap bagian M8 dan belum dinyatakan
   selesai (T-025 → T-026 → T-027).
-* Alignment dokumentasi ADR-041 selesai: Engineering Baseline, Project
-  Overview, AGENTS, dan AI Context sudah memakai Astryx permanen (theme
-  Stone sejak ADR-087), Tailwind layout-only, wrapper selektif, serta exact
-  pin Beta. Instalasi dan smoke test Next.js 16 juga sudah selesai.
+* Alignment dokumentasi ADR-041 (2026-07-23) — **sekarang superseded oleh
+  ADR-097 (2026-09-01)**, lihat bullet prioritas utama di atas. Riwayat:
+  Engineering Baseline, Project Overview, AGENTS, dan AI Context sempat
+  disinkronkan memakai Astryx permanen (theme Stone sejak ADR-087),
+  Tailwind layout-only, wrapper selektif, exact pin Beta — seluruh dokumen
+  itu sudah disinkronkan ulang ke shadcn/ui (ADR-097, T-095.7). Instalasi
+  dan smoke test Next.js 16 (2026-07-23) tetap valid, tidak terpengaruh
+  perubahan ini.
 * Fokus M8 saat ini: Auth Flows, Workspace Onboarding, App Shell, Draft
   Editor (modal, default Standard per ADR-065; Fullscreen via toggle,
   ADR-052), persistensi nyata "Save as Draft"/"Edit Draft", Drafts List
@@ -466,22 +475,22 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-095 Setup Fondasi shadcn/ui & Tooling Migrasi selesai (2026-09-01, ADR-097)** — task pertama rilis v0.7 (migrasi Astryx→shadcn/ui), 7/7 subtask tuntas: init shadcn/ui (base Radix + preset Maia), MCP server shadcn di `.mcp.json`+`.cursor/mcp.json`, `apps/web/.claude/CLAUDE.md` ditulis ulang ke workflow discover-first shadcn CLI/MCP, `AGENTS.md` rule 14/15 (sudah selesai lebih dulu di commit `07a3aa2`), pemetaan literal Stone theme (ADR-087) → CSS variable shadcn di `design-tokens.md` (referensi T-096.1, termasuk gap `--font-heading` belum Montserrat), subagent Mark UI Engineer diupdate ke shadcn (izin eksplisit King Rezi), sinkronisasi docs baseline. T-096 (Migrasi Core Infra & Shared Primitives) berikutnya. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-095, `COMPLETE_TASK.md`.
 * **T-036.3/.4 Supabase JWT bridge + UI notification bell/panel selesai (2026-09-01)** — T-036.3: Route Handler `api/realtime/token` menerbitkan Supabase Realtime JWT dari session Better Auth, dipakai `useNotificationRealtime` sebelum subscribe; method `list`/`markAsRead`/`markAllAsRead` (ditunda dari T-036.1) dituntaskan. T-036.4: bell + panel notifikasi di sidebar footer, wrapper selektif baru `Drawer.tsx` (Astryx ter-pin belum punya primitive Drawer). Lolos review Ridwan (tanpa temuan) + QA Najwa (semua PASS setelah 1 bug RLS ditemukan & diperbaiki: `auth.uid()::uuid` vs `userId` cuid, migration `20260901120000_t036_fix_realtime_rls_cuid_cast`). **KI-039 Resolved**. T-036 tetap `🟡 In Progress` — tersisa T-036.5. **Catatan (2026-09-01):** T-036.4 dibuka kembali setelah ditemukan 5 gap visual vs Claude Design pada `NotificationBell.tsx` (sudah diperbaiki di kode, verifikasi visual browser belum dilakukan) — lihat KI-040. Detail: `tasks/v02-publishing-mvp.md` § T-036, `COMPLETE_TASK.md`.
 * **T-036.1/.2 In-app notification domain + Supabase Realtime selesai (2026-08-31)** — T-036.1: skeleton `NotificationService.notify()`/`notificationRepository.create()` (sudah ada dari T-008.3) diberi unit test pertama kali. T-036.2: `subscribeToNotificationInserts` + hook `useNotificationRealtime` (subscribe channel per `user_id`, event `INSERT`, ADR-023); ditemukan gap infra (tabel `notifications` belum pernah masuk publication `supabase_realtime`, RLS belum berbasis `auth.uid()`) dan ditutup lewat migration `20260831150000_t036_notifications_realtime_setup`, sudah dijalankan & diverifikasi. T-036 pindah `⏳ → 🟡 In Progress`. Detail: `tasks/v02-publishing-mvp.md` § T-036, `COMPLETE_TASK.md`.
 * **T-093 Accept Invite page selesai (2026-08-31)** — T-093.4 (verifikasi RBAC end-to-end) dituntaskan Najwa QA Engineer dengan 3 akun real (Owner/Admin/Creator) di satu workspace, seluruh skenario RBAC PASS. 1 bug ditemukan & diperbaiki selama verifikasi: Creator bisa mengakses `/settings/members` (information disclosure UI-level; backend RBAC sudah benar sejak awal) — fix `WorkspaceService.canManageMembers` + gate server-side sebelum fetch data member (commit `6fdf272`), diverifikasi ulang tanpa regresi. Task ditutup `✅ Done`, **KI-038 Resolved**. Detail: `tasks/v01-foundation.md` § T-093, `COMPLETE_TASK.md`.
 * **T-094 Baseline Rendering Strategy, Code Conventions, Spacing Scale + ESLint Enforcement selesai (2026-08-28, ADR-095)** — 2 dokumen baseline baru (`rendering-strategy.md`, `code-conventions.md`), skala Spacing `design-tokens.md` dikunci (`TBD` sejak ADR-038 ditutup), 3 rule ESLint enforcement (domain import boundary, larangan `<div>` mentah, `tailwindcss/no-arbitrary-value`) — diverifikasi 0 error lint/typecheck, 209 test passed/3 skipped. 1 subtask tersisa terbuka (cleanup dashboard, **KI-036**), tidak memblokir penutupan. Detail: `tasks/v01-foundation.md` § T-094, `COMPLETE_TASK.md`.
-* **Polishing UI grid Calendar selesai (2026-08-27)** — di atas T-033.1–.6/.8 yang sudah selesai, sebelum T-033.7: fix grid 7-kolom Month & Week tidak sejajar (CSS Grid track blowout, di-fix via `isScrollable`+`StackItem size="fill"`, bukan `xstyle`/StyleX — compiler-nya belum ter-setup, lihat **KI-035**), redesain kartu post (avatar+nama 1 baris, indikator Post/Reel/Story/Pin via `contentFormat`, footer mobile `StatusDot`+`Icon` compact ≤768px), garis pemisah vertikal antar kolom hari + padding cell disesuaikan (gap grid dihapus). T-033.7 (manual refresh) tetap belum dikerjakan — masih blocked. Detail: `tasks/v02-publishing-mvp.md` § T-033, `COMPLETE_TASK.md`.
 ---
 
 ## Recent Decisions (Ringkasan)
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-097** — Migrasi UI Component System dari Astryx ke shadcn/ui (Reverse ADR-041): shadcn/ui menggantikan Astryx sebagai fondasi komponen permanen, dipicu audit 49 file/~44 komponen Astryx dan keterbatasan Beta berulang (KI-005/030/035/040). Migrasi **incremental per route-segment** (Astryx & shadcn coexist sementara), MCP shadcn dipasang, wrapper `Drawer.tsx` diganti `Sheet`. Mengamendemen ADR-055/057/082. Detail task: `tasks/v07-astryx-shadcn-migration.md` (T-095–T-102).
 * **ADR-096** — RLS untuk Operasi Pra-Membership — Pola SECURITY DEFINER + Session-Variable GUC (Accept Invite): GUC transaksi `app.invite_lookup_token` (default-deny), dual SELECT policy (token-lookup pra-auth + by-email paska-auth), role-locked INSERT `workspace_members` via `SECURITY DEFINER` function `has_accepted_invitation` — ditetapkan sebagai preseden untuk kasus RLS pra-membership serupa di masa depan.
 * **ADR-095** — Baseline Rendering Strategy, Code Conventions, dan Spacing Scale — Server Actions Khusus Mutation (Konkretisasi ADR-016): 2 dokumen baseline baru (`rendering-strategy.md`, `code-conventions.md`), skala Spacing di `design-tokens.md` dikunci (base 1 unit = 4px, 0/0.5/1/1.5/2/3/4/5/6/8 = 0–32px), menegaskan ulang Server Actions eksklusif mutation; 3 rule ESLint enforcement ditambahkan. Dashboard (`app/(app)/page.tsx`) dicatat exception pra-existing yang sengaja tidak diperbaiki (KI-036).
 * **ADR-089** — Amandemen ADR-088 — Dialog Konfirmasi Tier 2 Sebelum Switch Workspace: klik row workspace tidak lagi langsung overwrite cookie + redirect, sekarang membuka `AlertDialog` Tier 2 (reuse pola Logout/Remove Member) sebelum switch dieksekusi; dicatat sebagai T-089.6 (bukan T-016.6 — koreksi penomoran).
 * **ADR-088** — Amandemen ADR-076 (poin 4) — Deliberate Workspace Switcher via Settings → Account → Workspaces: halaman baru untuk switch antar membership + create workspace tambahan (scope MVP narrow, bukan multi-workspace management penuh); mekanisme switch overwrite cookie `active-workspace-id` langsung setelah validasi membership, bukan hapus-cookie-lalu-onboarding-ulang — **Amended by ADR-089 (2026-08-24)**.
-* **ADR-087** — Ganti theme Astryx dari Neutral ke Stone ("Warm stone and slate tones; Montserrat + Figtree type") — permintaan eksplisit King Rezi, rule 17 `AGENTS.md` (gate Claude Design) sengaja dilewati; item terbuka: Claude Design belum disinkronkan.
 
 ---
 

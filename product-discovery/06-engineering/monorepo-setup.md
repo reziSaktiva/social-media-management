@@ -97,7 +97,7 @@ apps/web/
 ├── src/
 │   ├── app/                      ← Next.js App Router (routing & UI)
 │   ├── domains/                  ← Domain Logic (9 BC MVP; Billing post-MVP)
-│   ├── components/               ← Astryx UI + feature components
+│   ├── components/               ← shadcn/ui + feature components (migrasi dari Astryx, ADR-097)
 │   ├── lib/                      ← Infrastructure Clients & Utilities
 │   └── proxy.ts                  ← Auth guard + workspace context injection (Next.js 16 "Proxy", dulu middleware.ts)
 ├── public/                       ← Static assets
@@ -313,23 +313,25 @@ src/domains/[domain]/
 
 ```
 src/components/
-├── ui/                           ← wrapper/re-export Astryx secara selektif
+├── ui/                           ← komponen shadcn/ui (hasil copy CLI/MCP) + wrapper selektif
 └── [feature]/                    ← Feature-specific components (co-located dengan domain penggunaannya)
 ```
 
 **Aturan:**
-- Astryx adalah fondasi component system permanen (ADR-041).
-- `ui/` bukan salinan seluruh library. Wrapper dibuat hanya untuk komponen
-  kritis, komponen yang dipakai luas, default aplikasi yang konsisten, atau
-  adaptasi behavior produk.
-- Komponen Astryx yang sederhana dan hanya dipakai lokal boleh diimpor langsung
-  dari subpath package resminya.
-- Tailwind hanya untuk layout, wrapper, spacing, grid, flex, dan responsive page
-  composition. Jangan memakai Tailwind untuk mengubah internal component part
-  Astryx secara agresif.
-- Gunakan Stone theme Astryx (ADR-087) selama development feature. Hindari
-  canary. `@stylexjs/stylex` dihapus total dari dependency project dan
-  `swizzle` tertutup permanen (ADR-082) — Astryx dipakai Tailwind-layout-only.
+- **shadcn/ui adalah fondasi component system permanen** (ADR-097, membalik
+  ADR-041). Migrasi dari Astryx berjalan incremental per route-segment —
+  lihat `tasks/v07-astryx-shadcn-migration.md`.
+- `ui/` menampung komponen shadcn hasil copy CLI/MCP; wrapper tambahan dibuat
+  hanya untuk komponen kritis, komponen yang dipakai luas, default aplikasi
+  yang konsisten, atau adaptasi behavior produk.
+- Komponen shadcn yang sederhana dan hanya dipakai lokal boleh diimpor
+  langsung dari lokasi hasil copy-nya di `ui/`.
+- Tailwind dipakai langsung sebagai styling komponen shadcn (bukan lagi
+  layout-only seperti era Astryx).
+- Gunakan token Stone theme (ADR-087) sebagai acuan nilai selama development
+  feature, dipetakan ke CSS variable shadcn. `@stylexjs/stylex` dihapus
+  total dari dependency project (ADR-082, sekarang tidak relevan karena
+  Astryx sendiri sudah tidak dipakai).
 - Feature components tidak boleh berisi business logic — logika ada di domain services.
 - **Penamaan mengikuti aturan yang sama dengan `components/` lokal di
   `src/app/`** (lihat "Penamaan & peletakan folder `components/` lokal

@@ -8,6 +8,323 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-01 — T-095.6: Update subagent Mark UI Engineer ke shadcn/ui (izin eksplisit King Rezi) — T-095 selesai penuh
+
+Subtask keenam sekaligus **penutup** T-095 (rilis v0.7, ADR-097).
+`.claude/agents/mark-ui-engineer.md` adalah Static Reference — perubahan
+hanya dilakukan setelah King Rezi eksplisit meminta "kerjakan T-095.6"
+(instruksi eksplisit, sesuai gate di `AGENTS.md` § Subagent kerja).
+
+Perubahan: frontmatter `description` diganti dari Astryx ke shadcn/ui
+(ditambah catatan bahwa migrasi berjalan incremental per route-segment —
+agent harus cek dulu file yang disentuh masih Astryx atau sudah shadcn,
+jangan asumsikan seluruh app sudah shadcn). Body ditulis ulang total:
+- Wajib dibaca: `apps/web/.claude/CLAUDE.md` (sekarang berisi workflow
+  shadcn, hasil T-095.3), ditambah pointer ke
+  `tasks/v07-astryx-shadcn-migration.md` untuk task migrasi.
+- Aturan keras diganti dari model Astryx (props-only, Tailwind
+  layout-only, CLI `astryx component <Name>`) ke model shadcn: Tailwind
+  utility sebagai mekanisme styling utama, `cn()` untuk merge className,
+  variant dibaca dari blok `cva()` di file komponen (bukan tabel props
+  terpusat), `hugeicons` sebagai default icon library, plus rule baru
+  soal migrasi file yang campur Astryx/shadcn (ganti tuntas sesuai scope
+  subtask, jangan campur parsial).
+- Workflow wajib tiap task UI diganti ke urutan discover-first yang sama
+  dengan `apps/web/.claude/CLAUDE.md`: cek `components/ui/` → search →
+  view source/props → cek contoh pakai → install → audit.
+
+Bagian yang **tidak** diubah (tetap relevan lintas Astryx/shadcn): sebutan
+"King Rezi", langkah pertama ubah Status task jadi In Progress, di luar
+scope (Application Service/domain logic → Prabowo, Claude Design →
+Neymar, dokumentasi project → Gibran), dan langkah verifikasi visual
+lewat preview tool.
+
+**T-095 (Setup Fondasi shadcn/ui & Tooling Migrasi) resmi ditutup `✅
+Done`** — seluruh 7 subtask selesai. Status ditandai `✅ Done` di
+`tasks/v07-astryx-shadcn-migration.md` § T-095, baris T-095 & indeks v0.7
+di `TASKS.md` (total task selesai naik 25 → **26**), Snapshot + section
+**Completed (Ringkasan)** di `PROJECT_STATE.md` (bullet terlama —
+"Polishing UI grid Calendar 2026-08-27" — digeser keluar sesuai batas 5
+item). **T-096 Migrasi Core Infra & Shared Primitives** adalah task
+berikutnya rilis v0.7, belum dimulai.
+
+File berubah: `.claude/agents/mark-ui-engineer.md`,
+`tasks/v07-astryx-shadcn-migration.md`, `TASKS.md`, `PROJECT_STATE.md`.
+
+---
+
+## 2026-09-01 — T-095.5: Pemetaan token Stone theme → CSS variable shadcn/ui
+
+Subtask kelima T-095 (rilis v0.7, ADR-097). Dibaca langsung dari sumber:
+`@astryxdesign/theme-stone/dist/theme.css` (v0.4.3 ter-install, isi
+`--color-*`/`--font-family-*`/`--radius-*` Stone theme, semua dalam bentuk
+`light-dark(<light>, <dark>)`) dan `apps/web/src/app/globals.css` +
+`layout.tsx` kondisi sekarang (hasil init CLI T-095.1) untuk tahu variable
+shadcn apa saja yang sudah ada dan perlu diisi nilai Stone-nya nanti di
+T-096.1.
+
+Ditulis sebagai section baru **"Engineering Mapping — Stone theme → CSS
+variable shadcn/ui (T-095.5)"** di
+`product-discovery/06-engineering/design-tokens.md` (Source of Truth
+visual token, DT-D01), bukan di file lain — supaya satu dokumen jadi
+rujukan tunggal engineering untuk implementasi T-096.1. Ditambahkan juga
+entri **DT-D06** ke tabel keputusan, menegaskan section ini murni
+pemetaan literal 1:1 (bukan token brand baru — § Color — Brand/Content
+Status/Feedback tetap `TBD` menunggu design lock, tidak disentuh).
+
+**Isi mapping:**
+* Tabel warna `:root`/`.dark` untuk 11 variable inti (`--background`
+  s.d. `--ring`) + tabel `--sidebar-*` (8 variable, dipakai T-096.3),
+  masing-masing dengan sumber `--color-*` Stone yang dipecah dari
+  `light-dark()`.
+* **Radius: sengaja tidak dipetakan dari skala radius Stone** — preset
+  Maia (shadcn) sudah generate komponen (`Button` → `rounded-4xl`,
+  lihat `apps/web/src/components/ui/button.tsx`) yang dikalibrasi ke
+  base `--radius: 0.625rem` bawaan CLI; ganti ke nilai Stone
+  (`--radius-element` 0.5rem) akan menggeser seluruh skala turunan
+  tanpa review visual. Diputuskan pertahankan default Maia; kalau King
+  Rezi mau radius Stone lama dipertahankan persis, itu keputusan visual
+  terpisah yang perlu approve eksplisit.
+* **Chart palette (`--chart-1..5`): sengaja tidak dipetakan** — Stone/
+  Astryx tidak punya sistem palet chart, dan domain Analytics belum
+  masuk scope 8 task v0.7 ini. Dibiarkan default grayscale CLI.
+* **Gap font ditemukan:** `--font-sans` (body) sudah cocok — Figtree
+  sudah di-load `next/font/google` sejak T-095.1. Tapi `--font-heading`
+  saat ini fallback ke `var(--font-sans)` (ikut Figtree) di `globals.css`
+  `@theme inline` baris 16, padahal Stone pakai **Montserrat** khusus
+  heading (`h1`–`h6`) — belum ada font Montserrat di-load sama sekali di
+  project. Dicatat sebagai to-do konkret untuk T-096.1: load Montserrat
+  via `next/font/google` (pola sama seperti `figtree`/`geistSans` di
+  `layout.tsx`), lalu ganti binding `--font-heading`.
+
+File berubah: `product-discovery/06-engineering/design-tokens.md` (section
+baru "Engineering Mapping" + DT-D06 + isi baris Radius di § Radius,
+Elevation yang tadinya `TBD`). Tidak ada perubahan kode (`globals.css`
+belum disentuh — itu scope T-096.1, dokumen ini murni referensi). Status
+ditandai di `tasks/v07-astryx-shadcn-migration.md` (T-095.5 → selesai) dan
+`TASKS.md` § Fokus sekarang.
+
+---
+
+## 2026-09-01 — T-095.4: Update `AGENTS.md` rule 14 & 15 ke shadcn/ui (sudah selesai lebih dulu, diverifikasi ulang)
+
+Subtask keempat T-095 (rilis v0.7, ADR-097). Dicek: rule 14 & 15 `AGENTS.md`
+**sudah** berisi konten shadcn/ui (bukan Astryx lagi) — bukan hasil kerja
+sesi ini, melainkan sudah masuk lewat commit `07a3aa2` ("docs: sinkronkan
+baseline UI docs ke shadcn/ui sesuai ADR-097"), bagian dari sinkronisasi
+baseline yang dilakukan **sebelum** T-095.1–.3 dikerjakan di sesi ini
+(commit itu mendahului task-task tersebut secara kronologis di riwayat
+git, meski T-095.4 baru ditandai selesai sekarang secara administratif).
+
+Isi yang diverifikasi cocok dengan requirement T-095.4: rule 14 menyebut
+"UI produk memakai **shadcn/ui** (ADR-097, membalik ADR-041)" + catatan
+migrasi incremental per route-segment (Astryx & shadcn coexist sementara,
+pointer ke `tasks/v07-astryx-shadcn-migration.md`); rule 15 mewajibkan baca
+`apps/web/.claude/CLAUDE.md` dan/atau cek registry/CLI/MCP shadcn lokal
+sebelum menulis/mengubah komponen UI, dengan larangan eksplisit menebak
+nama komponen/props/pola styling. Tidak ada gap ditemukan, tidak ada edit
+tambahan diperlukan di `AGENTS.md`.
+
+File berubah: tidak ada (verifikasi murni, `AGENTS.md` sudah benar).
+Status ditandai di `tasks/v07-astryx-shadcn-migration.md` (T-095.4 →
+selesai) dan `TASKS.md` § Fokus sekarang.
+
+---
+
+## 2026-09-01 — T-095.3: Tulis ulang agent docs `apps/web/.claude/CLAUDE.md` ke workflow shadcn
+
+Subtask ketiga T-095 (rilis v0.7, ADR-097). Konten lama (blok
+`<!-- ASTRYX:START -->`…`<!-- ASTRYX:END -->`) diganti total dengan blok
+`<!-- SHADCN:START -->`…`<!-- SHADCN:END -->` — bukan edit sebagian, karena
+model kerja shadcn (source-copy ke `components/ui/`, styling lewat Tailwind
+utility + `cva` variant di file komponen) beda fundamental dari Astryx
+(closed dependency, styling lewat props tertutup).
+
+Workflow discover-first baru (paralel ke tool MCP shadcn yang sudah
+tersambung dari T-095.2): cek dulu apakah komponen sudah ada di
+`components/ui/` → `search_items_in_registries`/`shadcn search` → baca
+source & props asli via `view_items_in_registries`/`shadcn view` (bukan
+asumsi API-nya sama dengan Astryx) → cek contoh pakai
+`get_item_examples_from_registries` → install via
+`get_add_command_for_items`/`shadcn add` → audit akhir dengan
+`get_audit_checklist`. Tiap langkah CLI dipetakan eksplisit ke tool MCP
+padanannya supaya agent tahu mana yang dipakai duluan (MCP untuk
+exploration dalam sesi, CLI sebagai fallback/eksekusi install).
+
+Rules disesuaikan dari model Astryx (props-only, tokens via
+`astryx docs tokens`, no `<div>`) ke model shadcn: Tailwind utility sebagai
+mekanisme styling utama, token lewat CSS variable `globals.css` (bukan
+sistem token Astryx terpisah), `cn()` dari `@/lib/utils` untuk merge class,
+variant dibaca dari blok `cva(...)` di file komponen itu sendiri (bukan
+tabel props terpusat seperti `astryx component <Name>`). Icon library
+`hugeicons` (default preset Maia, dikonfirmasi tetap dipakai di T-095.1)
+dicatat sebagai default komponen baru; `react-icons` (era Astryx) dicatat
+coexist untuk kode yang belum migrasi — bukan dianggap salah pakai.
+
+File berubah: `apps/web/.claude/CLAUDE.md`. Status ditandai di
+`tasks/v07-astryx-shadcn-migration.md` (T-095.3 → selesai) dan `TASKS.md`
+§ Fokus sekarang.
+
+---
+
+## 2026-09-01 — T-095.2: Install & konfigurasi MCP server shadcn
+
+Subtask kedua T-095 (rilis v0.7, ADR-097). Dikerjakan via CLI resmi shadcn,
+bukan edit manual: `bunx shadcn@latest mcp init --client claude` lalu
+`--client cursor`, keduanya dijalankan dari root repo (bukan `apps/web/`)
+supaya menulis ke `.mcp.json` dan `.cursor/mcp.json` di lokasi yang benar
+(dua file kembar wajib sinkron, ADR-064 — lihat `AGENTS.md` § Kompatibilitas
+tool). Hasil identik di kedua file: server baru `"shadcn"` terdaftar sebagai
+`stdio` (`command: "npx"`, `args: ["shadcn@latest", "mcp"]`) — beda transport
+dari 3 server lain yang sudah ada (`xds`, `supabase`, `railway`, semuanya
+`http`). Server `xds` (Astryx) **dibiarkan tetap ada** untuk sementara,
+belum dihapus — akan dihapus di T-102 cleanup setelah migrasi selesai
+(Astryx & shadcn coexist per strategi ADR-097 poin 2), bukan lupa dihapus.
+
+**Efek samping CLI:** menambah devDependency `shadcn@^4.19.1` di root
+`package.json` (+ `bun.lock`) — versi sama dengan yang sudah ada di
+`apps/web/package.json` dari T-095.1, konsisten, dibiarkan apa adanya
+(bukan duplikasi yang perlu dibersihkan, CLI butuh keduanya untuk jalan di
+scope monorepo vs `apps/web`).
+
+**Update:** setelah restart Claude Code, koneksi awal gagal
+(`CONNECTION_CLOSED`) — root cause: cache `~/.npm/_cacache` root-owned
+(bug lama npm, sisa dari sudo npm/npx sebelumnya), bikin `npx
+shadcn@latest mcp` gagal EACCES saat di-spawn. Diperbaiki King Rezi
+sendiri via `sudo chown -R 501:20 ~/.npm` (di luar scope AI, butuh
+password sistem), lalu restart ulang. **Terverifikasi tersambung** — 7
+tool muncul: `search_items_in_registries`, `view_items_in_registries`,
+`list_items_in_registries`, `get_add_command_for_items`,
+`get_item_examples_from_registries`, `get_project_registries`,
+`get_audit_checklist`.
+
+File berubah: `.mcp.json`, `.cursor/mcp.json`, `package.json` (root) +
+`bun.lock`. Status ditandai di `tasks/v07-astryx-shadcn-migration.md`
+(T-095.2 → selesai) dan `TASKS.md` § Fokus sekarang.
+
+---
+
+## 2026-09-01 — T-095.1: Init shadcn/ui di apps/web (base Radix + preset Maia)
+
+Subtask pertama implementasi kode rilis v0.7 (migrasi Astryx → shadcn/ui,
+ADR-097). Sebelum eksekusi, King Rezi diberi penjelasan trade-off 3 base
+library shadcn (Radix/Base UI/React Aria) — memilih **Radix** (paling
+matang, kompatibel dengan MCP server shadcn yang akan dipasang di T-095.2)
+dengan style preset **Maia** (softer/rounded, dipilih King Rezi lebih dulu).
+
+**Hambatan teknis & solusi:** `bunx shadcn@latest init` (v4.19.1) gagal
+deteksi Tailwind v4 karena `globals.css` project pakai 3 baris `@import`
+terpisah (`tailwindcss/theme.css`/`preflight.css`/`utilities.css`, pola ini
+dipakai supaya layer Astryx (`astryx-base`, `astryx-theme`) bisa
+diselipkan di antara `base` dan `components`) — bukan `@import
+"tailwindcss";` tunggal yang dicari CLI lewat exact substring match.
+Diganti ke bentuk tunggal, **identik secara fungsional** (isi
+`tailwindcss/index.css` upstream = gabungan 3 baris itu; urutan cascade
+layer tetap dikontrol oleh deklarasi `@layer reset, theme, base,
+astryx-base, astryx-theme, components, utilities;` di baris 1, bukan
+posisi fisik `@import`).
+
+Init berhasil: `components.json` dibuat (`style: radix-maia`), file
+`src/lib/utils.ts` (util `cn()`) + `src/components/ui/button.tsx` dibuat.
+CLI juga otomatis mem-patch `layout.tsx` (tambah font Figtree + import
+`cn`) dan `globals.css` (append CSS variable tema default shadcn). **Bug
+CLI ditemukan & diperbaiki manual:** hasil merge menulis
+`--font-sans: var(--font-sans);` (self-referencing/circular, akan resolve
+ke initial value di browser) — dikembalikan ke `var(--font-geist-sans)`.
+
+**Icon library:** preset Maia default `iconLibrary: "hugeicons"` (bukan
+`lucide-react` yang lebih umum di ekosistem shadcn) — dikonfirmasi ke King
+Rezi, keputusan: **tetap hugeicons**, ikuti default preset apa adanya.
+`react-icons` (Astryx lama) coexist sampai migrasi selesai, wajar untuk
+masa transisi ADR-097.
+
+**Verifikasi:** `bun run typecheck` bersih. Dev server (`bun run dev`)
+direstart bersih, log `GET / 200`, `GET /api/realtime/token 200`, tanpa
+error compile. Verifikasi visual di Browser pane sempat terhambat
+`ERR_TOO_MANY_REDIRECTS` bolak-balik `/`↔`/login` — ternyata bukan bug
+dari perubahan T-095.1, melainkan session cookie basi di profil browser
+pane yang memicu bug pre-existing di `src/proxy.ts`: gate cepat halaman
+auth publik cuma cek *keberadaan* cookie (`getSessionCookie`), bukan
+validitasnya, jadi cookie yang ada-tapi-invalid memicu loop antara
+"gate cepat redirect ke /" dan "validasi penuh redirect ke /login". Diatasi
+untuk sesi ini dengan sign-out manual lewat `/api/auth/sign-out` (bypass
+path proxy), bukan dengan mengubah `proxy.ts` (beda domain/scope dari
+T-095, dicatat sebagai temuan terpisah untuk auth/proxy, bukan diperbaiki
+diam-diam di sini). Setelah cookie bersih, halaman `/login` render normal
+— styling Astryx utuh, tidak ada regresi visual dari `globals.css` baru.
+
+File berubah: `apps/web/src/app/globals.css`, `apps/web/src/app/layout.tsx`,
+`apps/web/package.json` (+ `bun.lock`), file baru `apps/web/components.json`,
+`apps/web/src/lib/utils.ts`, `apps/web/src/components/ui/button.tsx`.
+Status ditandai di `tasks/v07-astryx-shadcn-migration.md` (T-095 →
+🟡 In Progress) dan `TASKS.md` § Fokus sekarang.
+
+---
+
+## 2026-09-01 — Docs consistency audit: 3 gap ditemukan & diperbaiki (topik "components")
+
+### Fixed
+- **`project-manager/DECISIONS.md`** — 4 baris index (ADR-041, ADR-055, ADR-057, ADR-082) belum menyebut "Amended by ADR-097 (2026-09-01)" di kolom Status, padahal file ADR masing-masing sudah punya catatan itu — index dan sumbernya desync. Diperbaiki, kolom Status di-sync ulang.
+- **`project-manager/decisions/ADR-041-ui-component-system-astryx-sebagai-fondasi-permanen-dan-design-later-workflow.md`** — Status line kehilangan referensi "Amended by ADR-082 (2026-08-19)" (tertimpa saat edit T-095.7 sebelumnya, seharusnya ditambah bukan diganti). Dikembalikan jadi `Accepted — Amended by ADR-057 (2026-07-31), ADR-082 (2026-08-19), ADR-097 (2026-09-01)`.
+- **`project-manager/PROJECT_STATE.md`** § Current Focus — bullet lama "Alignment dokumentasi ADR-041 selesai ... Astryx permanen ... Tailwind layout-only ... exact pin Beta" berkontradiksi langsung dengan bullet ADR-097/prioritas-utama 13 baris di atasnya dalam section yang sama. Ditandai eksplisit sebagai superseded oleh ADR-097, riwayat instalasi/smoke-test Next.js 16 dipertahankan sebagai fakta yang masih valid.
+
+### Context
+Dijalankan via skill `/docs-consistency-audit` dengan argumen topik "components" — scope dipersempit ke UI component system (Astryx/shadcn) setelah dikonfirmasi ke King Rezi (grep awal "component" menghasilkan banyak false-positive "Server Component"/"Client Component" React/Next.js yang tidak relevan). 33 file dibaca penuh (context/, product-discovery/06-engineering, product-discovery/04-ux, 12 ADR terkait, DECISIONS.md, TASKS.md + tasks/v07, PROJECT_OVERVIEW.md, PROJECT_STATE.md, .claude/agents/*, AGENTS.md). Mayoritas file dari ronde sinkronisasi T-095.7 sebelumnya terverifikasi bersih — 3 gap di atas adalah sisa yang lolos dari ronde itu, semuanya Kelas A (mekanis, jawaban benar jelas dari Source of Truth). Diperbaiki setelah dikonfirmasi King Rezi ("ya, perbaiki semua"), mengikuti mode report-only-lalu-tanya skill ini (tidak ada perbaikan diam-diam).
+
+**Tidak ditemukan gap** di: context/ctx-*.md (4 file), product-discovery/06-engineering/README.md, monorepo-setup.md, code-conventions.md, dependency-strategy.md, design-tokens.md (kecuali 1 cross-reference blurb minor, tidak diperbaiki — severity Low, murni redaksional), product-discovery/04-ux/ (README.md, key-screen-patterns.md, navigation-patterns.md), TASKS.md, tasks/v07-astryx-shadcn-migration.md, PROJECT_OVERVIEW.md, .claude/agents/README.md, prabowo-feature-engineer.md, AGENTS.md.
+
+---
+
+## 2026-09-01 — T-095.7: Sinkronisasi dokumentasi baseline Astryx→shadcn/ui
+
+### Changed
+- **14 file** diupdate supaya konsisten dengan ADR-097 (shadcn/ui menggantikan Astryx sebagai fondasi UI permanen): `context/ctx-implementation.md`, `ctx-technical-context.md`, `ctx-development.md`, `ctx-design.md`; `product-discovery/06-engineering/dependency-strategy.md` (DS-D07 ditandai superseded), `monorepo-setup.md`, `README.md`, `design-tokens.md`; `product-discovery/04-ux/key-screen-patterns.md`, `navigation-patterns.md` (nama komponen "Astryx Popover"/"Card Astryx" dinetralkan); `.claude/agents/README.md`, `.claude/agents/prabowo-feature-engineer.md`; `AGENTS.md` (root); `project-manager/PROJECT_OVERVIEW.md`.
+- **4 ADR** (`ADR-041`, `ADR-055`, `ADR-057`, `ADR-082`) — baris Status ditambah `Amended by ADR-097 (2026-09-01)`; isi Decision/Reason/Alternatives Considered tidak diubah (riwayat keputusan tetap utuh).
+
+### Context
+King Rezi meminta seluruh dokumentasi yang jadi acuan kerja (terutama UI/UX) ikut disinkronkan **sebelum** implementasi migrasi kode dimulai — bukan ditunda ke T-102 cleanup di akhir rilis v0.7. Prinsip edit: minimal-diff, pointer ke ADR-097 di tempat relevan, detail teknis Astryx yang sudah tidak berlaku (exact-pin Beta, canary, swizzle, CLI `astryx build/template/component`) ditandai historis/superseded bukan dihapus begitu saja. Sengaja **tidak** menyentuh `.claude/agents/mark-ui-engineer.md` (Static Reference, chmod 444, butuh izin eksplisit terpisah — dicatat T-095.6) dan `apps/web/.claude/CLAUDE.md` (task terpisah T-095.3, agent docs Astryx CLI ditulis ulang saat setup shadcn CLI/MCP benar-benar terpasang).
+
+Diverifikasi lewat `grep -rn "Astryx"` ulang di seluruh scope — sisa mention yang ditemukan semuanya legitimate (riwayat/historical, catatan migrasi transisi, atau baris Status ADR yang memang seharusnya menyebut ADR lama). Ditemukan 1 file tambahan di luar daftar awal (`project-manager/PROJECT_OVERVIEW.md`, tabel Tech Stack) yang juga diupdate.
+
+**T-095.7** ditandai selesai di `tasks/v07-astryx-shadcn-migration.md` — belum ada kode aplikasi yang berubah, T-095.1–.6 (setup shadcn/MCP/CLI nyata) masih `⏳ Not Started`.
+
+---
+
+## 2026-09-01 — v0.7 (migrasi Astryx→shadcn/ui) dijadikan prioritas utama
+
+### Changed
+- `project-manager/TASKS.md` § Fokus sekarang — **T-095** (task pertama v0.7) ditambahkan sebagai baris teratas, mendahului T-025/T-036, dengan catatan eksplisit "Prioritas utama".
+- `project-manager/PROJECT_STATE.md` § Snapshot (Top Next Tasks) dan § Current Focus — diperbarui menyebut T-095/v0.7 sebagai prioritas utama saat ini, dikerjakan sebelum T-025/T-036.
+
+### Context
+Setelah ADR-097 + rilis v0.7 dibuat (lihat entri di bawah), King Rezi meminta migrasi ini dijadikan task yang harus diutamakan. T-025 (Real OutstandAdapter) tetap terhenti menunggu kredensial (KI-003) dan T-036 tersisa 2 subtask non-blocking, jadi tidak ada konflik prioritas nyata — migrasi bisa langsung dimulai dari T-095. Belum ada implementasi kode di sesi ini.
+
+---
+
+## 2026-09-01 — ADR-097: Migrasi Astryx → shadcn/ui direncanakan (audit + task list)
+
+### Added
+- **ADR-097** (`project-manager/decisions/ADR-097-migrasi-astryx-ke-shadcn-ui.md`) — reverse ADR-041: shadcn/ui menggantikan Astryx sebagai fondasi komponen UI permanen. Mengamendemen ADR-055/057/082, tidak mengubah ADR-087 (theme Stone jadi acuan token).
+- Release baru **v0.7** (`project-manager/tasks/v07-astryx-shadcn-migration.md`) — 8 task (T-095–T-102), 26 subtask, strategi incremental per route-segment (Astryx & shadcn coexist sementara, bukan big-bang).
+
+### Context
+Atas permintaan King Rezi, dilakukan audit menyeluruh atas seluruh pemakaian Astryx di `apps/web/src` sebelum menyusun rencana migrasi ke shadcn/ui. Latar belakang: KI-040 (gap visual notification panel) dan riwayat KI-030 (TimeInput)/KI-035 (Badge, StyleX) dianggap sebagai keterbatasan Astryx yang berulang dan tidak bisa diperbaiki dari sisi project (closed-package, masih Beta — KI-005).
+
+**Hasil audit:** 49 file unik meng-import `@astryxdesign/*`, ~44 komponen/hook berbeda, 1 wrapper selektif (`components/ui/Drawer.tsx`, dibuat karena Astryx tanpa primitive Drawer), 0 file test komponen UI. Seluruh pemakaian terisolasi di `app/` (46 file) dan `components/` (3 file) — `domains/`/`lib/` bersih dari dependency UI, sehingga migrasi feasible tanpa menyentuh business logic.
+
+King Rezi mengonfirmasi dua keputusan lewat `AskUserQuestion`: (1) formalisasi langsung ke ADR + TASKS.md (bukan disimpan sebagai proposal draft dulu), (2) strategi **incremental per route-segment** (bukan big-bang/freeze fitur M8).
+
+**Task breakdown (T-095–T-102):** T-095 (setup shadcn/ui + MCP server + tulis ulang agent docs + update AGENTS.md rule 14/15), T-096 (core infra: globals.css, Providers.tsx, AppShell, primitive dasar), T-097 (Auth & Onboarding), T-098 (App Shell & Navigasi, termasuk hapus wrapper `Drawer.tsx` → shadcn `Sheet`, re-verifikasi KI-040), T-099 (Settings), T-100 (Draft Editor Modal, ~68 titik pakai — task tersendiri karena paling kompleks, termasuk re-evaluasi KI-030 TimeInput), T-101 (Calendar/Queue/Drafts/Dashboard, termasuk re-evaluasi KI-035), T-102 (cleanup dependency + QA visual menyeluruh + tutup KI terkait).
+
+Belum ada implementasi kode — sesi ini murni audit + perencanaan/dokumentasi.
+
+### Related
+- `project-manager/DECISIONS.md` (index ADR-097 ditambahkan di atas)
+- `project-manager/TASKS.md` (indeks release v0.7 ditambahkan, total task 77→85, subtask 173→199)
+- `project-manager/PROJECT_STATE.md` (Snapshot + Recent Decisions diperbarui, ADR-087 digeser keluar dari daftar 5)
+
+---
+
 ## 2026-09-01 — T-036.4 dibuka kembali (5 gap visual vs Claude Design ditemukan, verifikasi visual belum dilakukan)
 
 ### Context

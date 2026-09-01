@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Figtree } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
 import { THEME_COOKIE_NAME, parseThemeMode } from "@/lib/theme/theme-cookie";
+import { cn } from "@/lib/utils";
+
+const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +35,14 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={cn(
+        "h-full",
+        "antialiased",
+        geistSans.variable,
+        geistMono.variable,
+        "font-sans",
+        figtree.variable,
+      )}
     >
       <body className="flex min-h-full flex-col">
         <Providers initialMode={initialMode}>{children}</Providers>

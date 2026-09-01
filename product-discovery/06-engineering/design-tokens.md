@@ -1,21 +1,22 @@
 # Design Tokens
 
 Dokumen ini adalah **Source of Truth visual tokens** untuk implementasi UI di
-`apps/web` (Astryx theme + Tailwind token bridge).
+`apps/web` (CSS variable shadcn/ui + Tailwind token bridge, ADR-097).
 
 Nilai token final berkembang **iteratif dan co-equal** antara dokumen ini dan
 project Claude Design "Social Media Management" (ADR-056) — tidak ada lagi
 gerbang "menunggu designer masuk": project ini tidak akan merekrut designer
 eksternal, perannya digantikan permanen oleh King Rezi sendiri lewat Claude
 Design (ADR-057, amandemen ADR-038 & ADR-041). Implementasi feature memakai
-Stone theme Astryx (ADR-087) dan tidak menunggu token final.
+token Stone theme (ADR-087, dipetakan ke shadcn/ui sejak ADR-097) dan tidak
+menunggu token final.
 Screenshot bukan acuan nilai final; folder `design/` (paket handoff designer)
 sudah dihapus dan **tidak akan dibuat ulang** (ADR-045, ADR-057).
 
 | Field | Value |
 | ----- | ----- |
 | Lokasi SoT | Dokumen ini, co-equal dengan Claude Design untuk nilai token (ADR-038, ADR-056) — nilai berkembang iteratif, bukan sekali lock |
-| Implementasi kode | `apps/web` (Astryx theme + Tailwind token bridge) |
+| Implementasi kode | `apps/web` (CSS variable shadcn/ui + Tailwind token bridge, ADR-097) |
 | UX / struktur layar | Tetap di `../04-ux/` — **tidak** diganti dokumen ini |
 | Peran desainer | Permanen digantikan King Rezi via Claude Design — tidak ada designer eksternal (ADR-057); pointer di `../../context/ctx-design.md` |
 
@@ -26,8 +27,9 @@ sudah dihapus dan **tidak akan dibuat ulang** (ADR-045, ADR-057).
 Checklist lock ini dijalankan kapan pun King Rezi (berperan sebagai desainer
 via Claude Design) menganggap satu set token sudah stabil — **tidak ada**
 gerbang "designer eksternal masuk" (ADR-057). Selama development feature,
-gunakan Stone theme Astryx (ADR-087); jangan mengisi nilai brand sementara
-atau memblokir implementasi layar karena tabel masih `TBD`.
+gunakan token Stone theme (ADR-087, dipetakan ke shadcn/ui sejak ADR-097);
+jangan mengisi nilai brand sementara atau memblokir implementasi layar
+karena tabel masih `TBD`.
 
 ## Langkah 1 — Review & approve di Claude Design
 
@@ -79,9 +81,9 @@ Engineering memetakan token → implementasi:
 
 | Token di dokumen ini | Target kode (contoh) |
 | -------------------- | -------------------- |
-| Brand / neutral / status | Astryx custom theme / CSS variables di `apps/web` |
-| Skala type / spacing | Astryx theme + Tailwind token bridge |
-| Komponen UI | Komponen Astryx dan wrapper selektif memakai semantic token yang sama |
+| Brand / neutral / status | CSS variables shadcn/ui di `apps/web` |
+| Skala type / spacing | CSS variable shadcn/ui + Tailwind token bridge |
+| Komponen UI | Komponen shadcn/ui dan wrapper selektif memakai semantic token yang sama |
 
 **Jangan** mengisi hex hanya di Claude Design atau hanya di screenshot tanpa update dokumen ini.
 
@@ -98,10 +100,11 @@ Engineering memetakan token → implementasi:
 | ID | Topik | Keputusan |
 | ---- | ----- | --------- |
 | DT-D01 | Lokasi SoT token | `product-discovery/06-engineering/design-tokens.md` |
-| DT-D02 | Kapan diisi | Iteratif, co-equal dengan Claude Design (ADR-056); dikunci kapan pun King Rezi menganggap stabil — tidak ada gerbang "designer masuk" (ADR-057); gunakan Stone theme Astryx (ADR-087) |
+| DT-D02 | Kapan diisi | Iteratif, co-equal dengan Claude Design (ADR-056); dikunci kapan pun King Rezi menganggap stabil — tidak ada gerbang "designer masuk" (ADR-057); gunakan token Stone theme (ADR-087) |
 | DT-D03 | Hubungan dengan handoff designer | Tidak ada designer eksternal, permanen (ADR-057); folder `design/` dihapus dan tidak dibuat ulang (ADR-045); token final tetap **wajib** masuk dokumen ini |
 | DT-D04 | Hubungan dengan UX Baseline | `04-ux/` mengatur alur & zona fungsi; dokumen ini hanya visual tokens |
-| DT-D05 | Stack implementasi | Astryx untuk komponen/theme + Tailwind khusus layout dan responsive composition (ADR-041) |
+| DT-D05 | Stack implementasi | shadcn/ui untuk komponen/theme + Tailwind sebagai styling langsung (ADR-097, membalik ADR-041) |
+| DT-D06 | Pemetaan teknis Stone→shadcn (T-095.5) | Nilai literal Stone theme (ADR-087) dipetakan 1:1 ke CSS variable shadcn/ui di § Engineering Mapping — referensi implementasi T-096.1, **bukan** token brand baru (beda dari § Color — Brand yang masih `TBD` menunggu design lock) |
 
 ---
 
@@ -189,12 +192,16 @@ Warna aksen jaringan sosial di Calendar / Account Pill. Jangan mendominasi UI.
 
 # Spacing
 
-**Locked (ADR-095).** Base unit: **1 Astryx unit = 4px**. Skala ini dikunci
-berdasarkan nilai yang sudah dipakai konsisten di kode nyata (prop `gap`/
-`padding` pada `VStack`/`HStack`/`Stack`/`Grid` Astryx) — bukan angka baru
-yang diciptakan dari nol.
+**Locked (ADR-095).** Base unit: **4px grid**. Skala ini dikunci berdasarkan
+nilai yang sudah dipakai konsisten di kode nyata era Astryx (prop `gap`/
+`padding` pada `VStack`/`HStack`/`Stack`/`Grid`) — bukan angka baru yang
+diciptakan dari nol. Nilai grid 4px tetap berlaku sebagai keputusan setelah
+migrasi ke shadcn/ui (ADR-097); ekspresinya di kode sekarang Tailwind
+spacing scale langsung (mis. `gap-4`, `p-4` untuk unit 4 = 16px), bukan lagi
+prop `gap`/`padding` numerik Astryx — lihat `apps/web/.claude/CLAUDE.md`
+untuk konvensi spacing shadcn terbaru.
 
-| Unit Astryx | Px | Status |
+| Unit (× 4px) | Px | Status |
 | ----------- | -- | ------ |
 | 0 | 0px | Dipakai (reset spacing sengaja) |
 | 0.5 | 2px | Dipakai (dense UI, jarang) |
@@ -215,7 +222,7 @@ daftar tertutup klasik.
 
 ## Panduan Penggunaan Semantik
 
-| Konteks | Prop | Nilai Astryx (px) | Alasan |
+| Konteks | Prop (era Astryx) | Nilai (px) | Alasan |
 | ------- | ---- | ------------------ | ------ |
 | Icon-to-label (Button, MenuItem, Badge) | `gap` | 1–1.5 (4–6px) | Elemen sangat dekat, jarak visual minimal |
 | Item dalam list/stack rapat (baris Table, item Menu) | `gap` | 2 (8px) | Grouping jelas tapi tetap padat |
@@ -226,11 +233,14 @@ daftar tertutup klasik.
 | Padding Container/page-level wrapper besar | `padding` | 8 (32px) | Breathing room level page, dipakai sengaja lebih jarang |
 | Reset/no-space (Stack yang dibungkus komponen lain) | `gap`/`padding` | 0 | Sengaja tanpa spacing tambahan |
 
-## Larangan
+## Larangan (era Astryx — cek ulang saat migrasi shadcn per route-segment, ADR-097)
 
 * **Tailwind spacing utility mentah** (`gap-`, `p-`, `m-`, `space-x/y-`)
   langsung di komponen — gunakan prop `gap={n}`/`padding={n}` pada
-  `VStack`/`HStack`/`Stack`/`Grid`.
+  `VStack`/`HStack`/`Stack`/`Grid`. Aturan ini berlaku untuk kode Astryx yang
+  belum termigrasi; komponen shadcn memakai Tailwind utility langsung
+  (ADR-097 poin 4), sehingga larangan literal ini tidak berlaku di segmen
+  yang sudah dimigrasi — tetap pakai unit dari skala 4px di atas.
 * **Arbitrary value** (`gap-[13px]`, `p-[10px]`) — selalu pakai unit dari
   skala di atas.
 * **`margin`** pada child untuk spacing antar sibling — spacing datang dari
@@ -246,8 +256,8 @@ yang boleh diikuti di kode baru.
 
 | Sistem | Keputusan | Nilai |
 | ------ | --------- | ----- |
-| Radius | Satu keluarga | `TBD` (contoh: 6 / 8 / 12) |
-| Elevation | 0–2 level bermakna | `TBD` — shadow terutama untuk overlay |
+| Radius | **Tidak** dipetakan dari Stone theme — pertahankan default preset Maia (`--radius: 0.625rem` + turunan `calc()`-nya, lihat § Engineering Mapping di bawah) | `0.625rem` base, skala `radius-sm/md/lg/xl/2xl/3xl/4xl` via `calc(var(--radius) * n)` |
+| Elevation | `TBD` | `TBD` — shadow terutama untuk overlay; Stone punya `--shadow-low/med/high` tapi belum dipetakan (di luar scope T-095.5, komponen shadcn generate shadow Tailwind sendiri per komponen) |
 
 ---
 
@@ -276,13 +286,13 @@ Minimal 2–3 motion disengaja setelah design lock — catat di sini jika design
 ```text
 Sebelum token Locked
         ↓
-Astryx Stone theme (ADR-087) + Tailwind layout-only
+Token Stone theme (ADR-087) + Tailwind sebagai styling langsung (ADR-097)
 
 Setelah design-tokens.md Locked (co-equal dengan Claude Design, ADR-056/057)
         ↓
-apps/web — Astryx custom theme + Tailwind token bridge
+apps/web — CSS variable shadcn/ui + Tailwind token bridge
         ↓
-Komponen Astryx + wrapper selektif + layar KSP-01 … KSP-08
+Komponen shadcn/ui + wrapper selektif + layar KSP-01 … KSP-08
 ```
 
 Engineering **tidak** membaca paket handoff designer sebagai sumber nilai
@@ -291,10 +301,104 @@ ADR-045, ADR-057).
 
 ---
 
+# Engineering Mapping — Stone theme → CSS variable shadcn/ui (T-095.5)
+
+**Status: referensi teknis untuk T-096.1** (rewrite `globals.css`), bukan
+"token Locked" — nilai warna semantik brand/status di atas (§ Color — Brand/
+Content Status/Feedback) tetap `TBD` sampai design lock (DT-D02). Section
+ini murni pemetaan **nilai literal 1:1** dari `@astryxdesign/theme-stone`
+(ADR-087) ke variable shadcn/ui yang sudah ada di
+`apps/web/src/app/globals.css` sejak init (T-095.1), supaya visual app
+**tidak berubah** (warna Stone tetap dipakai) saat fondasi Astryx dilepas
+di T-096. Sumber: `@astryxdesign/theme-stone/dist/theme.css` (versi
+`0.4.3` ter-install) — semua value Stone berbentuk
+`light-dark(<light>, <dark>)`, dipecah jadi `:root` (light) dan `.dark`
+(dark) di bawah karena shadcn pakai strategi class `.dark`, bukan
+`light-dark()` CSS native.
+
+## Warna
+
+| Variable shadcn/ui | Light | Dark | Sumber token Stone | Catatan |
+| ------------------- | ----- | ---- | ------------------- | ------- |
+| `--background` | `#f3f3f5` | `#111015` | `--color-background-body` | Canvas app |
+| `--foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` | |
+| `--card` | `#ffffff` | `#242325` | `--color-background-card` | |
+| `--card-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` | |
+| `--popover` | `#ffffff` | `#25252a` | `--color-background-popover` | |
+| `--popover-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` | |
+| `--primary` | `#25252a` | `#f3f3f5` | `--color-accent` | |
+| `--primary-foreground` | `#ffffff` | `#25252a` | `--color-on-accent` | |
+| `--secondary` | `#e2e2e8` | `#3b3b3f` | `--color-background-muted` | |
+| `--secondary-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` | |
+| `--muted` | `#e2e2e8` | `#3b3b3f` | `--color-background-muted` | Sama dengan `--secondary` — konsisten dgn pola default shadcn (kedua value identik di preset bawaan) |
+| `--muted-foreground` | `#83838a` | `#9d9da3` | `--color-text-secondary` | |
+| `--accent` | `#e2e2e8` | `#3b3b3f` | `--color-background-muted` | Sama dengan `--muted`/`--secondary` — Stone tidak punya token hover-state solid terpisah yang cukup pekat (`--color-overlay-hover`/`--color-neutral` transparan, tidak cocok jadi bg solid) |
+| `--accent-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` | |
+| `--destructive` | `#58413e` | `#dcc0bc` | `--color-error` | Dipakai sebagai warna teks/icon (lihat pola `button.tsx` — `bg-destructive/10 text-destructive`), bukan fill solid; `--color-error` lebih cocok dari `--color-background-red` untuk peran ini |
+| `--border` | `#e2e2e8` | `rgba(255,255,255,0.10)` | `--color-border` | Nilai dark (`#f3f3f51a`) kebetulan hampir identik dengan default shadcn (`oklch(1 0 0 / 10%)`) |
+| `--input` | `#e2e2e8` | `rgba(255,255,255,0.10)` | `--color-border` | Stone tidak punya token `input` terpisah dari `border` (beda dari shadcn default yang memisah opacity 10%/15%) — pakai `--color-border` untuk keduanya, konsisten dengan cara Astryx memperlakukan border field |
+| `--ring` | `#83838a` | `#5e5e61` | `--color-border-emphasized` | Stone tidak punya token focus-ring dedicated; `border-emphasized` adalah padanan terdekat (dipakai untuk penekanan border) |
+
+## Sidebar (variable `--sidebar-*`, dipakai `T-096.3` App Shell)
+
+| Variable shadcn/ui | Light | Dark | Sumber token Stone |
+| ------------------- | ----- | ---- | ------------------- |
+| `--sidebar` | `#ffffff` | `#1b1b1f` | `--color-background-surface` (beda dari `--background`/canvas — surface adalah permukaan elevated generik, cocok utk sidebar) |
+| `--sidebar-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` |
+| `--sidebar-primary` | `#25252a` | `#f3f3f5` | `--color-accent` |
+| `--sidebar-primary-foreground` | `#ffffff` | `#25252a` | `--color-on-accent` |
+| `--sidebar-accent` | `#e2e2e8` | `#3b3b3f` | `--color-background-muted` |
+| `--sidebar-accent-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` |
+| `--sidebar-border` | `#e2e2e8` | `rgba(255,255,255,0.10)` | `--color-border` |
+| `--sidebar-ring` | `#83838a` | `#5e5e61` | `--color-border-emphasized` |
+
+## Chart (`--chart-1..5`)
+
+**Tidak dipetakan** — Stone/Astryx tidak punya sistem palet chart (di luar
+scope komponen Astryx yang diaudit). Rekomendasi: biarkan default grayscale
+CLI shadcn apa adanya sampai domain Analytics benar-benar dimigrasi
+(setelah T-102, di luar scope 8 task rilis v0.7 ini) — jangan mengarang
+warna chart sekarang.
+
+## Radius
+
+**Tidak dipetakan dari Stone.** Stone punya skala radius sendiri
+(`--radius-inner: 0.25rem`, `--radius-element: 0.5rem`,
+`--radius-container: 0.75rem`, `--radius-page: 1.5rem`,
+`--radius-full`), tapi preset Maia (shadcn) sudah generate komponen
+(mis. `Button` → `rounded-4xl`, lihat `apps/web/src/components/ui/button.tsx`)
+yang dikalibrasi ke base `--radius: 0.625rem` bawaan CLI + turunan
+`calc(var(--radius) * n)` di `globals.css` `@theme inline`. Mengganti base
+radius ke nilai Stone (mis. `--radius-element` 0.5rem) akan menggeser
+seluruh skala turunan tanpa review visual — **keputusan T-095.5: pertahankan
+default Maia**, bukan dipetakan 1:1. Kalau King Rezi ingin bentuk radius
+Stone yang lama dipertahankan persis, itu perubahan visual terpisah yang
+perlu di-approve eksplisit (bukan bagian "migrasi tanpa ubah visual").
+
+## Font
+
+| Variable shadcn/ui | Nilai | Sumber Stone | Status |
+| ------------------- | ----- | ------------- | ------ |
+| `--font-sans` (body) | Figtree | `--font-family-body` | **Sudah cocok** — Figtree sudah di-load `next/font/google` di `layout.tsx` sejak T-095.1 (`const figtree = Figtree({ variable: '--font-sans' })`), tidak perlu perubahan |
+| `--font-heading` | **Gap**: saat ini `var(--font-sans)` (ikut Figtree) di `globals.css` `@theme inline` baris 16 | `--font-family-heading` = Montserrat | Stone pakai Montserrat khusus heading (`h1`–`h6`), belum di-load di project. **Untuk T-096.1:** load `Montserrat` via `next/font/google` (pola sama seperti `figtree`/`geistSans` di `layout.tsx`), lalu ganti `--font-heading: var(--font-sans)` → `--font-heading: var(--font-montserrat)` |
+| `--font-mono` | Geist Mono (dibiarkan) | `--font-family-code` = "JetBrains Mono" | Prioritas rendah — dipakai untuk kode/ID teknis saja (§ Typography `font/mono`, opsional). Tidak perlu diganti kecuali ada kebutuhan konkret menampilkan kode di UI produk |
+
+## Yang sengaja tidak dipetakan
+
+* **Warna brand/status/feedback semantik** (§ Color — Brand/Content
+  Status/Feedback di atas) — tetap `TBD`, menunggu design lock (DT-D02),
+  bukan bagian pemetaan teknis Stone→shadcn ini.
+* **Chart palette** — lihat di atas.
+* **Motion/duration** — Stone punya `--duration-fast/medium/slow` tapi
+  belum ada requirement animasi konkret yang memakainya (§ Motion masih
+  `TBD`).
+
+---
+
 # Related Documents
 
 * `README.md` (folder Engineering)
-* `../../project-manager/DECISIONS.md` — ADR-038, ADR-041, ADR-056, ADR-057, ADR-095 (kunci skala Spacing)
+* `../../project-manager/DECISIONS.md` — ADR-038, ADR-041, ADR-056, ADR-057, ADR-095 (kunci skala Spacing), ADR-097 (migrasi ke shadcn/ui, membalik ADR-041)
 * `../../project-manager/PROJECT_OVERVIEW.md` — Astryx + Tailwind layout-only
 * `../04-ux/` — UX Baseline (alur & layar)
 * `../02-product/roles-permissions.md` — status konten kanonikal

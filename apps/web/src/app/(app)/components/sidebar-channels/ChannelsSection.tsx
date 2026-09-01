@@ -24,7 +24,7 @@ import {
   resolveConnectionDisplayStatus,
   type SidebarChannelAccount,
 } from "@/domains/workspace";
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
 import { useDraftEditor } from "../draft-editor/Context";
 
