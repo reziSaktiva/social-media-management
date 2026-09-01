@@ -20,7 +20,7 @@ Untuk mode percakapan aktif, Known Issues, dan Blockers → tetap ke [`PROJECT_S
 
 | Milestone                | Release yang membentuknya | Status milestone |
 | ------------------------ | ------------------------- | ---------------- |
-| **M8** — Development     | v0.1 · v0.2 · v0.3 · v0.4 · v0.5 · v0.6 | aktif sekarang |
+| **M8** — Development     | v0.1 · v0.2 · v0.3 · v0.4 · v0.5 · v0.6 · v0.7 | aktif sekarang |
 | **M9** — Testing & Release | v1.0                    | belum mulai      |
 
 Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar ruang lingkup milestone" dan `Active Conversation Mode` yang hanya mengizinkan "Feature Implementation (M8)": **seluruh v0.1–v0.6 berada di dalam M8**, jadi task di rilis manapun dari v0.1 sampai v0.6 tidak melanggar scope milestone aktif. Yang di luar M8 hanya v1.0 (M9). Urutan pengerjaan tetap diatur oleh indeks release + `Depends`, bukan oleh milestone.
@@ -59,9 +59,12 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
+| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | ⏳ 0 / 8             | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 77 task · 25 selesai · 173 subtask terdefinisi (v0.1–v0.3).
+**Total:** 85 task · 25 selesai · 199 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-01, ADR-097):** King Rezi memutuskan migrasi fondasi UI dari Astryx ke shadcn/ui setelah audit menemukan 49 file/~44 komponen Astryx dipakai di `apps/web/src` (terisolasi penuh di layer presentasi) dan keterbatasan Beta berulang (KI-005, KI-030, KI-035, KI-040). Ditulis sebagai release baru **v0.7** (bukan disisipkan ke v0.1–v0.6, beda dari pola T-094, karena skalanya besar: 8 task, 26 subtask) di `tasks/v07-astryx-shadcn-migration.md`, ID global berikutnya setelah T-094 (T-095–T-102, pola sama T-039/T-089/T-090–T-094). Strategi **incremental per route-segment** (Astryx & shadcn coexist sementara), bukan big-bang — M8 tetap berjalan paralel. Task naik 77 → **85**, subtask naik 173 → **199** (v0.7: 8 task, 26 subtask, seluruhnya ⏳). Task selesai tidak berubah (masih 25).
+>
 > **Update (2026-08-28, ADR-095):** King Rezi menyelesaikan inisiatif "codify coding discipline" — 2 dokumen baseline baru (`rendering-strategy.md`, `code-conventions.md`), penguncian skala Spacing di `design-tokens.md`, dan 3 rule ESLint enforcement. Ditulis sebagai **T-094** (4 subtask, 3 sudah selesai + 1 dibiarkan terbuka: cleanup `app/(app)/page.tsx` dashboard, KI-036) di `tasks/v01-foundation.md`, sibling T-001/T-002 (Project Setup) karena sifatnya tooling/dokumentasi, bukan fitur produk baru — domain `platform/tooling`. Nomor kosong v0.1 sudah habis sejak T-039/T-089/T-093, jadi memakai ID global berikutnya yang belum pernah dipakai (094), pola sama seperti task-task itu. Task ditutup `✅ Done` (scope dokumentasi + ESLint sudah terverifikasi 0 error lint/typecheck, 209 test passed/3 skipped) — 1 subtask terbuka tidak memblokir penutupan karena di luar scope ADR-095. Task naik 76 → **77**, task selesai naik 23 → **24**, subtask naik 169 → **173** (v0.1: 22 → 23 task, 11 ✅ → **12 ✅**, subtask 63 → 67). Dihitung ulang langsung dari `tasks/v01-foundation.md` (bukan increment manual), sesuai aturan maintenance.
 >
 > **Update lanjutan #2 (2026-08-28):** King Rezi mengoreksi rantai dependency Realtime — sebelum T-036 bisa diverifikasi/dipakai penuh (butuh ≥2 akun nyata di satu workspace), invite-to-membership harus utuh dulu. Ditemukan halaman accept-invite (`/invite/[token]`) **belum pernah dibuat** (gap yang sudah dicatat sejak ADR-080 2026-08-14, tapi belum pernah diberi nomor task). Ditambahkan **T-093 · Accept Invite page** (4 subtask: route + validasi token, buat akun/login, insert `workspace_members` dengan role dari invitation, verifikasi RBAC end-to-end 2-akun) di `tasks/v01-foundation.md`, ID global berikutnya (pola sama T-039/T-089/T-090/T-091/T-092). **T-036** (`tasks/v02-publishing-mvp.md`) dependency-nya ditambah `T-093`. Rantai lengkap sekarang: **T-093 (invite+role) → T-036 (notification bell) → T-092 (Realtime 4 screen)**. Task naik 75 → **76**, subtask naik 165 → **169** (v0.1: 21 → 22 task, breakdown 11 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · **3 ⏳**).
@@ -107,6 +110,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
+| **T-095** | Setup Fondasi shadcn/ui & Tooling Migrasi        | ⏳      | **Prioritas utama** (permintaan eksplisit King Rezi, 2026-09-01) — task pertama rilis v0.7 (migrasi Astryx→shadcn/ui, ADR-097). Dikerjakan lebih dulu dari T-025/T-036 di bawah; T-096–T-102 menyusul setelah ini selesai, lihat `tasks/v07-astryx-shadcn-migration.md` |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
 | **T-036** | In-app notification + Supabase Realtime         | 🟡      | T-036.1/.2/.3 selesai. T-036.4 dibuka kembali (2026-09-01) — gap visual vs Claude Design belum terverifikasi di browser (lihat KI-040). Tersisa T-036.4 (verifikasi visual) dan T-036.5 (trigger dari webhook) |
 

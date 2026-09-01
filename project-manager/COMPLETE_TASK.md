@@ -8,6 +8,70 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-01 — Docs consistency audit: 3 gap ditemukan & diperbaiki (topik "components")
+
+### Fixed
+- **`project-manager/DECISIONS.md`** — 4 baris index (ADR-041, ADR-055, ADR-057, ADR-082) belum menyebut "Amended by ADR-097 (2026-09-01)" di kolom Status, padahal file ADR masing-masing sudah punya catatan itu — index dan sumbernya desync. Diperbaiki, kolom Status di-sync ulang.
+- **`project-manager/decisions/ADR-041-ui-component-system-astryx-sebagai-fondasi-permanen-dan-design-later-workflow.md`** — Status line kehilangan referensi "Amended by ADR-082 (2026-08-19)" (tertimpa saat edit T-095.7 sebelumnya, seharusnya ditambah bukan diganti). Dikembalikan jadi `Accepted — Amended by ADR-057 (2026-07-31), ADR-082 (2026-08-19), ADR-097 (2026-09-01)`.
+- **`project-manager/PROJECT_STATE.md`** § Current Focus — bullet lama "Alignment dokumentasi ADR-041 selesai ... Astryx permanen ... Tailwind layout-only ... exact pin Beta" berkontradiksi langsung dengan bullet ADR-097/prioritas-utama 13 baris di atasnya dalam section yang sama. Ditandai eksplisit sebagai superseded oleh ADR-097, riwayat instalasi/smoke-test Next.js 16 dipertahankan sebagai fakta yang masih valid.
+
+### Context
+Dijalankan via skill `/docs-consistency-audit` dengan argumen topik "components" — scope dipersempit ke UI component system (Astryx/shadcn) setelah dikonfirmasi ke King Rezi (grep awal "component" menghasilkan banyak false-positive "Server Component"/"Client Component" React/Next.js yang tidak relevan). 33 file dibaca penuh (context/, product-discovery/06-engineering, product-discovery/04-ux, 12 ADR terkait, DECISIONS.md, TASKS.md + tasks/v07, PROJECT_OVERVIEW.md, PROJECT_STATE.md, .claude/agents/*, AGENTS.md). Mayoritas file dari ronde sinkronisasi T-095.7 sebelumnya terverifikasi bersih — 3 gap di atas adalah sisa yang lolos dari ronde itu, semuanya Kelas A (mekanis, jawaban benar jelas dari Source of Truth). Diperbaiki setelah dikonfirmasi King Rezi ("ya, perbaiki semua"), mengikuti mode report-only-lalu-tanya skill ini (tidak ada perbaikan diam-diam).
+
+**Tidak ditemukan gap** di: context/ctx-*.md (4 file), product-discovery/06-engineering/README.md, monorepo-setup.md, code-conventions.md, dependency-strategy.md, design-tokens.md (kecuali 1 cross-reference blurb minor, tidak diperbaiki — severity Low, murni redaksional), product-discovery/04-ux/ (README.md, key-screen-patterns.md, navigation-patterns.md), TASKS.md, tasks/v07-astryx-shadcn-migration.md, PROJECT_OVERVIEW.md, .claude/agents/README.md, prabowo-feature-engineer.md, AGENTS.md.
+
+---
+
+## 2026-09-01 — T-095.7: Sinkronisasi dokumentasi baseline Astryx→shadcn/ui
+
+### Changed
+- **14 file** diupdate supaya konsisten dengan ADR-097 (shadcn/ui menggantikan Astryx sebagai fondasi UI permanen): `context/ctx-implementation.md`, `ctx-technical-context.md`, `ctx-development.md`, `ctx-design.md`; `product-discovery/06-engineering/dependency-strategy.md` (DS-D07 ditandai superseded), `monorepo-setup.md`, `README.md`, `design-tokens.md`; `product-discovery/04-ux/key-screen-patterns.md`, `navigation-patterns.md` (nama komponen "Astryx Popover"/"Card Astryx" dinetralkan); `.claude/agents/README.md`, `.claude/agents/prabowo-feature-engineer.md`; `AGENTS.md` (root); `project-manager/PROJECT_OVERVIEW.md`.
+- **4 ADR** (`ADR-041`, `ADR-055`, `ADR-057`, `ADR-082`) — baris Status ditambah `Amended by ADR-097 (2026-09-01)`; isi Decision/Reason/Alternatives Considered tidak diubah (riwayat keputusan tetap utuh).
+
+### Context
+King Rezi meminta seluruh dokumentasi yang jadi acuan kerja (terutama UI/UX) ikut disinkronkan **sebelum** implementasi migrasi kode dimulai — bukan ditunda ke T-102 cleanup di akhir rilis v0.7. Prinsip edit: minimal-diff, pointer ke ADR-097 di tempat relevan, detail teknis Astryx yang sudah tidak berlaku (exact-pin Beta, canary, swizzle, CLI `astryx build/template/component`) ditandai historis/superseded bukan dihapus begitu saja. Sengaja **tidak** menyentuh `.claude/agents/mark-ui-engineer.md` (Static Reference, chmod 444, butuh izin eksplisit terpisah — dicatat T-095.6) dan `apps/web/.claude/CLAUDE.md` (task terpisah T-095.3, agent docs Astryx CLI ditulis ulang saat setup shadcn CLI/MCP benar-benar terpasang).
+
+Diverifikasi lewat `grep -rn "Astryx"` ulang di seluruh scope — sisa mention yang ditemukan semuanya legitimate (riwayat/historical, catatan migrasi transisi, atau baris Status ADR yang memang seharusnya menyebut ADR lama). Ditemukan 1 file tambahan di luar daftar awal (`project-manager/PROJECT_OVERVIEW.md`, tabel Tech Stack) yang juga diupdate.
+
+**T-095.7** ditandai selesai di `tasks/v07-astryx-shadcn-migration.md` — belum ada kode aplikasi yang berubah, T-095.1–.6 (setup shadcn/MCP/CLI nyata) masih `⏳ Not Started`.
+
+---
+
+## 2026-09-01 — v0.7 (migrasi Astryx→shadcn/ui) dijadikan prioritas utama
+
+### Changed
+- `project-manager/TASKS.md` § Fokus sekarang — **T-095** (task pertama v0.7) ditambahkan sebagai baris teratas, mendahului T-025/T-036, dengan catatan eksplisit "Prioritas utama".
+- `project-manager/PROJECT_STATE.md` § Snapshot (Top Next Tasks) dan § Current Focus — diperbarui menyebut T-095/v0.7 sebagai prioritas utama saat ini, dikerjakan sebelum T-025/T-036.
+
+### Context
+Setelah ADR-097 + rilis v0.7 dibuat (lihat entri di bawah), King Rezi meminta migrasi ini dijadikan task yang harus diutamakan. T-025 (Real OutstandAdapter) tetap terhenti menunggu kredensial (KI-003) dan T-036 tersisa 2 subtask non-blocking, jadi tidak ada konflik prioritas nyata — migrasi bisa langsung dimulai dari T-095. Belum ada implementasi kode di sesi ini.
+
+---
+
+## 2026-09-01 — ADR-097: Migrasi Astryx → shadcn/ui direncanakan (audit + task list)
+
+### Added
+- **ADR-097** (`project-manager/decisions/ADR-097-migrasi-astryx-ke-shadcn-ui.md`) — reverse ADR-041: shadcn/ui menggantikan Astryx sebagai fondasi komponen UI permanen. Mengamendemen ADR-055/057/082, tidak mengubah ADR-087 (theme Stone jadi acuan token).
+- Release baru **v0.7** (`project-manager/tasks/v07-astryx-shadcn-migration.md`) — 8 task (T-095–T-102), 26 subtask, strategi incremental per route-segment (Astryx & shadcn coexist sementara, bukan big-bang).
+
+### Context
+Atas permintaan King Rezi, dilakukan audit menyeluruh atas seluruh pemakaian Astryx di `apps/web/src` sebelum menyusun rencana migrasi ke shadcn/ui. Latar belakang: KI-040 (gap visual notification panel) dan riwayat KI-030 (TimeInput)/KI-035 (Badge, StyleX) dianggap sebagai keterbatasan Astryx yang berulang dan tidak bisa diperbaiki dari sisi project (closed-package, masih Beta — KI-005).
+
+**Hasil audit:** 49 file unik meng-import `@astryxdesign/*`, ~44 komponen/hook berbeda, 1 wrapper selektif (`components/ui/Drawer.tsx`, dibuat karena Astryx tanpa primitive Drawer), 0 file test komponen UI. Seluruh pemakaian terisolasi di `app/` (46 file) dan `components/` (3 file) — `domains/`/`lib/` bersih dari dependency UI, sehingga migrasi feasible tanpa menyentuh business logic.
+
+King Rezi mengonfirmasi dua keputusan lewat `AskUserQuestion`: (1) formalisasi langsung ke ADR + TASKS.md (bukan disimpan sebagai proposal draft dulu), (2) strategi **incremental per route-segment** (bukan big-bang/freeze fitur M8).
+
+**Task breakdown (T-095–T-102):** T-095 (setup shadcn/ui + MCP server + tulis ulang agent docs + update AGENTS.md rule 14/15), T-096 (core infra: globals.css, Providers.tsx, AppShell, primitive dasar), T-097 (Auth & Onboarding), T-098 (App Shell & Navigasi, termasuk hapus wrapper `Drawer.tsx` → shadcn `Sheet`, re-verifikasi KI-040), T-099 (Settings), T-100 (Draft Editor Modal, ~68 titik pakai — task tersendiri karena paling kompleks, termasuk re-evaluasi KI-030 TimeInput), T-101 (Calendar/Queue/Drafts/Dashboard, termasuk re-evaluasi KI-035), T-102 (cleanup dependency + QA visual menyeluruh + tutup KI terkait).
+
+Belum ada implementasi kode — sesi ini murni audit + perencanaan/dokumentasi.
+
+### Related
+- `project-manager/DECISIONS.md` (index ADR-097 ditambahkan di atas)
+- `project-manager/TASKS.md` (indeks release v0.7 ditambahkan, total task 77→85, subtask 173→199)
+- `project-manager/PROJECT_STATE.md` (Snapshot + Recent Decisions diperbarui, ADR-087 digeser keluar dari daftar 5)
+
+---
+
 ## 2026-09-01 — T-036.4 dibuka kembali (5 gap visual vs Claude Design ditemukan, verifikasi visual belum dilakukan)
 
 ### Context
