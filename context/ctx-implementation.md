@@ -61,27 +61,27 @@ ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
 
 ---
 
-## UI Components (ADR-041)
+## UI Components (ADR-097, membalik ADR-041)
 
-- Astryx adalah fondasi component system permanen. Gunakan Stone theme
-  Astryx (ADR-087); feature tidak menunggu design tokens final. Light/Dark
-  Mode Toggle (ADR-055) adalah fitur resmi — bukan pengecualian, karena hanya
-  meng-expose mekanisme dark mode native Astryx via `ThemeModeContext`/
-  `useThemeMode` (`apps/web/src/components/Providers.tsx`).
+- **shadcn/ui adalah fondasi component system permanen** (ADR-097, membalik
+  ADR-041). Migrasi dari Astryx berjalan incremental per route-segment
+  (Astryx & shadcn boleh coexist sementara selama migrasi — lihat ADR-097 dan
+  `tasks/v07-astryx-shadcn-migration.md`); feature tidak menunggu design
+  tokens final. Light/Dark Mode Toggle (ADR-055, diamandemen ADR-097) tetap
+  fitur resmi — mekanismenya lewat Tailwind `dark:` + shadcn theme provider,
+  `ThemeModeContext`/`useThemeMode` (`apps/web/src/components/Providers.tsx`)
+  tidak berubah.
 - `src/components/ui/` berisi wrapper/re-export **selektif** untuk komponen
   kritis, dipakai luas, default konsisten, atau adaptasi behavior produk.
-- Komponen Astryx sederhana yang hanya dipakai lokal boleh diimpor langsung
-  dari subpath package resmi.
-- Tailwind hanya untuk layout, wrapper, spacing, grid, flex, dan responsive page
-  composition. Jangan menggunakannya untuk menimpa internal component part
-  Astryx secara agresif.
-- Hindari canary. `@stylexjs/stylex` sudah dihapus total dari dependency
-  project dan `swizzle` tertutup permanen (ADR-082) — Astryx dipakai
-  Tailwind-layout-only.
+- shadcn/ui adalah kode sumber yang di-_copy_ ke repo (bukan dependency
+  package tertutup seperti Astryx) — tidak ada isu versioning Beta/canary;
+  komponen sederhana yang hanya dipakai lokal boleh diimpor langsung dari
+  lokasi hasil copy-nya.
+- Tailwind dipakai langsung sebagai styling utama komponen shadcn (bukan lagi
+  layout-only seperti era Astryx, ADR-097 poin 4).
 - Nilai final `design-tokens.md` (co-equal dengan Claude Design, tidak
-  menunggu designer eksternal — ADR-056, ADR-057) dipetakan ke Astryx theme +
-  Tailwind token bridge tanpa mengganti fondasi komponen.
-- Sebelum adopsi Astryx secara luas, pastikan smoke test ADR-041 telah lolos.
+  menunggu designer eksternal — ADR-056, ADR-057) dipetakan ke CSS variable
+  shadcn + Tailwind token bridge tanpa mengganti fondasi komponen.
 - Penamaan & peletakan file/folder komponen (PascalCase untuk file yang
   meng-export component, kebab-case untuk folder & helper, peletakan
   `components/` berdasar lowest common ancestor pemakainya) mengikuti
@@ -120,7 +120,7 @@ Structure` (ADR-069, resolusi KI-010).
 4. Jika menyentuh Outstand, baca ADR-040 dan checklist kontrak di
    `ctx-architecture.md`.
 5. Implement di `domains/<bc>/` + entry point tipis di `app/`.
-6. Jika ada UI, ikuti boundary Astryx/Tailwind di atas dan UX Baseline melalui
+6. Jika ada UI, ikuti boundary shadcn/Tailwind di atas dan UX Baseline melalui
    `ctx-design.md`.
 7. Jalankan checklist di `ctx-development.md`.
 

@@ -1,21 +1,22 @@
 # Design Tokens
 
 Dokumen ini adalah **Source of Truth visual tokens** untuk implementasi UI di
-`apps/web` (Astryx theme + Tailwind token bridge).
+`apps/web` (CSS variable shadcn/ui + Tailwind token bridge, ADR-097).
 
 Nilai token final berkembang **iteratif dan co-equal** antara dokumen ini dan
 project Claude Design "Social Media Management" (ADR-056) — tidak ada lagi
 gerbang "menunggu designer masuk": project ini tidak akan merekrut designer
 eksternal, perannya digantikan permanen oleh King Rezi sendiri lewat Claude
 Design (ADR-057, amandemen ADR-038 & ADR-041). Implementasi feature memakai
-Stone theme Astryx (ADR-087) dan tidak menunggu token final.
+token Stone theme (ADR-087, dipetakan ke shadcn/ui sejak ADR-097) dan tidak
+menunggu token final.
 Screenshot bukan acuan nilai final; folder `design/` (paket handoff designer)
 sudah dihapus dan **tidak akan dibuat ulang** (ADR-045, ADR-057).
 
 | Field | Value |
 | ----- | ----- |
 | Lokasi SoT | Dokumen ini, co-equal dengan Claude Design untuk nilai token (ADR-038, ADR-056) — nilai berkembang iteratif, bukan sekali lock |
-| Implementasi kode | `apps/web` (Astryx theme + Tailwind token bridge) |
+| Implementasi kode | `apps/web` (CSS variable shadcn/ui + Tailwind token bridge, ADR-097) |
 | UX / struktur layar | Tetap di `../04-ux/` — **tidak** diganti dokumen ini |
 | Peran desainer | Permanen digantikan King Rezi via Claude Design — tidak ada designer eksternal (ADR-057); pointer di `../../context/ctx-design.md` |
 
@@ -26,8 +27,9 @@ sudah dihapus dan **tidak akan dibuat ulang** (ADR-045, ADR-057).
 Checklist lock ini dijalankan kapan pun King Rezi (berperan sebagai desainer
 via Claude Design) menganggap satu set token sudah stabil — **tidak ada**
 gerbang "designer eksternal masuk" (ADR-057). Selama development feature,
-gunakan Stone theme Astryx (ADR-087); jangan mengisi nilai brand sementara
-atau memblokir implementasi layar karena tabel masih `TBD`.
+gunakan token Stone theme (ADR-087, dipetakan ke shadcn/ui sejak ADR-097);
+jangan mengisi nilai brand sementara atau memblokir implementasi layar
+karena tabel masih `TBD`.
 
 ## Langkah 1 — Review & approve di Claude Design
 
@@ -79,9 +81,9 @@ Engineering memetakan token → implementasi:
 
 | Token di dokumen ini | Target kode (contoh) |
 | -------------------- | -------------------- |
-| Brand / neutral / status | Astryx custom theme / CSS variables di `apps/web` |
-| Skala type / spacing | Astryx theme + Tailwind token bridge |
-| Komponen UI | Komponen Astryx dan wrapper selektif memakai semantic token yang sama |
+| Brand / neutral / status | CSS variables shadcn/ui di `apps/web` |
+| Skala type / spacing | CSS variable shadcn/ui + Tailwind token bridge |
+| Komponen UI | Komponen shadcn/ui dan wrapper selektif memakai semantic token yang sama |
 
 **Jangan** mengisi hex hanya di Claude Design atau hanya di screenshot tanpa update dokumen ini.
 
@@ -98,10 +100,10 @@ Engineering memetakan token → implementasi:
 | ID | Topik | Keputusan |
 | ---- | ----- | --------- |
 | DT-D01 | Lokasi SoT token | `product-discovery/06-engineering/design-tokens.md` |
-| DT-D02 | Kapan diisi | Iteratif, co-equal dengan Claude Design (ADR-056); dikunci kapan pun King Rezi menganggap stabil — tidak ada gerbang "designer masuk" (ADR-057); gunakan Stone theme Astryx (ADR-087) |
+| DT-D02 | Kapan diisi | Iteratif, co-equal dengan Claude Design (ADR-056); dikunci kapan pun King Rezi menganggap stabil — tidak ada gerbang "designer masuk" (ADR-057); gunakan token Stone theme (ADR-087) |
 | DT-D03 | Hubungan dengan handoff designer | Tidak ada designer eksternal, permanen (ADR-057); folder `design/` dihapus dan tidak dibuat ulang (ADR-045); token final tetap **wajib** masuk dokumen ini |
 | DT-D04 | Hubungan dengan UX Baseline | `04-ux/` mengatur alur & zona fungsi; dokumen ini hanya visual tokens |
-| DT-D05 | Stack implementasi | Astryx untuk komponen/theme + Tailwind khusus layout dan responsive composition (ADR-041) |
+| DT-D05 | Stack implementasi | shadcn/ui untuk komponen/theme + Tailwind sebagai styling langsung (ADR-097, membalik ADR-041) |
 
 ---
 
@@ -189,12 +191,16 @@ Warna aksen jaringan sosial di Calendar / Account Pill. Jangan mendominasi UI.
 
 # Spacing
 
-**Locked (ADR-095).** Base unit: **1 Astryx unit = 4px**. Skala ini dikunci
-berdasarkan nilai yang sudah dipakai konsisten di kode nyata (prop `gap`/
-`padding` pada `VStack`/`HStack`/`Stack`/`Grid` Astryx) — bukan angka baru
-yang diciptakan dari nol.
+**Locked (ADR-095).** Base unit: **4px grid**. Skala ini dikunci berdasarkan
+nilai yang sudah dipakai konsisten di kode nyata era Astryx (prop `gap`/
+`padding` pada `VStack`/`HStack`/`Stack`/`Grid`) — bukan angka baru yang
+diciptakan dari nol. Nilai grid 4px tetap berlaku sebagai keputusan setelah
+migrasi ke shadcn/ui (ADR-097); ekspresinya di kode sekarang Tailwind
+spacing scale langsung (mis. `gap-4`, `p-4` untuk unit 4 = 16px), bukan lagi
+prop `gap`/`padding` numerik Astryx — lihat `apps/web/.claude/CLAUDE.md`
+untuk konvensi spacing shadcn terbaru.
 
-| Unit Astryx | Px | Status |
+| Unit (× 4px) | Px | Status |
 | ----------- | -- | ------ |
 | 0 | 0px | Dipakai (reset spacing sengaja) |
 | 0.5 | 2px | Dipakai (dense UI, jarang) |
@@ -215,7 +221,7 @@ daftar tertutup klasik.
 
 ## Panduan Penggunaan Semantik
 
-| Konteks | Prop | Nilai Astryx (px) | Alasan |
+| Konteks | Prop (era Astryx) | Nilai (px) | Alasan |
 | ------- | ---- | ------------------ | ------ |
 | Icon-to-label (Button, MenuItem, Badge) | `gap` | 1–1.5 (4–6px) | Elemen sangat dekat, jarak visual minimal |
 | Item dalam list/stack rapat (baris Table, item Menu) | `gap` | 2 (8px) | Grouping jelas tapi tetap padat |
@@ -226,11 +232,14 @@ daftar tertutup klasik.
 | Padding Container/page-level wrapper besar | `padding` | 8 (32px) | Breathing room level page, dipakai sengaja lebih jarang |
 | Reset/no-space (Stack yang dibungkus komponen lain) | `gap`/`padding` | 0 | Sengaja tanpa spacing tambahan |
 
-## Larangan
+## Larangan (era Astryx — cek ulang saat migrasi shadcn per route-segment, ADR-097)
 
 * **Tailwind spacing utility mentah** (`gap-`, `p-`, `m-`, `space-x/y-`)
   langsung di komponen — gunakan prop `gap={n}`/`padding={n}` pada
-  `VStack`/`HStack`/`Stack`/`Grid`.
+  `VStack`/`HStack`/`Stack`/`Grid`. Aturan ini berlaku untuk kode Astryx yang
+  belum termigrasi; komponen shadcn memakai Tailwind utility langsung
+  (ADR-097 poin 4), sehingga larangan literal ini tidak berlaku di segmen
+  yang sudah dimigrasi — tetap pakai unit dari skala 4px di atas.
 * **Arbitrary value** (`gap-[13px]`, `p-[10px]`) — selalu pakai unit dari
   skala di atas.
 * **`margin`** pada child untuk spacing antar sibling — spacing datang dari
@@ -276,13 +285,13 @@ Minimal 2–3 motion disengaja setelah design lock — catat di sini jika design
 ```text
 Sebelum token Locked
         ↓
-Astryx Stone theme (ADR-087) + Tailwind layout-only
+Token Stone theme (ADR-087) + Tailwind sebagai styling langsung (ADR-097)
 
 Setelah design-tokens.md Locked (co-equal dengan Claude Design, ADR-056/057)
         ↓
-apps/web — Astryx custom theme + Tailwind token bridge
+apps/web — CSS variable shadcn/ui + Tailwind token bridge
         ↓
-Komponen Astryx + wrapper selektif + layar KSP-01 … KSP-08
+Komponen shadcn/ui + wrapper selektif + layar KSP-01 … KSP-08
 ```
 
 Engineering **tidak** membaca paket handoff designer sebagai sumber nilai
@@ -294,7 +303,7 @@ ADR-045, ADR-057).
 # Related Documents
 
 * `README.md` (folder Engineering)
-* `../../project-manager/DECISIONS.md` — ADR-038, ADR-041, ADR-056, ADR-057, ADR-095 (kunci skala Spacing)
+* `../../project-manager/DECISIONS.md` — ADR-038, ADR-041, ADR-056, ADR-057, ADR-095 (kunci skala Spacing), ADR-097 (migrasi ke shadcn/ui, membalik ADR-041)
 * `../../project-manager/PROJECT_OVERVIEW.md` — Astryx + Tailwind layout-only
 * `../04-ux/` — UX Baseline (alur & layar)
 * `../02-product/roles-permissions.md` — status konten kanonikal

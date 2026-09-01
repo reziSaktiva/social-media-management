@@ -40,7 +40,7 @@ Dokumen ini melengkapi `monorepo-setup.md` (workspace layout, `@social/shared`, 
 | DS-D04 | Penempatan dependency | Root = tooling monorepo; `apps/web` = runtime app; `packages/shared` = tanpa runtime deps (tipe murni) |
 | DS-D05 | Shared packages | Tetap satu `@social/shared` di MVP; package baru di `packages/` hanya dengan alasan kuat (lihat aturan) |
 | DS-D06 | Sinkronisasi versi lintas workspace | **Tanpa Bun Catalog** di MVP; cukup caret + satu lockfile |
-| DS-D07 | Pengecualian Astryx Beta | Paket Astryx memakai **exact stable version**, tanpa canary; core + theme di-upgrade bersama dan wajib melewati smoke test (ADR-041) |
+| DS-D07 | Pengecualian Astryx Beta | **Superseded oleh ADR-097** (migrasi ke shadcn/ui) — Astryx tidak lagi jadi fondasi permanen; aturan exact pin di bawah ini historis, berlaku hanya untuk sisa kode Astryx yang belum termigrasi |
 
 ---
 
@@ -60,7 +60,13 @@ Dokumen ini melengkapi `monorepo-setup.md` (workspace layout, `@social/shared`, 
 - Jangan mengandalkan "latest" atau range terbuka (`*`, `latest`) untuk dependency produksi.
 - Major bump (breaking) selalu disengaja: baca changelog, jalankan typecheck/lint/test, lalu commit lockfile bersama perubahan kode.
 
-### Pengecualian Astryx Beta (DS-D07)
+### Pengecualian Astryx Beta (DS-D07) — superseded oleh ADR-097
+
+**Sudah tidak berlaku sebagai aturan aktif.** shadcn/ui (fondasi permanen
+sejak ADR-097) adalah kode sumber yang di-*copy* ke repo, bukan dependency
+package — tidak ada isu versioning Beta/exact pin seperti Astryx. Section di
+bawah dipertahankan sebagai riwayat, berlaku hanya selama masih ada kode
+Astryx yang belum termigrasi (lihat `tasks/v07-astryx-shadcn-migration.md`).
 
 ADR-041 mengamendemen aturan caret ADR-035 khusus untuk Astryx selama masih
 Beta:
@@ -163,9 +169,15 @@ Domain modules **tetap** di `apps/web/src/domains/` (ADR-026) — jangan dipromo
 5. Commit package.json + bun.lockb (+ perubahan kode adaptasi) dalam satu PR
 ```
 
-Untuk Astryx, tambahkan langkah khusus: bump core + theme + CLI sebagai satu
-unit, verifikasi peer StyleX, jalankan smoke test UI dan production build di
-branch terpisah, lalu uji di staging sebelum promosi.
+Untuk komponen shadcn (kode yang di-copy ke repo, ADR-097), update berarti
+menarik ulang komponen dari CLI/MCP dan menyesuaikan customisasi lokal —
+jalankan smoke test UI dan production build di branch terpisah, lalu uji di
+staging sebelum promosi. (Langkah khusus Astryx di bawah historis, berlaku
+untuk sisa kode Astryx yang belum termigrasi.)
+
+Untuk Astryx (legacy), tambahkan langkah khusus: bump core + theme + CLI
+sebagai satu unit, verifikasi peer StyleX, jalankan smoke test UI dan
+production build di branch terpisah, lalu uji di staging sebelum promosi.
 
 | Situasi | Tindakan |
 |---------|----------|

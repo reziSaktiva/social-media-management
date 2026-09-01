@@ -16,7 +16,7 @@ langsung dengan user. Perubahan struktural wajib dicatat di
 | File                              | Nama                         | Peran                                                                                   | Tools dibatasi?                                    |
 | --------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | `prabowo-feature-engineer.md`     | Prabowo Feature Engineer     | Implementasi fitur (entry → service → domain → repo)                                    | Tidak (semua tools)                                |
-| `mark-ui-engineer.md`             | Mark UI Engineer             | UI/komponen Astryx di `apps/web`                                                        | Tidak                                              |
+| `mark-ui-engineer.md`             | Mark UI Engineer             | UI/komponen `apps/web` — migrasi Astryx → shadcn/ui berjalan (ADR-097)                  | Tidak                                              |
 | `neymar-product-designer.md`      | Neymar Product Designer      | Claude Design via `DesignSync`                                                          | Tidak                                              |
 | `elon-backend-engineer.md`        | Elon Backend Engineer        | Outstand ACL, webhook, background jobs, schema Prisma                                   | Tidak                                              |
 | `ridwan-architecture-reviewer.md` | Ridwan Architecture Reviewer | Review kepatuhan boundary DDD, read-only                                                | Ya — `Read, Bash, Grep, Glob, ReportFindings`      |
@@ -113,7 +113,7 @@ akhir):
 | `publishing`                           | Prabowo Feature Engineer    | Draft, Schedule, Queue, Publish Now                                             |
 | `analytics`                            | Prabowo Feature Engineer    | Dashboard/metrics — logic; UI-nya lihat baris `UI`                              |
 | `integration`, `media`, `notification` | Elon Backend Engineer       | Outstand ACL, webhook, background jobs                                          |
-| `UI`                                   | Mark UI Engineer            | Komponen Astryx, styling, layout                                                |
+| `UI`                                   | Mark UI Engineer            | Komponen shadcn/ui, styling, layout (migrasi dari Astryx berjalan, ADR-097)      |
 | `platform`, `DX`                       | — (biasanya tanpa subagent) | Tooling/config internal (CI, monorepo) — sering lebih cepat dikerjakan langsung |
 
 Domain gabungan (mis. `workspace · UI`) berarti **dua subagent bisa paralel**

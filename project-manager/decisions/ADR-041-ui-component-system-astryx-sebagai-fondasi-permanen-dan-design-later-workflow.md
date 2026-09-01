@@ -6,7 +6,7 @@ UI Component System — Astryx sebagai Fondasi Permanen dan Design-Later Workflo
 
 ### Status
 
-Accepted — Amended by ADR-057 (2026-07-31)
+Accepted — Amended by ADR-057 (2026-07-31), ADR-082 (2026-08-19), ADR-097 (2026-09-01)
 
 ### Date
 

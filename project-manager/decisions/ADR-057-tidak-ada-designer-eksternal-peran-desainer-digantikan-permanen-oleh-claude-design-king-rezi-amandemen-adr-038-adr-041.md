@@ -6,7 +6,7 @@ Tidak Ada Designer Eksternal — Peran Desainer Digantikan Permanen oleh Claude 
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-097 (2026-09-01)
 
 ### Date
 

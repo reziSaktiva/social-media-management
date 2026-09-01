@@ -129,7 +129,7 @@ kedua tool — tidak ada instruksi khusus per-tool selain tabel di atas.
 - Auth: **Better Auth** · ORM: **Prisma 7** · DB/Storage/Realtime: **Supabase**
 - Integrasi sosial: **Outstand** (via Anti-Corruption Layer), bukan SDK network langsung
 - Arsitektur: **Modular Monolith + DDD** · domain di `apps/web/src/domains/`
-- UI: **Astryx** (ADR-041) · Stone theme (ADR-087) · **Tailwind layout-only**
+- UI: **shadcn/ui** (ADR-097, membalik ADR-041) · Stone theme token (ADR-087) · **Tailwind** sebagai styling langsung; migrasi dari Astryx berjalan incremental per route-segment
 - Deploy: **Railway** (web + cron) · CI: **GitHub Actions**
 - Staging web: URL & detail deploy di `PROJECT_STATE.md` (KI-025) /
   `COMPLETE_TASK.md` — pakai untuk smoke test manual sebelum PR
@@ -167,11 +167,14 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
 11. Persona kanonikal: Raka, Maya, Sinta, Dimas, Lara.
 12. Bahasa komunikasi & dokumentasi project: **Bahasa Indonesia** (kecuali user meminta lain).
 13. Jangan commit / push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
-14. UI produk hanya memakai Astryx. Wrapper dibuat selektif; jangan memakai
-    canary atau `swizzle` Astryx pada tahap awal (ADR-041).
-15. Sebelum menulis atau mengubah UI Astryx, baca `apps/web/.claude/CLAUDE.md`
-    (agent docs resmi, lihat bawah) dan/atau jalankan CLI lokal yang versinya
-    terkunci. Jangan menebak nama komponen, props, atau pola styling.
+14. UI produk memakai **shadcn/ui** (ADR-097, membalik ADR-041). Wrapper
+    dibuat selektif. Migrasi dari Astryx berjalan incremental per
+    route-segment — Astryx & shadcn boleh coexist sementara, lihat
+    `tasks/v07-astryx-shadcn-migration.md`.
+15. Sebelum menulis atau mengubah komponen UI, baca
+    `apps/web/.claude/CLAUDE.md` (agent docs resmi, lihat bawah) dan/atau
+    cek registry/CLI/MCP shadcn lokal. Jangan menebak nama komponen, props,
+    atau pola styling.
 16. Sebelum mengubah apapun di Claude Design (via `DesignSync`) atau
     menambah kontrol pembanding (toggle/switch antar variant) di UI manapun,
     baca `.claude/skills/claude-design-scope-discipline/SKILL.md`. Jangan
@@ -214,34 +217,29 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
     baru (nomor berurutan, mis. ADR-059 → ADR-079 sudah jadi presedennya),
     jangan diam-diam diperluas tanpa dicatat.
 
-## Workflow Astryx wajib
+## Workflow shadcn/ui wajib (ADR-097)
 
-Agent docs resmi Astryx ada di `apps/web/.claude/CLAUDE.md` — **auto-generated**
-oleh CLI resmi (`bunx astryx init --features agents --agent claude`, dijalankan
-dari `apps/web`), bukan tulisan manual. Isinya: workflow discovery
-(`astryx build` → `astryx template` → `astryx component`), aturan styling/token,
-dan CLI reference — semua ditarik dari `@astryxdesign/cli` v0.1.8 yang ter-pin
-di proyek ini.
+**shadcn/ui** menggantikan Astryx sebagai fondasi component system permanen
+(ADR-097, membalik ADR-041). Migrasi berjalan incremental per
+route-segment — Astryx dan shadcn boleh coexist sementara selama migrasi
+berjalan (lihat `tasks/v07-astryx-shadcn-migration.md`).
 
-Untuk setiap task UI di `apps/web`: baca `apps/web/.claude/CLAUDE.md` dulu,
-lalu jalankan command CLI yang disebut di sana lewat
-`bun run --cwd apps/web astryx -- <cmd>`.
+Untuk setiap task UI di `apps/web`: baca `apps/web/.claude/CLAUDE.md` dulu —
+dokumen ini akan ditulis ulang mengikuti workflow shadcn CLI/MCP (ADR-097
+poin 5) — lalu ikuti workflow CLI/MCP yang disebutkan di sana. Jangan
+menebak command spesifik di sini; `apps/web/.claude/CLAUDE.md` adalah sumber
+kebenaran untuk command yang benar-benar berlaku.
 
-**Setelah upgrade `@astryxdesign/core`/`cli`:** jalankan ulang
-`bunx astryx init --features agents --agent claude` di `apps/web` untuk
-regenerate file ini in-place (jangan edit manual — akan tertimpa saat
-regenerate berikutnya).
+shadcn/ui adalah kode sumber yang di-_copy_ langsung ke repo, bukan
+dependency package tertutup seperti Astryx — tidak ada isu versioning
+Beta/canary yang perlu dikelola di sini.
 
-**MCP server (`xds`, dikonfigurasi di `.mcp.json` untuk Claude Code **dan**
-`.cursor/mcp.json` untuk Cursor — dua file kembar, jaga sinkron, lihat
-"Kompatibilitas tool"):** tersedia untuk
-pencarian cepat (`search`) dan lookup dokumentasi (`get`) tanpa shell out ke
-CLI. Server ini menunjuk ke versi live `astryx.atmeta.com`, **bisa berbeda**
-dari `@astryxdesign/cli` v0.1.8 yang ter-pin di `apps/web` (Astryx masih
-Beta). Untuk exploration/pencarian awal, MCP boleh dipakai; untuk keputusan
-final props/API yang dipakai di kode, tetap verifikasi lewat CLI lokal
-(`astryx component <Name> --dense`) supaya konsisten dengan versi yang
-benar-benar ter-install.
+**MCP server shadcn** (didaftarkan di `.mcp.json` **dan** `.cursor/mcp.json`
+sekaligus — dua file kembar, jaga sinkron, lihat "Kompatibilitas tool")
+menggantikan peran `xds` (Astryx) untuk pencarian/lookup komponen. Untuk
+exploration/pencarian awal, MCP boleh dipakai; untuk keputusan final
+props/API yang dipakai di kode, tetap verifikasi lewat CLI/registry lokal
+supaya konsisten dengan versi yang benar-benar ter-install.
 
 ## Mode kerja
 
@@ -260,7 +258,7 @@ fase aktif di file ini.
 | Jobs / cron                  | `ctx-architecture`                           | `background-jobs.md`                                                                                   |
 | Env / deploy / CI            | `ctx-technical-context`                      | `environment-management.md`, `deployment-infrastructure.md`, `cicd-pipeline.md`                        |
 | Coding conventions / DX      | `ctx-development`                            | `dx-tooling.md` + `code-conventions.md`                                                                |
-| UI component / styling       | `ctx-design` + `ctx-implementation`          | `apps/web/.claude/CLAUDE.md` + `monorepo-setup.md` + `design-tokens.md` + ADR-041                      |
+| UI component / styling       | `ctx-design` + `ctx-implementation`          | `apps/web/.claude/CLAUDE.md` + `monorepo-setup.md` + `design-tokens.md` + ADR-097                      |
 | Desain / handoff UI          | `ctx-design`                                 | `04-ux/` + pointer Claude Design (folder `design/` dihapus, ADR-045)                                   |
 
 ## Setelah mengubah sesuatu
