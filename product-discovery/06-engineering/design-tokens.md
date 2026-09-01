@@ -104,6 +104,7 @@ Engineering memetakan token → implementasi:
 | DT-D03 | Hubungan dengan handoff designer | Tidak ada designer eksternal, permanen (ADR-057); folder `design/` dihapus dan tidak dibuat ulang (ADR-045); token final tetap **wajib** masuk dokumen ini |
 | DT-D04 | Hubungan dengan UX Baseline | `04-ux/` mengatur alur & zona fungsi; dokumen ini hanya visual tokens |
 | DT-D05 | Stack implementasi | shadcn/ui untuk komponen/theme + Tailwind sebagai styling langsung (ADR-097, membalik ADR-041) |
+| DT-D06 | Pemetaan teknis Stone→shadcn (T-095.5) | Nilai literal Stone theme (ADR-087) dipetakan 1:1 ke CSS variable shadcn/ui di § Engineering Mapping — referensi implementasi T-096.1, **bukan** token brand baru (beda dari § Color — Brand yang masih `TBD` menunggu design lock) |
 
 ---
 
@@ -255,8 +256,8 @@ yang boleh diikuti di kode baru.
 
 | Sistem | Keputusan | Nilai |
 | ------ | --------- | ----- |
-| Radius | Satu keluarga | `TBD` (contoh: 6 / 8 / 12) |
-| Elevation | 0–2 level bermakna | `TBD` — shadow terutama untuk overlay |
+| Radius | **Tidak** dipetakan dari Stone theme — pertahankan default preset Maia (`--radius: 0.625rem` + turunan `calc()`-nya, lihat § Engineering Mapping di bawah) | `0.625rem` base, skala `radius-sm/md/lg/xl/2xl/3xl/4xl` via `calc(var(--radius) * n)` |
+| Elevation | `TBD` | `TBD` — shadow terutama untuk overlay; Stone punya `--shadow-low/med/high` tapi belum dipetakan (di luar scope T-095.5, komponen shadcn generate shadow Tailwind sendiri per komponen) |
 
 ---
 
@@ -297,6 +298,100 @@ Komponen shadcn/ui + wrapper selektif + layar KSP-01 … KSP-08
 Engineering **tidak** membaca paket handoff designer sebagai sumber nilai
 token final (folder `design/` sudah dihapus dan tidak akan dibuat ulang,
 ADR-045, ADR-057).
+
+---
+
+# Engineering Mapping — Stone theme → CSS variable shadcn/ui (T-095.5)
+
+**Status: referensi teknis untuk T-096.1** (rewrite `globals.css`), bukan
+"token Locked" — nilai warna semantik brand/status di atas (§ Color — Brand/
+Content Status/Feedback) tetap `TBD` sampai design lock (DT-D02). Section
+ini murni pemetaan **nilai literal 1:1** dari `@astryxdesign/theme-stone`
+(ADR-087) ke variable shadcn/ui yang sudah ada di
+`apps/web/src/app/globals.css` sejak init (T-095.1), supaya visual app
+**tidak berubah** (warna Stone tetap dipakai) saat fondasi Astryx dilepas
+di T-096. Sumber: `@astryxdesign/theme-stone/dist/theme.css` (versi
+`0.4.3` ter-install) — semua value Stone berbentuk
+`light-dark(<light>, <dark>)`, dipecah jadi `:root` (light) dan `.dark`
+(dark) di bawah karena shadcn pakai strategi class `.dark`, bukan
+`light-dark()` CSS native.
+
+## Warna
+
+| Variable shadcn/ui | Light | Dark | Sumber token Stone | Catatan |
+| ------------------- | ----- | ---- | ------------------- | ------- |
+| `--background` | `#f3f3f5` | `#111015` | `--color-background-body` | Canvas app |
+| `--foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` | |
+| `--card` | `#ffffff` | `#242325` | `--color-background-card` | |
+| `--card-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` | |
+| `--popover` | `#ffffff` | `#25252a` | `--color-background-popover` | |
+| `--popover-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` | |
+| `--primary` | `#25252a` | `#f3f3f5` | `--color-accent` | |
+| `--primary-foreground` | `#ffffff` | `#25252a` | `--color-on-accent` | |
+| `--secondary` | `#e2e2e8` | `#3b3b3f` | `--color-background-muted` | |
+| `--secondary-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` | |
+| `--muted` | `#e2e2e8` | `#3b3b3f` | `--color-background-muted` | Sama dengan `--secondary` — konsisten dgn pola default shadcn (kedua value identik di preset bawaan) |
+| `--muted-foreground` | `#83838a` | `#9d9da3` | `--color-text-secondary` | |
+| `--accent` | `#e2e2e8` | `#3b3b3f` | `--color-background-muted` | Sama dengan `--muted`/`--secondary` — Stone tidak punya token hover-state solid terpisah yang cukup pekat (`--color-overlay-hover`/`--color-neutral` transparan, tidak cocok jadi bg solid) |
+| `--accent-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` | |
+| `--destructive` | `#58413e` | `#dcc0bc` | `--color-error` | Dipakai sebagai warna teks/icon (lihat pola `button.tsx` — `bg-destructive/10 text-destructive`), bukan fill solid; `--color-error` lebih cocok dari `--color-background-red` untuk peran ini |
+| `--border` | `#e2e2e8` | `rgba(255,255,255,0.10)` | `--color-border` | Nilai dark (`#f3f3f51a`) kebetulan hampir identik dengan default shadcn (`oklch(1 0 0 / 10%)`) |
+| `--input` | `#e2e2e8` | `rgba(255,255,255,0.10)` | `--color-border` | Stone tidak punya token `input` terpisah dari `border` (beda dari shadcn default yang memisah opacity 10%/15%) — pakai `--color-border` untuk keduanya, konsisten dengan cara Astryx memperlakukan border field |
+| `--ring` | `#83838a` | `#5e5e61` | `--color-border-emphasized` | Stone tidak punya token focus-ring dedicated; `border-emphasized` adalah padanan terdekat (dipakai untuk penekanan border) |
+
+## Sidebar (variable `--sidebar-*`, dipakai `T-096.3` App Shell)
+
+| Variable shadcn/ui | Light | Dark | Sumber token Stone |
+| ------------------- | ----- | ---- | ------------------- |
+| `--sidebar` | `#ffffff` | `#1b1b1f` | `--color-background-surface` (beda dari `--background`/canvas — surface adalah permukaan elevated generik, cocok utk sidebar) |
+| `--sidebar-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` |
+| `--sidebar-primary` | `#25252a` | `#f3f3f5` | `--color-accent` |
+| `--sidebar-primary-foreground` | `#ffffff` | `#25252a` | `--color-on-accent` |
+| `--sidebar-accent` | `#e2e2e8` | `#3b3b3f` | `--color-background-muted` |
+| `--sidebar-accent-foreground` | `#25252a` | `#f3f3f5` | `--color-text-primary` |
+| `--sidebar-border` | `#e2e2e8` | `rgba(255,255,255,0.10)` | `--color-border` |
+| `--sidebar-ring` | `#83838a` | `#5e5e61` | `--color-border-emphasized` |
+
+## Chart (`--chart-1..5`)
+
+**Tidak dipetakan** — Stone/Astryx tidak punya sistem palet chart (di luar
+scope komponen Astryx yang diaudit). Rekomendasi: biarkan default grayscale
+CLI shadcn apa adanya sampai domain Analytics benar-benar dimigrasi
+(setelah T-102, di luar scope 8 task rilis v0.7 ini) — jangan mengarang
+warna chart sekarang.
+
+## Radius
+
+**Tidak dipetakan dari Stone.** Stone punya skala radius sendiri
+(`--radius-inner: 0.25rem`, `--radius-element: 0.5rem`,
+`--radius-container: 0.75rem`, `--radius-page: 1.5rem`,
+`--radius-full`), tapi preset Maia (shadcn) sudah generate komponen
+(mis. `Button` → `rounded-4xl`, lihat `apps/web/src/components/ui/button.tsx`)
+yang dikalibrasi ke base `--radius: 0.625rem` bawaan CLI + turunan
+`calc(var(--radius) * n)` di `globals.css` `@theme inline`. Mengganti base
+radius ke nilai Stone (mis. `--radius-element` 0.5rem) akan menggeser
+seluruh skala turunan tanpa review visual — **keputusan T-095.5: pertahankan
+default Maia**, bukan dipetakan 1:1. Kalau King Rezi ingin bentuk radius
+Stone yang lama dipertahankan persis, itu perubahan visual terpisah yang
+perlu di-approve eksplisit (bukan bagian "migrasi tanpa ubah visual").
+
+## Font
+
+| Variable shadcn/ui | Nilai | Sumber Stone | Status |
+| ------------------- | ----- | ------------- | ------ |
+| `--font-sans` (body) | Figtree | `--font-family-body` | **Sudah cocok** — Figtree sudah di-load `next/font/google` di `layout.tsx` sejak T-095.1 (`const figtree = Figtree({ variable: '--font-sans' })`), tidak perlu perubahan |
+| `--font-heading` | **Gap**: saat ini `var(--font-sans)` (ikut Figtree) di `globals.css` `@theme inline` baris 16 | `--font-family-heading` = Montserrat | Stone pakai Montserrat khusus heading (`h1`–`h6`), belum di-load di project. **Untuk T-096.1:** load `Montserrat` via `next/font/google` (pola sama seperti `figtree`/`geistSans` di `layout.tsx`), lalu ganti `--font-heading: var(--font-sans)` → `--font-heading: var(--font-montserrat)` |
+| `--font-mono` | Geist Mono (dibiarkan) | `--font-family-code` = "JetBrains Mono" | Prioritas rendah — dipakai untuk kode/ID teknis saja (§ Typography `font/mono`, opsional). Tidak perlu diganti kecuali ada kebutuhan konkret menampilkan kode di UI produk |
+
+## Yang sengaja tidak dipetakan
+
+* **Warna brand/status/feedback semantik** (§ Color — Brand/Content
+  Status/Feedback di atas) — tetap `TBD`, menunggu design lock (DT-D02),
+  bukan bagian pemetaan teknis Stone→shadcn ini.
+* **Chart palette** — lihat di atas.
+* **Motion/duration** — Stone punya `--duration-fast/medium/slow` tapi
+  belum ada requirement animasi konkret yang memakainya (§ Motion masih
+  `TBD`).
 
 ---
 

@@ -59,9 +59,9 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
-| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | ⏳ 0 / 8             | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
+| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 🟡 1 ✅ · 7 ⏳        | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 85 task · 25 selesai · 199 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 85 task · 26 selesai · 199 subtask terdefinisi (v0.1–v0.3, v0.7).
 
 > **Update (2026-09-01, ADR-097):** King Rezi memutuskan migrasi fondasi UI dari Astryx ke shadcn/ui setelah audit menemukan 49 file/~44 komponen Astryx dipakai di `apps/web/src` (terisolasi penuh di layer presentasi) dan keterbatasan Beta berulang (KI-005, KI-030, KI-035, KI-040). Ditulis sebagai release baru **v0.7** (bukan disisipkan ke v0.1–v0.6, beda dari pola T-094, karena skalanya besar: 8 task, 26 subtask) di `tasks/v07-astryx-shadcn-migration.md`, ID global berikutnya setelah T-094 (T-095–T-102, pola sama T-039/T-089/T-090–T-094). Strategi **incremental per route-segment** (Astryx & shadcn coexist sementara), bukan big-bang — M8 tetap berjalan paralel. Task naik 77 → **85**, subtask naik 173 → **199** (v0.7: 8 task, 26 subtask, seluruhnya ⏳). Task selesai tidak berubah (masih 25).
 >
@@ -110,7 +110,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
-| **T-095** | Setup Fondasi shadcn/ui & Tooling Migrasi        | ⏳      | **Prioritas utama** (permintaan eksplisit King Rezi, 2026-09-01) — task pertama rilis v0.7 (migrasi Astryx→shadcn/ui, ADR-097). Dikerjakan lebih dulu dari T-025/T-036 di bawah; T-096–T-102 menyusul setelah ini selesai, lihat `tasks/v07-astryx-shadcn-migration.md` |
+| **T-095** | Setup Fondasi shadcn/ui & Tooling Migrasi        | ✅      | **Selesai (2026-09-01)** — task pertama rilis v0.7 (migrasi Astryx→shadcn/ui, ADR-097), seluruh 7 subtask tuntas: T-095.1 (init shadcn/ui, base Radix + preset Maia), T-095.2 (MCP server shadcn di `.mcp.json`+`.cursor/mcp.json`), T-095.3 (tulis ulang `apps/web/.claude/CLAUDE.md` ke workflow shadcn CLI/MCP), T-095.4 (rule 14/15 `AGENTS.md`, sudah selesai lebih dulu di commit `07a3aa2`), T-095.5 (pemetaan Stone→shadcn di `design-tokens.md`), T-095.6 (update subagent Mark UI Engineer ke shadcn, izin eksplisit King Rezi), T-095.7 (sinkronisasi docs baseline). T-096 (Migrasi Core Infra & Shared Primitives) menyusul sebagai task berikutnya rilis v0.7, lihat `tasks/v07-astryx-shadcn-migration.md` |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
 | **T-036** | In-app notification + Supabase Realtime         | 🟡      | T-036.1/.2/.3 selesai. T-036.4 dibuka kembali (2026-09-01) — gap visual vs Claude Design belum terverifikasi di browser (lihat KI-040). Tersisa T-036.4 (verifikasi visual) dan T-036.5 (trigger dari webhook) |
 
