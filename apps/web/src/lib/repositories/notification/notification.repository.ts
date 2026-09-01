@@ -78,6 +78,15 @@ export const notificationRepository: INotificationRepository = {
     return notifications.map(toRecord);
   },
 
+  /** `count` terpisah dari `list` (tanpa `take`) supaya badge unread akurat di atas 50 baris. */
+  async countUnread(userId) {
+    return withCurrentUser(userId, (tx) =>
+      tx.notification.count({
+        where: { userId, isRead: false },
+      }),
+    );
+  },
+
   /**
    * `updateMany` (bukan `update`) supaya WHERE mencakup `id` DAN `userId`
    * sekaligus (defense-in-depth) tanpa melempar error kalau baris tidak

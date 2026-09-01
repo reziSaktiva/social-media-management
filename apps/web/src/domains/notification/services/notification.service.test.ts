@@ -29,6 +29,7 @@ function createFakeRepository(
       createdAt: new Date("2026-08-31T00:00:00Z"),
     }),
     list: async () => [],
+    countUnread: async () => 0,
     markAsRead: async () => {},
     markAllAsRead: async () => {},
     ...overrides,
@@ -138,6 +139,22 @@ describe("NotificationService", () => {
 
     expect(capturedUserId).toBe(USER_ID);
     expect(result).toBe(records);
+  });
+
+  it("countUnread() delegates to repository.countUnread() and returns its result", async () => {
+    let capturedUserId: unknown = null;
+    const repository = createFakeRepository({
+      countUnread: async (userId) => {
+        capturedUserId = userId;
+        return 60;
+      },
+    });
+    const service = new NotificationService(repository);
+
+    const result = await service.countUnread(USER_ID);
+
+    expect(capturedUserId).toBe(USER_ID);
+    expect(result).toBe(60);
   });
 
   it("markAsRead() delegates to repository.markAsRead() with the given id and userId", async () => {

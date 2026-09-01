@@ -27,13 +27,17 @@ export function useNotificationRealtime(
   useEffect(() => {
     if (!userId) return;
     const currentUserId = userId;
+    // Dibuat sekali per effect run (bukan di dalam `connect()`) supaya
+    // cleanup di bawah bisa disconnect socket client YANG SAMA — sebelumnya
+    // `client` cuma scoped ke `connect()` jadi cleanup tidak bisa
+    // menutupnya, membiarkan websocket menggantung tiap effect ini re-run
+    // (StrictMode dev, atau `userId` berubah).
+    const client = createBrowserSupabaseClient();
 
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
 
     async function connect() {
-      const client = createBrowserSupabaseClient();
-
       try {
         const response = await fetch("/api/realtime/token");
         if (!response.ok) {
@@ -66,6 +70,7 @@ export function useNotificationRealtime(
     return () => {
       cancelled = true;
       unsubscribe?.();
+      client.realtime.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);

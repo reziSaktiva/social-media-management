@@ -56,9 +56,16 @@ export default async function Layout({
   // Component (read), bukan Server Action (ADR-095, pola sama channels di
   // atas). Realtime insert baru ditangani client-side oleh `NotificationBell`
   // (`useNotificationRealtime`, T-036.2).
-  const notifications = await new NotificationService(
-    notificationRepository,
-  ).list(asUserId(session.user.id));
+  const notificationService = new NotificationService(notificationRepository);
+  const notifications = await notificationService.list(
+    asUserId(session.user.id),
+  );
+  // Query `count` terpisah dari `list` (yang dibatasi 50 baris) supaya badge
+  // unread di bell tidak under-count begitu user punya >50 notifikasi belum
+  // dibaca.
+  const unreadCount = await notificationService.countUnread(
+    asUserId(session.user.id),
+  );
 
   // Provider + modal duduk di level workspace (bukan lagi di `publish/`)
   // supaya CTA "+ New Post" di sidebar bisa membuka Draft Editor dari section
@@ -76,6 +83,7 @@ export default async function Layout({
             userEmail={session.user.email}
             channels={channels}
             initialNotifications={notifications}
+            initialUnreadCount={unreadCount}
             userId={session.user.id}
           />
         }

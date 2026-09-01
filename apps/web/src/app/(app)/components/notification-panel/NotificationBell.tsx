@@ -18,6 +18,7 @@ import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 
+import { NotificationType } from "@social/shared";
 import type { NotificationId } from "@social/shared";
 import type { NotificationRecord } from "@/domains/notification";
 
@@ -41,11 +42,18 @@ import { formatRelativeTime } from "@/lib/utils/format-relative-time";
  * pertama, cuma dipindah ke wrapper baru.
  */
 
-function isErrorType(type: string): boolean {
-  return (
-    type.toLowerCase().includes("error") ||
-    type.toLowerCase().includes("failed")
-  );
+// Whitelist eksplisit (bukan substring match) karena `NotificationType` yang
+// ada sekarang (ownership_transfer_requested/_resolved) tidak pernah
+// mengandung "error"/"failed" — substring match lama selalu false dan
+// membuat notifikasi yang masih pending (belum success) ikut dirender
+// dengan icon success. T-036.5 tinggal menambah nilai enum publish-error ke
+// sini saat post.error diimplementasikan.
+const SUCCESS_NOTIFICATION_TYPES = new Set<NotificationType>([
+  NotificationType.OwnershipTransferResolved,
+]);
+
+function isSuccessType(type: NotificationType): boolean {
+  return SUCCESS_NOTIFICATION_TYPES.has(type);
 }
 
 function NotificationRow({
@@ -57,7 +65,7 @@ function NotificationRow({
 }) {
   const markReadButtonRef = useRef<HTMLButtonElement>(null);
   const isUnread = !notification.isRead;
-  const isError = isErrorType(notification.type);
+  const isError = !isSuccessType(notification.type);
 
   return (
     <ListItem
@@ -187,39 +195,63 @@ function NotificationRow({
 
 export function NotificationBell({
   initialNotifications,
+  initialUnreadCount,
   userId,
 }: {
   initialNotifications: NotificationRecord[];
+  initialUnreadCount: number;
   userId: string;
 }) {
   const [notifications, setNotifications] = useState(initialNotifications);
   const [isOpen, setIsOpen] = useState(false);
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  // State terpisah dari `notifications` (bukan `.filter(!isRead).length`) —
+  // `notifications` cuma berisi 50 baris terbaru (`list()` dibatasi), jadi
+  // menghitung dari situ under-count begitu user punya >50 notifikasi belum
+  // dibaca. `countUnread()` (query `count` terpisah, tanpa `take`) yang jadi
+  // sumber kebenaran awal; sesudahnya di-update incremental di bawah.
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
 
   useNotificationRealtime(userId, (notification) => {
     setNotifications((prev) => [notification, ...prev]);
+    setUnreadCount((prev) => prev + 1);
   });
 
   async function handleMarkRead(id: NotificationId) {
-    const previous = notifications;
+    const wasUnread = notifications.some((n) => n.id === id && !n.isRead);
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
     );
+    if (wasUnread) setUnreadCount((prev) => Math.max(0, prev - 1));
     try {
       await markNotificationReadAction(id);
     } catch {
-      setNotifications(previous);
+      // Revert lewat functional update yang cuma menyentuh `id` ini (bukan
+      // snapshot stale) — supaya notifikasi baru yang masuk lewat realtime
+      // selagi request pending tidak ikut hilang.
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: false } : n)),
+      );
+      if (wasUnread) setUnreadCount((prev) => prev + 1);
     }
   }
 
   async function handleMarkAllRead() {
-    const previous = notifications;
+    const unreadIds = new Set(
+      notifications.filter((n) => !n.isRead).map((n) => n.id),
+    );
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setUnreadCount(0);
     try {
       await markAllNotificationsReadAction();
     } catch {
-      setNotifications(previous);
+      // Sama seperti handleMarkRead — revert lewat functional update
+      // (tambah balik jumlah yang tadi di-nolkan), bukan assign nilai tetap,
+      // supaya unread count dari realtime insert yang masuk selagi request
+      // pending tidak ikut hilang.
+      setNotifications((prev) =>
+        prev.map((n) => (unreadIds.has(n.id) ? { ...n, isRead: false } : n)),
+      );
+      setUnreadCount((prev) => prev + unreadIds.size);
     }
   }
 

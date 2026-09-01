@@ -35,6 +35,11 @@ export class NotificationService {
     return this.repository.list(userId);
   }
 
+  /** Total notifikasi belum dibaca milik `userId` (tidak dibatasi 50 seperti `list`) — delegasi tipis ke repository. */
+  async countUnread(userId: UserId): Promise<number> {
+    return this.repository.countUnread(userId);
+  }
+
   /** Tandai satu notifikasi sudah dibaca — delegasi tipis ke repository. */
   async markAsRead(id: NotificationId, userId: UserId): Promise<void> {
     return this.repository.markAsRead(id, userId);

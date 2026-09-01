@@ -47,6 +47,7 @@ export function WorkspaceSideNav({
   channels,
   // T-036.4 — bell notifikasi self-contained (state + panel) di footer.
   initialNotifications,
+  initialUnreadCount,
   userId,
 }: {
   workspaceName: string;
@@ -54,6 +55,7 @@ export function WorkspaceSideNav({
   userEmail: string;
   channels: SidebarChannelAccount[];
   initialNotifications: NotificationRecord[];
+  initialUnreadCount: number;
   userId: string;
 }) {
   const pathname = usePathname();
@@ -108,6 +110,7 @@ export function WorkspaceSideNav({
         <HStack gap={2} align="center" justify="between" width="100%">
           <NotificationBell
             initialNotifications={initialNotifications}
+            initialUnreadCount={initialUnreadCount}
             userId={userId}
           />
           <HStack gap={2} align="center">

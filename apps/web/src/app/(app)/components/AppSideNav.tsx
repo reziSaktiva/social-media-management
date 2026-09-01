@@ -21,6 +21,7 @@ export function AppSideNav({
   userEmail,
   channels,
   initialNotifications,
+  initialUnreadCount,
   userId,
 }: {
   workspaceName: string;
@@ -28,6 +29,7 @@ export function AppSideNav({
   userEmail: string;
   channels: SidebarChannelAccount[];
   initialNotifications: NotificationRecord[];
+  initialUnreadCount: number;
   userId: string;
 }) {
   const pathname = usePathname();
@@ -44,6 +46,7 @@ export function AppSideNav({
       userEmail={userEmail}
       channels={channels}
       initialNotifications={initialNotifications}
+      initialUnreadCount={initialUnreadCount}
       userId={userId}
     />
   );

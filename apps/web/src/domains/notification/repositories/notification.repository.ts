@@ -33,6 +33,13 @@ export interface INotificationRepository {
   list(userId: UserId): Promise<NotificationRecord[]>;
 
   /**
+   * Hitung TOTAL notifikasi belum dibaca milik `userId` (query `count`
+   * terpisah, tidak dibatasi 50 seperti `list`) — dipakai untuk badge unread
+   * di bell supaya tidak under-count begitu user punya >50 notifikasi.
+   */
+  countUnread(userId: UserId): Promise<number>;
+
+  /**
    * Tandai satu notifikasi sudah dibaca. Scoped ke `id` DAN `userId`
    * sekaligus (defense-in-depth, bukan cuma andalkan RLS) — idempoten kalau
    * dipanggil dua kali pada notifikasi yang sudah `isRead`.
