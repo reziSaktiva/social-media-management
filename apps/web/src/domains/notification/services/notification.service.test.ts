@@ -28,6 +28,9 @@ function createFakeRepository(
       relatedEntityId: input.relatedEntityId ?? null,
       createdAt: new Date("2026-08-31T00:00:00Z"),
     }),
+    list: async () => [],
+    markAsRead: async () => {},
+    markAllAsRead: async () => {},
     ...overrides,
   };
 }
@@ -93,5 +96,76 @@ describe("NotificationService", () => {
 
     expect(result.relatedEntityType).toBeNull();
     expect(result.relatedEntityId).toBeNull();
+  });
+
+  it("list() delegates to repository.list() and returns its result as-is", async () => {
+    const records: NotificationRecord[] = [
+      {
+        id: asNotificationId("notification-2"),
+        workspaceId: WORKSPACE_ID,
+        userId: USER_ID,
+        type: NotificationType.OwnershipTransferResolved,
+        title: "Transfer Ownership diterima",
+        body: "Kepemilikan workspace telah berpindah.",
+        isRead: false,
+        relatedEntityType: null,
+        relatedEntityId: null,
+        createdAt: new Date("2026-08-31T00:00:00Z"),
+      },
+      {
+        id: asNotificationId("notification-1"),
+        workspaceId: WORKSPACE_ID,
+        userId: USER_ID,
+        type: NotificationType.OwnershipTransferRequested,
+        title: "Permintaan Transfer Ownership",
+        body: "Anda diminta menerima transfer kepemilikan workspace ini.",
+        isRead: true,
+        relatedEntityType: "member",
+        relatedEntityId: "member-1",
+        createdAt: new Date("2026-08-30T00:00:00Z"),
+      },
+    ];
+    let capturedUserId: unknown = null;
+    const repository = createFakeRepository({
+      list: async (userId) => {
+        capturedUserId = userId;
+        return records;
+      },
+    });
+    const service = new NotificationService(repository);
+
+    const result = await service.list(USER_ID);
+
+    expect(capturedUserId).toBe(USER_ID);
+    expect(result).toBe(records);
+  });
+
+  it("markAsRead() delegates to repository.markAsRead() with the given id and userId", async () => {
+    const NOTIFICATION_ID = asNotificationId("notification-1");
+    let captured: { id: unknown; userId: unknown } | null = null;
+    const repository = createFakeRepository({
+      markAsRead: async (id, userId) => {
+        captured = { id, userId };
+      },
+    });
+    const service = new NotificationService(repository);
+
+    await service.markAsRead(NOTIFICATION_ID, USER_ID);
+
+    expect(captured).toEqual({ id: NOTIFICATION_ID, userId: USER_ID });
+  });
+
+  it("markAllAsRead() delegates to repository.markAllAsRead() with the given userId", async () => {
+    let capturedUserId: unknown = null;
+    const repository = createFakeRepository({
+      markAllAsRead: async (userId) => {
+        capturedUserId = userId;
+      },
+    });
+    const service = new NotificationService(repository);
+
+    await service.markAllAsRead(USER_ID);
+
+    expect(capturedUserId).toBe(USER_ID);
   });
 });

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { usePathname, useRouter } from "next/navigation";
 
-import { FaBell, FaMoon, FaPlus, FaSun } from "react-icons/fa6";
+import { FaMoon, FaPlus, FaSun } from "react-icons/fa6";
 
 import { AlertDialog } from "@astryxdesign/core/AlertDialog";
 import { Avatar } from "@astryxdesign/core/Avatar";
@@ -20,12 +20,14 @@ import {
 } from "@astryxdesign/core/SideNav";
 import { VStack } from "@astryxdesign/core/VStack";
 
+import type { NotificationRecord } from "@/domains/notification";
 import type { SidebarChannelAccount } from "@/domains/workspace";
 import { authClient } from "@/lib/better-auth/client";
 
 import { useThemeMode } from "@/components/Providers";
 
 import { useDraftEditor } from "./draft-editor/Context";
+import { NotificationBell } from "./notification-panel/NotificationBell";
 import { ChannelsSection } from "./sidebar-channels/ChannelsSection";
 
 const NAV_ITEMS = [
@@ -43,11 +45,16 @@ export function WorkspaceSideNav({
   // Data untuk section "Channels" (T-012, ADR-058) — dirender via
   // ChannelsSection di bawah, antara SideNavSection "Menu" dan footer.
   channels,
+  // T-036.4 — bell notifikasi self-contained (state + panel) di footer.
+  initialNotifications,
+  userId,
 }: {
   workspaceName: string;
   userName: string;
   userEmail: string;
   channels: SidebarChannelAccount[];
+  initialNotifications: NotificationRecord[];
+  userId: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -99,12 +106,9 @@ export function WorkspaceSideNav({
         // — direplikasi lewat HStack justify="between" berisi 2 grup, bukan
         // 3 children langsung.
         <HStack gap={2} align="center" justify="between" width="100%">
-          <IconButton
-            label="Notifikasi"
-            icon={<FaBell />}
-            variant="ghost"
-            tooltip="Notifikasi"
-            onClick={() => router.push("/settings/account/notifications")}
+          <NotificationBell
+            initialNotifications={initialNotifications}
+            userId={userId}
           />
           <HStack gap={2} align="center">
             <IconButton

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
+import type { NotificationRecord } from "@/domains/notification";
 import type { SidebarChannelAccount } from "@/domains/workspace";
 
 import { SettingsSideNav } from "../settings/components/SettingsSideNav";
@@ -19,11 +20,15 @@ export function AppSideNav({
   userName,
   userEmail,
   channels,
+  initialNotifications,
+  userId,
 }: {
   workspaceName: string;
   userName: string;
   userEmail: string;
   channels: SidebarChannelAccount[];
+  initialNotifications: NotificationRecord[];
+  userId: string;
 }) {
   const pathname = usePathname();
   const isSettings = pathname.startsWith("/settings");
@@ -38,6 +43,8 @@ export function AppSideNav({
       userName={userName}
       userEmail={userEmail}
       channels={channels}
+      initialNotifications={initialNotifications}
+      userId={userId}
     />
   );
 }

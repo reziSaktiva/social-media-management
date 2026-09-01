@@ -45,10 +45,11 @@ export function toNotificationRecord(
  * `publishing_posts` ada di ADR-094, domain terpisah).
  *
  * `client` HARUS sudah terautentikasi dengan Supabase Realtime JWT (sub =
- * userId) supaya RLS policy `users_own_notifications` meloloskan baris ini
- * — bridging dari session Better Auth adalah T-036.3, belum dilakukan di
- * sini. Tanpa itu, subscription tetap terbentuk tapi tidak akan menerima
- * baris apa pun (RLS default-deny).
+ * userId) supaya RLS policy `notifications_realtime_own_rows` meloloskan
+ * baris ini — bridging dari session Better Auth ke `client.realtime.setAuth`
+ * dilakukan pemanggil (`useNotificationRealtime`, T-036.3) sebelum fungsi
+ * ini dipanggil. Tanpa itu, subscription tetap terbentuk tapi tidak akan
+ * menerima baris apa pun (RLS default-deny).
  *
  * Mengembalikan fungsi unsubscribe (dipanggil saat logout/unmount — RT-D
  * "Subscription dihapus saat user logout atau session berakhir").

@@ -346,8 +346,8 @@ delete-lalu-create-ulang ini saat dikerjakan.
 
 - [x] **T-036.1** Domain skeleton: service + repository
 - [x] **T-036.2** Subscribe Supabase Realtime pada tabel `notifications`, event `INSERT`, filter per `user_id` — **hanya** tabel ini (ADR-023)
-- [ ] **T-036.3** Sambungkan Supabase JWT dari session Better Auth (helper sudah ada, belum dipakai di route manapun)
-- [ ] **T-036.4** UI notification bell di sidebar footer + panel daftar — **blocked**, belum ada rancangan di Claude Design (AGENTS.md rule 17), lihat **KI-039**
+- [x] **T-036.3** Sambungkan Supabase JWT dari session Better Auth (helper sudah ada, belum dipakai di route manapun)
+- [ ] **T-036.4** UI notification bell di sidebar footer + panel daftar — rancangan sudah ada di Claude Design (**KI-039 Resolved**); dibuka kembali 2026-09-01, lihat catatan di bawah (5 gap visual, verifikasi browser belum dilakukan)
 - [ ] **T-036.5** Trigger notifikasi dari webhook publish result
 
 **Catatan (2026-08-31):** T-036.1 — skeleton `NotificationService.notify()` +
@@ -369,6 +369,92 @@ publication + policy permisif baru `notifications_realtime_own_rows`
 berbasis `auth.uid()`), sudah dijalankan (`db:deploy`) dan diverifikasi via
 MCP Supabase. Ini closing gap yang memang sudah disyaratkan ADR-023, bukan
 keputusan arsitektur baru — tidak ada ADR baru untuk ini.
+
+**Catatan (2026-09-01):** T-036.3 — Route Handler baru
+`apps/web/src/app/api/realtime/token/route.ts` (GET) mengecek session
+Better Auth lalu menerbitkan Supabase Realtime JWT lewat
+`createSupabaseRealtimeJwt` (helper sudah ada sejak awal, baru sekarang
+dipakai). `useNotificationRealtime` diubah untuk fetch token dari endpoint
+itu dan memanggil `client.realtime.setAuth(token)` sebelum subscribe.
+Sekaligus dituntaskan method yang sengaja ditunda dari T-036.1: `list`,
+`markAsRead`, `markAllAsRead` di `INotificationRepository` + implementasi
+Prisma + `NotificationService`, plus Server Actions
+`markNotificationReadAction`/`markAllNotificationsReadAction` di
+`apps/web/src/app/(app)/components/notification-panel/actions.ts`. 3 test
+case baru di `notification.service.test.ts` (total 5).
+
+T-036.4 — bell trigger + badge unread di footer sidebar
+(`WorkspaceSideNav.tsx`, sebelumnya `router.push` ke halaman settings,
+sekarang membuka panel), komponen baru
+`apps/web/src/app/(app)/components/notification-panel/NotificationBell.tsx`
+(bell + panel + state + wiring realtime + mark-as-read). Threading data:
+`layout.tsx` (fetch initial notifications via `NotificationService.list()`)
+→ `AppSideNav.tsx` → `WorkspaceSideNav.tsx`. **KI-039 Resolved** — rancangan
+Notifications Panel ternyata sudah ditambahkan ke Claude Design
+(`components/notifications-panel.html`) sebelum sesi ini dimulai.
+
+Temuan desain: spec Claude Design (NP-D08) menyebut Astryx `Drawer`, tapi
+Astryx ter-pin (`@astryxdesign/core@0.4.3`) tidak punya komponen `Drawer`.
+Emulasi dengan `Dialog` posisi edge gagal full-height (base style `Dialog`
+hardcode `height: fit-content`, bentrok dengan positioning `top`+`bottom`).
+King Rezi memutuskan (dikonfirmasi 2x) pakai wrapper selektif, bukan
+`Dialog` — hasilnya `apps/web/src/components/ui/Drawer.tsx`, wrapper
+selektif pertama di codebase ini, dirakit dari primitive Astryx resmi
+(`useLayer` mode fixed/top-layer via native Popover API, `useFocusTrap`,
+`useScrollLock`, `Stack`/`VStack`) — bukan swizzle/CSS manual. Preseden
+untuk kasus serupa selanjutnya selama Astryx belum expose primitive
+Drawer/Sheet generik.
+
+**Bug ditemukan QA Najwa + fix:** notifikasi Realtime tidak muncul live
+tanpa refresh (channel `SUBSCRIBED`, nol event, tanpa error terlihat). Root
+cause (dikonfirmasi via diagnostic PostgREST 400→200): bukan
+`SUPABASE_JWT_SECRET` mismatch, melainkan `auth.uid()` bawaan Supabase
+selalu cast klaim JWT `sub` ke `::uuid`, padahal `userId` Better Auth
+berformat `cuid()` — pola yang sudah diketahui di `with-current-user.ts`
+(DO-D06) tapi luput diterapkan saat policy
+`notifications_realtime_own_rows` dibuat di T-036.2. RLS gagal dievaluasi
+untuk setiap user asli, Realtime menelan error itu diam-diam. Fix: migration
+baru `20260901120000_t036_fix_realtime_rls_cuid_cast` (drop+recreate policy
+supaya baca klaim `sub` sebagai text langsung, tanpa cast `::uuid`; tidak
+menyentuh `auth.uid()` itu sendiri), diterapkan manual oleh King Rezi
+(classifier auto-mode Claude Code memblokir eksekusi `prisma migrate
+deploy` dari sesi manapun terhadap database live — batasan tooling, bukan
+gap arsitektur). QA ulang: PASS (alur Transfer Ownership + insert manual).
+Ini closing gap bug RLS, sama pola dengan migration T-036.2 — bukan
+keputusan arsitektur baru, tidak ada ADR baru untuk ini.
+
+Lolos review arsitektur Ridwan (tanpa temuan) dan QA Najwa (semua PASS
+termasuk realtime live-update, setelah bug di atas ditemukan dan
+diperbaiki). T-036 tetap `🟡 In Progress` — T-036.5 (trigger dari webhook)
+belum dikerjakan.
+
+**Catatan (2026-09-01) — KI-040:** setelah 2 ronde perbaikan styling panel
+(ronde 1: padding/gap/border-radius list item; ronde 2: empty-state
+vertical-centering + kontras border header dark mode), King Rezi melaporkan
+lewat screenshot Chrome browser asli bahwa panel masih terlihat "banyak
+yang terpotong atau tidak sempurna" dibanding Claude Design — root cause
+belum teridentifikasi presisi (beda dari 2 bug sebelumnya yang sudah
+diverifikasi lewat source Astryx). Dicatat sebagai **KI-040** (Open), butuh
+sesi investigasi visual terpisah; dihentikan sementara atas instruksi
+eksplisit King Rezi. Tidak mengubah status T-036.4 (`[x]`, tetap selesai
+secara fungsional/lolos QA) — ini murni polish visual belum tuntas 100%.
+
+**Catatan (2026-09-01) — T-036.4 dibuka kembali:** review lanjutan
+membandingkan langsung ke spec Claude Design (`components/notifications-panel.html`)
+menemukan 5 gap visual konkret pada `NotificationBell.tsx` yang sebelumnya
+luput: (1) background tint untuk item unread, (2) dot indikator unread,
+(3) icon circle badge, (4) weight/warna title yang harus berbeda per status
+(read vs unread), dan (5) deskripsi yang harus terpotong dengan ellipsis.
+Kelima gap ini sudah diperbaiki oleh subagent lain langsung di
+`apps/web/src/app/(app)/components/notification-panel/NotificationBell.tsx`
+(lint + `tsc` bersih), **tapi verifikasi visual di browser belum sempat
+dilakukan** — dev server minta login dan tidak ada kredensial test yang
+tersedia di sesi ini. Karena subtask ini menyangkut styling UI yang harus
+match spec Claude Design, dan verifikasi visual belum terbukti, checklist
+T-036.4 dikembalikan ke `[ ]` (dari `[x]`) sampai ada sesi berikutnya yang
+memverifikasi tampilan asli di browser cocok dengan spec. Tidak menambah KI
+baru — ini bagian dari root cause investigation yang sama dengan KI-040
+(masih **Open**), bukan temuan independen baru.
 
 ---
 

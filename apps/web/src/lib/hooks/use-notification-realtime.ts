@@ -13,11 +13,12 @@ import { subscribeToNotificationInserts } from "@/lib/supabase/realtime/notifica
  * `userId` `null` berarti belum ada session siap (mis. masih loading) —
  * hook tidak subscribe sampai `userId` tersedia.
  *
- * Catatan: browser client di sini masih pakai anon key polos — bridging JWT
- * Realtime dari session Better Auth (`createSupabaseRealtimeJwt`) adalah
- * T-036.3, belum dikerjakan. Sampai itu selesai, callback `onInsert` tidak
- * akan pernah terpanggil (RLS `users_own_notifications` default-deny tanpa
- * `auth.uid()` yang valid).
+ * T-036.3: sebelum subscribe, client harus otentikasi dulu ke Supabase
+ * Realtime lewat JWT bridge (`/api/realtime/token`, AS-D03 "Mekanisme
+ * Konteks 2") supaya `auth.uid()` valid untuk RLS
+ * `notifications_realtime_own_rows`. Kalau fetch token gagal
+ * (network/401), error di-log via `console.error` dan subscribe dibatalkan
+ * — sengaja tidak throw supaya komponen pemanggil tidak crash.
  */
 export function useNotificationRealtime(
   userId: string | null,
@@ -25,15 +26,47 @@ export function useNotificationRealtime(
 ): void {
   useEffect(() => {
     if (!userId) return;
+    const currentUserId = userId;
 
-    const client = createBrowserSupabaseClient();
-    const unsubscribe = subscribeToNotificationInserts(
-      client,
-      userId,
-      onInsert,
-    );
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
 
-    return unsubscribe;
+    async function connect() {
+      const client = createBrowserSupabaseClient();
+
+      try {
+        const response = await fetch("/api/realtime/token");
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch Supabase Realtime token: ${response.status}`,
+          );
+        }
+
+        const { token } = (await response.json()) as { token: string };
+        if (cancelled) return;
+
+        await client.realtime.setAuth(token);
+        if (cancelled) return;
+
+        unsubscribe = subscribeToNotificationInserts(
+          client,
+          currentUserId,
+          onInsert,
+        );
+      } catch (error) {
+        console.error(
+          "useNotificationRealtime: failed to authenticate Supabase Realtime client",
+          error,
+        );
+      }
+    }
+
+    void connect();
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 }
