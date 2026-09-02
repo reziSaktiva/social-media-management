@@ -8,6 +8,52 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-01 — T-096: Migrasi Core Infra & Shared Primitives selesai (ADR-097)
+
+Task kedua rilis v0.7 (migrasi Astryx → shadcn/ui), dikerjakan Mark UI
+Engineer di branch `feature/t-096-core-infra-migration`, dikonfirmasi
+"aman" oleh King Rezi. Seluruh 4 subtask tuntas:
+
+- **T-096.1** `globals.css` ditulis ulang berbasis Tailwind v4 + shadcn
+  sesuai pemetaan token T-095.5.
+- **T-096.2** `components/Providers.tsx` diganti ke pendekatan shadcn
+  (`dark` class strategy); `ThemeModeContext`/`useThemeMode` custom
+  (cookie persisted) dipertahankan apa adanya.
+- **T-096.3** Root `app/(app)/layout.tsx` dimigrasi dari `AppShell` Astryx
+  ke komposisi shadcn.
+- **T-096.4** Primitive dasar baru: `Button`, `Card`, `Dialog`, `Input`
+  (via CLI shadcn resmi), plus `Text`/Typography ditulis manual (shadcn
+  tidak punya komponen Typography resmi).
+
+**2 keputusan penting (disetujui King Rezi):**
+
+1. `@import` CSS Astryx di `globals.css` **sengaja dipertahankan**
+   (tidak dihapus sesuai rencana awal T-096.1) karena route-segment yang
+   belum dimigrasi (auth/settings/publish — T-097–T-101) masih butuh CSS
+   itu; akan dihapus di T-102 setelah semua route-segment selesai
+   migrasi.
+2. `<Theme>` Astryx di `Providers.tsx` **sengaja dipertahankan
+   berdampingan** dengan class `dark` shadcn (bukan pengganti) — supaya
+   dark/light mode tidak desync antara bagian yang sudah shadcn dan yang
+   masih Astryx; akan dilepas di T-102.
+
+Gap yang sengaja belum ditutup: sidebar mobile (hamburger+drawer) di
+`(app)/layout.tsx` belum direplikasi di layout baru, menyusul di T-098
+bersamaan migrasi `WorkspaceSideNav`/`SettingsSideNav` ke `Sheet`.
+
+**Hasil verifikasi:** typecheck bersih, lint bersih, verifikasi visual
+manual di browser tidak menemukan regresi.
+
+Sekaligus dikoreksi drift hitungan subtask v0.7 di `TASKS.md`: klaim
+sebelumnya 26 subtask ternyata tidak cocok dengan
+`tasks/v07-astryx-shadcn-migration.md` aktual (36 subtask) — dihitung
+ulang langsung dari file. Task selesai naik 26 → 27, subtask total naik
+199 → 209.
+
+Detail: `tasks/v07-astryx-shadcn-migration.md` § T-096.
+
+---
+
 ## 2026-09-01 — T-095.6: Update subagent Mark UI Engineer ke shadcn/ui (izin eksplisit King Rezi) — T-095 selesai penuh
 
 Subtask keenam sekaligus **penutup** T-095 (rilis v0.7, ADR-097).
