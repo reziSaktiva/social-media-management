@@ -37,10 +37,11 @@ import {
   type ThemeMode,
 } from "@/lib/theme/theme-cookie";
 
-// T-098: `TooltipProvider` shadcn (dipasang sekali di root, per instruksi
-// CLI shadcn saat `tooltip` di-install) — dibutuhkan oleh `Tooltip` yang
-// dipakai WorkspaceSideNav/ChannelsSection/NotificationBell setelah migrasi
-// dari `IconButton tooltip=...` Astryx.
+// T-098/T-099: `TooltipProvider` shadcn (dipasang sekali di root, per
+// instruksi CLI shadcn saat `tooltip` di-install) — dibutuhkan oleh
+// `Tooltip` yang dipakai WorkspaceSideNav/ChannelsSection/NotificationBell
+// (T-098) dan ConnectPlatformMenu/tombol disabled Danger Zone (T-099)
+// setelah migrasi dari `IconButton tooltip=...` Astryx.
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 type ThemeModeContextValue = {

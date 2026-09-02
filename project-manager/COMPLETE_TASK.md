@@ -78,6 +78,74 @@ Detail: `tasks/v07-astryx-shadcn-migration.md` § T-098.
 
 ---
 
+## 2026-09-02 — T-099: Migrasi Settings selesai (ADR-097)
+
+Task rilis v0.7 (migrasi Astryx → shadcn/ui), dikerjakan di worktree
+terpisah (branch `feature/t-099-settings-migration`, dicabang dari
+`feature/t-097-auth-flows-onboarding`, paralel dengan sesi T-098) oleh
+Mark UI Engineer, lolos review arsitektur Ridwan Architecture Reviewer
+(0 temuan) dan QA Najwa QA Engineer (PASS dengan 1 temuan minor). Seluruh
+3 subtask tuntas:
+
+**Added**
+
+- Komponen shadcn baru di-install: `alert-dialog`, `avatar`, `badge`,
+  `dropdown-menu`, `item`, `radio-group`, `select`, `table`,
+  `toggle`/`toggle-group`, `tooltip`.
+- Helper baru `getInitials()` di `apps/web/src/lib/utils.ts` (dipakai di
+  4 file).
+- `TooltipProvider` ditambahkan ke `apps/web/src/components/Providers.tsx`.
+- **KI-042** (baru) — aplikasi belum punya strategi responsive/mobile yang
+  didesain; entri ini mengumpulkan gap serupa lintas task (T-098 sidebar
+  mobile, T-099 kolom Actions `MembersTable.tsx`) di satu tempat.
+
+**Changed**
+
+- **T-099.1** `SettingsPageHead.tsx`, `WorkspaceGeneralSettings.tsx`,
+  `ProfileForm.tsx`, `preferences/page.tsx` dimigrasi penuh dari Astryx ke
+  shadcn/ui + Tailwind.
+- **T-099.2** `MembersTable.tsx` — sistem kolom `pixel()`/`proportional()`
+  Astryx dihapus total, diganti shadcn `Table` primitive + JSX langsung;
+  `InviteMemberDialog.tsx`, `InviteMemberAction.tsx` dimigrasi.
+- **T-099.3** `ConnectedAccountsList.tsx`, `ConnectPlatformMenu.tsx`,
+  `WorkspacesSettingsView.tsx` dimigrasi.
+- **KI-041** meluas — status "Pending" di `MembersTable.tsx` dipetakan ke
+  `Badge variant="outline"` (bukan "secondary" seperti Active/Removed)
+  karena tidak ada token warning; treatment varian, bukan warna baru,
+  konsisten dengan keputusan T-097.
+
+**Verifikasi**
+
+- Review Ridwan: 0 temuan pelanggaran arsitektur — entry point bersih,
+  tidak ada leak Prisma/Supabase/Outstand, cross-domain lewat public API,
+  validasi file avatar dikonfirmasi tetap otoritatif di server
+  (`IdentityService.updateProfile`), tidak hilang saat migrasi
+  client-side check.
+- QA Najwa: seluruh golden path PASS (General settings edit+persist,
+  Danger Zone Transfer Ownership & Delete Workspace dialog Tier 1, upload
+  avatar + validasi ukuran file, toggle tema Preferences, invite member
+  flow lengkap sampai buka link undangan, Connected Accounts, switch
+  workspace) di light & dark mode. Typecheck/lint/vitest bersih (235
+  pass, 4 skip, 0 fail).
+- 1 temuan minor (severity Moderate): kolom "Actions" (Change Role/
+  Remove) di `MembersTable.tsx` tidak terlihat penuh pada viewport sempit
+  (~800px) — perlu scroll horizontal (shadcn `Table` sudah punya
+  `overflow-x-auto` bawaan, bukan crash/broken). Dicatat sebagai detail
+  tambahan di **KI-042** (baru dibuat di sesi ini karena belum ada di
+  worktree ini; kemungkinan sudah dibuat lebih dulu oleh sesi T-098 di
+  repo utama — penyatuan dua sisi dokumentasi dilakukan King Rezi setelah
+  PR digabung).
+
+**Catatan multi-sesi:** dikerjakan paralel dengan sesi T-098 (working
+directory repo utama, bukan worktree ini) — dokumen-dokumen yang diubah
+di sini (`TASKS.md`, `PROJECT_STATE.md`, `tasks/v07-astryx-shadcn-migration.md`)
+masih berbasis versi sebelum update T-098; penyatuan dilakukan King Rezi
+setelah kedua PR digabung.
+
+Detail lengkap: `tasks/v07-astryx-shadcn-migration.md` § T-099.
+
+---
+
 ## 2026-09-02 — T-097: Migrasi Auth Flows & Onboarding selesai (ADR-097)
 
 Task ketiga rilis v0.7 (migrasi Astryx → shadcn/ui), dikerjakan di branch
