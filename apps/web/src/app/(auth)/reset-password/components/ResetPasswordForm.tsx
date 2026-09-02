@@ -3,12 +3,14 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { VStack } from "@astryxdesign/core/VStack";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Loading03Icon } from "@hugeicons/core-free-icons";
 
 import { authClient } from "@/lib/better-auth/client";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 export function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
@@ -46,38 +48,49 @@ export function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <VStack gap={4}>
-      {error ? <Banner status="error" title={error} /> : null}
+    <FieldGroup>
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>{error}</AlertTitle>
+        </Alert>
+      ) : null}
 
       <form onSubmit={handleSubmit}>
-        <VStack gap={4}>
-          <TextInput
-            type="password"
-            label="Password Baru"
-            value={newPassword}
-            onChange={setNewPassword}
-            isRequired
-            width="100%"
-            htmlName="newPassword"
-          />
-          <TextInput
-            type="password"
-            label="Konfirmasi Password"
-            value={confirmPassword}
-            onChange={setConfirmPassword}
-            isRequired
-            width="100%"
-            htmlName="confirmPassword"
-          />
-          <Button
-            type="submit"
-            label="Simpan Password Baru"
-            variant="primary"
-            width="100%"
-            isLoading={isSubmitting}
-          />
-        </VStack>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="reset-password-new">Password Baru</FieldLabel>
+            <Input
+              id="reset-password-new"
+              name="newPassword"
+              type="password"
+              required
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="reset-password-confirm">
+              Konfirmasi Password
+            </FieldLabel>
+            <Input
+              id="reset-password-confirm"
+              name="confirmPassword"
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
+              ) : null}
+              Simpan Password Baru
+            </Button>
+          </Field>
+        </FieldGroup>
       </form>
-    </VStack>
+    </FieldGroup>
   );
 }

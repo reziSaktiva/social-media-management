@@ -242,21 +242,56 @@ di rilis ini (root layout + provider), verifikasi ekstra hati-hati.
 
 ### T-097 · Migrasi Auth Flows & Onboarding
 
-`⏳ Not Started` · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
+`✅ Done` (2026-09-02) · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
 **Baca dulu:** `04-ux/` layar terkait (login, register, forgot/reset password, invite, onboarding)
 
 ~19 file, isolated dari route segment lain — aman dikerjakan paralel
 dengan T-098/T-099/T-100/T-101 begitu T-096 selesai.
 
-- [ ] **T-097.1** Login & Register forms (`app/(auth)/login/`,
+- [x] **T-097.1** Login & Register forms (`app/(auth)/login/`,
       `app/(auth)/register/` — `LoginForm`, `RegisterForm`, page wrapper)
-- [ ] **T-097.2** Forgot/Reset password forms (`ForgotPasswordForm`,
+- [x] **T-097.2** Forgot/Reset password forms (`ForgotPasswordForm`,
       `ResetPasswordForm`, page wrapper masing-masing)
-- [ ] **T-097.3** Accept Invite pages (`AcceptInvitePageClient`,
+- [x] **T-097.3** Accept Invite pages (`AcceptInvitePageClient`,
       `AcceptInviteForm`, `app/(auth)/invite/[token]/page.tsx`)
-- [ ] **T-097.4** `app/(auth)/layout.tsx` (Center/HStack/Text/VStack)
-- [ ] **T-097.5** Onboarding flow (`app/onboarding/page.tsx`,
+- [x] **T-097.4** `app/(auth)/layout.tsx` (Center/HStack/Text/VStack)
+- [x] **T-097.5** Onboarding flow (`app/onboarding/page.tsx`,
       `app/onboarding/layout.tsx`, `CreateWorkspaceForm`)
+- Catatan penting (2026-09-02, implementasi Mark UI Engineer, review
+  arsitektur Ridwan 0 temuan, QA Najwa semua PASS):
+  * Komponen shadcn baru di-install: `alert`, `checkbox`, `label`,
+    `separator`, `field` (Field/FieldGroup/FieldLabel/FieldSeparator/
+    FieldDescription), `empty` (Empty/EmptyHeader/EmptyMedia/EmptyTitle/
+    EmptyDescription), `input-group`, `textarea` (dependency ikutan,
+    tidak dipakai langsung di scope ini).
+  * Astryx `Banner status="info"/"error"` → shadcn `Alert` cuma punya
+    varian `default`/`destructive` (tidak ada varian info) — error dipetakan
+    ke `destructive`, info ke `default` netral, tidak mengarang varian baru.
+  * **Gap desain terverifikasi (Mark, dikonfirmasi independen Ridwan via
+    grep `globals.css`)**: Stone theme shadcn **belum punya token
+    `--success`/`--warning`**, hanya `--destructive`. Astryx
+    `EmptyState color="success"/"warning"/"error"` dipakai untuk 3 state
+    Accept Invite (success/expired/invalid) — karena token tidak ada,
+    state "invalid" dipetakan ke `text-destructive` (token yang memang
+    ada), sedangkan "expired"/"success" dibiarkan netral (bukan mengarang
+    hex/token baru tanpa ADR). Dicatat sebagai **KI-041** (`PROJECT_STATE.md`)
+    — keputusan terbuka untuk King Rezi, belum ditutup sendiri.
+  * Penyesuaian teknis kecil (settled, bukan gap): `max-w-[400px]`/`[480px]`
+    arbitrary value → `max-w-sm`/`max-w-md` (kena rule lint
+    `tailwindcss/no-arbitrary-value`); `text-on-accent` →
+    `text-accent-foreground` (nama token shadcn yang benar); `Button`
+    tidak punya prop `isLoading` bawaan → dipakai pola manual `disabled`
+    + ikon spinner `animate-spin`.
+  * Verifikasi: typecheck 0 error, lint 0 error (2 warning kosmetik
+    pre-existing di `textarea.tsx`, bukan dari perubahan ini), Vitest 235
+    passed/4 skipped, browser E2E semua PASS (login, register,
+    forgot/reset password, accept invite golden+edge case, onboarding,
+    dark/light mode via cookie `theme`, regresi shell `(app)/layout.tsx`
+    dari T-096 aman). Seluruh import `@astryxdesign/*` di
+    `app/(auth)/**` dan `app/onboarding/**` sudah hilang (diverifikasi
+    grep, sisa cuma di komentar dokumentasi). Dikerjakan di branch
+    `feature/t-097-auth-flows-onboarding` (dicabang dari
+    `feature/t-096-core-infra-migration`).
 
 ---
 

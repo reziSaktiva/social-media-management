@@ -1,5 +1,4 @@
-import { Card } from "@astryxdesign/core/Card";
-
+import { Card, CardContent } from "@/components/ui/card";
 import { WorkspaceService } from "@/domains/workspace";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 
@@ -31,8 +30,10 @@ export default async function AcceptInvitePage({
   const invite = await workspaceService.getInviteToAccept(token);
 
   return (
-    <Card padding={8} width="100%">
-      <AcceptInvitePageClient token={token} initialInvite={invite} />
+    <Card>
+      <CardContent>
+        <AcceptInvitePageClient token={token} initialInvite={invite} />
+      </CardContent>
     </Card>
   );
 }

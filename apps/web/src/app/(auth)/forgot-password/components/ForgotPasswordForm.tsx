@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 
-import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
-import { Heading } from "@astryxdesign/core/Heading";
-import { Link } from "@astryxdesign/core/Link";
-import { Text } from "@astryxdesign/core/Text";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { VStack } from "@astryxdesign/core/VStack";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Loading03Icon } from "@hugeicons/core-free-icons";
 
 import { authClient } from "@/lib/better-auth/client";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Text } from "@/components/ui/text";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -53,58 +54,72 @@ export function ForgotPasswordForm() {
 
   if (sentTo) {
     return (
-      <VStack gap={3} hAlign="center">
-        <Heading level={1}>Cek Email Anda</Heading>
-        <Text type="supporting" justify="center">
+      /* eslint-disable-next-line no-restricted-syntax -- T-097.2: file ini
+         sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097), bukan lagi
+         VStack Astryx. */
+      <div className="flex flex-col items-center gap-3 text-center">
+        <Text variant="h3">Cek Email Anda</Text>
+        <Text variant="muted">
           Tautan reset password sudah dikirim ke{" "}
-          <Text as="span" color="primary" weight="semibold">
-            {sentTo}
-          </Text>
-          . Tautan berlaku selama 1 jam.
+          <span className="font-semibold text-primary">{sentTo}</span>. Tautan
+          berlaku selama 1 jam.
         </Text>
-        <Button
-          label="Kirim Ulang"
-          variant="ghost"
-          isLoading={isResending}
-          onClick={handleResend}
-        />
-      </VStack>
+        <Button variant="ghost" disabled={isResending} onClick={handleResend}>
+          {isResending ? (
+            <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
+          ) : null}
+          Kirim Ulang
+        </Button>
+      </div>
     );
   }
 
   return (
-    <VStack gap={4}>
-      <VStack gap={1}>
-        <Heading level={1}>Lupa Password</Heading>
-        <Text type="supporting">
+    <FieldGroup>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-097.2, sama seperti di atas */}
+      <div className="flex flex-col gap-1">
+        <Text variant="h3">Lupa Password</Text>
+        <Text variant="muted">
           Masukkan email akun Anda, kami akan mengirim tautan reset password
         </Text>
-      </VStack>
+      </div>
 
-      {error ? <Banner status="error" title={error} /> : null}
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>{error}</AlertTitle>
+        </Alert>
+      ) : null}
 
       <form onSubmit={handleSubmit}>
-        <VStack gap={4}>
-          <TextInput
-            type="email"
-            label="Email"
-            value={email}
-            onChange={setEmail}
-            isRequired
-            width="100%"
-            htmlName="email"
-          />
-          <Button
-            type="submit"
-            label="Kirim Tautan Reset"
-            variant="primary"
-            width="100%"
-            isLoading={isSubmitting}
-          />
-        </VStack>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="forgot-password-email">Email</FieldLabel>
+            <Input
+              id="forgot-password-email"
+              name="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
+              ) : null}
+              Kirim Tautan Reset
+            </Button>
+          </Field>
+        </FieldGroup>
       </form>
 
-      <Link href="/login">← Kembali ke Masuk</Link>
-    </VStack>
+      <Link
+        href="/login"
+        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+      >
+        ← Kembali ke Masuk
+      </Link>
+    </FieldGroup>
   );
 }

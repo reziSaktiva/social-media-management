@@ -3,13 +3,19 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
-import { Divider } from "@astryxdesign/core/Divider";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { VStack } from "@astryxdesign/core/VStack";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Loading03Icon } from "@hugeicons/core-free-icons";
 
 import { authClient } from "@/lib/better-auth/client";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 export function LoginForm({ isGoogleEnabled }: { isGoogleEnabled: boolean }) {
   const router = useRouter();
@@ -49,51 +55,66 @@ export function LoginForm({ isGoogleEnabled }: { isGoogleEnabled: boolean }) {
   }
 
   return (
-    <VStack gap={4}>
-      {error ? <Banner status="error" title={error} /> : null}
+    <FieldGroup>
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>{error}</AlertTitle>
+        </Alert>
+      ) : null}
 
       {isGoogleEnabled ? (
         <>
-          <Button
-            label="Lanjutkan dengan Google"
-            variant="secondary"
-            width="100%"
-            isLoading={isGoogleLoading}
-            onClick={handleGoogleSignIn}
-          />
-          <Divider label="atau masuk dengan email" />
+          <Field>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isGoogleLoading}
+              onClick={handleGoogleSignIn}
+            >
+              {isGoogleLoading ? (
+                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
+              ) : null}
+              Lanjutkan dengan Google
+            </Button>
+          </Field>
+          <FieldSeparator>atau masuk dengan email</FieldSeparator>
         </>
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        <VStack gap={4}>
-          <TextInput
-            type="email"
-            label="Email"
-            value={email}
-            onChange={setEmail}
-            isRequired
-            width="100%"
-            htmlName="email"
-          />
-          <TextInput
-            type="password"
-            label="Password"
-            value={password}
-            onChange={setPassword}
-            isRequired
-            width="100%"
-            htmlName="password"
-          />
-          <Button
-            type="submit"
-            label="Masuk"
-            variant="primary"
-            width="100%"
-            isLoading={isSubmitting}
-          />
-        </VStack>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="login-email">Email</FieldLabel>
+            <Input
+              id="login-email"
+              name="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="login-password">Password</FieldLabel>
+            <Input
+              id="login-password"
+              name="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
+              ) : null}
+              Masuk
+            </Button>
+          </Field>
+        </FieldGroup>
       </form>
-    </VStack>
+    </FieldGroup>
   );
 }

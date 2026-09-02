@@ -18,6 +18,18 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-09-02 — Gap token warna semantik `--success`/`--warning` belum ada di Stone theme shadcn
+
+**Phase:** M8 Development (v0.7 migrasi Astryx → shadcn/ui, ADR-097)
+
+**Summary:** Saat migrasi Accept Invite (T-097.3) ke shadcn/ui, Mark UI Engineer menemukan Stone theme yang sudah dipetakan ke CSS variable shadcn (T-095.5/T-096.1) hanya berisi token `--destructive`, tanpa padanan `--success`/`--warning`. Astryx lama punya `EmptyState color="success"/"warning"/"error"` untuk 3 state Accept Invite (success/expired/invalid). Ridwan Architecture Reviewer memverifikasi ulang secara independen lewat grep `globals.css` dan mengonfirmasi temuan yang sama.
+
+**Key Insight / Decision:** Tanpa token resmi, tidak boleh mengarang hex/token warna baru di kode tanpa ADR (`AGENTS.md` rule 15) — jadi state "invalid" dipetakan ke `text-destructive` (token yang memang ada), sedangkan "expired"/"success" sengaja dibiarkan netral. Ini keputusan sementara, bukan solusi final — King Rezi perlu memutuskan apakah menambah token `--success`/`--warning` ke Stone theme (perlu ADR baru, mengamandemen pemetaan T-095.5) atau tetap netral selamanya untuk state-state itu.
+
+**Impact:** Dicatat sebagai **KI-041** (Open) di `project-manager/PROJECT_STATE.md`, referensi implementasi di `project-manager/tasks/v07-astryx-shadcn-migration.md` § T-097. Belum ada ADR baru — menunggu keputusan King Rezi terlebih dulu.
+
+---
+
 ## 2026-08-31 — Pola bug: backend RBAC benar, tapi UI-level gate lupa dicek (T-093.4)
 
 **Phase:** M8 Development

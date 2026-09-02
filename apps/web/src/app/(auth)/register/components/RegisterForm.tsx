@@ -3,14 +3,20 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
-import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
-import { Divider } from "@astryxdesign/core/Divider";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { VStack } from "@astryxdesign/core/VStack";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Loading03Icon } from "@hugeicons/core-free-icons";
 
 import { authClient } from "@/lib/better-auth/client";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 export function RegisterForm({
   isGoogleEnabled,
@@ -62,65 +68,87 @@ export function RegisterForm({
   }
 
   return (
-    <VStack gap={4}>
-      {error ? <Banner status="error" title={error} /> : null}
+    <FieldGroup>
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>{error}</AlertTitle>
+        </Alert>
+      ) : null}
 
       {isGoogleEnabled ? (
         <>
-          <Button
-            label="Daftar dengan Google"
-            variant="secondary"
-            width="100%"
-            isLoading={isGoogleLoading}
-            onClick={handleGoogleSignIn}
-          />
-          <Divider label="atau daftar dengan email" />
+          <Field>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isGoogleLoading}
+              onClick={handleGoogleSignIn}
+            >
+              {isGoogleLoading ? (
+                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
+              ) : null}
+              Daftar dengan Google
+            </Button>
+          </Field>
+          <FieldSeparator>atau daftar dengan email</FieldSeparator>
         </>
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        <VStack gap={4}>
-          <TextInput
-            type="text"
-            label="Nama Lengkap"
-            value={name}
-            onChange={setName}
-            isRequired
-            width="100%"
-            htmlName="name"
-          />
-          <TextInput
-            type="email"
-            label="Email"
-            value={email}
-            onChange={setEmail}
-            isRequired
-            width="100%"
-            htmlName="email"
-          />
-          <TextInput
-            type="password"
-            label="Password"
-            value={password}
-            onChange={setPassword}
-            isRequired
-            width="100%"
-            htmlName="password"
-          />
-          <CheckboxInput
-            label="Saya menyetujui Syarat & Ketentuan serta Kebijakan Privasi"
-            value={hasAgreed}
-            onChange={setHasAgreed}
-          />
-          <Button
-            type="submit"
-            label="Buat Akun"
-            variant="primary"
-            width="100%"
-            isLoading={isSubmitting}
-          />
-        </VStack>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="register-name">Nama Lengkap</FieldLabel>
+            <Input
+              id="register-name"
+              name="name"
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="register-email">Email</FieldLabel>
+            <Input
+              id="register-email"
+              name="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="register-password">Password</FieldLabel>
+            <Input
+              id="register-password"
+              name="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Field>
+          <Field orientation="horizontal">
+            <Checkbox
+              id="register-agree"
+              checked={hasAgreed}
+              onCheckedChange={(checked) => setHasAgreed(checked === true)}
+            />
+            <FieldLabel htmlFor="register-agree" className="font-normal">
+              Saya menyetujui Syarat & Ketentuan serta Kebijakan Privasi
+            </FieldLabel>
+          </Field>
+          <Field>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
+              ) : null}
+              Buat Akun
+            </Button>
+          </Field>
+        </FieldGroup>
       </form>
-    </VStack>
+    </FieldGroup>
   );
 }
