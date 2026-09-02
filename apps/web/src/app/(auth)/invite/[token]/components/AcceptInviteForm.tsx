@@ -1,40 +1,29 @@
 "use client";
 
-import { useState, type FormEvent, type SVGProps } from "react";
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
 
-import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
-import { Link } from "@astryxdesign/core/Link";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { VStack } from "@astryxdesign/core/VStack";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { SquareLock02Icon } from "@hugeicons/core-free-icons";
 
 import { authClient } from "@/lib/better-auth/client";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 import { acceptInviteAction } from "../actions";
-
-/**
- * TextInput mendukung SVG component apa pun sebagai `startIcon` (bukan
- * hanya nama semantik `Icon`, lihat `astryx component TextInput`) — dipakai
- * di sini untuk menandai email yang terkunci ke undangan (ADR-080 poin 6),
- * bukan bagian dari daftar `IconName` bawaan Astryx.
- */
-function LockIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      {...props}
-    >
-      <rect x="4" y="11" width="16" height="9" rx="2" />
-      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-    </svg>
-  );
-}
 
 export function AcceptInviteForm({
   token,
@@ -111,74 +100,91 @@ export function AcceptInviteForm({
   }
 
   return (
-    <VStack gap={4}>
-      {error ? <Banner status="error" title={error} /> : null}
+    <FieldGroup>
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>{error}</AlertTitle>
+        </Alert>
+      ) : null}
 
       {isExistingUser ? (
-        <Banner
-          status="info"
-          title="Email ini sudah terdaftar"
-          description="Masuk untuk melanjutkan bergabung ke workspace."
-        />
+        <Alert>
+          <AlertTitle>Email ini sudah terdaftar</AlertTitle>
+          <AlertDescription>
+            Masuk untuk melanjutkan bergabung ke workspace.
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        <VStack gap={4}>
-          <TextInput
-            type="email"
-            label="Email"
-            value={email}
-            onChange={() => {
-              // no-op — email dikunci ke alamat undangan (ADR-080 poin 6).
-            }}
-            isReadOnly
-            isRequired
-            width="100%"
-            startIcon={LockIcon}
-            description="Email terkunci sesuai undangan, tidak bisa diubah."
-          />
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="accept-invite-email">Email</FieldLabel>
+            <InputGroup>
+              <InputGroupInput
+                id="accept-invite-email"
+                type="email"
+                value={email}
+                readOnly
+              />
+              <InputGroupAddon>
+                <HugeiconsIcon
+                  icon={SquareLock02Icon}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              </InputGroupAddon>
+            </InputGroup>
+            <FieldDescription>
+              Email terkunci sesuai undangan, tidak bisa diubah.
+            </FieldDescription>
+          </Field>
 
           {isExistingUser ? null : (
-            <TextInput
-              type="text"
-              label="Nama Lengkap"
-              value={name}
-              onChange={setName}
-              isRequired
-              width="100%"
-              htmlName="name"
-            />
+            <Field>
+              <FieldLabel htmlFor="accept-invite-name">Nama Lengkap</FieldLabel>
+              <Input
+                id="accept-invite-name"
+                name="name"
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </Field>
           )}
 
-          <TextInput
-            type="password"
-            label="Password"
-            value={password}
-            onChange={setPassword}
-            isRequired
-            width="100%"
-            htmlName="password"
-          />
+          <Field>
+            <FieldLabel htmlFor="accept-invite-password">Password</FieldLabel>
+            <Input
+              id="accept-invite-password"
+              name="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Field>
 
-          <Button
-            type="submit"
-            label={
-              isExistingUser
+          <Field>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? <Spinner /> : null}
+              {isExistingUser
                 ? "Masuk & Gabung ke Workspace"
-                : "Buat Akun & Gabung ke Workspace"
-            }
-            variant="primary"
-            width="100%"
-            isLoading={isSubmitting}
-          />
-        </VStack>
+                : "Buat Akun & Gabung ke Workspace"}
+            </Button>
+          </Field>
+        </FieldGroup>
       </form>
 
       {isExistingUser ? (
-        <Link href="/forgot-password" isStandalone>
+        <Link
+          href="/forgot-password"
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
           Lupa password?
         </Link>
       ) : null}
-    </VStack>
+    </FieldGroup>
   );
 }

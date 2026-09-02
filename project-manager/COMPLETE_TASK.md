@@ -8,6 +8,79 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-02 — T-097: Migrasi Auth Flows & Onboarding selesai (ADR-097)
+
+Task ketiga rilis v0.7 (migrasi Astryx → shadcn/ui), dikerjakan di branch
+`feature/t-097-auth-flows-onboarding` (dicabang dari
+`feature/t-096-core-infra-migration`) oleh Mark UI Engineer, lolos review
+arsitektur Ridwan Architecture Reviewer (0 temuan) dan QA Najwa QA Engineer
+(semua PASS). Seluruh 5 subtask tuntas:
+
+- **T-097.1** Login & Register forms (`LoginForm.tsx`, `RegisterForm.tsx` +
+  page wrapper, `app/(auth)/login/`, `app/(auth)/register/`).
+- **T-097.2** Forgot/Reset password forms (`ForgotPasswordForm.tsx`,
+  `ResetPasswordForm.tsx` + page wrapper masing-masing).
+- **T-097.3** Accept Invite pages (`AcceptInvitePageClient.tsx`,
+  `AcceptInviteForm.tsx`, `app/(auth)/invite/[token]/page.tsx`).
+- **T-097.4** `app/(auth)/layout.tsx`, `app/onboarding/layout.tsx`
+  (migrasi Center/HStack/Text/VStack Astryx → shadcn + Tailwind).
+- **T-097.5** Onboarding flow (`app/onboarding/page.tsx`,
+  `app/onboarding/layout.tsx`, `CreateWorkspaceForm.tsx`).
+
+**Komponen shadcn baru di-install:** `alert`, `checkbox`, `label`,
+`separator`, `field` (Field/FieldGroup/FieldLabel/FieldSeparator/
+FieldDescription), `empty` (Empty/EmptyHeader/EmptyMedia/EmptyTitle/
+EmptyDescription), `input-group`, `textarea` (dependency ikutan, tidak
+dipakai langsung di scope ini).
+
+**2 keputusan/gap penting:**
+
+1. Astryx `Banner status="info"/"error"` → shadcn `Alert` cuma punya
+   varian `default`/`destructive` (tidak ada varian info) — error
+   dipetakan ke `destructive`, info ke `default` netral, tidak mengarang
+   varian baru.
+2. **Gap desain terverifikasi** (Mark, dikonfirmasi independen Ridwan
+   lewat grep `globals.css`): Stone theme shadcn **belum punya token
+   `--success`/`--warning`**, hanya `--destructive`. Astryx
+   `EmptyState color="success"/"warning"/"error"` dipakai untuk 3 state
+   Accept Invite (success/expired/invalid) — state "invalid" dipetakan ke
+   `text-destructive` (token yang memang ada), "expired"/"success"
+   dibiarkan netral (bukan mengarang hex/token baru tanpa ADR). Dicatat
+   sebagai **KI-041** (Open) — keputusan terbuka untuk King Rezi (tambah
+   token ke Stone theme, butuh ADR baru, atau tetap netral selamanya),
+   belum ditutup sendiri.
+
+Penyesuaian teknis kecil (settled, bukan gap): `max-w-[400px]`/`[480px]`
+arbitrary value → `max-w-sm`/`max-w-md` (rule lint
+`tailwindcss/no-arbitrary-value`); `text-on-accent` →
+`text-accent-foreground` (nama token shadcn yang benar); `Button` tidak
+punya prop `isLoading` bawaan → pola manual `disabled` + ikon spinner
+`animate-spin`.
+
+**Hasil verifikasi:** typecheck 0 error, lint 0 error (2 warning kosmetik
+pre-existing di `textarea.tsx`, bukan dari perubahan ini), Vitest 235
+passed/4 skipped, browser E2E semua PASS (login, register, forgot/reset
+password, accept invite golden+edge case, onboarding, dark/light mode via
+cookie `theme`, regresi shell `(app)/layout.tsx` dari T-096 aman). Seluruh
+import `@astryxdesign/*` di `app/(auth)/**` dan `app/onboarding/**` sudah
+hilang (diverifikasi grep, sisa cuma di komentar dokumentasi).
+
+Catatan sampingan dari Najwa (QA): dibuat 2 akun test baru di database
+lokal (`najwa.qa.t097@kopiselasar.com`, `dimas.qa.t097@kopiselasar.com`)
+untuk uji accept-invite — data test lokal, bukan dokumentasi permanen.
+
+Task T-097 naik dari `🟡 In Progress` ke `✅ Done`. Task selesai naik
+27 → 28 (subtask total tidak berubah, tetap 209 — hanya status checklist
+yang berubah). **T-098** (Migrasi App Shell & Navigasi) adalah task
+berikutnya rilis v0.7.
+
+File berubah: `tasks/v07-astryx-shadcn-migration.md`, `TASKS.md`,
+`PROJECT_STATE.md`, `CONVERSATIONS.md`.
+
+Detail: `tasks/v07-astryx-shadcn-migration.md` § T-097.
+
+---
+
 ## 2026-09-01 — T-096: Migrasi Core Infra & Shared Primitives selesai (ADR-097)
 
 Task kedua rilis v0.7 (migrasi Astryx → shadcn/ui), dikerjakan Mark UI

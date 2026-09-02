@@ -1,11 +1,13 @@
-import { Card } from "@astryxdesign/core/Card";
+import { Card, CardContent } from "@/components/ui/card";
 
 import { ForgotPasswordForm } from "./components/ForgotPasswordForm";
 
 export default function ForgotPasswordPage() {
   return (
-    <Card padding={8} width="100%">
-      <ForgotPasswordForm />
+    <Card>
+      <CardContent>
+        <ForgotPasswordForm />
+      </CardContent>
     </Card>
   );
 }

@@ -18,7 +18,7 @@ const textVariants = cva("", {
     variant: {
       h1: "scroll-m-20 font-heading text-4xl font-extrabold tracking-tight text-balance",
       h2: "mt-10 scroll-m-20 border-b border-border pb-2 font-heading text-3xl font-semibold tracking-tight transition-colors first:mt-0",
-      h3: "mt-8 scroll-m-20 font-heading text-2xl font-semibold tracking-tight",
+      h3: "mt-8 scroll-m-20 font-heading text-2xl font-semibold tracking-tight first:mt-0",
       h4: "mt-6 scroll-m-20 font-heading text-xl font-semibold tracking-tight",
       p: "leading-7 [&:not(:first-child)]:mt-6",
       lead: "text-xl text-muted-foreground",

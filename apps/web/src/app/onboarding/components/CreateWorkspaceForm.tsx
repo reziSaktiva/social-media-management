@@ -2,10 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 
-import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { VStack } from "@astryxdesign/core/VStack";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 import { createWorkspaceAction } from "./actions";
 
@@ -28,30 +29,35 @@ export function CreateWorkspaceForm() {
   }
 
   return (
-    <VStack gap={4}>
-      {error ? <Banner status="error" title={error} /> : null}
+    <FieldGroup>
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>{error}</AlertTitle>
+        </Alert>
+      ) : null}
 
       <form onSubmit={handleSubmit}>
-        <VStack gap={4}>
-          <TextInput
-            type="text"
-            label="Nama Workspace"
-            value={name}
-            onChange={setName}
-            isRequired
-            width="100%"
-            htmlName="name"
-            placeholder="mis. Tim Marketing Acme"
-          />
-          <Button
-            type="submit"
-            label="Buat Workspace"
-            variant="primary"
-            width="100%"
-            isLoading={isSubmitting}
-          />
-        </VStack>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="workspace-name">Nama Workspace</FieldLabel>
+            <Input
+              id="workspace-name"
+              name="name"
+              type="text"
+              required
+              placeholder="mis. Tim Marketing Acme"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? <Spinner /> : null}
+              Buat Workspace
+            </Button>
+          </Field>
+        </FieldGroup>
       </form>
-    </VStack>
+    </FieldGroup>
   );
 }

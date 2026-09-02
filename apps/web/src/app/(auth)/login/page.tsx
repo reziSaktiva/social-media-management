@@ -1,34 +1,50 @@
-import { Card } from "@astryxdesign/core/Card";
-import { Heading } from "@astryxdesign/core/Heading";
-import { HStack } from "@astryxdesign/core/HStack";
-import { Link } from "@astryxdesign/core/Link";
-import { Text } from "@astryxdesign/core/Text";
-import { VStack } from "@astryxdesign/core/VStack";
+import Link from "next/link";
 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
 import { googleOAuthEnabled } from "@/lib/env";
 
 import { LoginForm } from "./components/LoginForm";
 
 export default function LoginPage() {
   return (
-    <Card padding={8} width="100%">
-      <VStack gap={4}>
-        <VStack gap={1}>
-          <Heading level={1}>Masuk</Heading>
-          <Text type="supporting">
-            Kelola konten dan jadwal publikasi workspace Anda
-          </Text>
-        </VStack>
-
+    <Card>
+      <CardHeader>
+        <CardTitle>Masuk</CardTitle>
+        <CardDescription>
+          Kelola konten dan jadwal publikasi workspace Anda
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
         <LoginForm isGoogleEnabled={googleOAuthEnabled()} />
 
-        <HStack justify="between" wrap="wrap" gap={2}>
-          <Link href="/forgot-password">Lupa password?</Link>
-          <Text type="supporting">
-            Belum punya akun? <Link href="/register">Daftar</Link>
+        {/* eslint-disable-next-line no-restricted-syntax -- T-097.1: file ini
+            sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097), bukan lagi
+            HStack Astryx. */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link
+            href="/forgot-password"
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Lupa password?
+          </Link>
+          <Text variant="muted">
+            Belum punya akun?{" "}
+            <Link
+              href="/register"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Daftar
+            </Link>
           </Text>
-        </HStack>
-      </VStack>
+        </div>
+      </CardContent>
     </Card>
   );
 }
