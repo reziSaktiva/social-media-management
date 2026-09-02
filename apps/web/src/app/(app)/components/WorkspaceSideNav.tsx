@@ -2,23 +2,43 @@
 
 import { useState } from "react";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-import { FaMoon, FaPlus, FaSun } from "react-icons/fa6";
-
-import { AlertDialog } from "@astryxdesign/core/AlertDialog";
-import { Avatar } from "@astryxdesign/core/Avatar";
-import { Button } from "@astryxdesign/core/Button";
-import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
-import { HStack } from "@astryxdesign/core/HStack";
-import { IconButton } from "@astryxdesign/core/IconButton";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  SideNav,
-  SideNavHeading,
-  SideNavItem,
-  SideNavSection,
-} from "@astryxdesign/core/SideNav";
-import { VStack } from "@astryxdesign/core/VStack";
+  Moon02Icon,
+  PlusSignIcon,
+  Sun03Icon,
+} from "@hugeicons/core-free-icons";
+
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Spinner } from "@/components/ui/spinner";
+import { Text } from "@/components/ui/text";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { getInitials } from "@/lib/utils/get-initials";
 
 import type { NotificationRecord } from "@/domains/notification";
 import type { SidebarChannelAccount } from "@/domains/workspace";
@@ -43,7 +63,7 @@ export function WorkspaceSideNav({
   userName,
   userEmail,
   // Data untuk section "Channels" (T-012, ADR-058) — dirender via
-  // ChannelsSection di bawah, antara SideNavSection "Menu" dan footer.
+  // ChannelsSection di bawah, antara nav items dan footer.
   channels,
   // T-036.4 — bell notifikasi self-contained (state + panel) di footer.
   initialNotifications,
@@ -80,118 +100,177 @@ export function WorkspaceSideNav({
     }
   }
 
+  const themeToggleLabel =
+    mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode";
+
   return (
-    <SideNav
-      header={
-        <SideNavHeading
-          icon={<Avatar name={workspaceName} size="sm" />}
-          heading={workspaceName}
-          headingHref="/"
-        />
-      }
-      topContent={
-        // ADR-053: CTA pinned di bawah Workspace Selector, di atas nav items.
+    <nav className="flex h-full flex-col">
+      <Link
+        href="/"
+        className="flex items-center gap-2 px-3 pt-3 pb-2 font-heading text-sm font-semibold"
+      >
+        <Avatar size="sm">
+          <AvatarFallback>{getInitials(workspaceName)}</AvatarFallback>
+        </Avatar>
+        <span className="truncate">{workspaceName}</span>
+      </Link>
+
+      {/* ADR-053: CTA pinned di bawah Workspace Selector, di atas nav items. */}
+      {/* eslint-disable-next-line no-restricted-syntax -- T-098.1: file ini
+          sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097), bukan lagi
+          VStack/HStack Astryx. */}
+      <div className="px-3 pb-3">
         <Button
-          label="New Post"
-          variant="primary"
-          width="100%"
-          icon={<FaPlus />}
+          className="w-full"
           // openNewPost sekarang menerima preSelectedAccountId opsional
-          // (T-012, ADR-058 addendum poin 9) — wrap supaya event Button
-          // onClick tidak ikut tersalur sebagai argumen pertama.
+          // (T-012, ADR-058 addendum poin 9) — wrap supaya event onClick
+          // tidak ikut tersalur sebagai argumen pertama.
           onClick={() => openNewPost()}
-        />
-      }
-      footer={
-        // KI-020: Design System mengelompokkan Theme+Avatar jadi satu klaster
-        // di kanan (Notifikasi terpisah di kiri), bukan spread rata 3 elemen
-        // — direplikasi lewat HStack justify="between" berisi 2 grup, bukan
-        // 3 children langsung.
-        <HStack gap={2} align="center" justify="between" width="100%">
-          <NotificationBell
-            initialNotifications={initialNotifications}
-            initialUnreadCount={initialUnreadCount}
-            userId={userId}
-          />
-          <HStack gap={2} align="center">
-            <IconButton
-              label={
-                mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode"
-              }
-              icon={mode === "light" ? <FaMoon /> : <FaSun />}
-              variant="ghost"
-              tooltip={
-                mode === "light" ? "Ganti ke Dark Mode" : "Ganti ke Light Mode"
-              }
-              onClick={toggleMode}
-            />
-            <DropdownMenu
-              button={{
-                isIconOnly: true,
-                icon: <Avatar name={userName || userEmail} size="sm" />,
-                variant: "ghost",
-                label: userName || userEmail,
-              }}
-              hasChevron={false}
-              items={[
-                {
-                  label: "Settings",
-                  onClick: () => router.push("/settings/account"),
-                },
-                { type: "divider" },
-                {
-                  label: "Logout",
-                  onClick: () => setIsLogoutDialogOpen(true),
-                },
-              ]}
-            />
-          </HStack>
-          <AlertDialog
-            isOpen={isLogoutDialogOpen}
-            onOpenChange={setIsLogoutDialogOpen}
-            title="Logout dari akun ini?"
-            description="Perubahan yang belum disimpan di halaman ini bisa hilang (ADR-049/NP-D10)."
-            cancelLabel="Batal"
-            actionLabel="Logout"
-            isActionLoading={isLoggingOut}
-            onAction={async () => {
-              try {
-                await handleLogout();
-                setIsLogoutDialogOpen(false);
-              } catch {
-                // Dialog tetap terbuka supaya user bisa coba lagi atau Batal;
-                // isLoggingOut sudah direset di handleLogout's finally.
-              }
-            }}
-          />
-        </HStack>
-      }
-    >
-      <VStack vAlign="between" className="min-h-full">
-        <SideNavSection title="Menu">
+        >
+          <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
+          New Post
+        </Button>
+      </div>
+
+      {/* T-012 / ADR-058: section "Channels" didorong ke bawah lewat
+          justify-between supaya selalu menempel tepat di atas footer
+          (Notifikasi/Theme/Avatar), meniru `.nav{flex:1}` di Claude Design
+          yang menghabiskan sisa ruang vertikal sebelum `.channels`. */}
+      {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+      <div className="flex min-h-0 flex-1 flex-col justify-between gap-4 overflow-y-auto px-3 pb-3">
+        {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+        <div className="flex flex-col gap-0.5">
+          <Text
+            variant="muted"
+            className="px-2 pb-1 text-xs font-medium tracking-wide uppercase"
+          >
+            Menu
+          </Text>
           {NAV_ITEMS.map((item) => {
             const isSelected =
               item.path === "/"
                 ? pathname === item.path
                 : pathname.startsWith(item.path);
             return (
-              <SideNavItem
+              <Link
                 key={item.label}
-                label={item.label}
                 href={item.path}
-                isSelected={isSelected}
-              />
+                aria-current={isSelected ? "page" : undefined}
+                className={cn(
+                  "rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+                  isSelected
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                {item.label}
+              </Link>
             );
           })}
-        </SideNavSection>
+        </div>
 
-        {/* T-012 / ADR-058: section "Channels" — didorong ke bawah lewat
-            VStack vAlign="between" supaya selalu menempel tepat di atas
-            footer (Notifikasi/Theme/Avatar), meniru `.nav{flex:1}` di
-            Claude Design yang menghabiskan sisa ruang vertikal sebelum
-            `.channels`. Bukan section/nav item ke-6 (P-IA-01). */}
         <ChannelsSection channels={channels} />
-      </VStack>
-    </SideNav>
+      </div>
+
+      {/* KI-020: Design System mengelompokkan Theme+Avatar jadi satu klaster
+          di kanan (Notifikasi terpisah di kiri), bukan spread rata 3 elemen. */}
+      {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+      <div className="flex items-center justify-between gap-2 border-t border-border p-3">
+        <NotificationBell
+          initialNotifications={initialNotifications}
+          initialUnreadCount={initialUnreadCount}
+          userId={userId}
+        />
+        {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={themeToggleLabel}
+                onClick={toggleMode}
+              >
+                <HugeiconsIcon
+                  icon={mode === "light" ? Moon02Icon : Sun03Icon}
+                  strokeWidth={2}
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{themeToggleLabel}</TooltipContent>
+          </Tooltip>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={userName || userEmail}
+              >
+                <Avatar size="sm">
+                  <AvatarFallback>
+                    {getInitials(userName || userEmail)}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => router.push("/settings/account")}
+              >
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setIsLogoutDialogOpen(true)}
+              >
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      <AlertDialog
+        open={isLogoutDialogOpen}
+        onOpenChange={setIsLogoutDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Logout dari akun ini?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Perubahan yang belum disimpan di halaman ini bisa hilang
+              (ADR-049/NP-D10).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoggingOut}>Batal</AlertDialogCancel>
+            {/* Button biasa (bukan `AlertDialogAction`) — Radix `Action` selalu
+                menutup dialog begitu diklik, sementara logout ini async dan
+                dialog HARUS tetap terbuka kalau `handleLogout` gagal (supaya
+                user bisa coba lagi/Batal). `open`/`onOpenChange` di atas sudah
+                controlled, jadi cukup `setIsLogoutDialogOpen(false)` manual
+                cuma di jalur sukses. */}
+            <Button
+              variant="destructive"
+              disabled={isLoggingOut}
+              onClick={async () => {
+                try {
+                  await handleLogout();
+                  setIsLogoutDialogOpen(false);
+                } catch {
+                  // Dialog tetap terbuka supaya user bisa coba lagi atau Batal;
+                  // isLoggingOut sudah direset di handleLogout's finally.
+                }
+              }}
+            >
+              {isLoggingOut ? <Spinner /> : null}
+              Logout
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </nav>
   );
 }

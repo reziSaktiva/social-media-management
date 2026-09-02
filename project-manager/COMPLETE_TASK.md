@@ -8,6 +8,76 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-02 — T-098: Migrasi App Shell & Navigasi selesai (ADR-097)
+
+Task keempat rilis v0.7 (migrasi Astryx → shadcn/ui), dikerjakan di branch
+`feature/t-098-app-shell-navigation` oleh Mark UI Engineer, lolos review
+arsitektur Ridwan Architecture Reviewer (0 temuan) dan QA Najwa QA Engineer
+(PASS penuh setelah 1 bug ditemukan+diperbaiki). Seluruh 3 subtask tuntas:
+
+- **T-098.1** `WorkspaceSideNav.tsx`, `SettingsSideNav.tsx`,
+  sidebar-channels `ChannelsSection.tsx` — dimigrasi penuh dari Astryx ke
+  shadcn/ui + Tailwind.
+- **T-098.2** Notification panel (`NotificationBell.tsx`) — dimigrasi ke
+  shadcn `Sheet`. Wrapper custom `apps/web/src/components/ui/Drawer.tsx`
+  **dihapus** (dikonfirmasi tidak ada consumer lain oleh Mark, di-cross-check
+  ulang oleh Ridwan).
+- **T-098.3** Re-verifikasi **KI-040** (gap visual panel notifikasi) —
+  **Closed**, diverifikasi Najwa lewat browser nyata (light & dark mode);
+  root cause lama (geometri wrapper `Drawer` custom) hilang bersama
+  penggantian ke `Sheet` asli.
+
+**Added:**
+
+- Komponen shadcn baru: `avatar`, `badge`, `dropdown-menu`, `alert-dialog`,
+  `sheet`, `tooltip`.
+- Helper baru `apps/web/src/lib/utils/get-initials.ts`.
+- `TooltipProvider` ditambahkan ke `apps/web/src/components/Providers.tsx`.
+- Known Issue baru **KI-042** — gap sidebar mobile (hamburger + drawer) di
+  `apps/web/src/app/(app)/layout.tsx` belum dimigrasi ke shadcn `Sidebar`
+  primitive (built-in mobile-`Sheet`); komentar existing dari T-096.3
+  menyebutnya akan "menyusul di T-098", tapi breakdown resmi 3 subtask
+  T-098 tidak mencakup file `layout.tsx`/`AppSideNav.tsx`. Keputusan
+  (subtask baru T-098.4? task terpisah? ditunda ke T-102?) menunggu King
+  Rezi — dicatat, bukan diputuskan sendiri.
+
+**Removed:**
+
+- `apps/web/src/components/ui/Drawer.tsx` (wrapper selektif Astryx,
+  digantikan `Sheet` shadcn asli).
+
+**Fixed:**
+
+- Bug ditemukan Najwa QA Engineer: dot indikator unread menimpa teks
+  timestamp di panel notifikasi — diperbaiki, lalu re-verifikasi PASS
+  penuh.
+
+**Resolved:**
+
+- **KI-040** (gap visual panel notifikasi vs Claude Design) — Closed via
+  T-098.3, sudah dihapus dari daftar Known Issues `PROJECT_STATE.md`
+  sesuai aturan (entry Resolved yang sudah tercatat di sini tidak
+  dibiarkan berstatus Resolved di daftar itu). Back-reference ditambahkan
+  di `tasks/v02-publishing-mvp.md` § T-036.
+
+**Hasil verifikasi:** typecheck 0 error, lint 0 error, Vitest 235
+passed/4 skipped/0 fail (baseline sama, tidak ada regresi test). Browser
+E2E semua PASS: nav items, logout Tier-2 safety check, `ChannelsSection`,
+notification panel mark-read/mark-all-read/persistence, light+dark mode.
+
+Task T-098 naik dari `🟡 In Progress` ke `✅ Done`. Task selesai naik
+28 → 29 (subtask total tidak berubah, tetap 209 — hanya status checklist
+yang berubah). **T-099** (Migrasi Settings) sedang berjalan paralel di
+sesi lain — sudah tahap implementasi selesai, menunggu verifikasi visual
+final.
+
+File berubah: `tasks/v07-astryx-shadcn-migration.md`,
+`tasks/v02-publishing-mvp.md`, `TASKS.md`, `PROJECT_STATE.md`.
+
+Detail: `tasks/v07-astryx-shadcn-migration.md` § T-098.
+
+---
+
 ## 2026-09-02 — T-097: Migrasi Auth Flows & Onboarding selesai (ADR-097)
 
 Task ketiga rilis v0.7 (migrasi Astryx → shadcn/ui), dikerjakan di branch

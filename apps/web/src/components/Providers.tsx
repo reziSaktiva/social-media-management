@@ -37,6 +37,12 @@ import {
   type ThemeMode,
 } from "@/lib/theme/theme-cookie";
 
+// T-098: `TooltipProvider` shadcn (dipasang sekali di root, per instruksi
+// CLI shadcn saat `tooltip` di-install) — dibutuhkan oleh `Tooltip` yang
+// dipakai WorkspaceSideNav/ChannelsSection/NotificationBell setelah migrasi
+// dari `IconButton tooltip=...` Astryx.
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 type ThemeModeContextValue = {
   mode: ThemeMode;
   toggleMode: () => void;
@@ -98,7 +104,9 @@ export function Providers({
   return (
     <ThemeModeContext.Provider value={themeModeValue}>
       <Theme mode={mode} theme={stoneTheme}>
-        <LinkProvider component={Link}>{children}</LinkProvider>
+        <LinkProvider component={Link}>
+          <TooltipProvider>{children}</TooltipProvider>
+        </LinkProvider>
       </Theme>
     </ThemeModeContext.Provider>
   );
