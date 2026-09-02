@@ -484,13 +484,22 @@ horizontal untuk diakses. shadcn `Table` primitive sudah menyediakan
 optimal di layar sempit. Ditemukan QA Najwa saat verifikasi end-to-end
 T-099, severity Moderate.
 
-**Keputusan terbuka untuk King Rezi:** apakah gap sidebar mobile jadi
-subtask baru (T-098.4?), task terpisah, atau ditunda ke T-102 (cleanup
-akhir rilis v0.7) — dan apakah perlu rancangan responsive/mobile baru di
-Claude Design (rule 17 `AGENTS.md`) sebagai payung untuk kedua temuan
-sebelum salah satunya diperbaiki (bukan sekadar tweak CSS lokal per
-komponen). Tidak memblokir M8. Lihat
-`tasks/v07-astryx-shadcn-migration.md` § T-098 dan § T-099 untuk detail.
+**Keputusan (2026-09-02):** King Rezi memutuskan bentuknya jadi subtask
+baru **T-098.4** (bukan task terpisah, bukan ditunda ke T-102) begitu
+dikerjakan — tapi **ditunda dulu**, belum dikerjakan sekarang. Sebelum
+mulai, dicek dulu ke Claude Design (project "Social Media Management")
+sesuai rule 17 `AGENTS.md`: **rancangan mobile/responsive belum ada** —
+`foundations/layout.html` eksplisit menyatakan "sidebar shape never
+changes", tidak ada varian mobile-nav atau pola tabel sempit yang
+dirancang di manapun. Satu-satunya precedent breakpoint terdokumentasi
+(`product-discovery/04-ux/key-screen-patterns.md` § KSP-02-F10, `≤768px`)
+spesifik untuk indikator tipe konten Calendar, tidak berlaku langsung ke
+sidebar/table. **Blocker sebelum T-098.4 bisa mulai:** rancangan
+mobile/responsive untuk App Shell (sidebar hamburger+drawer) dan pola
+tabel Members di layar sempit harus dibuat dulu di Claude Design — oleh
+King Rezi langsung atau didelegasikan ke Neymar Product Designer. Tidak
+memblokir M8. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-098 dan
+§ T-099 untuk detail.
 
 ---
 
