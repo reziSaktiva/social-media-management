@@ -3,14 +3,12 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Loading03Icon } from "@hugeicons/core-free-icons";
-
 import { authClient } from "@/lib/better-auth/client";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 
 export function ForgotPasswordForm() {
@@ -65,9 +63,7 @@ export function ForgotPasswordForm() {
           berlaku selama 1 jam.
         </Text>
         <Button variant="ghost" disabled={isResending} onClick={handleResend}>
-          {isResending ? (
-            <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
-          ) : null}
+          {isResending ? <Spinner /> : null}
           Kirim Ulang
         </Button>
       </div>
@@ -105,9 +101,7 @@ export function ForgotPasswordForm() {
           </Field>
           <Field>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
-              ) : null}
+              {isSubmitting ? <Spinner /> : null}
               Kirim Tautan Reset
             </Button>
           </Field>

@@ -3,9 +3,6 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Loading03Icon } from "@hugeicons/core-free-icons";
-
 import { authClient } from "@/lib/better-auth/client";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -16,6 +13,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 export function LoginForm({ isGoogleEnabled }: { isGoogleEnabled: boolean }) {
   const router = useRouter();
@@ -71,9 +69,7 @@ export function LoginForm({ isGoogleEnabled }: { isGoogleEnabled: boolean }) {
               disabled={isGoogleLoading}
               onClick={handleGoogleSignIn}
             >
-              {isGoogleLoading ? (
-                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
-              ) : null}
+              {isGoogleLoading ? <Spinner /> : null}
               Lanjutkan dengan Google
             </Button>
           </Field>
@@ -107,9 +103,7 @@ export function LoginForm({ isGoogleEnabled }: { isGoogleEnabled: boolean }) {
           </Field>
           <Field>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
-              ) : null}
+              {isSubmitting ? <Spinner /> : null}
               Masuk
             </Button>
           </Field>

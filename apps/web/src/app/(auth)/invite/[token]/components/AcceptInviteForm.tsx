@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Loading03Icon, SquareLock02Icon } from "@hugeicons/core-free-icons";
+import { SquareLock02Icon } from "@hugeicons/core-free-icons";
 
 import { authClient } from "@/lib/better-auth/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -21,6 +21,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 import { acceptInviteAction } from "../actions";
 
@@ -127,7 +128,11 @@ export function AcceptInviteForm({
                 readOnly
               />
               <InputGroupAddon>
-                <HugeiconsIcon icon={SquareLock02Icon} strokeWidth={2} />
+                <HugeiconsIcon
+                  icon={SquareLock02Icon}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
               </InputGroupAddon>
             </InputGroup>
             <FieldDescription>
@@ -163,9 +168,7 @@ export function AcceptInviteForm({
 
           <Field>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
-              ) : null}
+              {isSubmitting ? <Spinner /> : null}
               {isExistingUser
                 ? "Masuk & Gabung ke Workspace"
                 : "Buat Akun & Gabung ke Workspace"}

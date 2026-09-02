@@ -3,9 +3,6 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Loading03Icon } from "@hugeicons/core-free-icons";
-
 import { authClient } from "@/lib/better-auth/client";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -17,6 +14,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 export function RegisterForm({
   isGoogleEnabled,
@@ -84,9 +82,7 @@ export function RegisterForm({
               disabled={isGoogleLoading}
               onClick={handleGoogleSignIn}
             >
-              {isGoogleLoading ? (
-                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
-              ) : null}
+              {isGoogleLoading ? <Spinner /> : null}
               Daftar dengan Google
             </Button>
           </Field>
@@ -141,9 +137,7 @@ export function RegisterForm({
           </Field>
           <Field>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
-              ) : null}
+              {isSubmitting ? <Spinner /> : null}
               Buat Akun
             </Button>
           </Field>

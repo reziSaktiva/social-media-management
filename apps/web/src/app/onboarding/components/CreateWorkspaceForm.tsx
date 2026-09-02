@@ -2,13 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Loading03Icon } from "@hugeicons/core-free-icons";
-
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 import { createWorkspaceAction } from "./actions";
 
@@ -54,9 +52,7 @@ export function CreateWorkspaceForm() {
           </Field>
           <Field>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <HugeiconsIcon icon={Loading03Icon} className="animate-spin" />
-              ) : null}
+              {isSubmitting ? <Spinner /> : null}
               Buat Workspace
             </Button>
           </Field>

@@ -64,11 +64,14 @@ const SUCCESS_REDIRECT_DELAY_MS = 1500;
  * status (success/warning/error) Astryx (`color="success"|"warning"|"error"`)
  * TIDAK punya padanan token di Stone theme shadcn saat ini — hanya
  * `--destructive` yang tersedia (tidak ada `--success`/`--warning`).
- * Sengaja TIDAK mengarang hex/token baru (aturan CLAUDE.md); dibiarkan
- * netral (default `EmptyMedia variant="icon"` = bg-muted/text-foreground)
- * untuk expired & success, dan `text-destructive` untuk invalid (token yang
- * memang ada). Gap ini dilaporkan ke King Rezi di laporan akhir T-097,
- * bukan diputuskan sepihak.
+ * Sengaja TIDAK mengarang hex/token baru (aturan CLAUDE.md): "success"
+ * dibiarkan netral (default `EmptyMedia variant="icon"` = bg-muted/
+ * text-foreground) karena tidak ada token hijau, sedangkan "expired" dan
+ * "invalid" sama-sama diberi `text-destructive` — keduanya berarti outcome
+ * yang identik bagi user (link tidak bisa dipakai, minta undangan baru),
+ * jadi disamakan severity-nya alih-alih dibedakan hanya karena kebetulan
+ * salah satu tokennya sudah ada. Gap token success/warning tetap dilaporkan
+ * ke King Rezi (KI-041), bukan diputuskan sepihak.
  */
 export function AcceptInvitePageClient({
   token,
@@ -97,7 +100,11 @@ export function AcceptInvitePageClient({
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} />
+            <HugeiconsIcon
+              icon={CheckmarkCircle02Icon}
+              strokeWidth={2}
+              aria-hidden="true"
+            />
           </EmptyMedia>
           <EmptyTitle>Berhasil Bergabung!</EmptyTitle>
           <EmptyDescription>
@@ -112,8 +119,12 @@ export function AcceptInvitePageClient({
     return (
       <Empty>
         <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <HugeiconsIcon icon={Clock01Icon} strokeWidth={2} />
+          <EmptyMedia variant="icon" className="text-destructive">
+            <HugeiconsIcon
+              icon={Clock01Icon}
+              strokeWidth={2}
+              aria-hidden="true"
+            />
           </EmptyMedia>
           <EmptyTitle>Undangan Kedaluwarsa</EmptyTitle>
           <EmptyDescription>
@@ -136,7 +147,11 @@ export function AcceptInvitePageClient({
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon" className="text-destructive">
-            <HugeiconsIcon icon={AlertCircleIcon} strokeWidth={2} />
+            <HugeiconsIcon
+              icon={AlertCircleIcon}
+              strokeWidth={2}
+              aria-hidden="true"
+            />
           </EmptyMedia>
           <EmptyTitle>Link Undangan Tidak Valid</EmptyTitle>
           <EmptyDescription>
