@@ -347,18 +347,50 @@ lahir dari keterbatasan Astryx.
 
 ### T-099 · Migrasi Settings
 
-`⏳ Not Started` · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
+`✅ Done` (2026-09-02) · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
 **Baca dulu:** `04-ux/` layar Settings terkait
 
 ~9 file di `app/(app)/settings/`.
 
-- [ ] **T-099.1** `WorkspaceGeneralSettings.tsx`, `ProfileForm.tsx`,
+- [x] **T-099.1** `WorkspaceGeneralSettings.tsx`, `ProfileForm.tsx`,
       `preferences/page.tsx`, `SettingsPageHead.tsx`
-- [ ] **T-099.2** `MembersTable.tsx` (termasuk migrasi helper
+- [x] **T-099.2** `MembersTable.tsx` (termasuk migrasi helper
       `pixel`/`proportional` Table column-width Astryx),
       `InviteMemberDialog.tsx`, `InviteMemberAction.tsx`
-- [ ] **T-099.3** `ConnectedAccountsList.tsx`, `ConnectPlatformMenu.tsx`,
+- [x] **T-099.3** `ConnectedAccountsList.tsx`, `ConnectPlatformMenu.tsx`,
       `WorkspacesSettingsView.tsx`
+- Catatan penting (2026-09-02, implementasi Mark UI Engineer, review
+  arsitektur Ridwan 0 temuan, QA Najwa PASS dengan 1 temuan minor):
+  * Komponen shadcn baru di-install: `alert-dialog`, `avatar`, `badge`,
+    `dropdown-menu`, `item`, `radio-group`, `select`, `table`,
+    `toggle`/`toggle-group`, `tooltip`.
+  * `MembersTable.tsx` — sistem kolom `pixel()`/`proportional()` Astryx
+    dihapus total, diganti shadcn `Table` primitive + JSX langsung.
+  * Helper baru `getInitials()` ditambahkan ke `apps/web/src/lib/utils.ts`
+    (dipakai di 4 file). `TooltipProvider` ditambahkan ke
+    `apps/web/src/components/Providers.tsx`.
+  * Review Ridwan: 0 temuan pelanggaran arsitektur — entry point bersih,
+    tidak ada leak Prisma/Supabase/Outstand, cross-domain lewat public API,
+    validasi file avatar dikonfirmasi tetap otoritatif di server
+    (`IdentityService.updateProfile`), tidak hilang saat migrasi
+    client-side check.
+  * QA Najwa: seluruh golden path PASS (General settings edit+persist,
+    Danger Zone Transfer Ownership & Delete Workspace dialog Tier 1,
+    upload avatar + validasi ukuran file, toggle tema Preferences, invite
+    member flow lengkap sampai buka link undangan, Connected Accounts,
+    switch workspace) di light & dark mode. Typecheck/lint/vitest bersih
+    (235 pass, 4 skip, 0 fail).
+  * **Temuan minor (Moderate, dicatat sebagai detail tambahan di
+    KI-042):** kolom "Actions" (Change Role/Remove) di `MembersTable.tsx`
+    tidak terlihat penuh pada viewport sempit (~800px) — perlu scroll
+    horizontal (shadcn `Table` sudah punya `overflow-x-auto` bawaan,
+    bukan crash/broken, tapi UX kurang optimal). Root cause sama dengan
+    KI-042 (aplikasi belum punya strategi responsive/mobile yang
+    didesain), bukan bug lokal satu komponen.
+  * **Gap KI-041 meluas:** `MembersTable.tsx` status "Pending" dipetakan
+    ke `Badge variant="outline"` (bukan "secondary" seperti Active/
+    Removed) karena tidak ada token warning — treatment varian, bukan
+    warna baru, konsisten pola sebelumnya di KI-041.
 
 ---
 

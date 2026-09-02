@@ -3,25 +3,51 @@
 import type { ReactNode } from "react";
 
 import { MemberRole, MemberStatus } from "@social/shared";
-import { AlertDialog } from "@astryxdesign/core/AlertDialog";
-import { Avatar } from "@astryxdesign/core/Avatar";
-import { Badge } from "@astryxdesign/core/Badge";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
-import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
-import { EmptyState } from "@astryxdesign/core/EmptyState";
-import { HStack } from "@astryxdesign/core/HStack";
-import { Section } from "@astryxdesign/core/Section";
-import { pixel, proportional, Table } from "@astryxdesign/core/Table";
-import type { TableColumn } from "@astryxdesign/core/Table";
-import { Text } from "@astryxdesign/core/Text";
-import { VStack } from "@astryxdesign/core/VStack";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Text } from "@/components/ui/text";
 
 import {
   MEMBER_ROLE_LABEL,
   type WorkspaceMemberWithUser,
 } from "@/domains/workspace";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
+import { getInitials } from "@/lib/utils";
 
 import {
   SETTINGS_BREADCRUMB_GROUP,
@@ -35,10 +61,18 @@ const STATUS_LABEL: Record<MemberStatus, string> = {
   [MemberStatus.Removed]: "Removed",
 };
 
-const STATUS_BADGE_VARIANT: Record<MemberStatus, "neutral" | "warning"> = {
-  [MemberStatus.Active]: "neutral",
-  [MemberStatus.Pending]: "warning",
-  [MemberStatus.Removed]: "neutral",
+// KI-041 (Stone theme shadcn belum punya token --success/--warning, dicatat
+// saat T-097.3): `Badge` shadcn cuma varian default/secondary/destructive/
+// outline/ghost/link — tidak ada "warning". "Pending" (sebelumnya warna
+// warning Astryx) dipetakan ke "outline" (bukan "secondary" seperti
+// Active/Removed) supaya tetap ada pembeda visual antar status TANPA
+// mengarang token warna baru — beda treatment varian yang sudah ada, bukan
+// warna baru. Dilaporkan ke King Rezi sebagai perluasan gap KI-041, bukan
+// keputusan final.
+const STATUS_BADGE_VARIANT: Record<MemberStatus, "secondary" | "outline"> = {
+  [MemberStatus.Active]: "secondary",
+  [MemberStatus.Pending]: "outline",
+  [MemberStatus.Removed]: "secondary",
 };
 
 // Role yang bisa ditetapkan lewat "Change Role" — Owner tidak termasuk,
@@ -79,85 +113,51 @@ function MemberActions({
   const roleOptions = ASSIGNABLE_ROLES.filter((role) => role !== member.role);
 
   return (
-    <HStack gap={2} align="center">
-      <DropdownMenu
-        button={{ label: "Change Role", variant: "secondary", size: "sm" }}
-        items={roleOptions.map((role) => ({
-          label: MEMBER_ROLE_LABEL[role],
-          onClick: () => onRequestRoleChange(member, role),
-        }))}
-      />
+    /* eslint-disable-next-line no-restricted-syntax -- T-099.2: file ini
+       sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097), bukan lagi
+       HStack Astryx. */
+    <div className="flex items-center justify-end gap-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="secondary" size="sm">
+            Change Role
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {roleOptions.map((role) => (
+            <DropdownMenuItem
+              key={role}
+              onClick={() => onRequestRoleChange(member, role)}
+            >
+              {MEMBER_ROLE_LABEL[role]}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Button
-        label="Remove"
+        type="button"
         variant="destructive"
         size="sm"
         onClick={() => onRequestRemove(member)}
-      />
-    </HStack>
+      >
+        Remove
+      </Button>
+    </div>
   );
 }
 
-interface MemberRow extends Record<string, unknown>, WorkspaceMemberWithUser {}
-
-function buildColumns(
-  currentUserId: string,
-  onRequestRemove: (member: WorkspaceMemberWithUser) => void,
-  onRequestRoleChange: (
-    member: WorkspaceMemberWithUser,
-    newRole: MemberRole,
-  ) => void,
-): TableColumn<MemberRow>[] {
-  return [
-    {
-      key: "member",
-      header: "Member",
-      width: proportional(2),
-      renderCell: (member) => (
-        <HStack gap={3} align="center">
-          <Avatar name={member.name} size="md" />
-          <VStack gap={0}>
-            <Text type="body">{member.name}</Text>
-            <Text type="supporting">{member.email}</Text>
-          </VStack>
-        </HStack>
-      ),
-    },
-    {
-      key: "role",
-      header: "Role",
-      width: proportional(1),
-      renderCell: (member) => (
-        <Badge variant="neutral" label={MEMBER_ROLE_LABEL[member.role]} />
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      width: proportional(1),
-      renderCell: (member) => (
-        <Badge
-          variant={STATUS_BADGE_VARIANT[member.status]}
-          label={STATUS_LABEL[member.status]}
-        />
-      ),
-    },
-    {
-      key: "actions",
-      header: "Actions",
-      width: pixel(240),
-      align: "end",
-      renderCell: (member) => (
-        <MemberActions
-          member={member}
-          currentUserId={currentUserId}
-          onRequestRemove={onRequestRemove}
-          onRequestRoleChange={onRequestRoleChange}
-        />
-      ),
-    },
-  ];
-}
-
+/**
+ * `MembersTable` (T-099.2, migrasi shadcn/ui). shadcn `Table` — beda dari
+ * `@astryxdesign/core/Table` — cuma primitive semantik `<table>` tanpa
+ * sistem kolom data-driven (tidak ada `TableColumn[]`/helper
+ * `pixel()`/`proportional()` untuk lebar kolom). Baris ditulis langsung
+ * sebagai JSX (`TableRow`/`TableCell` per member, bukan `buildColumns` +
+ * `data`), dan lebar kolom "Actions" cukup dikunci via Tailwind `w-60`
+ * (240px, sama seperti `pixel(240)` sebelumnya) di `<TableHead>`-nya —
+ * kolom lain dibiarkan auto-size berdasar konten (bukan proporsi 2:1:1
+ * eksplisit), pola yang sama dipakai demo resmi shadcn (`table-demo`,
+ * MCP `get_item_examples_from_registries`).
+ */
 export function MembersTable({
   members,
   currentUserId,
@@ -177,7 +177,8 @@ export function MembersTable({
   }>((change) => updateMemberRoleAction(change.member.id, change.newRole));
 
   return (
-    <VStack gap={4} padding={4}>
+    // eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas
+    <div className="flex flex-col gap-4 p-4">
       <SettingsPageHead
         pageName="Members"
         breadcrumb={`${SETTINGS_BREADCRUMB_GROUP.organization} / Members`}
@@ -185,68 +186,145 @@ export function MembersTable({
       />
 
       {removeConfirm.error ? (
-        <Banner status="error" title={removeConfirm.error} />
+        <Alert variant="destructive">
+          <AlertTitle>{removeConfirm.error}</AlertTitle>
+        </Alert>
       ) : null}
       {roleConfirm.error ? (
-        <Banner status="error" title={roleConfirm.error} />
+        <Alert variant="destructive">
+          <AlertTitle>{roleConfirm.error}</AlertTitle>
+        </Alert>
       ) : null}
 
-      <Section>
-        {members.length === 0 ? (
-          <EmptyState
-            title="Belum ada anggota"
-            description="Workspace ini belum memiliki anggota."
-            isCompact
-          />
-        ) : (
-          <Table
-            data={members as MemberRow[]}
-            columns={buildColumns(
-              currentUserId,
-              (member) => removeConfirm.open(member),
-              (member, newRole) => roleConfirm.open({ member, newRole }),
-            )}
-            idKey="id"
-            density="balanced"
-            dividers="rows"
-          />
-        )}
-      </Section>
+      <Card>
+        <CardContent>
+          {members.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>Belum ada anggota</EmptyTitle>
+                <EmptyDescription>
+                  Workspace ini belum memiliki anggota.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Member</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-60 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {members.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell>
+                      {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback>
+                            {getInitials(member.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
+                        <div className="flex flex-col">
+                          <Text variant="small">{member.name}</Text>
+                          <Text variant="muted">{member.email}</Text>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {MEMBER_ROLE_LABEL[member.role]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_BADGE_VARIANT[member.status]}>
+                        {STATUS_LABEL[member.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <MemberActions
+                        member={member}
+                        currentUserId={currentUserId}
+                        onRequestRemove={(target) => removeConfirm.open(target)}
+                        onRequestRoleChange={(target, newRole) =>
+                          roleConfirm.open({ member: target, newRole })
+                        }
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <AlertDialog
-        isOpen={removeConfirm.isOpen}
+        open={removeConfirm.isOpen}
         onOpenChange={(open) => {
           if (!open) removeConfirm.close();
         }}
-        title="Keluarkan anggota ini?"
-        description={
-          removeConfirm.target
-            ? `Keluarkan ${removeConfirm.target.name} dari workspace ini? Mereka akan kehilangan akses (ADR-049, Tier 2).`
-            : ""
-        }
-        cancelLabel="Batal"
-        actionLabel="Keluarkan"
-        isActionLoading={removeConfirm.isLoading}
-        onAction={removeConfirm.confirm}
-      />
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Keluarkan anggota ini?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removeConfirm.target
+                ? `Keluarkan ${removeConfirm.target.name} dari workspace ini? Mereka akan kehilangan akses (ADR-049, Tier 2).`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removeConfirm.isLoading}
+              onClick={(e) => {
+                e.preventDefault();
+                void removeConfirm.confirm();
+              }}
+            >
+              {removeConfirm.isLoading ? <Spinner /> : null}
+              Keluarkan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
-        isOpen={roleConfirm.isOpen}
+        open={roleConfirm.isOpen}
         onOpenChange={(open) => {
           if (!open) roleConfirm.close();
         }}
-        title="Ubah role anggota ini?"
-        description={
-          roleConfirm.target
-            ? `Ubah role ${roleConfirm.target.member.name} dari ${MEMBER_ROLE_LABEL[roleConfirm.target.member.role]} ke ${MEMBER_ROLE_LABEL[roleConfirm.target.newRole]}?`
-            : ""
-        }
-        cancelLabel="Batal"
-        actionLabel="Ubah Role"
-        actionVariant="primary"
-        isActionLoading={roleConfirm.isLoading}
-        onAction={roleConfirm.confirm}
-      />
-    </VStack>
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ubah role anggota ini?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {roleConfirm.target
+                ? `Ubah role ${roleConfirm.target.member.name} dari ${MEMBER_ROLE_LABEL[roleConfirm.target.member.role]} ke ${MEMBER_ROLE_LABEL[roleConfirm.target.newRole]}?`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={roleConfirm.isLoading}
+              onClick={(e) => {
+                e.preventDefault();
+                void roleConfirm.confirm();
+              }}
+            >
+              {roleConfirm.isLoading ? <Spinner /> : null}
+              Ubah Role
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
