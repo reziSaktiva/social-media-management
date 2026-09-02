@@ -297,23 +297,51 @@ dengan T-098/T-099/T-100/T-101 begitu T-096 selesai.
 
 ### T-098 · Migrasi App Shell & Navigasi
 
-`⏳ Not Started` · **Domain** UI · **ADR** ADR-097 · **Depends** T-096, T-036 (fungsional stabil)
+`✅ Done` (2026-09-02) · **Domain** UI · **ADR** ADR-097 · **Depends** T-096, T-036 (fungsional stabil)
 **Baca dulu:** `04-ux/information-architecture.md`
 
 Termasuk penghapusan wrapper selektif `Drawer.tsx` — salah satu hasil
 konkret migrasi ini adalah menghilangkan kebutuhan wrapper custom yang
 lahir dari keterbatasan Astryx.
 
-- [ ] **T-098.1** `WorkspaceSideNav.tsx`, `SettingsSideNav.tsx`,
+- [x] **T-098.1** `WorkspaceSideNav.tsx`, `SettingsSideNav.tsx`,
       sidebar-channels `ChannelsSection.tsx`
-- [ ] **T-098.2** Notification panel (`NotificationBell.tsx`) — ganti
+- [x] **T-098.2** Notification panel (`NotificationBell.tsx`) — ganti
       wrapper `components/ui/Drawer.tsx` (custom, berbasis `useLayer`/
       `useFocusTrap`/`useScrollLock` Astryx) dengan komponen shadcn
       `Sheet` asli; **hapus** `Drawer.tsx` setelah tidak ada consumer lagi
-- [ ] **T-098.3** Re-verifikasi **KI-040** (gap visual panel notifikasi)
+- [x] **T-098.3** Re-verifikasi **KI-040** (gap visual panel notifikasi)
       setelah migrasi ke `Sheet` — kemungkinan root cause (geometri/
       proporsi panel) hilang bersama penghapusan wrapper custom; tutup
       atau update KI-040 sesuai hasil verifikasi browser nyata
+- Catatan penting (2026-09-02, implementasi Mark UI Engineer, review
+  arsitektur Ridwan 0 temuan, QA Najwa PASS penuh setelah 1 bug
+  ditemukan+diperbaiki):
+  * Komponen shadcn baru di-install: `avatar`, `badge`, `dropdown-menu`,
+    `alert-dialog`, `sheet`, `tooltip`. Helper baru
+    `apps/web/src/lib/utils/get-initials.ts`. `TooltipProvider`
+    ditambahkan ke `apps/web/src/components/Providers.tsx`.
+  * Wrapper custom `apps/web/src/components/ui/Drawer.tsx` **dihapus** —
+    dikonfirmasi tidak ada consumer lain oleh Mark, di-cross-check ulang
+    oleh Ridwan.
+  * **KI-040 Closed (2026-09-02)** — diverifikasi Najwa lewat browser
+    nyata (light & dark mode); root cause lama (geometri wrapper `Drawer`
+    custom) hilang bersama penggantian ke `Sheet` asli.
+  * QA Najwa menemukan 1 bug (dot indikator unread menimpa teks timestamp
+    di panel notifikasi) — diperbaiki, lalu re-verifikasi PASS penuh.
+    Seluruh checklist (nav items, logout Tier-2 safety check,
+    `ChannelsSection`, notification panel mark-read/mark-all-read/
+    persistence, light+dark mode) PASS. Typecheck/lint/Vitest bersih (235
+    passed/4 skipped/0 fail — baseline sama, tidak ada regresi).
+  * **Gap terbuka, belum diputuskan** — komentar existing (dari T-096.3)
+    di `apps/web/src/app/(app)/layout.tsx` menyebut sidebar mobile
+    (hamburger + drawer) akan "menyusul di T-098", tapi breakdown resmi
+    T-098 (3 subtask di atas) tidak mencakup migrasi `layout.tsx`/
+    `AppSideNav.tsx` ke shadcn `Sidebar` primitive (built-in
+    mobile-`Sheet`). **Belum dikerjakan** — di luar file yang di-scope
+    T-098.1–.3. Dicatat **KI-042** di `PROJECT_STATE.md`, menunggu
+    keputusan King Rezi (subtask baru T-098.4? task terpisah? tetap
+    ditunda?). Dikerjakan di branch `feature/t-098-app-shell-navigation`.
 
 ---
 

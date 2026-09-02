@@ -456,6 +456,15 @@ memverifikasi tampilan asli di browser cocok dengan spec. Tidak menambah KI
 baru — ini bagian dari root cause investigation yang sama dengan KI-040
 (masih **Open**), bukan temuan independen baru.
 
+**Catatan (2026-09-02) — KI-040 Closed:** ditutup lewat **T-098.3**
+(`tasks/v07-astryx-shadcn-migration.md` § T-098, migrasi `NotificationBell.tsx`
+dari wrapper custom `Drawer.tsx` ke shadcn `Sheet` asli). Diverifikasi Najwa
+QA Engineer lewat browser nyata (light & dark mode) — root cause lama
+(geometri/proporsi wrapper `Drawer` custom) hilang bersama penggantian ke
+`Sheet`. Entry KI-040 sudah dihapus dari `PROJECT_STATE.md` § Known Issues
+sesuai aturan (Resolved yang sudah tercatat `COMPLETE_TASK.md` tidak
+dibiarkan dengan status Resolved di daftar itu).
+
 ---
 
 ## Developer Experience

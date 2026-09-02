@@ -4,18 +4,18 @@ import Link from "next/link";
 import { useState } from "react";
 import type { DragEvent } from "react";
 
-import { FaPlus } from "react-icons/fa6";
-import { RxDragHandleDots2 } from "react-icons/rx";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { DragDropVerticalIcon, PlusSignIcon } from "@hugeicons/core-free-icons";
 
-import { Avatar } from "@astryxdesign/core/Avatar";
-import { Badge } from "@astryxdesign/core/Badge";
-import { HStack } from "@astryxdesign/core/HStack";
-import { Icon } from "@astryxdesign/core/Icon";
-import { IconButton } from "@astryxdesign/core/IconButton";
-import { SideNavSection } from "@astryxdesign/core/SideNav";
-import { StackItem } from "@astryxdesign/core/Stack";
-import { Text } from "@astryxdesign/core/Text";
-import { VStack } from "@astryxdesign/core/VStack";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import type { SocialPlatform } from "@social/shared";
 
@@ -25,6 +25,7 @@ import {
   type SidebarChannelAccount,
 } from "@/domains/workspace";
 import { cn } from "@/lib/utils";
+import { getInitials } from "@/lib/utils/get-initials";
 
 import { useDraftEditor } from "../draft-editor/Context";
 
@@ -33,22 +34,17 @@ import { reorderChannelsAction } from "./actions";
 
 export type { SidebarChannelAccount };
 
-// Custom styling here is Tailwind utilities backed by Astryx design tokens
-// (per apps/web/.claude/CLAUDE.md: "component props first; else Tailwind
-// utilities backed by tokens"). Numeric spacing utilities (w-4, ms-4, max-h-60,
-// ...) are already token-backed because the Tailwind bridge sets
-// `--spacing: var(--spacing-1)`, so `4` === `--spacing-4` (16px) etc. Values
-// with no Tailwind-native utility (duration, easing, border/shadow color) use
-// arbitrary values that reference the token CSS var directly — never a raw
-// hex/px — which keeps them token-backed per project convention.
-const TRANSITION_FAST =
-  // eslint-disable-next-line local/no-arbitrary-value-in-variable -- token-backed CSS var (dijelaskan di komentar atas), bukan magic number.
-  "duration-[var(--duration-fast)] ease-[var(--ease-standard)]";
+// Micro-interaction timing di bawah (duration-150/ease-out) meniru
+// `--duration-fast`/`--ease-standard` Astryx (125ms, lihat
+// @astryxdesign/theme-stone/theme.css) — dipetakan ke step Tailwind
+// terdekat karena file ini sudah dimigrasi penuh ke shadcn/Tailwind (T-098),
+// bukan lagi token CSS var Astryx.
+const TRANSITION_FAST = "duration-150 ease-out";
 
-// Scroll independen dari SideNavSection "Menu" di atasnya — max-height
-// token-based. Row ~42px + my-1 (8px) + gap-2 (8px) ≈ 56.4px/baris x 5 =
-// 282px, jadi spacing unit x72 (288px) — bukan lagi x60/240px sejak gap
-// dan margin per row dinaikkan (lihat commit spacing sidebar).
+// Scroll independen dari nav items "Menu" di atasnya — max-height token-based
+// (spacing scale shadcn, base 1 unit = 4px per design-tokens.md). Row ~42px
+// + my-1 (8px) + gap-2 (8px) ~= 56.4px/baris x 5 = 282px, jadi spacing unit
+// x72 (288px).
 const LIST_CLASSNAME = "max-h-72 overflow-y-auto";
 
 function PlatformBadge({ platform }: { platform: SocialPlatform }) {
@@ -58,17 +54,14 @@ function PlatformBadge({ platform }: { platform: SocialPlatform }) {
   }
   const PlatformGlyph = entry.Icon;
   return (
-    <HStack
-      hAlign="center"
-      vAlign="center"
-      // eslint-disable-next-line tailwindcss/no-arbitrary-value -- shadow token-backed CSS var (--border-width/--color-border), tidak ada utility Tailwind native untuk ini.
-      className="absolute -inset-e-1 -bottom-1 size-4 rounded-full bg-surface shadow-[0_0_0_var(--border-width)_var(--color-border)]"
+    <span
+      className="absolute -inset-e-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-background ring-1 ring-border"
       aria-hidden
     >
       {/* Warna brand asli (bukan token) — pengecualian disengaja, lihat
           komentar di platform-icons.tsx (ADR-058 poin 6 & 10). */}
       <PlatformGlyph size={9} color={entry.color} />
-    </HStack>
+    </span>
   );
 }
 
@@ -97,9 +90,10 @@ function ChannelRow({
   const needsAttention = displayStatus !== "active";
 
   return (
-    <HStack
-      gap={2}
-      align="center"
+    // File ini sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097),
+    // bukan lagi HStack Astryx.
+    // eslint-disable-next-line no-restricted-syntax -- T-098.1
+    <div
       draggable
       onDragStart={onDragStart}
       onDragOver={onDragOver}
@@ -110,117 +104,114 @@ function ChannelRow({
       onFocus={() => setIsFocused(true)}
       onBlur={(e) => {
         // Only clear when focus truly leaves the row, not when it moves
-        // between children (e.g. from row to IconButton within same row).
+        // between children (e.g. from row to button within same row).
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
           setIsFocused(false);
         }
       }}
       className={cn(
-        // ADR-058 addendum poin 10: drag-handle shift-on-hover — seluruh isi
-        // baris bergeser via margin-inline-start bertransisi (override
-        // eksplisit dari "no-shift" yang berlaku untuk swap count<->"+" di
-        // poin 4-5 asli).
+        "relative my-1 flex items-center gap-2",
         // eslint-disable-next-line tailwindcss/no-arbitrary-value -- transition-property arbitrary value, tidak ada utility Tailwind native untuk `margin-inline-start`.
-        "relative my-1 transition-[margin-inline-start]",
+        "transition-[margin-inline-start]",
         TRANSITION_FAST,
         isRevealed ? "ms-4" : "ms-0",
         isDragging ? "opacity-50" : "opacity-100",
       )}
       data-testid="channel-row"
     >
-      <HStack
-        align="center"
+      {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+      <div
         className={cn(
-          "inset-y-0 -inset-s-4 cursor-grab transition-opacity",
+          "absolute inset-y-0 -inset-s-4 flex cursor-grab items-center transition-opacity",
           TRANSITION_FAST,
           isRevealed ? "opacity-100" : "opacity-0",
         )}
       >
-        <Icon icon={RxDragHandleDots2} size="xsm" color="secondary" label="" />
-      </HStack>
-
-      <HStack className="relative shrink-0">
-        <Avatar
-          name={account.handle}
-          size="sm"
-          status={<PlatformBadge platform={account.platform} />}
+        <HugeiconsIcon
+          icon={DragDropVerticalIcon}
+          strokeWidth={2}
+          className="size-3 text-muted-foreground"
         />
-      </HStack>
+      </div>
 
-      <StackItem size="fill" crossAlignSelf="start">
-        <VStack gap={0.5} hAlign="start">
-          <Text type="label" maxLines={1}>
-            {account.handle}
-          </Text>
-          {needsAttention ? (
-            <Link href="/settings/connected-accounts" className="no-underline">
-              <Badge
-                variant="warning"
-                label={getConnectionStatusLabel(account)}
-              />
-            </Link>
-          ) : (
-            <Badge
-              variant="neutral"
-              label={getConnectionStatusLabel(account)}
-            />
-          )}
-        </VStack>
-      </StackItem>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+      <div className="relative shrink-0">
+        <Avatar size="sm">
+          <AvatarFallback>{getInitials(account.handle)}</AvatarFallback>
+        </Avatar>
+        <PlatformBadge platform={account.platform} />
+      </div>
 
-      <HStack className="relative size-4 shrink-0">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+        <Text variant="small" className="w-full truncate font-medium">
+          {account.handle}
+        </Text>
+        {needsAttention ? (
+          <Link href="/settings/connected-accounts" className="no-underline">
+            <Badge variant="destructive">
+              {getConnectionStatusLabel(account)}
+            </Badge>
+          </Link>
+        ) : (
+          <Badge variant="secondary">{getConnectionStatusLabel(account)}</Badge>
+        )}
+      </div>
+
+      {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+      <div className="relative size-4 shrink-0">
         {/* Swap count <-> tombol "+": fixed slot, opacity/visibility toggle
-            (bukan display none<->flex) — ini TIDAK berubah dari ADR-058 asli
+            (bukan display none<->flex) — TIDAK berubah dari ADR-058 asli
             (no-shift), berbeda dari drag-handle di atas yang sengaja
             shift-on-hover. */}
-        <HStack
-          hAlign="center"
-          align="center"
+        {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+        <div
           className={cn(
+            "absolute inset-0 flex items-center justify-center",
             // eslint-disable-next-line tailwindcss/no-arbitrary-value -- transition-property arbitrary value, tidak ada utility Tailwind native untuk multi-property ini.
-            "absolute inset-0 transition-[opacity,visibility]",
+            "transition-[opacity,visibility]",
             TRANSITION_FAST,
             isRevealed
               ? "pointer-events-none invisible opacity-0"
               : "visible opacity-100",
           )}
         >
-          <Text type="supporting" size="2xs" hasTabularNumbers>
+          <Text variant="muted" className="text-xs tabular-nums">
             {account.scheduledCount}
           </Text>
-        </HStack>
-        <HStack
-          hAlign="center"
-          align="center"
+        </div>
+        {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+        <div
           className={cn(
+            "absolute inset-0 flex items-center justify-center",
             // eslint-disable-next-line tailwindcss/no-arbitrary-value -- transition-property arbitrary value, tidak ada utility Tailwind native untuk multi-property ini.
-            "absolute inset-0 transition-[opacity,visibility]",
+            "transition-[opacity,visibility]",
             TRANSITION_FAST,
             isRevealed
               ? "visible opacity-100"
               : "pointer-events-none invisible opacity-0",
           )}
         >
-          <IconButton
-            label={`Buat post baru untuk ${account.handle}`}
-            tooltip="New post"
-            variant="ghost"
-            size="sm"
-            // ADR-058 addendum poin 9: slot count/tombol 16x16px, lebih kecil
-            // dari size token IconButton terkecil Astryx (--size-element-sm,
-            // 28px) — override eksplisit ukuran karena tidak ada varian
-            // lebih kecil di komponen (dicek via
-            // `astryx component IconButton --dense`).
-            className="size-4 min-h-4 min-w-4 p-0"
-            icon={<FaPlus size={10} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              openNewPost(account.id);
-            }}
-          />
-        </HStack>
-      </HStack>
-    </HStack>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Buat post baru untuk ${account.handle}`}
+                className="size-4 min-h-4 min-w-4 p-0 [&_svg]:size-2.5"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openNewPost(account.id);
+                }}
+              >
+                <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>New post</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -309,8 +300,16 @@ export function ChannelsSection({
   }
 
   return (
-    <SideNavSection title="Channels">
-      <VStack gap={2} isScrollable className={LIST_CLASSNAME}>
+    // eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas
+    <div className="flex flex-col gap-0.5">
+      <Text
+        variant="muted"
+        className="px-2 pb-1 text-xs font-medium tracking-wide uppercase"
+      >
+        Channels
+      </Text>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-098.1, sama seperti di atas */}
+      <div className={cn("flex flex-col gap-2", LIST_CLASSNAME)}>
         {orderedChannels.map((account) => (
           <ChannelRow
             key={account.id}
@@ -322,7 +321,7 @@ export function ChannelsSection({
             onDragEnd={handleDragEnd}
           />
         ))}
-      </VStack>
-    </SideNavSection>
+      </div>
+    </div>
   );
 }
