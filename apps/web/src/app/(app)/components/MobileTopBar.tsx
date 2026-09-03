@@ -70,7 +70,10 @@ export function MobileTopBar({
       </span>
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="left" className="w-3/4 gap-0 p-0 sm:max-w-xs">
+        <SheetContent
+          side="left"
+          className="gap-0 p-0 data-[side=left]:sm:max-w-xs"
+        >
           {/* SheetTitle wajib untuk aksesibilitas Radix Dialog — disembunyikan
               visual (sr-only) karena AppSideNav sudah menampilkan judulnya
               sendiri (workspace switcher / label "Settings") di dalam. */}
