@@ -703,12 +703,12 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
 
 ### T-101 · Migrasi Publish — Calendar, Queue, Drafts, Dashboard
 
-`⏳ Not Started` · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
+`🟡 In Progress` · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
 **Baca dulu:** `04-ux/key-screen-patterns.md` § Calendar/Queue · ADR-090/091 (Popover)
 
 ~10 file, boleh dipecah lebih lanjut jadi sub-sesi kalau perlu.
 
-- [ ] **T-101.1** Calendar: `CalendarMonthGrid.tsx`,
+- [x] **T-101.1** Calendar: `CalendarMonthGrid.tsx`,
       `CalendarWeekGrid.tsx`, `CalendarToolbar.tsx`,
       `CalendarPostPopover.tsx` (→ shadcn `Popover`, pertahankan pola
       ADR-090/091), `CalendarEntryFooter.tsx`, `CalendarScreen.tsx` —
@@ -722,6 +722,44 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
 - [ ] **T-101.5** Dashboard: `DashboardHome.tsx` — catat juga **KI-036**
       (dashboard fetch via Server Action, menyimpang RS-D02) tetap
       technical debt terpisah, tidak termasuk scope migrasi UI ini
+
+- Catatan T-101.1 (2026-09-03, branch
+  `feature/t-101-publish-calendar-queue-drafts-migration`, file di
+  `apps/web/src/app/(app)/publish/calendar/components/`):
+  * File diubah: `CalendarScreen.tsx`, `CalendarToolbar.tsx`,
+    `CalendarPostPopover.tsx`, `CalendarEntryFooter.tsx`,
+    `CalendarMonthGrid.tsx`, `CalendarWeekGrid.tsx`. Baru:
+    `apps/web/src/components/ui/popover.tsx` (generated via shadcn CLI).
+  * 4 dari 6 file (`CalendarMonthGrid`, `CalendarWeekGrid`,
+    `CalendarToolbar`, `CalendarScreen`) full shadcn.
+    `CalendarPostPopover.tsx` dimigrasi ke shadcn `Popover` (controlled
+    `open`/`onOpenChange`), pola ADR-090/091 dipertahankan penuh (klik →
+    Popover ringkasan → CTA "Buka Draft Editor"; hover tidak membuka
+    popover, dikonfirmasi browser).
+  * `CalendarPostPopover.tsx` dan `CalendarEntryFooter.tsx` sengaja
+    mempertahankan Astryx `Badge`/`StatusDot`/`Icon` untuk indikator status
+    warna — Stone theme shadcn belum punya token semantik
+    `success`/`warning`/`info`/`purple` untuk 6 varian `ContentStatus`
+    (hanya `accent`/`destructive`). Pola sama dengan `Modal.tsx` (T-100.1) —
+    gap desain-token, bukan penyimpangan baru.
+  * **Re-evaluasi KI-035:** poin 1 (StyleX/`xstyle`) dikonfirmasi tidak
+    relevan lagi — grid Calendar sekarang 100% Tailwind (`grid-cols-7`),
+    ditutup. Poin 3 (layout mobile sempit ~375px) tetap Open — diverifikasi
+    browser mobile 375px: toolbar filter stack vertikal, footer card pakai
+    `StatusDot`+`Icon` compact (bukan `Badge` penuh), sudah berfungsi baik,
+    tapi perubahan mendasar ke pola agenda/list butuh rancangan baru di
+    Claude Design (di luar scope T-101.1).
+  * Verifikasi: `bun run typecheck` PASS 0 error; `bun run lint`/`bunx
+    eslint` 7 file PASS 0 error/warning; verifikasi visual browser (Mark UI
+    Engineer, akun Maya Anggraini/Admin, workspace Insvire) PASS semua —
+    month view, week view, toolbar (Today/‹/›, filter status+akun, toggle
+    Week/Month), Popover klik-post (light-dismiss OK), light mode, dark
+    mode, mobile 375px, tidak ada regresi visual; review arsitektur Ridwan
+    0 temuan (entry point tidak tersentuh, tidak ada import Prisma/
+    Supabase/HTTP Outstand, cross-domain lewat public API index, props/
+    variant shadcn diverifikasi valid ke `cva()` source).
+  * T-101 tetap `🟡 In Progress` — T-101.2 (Queue), T-101.3 (Drafts),
+    T-101.4 (header/tabbar/layout), T-101.5 (Dashboard) belum dikerjakan.
 
 ---
 

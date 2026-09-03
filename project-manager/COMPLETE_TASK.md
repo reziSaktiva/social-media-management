@@ -8,6 +8,71 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-03 — T-101.1 selesai: Migrasi Publish — Calendar ke shadcn/ui (T-101 v0.7 dibuka, 1/5 subtask)
+
+**T-101.1** (Calendar, bagian dari **T-101** Migrasi Publish — Calendar,
+Queue, Drafts, Dashboard, rilis v0.7 migrasi Astryx→shadcn/ui, ADR-097)
+selesai di branch `feature/t-101-publish-calendar-queue-drafts-migration`.
+T-101 berubah `⏳ Not Started` → `🟡 In Progress` (baru 1 dari 5 subtask
+tuntas).
+
+**File yang diubah** (semua di
+`apps/web/src/app/(app)/publish/calendar/components/`):
+`CalendarScreen.tsx`, `CalendarToolbar.tsx`, `CalendarPostPopover.tsx`,
+`CalendarEntryFooter.tsx`, `CalendarMonthGrid.tsx`,
+`CalendarWeekGrid.tsx`. Baru: `apps/web/src/components/ui/popover.tsx`
+(generated via shadcn CLI).
+
+**Ringkasan migrasi:**
+
+- 4 dari 6 file (`CalendarMonthGrid`, `CalendarWeekGrid`,
+  `CalendarToolbar`, `CalendarScreen`) full shadcn.
+- `CalendarPostPopover.tsx` dimigrasi ke shadcn `Popover` (controlled
+  `open`/`onOpenChange`), pola ADR-090/091 dipertahankan penuh (klik post
+  → Popover ringkasan → CTA "Buka Draft Editor"; dikonfirmasi browser,
+  hover tidak membuka popover).
+- `CalendarPostPopover.tsx` dan `CalendarEntryFooter.tsx` sengaja
+  mempertahankan Astryx `Badge`/`StatusDot`/`Icon` untuk indikator status
+  warna — Stone theme shadcn belum punya token semantik
+  `success`/`warning`/`info`/`purple` untuk 6 varian `ContentStatus`
+  (hanya `accent`/`destructive`). Gap desain-token yang sama seperti
+  `Modal.tsx` (T-100.1), bukan penyimpangan baru.
+
+**Re-evaluasi KI-035** (gap infrastruktur ditemukan saat T-033):
+
+- Poin 1 (StyleX/`xstyle` tidak ter-setup) — **ditutup Resolved**, grid
+  Calendar sekarang 100% Tailwind (`grid-cols-7`), tidak ada dependency
+  `xstyle` sama sekali.
+- Poin 3 (layout mobile sempit ~375px) — **tetap Open**. Diverifikasi
+  browser mobile 375px: toolbar filter stack vertikal, footer card pakai
+  `StatusDot`+`Icon` compact — sudah berfungsi baik, tapi perubahan
+  mendasar ke pola agenda/list butuh rancangan baru di Claude Design
+  (di luar scope T-101.1).
+- Poin 2 (`Badge` Astryx tanpa prop `size`/truncation) tidak dievaluasi
+  ulang, tetap Open, di luar scope T-101.1.
+- Status KI-035 diubah jadi "Sebagian Resolved — sisa scope: poin 3".
+
+**Verifikasi:**
+
+- `bun run typecheck` PASS, 0 error.
+- `bun run lint`/`bunx eslint` 7 file PASS, 0 error/warning.
+- Verifikasi visual browser (Mark UI Engineer, akun Maya Anggraini/Admin,
+  workspace Insvire) PASS semua: month view, week view, toolbar (navigasi
+  Today/‹/›, filter status+akun, toggle Week/Month), Popover klik-post
+  (light-dismiss OK), light mode, dark mode, mobile 375px — tidak ada
+  regresi visual.
+- Review arsitektur Ridwan: 0 temuan — entry point tidak tersentuh, tidak
+  ada import Prisma/Supabase/HTTP Outstand di komponen ini, cross-domain
+  tetap lewat public API index, tidak ada refactor business logic/state
+  management diam-diam, props/variant shadcn yang dipakai sudah
+  diverifikasi valid ke `cva()` source.
+
+Belum di-commit. Detail lengkap:
+`tasks/v07-astryx-shadcn-migration.md` § T-101, `TASKS.md`,
+`PROJECT_STATE.md` § KI-035.
+
+---
+
 ## 2026-09-03 — T-100 ditutup ✅ Done sepenuhnya: Migrasi Publish — Draft Editor Modal (4/4 subtask tuntas)
 
 **T-100** (Migrasi Publish — Draft Editor Modal, rilis v0.7, migrasi

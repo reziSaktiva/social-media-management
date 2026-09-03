@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-100 Migrasi Publish — Draft Editor Modal — ✅ Done (2026-09-03, ADR-097)**, seluruh 4/4 subtask tuntas (T-100.1 struktur modal + layout, T-100.2 form controls shadcn, T-100.3 `TimeInput` → native `<input type="time">` (**KI-030 Closed**), T-100.4 verifikasi behavior penuh end-to-end), lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh; temuan minor **KI-043**, **KI-044**) — lihat `TASKS.md`/`tasks/v07-astryx-shadcn-migration.md` § T-100 untuk detail. **T-101 Migrasi Publish — Calendar, Queue, Drafts, Dashboard** menyusul sebagai task berikutnya rilis v0.7, lalu **T-102**. T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** **T-101 Migrasi Publish — Calendar, Queue, Drafts, Dashboard — 🟡 In Progress (ADR-097)**, T-101.1 (Calendar) selesai (2026-09-03), lolos verifikasi visual Mark UI Engineer + review Ridwan (0 temuan); re-evaluasi **KI-035** poin 1 Resolved, poin 3 tetap Open — lihat `TASKS.md`/`tasks/v07-astryx-shadcn-migration.md` § T-101 untuk detail. Subtask berikutnya: T-101.2 (Queue), T-101.3 (Drafts), T-101.4 (header/tabbar/layout), T-101.5 (Dashboard), lalu **T-102**. T-100 Migrasi Publish — Draft Editor Modal sudah ✅ Done (2026-09-03). T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 85 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -378,9 +378,9 @@ Settings → General → Danger Zone kalau perlu. Tidak memblokir M8.
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | Sebagian Resolved — sisa scope: poin 3 (layout mobile sempit ~375px) |
 | Kategori | Tech-Debt / Infra |
-| Terkait | T-033 (`tasks/v02-publishing-mvp.md` § T-033) |
+| Terkait | T-033 (`tasks/v02-publishing-mvp.md` § T-033), T-101.1 (`tasks/v07-astryx-shadcn-migration.md` § T-101) |
 
 Ditemukan 2026-08-27 saat polishing grid Calendar (Month/Week, di atas
 T-033.1–.6/.8, sebelum T-033.7). Tiga temuan, dicatat sebagai referensi ke
@@ -403,6 +403,20 @@ layak ADR:
    (grid 7-kolom fixed di-shrink). Perbaikan lanjutan (mis. tampilan
    agenda/list khusus mobile) butuh rancangan baru di Claude Design dulu
    (rule 17 `AGENTS.md`), bukan sekadar tweak CSS.
+
+**Update 2026-09-03 (T-101.1, migrasi Calendar ke shadcn/ui):**
+
+- **Poin 1 (StyleX/`xstyle`) — Resolved.** Tidak relevan lagi: grid
+  Calendar sekarang 100% Tailwind (`grid-cols-7`), tidak ada dependency
+  ke `xstyle` Astryx sama sekali.
+- **Poin 3 (layout mobile sempit ~375px) — tetap Open.** Diverifikasi
+  browser mobile 375px: toolbar filter sudah stack vertikal, footer card
+  sudah pakai `StatusDot`+`Icon` compact (bukan `Badge` penuh) — sudah
+  berfungsi baik, tapi belum ada perubahan mendasar ke pola agenda/list
+  karena itu butuh rancangan baru di Claude Design (di luar scope
+  T-101.1).
+- Poin 2 (`Badge` Astryx tanpa prop `size`/truncation) tidak dievaluasi
+  ulang di sesi ini — masih Open, di luar scope T-101.1.
 
 ### KI-036 · Dashboard (`app/(app)/page.tsx`) fetch data lewat Server Action, menyimpang RS-D02
 
