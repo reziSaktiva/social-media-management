@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -101,6 +102,29 @@ function getDefaultFormat(platform: SocialPlatform): ContentFormat {
     : ContentFormat.Post;
 }
 
+/**
+ * Padanan Astryx CheckboxInput/RadioListItem (T-100.2) — shadcn tidak punya
+ * primitive gabungan control+label, jadi dipusatkan di sini sekali daripada
+ * diulang per pemakaian (Checkbox akun & RadioGroupItem Content Format).
+ */
+function LabeledControl({
+  htmlFor,
+  control,
+  children,
+}: {
+  htmlFor: string;
+  control: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    // eslint-disable-next-line no-restricted-syntax -- T-100.2: padanan Astryx CheckboxInput/RadioListItem, murni komposisi Tailwind Checkbox|RadioGroupItem + Label shadcn, tidak punya primitive gabungan.
+    <div className="flex items-center gap-2">
+      {control}
+      <Label htmlFor={htmlFor}>{children}</Label>
+    </div>
+  );
+}
+
 function ResumeDialog({
   isOpen,
   unsaved,
@@ -121,6 +145,7 @@ function ResumeDialog({
   return (
     <Dialog open={isOpen} onOpenChange={() => undefined}>
       <DialogContent
+        role="alertdialog"
         showCloseButton={false}
         onEscapeKeyDown={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
@@ -512,6 +537,15 @@ function DraftEditorForm({
                 ? "Edit Draft"
                 : "New Post"}
         </DialogTitle>
+        <DialogDescription className="sr-only">
+          {pendingAction === "schedule"
+            ? "Tinjau jadwal sebelum konfirmasi."
+            : pendingAction === "publish-now"
+              ? "Tinjau detail sebelum konfirmasi publish."
+              : isEdit
+                ? "Edit caption, akun, dan jadwal draft ini."
+                : "Tulis caption, pilih akun, dan atur jadwal post baru."}
+        </DialogDescription>
         {/* eslint-disable-next-line no-restricted-syntax -- T-100.1: baris aksi header (status chip + toggle Fullscreen/Standard ADR-065 + tombol close) tidak punya padanan primitive shadcn, murni Tailwind. */}
         <div className="flex items-center gap-2">
           {pendingAction ? null : (
@@ -634,20 +668,21 @@ function DraftEditorForm({
                         return (
                           <VStack key={account.id} gap={2}>
                             <HStack justify="between" align="center">
-                              {/* eslint-disable-next-line no-restricted-syntax -- T-100.2: baris checkbox akun (padanan Astryx CheckboxInput) murni komposisi Tailwind Checkbox + Label shadcn, tidak punya primitive gabungan. */}
-                              <div className="flex items-center gap-2">
-                                <Checkbox
-                                  id={checkboxId}
-                                  checked={isChecked}
-                                  onCheckedChange={(checked) =>
-                                    toggleAccount(account, checked === true)
-                                  }
-                                />
-                                <Label htmlFor={checkboxId}>
-                                  {PLATFORM_LABEL[account.platform]}{" "}
-                                  {account.handle}
-                                </Label>
-                              </div>
+                              <LabeledControl
+                                htmlFor={checkboxId}
+                                control={
+                                  <Checkbox
+                                    id={checkboxId}
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) =>
+                                      toggleAccount(account, checked === true)
+                                    }
+                                  />
+                                }
+                              >
+                                {PLATFORM_LABEL[account.platform]}{" "}
+                                {account.handle}
+                              </LabeledControl>
                               {isDisconnected ? (
                                 <Badge label="Disconnected" variant="warning" />
                               ) : null}
@@ -681,19 +716,18 @@ function DraftEditorForm({
                                 {formats.map((format) => {
                                   const radioId = `${checkboxId}-format-${format}`;
                                   return (
-                                    // eslint-disable-next-line no-restricted-syntax -- T-100.2: baris RadioGroupItem+Label (padanan Astryx RadioListItem) murni komposisi Tailwind.
-                                    <div
+                                    <LabeledControl
                                       key={format}
-                                      className="flex items-center gap-2"
+                                      htmlFor={radioId}
+                                      control={
+                                        <RadioGroupItem
+                                          value={format}
+                                          id={radioId}
+                                        />
+                                      }
                                     >
-                                      <RadioGroupItem
-                                        value={format}
-                                        id={radioId}
-                                      />
-                                      <Label htmlFor={radioId}>
-                                        {FORMAT_LABEL[format]}
-                                      </Label>
-                                    </div>
+                                      {FORMAT_LABEL[format]}
+                                    </LabeledControl>
                                   );
                                 })}
                               </RadioGroup>
@@ -703,11 +737,11 @@ function DraftEditorForm({
                             account.platform === SocialPlatform.Pinterest ? (
                               <VStack gap={2}>
                                 <Text type="supporting">Format: Pin</Text>
-                                <Label
-                                  htmlFor={`${checkboxId}-pin-title`}
-                                  className="sr-only"
-                                >
-                                  Pin Title
+                                <Label htmlFor={`${checkboxId}-pin-title`}>
+                                  Pin Title{" "}
+                                  <span className="text-muted-foreground">
+                                    (opsional)
+                                  </span>
                                 </Label>
                                 <Input
                                   id={`${checkboxId}-pin-title`}
@@ -715,13 +749,12 @@ function DraftEditorForm({
                                   onChange={(event) =>
                                     setPinTitle(event.target.value)
                                   }
-                                  placeholder="Pin Title (opsional)"
                                 />
-                                <Label
-                                  htmlFor={`${checkboxId}-pin-link`}
-                                  className="sr-only"
-                                >
-                                  Destination Link
+                                <Label htmlFor={`${checkboxId}-pin-link`}>
+                                  Destination Link{" "}
+                                  <span className="text-muted-foreground">
+                                    (opsional)
+                                  </span>
                                 </Label>
                                 <Input
                                   id={`${checkboxId}-pin-link`}
@@ -729,7 +762,6 @@ function DraftEditorForm({
                                   onChange={(event) =>
                                     setPinLink(event.target.value)
                                   }
-                                  placeholder="Destination Link (opsional)"
                                 />
                               </VStack>
                             ) : null}
@@ -952,21 +984,16 @@ export function DraftEditorModal() {
       >
         <DialogContent
           showCloseButton={false}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
           className={cn(
             "flex flex-col gap-0 overflow-hidden p-0",
             effectiveDialogVariant === "fullscreen" &&
-              "translate-none rounded-none",
+              "top-0 left-0 h-dvh max-h-none w-screen max-w-none translate-none rounded-none",
           )}
           style={
             effectiveDialogVariant === "fullscreen"
-              ? {
-                  top: 0,
-                  left: 0,
-                  width: "100vw",
-                  height: "100dvh",
-                  maxWidth: "none",
-                  maxHeight: "none",
-                }
+              ? undefined
               : {
                   width: "min(960px, 94vw)",
                   maxWidth: "min(960px, 94vw)",
