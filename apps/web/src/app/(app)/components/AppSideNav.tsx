@@ -23,6 +23,10 @@ export function AppSideNav({
   initialNotifications,
   initialUnreadCount,
   userId,
+  // T-098.4 (KI-042) — diteruskan ke WorkspaceSideNav/SettingsSideNav, lihat
+  // komentar di masing-masing file. Undefined saat dirender di sidebar
+  // desktop (bukan di dalam Sheet mobile).
+  onNavigate,
 }: {
   workspaceName: string;
   userName: string;
@@ -31,12 +35,13 @@ export function AppSideNav({
   initialNotifications: NotificationRecord[];
   initialUnreadCount: number;
   userId: string;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const isSettings = pathname.startsWith("/settings");
 
   if (isSettings) {
-    return <SettingsSideNav />;
+    return <SettingsSideNav onNavigate={onNavigate} />;
   }
 
   return (
@@ -48,6 +53,7 @@ export function AppSideNav({
       initialNotifications={initialNotifications}
       initialUnreadCount={initialUnreadCount}
       userId={userId}
+      onNavigate={onNavigate}
     />
   );
 }

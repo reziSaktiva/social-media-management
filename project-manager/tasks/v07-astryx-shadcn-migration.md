@@ -297,7 +297,7 @@ dengan T-098/T-099/T-100/T-101 begitu T-096 selesai.
 
 ### T-098 · Migrasi App Shell & Navigasi
 
-`✅ Done` (2026-09-02) · **Domain** UI · **ADR** ADR-097 · **Depends** T-096, T-036 (fungsional stabil)
+`✅ Done` (2026-09-02, T-098.4 tuntas — 4/4 subtask) · **Domain** UI · **ADR** ADR-097 · **Depends** T-096, T-036 (fungsional stabil)
 **Baca dulu:** `04-ux/information-architecture.md`
 
 Termasuk penghapusan wrapper selektif `Drawer.tsx` — salah satu hasil
@@ -342,6 +342,102 @@ lahir dari keterbatasan Astryx.
     T-098.1–.3. Dicatat **KI-042** di `PROJECT_STATE.md`, menunggu
     keputusan King Rezi (subtask baru T-098.4? task terpisah? tetap
     ditunda?). Dikerjakan di branch `feature/t-098-app-shell-navigation`.
+  * **Keputusan King Rezi:** jadi subtask baru **T-098.4**, tapi ditunda
+    dulu (belum dikerjakan). Blocker rancangan Claude Design yang dicatat
+    **KI-042** sudah **resolved (2026-09-02)** — rancangan mobile shell
+    (sidebar hamburger+drawer, top bar) dan pola tabel mobile card sudah
+    dibuat di Claude Design (project "Social Media Management"):
+    `styles.css` (pattern Mobile Shell + Table mobile card, breakpoint
+    768px), `foundations/layout.html` (section baru "Shell — Mobile
+    (≤768px, KI-042)"), `components/navigation-mobile.html` (file baru,
+    3 demo state), `components/table.html` (section baru mobile card).
+    Detail lengkap di **KI-042** § `PROJECT_STATE.md`. **T-098.4 sendiri
+    (implementasi kode) tetap ditunda** — rancangan tersedia tapi belum
+    ada kode, menunggu keputusan King Rezi kapan lanjut.
+
+- [x] **T-098.4** Implementasi sidebar mobile (hamburger + drawer) + pola
+      tabel mobile card, menutup **KI-042**. Rancangan Claude Design
+      sudah dibuat sesi sebelumnya (lihat catatan di atas). **Terkait
+      KI-042.**
+- Catatan implementasi (2026-09-02, dikerjakan sesi utama — bukan lewat
+  Mark UI Engineer, karena `DesignSync` juga gagal dimuat di sesi subagent
+  Mark, konfirmasi ketiga kalinya pola keterbatasan yang sama seperti
+  Neymar sebelumnya):
+  * **Scope 1 — Sidebar mobile (hamburger + Sheet):**
+    `apps/web/src/app/(app)/layout.tsx` — `<aside>` desktop diubah jadi
+    `hidden md:flex` (sebelumnya selalu `flex`, gap ini eksplisit dicatat
+    di komentar T-096.3 lama; komentar itu sekarang diupdate menyatakan
+    gap sudah ditutup). Ditambah `<MobileTopBar>` di atas baris
+    sidebar+main. File baru
+    `apps/web/src/app/(app)/components/MobileTopBar.tsx` — top bar
+    (`md:hidden`, tinggi 52px/`h-13`) dengan tombol hamburger
+    (`Menu01Icon`) yang membuka shadcn `Sheet` (`side="left"`, lebar 3/4
+    layar) berisi `AppSideNav` yang **sama persis** dengan sidebar
+    desktop (tidak diduplikasi) — title top bar dinamis: nama workspace
+    di luar `/settings`, "Settings" di dalamnya.
+    `apps/web/src/app/(app)/components/AppSideNav.tsx`,
+    `WorkspaceSideNav.tsx`,
+    `apps/web/src/app/(app)/settings/components/SettingsSideNav.tsx` —
+    ditambah prop opsional `onNavigate?: () => void` (dipanggil di setiap
+    Link/tombol nav utama) supaya Sheet otomatis tertutup setelah user
+    memilih menu di mobile; prop ini `undefined` di sidebar desktop jadi
+    tidak ada perubahan behavior di sana. Breakpoint `md` (768px
+    Tailwind), sama dengan keputusan breakpoint di rancangan Claude
+    Design.
+  * **Scope 2 — Members table responsive:**
+    `apps/web/src/app/(app)/settings/members/components/MembersTable.tsx`
+    — tabel desktop shadcn `Table` dibungkus `hidden md:block` (isi tidak
+    diubah), ditambah blok baru `flex flex-col gap-3 md:hidden` berisi
+    card per anggota (avatar+nama+email, badge Status, baris Role, lalu
+    `MemberActions` dengan prop baru `fullWidth` yang membuat tombol
+    Change Role/Remove full-width sebagai baris terpisah dengan
+    border-top, alih-alih rata-kanan di sel tabel).
+  * **Verifikasi:** `bun run typecheck` bersih (0 error). `bun run lint`
+    bersih (0 error) — sempat 1 error `no-restricted-syntax` di
+    `MobileTopBar.tsx` (raw `<div>`), diberi `eslint-disable-next-line`
+    dengan alasan file baru dikomposisi Tailwind shadcn sejak awal, bukan
+    migrasi Astryx. **Verifikasi visual browser TIDAK berhasil dilakukan**
+    — tool Browser pane gagal total (navigate timeout 300s berulang, baik
+    ke `localhost` dev server maupun file lokal), tampak masalah
+    infrastruktur/tooling sesi ini, bukan masalah kode (dev server
+    Next.js start normal, "Ready in 319ms", tidak ada error compile di
+    log; dev server masih berjalan di background sesi ini).
+  * **Status realistis (saat itu):** kode sudah ditulis, belum direview
+    Ridwan dan belum di-QA Najwa, verifikasi visual manual juga belum
+    berhasil dilakukan siapa pun.
+  * **Review Ridwan (Architecture Reviewer), 2026-09-02 — 0 temuan:**
+    entry point bersih, tidak ada import Prisma/Supabase di komponen
+    client (`MobileTopBar.tsx`, `AppSideNav.tsx`, `WorkspaceSideNav.tsx`,
+    `SettingsSideNav.tsx`, `MembersTable.tsx`), cross-domain lewat public
+    API domain (tidak ada import implementasi lintas folder baru), prop
+    `onNavigate?: () => void` opsional dikonfirmasi tidak breaking
+    (default `undefined` di sidebar desktop, behavior lama tidak
+    berubah), prop `fullWidth` baru di `MemberActions` konsisten dipakai
+    di kedua varian (desktop table row vs mobile card).
+  * **QA Najwa, 2026-09-02 — PASS penuh:**
+    - Automated: `bun run typecheck` PASS (0 error), `bun run lint` PASS
+      (0 error), `bun run test` PASS (235 lulus, 4 skipped — baseline
+      sama, tidak ada regresi).
+    - Desktop (≥768px): tidak ada regresi — sidebar & `MembersTable.tsx`
+      identik dengan sebelum T-098.4.
+    - Mobile (375px, 320px): `MobileTopBar` + hamburger + `Sheet`
+      berfungsi benar untuk `WorkspaceSideNav` maupun `SettingsSideNav`
+      (termasuk auto-close `Sheet` via `onNavigate` saat memilih menu),
+      `MembersTable.tsx` berganti ke card layout dengan tombol
+      Change Role/Remove full-width berfungsi normal, dialog konfirmasi
+      Tier-2 (ADR-049) tetap muncul benar dari card mobile.
+    - Edge case: tidak ada horizontal overflow di layar sempit
+      (320–375px), dark mode smoke test oke.
+    - 2 temuan DI LUAR SCOPE T-098.4 (dicatat, bukan blocker penutupan
+      ini): (a) tabel Members di lebar persis 768px butuh scroll
+      horizontal internal — perilaku tabel yang **sudah ada sebelum**
+      T-098.4, bukan regresi baru; (b) card "Analytics Snapshot" di
+      halaman Home tetap berlatar putih saat dark mode aktif — bug dark
+      mode pre-existing, tidak terkait perubahan T-098.4.
+  * **T-098.4 selesai (2026-09-02)** — lolos review Ridwan (0 temuan) dan
+    QA Najwa (PASS penuh). T-098 ditutup `✅ Done` (4/4 subtask tuntas).
+    **KI-042 Closed (2026-09-02)** — lihat `PROJECT_STATE.md` § KI-042
+    untuk catatan penutup.
 
 ---
 

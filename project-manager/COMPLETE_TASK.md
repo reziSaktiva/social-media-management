@@ -8,6 +8,217 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-02 — T-098.4 selesai: review Ridwan + QA Najwa PASS, T-098 ditutup Done, KI-042 Closed
+
+Lanjutan entri di bawah ("T-098.4: Implementasi kode..."). Kode T-098.4
+(sidebar mobile hamburger+`Sheet` via `MobileTopBar.tsx` baru,
+`MembersTable.tsx` card layout mobile) yang sesi sebelumnya sudah ditulis
+tapi belum direview/di-QA, sekarang tuntas seluruh tahapannya.
+
+**Review Ridwan (Architecture Reviewer) — 0 temuan:**
+
+- Entry point bersih — tidak ada business logic bocor ke komponen.
+- Tidak ada import Prisma/Supabase client di komponen client yang diubah
+  (`MobileTopBar.tsx`, `AppSideNav.tsx`, `WorkspaceSideNav.tsx`,
+  `SettingsSideNav.tsx`, `MembersTable.tsx`).
+- Cross-domain tetap lewat public API module domain — tidak ada import
+  implementasi lintas folder baru.
+- Prop `onNavigate?: () => void` opsional dikonfirmasi tidak breaking —
+  default `undefined` di sidebar desktop, behavior lama tidak berubah.
+- Prop `fullWidth` baru di `MemberActions` konsisten dipakai di kedua
+  varian (desktop table row vs mobile card).
+
+**QA Najwa — PASS penuh:**
+
+- Automated: `bun run typecheck` PASS (0 error), `bun run lint` PASS
+  (0 error), `bun run test` PASS (235 lulus, 4 skipped — baseline sama,
+  tidak ada regresi).
+- Desktop (≥768px): tidak ada regresi — sidebar & `MembersTable.tsx`
+  identik dengan sebelum T-098.4.
+- Mobile (375px, 320px): `MobileTopBar` + hamburger + `Sheet` berfungsi
+  benar untuk `WorkspaceSideNav` maupun `SettingsSideNav` (termasuk
+  auto-close `Sheet` via `onNavigate` saat memilih menu),
+  `MembersTable.tsx` berganti ke card layout dengan tombol Change
+  Role/Remove full-width berfungsi normal, dialog konfirmasi Tier-2
+  (ADR-049) tetap muncul benar dari card mobile.
+- Edge case: tidak ada horizontal overflow di layar sempit (320–375px),
+  dark mode smoke test oke.
+- 2 temuan DI LUAR SCOPE T-098.4 (dicatat, bukan blocker penutupan):
+  (a) tabel Members di lebar persis 768px butuh scroll horizontal
+  internal — perilaku tabel yang **sudah ada sebelum** T-098.4, bukan
+  regresi baru dari perubahan mobile; (b) card "Analytics Snapshot" di
+  halaman Home tetap berlatar putih saat dark mode aktif — bug dark mode
+  pre-existing, tidak terkait T-098.4.
+
+**Insiden kecil saat QA (diklarifikasi & disetujui King Rezi, bukan
+pelanggaran governance):** Najwa sempat mematikan proses dev server
+project lain (`/Users/rezisaktiva/Documents/dev/rezisaktiva`) yang memakai
+port 3000 supaya bisa testing di port yang sama (Better Auth menolak
+origin selain yang di-trust). King Rezi eksplisit menyetujui ("boleh kill
+aja") setelah ditanya — housekeeping environment lokal, tidak relevan
+untuk project state, tidak dicatat sebagai KI/ADR.
+
+**Penutupan:**
+
+- `tasks/v07-astryx-shadcn-migration.md` § T-098 — checkbox T-098.4
+  dicentang `[x]`, catatan review+QA ditambahkan, Status T-098 `🟡 In
+  Progress` → `✅ Done` (4/4 subtask tuntas).
+- `TASKS.md` — indeks v0.7 dihitung ulang dari file release: 5 ✅ · 0 🟡 ·
+  3 ⏳ (checkbox subtask 23 `[x]` + 14 `[ ]` = 37, tidak berubah dari
+  sebelumnya — hanya status checklist yang berubah). Total task selesai
+  naik 29 → **30**, subtask total tetap 210. Baris "Fokus sekarang" untuk
+  T-098 diubah ke ✅.
+- `PROJECT_STATE.md` — **KI-042 Status: Open → Closed (2026-09-02)** dengan
+  catatan penutup review Ridwan + QA Najwa; "Top Next Tasks" di Snapshot
+  diperbarui (T-098 penuh Done); bullet T-098 di "Completed (Ringkasan)"
+  diupdate merefleksikan T-098.4 tuntas (tetap 5 item, tidak menambah
+  bullet baru — hanya mengedit bullet T-098 yang sudah ada).
+
+File yang diubah sesi ini (dokumentasi saja, kode sudah ditulis sesi
+sebelumnya): `apps/web/src/app/(app)/layout.tsx`,
+`apps/web/src/app/(app)/components/MobileTopBar.tsx`,
+`apps/web/src/app/(app)/components/AppSideNav.tsx`,
+`apps/web/src/app/(app)/components/WorkspaceSideNav.tsx`,
+`apps/web/src/app/(app)/settings/components/SettingsSideNav.tsx`,
+`apps/web/src/app/(app)/settings/members/components/MembersTable.tsx`
+(implementasi, tidak diubah lagi sesi ini) — `project-manager/tasks/v07-astryx-shadcn-migration.md`,
+`project-manager/TASKS.md`, `project-manager/PROJECT_STATE.md` (dokumentasi,
+diubah sesi ini).
+
+---
+
+## 2026-09-02 — T-098.4: Implementasi kode sidebar mobile + tabel mobile card (KI-042), menunggu review + QA
+
+King Rezi minta lanjut ke implementasi kode setelah rancangan Claude Design
+untuk **T-098.4** dibuat di sesi sebelumnya. Dikerjakan di **sesi utama**
+(bukan lewat Mark UI Engineer — `DesignSync` juga gagal dimuat di sesi
+subagent Mark, konfirmasi ketiga kalinya pola keterbatasan yang sama
+seperti Neymar Product Designer sebelumnya).
+
+**Scope 1 — Sidebar mobile (hamburger + Sheet):**
+
+- `apps/web/src/app/(app)/layout.tsx` — `<aside>` desktop diubah dari
+  selalu `flex` jadi `hidden md:flex` (gap ini eksplisit dicatat di
+  komentar T-096.3 lama; komentar itu diupdate menyatakan gap sudah
+  ditutup). Ditambah `<MobileTopBar>` di atas baris sidebar+main.
+- File baru `apps/web/src/app/(app)/components/MobileTopBar.tsx` — top bar
+  (`md:hidden`, tinggi 52px/`h-13`) dengan tombol hamburger (`Menu01Icon`)
+  yang membuka shadcn `Sheet` (`side="left"`, lebar 3/4 layar) berisi
+  `AppSideNav` yang sama persis dengan sidebar desktop (tidak
+  diduplikasi). Title top bar dinamis: nama workspace di luar
+  `/settings`, "Settings" di dalamnya.
+- `apps/web/src/app/(app)/components/AppSideNav.tsx`,
+  `WorkspaceSideNav.tsx`, dan
+  `apps/web/src/app/(app)/settings/components/SettingsSideNav.tsx` —
+  ditambah prop opsional `onNavigate?: () => void` (dipanggil di setiap
+  Link/tombol nav utama) supaya Sheet otomatis tertutup setelah user
+  memilih menu di mobile. Prop `undefined` di sidebar desktop, tidak ada
+  perubahan behavior di sana.
+- Breakpoint: `md` (768px Tailwind), sesuai keputusan breakpoint di
+  rancangan Claude Design.
+
+**Scope 2 — Members table responsive:**
+
+- `apps/web/src/app/(app)/settings/members/components/MembersTable.tsx`
+  — tabel desktop shadcn `Table` dibungkus `hidden md:block` (isi tidak
+  diubah). Ditambah blok baru `flex flex-col gap-3 md:hidden` berisi card
+  per anggota (avatar+nama+email, badge Status, baris Role, lalu
+  `MemberActions` dengan prop baru `fullWidth` yang membuat tombol Change
+  Role/Remove full-width sebagai baris terpisah dengan border-top,
+  alih-alih rata-kanan di sel tabel).
+
+**Verifikasi:**
+
+- `bun run typecheck` — bersih, 0 error.
+- `bun run lint` — bersih, 0 error (sempat 1 error
+  `no-restricted-syntax` di `MobileTopBar.tsx` karena raw `<div>`, diberi
+  `eslint-disable-next-line` dengan alasan file baru dikomposisi Tailwind
+  shadcn sejak awal, bukan migrasi Astryx).
+- **Verifikasi visual browser TIDAK berhasil dilakukan** — tool Browser
+  pane gagal total (navigate timeout 300s berulang kali, baik ke
+  `localhost` dev server maupun file lokal), tampak masalah
+  infrastruktur/tooling sesi ini, bukan masalah kode (dev server Next.js
+  start normal, "Ready in 319ms", tidak ada error compile di log — dev
+  server masih berjalan di background sesi ini).
+
+**Status:** kode sudah ditulis, **belum** direview Ridwan (Architecture
+Reviewer) dan **belum** di-QA Najwa, verifikasi visual manual juga belum
+berhasil dilakukan siapa pun. **T-098.4 tidak ditandai selesai** — T-098
+tetap `🟡 In Progress` (dibuka kembali dari `✅ Done`), **KI-042 tetap
+Open**. Next step: review arsitektur Ridwan + QA Najwa (termasuk
+menggantikan verifikasi visual yang gagal di sesi ini).
+
+Dokumentasi diupdate: `tasks/v07-astryx-shadcn-migration.md` § T-098
+(subtask T-098.4 ditambahkan dengan catatan implementasi lengkap),
+`TASKS.md` (Indeks v0.7: 5 ✅·3 ⏳ → 4 ✅·1 🟡·3 ⏳; Total: 30 selesai/209
+subtask → 29 selesai/210 subtask; Fokus sekarang baris T-098 diupdate),
+`PROJECT_STATE.md` (§ KI-042, Top Next Tasks, Completed Ringkasan bullet
+T-098).
+
+---
+
+## 2026-09-02 — KI-042: Rancangan mobile/responsive dibuat di Claude Design (blocker T-098.4 resolved)
+
+King Rezi mengerjakan sendiri (bukan lewat Neymar Product Designer — `DesignSync`
+gagal dimuat 2x di sesi Neymar) penambahan rancangan mobile/responsive di
+Claude Design (project "Social Media Management", `projectId`
+`84aded99-bb23-49b1-be9f-dd8f21c6873e`) yang sebelumnya jadi **blocker**
+eksplisit sebelum subtask **T-098.4** (sidebar mobile hamburger+drawer + pola
+tabel responsive) bisa mulai dikerjakan sebagai kode, sesuai rule 17
+`AGENTS.md`. Seluruh perubahan murni penambahan (append-only) — tidak ada
+markup/CSS existing yang diubah atau dihapus.
+
+**Added (Claude Design):**
+
+- `styles.css` — 2 blok CSS baru di akhir file: pattern "Mobile Shell"
+  (`.mobile-topbar`, `.mobile-nav-backdrop`, `.mobile-nav-drawer` +
+  `@media (max-width: 768px)` yang menyembunyikan `.sidebar`/
+  `.settings-sidebar` desktop dan menampilkan top bar mobile, reuse penuh
+  anatomy overlay `.notif-backdrop`/`.notif-drawer` yang sudah ada,
+  dicerminkan buka dari kiri) dan pattern "Table — mobile card layout"
+  (class opt-in `.table-responsive` + `.table-card`/`.table-card-row`/
+  `.table-card-actions`, di-gate lewat wrapper supaya tabel yang belum
+  pakai class ini tidak terpengaruh). Breakpoint `768px` deliberate reuse
+  dari satu-satunya precedent breakpoint terdokumentasi di project
+  (`product-discovery/04-ux/key-screen-patterns.md` § KSP-02-F10),
+  dinyatakan eksplisit di komentar CSS sebagai keputusan (bukan asumsi
+  diam-diam) karena precedent itu untuk konteks lain (indikator tipe
+  konten Calendar).
+- `foundations/layout.html` — section baru "Shell — Mobile (≤768px,
+  KI-042)" ditambahkan setelah section "Shell — AppShell + SideNav" yang
+  sudah ada. Baris "sidebar shape never changes" di section desktop tidak
+  diubah/dihapus.
+- `components/navigation-mobile.html` (file baru) — 3 demo state static
+  mengikuti pola `demo-frame` yang sudah dipakai di
+  `components/notifications-panel.html`: "Collapsed — sidebar hidden" (top
+  bar saja), "Open — Workspace drawer" (markup `WorkspaceSideNav` persis
+  sama dengan desktop, direflow ke lebar drawer), "Open — Settings drawer"
+  (markup `SettingsSideNav` persis sama dengan desktop).
+- `components/table.html` — section baru "Mobile — card layout (KI-042)"
+  ditambahkan setelah tabel desktop existing (tidak diubah), pakai data
+  sama dengan `templates/settings-members.html` (Raka/Maya/Lara — Name+
+  Avatar, Role, Status chip, Actions sebagai row full-width di bawah).
+
+**Belum selesai (sengaja tidak ditandai selesai):**
+
+- **T-098.4 (implementasi kode)** belum dikerjakan sama sekali — sesi ini
+  hanya menghasilkan rancangan di Claude Design. Keputusan King Rezi
+  sebelumnya ("jadi subtask T-098.4, tapi ditunda dulu, belum dikerjakan
+  sekarang") tetap berlaku — bukan otomatis siap dikerjakan.
+- **KI-042 tetap Status Open** — yang berubah hanya bagian blocker/
+  rancangan di dalam entrinya (blocker desain resolved), bukan status KI
+  itu sendiri.
+- Verifikasi visual browser tidak dilakukan (sandbox environment tidak
+  bisa render file HTML lokal di luar project folder Claude Design) — King
+  Rezi disarankan cek visual langsung di Claude Design sebelum lanjut ke
+  implementasi kode.
+
+**Docs diupdate:** `project-manager/PROJECT_STATE.md` (§ KI-042),
+`project-manager/tasks/v07-astryx-shadcn-migration.md` (§ T-098, catatan
+T-098.4).
+
+---
+
 ## 2026-09-02 — T-098: Migrasi App Shell & Navigasi selesai (ADR-097)
 
 Task keempat rilis v0.7 (migrasi Astryx → shadcn/ui), dikerjakan di branch

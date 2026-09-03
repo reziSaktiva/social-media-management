@@ -59,9 +59,41 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
-| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 5 ✅ · 3 ⏳           | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
+| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 5 ✅ · 0 🟡 · 3 ⏳     | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 85 task · 30 selesai · 209 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 85 task · 30 selesai · 210 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-02, T-098.4 selesai):** **T-098** ditutup kembali
+> `✅ Done` (`🟡 In Progress` → `✅ Done`, 4/4 subtask tuntas) — subtask
+> **T-098.4** (sidebar mobile hamburger+`Sheet` di `apps/web/src/app/(app)/`
+> + `MobileTopBar.tsx` baru, `MembersTable.tsx` card layout mobile) lolos
+> review arsitektur Ridwan (0 temuan) dan QA Najwa (PASS penuh — typecheck/
+> lint/Vitest bersih 235 lulus/4 skipped, desktop tanpa regresi, mobile
+> 375px/320px berfungsi benar termasuk auto-close `Sheet` dan dialog Tier-2
+> ADR-049, tidak ada horizontal overflow). 2 temuan di luar scope dicatat
+> (bukan blocker): tabel Members di 768px persis butuh scroll horizontal
+> (perilaku pre-existing), card "Analytics Snapshot" Home tetap putih saat
+> dark mode (bug pre-existing). **KI-042 ditutup Closed** —
+> lihat `PROJECT_STATE.md` § KI-042. Task selesai naik 29 → **30**, subtask
+> total tidak berubah (210 — hanya status checklist yang berubah). Dihitung
+> ulang langsung dari `tasks/v07-astryx-shadcn-migration.md`, sesuai aturan
+> maintenance. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-098,
+> `COMPLETE_TASK.md`.
+
+> **Update lama (2026-09-02, T-098.4 dibuka):** **T-098** sempat dibuka
+> kembali (`✅ Done` →
+> `🟡 In Progress`) — subtask baru **T-098.4** (sidebar mobile
+> hamburger+drawer + pola tabel mobile card, menutup **KI-042**)
+> ditambahkan setelah rancangan Claude Design tersedia. Implementasi kode
+> sudah ditulis (sesi utama, bukan Mark UI Engineer — `DesignSync` gagal
+> dimuat lagi di sesi subagent), typecheck/lint bersih, tapi **belum**
+> direview Ridwan, **belum** di-QA Najwa, dan verifikasi visual browser
+> juga belum berhasil (masalah tooling sesi, bukan kode) — jadi T-098.4
+> belum dicentang selesai. Subtask total naik 209 → **210** (v0.7: 36 →
+> 37), task selesai turun 30 → **29** (T-098 bukan lagi Done). Dihitung
+> ulang langsung dari `tasks/v07-astryx-shadcn-migration.md`. Detail:
+> `tasks/v07-astryx-shadcn-migration.md` § T-098, **KI-042** di
+> `PROJECT_STATE.md`.
 
 > **Rekonsiliasi (2026-09-02):** T-098 (branch `feature/t-098-app-shell-navigation`) dan T-099 (branch `feature/t-099-settings-migration`, worktree terpisah) dikerjakan paralel dan masing-masing sempat menghitung ulang indeks berdasarkan versi dokumen yang berbeda (masing-masing melihat dirinya sebagai satu-satunya task baru). Setelah kedua branch di-rebase jadi satu riwayat linear, hitungan v0.7 di atas (5 ✅ · 3 ⏳) dan total (30 selesai) sudah menggabungkan keduanya — dihitung ulang langsung dari `tasks/v07-astryx-shadcn-migration.md` final, bukan menjumlahkan dua klaim paralel.
 
@@ -121,7 +153,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
 | **T-099** | Migrasi Settings                                 | ✅      | **Selesai (2026-09-02)** — 3/3 subtask (`WorkspaceGeneralSettings.tsx`/`ProfileForm.tsx`/`preferences/page.tsx`/`SettingsPageHead.tsx`, `MembersTable.tsx`/`InviteMemberDialog.tsx`/`InviteMemberAction.tsx`, `ConnectedAccountsList.tsx`/`ConnectPlatformMenu.tsx`/`WorkspacesSettingsView.tsx`), lolos review Ridwan (0 temuan) + QA Najwa (PASS, 1 temuan minor viewport sempit dicatat di **KI-042**). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-099 |
-| **T-098** | Migrasi App Shell & Navigasi                     | ✅      | **Selesai (2026-09-02)** — 3/3 subtask (`WorkspaceSideNav`/`SettingsSideNav`/`ChannelsSection`, `NotificationBell` ke `Sheet` + hapus `Drawer.tsx`, re-verifikasi **KI-040** → Closed), lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh setelah 1 bug ditemukan+diperbaiki). Gap sidebar mobile (hamburger+drawer) di luar scope subtask ini dicatat **KI-042** (belum diputuskan). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-098 |
+| **T-098** | Migrasi App Shell & Navigasi                     | ✅      | **Selesai (2026-09-02)** — seluruh 4/4 subtask tuntas: T-098.1–.3 (`WorkspaceSideNav`/`SettingsSideNav`/`ChannelsSection`, `NotificationBell` ke `Sheet` + hapus `Drawer.tsx`, re-verifikasi **KI-040** → Closed), T-098.4 (sidebar mobile + tabel mobile card, menutup **KI-042** — lolos review Ridwan 0 temuan + QA Najwa PASS penuh). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-098 |
 | **T-097** | Migrasi Auth Flows & Onboarding                  | ✅      | **Selesai (2026-09-02)** — 5/5 subtask (Login/Register, Forgot/Reset password, Accept Invite, `(auth)/layout.tsx`, Onboarding), lolos review Ridwan (0 temuan) + QA Najwa (semua PASS). Gap desain token `--success`/`--warning` Stone theme dicatat **KI-041** (belum ditutup, menunggu keputusan King Rezi). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-097 |
 | **T-096** | Migrasi Core Infra & Shared Primitives           | ✅      | **Selesai (2026-09-01)** — `globals.css`, `Providers.tsx`, root `app/(app)/layout.tsx`, primitive `Button`/`Card`/`Dialog`/`Input`/`Text`. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-096 untuk detail & 2 keputusan penting (CSS/Theme Astryx dipertahankan sementara) |
 | **T-095** | Setup Fondasi shadcn/ui & Tooling Migrasi        | ✅      | **Selesai (2026-09-01)** — task pertama rilis v0.7 (migrasi Astryx→shadcn/ui, ADR-097), seluruh 7 subtask tuntas: T-095.1 (init shadcn/ui, base Radix + preset Maia), T-095.2 (MCP server shadcn di `.mcp.json`+`.cursor/mcp.json`), T-095.3 (tulis ulang `apps/web/.claude/CLAUDE.md` ke workflow shadcn CLI/MCP), T-095.4 (rule 14/15 `AGENTS.md`, sudah selesai lebih dulu di commit `07a3aa2`), T-095.5 (pemetaan Stone→shadcn di `design-tokens.md`), T-095.6 (update subagent Mark UI Engineer ke shadcn, izin eksplisit King Rezi), T-095.7 (sinkronisasi docs baseline) |
