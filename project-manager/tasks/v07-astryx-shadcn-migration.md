@@ -492,26 +492,212 @@ lahir dari keterbatasan Astryx.
 
 ### T-100 · Migrasi Publish — Draft Editor Modal
 
-`⏳ Not Started` · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
+`✅ Done (2026-09-03)` · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
 **Baca dulu:** `04-ux/key-screen-patterns.md` § Draft Editor · ADR-065 (default Standard) · ADR-052 (toggle Fullscreen)
 
 File paling kompleks di seluruh audit (`Modal.tsx`, ~68 titik pakai
 Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
 
-- [ ] **T-100.1** Struktur modal + layout (`Dialog`, `DialogHeader`,
+- [x] **T-100.1** Struktur modal + layout (`Dialog`, `DialogHeader`,
       `Layout`/`LayoutContent`/`LayoutFooter` → shadcn `Dialog` +
       Tailwind layout, pertahankan varian Standard/Fullscreen ADR-065/052)
-- [ ] **T-100.2** Form controls: `TextInput`, `TextArea`,
+- [x] **T-100.2** Form controls: `TextInput`, `TextArea`,
       `CheckboxInput`, `RadioList`/`RadioListItem`, `DateInput`,
       `FileInput`, `Selector` → padanan shadcn (`Input`, `Textarea`,
       `Checkbox`, `RadioGroup`, `Select`, dst.)
-- [ ] **T-100.3** `TimeInput` khusus — evaluasi apakah shadcn/Radix time
+- [x] **T-100.3** `TimeInput` khusus — evaluasi apakah shadcn/Radix time
       input (atau native `<input type="time">` + Tailwind) menutup
       **KI-030** (tidak ada input-guard di Astryx `TimeInput`); tutup
       KI-030 kalau terbukti resolved
-- [ ] **T-100.4** Verifikasi behavior penuh (Banner, Badge, Divider, Link
+- [x] **T-100.4** Verifikasi behavior penuh (Banner, Badge, Divider, Link
       di dalam modal) — regresi manual end-to-end karena tidak ada test
       komponen untuk file ini
+- Catatan T-100.1 (2026-09-03, King Rezi, branch
+  `feature/t-100-draft-editor-modal`):
+  * `apps/web/src/app/(app)/components/draft-editor/Modal.tsx` — Astryx
+    `Dialog`/`DialogHeader` → shadcn `Dialog`/`DialogContent`/
+    `DialogHeader`/`DialogTitle`/`DialogDescription`/`DialogFooter`;
+    Astryx `Layout`/`LayoutContent`/`LayoutFooter` → komposisi Tailwind
+    manual (beberapa `<div>` mentah pakai
+    `eslint-disable-next-line no-restricted-syntax` per-baris, pola sama
+    `InviteMemberDialog.tsx` T-099.2); Astryx `Button` → shadcn `Button`
+    di seluruh CTA header/footer, loading state via `Spinner`.
+  * Varian **Standard/Fullscreen** (ADR-065/ADR-052) dipertahankan penuh —
+    Standard pakai `style` inline (bukan class arbitrary-value, kena rule
+    `tailwindcss/no-arbitrary-value` di luar `components/ui/**`);
+    Fullscreen pakai `style` inline + class `translate-none` eksplisit
+    (bug ditemukan+diperbaiki saat verifikasi browser: Tailwind v4
+    memisahkan CSS property `translate` dari `transform`, jadi override
+    inline `transform:none` saja tidak cukup membatalkan utility
+    `-translate-1/2` bawaan `DialogContent` shadcn).
+  * `ResumeDialog` (KSP-05-F13) — perilaku `purpose="required"` Astryx
+    (tidak bisa ditutup Escape/klik-luar, tanpa tombol close) direplikasi
+    manual via `onEscapeKeyDown`/`onInteractOutside` `preventDefault()` +
+    `showCloseButton={false}`.
+  * Scope yang sengaja belum disentuh (menyusul T-100.2/.3/.4): form
+    controls di body (`TextArea`, `CheckboxInput`, `RadioList`,
+    `DateInput`, `FileInput`, `TextInput` Pinterest) masih Astryx;
+    `TimeInput` masih Astryx (termasuk evaluasi **KI-030**); `Badge`/
+    `Banner`/`Divider`/`Link` di body masih Astryx, belum diverifikasi
+    regresi end-to-end penuh.
+  * Verifikasi: typecheck 0 error, lint 0 error untuk file ini, browser
+    E2E manual (akun Raka Pratama, workspace "Insvire") — New Post
+    Standard, toggle Fullscreen↔Standard, tombol close, alur Resume
+    Unfinished Post end-to-end — seluruhnya PASS. Belum dijalankan:
+    review arsitektur Ridwan, QA Najwa formal, Vitest suite (belum
+    diminta King Rezi).
+- Catatan T-100.2 (2026-09-03, Mark UI Engineer, review Ridwan Architecture
+  Reviewer, QA Najwa QA Engineer, branch `feature/t-100-draft-editor-modal`,
+  file `apps/web/src/app/(app)/components/draft-editor/Modal.tsx`):
+  * **Implementasi (Mark):** Caption — Astryx `TextArea` → shadcn
+    `Textarea` + `Label` (sr-only) + `FieldDescription`. Media — Astryx
+    `FileInput` (dropzone disabled) → native `<input type="file">` lewat
+    `Input` shadcn, tetap disabled + pesan penjelasan. Account checkbox —
+    Astryx `CheckboxInput` → shadcn `Checkbox` + `Label` per-akun,
+    `onCheckedChange` di-cast eksplisit ke boolean. Content Format —
+    Astryx `RadioList`/`RadioListItem` → shadcn `RadioGroup`/
+    `RadioGroupItem` + `Label`, orientasi horizontal dipertahankan.
+    Pinterest Pin Title/Destination Link — Astryx `TextInput` → shadcn
+    `Input` (prop `isOptional` kosmetik dihapus, tidak pernah memengaruhi
+    validasi). Tanggal Jadwal — Astryx `DateInput` → native
+    `<input type="date">` lewat `Input` shadcn (bukan Popover+Calendar) —
+    keputusan konsistensi karena `TimeInput` di sebelahnya masih Astryx
+    (scope T-100.3) dan tetap compact inline; tidak menambah dependency
+    baru (`react-day-picker`/`date-fns`) untuk satu field. Tidak ada
+    komponen shadcn baru yang perlu diinstall (semua sudah ada dari
+    T-099.2: `checkbox`, `input`, `label`, `radio-group`, `textarea`,
+    `field`). Behavior/logic form (validasi
+    `isReadyToSchedule`/`isReadyToPublishNow`, Server Action
+    `scheduleDraftAction`/`publishNowAction`/`saveDraftAction`) tidak
+    diubah — murni migrasi UI library.
+  * Verifikasi Mark: typecheck 0 error, lint 0 error, browser E2E manual
+    PASS (New Post → isi form → Schedule → dialog konfirmasi benar →
+    redirect Home sesuai ADR-054), dark mode dicek visual OK.
+  * **Review Ridwan (0 temuan):** Entry point bersih (tidak ada Server
+    Action tersentuh di diff); tidak ada import Prisma/Supabase/Outstand
+    HTTP client; cross-domain lewat public API, shared types tetap dari
+    `@social/shared`; klaim "behavior tidak berubah" diverifikasi
+    baris-per-baris untuk 6 kontrol — semua identik secara semantik.
+    Catatan non-blocking: file ini belum pakai komposisi penuh
+    `Field`/`FieldLabel`/`FieldContent`/`FieldGroup` seperti
+    `InviteMemberDialog.tsx` (T-099.2) — wajar karena migrasi bertahap
+    (layout `VStack`/`HStack` masih Astryx, menyusul subtask lain).
+    Dipertimbangkan saat migrasi layout berikutnya, bukan blocking
+    sekarang.
+  * **QA Najwa (PASS):** `bun run typecheck` PASS, `bun run lint` PASS,
+    `bun run test` PASS (235 pass, 4 skip, 0 fail). Semua kontrol form
+    (golden path + edge case) PASS: Caption, Media disabled, Account
+    checkbox multi-select, Content Format `RadioGroup` switch, Tanggal
+    Jadwal kombinasi dengan `TimeInput` Astryx. Pinterest Pin
+    Title/Destination Link **tidak bisa diuji** — workspace test
+    (Insvire/Raka Pratama) tidak punya akun Pinterest terhubung; risiko
+    dinilai rendah karena komponen `Input` sama dengan field lain yang
+    sudah terverifikasi dan logic kondisional tidak diubah di diff ini.
+    Alur end-to-end PASS semua: Save Draft→reload persist, Schedule→dialog
+    konfirmasi→redirect queue (ADR-054), Publish Now→confirm→redirect
+    calendar (ADR-054), Resume Unfinished Post (caption ter-restore;
+    account/format/jadwal memang tidak ter-restore — desain lama
+    `UnsavedNewPost` interface, bukan regresi), toggle
+    Fullscreen↔Standard sambil form terisi (state terjaga), light & dark
+    mode kontras OK, regresi Calendar/Queue/Drafts tidak ada crash.
+  * **Temuan Minor (bukan blocker, bukan regresi T-100.2 — sudah ada
+    sejak versi lama file, diverifikasi via `git log -p`):**
+    `clearUnsavedNewPost()` di `Modal.tsx` hanya dipanggil di
+    `handleSaveDraft`, tidak dipanggil di
+    `handleConfirmSchedule`/`handleConfirmPublishNow`. Akibatnya
+    localStorage "unsaved draft" tidak terhapus setelah Schedule/Publish
+    Now sukses (kalau user sempat trigger `persistUnsavedNewPost`
+    sebelumnya) — `ResumeDialog` bisa muncul lagi dengan caption basi di
+    sesi New Post berikutnya. Dicatat sebagai **KI-043** (lihat
+    `PROJECT_STATE.md`), di luar scope T-100.2.
+- Catatan T-100.3 (2026-09-03, Mark UI Engineer, review Ridwan Architecture
+  Reviewer, QA Najwa QA Engineer, branch `feature/t-100-draft-editor-modal`,
+  file `apps/web/src/app/(app)/components/draft-editor/Modal.tsx`):
+  * **Implementasi (Mark):** Dicek MCP shadcn
+    (`search_items_in_registries`) — tidak ada komponen time-picker resmi
+    di registry shadcn. Pilih native `<input type="time">` dibungkus
+    `Input` shadcn, pola identik dengan field tanggal (`Input
+    type="date"`) dari T-100.2. Astryx `TimeInput` (import dari
+    `@astryxdesign/core/TimeInput`) dihapus, diganti `Label
+    htmlFor="draft-schedule-time" className="sr-only"` + `Input
+    id="draft-schedule-time" type="time"`, `value={scheduleTime ?? ""}`,
+    `onChange` set `scheduleTime` ke `event.target.value || undefined`.
+    `handleConfirmSchedule` (compose `` `${scheduleDate}T${scheduleTime}` ``)
+    dan `isReadyToSchedule` tidak disentuh — format `HH:mm` native
+    kompatibel langsung.
+  * Verifikasi Mark: typecheck 0 error, lint 0 error, browser E2E (dark &
+    light) — uji ketik huruf/simbol/overflow ke field waktu
+    ditolak/clamp oleh browser, submit Schedule end-to-end sukses dengan
+    waktu tersimpan tepat. **Kesimpulan Mark: KI-030 RESOLVED**
+    (dibuktikan lewat pengujian eksplisit).
+  * **Review Ridwan (0 temuan):** tidak ada business logic baru, tidak ada
+    import Prisma/Supabase/Outstand, cross-domain tetap lewat Server
+    Action existing; `handleConfirmSchedule`/`isReadyToSchedule`
+    dikonfirmasi via grep benar-benar tidak tersentuh diff; konsisten
+    pola dengan field tanggal T-100.2. Catatan non-arsitektur (sudah
+    dikonfirmasi King Rezi via AskUserQuestion): native time input tidak
+    lagi membatasi ke kelipatan 15 menit seperti Astryx `increment={15}`
+    lama — **keputusan produk eksplisit King Rezi: dibiarkan bebas**,
+    bukan bug, tidak perlu ditambah `step={900}`.
+  * **QA Najwa (PASS, verifikasi independen):** `bun run typecheck` PASS,
+    `bun run lint` PASS, `bun run test` PASS (235 pass, 4 skip, 0 fail).
+    **KI-030 diverifikasi ulang independen dan dikonfirmasi RESOLVED** —
+    ketik huruf/simbol/karakter berlebih ke field waktu ditolak total oleh
+    browser native, tidak seperti Astryx lama yang bisa diketik bebas.
+    Golden path Schedule PASS (waktu 14:07 tersimpan tepat), menit bebas
+    (bukan kelipatan 15) PASS sesuai keputusan produk, jam batas 00:00 &
+    23:59 PASS, clear/reset field PASS, Publish Now tidak terpengaruh
+    PASS, Resume Unfinished Post tidak ada regresi PASS, light/dark mode
+    PASS, regresi Calendar/Queue/Drafts PASS.
+  * **KI-030 Closed (2026-09-03)** — root cause (Astryx `TimeInput`
+    internal `<input type="text">` tanpa `maxLength`/`pattern`) hilang
+    total setelah migrasi ke native `<input type="time">`. Lihat
+    `PROJECT_STATE.md` § KI-030 untuk catatan penutup lengkap.
+  * **Temuan Minor baru (pre-existing gap, bukan regresi T-100.3,
+    dikonfirmasi King Rezi untuk dicatat sebagai KI baru):** tidak ada
+    validasi yang mencegah Schedule ke waktu yang sudah lewat pada
+    tanggal hari ini (mis. jadwalkan jam 08:00 padahal sekarang sudah jam
+    11:48) — post berhasil masuk Queue tanpa penolakan/warning. Gap ini
+    sudah ada sejak sebelum migrasi (Astryx `TimeInput` juga tidak punya
+    validasi ini), bukan regresi baru. Dicatat sebagai **KI-044** (lihat
+    `PROJECT_STATE.md`), di luar scope T-100.3.
+- Catatan T-100.4 (2026-09-03, Najwa QA Engineer, branch
+  `feature/t-100-draft-editor-modal`, file
+  `apps/web/src/app/(app)/components/draft-editor/Modal.tsx`):
+  * **QA Najwa (PASS) — verifikasi end-to-end penuh, bukan migrasi kode
+    baru:** `bun run typecheck` PASS, `bun run lint` PASS, `bun run test`
+    PASS (235 pass, 4 skip, 0 fail).
+  * Full E2E regression PASS semua: New Post→Schedule, New Post→Publish
+    Now, New Post→Save Draft (termasuk caption kosong), Edit Draft
+    existing, `ResumeDialog` (`purpose="required"` — Escape/klik-luar
+    tidak menutup, Resume/Mulai Baru keduanya benar), toggle
+    Fullscreen↔Standard (data tidak hilang), Close via X/Escape/klik-luar
+    di berbagai state form, entry point dari Calendar "+ New Post", Queue
+    "Publish Now" icon, Queue "Edit".
+  * `Banner`/`Badge`/`Divider` Astryx yang masih ada di modal (belum
+    dimigrasi, di luar scope T-100 — menyusul task lain) dicek visual
+    light+dark mode, tidak ada style clash dengan komponen shadcn yang
+    sudah dimigrasi.
+  * Accessibility: tab order logis, focus visible
+    (`focus-visible:ring-[3px]`), Escape/klik-luar konsisten sesuai
+    desain per varian dialog.
+  * RBAC: dicek `roles-permissions.md`, tidak ada perbedaan behavior
+    modal antar role (Owner/Admin/Creator) untuk fitur draft/schedule/
+    publish — tidak ada gap.
+  * Console bersih, tidak ada error selama seluruh sesi testing.
+  * **Catatan minor (informational, bukan bug):** Link "Reconnect"
+    (skenario akun Disconnected) dan field Pinterest (Pin Title/
+    Destination Link) tidak bisa diverifikasi karena data test (workspace
+    Insvire) tidak punya akun dengan kondisi tersebut — gap coverage data
+    test, bukan bug, direkomendasikan ditambah ke data seed kalau ingin
+    coverage 100%. Juga dicatat ulang **KI-032** (Edit Draft tidak
+    preload akun yang sebelumnya dijadwalkan) — sudah ada sebelum T-100,
+    bukan regresi baru, tidak perlu KI baru (sudah tercatat).
+  * **Kesimpulan QA: T-100 siap Done sepenuhnya.**
+- **T-100 Done (2026-09-03)** — seluruh 4/4 subtask (T-100.1–T-100.4)
+  tuntas: struktur modal + layout, form controls, `TimeInput` (KI-030
+  Closed), verifikasi behavior penuh. Lihat catatan per-subtask di atas
+  untuk detail lengkap.
 
 ---
 
