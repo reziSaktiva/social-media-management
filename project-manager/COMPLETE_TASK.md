@@ -8,6 +8,91 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-03 — T-100.1 selesai: struktur Draft Editor Modal dimigrasi ke shadcn (T-100 naik jadi In Progress)
+
+**T-100** (Migrasi Publish — Draft Editor Modal, rilis v0.7, ADR-097) naik
+status `⏳ Not Started` → `🟡 In Progress` — subtask pertama dari 4
+tuntas, dikerjakan King Rezi langsung di branch
+`feature/t-100-draft-editor-modal`.
+
+**T-100.1 (Struktur modal + layout) — File:**
+`apps/web/src/app/(app)/components/draft-editor/Modal.tsx`
+
+- Astryx `Dialog`/`DialogHeader` → shadcn `Dialog`/`DialogContent`/
+  `DialogHeader`/`DialogTitle`/`DialogDescription`/`DialogFooter`
+  (`@/components/ui/dialog`).
+- Astryx `Layout`/`LayoutContent`/`LayoutFooter` → komposisi Tailwind
+  manual (wrapper flex-col, header row, body scrollable, footer) —
+  beberapa `<div>` mentah diberi `eslint-disable-next-line
+  no-restricted-syntax` per-baris (belum ada padanan shadcn, mengikuti
+  pola yang sama dipakai `InviteMemberDialog.tsx` di T-099.2).
+- Astryx `Button` → shadcn `Button` untuk seluruh CTA header (toggle
+  Fullscreen/Standard, tombol close) dan footer (Save as Draft/Publish
+  Now/Schedule, Batal/Konfirmasi, Mulai Baru/Resume di `ResumeDialog`).
+  Loading state pakai `Spinner` menggantikan prop `isLoading` Astryx.
+- Varian **Standard/Fullscreen** (ADR-065 default Standard, ADR-052
+  toggle Fullscreen) dipertahankan penuh — Standard pakai `style` inline
+  (`width: min(960px, 94vw)`, `maxHeight: 88vh`) karena
+  `tailwindcss/no-arbitrary-value` melarang class arbitrary-value di
+  luar `components/ui/**`; Fullscreen pakai `style` inline (`inset:0`,
+  `100vw`/`100dvh`) + class `translate-none` — bug ditemukan+diperbaiki
+  saat verifikasi browser: Tailwind v4 memisahkan CSS property
+  `translate` dari `transform`, jadi override inline `transform:none`
+  saja tidak cukup membatalkan utility `-translate-1/2` bawaan
+  `DialogContent` shadcn.
+- `ResumeDialog` (KSP-05-F13) — perilaku `purpose="required"` Astryx
+  (tidak bisa ditutup Escape/klik-luar, tanpa tombol close) direplikasi
+  manual via `onEscapeKeyDown`/`onInteractOutside` `preventDefault()` +
+  `showCloseButton={false}` pada `DialogContent`.
+- Scope yang sengaja belum disentuh (subtask lain): form controls di
+  body (`TextArea`, `CheckboxInput`, `RadioList`/`RadioListItem`,
+  `DateInput`, `FileInput`, `TextInput` Pinterest) masih Astryx →
+  **T-100.2**. `TimeInput` masih Astryx → **T-100.3** (termasuk evaluasi
+  **KI-030**). `Badge`, `Banner`, `Divider`, `Link` di body masih Astryx,
+  belum diverifikasi regresi end-to-end penuh → **T-100.4**.
+
+**Verifikasi yang sudah dilakukan:**
+
+- Typecheck: 0 error (`bunx tsc --noEmit` bersih untuk file ini).
+- Lint: 0 error/warning untuk file ini (termasuk `tailwindcss/
+  no-arbitrary-value` dan rule `no-restricted-syntax` div — ditutup
+  lewat inline `style` atau `eslint-disable-next-line` beralasan).
+- Browser E2E manual (Chrome via Claude Browser, akun test Raka Pratama
+  dari `QA_TEST_ACCOUNTS.md`, workspace "Insvire"): New Post Standard ✅,
+  toggle ke Fullscreen ✅ (setelah fix bug `translate-none` di atas),
+  toggle balik ke Standard ✅, tombol close (X) ✅, alur Resume
+  Unfinished Post end-to-end (isi caption → close tanpa save → buka New
+  Post lagi → `ResumeDialog` muncul dengan caption+timestamp tersimpan,
+  tidak bisa ditutup Escape/klik-luar, tombol Resume memuat balik
+  caption) ✅.
+- Belum dijalankan: review arsitektur Ridwan, QA Najwa formal, Vitest
+  suite (belum diminta King Rezi).
+
+**Penutupan dokumentasi:**
+
+- `tasks/v07-astryx-shadcn-migration.md` § T-100 — checkbox T-100.1
+  dicentang `[x]`, status task `⏳ Not Started` → `🟡 In Progress`,
+  catatan implementasi ditambahkan.
+- `TASKS.md` — indeks v0.7: `5 ✅ · 0 🟡 · 3 ⏳` → `5 ✅ · 1 🟡 · 2 ⏳`
+  (dihitung ulang dari file release: 24 `[x]` + 13 `[ ]` = 37 subtask,
+  tidak berubah — hanya status checklist T-100.1). Total task selesai
+  tidak berubah (masih 30, T-100 belum Done). Baris **Fokus sekarang**
+  T-100 ditambahkan dengan status 🟡.
+- `PROJECT_STATE.md` — Snapshot "Top Next Tasks" dan bullet "Prioritas
+  utama" di Current Focus diperbarui (pointer ID + judul singkat ke
+  `TASKS.md`/`tasks/v07-astryx-shadcn-migration.md` § T-100, sesuai
+  ADR-062 — tidak menyalin detail subtask). Tidak menambah bullet baru
+  di "Completed (Ringkasan)" karena T-100 belum selesai. Version
+  metadata naik 1.0.60 → 1.0.61.
+
+File yang diubah sesi ini (dokumentasi saja, kode ditulis di branch
+`feature/t-100-draft-editor-modal`):
+`apps/web/src/app/(app)/components/draft-editor/Modal.tsx`,
+`project-manager/tasks/v07-astryx-shadcn-migration.md`,
+`project-manager/TASKS.md`, `project-manager/PROJECT_STATE.md`.
+
+---
+
 ## 2026-09-02 — T-098.4 selesai: review Ridwan + QA Najwa PASS, T-098 ditutup Done, KI-042 Closed
 
 Lanjutan entri di bawah ("T-098.4: Implementasi kode..."). Kode T-098.4

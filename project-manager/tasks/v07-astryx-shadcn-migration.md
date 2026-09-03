@@ -492,13 +492,13 @@ lahir dari keterbatasan Astryx.
 
 ### T-100 · Migrasi Publish — Draft Editor Modal
 
-`⏳ Not Started` · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
+`🟡 In Progress` · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
 **Baca dulu:** `04-ux/key-screen-patterns.md` § Draft Editor · ADR-065 (default Standard) · ADR-052 (toggle Fullscreen)
 
 File paling kompleks di seluruh audit (`Modal.tsx`, ~68 titik pakai
 Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
 
-- [ ] **T-100.1** Struktur modal + layout (`Dialog`, `DialogHeader`,
+- [x] **T-100.1** Struktur modal + layout (`Dialog`, `DialogHeader`,
       `Layout`/`LayoutContent`/`LayoutFooter` → shadcn `Dialog` +
       Tailwind layout, pertahankan varian Standard/Fullscreen ADR-065/052)
 - [ ] **T-100.2** Form controls: `TextInput`, `TextArea`,
@@ -512,6 +512,40 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
 - [ ] **T-100.4** Verifikasi behavior penuh (Banner, Badge, Divider, Link
       di dalam modal) — regresi manual end-to-end karena tidak ada test
       komponen untuk file ini
+- Catatan T-100.1 (2026-09-03, King Rezi, branch
+  `feature/t-100-draft-editor-modal`):
+  * `apps/web/src/app/(app)/components/draft-editor/Modal.tsx` — Astryx
+    `Dialog`/`DialogHeader` → shadcn `Dialog`/`DialogContent`/
+    `DialogHeader`/`DialogTitle`/`DialogDescription`/`DialogFooter`;
+    Astryx `Layout`/`LayoutContent`/`LayoutFooter` → komposisi Tailwind
+    manual (beberapa `<div>` mentah pakai
+    `eslint-disable-next-line no-restricted-syntax` per-baris, pola sama
+    `InviteMemberDialog.tsx` T-099.2); Astryx `Button` → shadcn `Button`
+    di seluruh CTA header/footer, loading state via `Spinner`.
+  * Varian **Standard/Fullscreen** (ADR-065/ADR-052) dipertahankan penuh —
+    Standard pakai `style` inline (bukan class arbitrary-value, kena rule
+    `tailwindcss/no-arbitrary-value` di luar `components/ui/**`);
+    Fullscreen pakai `style` inline + class `translate-none` eksplisit
+    (bug ditemukan+diperbaiki saat verifikasi browser: Tailwind v4
+    memisahkan CSS property `translate` dari `transform`, jadi override
+    inline `transform:none` saja tidak cukup membatalkan utility
+    `-translate-1/2` bawaan `DialogContent` shadcn).
+  * `ResumeDialog` (KSP-05-F13) — perilaku `purpose="required"` Astryx
+    (tidak bisa ditutup Escape/klik-luar, tanpa tombol close) direplikasi
+    manual via `onEscapeKeyDown`/`onInteractOutside` `preventDefault()` +
+    `showCloseButton={false}`.
+  * Scope yang sengaja belum disentuh (menyusul T-100.2/.3/.4): form
+    controls di body (`TextArea`, `CheckboxInput`, `RadioList`,
+    `DateInput`, `FileInput`, `TextInput` Pinterest) masih Astryx;
+    `TimeInput` masih Astryx (termasuk evaluasi **KI-030**); `Badge`/
+    `Banner`/`Divider`/`Link` di body masih Astryx, belum diverifikasi
+    regresi end-to-end penuh.
+  * Verifikasi: typecheck 0 error, lint 0 error untuk file ini, browser
+    E2E manual (akun Raka Pratama, workspace "Insvire") — New Post
+    Standard, toggle Fullscreen↔Standard, tombol close, alur Resume
+    Unfinished Post end-to-end — seluruhnya PASS. Belum dijalankan:
+    review arsitektur Ridwan, QA Najwa formal, Vitest suite (belum
+    diminta King Rezi).
 
 ---
 

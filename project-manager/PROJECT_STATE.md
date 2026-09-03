@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-098 Migrasi App Shell & Navigasi — ✅ Done (2026-09-02, ADR-097)**, seluruh 4/4 subtask tuntas (T-098.1–.3: `WorkspaceSideNav`/`SettingsSideNav`/`ChannelsSection`, `NotificationBell` ke `Sheet` + hapus `Drawer.tsx`, re-verifikasi **KI-040** → Closed; T-098.4: sidebar mobile + tabel mobile card, menutup **KI-042**), lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh). **T-099 Migrasi Settings — ✅ Done (2026-09-02, ADR-097)**, seluruh 3 subtask tuntas (General/Profile/Preferences, Members Table + Invite, Connected Accounts + Workspaces list); lolos review Ridwan (0 temuan) + QA Najwa (PASS dengan 1 temuan minor viewport sempit). Gap strategi responsive/mobile dari kedua task ini dicatat **KI-042** (Closed 2026-09-02). **T-100**, **T-101**, **T-102** menyusul sebagai task berikutnya rilis v0.7. T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** **T-098 Migrasi App Shell & Navigasi — ✅ Done (2026-09-02, ADR-097)**, seluruh 4/4 subtask tuntas (T-098.1–.3: `WorkspaceSideNav`/`SettingsSideNav`/`ChannelsSection`, `NotificationBell` ke `Sheet` + hapus `Drawer.tsx`, re-verifikasi **KI-040** → Closed; T-098.4: sidebar mobile + tabel mobile card, menutup **KI-042**), lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh). **T-099 Migrasi Settings — ✅ Done (2026-09-02, ADR-097)**, seluruh 3 subtask tuntas (General/Profile/Preferences, Members Table + Invite, Connected Accounts + Workspaces list); lolos review Ridwan (0 temuan) + QA Najwa (PASS dengan 1 temuan minor viewport sempit). Gap strategi responsive/mobile dari kedua task ini dicatat **KI-042** (Closed 2026-09-02). **T-100 Migrasi Publish — Draft Editor Modal — 🟡 In Progress (2026-09-03)**, T-100.1/4 subtask selesai (lihat `TASKS.md`/`tasks/v07-astryx-shadcn-migration.md` § T-100 untuk detail). **T-101**, **T-102** menyusul sebagai task berikutnya rilis v0.7. T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 85 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.60     |
+| Version      | 1.0.61     |
 | Status       | Active     |
-| Last Updated | 2026-09-02 |
+| Last Updated | 2026-09-03 |
 
 ---
 
@@ -42,8 +42,8 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
   `tasks/v07-astryx-shadcn-migration.md`, T-095–T-102) — permintaan
   eksplisit King Rezi, dikerjakan **sebelum** T-025/T-036. Strategi
   incremental per route-segment, Astryx & shadcn coexist sementara.
-  T-095/T-096/T-097/T-098/T-099 sudah `✅ Done`; T-100, T-101, T-102
-  tersisa.
+  T-095/T-096/T-097/T-098/T-099 sudah `✅ Done`; **T-100** `🟡 In
+  Progress` (1/4 subtask); T-101, T-102 tersisa.
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
 * `AGENTS.md` di root sudah ada; skill resmi vendor yang relevan (Prisma,
   Better Auth, Vercel, Supabase) sudah terpasang di `.claude/skills/` —

@@ -59,10 +59,24 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
-| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 5 ✅ · 0 🟡 · 3 ⏳     | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
+| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 5 ✅ · 1 🟡 · 2 ⏳     | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
 **Total:** 85 task · 30 selesai · 210 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-03, T-100.1 selesai):** **T-100** (Migrasi Publish —
+> Draft Editor Modal) naik status `⏳ Not Started` → `🟡 In Progress` —
+> subtask **T-100.1** (struktur modal + layout, `Dialog`/`DialogHeader`/
+> `DialogFooter` shadcn + Tailwind layout manual, varian Standard/
+> Fullscreen ADR-065/052 dipertahankan) tuntas di branch
+> `feature/t-100-draft-editor-modal`. T-100.2 (form controls), T-100.3
+> (`TimeInput` + evaluasi **KI-030**), T-100.4 (verifikasi behavior penuh)
+> masih tersisa — T-100 belum ditutup `✅ Done`. Review arsitektur Ridwan
+> dan QA Najwa formal belum dijalankan. Hitungan subtask v0.7 tidak
+> berubah (37 — hanya status checklist T-100.1 yang berubah), dihitung
+> ulang langsung dari `tasks/v07-astryx-shadcn-migration.md`. Task
+> selesai tidak berubah (masih 30, T-100 belum Done). Detail:
+> `tasks/v07-astryx-shadcn-migration.md` § T-100.
+>
 > **Update (2026-09-02, T-098.4 selesai):** **T-098** ditutup kembali
 > `✅ Done` (`🟡 In Progress` → `✅ Done`, 4/4 subtask tuntas) — subtask
 > **T-098.4** (sidebar mobile hamburger+`Sheet` di `apps/web/src/app/(app)/`
@@ -152,6 +166,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
+| **T-100** | Migrasi Publish — Draft Editor Modal             | 🟡      | **In Progress (2026-09-03)** — T-100.1 selesai (struktur modal + layout, `Dialog`/`DialogHeader`/`DialogFooter` shadcn, varian Standard/Fullscreen ADR-065/052 dipertahankan), branch `feature/t-100-draft-editor-modal`. T-100.2 (form controls), T-100.3 (`TimeInput` + **KI-030**), T-100.4 (verifikasi penuh) tersisa; review Ridwan + QA Najwa belum jalan. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-100 |
 | **T-099** | Migrasi Settings                                 | ✅      | **Selesai (2026-09-02)** — 3/3 subtask (`WorkspaceGeneralSettings.tsx`/`ProfileForm.tsx`/`preferences/page.tsx`/`SettingsPageHead.tsx`, `MembersTable.tsx`/`InviteMemberDialog.tsx`/`InviteMemberAction.tsx`, `ConnectedAccountsList.tsx`/`ConnectPlatformMenu.tsx`/`WorkspacesSettingsView.tsx`), lolos review Ridwan (0 temuan) + QA Najwa (PASS, 1 temuan minor viewport sempit dicatat di **KI-042**). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-099 |
 | **T-098** | Migrasi App Shell & Navigasi                     | ✅      | **Selesai (2026-09-02)** — seluruh 4/4 subtask tuntas: T-098.1–.3 (`WorkspaceSideNav`/`SettingsSideNav`/`ChannelsSection`, `NotificationBell` ke `Sheet` + hapus `Drawer.tsx`, re-verifikasi **KI-040** → Closed), T-098.4 (sidebar mobile + tabel mobile card, menutup **KI-042** — lolos review Ridwan 0 temuan + QA Najwa PASS penuh). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-098 |
 | **T-097** | Migrasi Auth Flows & Onboarding                  | ✅      | **Selesai (2026-09-02)** — 5/5 subtask (Login/Register, Forgot/Reset password, Accept Invite, `(auth)/layout.tsx`, Onboarding), lolos review Ridwan (0 temuan) + QA Najwa (semua PASS). Gap desain token `--success`/`--warning` Stone theme dicatat **KI-041** (belum ditutup, menunggu keputusan King Rezi). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-097 |

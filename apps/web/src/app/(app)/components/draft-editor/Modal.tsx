@@ -5,26 +5,36 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { DateInput } from "@astryxdesign/core/DateInput";
-import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
 import { Divider } from "@astryxdesign/core/Divider";
 import { FileInput } from "@astryxdesign/core/FileInput";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
-import { Layout, LayoutContent, LayoutFooter } from "@astryxdesign/core/Layout";
 import { Link } from "@astryxdesign/core/Link";
 import { RadioList, RadioListItem } from "@astryxdesign/core/RadioList";
-import { StackItem } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { TimeInput } from "@astryxdesign/core/TimeInput";
 import { VStack } from "@astryxdesign/core/VStack";
 
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
+
 import { ContentFormat, ContentStatus, SocialPlatform } from "@social/shared";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 
 import type { ConnectedAccountDto } from "./actions";
@@ -110,27 +120,39 @@ function ResumeDialog({
     : "";
 
   return (
-    <Dialog isOpen={isOpen} onOpenChange={() => undefined} purpose="required">
-      <DialogHeader
-        title="Resume unfinished post?"
-        subtitle="Ada draft New Post yang belum disimpan dari sesi sebelumnya (KSP-05-F13, ADR-052). Hanya berlaku untuk New Post — Edit Draft tidak punya dialog ini."
-      />
-      <VStack gap={3}>
-        <VStack gap={1}>
-          <Text type="supporting">Caption</Text>
-          <Text>{preview || "(kosong)"}</Text>
+    <Dialog open={isOpen} onOpenChange={() => undefined}>
+      <DialogContent
+        showCloseButton={false}
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle>Resume unfinished post?</DialogTitle>
+          <DialogDescription>
+            Ada draft New Post yang belum disimpan dari sesi sebelumnya
+            (KSP-05-F13, ADR-052). Hanya berlaku untuk New Post — Edit Draft
+            tidak punya dialog ini.
+          </DialogDescription>
+        </DialogHeader>
+        <VStack gap={3}>
+          <VStack gap={1}>
+            <Text type="supporting">Caption</Text>
+            <Text>{preview || "(kosong)"}</Text>
+          </VStack>
+          <VStack gap={1}>
+            <Text type="supporting">Terakhir diedit</Text>
+            <Text>
+              {unsaved ? formatRelativeTime(new Date(unsaved.savedAt)) : "-"}
+            </Text>
+          </VStack>
+          <HStack gap={3} justify="end">
+            <Button variant="secondary" onClick={onDiscard}>
+              Mulai Baru
+            </Button>
+            <Button onClick={onResume}>Resume</Button>
+          </HStack>
         </VStack>
-        <VStack gap={1}>
-          <Text type="supporting">Terakhir diedit</Text>
-          <Text>
-            {unsaved ? formatRelativeTime(new Date(unsaved.savedAt)) : "-"}
-          </Text>
-        </VStack>
-        <HStack gap={3} justify="end">
-          <Button label="Mulai Baru" variant="secondary" onClick={onDiscard} />
-          <Button label="Resume" variant="primary" onClick={onResume} />
-        </HStack>
-      </VStack>
+      </DialogContent>
     </Dialog>
   );
 }
@@ -479,316 +501,298 @@ function DraftEditorForm({
   }
 
   return (
-    <Layout
-      header={
-        <DialogHeader
-          title={
-            pendingAction === "schedule"
-              ? "Konfirmasi Jadwal"
-              : pendingAction === "publish-now"
-                ? "Konfirmasi Publish"
-                : isEdit
-                  ? "Edit Draft"
-                  : "New Post"
-          }
-          endContent={
-            pendingAction ? undefined : (
-              <HStack gap={2} align="center">
-                <Badge
-                  label={CONTENT_STATUS_LABEL[status]}
-                  variant={CONTENT_STATUS_BADGE_VARIANT[status]}
-                  icon={
-                    <span
-                      aria-hidden="true"
-                      className="inline-block size-1.5 rounded-full bg-current"
-                    />
-                  }
-                />
-                <Button
-                  label={
-                    dialogVariant === "fullscreen" ? "Standard" : "Fullscreen"
-                  }
-                  variant="ghost"
-                  size="sm"
-                  onClick={onToggleDialogVariant}
-                />
-              </HStack>
-            )
-          }
-          onOpenChange={onOpenChange}
-        />
-      }
-      content={
-        <LayoutContent>
-          {pendingAction ? (
-            <VStack gap={3}>
-              {notice?.status === "error" ? (
-                <Banner status="error" title={notice.title} />
-              ) : null}
-              <Text>Caption: {caption || "(kosong)"}</Text>
-              <VStack gap={1}>
-                <Text type="supporting">Akun:</Text>
-                {selectedAccounts.map((account) => (
-                  <Text key={account.id}>
-                    · {PLATFORM_LABEL[account.platform]} {account.handle} —{" "}
-                    {
-                      FORMAT_LABEL[
-                        formatByAccount[account.id] ??
-                          getDefaultFormat(account.platform)
-                      ]
-                    }
-                  </Text>
-                ))}
-              </VStack>
-              {pendingAction === "publish-now" ? (
-                <Text>Waktu: Sekarang</Text>
-              ) : (
-                <Text>
-                  Waktu: {scheduleDate ?? "-"} {scheduleTime ?? ""}
-                </Text>
-              )}
-            </VStack>
-          ) : (
-            <VStack gap={4}>
-              {notice ? (
-                <Banner status={notice.status} title={notice.title} />
-              ) : null}
-
-              {isLoadingDraft ? (
-                <Text type="supporting">Memuat draft…</Text>
-              ) : (
-                <HStack gap={6} align="start" wrap="wrap">
-                  <VStack gap={5} width="100%" maxWidth={500}>
-                    <VStack gap={3}>
-                      <Heading level={2}>Caption</Heading>
-                      <TextArea
-                        label="Caption"
-                        isLabelHidden
-                        value={caption}
-                        onChange={setCaption}
-                        placeholder="Tulis caption di sini..."
-                        description="AI Caption Assist belum termasuk revisi ini."
-                      />
-                    </VStack>
-
-                    <VStack gap={3}>
-                      <Heading level={2}>Media</Heading>
-                      <FileInput
-                        label="Media"
-                        isLabelHidden
-                        mode="dropzone"
-                        value={null}
-                        onChange={() => undefined}
-                        isDisabled
-                        disabledMessage="Lampiran media akan tersedia setelah OutstandAdapter Media API siap."
-                      />
-                    </VStack>
-                  </VStack>
-
-                  <VStack gap={4} width="100%" maxWidth={340}>
-                    <VStack gap={3}>
-                      <Heading level={2}>Account Selector</Heading>
-                      {isLoadingAccounts ? (
-                        <Text type="supporting">Memuat akun terhubung…</Text>
-                      ) : accounts.length === 0 ? (
-                        <Text type="supporting">
-                          Belum ada akun terhubung untuk workspace ini.
-                        </Text>
-                      ) : (
-                        accounts.map((account) => {
-                          const isChecked = selectedAccountIds.includes(
-                            account.id,
-                          );
-                          const formats = getSelectableFormats(
-                            account.platform,
-                          );
-                          const currentFormat = formatByAccount[account.id];
-                          const isDisconnected = isAccountDisconnected(account);
-
-                          return (
-                            <VStack key={account.id} gap={2}>
-                              <HStack justify="between" align="center">
-                                <CheckboxInput
-                                  label={`${PLATFORM_LABEL[account.platform]} ${account.handle}`}
-                                  value={isChecked}
-                                  onChange={(checked) =>
-                                    toggleAccount(account, checked)
-                                  }
-                                />
-                                {isDisconnected ? (
-                                  <Badge
-                                    label="Disconnected"
-                                    variant="warning"
-                                  />
-                                ) : null}
-                              </HStack>
-
-                              {isDisconnected ? (
-                                <Text type="supporting">
-                                  Akun ini terputus —{" "}
-                                  <Link href="/settings/connected-accounts">
-                                    Reconnect
-                                  </Link>
-                                  .
-                                </Text>
-                              ) : null}
-
-                              {isChecked && formats ? (
-                                <RadioList
-                                  label="Content Format"
-                                  isLabelHidden
-                                  orientation="horizontal"
-                                  value={
-                                    currentFormat ??
-                                    getDefaultFormat(account.platform)
-                                  }
-                                  onChange={(value) =>
-                                    setFormatByAccount((prev) => ({
-                                      ...prev,
-                                      [account.id]: value as ContentFormat,
-                                    }))
-                                  }
-                                >
-                                  {formats.map((format) => (
-                                    <RadioListItem
-                                      key={format}
-                                      label={FORMAT_LABEL[format]}
-                                      value={format}
-                                    />
-                                  ))}
-                                </RadioList>
-                              ) : null}
-
-                              {isChecked &&
-                              account.platform === SocialPlatform.Pinterest ? (
-                                <VStack gap={2}>
-                                  <Text type="supporting">Format: Pin</Text>
-                                  <TextInput
-                                    label="Pin Title"
-                                    value={pinTitle}
-                                    onChange={setPinTitle}
-                                    isOptional
-                                  />
-                                  <TextInput
-                                    label="Destination Link"
-                                    value={pinLink}
-                                    onChange={setPinLink}
-                                    isOptional
-                                  />
-                                </VStack>
-                              ) : null}
-
-                              {isChecked &&
-                              !formats &&
-                              account.platform !== SocialPlatform.Pinterest ? (
-                                <Text type="supporting">Format: Post</Text>
-                              ) : null}
-
-                              <Divider />
-                            </VStack>
-                          );
-                        })
-                      )}
-                    </VStack>
-
-                    <VStack gap={3}>
-                      <Heading level={2}>Jadwal</Heading>
-                      <HStack gap={2}>
-                        <DateInput
-                          label="Tanggal"
-                          isLabelHidden
-                          placeholder="Pilih tanggal"
-                          size="sm"
-                          value={scheduleDate as never}
-                          onChange={(value) => setScheduleDate(value)}
-                        />
-                        <TimeInput
-                          label="Waktu"
-                          isLabelHidden
-                          placeholder="Pilih waktu"
-                          size="sm"
-                          hourFormat="24h"
-                          increment={15}
-                          value={scheduleTime as never}
-                          onChange={(value) => setScheduleTime(value)}
-                        />
-                      </HStack>
-                    </VStack>
-                  </VStack>
-                </HStack>
-              )}
-            </VStack>
+    // eslint-disable-next-line no-restricted-syntax -- T-100.1: struktur Layout Astryx sudah diganti shadcn Dialog (ADR-097); wrapper flex-column header/body/footer ini tidak punya padanan primitive shadcn, murni komposisi Tailwind.
+    <div className="flex h-full min-h-0 flex-col">
+      <DialogHeader className="flex-row items-start justify-between gap-3 border-b border-border px-6 py-4">
+        <DialogTitle className="text-lg">
+          {pendingAction === "schedule"
+            ? "Konfirmasi Jadwal"
+            : pendingAction === "publish-now"
+              ? "Konfirmasi Publish"
+              : isEdit
+                ? "Edit Draft"
+                : "New Post"}
+        </DialogTitle>
+        {/* eslint-disable-next-line no-restricted-syntax -- T-100.1: baris aksi header (status chip + toggle Fullscreen/Standard ADR-065 + tombol close) tidak punya padanan primitive shadcn, murni Tailwind. */}
+        <div className="flex items-center gap-2">
+          {pendingAction ? null : (
+            <>
+              <Badge
+                label={CONTENT_STATUS_LABEL[status]}
+                variant={CONTENT_STATUS_BADGE_VARIANT[status]}
+                icon={
+                  <span
+                    aria-hidden="true"
+                    className="inline-block size-1.5 rounded-full bg-current"
+                  />
+                }
+              />
+              <Button variant="ghost" size="sm" onClick={onToggleDialogVariant}>
+                {dialogVariant === "fullscreen" ? "Standard" : "Fullscreen"}
+              </Button>
+            </>
           )}
-        </LayoutContent>
-      }
-      footer={
-        isLoadingDraft ? undefined : (
-          <LayoutFooter>
-            {pendingAction === "schedule" ? (
-              <HStack gap={3} justify="end" width="100%">
-                <Button
-                  label="Batal"
-                  variant="secondary"
-                  onClick={() => setPendingAction(null)}
-                  isDisabled={isScheduling}
-                />
-                <Button
-                  label="Konfirmasi & Jadwalkan"
-                  variant="primary"
-                  onClick={handleConfirmSchedule}
-                  isLoading={isScheduling}
-                />
-              </HStack>
-            ) : pendingAction === "publish-now" ? (
-              <HStack gap={3} justify="end" width="100%">
-                <Button
-                  label="Batal"
-                  variant="secondary"
-                  onClick={() => setPendingAction(null)}
-                  isDisabled={isPublishingNow}
-                />
-                <Button
-                  label="Konfirmasi & Publish"
-                  variant="primary"
-                  onClick={handleConfirmPublishNow}
-                  isLoading={isPublishingNow}
-                />
-              </HStack>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onOpenChange(false)}
+          >
+            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+            <span className="sr-only">Close</span>
+          </Button>
+        </div>
+      </DialogHeader>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-100.1: area body scrollable Dialog (dulu Astryx LayoutContent) tidak punya padanan primitive shadcn, murni Tailwind. */}
+      <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        {pendingAction ? (
+          <VStack gap={3}>
+            {notice?.status === "error" ? (
+              <Banner status="error" title={notice.title} />
+            ) : null}
+            <Text>Caption: {caption || "(kosong)"}</Text>
+            <VStack gap={1}>
+              <Text type="supporting">Akun:</Text>
+              {selectedAccounts.map((account) => (
+                <Text key={account.id}>
+                  · {PLATFORM_LABEL[account.platform]} {account.handle} —{" "}
+                  {
+                    FORMAT_LABEL[
+                      formatByAccount[account.id] ??
+                        getDefaultFormat(account.platform)
+                    ]
+                  }
+                </Text>
+              ))}
+            </VStack>
+            {pendingAction === "publish-now" ? (
+              <Text>Waktu: Sekarang</Text>
             ) : (
-              <HStack gap={2} width="100%">
-                <StackItem size="fill">
-                  <Button
-                    label="Save as Draft"
-                    variant="secondary"
-                    width="100%"
-                    onClick={handleSaveDraft}
-                    isLoading={isSavingDraft}
-                  />
-                </StackItem>
-                <StackItem size="fill">
-                  <Button
-                    label="Publish Now"
-                    variant="secondary"
-                    width="100%"
-                    isDisabled={!isReadyToPublishNow}
-                    onClick={() => setPendingAction("publish-now")}
-                  />
-                </StackItem>
-                <StackItem size="fill">
-                  <Button
-                    label="Schedule"
-                    variant="primary"
-                    width="100%"
-                    isDisabled={!isReadyToSchedule}
-                    onClick={() => setPendingAction("schedule")}
-                  />
-                </StackItem>
+              <Text>
+                Waktu: {scheduleDate ?? "-"} {scheduleTime ?? ""}
+              </Text>
+            )}
+          </VStack>
+        ) : (
+          <VStack gap={4}>
+            {notice ? (
+              <Banner status={notice.status} title={notice.title} />
+            ) : null}
+
+            {isLoadingDraft ? (
+              <Text type="supporting">Memuat draft…</Text>
+            ) : (
+              <HStack gap={6} align="start" wrap="wrap">
+                <VStack gap={5} width="100%" maxWidth={500}>
+                  <VStack gap={3}>
+                    <Heading level={2}>Caption</Heading>
+                    <TextArea
+                      label="Caption"
+                      isLabelHidden
+                      value={caption}
+                      onChange={setCaption}
+                      placeholder="Tulis caption di sini..."
+                      description="AI Caption Assist belum termasuk revisi ini."
+                    />
+                  </VStack>
+
+                  <VStack gap={3}>
+                    <Heading level={2}>Media</Heading>
+                    <FileInput
+                      label="Media"
+                      isLabelHidden
+                      mode="dropzone"
+                      value={null}
+                      onChange={() => undefined}
+                      isDisabled
+                      disabledMessage="Lampiran media akan tersedia setelah OutstandAdapter Media API siap."
+                    />
+                  </VStack>
+                </VStack>
+
+                <VStack gap={4} width="100%" maxWidth={340}>
+                  <VStack gap={3}>
+                    <Heading level={2}>Account Selector</Heading>
+                    {isLoadingAccounts ? (
+                      <Text type="supporting">Memuat akun terhubung…</Text>
+                    ) : accounts.length === 0 ? (
+                      <Text type="supporting">
+                        Belum ada akun terhubung untuk workspace ini.
+                      </Text>
+                    ) : (
+                      accounts.map((account) => {
+                        const isChecked = selectedAccountIds.includes(
+                          account.id,
+                        );
+                        const formats = getSelectableFormats(account.platform);
+                        const currentFormat = formatByAccount[account.id];
+                        const isDisconnected = isAccountDisconnected(account);
+
+                        return (
+                          <VStack key={account.id} gap={2}>
+                            <HStack justify="between" align="center">
+                              <CheckboxInput
+                                label={`${PLATFORM_LABEL[account.platform]} ${account.handle}`}
+                                value={isChecked}
+                                onChange={(checked) =>
+                                  toggleAccount(account, checked)
+                                }
+                              />
+                              {isDisconnected ? (
+                                <Badge label="Disconnected" variant="warning" />
+                              ) : null}
+                            </HStack>
+
+                            {isDisconnected ? (
+                              <Text type="supporting">
+                                Akun ini terputus —{" "}
+                                <Link href="/settings/connected-accounts">
+                                  Reconnect
+                                </Link>
+                                .
+                              </Text>
+                            ) : null}
+
+                            {isChecked && formats ? (
+                              <RadioList
+                                label="Content Format"
+                                isLabelHidden
+                                orientation="horizontal"
+                                value={
+                                  currentFormat ??
+                                  getDefaultFormat(account.platform)
+                                }
+                                onChange={(value) =>
+                                  setFormatByAccount((prev) => ({
+                                    ...prev,
+                                    [account.id]: value as ContentFormat,
+                                  }))
+                                }
+                              >
+                                {formats.map((format) => (
+                                  <RadioListItem
+                                    key={format}
+                                    label={FORMAT_LABEL[format]}
+                                    value={format}
+                                  />
+                                ))}
+                              </RadioList>
+                            ) : null}
+
+                            {isChecked &&
+                            account.platform === SocialPlatform.Pinterest ? (
+                              <VStack gap={2}>
+                                <Text type="supporting">Format: Pin</Text>
+                                <TextInput
+                                  label="Pin Title"
+                                  value={pinTitle}
+                                  onChange={setPinTitle}
+                                  isOptional
+                                />
+                                <TextInput
+                                  label="Destination Link"
+                                  value={pinLink}
+                                  onChange={setPinLink}
+                                  isOptional
+                                />
+                              </VStack>
+                            ) : null}
+
+                            {isChecked &&
+                            !formats &&
+                            account.platform !== SocialPlatform.Pinterest ? (
+                              <Text type="supporting">Format: Post</Text>
+                            ) : null}
+
+                            <Divider />
+                          </VStack>
+                        );
+                      })
+                    )}
+                  </VStack>
+
+                  <VStack gap={3}>
+                    <Heading level={2}>Jadwal</Heading>
+                    <HStack gap={2}>
+                      <DateInput
+                        label="Tanggal"
+                        isLabelHidden
+                        placeholder="Pilih tanggal"
+                        size="sm"
+                        value={scheduleDate as never}
+                        onChange={(value) => setScheduleDate(value)}
+                      />
+                      <TimeInput
+                        label="Waktu"
+                        isLabelHidden
+                        placeholder="Pilih waktu"
+                        size="sm"
+                        hourFormat="24h"
+                        increment={15}
+                        value={scheduleTime as never}
+                        onChange={(value) => setScheduleTime(value)}
+                      />
+                    </HStack>
+                  </VStack>
+                </VStack>
               </HStack>
             )}
-          </LayoutFooter>
-        )
-      }
-    />
+          </VStack>
+        )}
+      </div>
+      {isLoadingDraft ? null : pendingAction === "schedule" ? (
+        <DialogFooter className="border-t border-border px-6 py-4">
+          <Button
+            variant="secondary"
+            onClick={() => setPendingAction(null)}
+            disabled={isScheduling}
+          >
+            Batal
+          </Button>
+          <Button onClick={handleConfirmSchedule} disabled={isScheduling}>
+            {isScheduling ? <Spinner /> : null}
+            Konfirmasi & Jadwalkan
+          </Button>
+        </DialogFooter>
+      ) : pendingAction === "publish-now" ? (
+        <DialogFooter className="border-t border-border px-6 py-4">
+          <Button
+            variant="secondary"
+            onClick={() => setPendingAction(null)}
+            disabled={isPublishingNow}
+          >
+            Batal
+          </Button>
+          <Button onClick={handleConfirmPublishNow} disabled={isPublishingNow}>
+            {isPublishingNow ? <Spinner /> : null}
+            Konfirmasi & Publish
+          </Button>
+        </DialogFooter>
+      ) : (
+        <DialogFooter className="flex-row border-t border-border px-6 py-4 [&>*]:flex-1">
+          <Button
+            variant="secondary"
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft}
+          >
+            {isSavingDraft ? <Spinner /> : null}
+            Save as Draft
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={!isReadyToPublishNow}
+            onClick={() => setPendingAction("publish-now")}
+          >
+            Publish Now
+          </Button>
+          <Button
+            disabled={!isReadyToSchedule}
+            onClick={() => setPendingAction("schedule")}
+          >
+            Schedule
+          </Button>
+        </DialogFooter>
+      )}
+    </div>
   );
 }
 
@@ -900,35 +904,56 @@ export function DraftEditorModal() {
       />
 
       <Dialog
-        isOpen={isEditorOpen}
-        onOpenChange={handleOpenChange}
-        variant={effectiveDialogVariant}
-        width="min(960px, 94vw)"
-        maxHeight="90vh"
-        purpose="form"
+        open={isEditorOpen}
+        onOpenChange={(open) => handleOpenChange(open)}
       >
-        {isEditorOpen ? (
-          <DraftEditorForm
-            key={sessionKey}
-            mode={state.mode === "edit" ? "edit" : "create"}
-            postId={state.mode === "edit" ? state.postId : undefined}
-            prefillCaption={
-              state.mode === "create" ? state.prefillCaption : undefined
-            }
-            preSelectedAccountId={
-              state.mode === "create" ? state.preSelectedAccountId : undefined
-            }
-            initialPendingAction={
-              state.mode === "edit" ? state.initialPendingAction : undefined
-            }
-            onOpenChange={handleOpenChange}
-            dialogVariant={dialogVariant}
-            onToggleDialogVariant={toggleDialogVariant}
-            onLatestChange={(snapshot) => {
-              latestFormRef.current = snapshot;
-            }}
-          />
-        ) : null}
+        <DialogContent
+          showCloseButton={false}
+          className={cn(
+            "flex flex-col gap-0 overflow-hidden p-0",
+            effectiveDialogVariant === "fullscreen" &&
+              "translate-none rounded-none",
+          )}
+          style={
+            effectiveDialogVariant === "fullscreen"
+              ? {
+                  top: 0,
+                  left: 0,
+                  width: "100vw",
+                  height: "100dvh",
+                  maxWidth: "none",
+                  maxHeight: "none",
+                }
+              : {
+                  width: "min(960px, 94vw)",
+                  maxWidth: "min(960px, 94vw)",
+                  maxHeight: "88vh",
+                }
+          }
+        >
+          {isEditorOpen ? (
+            <DraftEditorForm
+              key={sessionKey}
+              mode={state.mode === "edit" ? "edit" : "create"}
+              postId={state.mode === "edit" ? state.postId : undefined}
+              prefillCaption={
+                state.mode === "create" ? state.prefillCaption : undefined
+              }
+              preSelectedAccountId={
+                state.mode === "create" ? state.preSelectedAccountId : undefined
+              }
+              initialPendingAction={
+                state.mode === "edit" ? state.initialPendingAction : undefined
+              }
+              onOpenChange={handleOpenChange}
+              dialogVariant={dialogVariant}
+              onToggleDialogVariant={toggleDialogVariant}
+              onLatestChange={(snapshot) => {
+                latestFormRef.current = snapshot;
+              }}
+            />
+          ) : null}
+        </DialogContent>
       </Dialog>
     </>
   );
