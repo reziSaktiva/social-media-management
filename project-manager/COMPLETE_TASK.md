@@ -8,6 +8,59 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-03 — T-101.4 selesai: Migrasi Publish — Header/Tabbar/Layout ke shadcn/ui (T-101 v0.7, 4/5 subtask)
+
+**T-101.4** (Header/Tabbar/Layout, bagian dari **T-101** Migrasi Publish —
+Calendar, Queue, Drafts, Dashboard, rilis v0.7 migrasi Astryx→shadcn/ui,
+ADR-097) selesai di branch
+`feature/t-101-publish-calendar-queue-drafts-migration`. T-101 tetap `🟡
+In Progress` (4 dari 5 subtask tuntas).
+
+**File yang diubah**:
+`apps/web/src/app/(app)/publish/components/PublishPageHeader.tsx`,
+`apps/web/src/app/(app)/publish/components/PublishTabbar.tsx`,
+`apps/web/src/app/(app)/publish/layout.tsx`.
+
+**Ringkasan migrasi:**
+
+- `PublishPageHeader.tsx`: `HStack`/`VStack`/`Heading`/`Text`/`Button`
+  Astryx → Tailwind flex + `<h1>` raw (pola sama dengan
+  `SettingsPageHead` T-099.1) + `Text` (`variant="muted"`) + `Button`
+  shadcn. Icon `PlusSignIcon` (hugeicons) mengganti label literal "+".
+- `PublishTabbar.tsx`: `TabList`/`Tab` Astryx → shadcn `Tabs`/`TabsList`
+  (`variant="line"`)/`TabsTrigger` (Radix Tabs). Karena navigasi rute
+  (bukan tab client-side), tiap `TabsTrigger` di-render `asChild` sebagai
+  `next/link` Link, `Tabs` dikontrol lewat `value` dari `usePathname()`
+  supaya active state sinkron dengan URL (tanpa `onValueChange`, murni
+  route-driven).
+- `layout.tsx`: `VStack` Astryx → Tailwind flex, tetap composition murni
+  tanpa business logic.
+- Komponen shadcn baru: `tabs` (`bunx shadcn@latest add @shadcn/tabs` →
+  `apps/web/src/components/ui/tabs.tsx`, style `radix-maia`). Komponen
+  lain (`Button`, `Text`) sudah tersedia dari migrasi sebelumnya.
+- Catatan minor (bukan penyimpangan): ukuran heading "Publish"
+  (`text-2xl font-semibold`) keputusan gaya Mark UI Engineer karena tidak
+  ada variant `Text` shadcn yang cocok untuk page-header ringkas — sama
+  alasan dengan `SettingsPageHead` (T-099.1) pakai `<h2>` raw. Nit
+  non-arsitektur dari Ridwan: docstring di `PublishTabbar.tsx` menyebut
+  `onValueChange` padahal tidak dipakai di kode (kosmetik).
+- History tab menampilkan halaman scaffold placeholder (T-034, di luar
+  scope task ini) — bukan regresi.
+
+**Verifikasi:** `bun run typecheck` PASS 0 error; `bunx eslint` pada 4
+file yang diubah PASS 0 error/warning; verifikasi visual browser (Mark UI
+Engineer, akun Raka Pratama/Owner, workspace Insvire) PASS — light/dark
+mode, tab switching Calendar→Queue→Drafts→History (active underline &
+subtitle header berpindah benar, routing Next.js tanpa full reload),
+tombol "+ New Post" membuka Draft Editor modal, mobile ~375px rapi, tidak
+ada regresi. Review arsitektur Ridwan: 0 temuan (entry point tanpa
+business logic, tidak ada import Prisma/Supabase/HTTP Outstand, tidak ada
+pelanggaran cross-domain/shared types).
+
+Detail lengkap: `tasks/v07-astryx-shadcn-migration.md` § T-101.
+
+---
+
 ## 2026-09-03 — T-101.3 selesai: Migrasi Publish — Drafts ke shadcn/ui (T-101 v0.7, 3/5 subtask)
 
 **T-101.3** (Drafts, bagian dari **T-101** Migrasi Publish — Calendar,
