@@ -8,6 +8,74 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-03 — T-101.5 selesai: Migrasi Dashboard ke shadcn/ui — T-101 Done (5/5 subtask, v0.7)
+
+**T-101.5** (Dashboard: `DashboardHome.tsx`, subtask terakhir dari **T-101**
+Migrasi Publish — Calendar, Queue, Drafts, Dashboard, rilis v0.7 migrasi
+Astryx→shadcn/ui, ADR-097) selesai di branch
+`feature/t-101-publish-calendar-queue-drafts-migration`. Dengan ini
+**T-101 ditutup `✅ Done` (5/5 subtask)**.
+
+**File yang diubah**: `apps/web/src/app/(app)/components/DashboardHome.tsx`
+— migrasi penuh dari Astryx (`Card`, `EmptyState`, `Grid`, `Heading`,
+`HStack`, `ProgressBar`, `Section`, `Selector`, `Text`, `VStack`) ke
+shadcn/ui.
+
+**File baru**: `apps/web/src/components/ui/progress.tsx` (via `bunx
+shadcn@latest add progress`, belum pernah ada sebelumnya, di-discover dulu
+via MCP search/view/examples sebelum install).
+
+**Pemetaan komponen:**
+
+- `VStack`/`HStack`/`Section` → Tailwind flex/grid (pola sama
+  `PublishPageHeader.tsx` T-101.4)
+- `Heading level={1}`/`level={2}` → `<h1>`/`<h2>` raw + Tailwind (pola sama
+  `SettingsPageHead` T-099.1)
+- `Text type="supporting"` → shadcn `Text variant="muted"`/`"small"`
+- `Selector` (weekly/monthly) → shadcn `Select`/`SelectTrigger`/
+  `SelectValue`/`SelectContent`/`SelectItem` (pola sama
+  `CalendarToolbar.tsx` T-101.1)
+- `Card` → shadcn `Card`/`CardContent`
+- `EmptyState` → shadcn `Empty`/`EmptyHeader`/`EmptyTitle`/
+  `EmptyDescription`
+- `Grid` (3 StatTile) → `grid grid-cols-1 sm:grid-cols-3 gap-4`
+- `ProgressBar` → shadcn `Progress` (Radix, skala value 0-100) — tidak ada
+  value-label formatting bawaan seperti Astryx (`hasValueLabel`/
+  `formatValueLabel`), jadi label persentase dirender manual sebagai
+  `Text` di atas komponen `Progress` — dicatat sebagai gap desain-token/API
+  konsisten dengan presedan gap serupa di T-101.1/T-101.3, bukan
+  penyimpangan baru.
+
+**Tidak diubah**: state `period`, `useTransition`, Server Action
+`getDashboardSummaryAction`, guard `latestRequestedPeriod` — murni migrasi
+presentasi. **KI-036** (dashboard fetch via Server Action menyimpang
+RS-D02) tetap technical debt terpisah, tidak disentuh.
+
+**Gate rule 17 AGENTS.md:** rancangan Home/Dashboard dicek dulu ke Claude
+Design project "Social Media Management" (`templates/home.html`, KSP-01 —
+Home, section Analytics Snapshot) — sudah ada, implementasi lanjut tanpa
+hambatan.
+
+**Verifikasi**: `bun run typecheck` PASS 0 error; `bunx eslint` PASS 0
+error; verifikasi visual browser (Mark UI Engineer) — empty state dark
+mode PASS, golden path dark+light mode PASS, mobile 375px PASS (tidak
+overflow), interaksi ganti periode Mingguan↔Bulanan via Select berfungsi,
+console browser bersih. Review arsitektur Ridwan Architecture Reviewer:
+**0 temuan** (logic tidak berubah, tidak ada import Prisma/Supabase/
+Outstand, cross-domain lewat barrel `@/domains/analytics`, prop/variant
+shadcn diverifikasi valid ke source `cva()`).
+
+**Dampak indeks:** `TASKS.md` — v0.7 breakdown 6 ✅ · 1 🟡 · 1 ⏳ → **7 ✅
+· 1 ⏳**; task selesai global 31 → **32**; hitungan subtask v0.7 tidak
+berubah (37, dihitung ulang langsung dari
+`tasks/v07-astryx-shadcn-migration.md`). Task berikutnya rilis v0.7:
+**T-102 Cleanup & Verifikasi Akhir**.
+
+Detail lengkap: `project-manager/tasks/v07-astryx-shadcn-migration.md` §
+T-101.
+
+---
+
 ## 2026-09-03 — T-101.4 selesai: Migrasi Publish — Header/Tabbar/Layout ke shadcn/ui (T-101 v0.7, 4/5 subtask)
 
 **T-101.4** (Header/Tabbar/Layout, bagian dari **T-101** Migrasi Publish —

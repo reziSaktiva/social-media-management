@@ -703,7 +703,7 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
 
 ### T-101 · Migrasi Publish — Calendar, Queue, Drafts, Dashboard
 
-`🟡 In Progress` · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
+`✅ Done` (2026-09-03) · **Domain** UI · **ADR** ADR-097 · **Depends** T-096
 **Baca dulu:** `04-ux/key-screen-patterns.md` § Calendar/Queue · ADR-090/091 (Popover)
 
 ~10 file, boleh dipecah lebih lanjut jadi sub-sesi kalau perlu.
@@ -719,7 +719,7 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
 - [x] **T-101.3** Drafts: `DraftsList.tsx`
 - [x] **T-101.4** `PublishPageHeader.tsx`, `PublishTabbar.tsx`,
       `app/(app)/publish/layout.tsx`
-- [ ] **T-101.5** Dashboard: `DashboardHome.tsx` — catat juga **KI-036**
+- [x] **T-101.5** Dashboard: `DashboardHome.tsx` — catat juga **KI-036**
       (dashboard fetch via Server Action, menyimpang RS-D02) tetap
       technical debt terpisah, tidak termasuk scope migrasi UI ini
 
@@ -872,6 +872,50 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
     business logic, tidak ada import Prisma/Supabase/HTTP Outstand, tidak
     ada pelanggaran cross-domain/shared types).
   * T-101 tetap `🟡 In Progress` — T-101.5 (Dashboard) belum dikerjakan.
+- Catatan T-101.5 (2026-09-03, Mark UI Engineer, branch
+  `feature/t-101-publish-calendar-queue-drafts-migration`, file di
+  `apps/web/src/app/(app)/components/`):
+  * File diubah: `DashboardHome.tsx` — migrasi penuh dari Astryx (`Card`,
+    `EmptyState`, `Grid`, `Heading`, `HStack`, `ProgressBar`, `Section`,
+    `Selector`, `Text`, `VStack`) ke shadcn/ui.
+  * Komponen shadcn baru: `progress` (`bunx shadcn@latest add progress` →
+    `apps/web/src/components/ui/progress.tsx`, belum pernah ada sebelumnya,
+    di-discover dulu via MCP search/view/examples sebelum install).
+  * Pemetaan: `VStack`/`HStack`/`Section` → Tailwind flex/grid (pola sama
+    `PublishPageHeader.tsx` T-101.4); `Heading level={1}`/`level={2}` →
+    `<h1>`/`<h2>` raw + Tailwind (pola sama `SettingsPageHead` T-099.1);
+    `Text type="supporting"` → shadcn `Text variant="muted"`/`"small"`;
+    `Selector` (weekly/monthly) → shadcn `Select`/`SelectTrigger`/
+    `SelectValue`/`SelectContent`/`SelectItem` (pola sama
+    `CalendarToolbar.tsx` T-101.1); `Card` → shadcn `Card`/`CardContent`;
+    `EmptyState` → shadcn `Empty`/`EmptyHeader`/`EmptyTitle`/
+    `EmptyDescription`; `Grid` (3 StatTile) → `grid grid-cols-1
+    sm:grid-cols-3 gap-4`; `ProgressBar` → shadcn `Progress` (Radix, skala
+    value 0-100).
+  * **Gap dicatat (bukan penyimpangan):** shadcn `Progress` tidak punya
+    value-label formatting bawaan seperti Astryx (`hasValueLabel`/
+    `formatValueLabel`) — label persentase dirender manual sebagai `Text`
+    di atas komponen `Progress`. Konsisten dengan presedan gap
+    desain-token serupa di T-101.1/T-101.3, bukan penyimpangan baru.
+  * Tidak diubah: state `period`, `useTransition`, Server Action
+    `getDashboardSummaryAction`, guard `latestRequestedPeriod` — murni
+    migrasi presentasi. **KI-036** (dashboard fetch via Server Action
+    menyimpang RS-D02) tetap technical debt terpisah, tidak disentuh.
+  * Rancangan dicek dulu ke Claude Design project "Social Media
+    Management" (`templates/home.html`, KSP-01 — Home, section Analytics
+    Snapshot) sesuai gate rule 17 `AGENTS.md` — sudah ada, implementasi
+    lanjut tanpa hambatan.
+  * Verifikasi: `bun run typecheck` PASS 0 error; `bunx eslint` PASS 0
+    error; verifikasi visual browser — empty state dark mode PASS, golden
+    path dark+light mode PASS, mobile 375px PASS (tidak overflow),
+    interaksi ganti periode Mingguan↔Bulanan via Select berfungsi, console
+    browser bersih. Review arsitektur Ridwan: 0 temuan (logic tidak
+    berubah, tidak ada import Prisma/Supabase/HTTP Outstand, cross-domain
+    lewat barrel `@/domains/analytics`, prop/variant shadcn diverifikasi
+    valid ke source `cva()`).
+  * **T-101 selesai (5/5 subtask)** — Calendar, Queue, Drafts,
+    header/tabbar/layout, dan Dashboard seluruhnya sudah dimigrasikan ke
+    shadcn/ui.
 
 ---
 
