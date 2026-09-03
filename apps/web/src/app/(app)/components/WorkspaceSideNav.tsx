@@ -69,6 +69,10 @@ export function WorkspaceSideNav({
   initialNotifications,
   initialUnreadCount,
   userId,
+  // T-098.4 (KI-042) — dipanggil saat item nav diklik. Dipakai MobileTopBar
+  // untuk menutup Sheet setelah navigasi; di sidebar desktop (bukan di
+  // dalam Sheet) tetap undefined, jadi tidak ada perubahan perilaku di sana.
+  onNavigate,
 }: {
   workspaceName: string;
   userName: string;
@@ -77,6 +81,7 @@ export function WorkspaceSideNav({
   initialNotifications: NotificationRecord[];
   initialUnreadCount: number;
   userId: string;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -107,6 +112,7 @@ export function WorkspaceSideNav({
     <nav className="flex h-full flex-col">
       <Link
         href="/"
+        onClick={onNavigate}
         className="flex items-center gap-2 px-3 pt-3 pb-2 font-heading text-sm font-semibold"
       >
         <Avatar size="sm">
@@ -125,7 +131,10 @@ export function WorkspaceSideNav({
           // openNewPost sekarang menerima preSelectedAccountId opsional
           // (T-012, ADR-058 addendum poin 9) — wrap supaya event onClick
           // tidak ikut tersalur sebagai argumen pertama.
-          onClick={() => openNewPost()}
+          onClick={() => {
+            onNavigate?.();
+            openNewPost();
+          }}
         >
           <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
           New Post
@@ -155,6 +164,7 @@ export function WorkspaceSideNav({
               <Link
                 key={item.label}
                 href={item.path}
+                onClick={onNavigate}
                 aria-current={isSelected ? "page" : undefined}
                 className={cn(
                   "rounded-xl px-3 py-2 text-sm font-medium transition-colors",
@@ -216,7 +226,10 @@ export function WorkspaceSideNav({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => router.push("/settings/account")}
+                onClick={() => {
+                  onNavigate?.();
+                  router.push("/settings/account");
+                }}
               >
                 Settings
               </DropdownMenuItem>

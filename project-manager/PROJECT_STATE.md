@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-098 Migrasi App Shell & Navigasi — ✅ Done (2026-09-02, ADR-097)**, seluruh 3 subtask tuntas (`WorkspaceSideNav`/`SettingsSideNav`/`ChannelsSection`, `NotificationBell` ke `Sheet` + hapus `Drawer.tsx`, re-verifikasi **KI-040** → Closed); lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh setelah 1 bug ditemukan+diperbaiki). **T-099 Migrasi Settings — ✅ Done (2026-09-02, ADR-097)**, seluruh 3 subtask tuntas (General/Profile/Preferences, Members Table + Invite, Connected Accounts + Workspaces list); lolos review Ridwan (0 temuan) + QA Najwa (PASS dengan 1 temuan minor viewport sempit). Gap strategi responsive/mobile dari kedua task ini dicatat **KI-042** (belum diputuskan). **T-100**, **T-101**, **T-102** menyusul sebagai task berikutnya rilis v0.7. T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** **T-098 Migrasi App Shell & Navigasi — ✅ Done (2026-09-02, ADR-097)**, seluruh 4/4 subtask tuntas (T-098.1–.3: `WorkspaceSideNav`/`SettingsSideNav`/`ChannelsSection`, `NotificationBell` ke `Sheet` + hapus `Drawer.tsx`, re-verifikasi **KI-040** → Closed; T-098.4: sidebar mobile + tabel mobile card, menutup **KI-042**), lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh). **T-099 Migrasi Settings — ✅ Done (2026-09-02, ADR-097)**, seluruh 3 subtask tuntas (General/Profile/Preferences, Members Table + Invite, Connected Accounts + Workspaces list); lolos review Ridwan (0 temuan) + QA Najwa (PASS dengan 1 temuan minor viewport sempit). Gap strategi responsive/mobile dari kedua task ini dicatat **KI-042** (Closed 2026-09-02). **T-100**, **T-101**, **T-102** menyusul sebagai task berikutnya rilis v0.7. T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 85 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -458,7 +458,7 @@ keputusan terbuka; lihat `tasks/v07-astryx-shadcn-migration.md` § T-099.
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | Closed (2026-09-02) |
 | Kategori | UI/Visual |
 | Terkait | T-098, T-099, T-096 |
 
@@ -488,18 +488,83 @@ T-099, severity Moderate.
 baru **T-098.4** (bukan task terpisah, bukan ditunda ke T-102) begitu
 dikerjakan — tapi **ditunda dulu**, belum dikerjakan sekarang. Sebelum
 mulai, dicek dulu ke Claude Design (project "Social Media Management")
-sesuai rule 17 `AGENTS.md`: **rancangan mobile/responsive belum ada** —
-`foundations/layout.html` eksplisit menyatakan "sidebar shape never
-changes", tidak ada varian mobile-nav atau pola tabel sempit yang
+sesuai rule 17 `AGENTS.md`: saat itu **rancangan mobile/responsive belum
+ada** — `foundations/layout.html` eksplisit menyatakan "sidebar shape
+never changes", tidak ada varian mobile-nav atau pola tabel sempit yang
 dirancang di manapun. Satu-satunya precedent breakpoint terdokumentasi
 (`product-discovery/04-ux/key-screen-patterns.md` § KSP-02-F10, `≤768px`)
 spesifik untuk indikator tipe konten Calendar, tidak berlaku langsung ke
-sidebar/table. **Blocker sebelum T-098.4 bisa mulai:** rancangan
-mobile/responsive untuk App Shell (sidebar hamburger+drawer) dan pola
-tabel Members di layar sempit harus dibuat dulu di Claude Design — oleh
-King Rezi langsung atau didelegasikan ke Neymar Product Designer. Tidak
-memblokir M8. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-098 dan
-§ T-099 untuk detail.
+sidebar/table.
+
+**Update (2026-09-02, rancangan dibuat):** blocker desain di atas
+**resolved** — rancangan mobile/responsive untuk App Shell dan pola tabel
+sudah dibuat di Claude Design (project "Social Media Management",
+`projectId` `84aded99-bb23-49b1-be9f-dd8f21c6873e`), murni penambahan
+(append-only, tidak ada markup/CSS existing yang diubah/dihapus):
+* `styles.css` — 2 blok CSS baru di akhir file: pattern "Mobile Shell"
+  (`.mobile-topbar`, `.mobile-nav-backdrop`, `.mobile-nav-drawer` +
+  `@media (max-width: 768px)`, reuse anatomy overlay
+  `.notif-backdrop`/`.notif-drawer` yang sudah ada, dicerminkan buka dari
+  kiri) dan pattern "Table — mobile card layout" (class opt-in
+  `.table-responsive` + `.table-card`/`.table-card-row`/
+  `.table-card-actions`, di-gate lewat wrapper supaya tabel yang belum
+  pakai tidak terpengaruh). Breakpoint `768px` dipakai deliberate reuse
+  dari precedent KSP-02-F10 di atas, dinyatakan eksplisit di komentar
+  CSS (bukan asumsi diam-diam) karena precedent itu untuk konteks lain.
+* `foundations/layout.html` — section baru "Shell — Mobile (≤768px,
+  KI-042)" ditambahkan **setelah** section "Shell — AppShell + SideNav"
+  yang sudah ada; baris "sidebar shape never changes" di section desktop
+  tidak diubah.
+* `components/navigation-mobile.html` (file baru) — 3 demo state static
+  (pola `demo-frame` seperti `components/notifications-panel.html`):
+  Collapsed (top bar saja), Open — Workspace drawer, Open — Settings
+  drawer; markup drawer reuse persis `WorkspaceSideNav`/`SettingsSideNav`
+  desktop, direflow ke lebar drawer.
+* `components/table.html` — section baru "Mobile — card layout (KI-042)"
+  ditambahkan **setelah** tabel desktop existing (tidak diubah), pakai
+  data sama dengan `templates/settings-members.html` (Raka/Maya/Lara).
+
+Seluruh write dikonfirmasi tersimpan (dibaca ulang setelah `write_files`).
+Verifikasi visual browser belum dilakukan (sandbox tidak bisa render file
+lokal Claude Design) — King Rezi disarankan cek visual langsung di Claude
+Design sebelum lanjut implementasi.
+
+**Update (2026-09-02, implementasi T-098.4 dimulai):** King Rezi minta
+lanjut ke implementasi kode. Dikerjakan di sesi utama (bukan lewat Mark UI
+Engineer — `DesignSync` juga gagal dimuat di sesi subagent Mark, konfirmasi
+ketiga kalinya pola keterbatasan yang sama seperti Neymar sebelumnya).
+Scope 1 (sidebar mobile hamburger+`Sheet` di `apps/web/src/app/(app)/`,
+file baru `MobileTopBar.tsx`) dan Scope 2 (`MembersTable.tsx` card layout
+mobile) sudah selesai ditulis — typecheck & lint bersih. **Verifikasi
+visual browser TIDAK berhasil dilakukan** sesi ini (tool Browser pane
+timeout berulang, tampak masalah infrastruktur/tooling, bukan masalah
+kode — dev server Next.js sendiri start normal tanpa error compile).
+Review Ridwan dan QA Najwa **belum jalan**. Status realistis: **kode
+ditulis, menunggu review + QA** — T-098.4 belum ditandai selesai, T-098
+tetap `🟡 In Progress`, **KI-042 tetap Open** sampai T-098.4 benar-benar
+lolos review+QA. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-098.
+
+**Penutupan (2026-09-02):** Review Ridwan (Architecture Reviewer) selesai
+dengan **0 temuan** — entry point bersih, tidak ada import Prisma/Supabase
+di komponen client (`MobileTopBar.tsx`, `AppSideNav.tsx`,
+`WorkspaceSideNav.tsx`, `SettingsSideNav.tsx`, `MembersTable.tsx`),
+cross-domain lewat public API domain, prop `onNavigate?: () => void`
+opsional dikonfirmasi tidak breaking (default `undefined` di sidebar
+desktop), prop `fullWidth` di `MemberActions` konsisten dipakai
+desktop/mobile. QA Najwa: **PASS penuh** — automated `typecheck`/`lint`/
+`test` PASS (235 lulus, 4 skipped), desktop (≥768px) tanpa regresi, mobile
+(375px, 320px) `MobileTopBar`+hamburger+`Sheet` berfungsi benar untuk
+`WorkspaceSideNav`/`SettingsSideNav` (termasuk auto-close `Sheet` saat
+navigasi), `MembersTable.tsx` beralih ke card layout dengan
+Change Role/Remove full-width + dialog konfirmasi Tier-2 (ADR-049) muncul
+normal, tidak ada horizontal overflow di 320–375px, dark mode smoke test
+oke. 2 temuan di luar scope T-098.4 dicatat tapi **bukan** blocker
+penutupan: (a) tabel Members di lebar persis 768px butuh scroll horizontal
+internal — perilaku pre-existing sebelum T-098.4, bukan regresi baru;
+(b) card "Analytics Snapshot" halaman Home tetap berlatar putih saat dark
+mode — bug dark mode pre-existing, tidak terkait T-098.4. **T-098.4
+selesai, T-098 ditutup `✅ Done` (4/4 subtask), KI-042 Closed.** Detail:
+`tasks/v07-astryx-shadcn-migration.md` § T-098, `COMPLETE_TASK.md`.
 
 ---
 
@@ -545,7 +610,7 @@ seluruh daftar Known Issues.
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
 * **T-099 Migrasi Settings selesai (2026-09-02, ADR-097)** — task rilis v0.7 (migrasi Astryx→shadcn/ui), 3/3 subtask tuntas: T-099.1 (General/Profile/Preferences settings), T-099.2 (`MembersTable.tsx` — helper `pixel()`/`proportional()` Astryx dihapus total diganti shadcn `Table` primitive, `InviteMemberDialog.tsx`, `InviteMemberAction.tsx`), T-099.3 (`ConnectedAccountsList.tsx`, `ConnectPlatformMenu.tsx`, `WorkspacesSettingsView.tsx`). Implementasi Mark UI Engineer, lolos review Ridwan (0 temuan) + QA Najwa (PASS, 1 temuan minor). Komponen shadcn baru: `alert-dialog`, `avatar`, `badge`, `dropdown-menu`, `item`, `radio-group`, `select`, `table`, `toggle`/`toggle-group`, `tooltip`. Temuan minor viewport sempit dicatat **KI-042**; gap **KI-041** meluas (Badge "Pending" pakai `outline`). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-099, `COMPLETE_TASK.md`.
-* **T-098 Migrasi App Shell & Navigasi selesai (2026-09-02, ADR-097)** — task keempat rilis v0.7 (migrasi Astryx→shadcn/ui), 3/3 subtask tuntas: T-098.1 (`WorkspaceSideNav.tsx`, `SettingsSideNav.tsx`, `ChannelsSection.tsx`), T-098.2 (`NotificationBell.tsx` ke shadcn `Sheet`, wrapper custom `components/ui/Drawer.tsx` dihapus), T-098.3 (re-verifikasi **KI-040** → Closed, diverifikasi Najwa lewat browser nyata light+dark mode). Implementasi Mark UI Engineer, lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh setelah 1 bug ditemukan+diperbaiki — dot indikator unread menimpa teks timestamp). Komponen shadcn baru: `avatar`, `badge`, `dropdown-menu`, `alert-dialog`, `sheet`, `tooltip`. Typecheck/lint/Vitest bersih (235 passed/4 skipped/0 fail, tidak ada regresi). Gap ditemukan (dicatat, belum diputuskan): migrasi sidebar mobile (hamburger+drawer) ke shadcn `Sidebar` primitive di luar scope T-098 — dicatat **KI-042** bersama temuan viewport T-099 (root cause sama). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-098, `COMPLETE_TASK.md`.
+* **T-098 Migrasi App Shell & Navigasi selesai (2026-09-02, ADR-097)** — task keempat rilis v0.7 (migrasi Astryx→shadcn/ui), 4/4 subtask tuntas: T-098.1–.3 (`WorkspaceSideNav.tsx`/`SettingsSideNav.tsx`/`ChannelsSection.tsx`, `NotificationBell.tsx` ke shadcn `Sheet` + hapus `Drawer.tsx` custom, re-verifikasi **KI-040** → Closed), T-098.4 (sidebar mobile hamburger+`Sheet` via `MobileTopBar.tsx` baru, `MembersTable.tsx` card layout mobile, menutup **KI-042**). Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh — typecheck/lint/Vitest bersih 235 lulus/4 skipped, desktop tanpa regresi, mobile 375px/320px berfungsi benar). 2 temuan di luar scope dicatat tapi bukan blocker (tabel Members di 768px persis butuh scroll horizontal — pre-existing; card Analytics Snapshot Home putih saat dark mode — bug pre-existing). **KI-042 Closed.** Detail: `tasks/v07-astryx-shadcn-migration.md` § T-098, `COMPLETE_TASK.md`.
 * **T-097 Migrasi Auth Flows & Onboarding selesai (2026-09-02, ADR-097)** — task ketiga rilis v0.7 (migrasi Astryx→shadcn/ui), 5/5 subtask tuntas: T-097.1 (Login & Register), T-097.2 (Forgot/Reset password), T-097.3 (Accept Invite), T-097.4 (`app/(auth)/layout.tsx`), T-097.5 (Onboarding flow). Implementasi Mark UI Engineer, lolos review Ridwan (0 temuan) + QA Najwa (semua PASS: typecheck 0 error, lint 0 error, Vitest 235 passed/4 skipped, browser E2E golden+edge case). Komponen shadcn baru: `alert`, `checkbox`, `label`, `separator`, `field`, `empty`, `input-group`. Gap desain ditemukan (dicatat, tidak ditutup sendiri): Stone theme shadcn belum punya token `--success`/`--warning` — **KI-041** baru. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-097, `COMPLETE_TASK.md`.
 * **T-096 Migrasi Core Infra & Shared Primitives selesai (2026-09-01, ADR-097)** — task kedua rilis v0.7 (migrasi Astryx→shadcn/ui), 4/4 subtask tuntas: `globals.css` baru berbasis Tailwind v4 + shadcn (`@import` Astryx sengaja dipertahankan sementara untuk route-segment yang belum dimigrasi, dihapus di T-102), `Providers.tsx` (class `dark` shadcn berdampingan dengan `<Theme>` Astryx, bukan pengganti, supaya dark/light mode tidak desync; dilepas di T-102), root `app/(app)/layout.tsx` dimigrasi ke komposisi shadcn (gap sidebar mobile hamburger+drawer sengaja belum direplikasi, dicatat KI-042), primitive baru `Button`/`Card`/`Dialog`/`Input` (CLI shadcn resmi) + `Text`/Typography (ditulis manual). Dikerjakan Mark UI Engineer, typecheck & lint bersih, verifikasi visual manual browser tanpa regresi, dikonfirmasi King Rezi. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-096, `COMPLETE_TASK.md`.
 * **T-095 Setup Fondasi shadcn/ui & Tooling Migrasi selesai (2026-09-01, ADR-097)** — task pertama rilis v0.7 (migrasi Astryx→shadcn/ui), 7/7 subtask tuntas: init shadcn/ui (base Radix + preset Maia), MCP server shadcn di `.mcp.json`+`.cursor/mcp.json`, `apps/web/.claude/CLAUDE.md` ditulis ulang ke workflow discover-first shadcn CLI/MCP, `AGENTS.md` rule 14/15 (sudah selesai lebih dulu di commit `07a3aa2`), pemetaan literal Stone theme (ADR-087) → CSS variable shadcn di `design-tokens.md` (referensi T-096.1, termasuk gap `--font-heading` belum Montserrat), subagent Mark UI Engineer diupdate ke shadcn (izin eksplisit King Rezi), sinkronisasi docs baseline. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-095, `COMPLETE_TASK.md`.

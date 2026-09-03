@@ -14,6 +14,7 @@ import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { AppSideNav } from "./components/AppSideNav";
 import { DraftEditorProvider } from "./components/draft-editor/Context";
 import { DraftEditorMount } from "./components/draft-editor/Mount";
+import { MobileTopBar } from "./components/MobileTopBar";
 
 export default async function Layout({
   children,
@@ -85,13 +86,14 @@ export default async function Layout({
   // `--color-background-surface` lama, lihat design-tokens.md § Engineering
   // Mapping T-095.5).
   //
-  // Gap yang disadari & sengaja tidak ditutup di sini: AppShell Astryx
+  // Gap mobile yang dulu sengaja belum ditutup di sini (AppShell Astryx
   // otomatis menyediakan hamburger + drawer mobile di bawah breakpoint `md`
-  // (prop `mobileNav` bawaan). Layout custom ini TIDAK mereplikasi itu —
-  // sideNav selalu tampil sebagai kolom kiri fixed-width di semua ukuran
-  // layar. Menutup gap ini dengan benar (Sheet shadcn untuk drawer mobile)
-  // lebih koheren dikerjakan bersamaan dengan migrasi isi sideNav itu
-  // sendiri di T-098 (App Shell & Navigasi), bukan stub parsial sekarang.
+  // lewat prop `mobileNav` bawaan, layout custom ini tidak mereplikasi itu)
+  // sekarang ditutup lewat T-098.4 (KI-042): `<aside>` desktop disembunyikan
+  // di bawah `md` (`hidden md:flex`), digantikan `MobileTopBar` (hamburger +
+  // Sheet shadcn berisi `AppSideNav` yang sama persis) — lihat
+  // components/MobileTopBar.tsx. Breakpoint `md` (768px) mengikuti rancangan
+  // Claude Design (foundations/layout.html § "Shell — Mobile").
   return (
     <DraftEditorProvider workspaceId={workspaceId}>
       {/* eslint-disable-next-line no-restricted-syntax -- T-096.3: file ini
@@ -99,9 +101,18 @@ export default async function Layout({
           bukan lagi AppShell Astryx — <div> layout langsung, bukan
           VStack/HStack. */}
       <div className="relative flex h-dvh flex-col bg-background text-foreground">
+        <MobileTopBar
+          workspaceName={workspace.name}
+          userName={session.user.name}
+          userEmail={session.user.email}
+          channels={channels}
+          initialNotifications={notifications}
+          initialUnreadCount={unreadCount}
+          userId={session.user.id}
+        />
         {/* eslint-disable-next-line no-restricted-syntax -- T-096.3, sama seperti di atas */}
         <div className="relative flex min-h-0 flex-1">
-          <aside className="flex w-64 shrink-0 flex-col overflow-y-auto bg-background">
+          <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto bg-background md:flex">
             <AppSideNav
               workspaceName={workspace.name}
               userName={session.user.name}

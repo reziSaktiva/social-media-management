@@ -57,13 +57,20 @@ const NAV_GROUPS = [
   },
 ] as const;
 
-export function SettingsSideNav() {
+export function SettingsSideNav({
+  // T-098.4 (KI-042) — dipanggil saat item nav diklik, dipakai MobileTopBar
+  // untuk menutup Sheet setelah navigasi. Undefined di sidebar desktop.
+  onNavigate,
+}: {
+  onNavigate?: () => void;
+} = {}) {
   const pathname = usePathname();
 
   return (
     <nav className="flex h-full flex-col gap-4 p-3">
       <Link
         href="/"
+        onClick={onNavigate}
         className="flex items-center gap-2 font-heading text-sm font-semibold"
       >
         <HugeiconsIcon
@@ -95,6 +102,7 @@ export function SettingsSideNav() {
                 <Link
                   key={item.label}
                   href={item.href}
+                  onClick={onNavigate}
                   aria-current={isSelected ? "page" : undefined}
                   className={cn(
                     "rounded-xl px-3 py-2 text-sm font-medium transition-colors",
