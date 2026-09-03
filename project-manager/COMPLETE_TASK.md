@@ -8,6 +8,62 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-03 — T-101.3 selesai: Migrasi Publish — Drafts ke shadcn/ui (T-101 v0.7, 3/5 subtask)
+
+**T-101.3** (Drafts, bagian dari **T-101** Migrasi Publish — Calendar,
+Queue, Drafts, Dashboard, rilis v0.7 migrasi Astryx→shadcn/ui, ADR-097)
+selesai di branch `feature/t-101-publish-calendar-queue-drafts-migration`.
+T-101 tetap `🟡 In Progress` (3 dari 5 subtask tuntas).
+
+**File yang diubah**:
+`apps/web/src/app/(app)/publish/drafts/components/DraftsList.tsx`.
+
+**Ringkasan migrasi:**
+
+- Migrasi penuh dari Astryx (`VStack`, `Card`, `EmptyState`,
+  `List`/`ListItem`) ke shadcn/ui (`Card`/`CardContent`,
+  `Empty`/`EmptyHeader`/`EmptyTitle`/`EmptyDescription`,
+  `Item`/`ItemGroup`/`ItemContent`/`ItemTitle`/`ItemDescription`/
+  `ItemActions`).
+- Tidak ada komponen shadcn baru yang di-install — `Card`/`Empty`/`Item`
+  sudah ada dari migrasi T-099.3 (`ConnectedAccountsList.tsx`,
+  `WorkspacesSettingsView.tsx`), dipakai sebagai presedan langsung
+  (baris klik-penuh pakai `Item asChild` membungkus `<button>`, divider
+  antar baris pakai `divide-y divide-border` pada `ItemGroup`).
+- **Keputusan desain:** `Badge` Astryx (`@astryxdesign/core/Badge`)
+  sengaja dipertahankan untuk indikator warna status (6 varian status
+  semantik `neutral/warning/info/purple/success/error`, Stone theme
+  shadcn cuma punya `default/secondary/destructive/outline/ghost/link`)
+  — presedan sama persis dengan `Modal.tsx` (T-100.1) dan
+  `CalendarPostPopover.tsx`/`CalendarEntryFooter.tsx` (T-101.1), bukan
+  penyimpangan baru.
+
+**Verifikasi:**
+
+- `bun run typecheck` PASS 0 error; `bunx eslint` pada file yang diubah
+  PASS 0 error/warning.
+- Verifikasi visual browser (Mark UI Engineer, akun Raka Pratama/Owner,
+  workspace Insvire): list drafts render normal, klik baris membuka
+  modal Edit Draft dengan benar. Light mode OK, dark mode OK, mobile
+  375px OK (tidak ada overflow/elemen rusak, caption panjang wrap dengan
+  baik). Console browser bersih.
+- Review arsitektur Ridwan: 0 temuan — file murni komponen UI client,
+  tidak menyentuh Server Action/domain layer, import
+  `PublishingPostRecord` lewat barrel `@/domains/publishing` (public
+  API, bukan implementasi langsung), tidak ada import Prisma/Supabase/
+  HTTP Outstand, props/variant shadcn (`Card`, `Empty`, `Item`, dst.)
+  dicocokkan valid ke source `cva()` di `apps/web/src/components/ui/`.
+  `eslint-disable no-restricted-syntax` pada `<div>` pembungkus dicek
+  valid — ada exception rule resmi di `eslint.config.mjs` untuk file
+  yang sudah dimigrasi shadcn.
+
+**Status setelah T-101.3:** T-101 tetap `🟡 In Progress` — sisa T-101.4
+(`PublishPageHeader.tsx`, `PublishTabbar.tsx`,
+`app/(app)/publish/layout.tsx`) dan T-101.5 (Dashboard:
+`DashboardHome.tsx`) belum dikerjakan.
+
+---
+
 ## 2026-09-03 — T-101.2 selesai: Migrasi Publish — Queue ke shadcn/ui (T-101 v0.7, 2/5 subtask)
 
 **T-101.2** (Queue, bagian dari **T-101** Migrasi Publish — Calendar,
