@@ -5,18 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
-import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
-import { DateInput } from "@astryxdesign/core/DateInput";
 import { Divider } from "@astryxdesign/core/Divider";
-import { FileInput } from "@astryxdesign/core/FileInput";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Link } from "@astryxdesign/core/Link";
-import { RadioList, RadioListItem } from "@astryxdesign/core/RadioList";
 import { Text } from "@astryxdesign/core/Text";
-import { TextArea } from "@astryxdesign/core/TextArea";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { TimeInput } from "@astryxdesign/core/TimeInput";
 import { VStack } from "@astryxdesign/core/VStack";
 
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -25,6 +18,7 @@ import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { ContentFormat, ContentStatus, SocialPlatform } from "@social/shared";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +27,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FieldDescription } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 
@@ -585,27 +584,30 @@ function DraftEditorForm({
                 <VStack gap={5} width="100%" maxWidth={500}>
                   <VStack gap={3}>
                     <Heading level={2}>Caption</Heading>
-                    <TextArea
-                      label="Caption"
-                      isLabelHidden
+                    <Label htmlFor="draft-caption" className="sr-only">
+                      Caption
+                    </Label>
+                    <Textarea
+                      id="draft-caption"
                       value={caption}
-                      onChange={setCaption}
+                      onChange={(event) => setCaption(event.target.value)}
                       placeholder="Tulis caption di sini..."
-                      description="AI Caption Assist belum termasuk revisi ini."
                     />
+                    <FieldDescription>
+                      AI Caption Assist belum termasuk revisi ini.
+                    </FieldDescription>
                   </VStack>
 
                   <VStack gap={3}>
                     <Heading level={2}>Media</Heading>
-                    <FileInput
-                      label="Media"
-                      isLabelHidden
-                      mode="dropzone"
-                      value={null}
-                      onChange={() => undefined}
-                      isDisabled
-                      disabledMessage="Lampiran media akan tersedia setelah OutstandAdapter Media API siap."
-                    />
+                    <Label htmlFor="draft-media" className="sr-only">
+                      Media
+                    </Label>
+                    <Input id="draft-media" type="file" disabled />
+                    <FieldDescription>
+                      Lampiran media akan tersedia setelah OutstandAdapter Media
+                      API siap.
+                    </FieldDescription>
                   </VStack>
                 </VStack>
 
@@ -627,16 +629,25 @@ function DraftEditorForm({
                         const currentFormat = formatByAccount[account.id];
                         const isDisconnected = isAccountDisconnected(account);
 
+                        const checkboxId = `draft-account-${account.id}`;
+
                         return (
                           <VStack key={account.id} gap={2}>
                             <HStack justify="between" align="center">
-                              <CheckboxInput
-                                label={`${PLATFORM_LABEL[account.platform]} ${account.handle}`}
-                                value={isChecked}
-                                onChange={(checked) =>
-                                  toggleAccount(account, checked)
-                                }
-                              />
+                              {/* eslint-disable-next-line no-restricted-syntax -- T-100.2: baris checkbox akun (padanan Astryx CheckboxInput) murni komposisi Tailwind Checkbox + Label shadcn, tidak punya primitive gabungan. */}
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id={checkboxId}
+                                  checked={isChecked}
+                                  onCheckedChange={(checked) =>
+                                    toggleAccount(account, checked === true)
+                                  }
+                                />
+                                <Label htmlFor={checkboxId}>
+                                  {PLATFORM_LABEL[account.platform]}{" "}
+                                  {account.handle}
+                                </Label>
+                              </div>
                               {isDisconnected ? (
                                 <Badge label="Disconnected" variant="warning" />
                               ) : null}
@@ -653,46 +664,72 @@ function DraftEditorForm({
                             ) : null}
 
                             {isChecked && formats ? (
-                              <RadioList
-                                label="Content Format"
-                                isLabelHidden
-                                orientation="horizontal"
+                              <RadioGroup
+                                aria-label="Content Format"
+                                className="flex flex-row flex-wrap gap-4"
                                 value={
                                   currentFormat ??
                                   getDefaultFormat(account.platform)
                                 }
-                                onChange={(value) =>
+                                onValueChange={(value) =>
                                   setFormatByAccount((prev) => ({
                                     ...prev,
                                     [account.id]: value as ContentFormat,
                                   }))
                                 }
                               >
-                                {formats.map((format) => (
-                                  <RadioListItem
-                                    key={format}
-                                    label={FORMAT_LABEL[format]}
-                                    value={format}
-                                  />
-                                ))}
-                              </RadioList>
+                                {formats.map((format) => {
+                                  const radioId = `${checkboxId}-format-${format}`;
+                                  return (
+                                    // eslint-disable-next-line no-restricted-syntax -- T-100.2: baris RadioGroupItem+Label (padanan Astryx RadioListItem) murni komposisi Tailwind.
+                                    <div
+                                      key={format}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <RadioGroupItem
+                                        value={format}
+                                        id={radioId}
+                                      />
+                                      <Label htmlFor={radioId}>
+                                        {FORMAT_LABEL[format]}
+                                      </Label>
+                                    </div>
+                                  );
+                                })}
+                              </RadioGroup>
                             ) : null}
 
                             {isChecked &&
                             account.platform === SocialPlatform.Pinterest ? (
                               <VStack gap={2}>
                                 <Text type="supporting">Format: Pin</Text>
-                                <TextInput
-                                  label="Pin Title"
+                                <Label
+                                  htmlFor={`${checkboxId}-pin-title`}
+                                  className="sr-only"
+                                >
+                                  Pin Title
+                                </Label>
+                                <Input
+                                  id={`${checkboxId}-pin-title`}
                                   value={pinTitle}
-                                  onChange={setPinTitle}
-                                  isOptional
+                                  onChange={(event) =>
+                                    setPinTitle(event.target.value)
+                                  }
+                                  placeholder="Pin Title (opsional)"
                                 />
-                                <TextInput
-                                  label="Destination Link"
+                                <Label
+                                  htmlFor={`${checkboxId}-pin-link`}
+                                  className="sr-only"
+                                >
+                                  Destination Link
+                                </Label>
+                                <Input
+                                  id={`${checkboxId}-pin-link`}
                                   value={pinLink}
-                                  onChange={setPinLink}
-                                  isOptional
+                                  onChange={(event) =>
+                                    setPinLink(event.target.value)
+                                  }
+                                  placeholder="Destination Link (opsional)"
                                 />
                               </VStack>
                             ) : null}
@@ -713,23 +750,29 @@ function DraftEditorForm({
                   <VStack gap={3}>
                     <Heading level={2}>Jadwal</Heading>
                     <HStack gap={2}>
-                      <DateInput
-                        label="Tanggal"
-                        isLabelHidden
-                        placeholder="Pilih tanggal"
-                        size="sm"
-                        value={scheduleDate as never}
-                        onChange={(value) => setScheduleDate(value)}
+                      <Label htmlFor="draft-schedule-date" className="sr-only">
+                        Tanggal
+                      </Label>
+                      <Input
+                        id="draft-schedule-date"
+                        type="date"
+                        className="w-auto"
+                        value={scheduleDate ?? ""}
+                        onChange={(event) =>
+                          setScheduleDate(event.target.value || undefined)
+                        }
                       />
-                      <TimeInput
-                        label="Waktu"
-                        isLabelHidden
-                        placeholder="Pilih waktu"
-                        size="sm"
-                        hourFormat="24h"
-                        increment={15}
-                        value={scheduleTime as never}
-                        onChange={(value) => setScheduleTime(value)}
+                      <Label htmlFor="draft-schedule-time" className="sr-only">
+                        Waktu
+                      </Label>
+                      <Input
+                        id="draft-schedule-time"
+                        type="time"
+                        className="w-auto"
+                        value={scheduleTime ?? ""}
+                        onChange={(event) =>
+                          setScheduleTime(event.target.value || undefined)
+                        }
                       />
                     </HStack>
                   </VStack>

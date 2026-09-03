@@ -8,6 +8,219 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-03 — T-100 ditutup ✅ Done sepenuhnya: Migrasi Publish — Draft Editor Modal (4/4 subtask tuntas)
+
+**T-100** (Migrasi Publish — Draft Editor Modal, rilis v0.7, migrasi
+Astryx→shadcn/ui, ADR-097) ditutup `✅ Done` — seluruh 4 subtask
+(T-100.1–T-100.4) tuntas di branch `feature/t-100-draft-editor-modal`,
+file utama `apps/web/src/app/(app)/components/draft-editor/Modal.tsx`
+(file paling kompleks di seluruh audit migrasi, ~68 titik pakai Astryx).
+
+**Ringkasan kesimpulan besar (detail per-subtask lengkap ada di
+`tasks/v07-astryx-shadcn-migration.md` § T-100, tidak diulang di sini):**
+
+- **T-100.1** — Struktur modal + layout: Astryx `Dialog`/`DialogHeader`/
+  `Layout`/`LayoutContent`/`LayoutFooter` → shadcn `Dialog` + Tailwind
+  layout manual. Varian Standard/Fullscreen (ADR-065/052) dan
+  `ResumeDialog` (`purpose="required"`, tidak bisa ditutup Escape/klik-luar)
+  direplikasi penuh.
+- **T-100.2** — Form controls: Caption `Textarea`, Media
+  `Input type="file"` (disabled), Account `Checkbox`, Content Format
+  `RadioGroup`, Pinterest `Input`, Tanggal Jadwal native
+  `<input type="date">`. Behavior/logic form tidak diubah — murni
+  migrasi UI library. Temuan minor: **KI-043**.
+- **T-100.3** — `TimeInput` khusus: native `<input type="time">` lewat
+  `Input` shadcn (tidak ada time-picker resmi di registry shadcn).
+  **KI-030 Closed** (root cause Astryx `TimeInput` tanpa
+  `maxLength`/`pattern` hilang total setelah migrasi). Temuan minor
+  baru: **KI-044**.
+- **T-100.4** — Verifikasi behavior penuh end-to-end (Najwa QA Engineer,
+  murni QA regresi karena `Modal.tsx` tidak punya test komponen
+  otomatis): typecheck/lint/test PASS (235 pass, 4 skip, 0 fail); full
+  E2E regression PASS semua alur (New Post→Schedule/Publish Now/Save
+  Draft, Edit Draft, `ResumeDialog`, toggle Fullscreen↔Standard, Close
+  via X/Escape/klik-luar, entry point Calendar/Queue); `Banner`/`Badge`/
+  `Divider` Astryx yang belum dimigrasi tidak ada style clash;
+  accessibility (tab order, focus-visible) dan RBAC (Owner/Admin/Creator)
+  tidak ada gap; console bersih. Catatan minor informational (bukan
+  bug): Link "Reconnect" dan field Pinterest tidak bisa diverifikasi
+  karena data test tidak punya akun kondisi tersebut; **KI-032** dicatat
+  ulang (pre-existing, bukan regresi baru).
+
+Setiap subtask lolos review Ridwan Architecture Reviewer (0 temuan) dan
+QA Najwa QA Engineer (PASS) secara terpisah — lihat entri
+`COMPLETE_TASK.md` per-subtask di bawah untuk riwayat lengkap sesi kerja.
+
+**Update dokumentasi bersamaan:** `tasks/v07-astryx-shadcn-migration.md`
+(status T-100 `🟡` → `✅ Done`, checklist T-100.4 dicentang), `TASKS.md`
+(indeks v0.7 5 ✅ · 1 🟡 · 2 ⏳ → **6 ✅ · 2 ⏳**, task selesai 30 → **31**,
+Fokus sekarang: T-100 pindah ke Done, **T-101** jadi next task migrasi
+shadcn v0.7), `PROJECT_STATE.md` (Snapshot, Completed Ringkasan — bullet
+T-095 lama digeser keluar, Metadata Version 1.0.63 → 1.0.64).
+
+Next task migrasi shadcn v0.7: **T-101** (Migrasi Publish — Calendar,
+Queue, Drafts, Dashboard).
+
+---
+
+## 2026-09-03 — T-100.3 selesai: `TimeInput` Draft Editor Modal dimigrasi ke native `<input type="time">` (KI-030 Closed, KI-044 baru)
+
+**T-100** (Migrasi Publish — Draft Editor Modal, rilis v0.7, ADR-097) tetap
+`🟡 In Progress` — subtask ketiga dari 4 (**T-100.3**) tuntas, dikerjakan
+Mark UI Engineer, review Ridwan Architecture Reviewer, QA Najwa QA
+Engineer, di branch `feature/t-100-draft-editor-modal`.
+
+**T-100.3 (`TimeInput`) — File:**
+`apps/web/src/app/(app)/components/draft-editor/Modal.tsx`
+
+- Cek MCP shadcn (`search_items_in_registries`) — tidak ada komponen
+  time-picker resmi di registry shadcn. Pilih native
+  `<input type="time">` dibungkus `Input` shadcn, pola identik dengan
+  field tanggal (`Input type="date"`) dari T-100.2.
+- Hapus import `TimeInput` dari `@astryxdesign/core/TimeInput`. Ganti
+  markup jadi `Label htmlFor="draft-schedule-time" className="sr-only"` +
+  `Input id="draft-schedule-time" type="time"`, `value={scheduleTime ??
+  ""}`, `onChange` set `scheduleTime` ke `event.target.value ||
+  undefined`.
+- `handleConfirmSchedule` (compose `` `${scheduleDate}T${scheduleTime}` ``)
+  dan `isReadyToSchedule` tidak disentuh — format `HH:mm` native
+  kompatibel langsung.
+
+**Verifikasi Mark:** typecheck 0 error, lint 0 error, browser E2E (dark &
+light) — uji ketik huruf/simbol/overflow ke field waktu ditolak/clamp
+oleh browser, submit Schedule end-to-end sukses dengan waktu tersimpan
+tepat. **Kesimpulan KI-030: RESOLVED** (dibuktikan lewat pengujian
+eksplisit).
+
+**Review Ridwan (0 temuan):** tidak ada business logic baru, tidak ada
+import Prisma/Supabase/Outstand, cross-domain tetap lewat Server Action
+existing; `handleConfirmSchedule`/`isReadyToSchedule` dikonfirmasi via
+grep benar-benar tidak tersentuh diff; konsisten pola dengan field
+tanggal T-100.2. Catatan non-arsitektur (sudah dikonfirmasi King Rezi via
+AskUserQuestion): native time input tidak lagi membatasi ke kelipatan 15
+menit seperti Astryx `increment={15}` lama — **keputusan produk eksplisit
+King Rezi: dibiarkan bebas**, bukan bug, tidak perlu ditambah
+`step={900}`.
+
+**QA Najwa (PASS, verifikasi independen):** `bun run typecheck` PASS,
+`bun run lint` PASS, `bun run test` PASS (235 pass, 4 skip, 0 fail).
+**KI-030 diverifikasi ulang independen dan dikonfirmasi RESOLVED** —
+ketik huruf/simbol/karakter berlebih ke field waktu ditolak total oleh
+browser native, tidak seperti Astryx lama yang bisa diketik bebas. Golden
+path Schedule PASS (waktu 14:07 tersimpan tepat), menit bebas (bukan
+kelipatan 15) PASS sesuai keputusan produk, jam batas 00:00 & 23:59 PASS,
+clear/reset field PASS, Publish Now tidak terpengaruh PASS, Resume
+Unfinished Post tidak ada regresi PASS, light/dark mode PASS, regresi
+Calendar/Queue/Drafts PASS.
+
+**KI-030 ditutup Resolved (2026-09-03)** — root cause (Astryx `TimeInput`
+internal `<input type="text">` tanpa `maxLength`/`pattern`) hilang total
+setelah migrasi ke native `<input type="time">` yang punya input-guard
+bawaan browser. Lihat `PROJECT_STATE.md` § KI-030 untuk catatan penutup
+lengkap.
+
+**Temuan Minor baru (pre-existing gap, bukan regresi T-100.3, dikonfirmasi
+King Rezi untuk dicatat sebagai KI baru):** tidak ada validasi yang
+mencegah Schedule ke waktu yang sudah lewat pada tanggal hari ini (mis.
+jadwalkan jam 08:00 padahal sekarang sudah jam 11:48) — post berhasil
+masuk Queue tanpa penolakan/warning. Gap ini sudah ada sejak sebelum
+migrasi (Astryx `TimeInput` juga tidak punya validasi ini), bukan regresi
+baru. Dicatat sebagai **KI-044** (lihat `PROJECT_STATE.md`), di luar
+scope T-100.3.
+
+**Update dokumentasi:** `tasks/v07-astryx-shadcn-migration.md` § T-100
+(subtask T-100.3 dicentang `[x]`, catatan detail ditambahkan),
+`TASKS.md` (indeks + Fokus sekarang), `PROJECT_STATE.md` (KI-030 Closed,
+KI-044 baru, Snapshot/Current Focus).
+
+---
+
+## 2026-09-03 — T-100.2 selesai: form controls Draft Editor Modal dimigrasi ke shadcn (KI-043 baru)
+
+**T-100** (Migrasi Publish — Draft Editor Modal, rilis v0.7, ADR-097) tetap
+`🟡 In Progress` — subtask kedua dari 4 (**T-100.2**) tuntas, dikerjakan
+Mark UI Engineer, review Ridwan Architecture Reviewer, QA Najwa QA
+Engineer, di branch `feature/t-100-draft-editor-modal`.
+
+**T-100.2 (Form controls) — File:**
+`apps/web/src/app/(app)/components/draft-editor/Modal.tsx`
+
+- Caption: Astryx `TextArea` → shadcn `Textarea` + `Label` (sr-only) +
+  `FieldDescription`.
+- Media: Astryx `FileInput` (dropzone disabled) → native
+  `<input type="file">` lewat `Input` shadcn, tetap disabled + pesan
+  penjelasan.
+- Account checkbox: Astryx `CheckboxInput` → shadcn `Checkbox` + `Label`
+  per-akun, `onCheckedChange` di-cast eksplisit ke boolean.
+- Content Format: Astryx `RadioList`/`RadioListItem` → shadcn
+  `RadioGroup`/`RadioGroupItem` + `Label`, orientasi horizontal
+  dipertahankan.
+- Pinterest Pin Title/Destination Link: Astryx `TextInput` → shadcn
+  `Input` (prop `isOptional` kosmetik dihapus, tidak pernah memengaruhi
+  validasi).
+- Tanggal Jadwal: Astryx `DateInput` → native `<input type="date">` lewat
+  `Input` shadcn (bukan Popover+Calendar) — keputusan konsistensi karena
+  `TimeInput` di sebelahnya masih Astryx (scope T-100.3) dan tetap compact
+  inline; tidak menambah dependency baru (`react-day-picker`/`date-fns`)
+  untuk satu field.
+- Tidak ada komponen shadcn baru yang perlu diinstall (semua sudah ada
+  dari T-099.2: `checkbox`, `input`, `label`, `radio-group`, `textarea`,
+  `field`).
+- Behavior/logic form (validasi
+  `isReadyToSchedule`/`isReadyToPublishNow`, Server Action
+  `scheduleDraftAction`/`publishNowAction`/`saveDraftAction`) tidak
+  diubah — murni migrasi UI library.
+
+**Verifikasi Mark:** typecheck 0 error, lint 0 error, browser E2E manual
+PASS (New Post → isi form → Schedule → dialog konfirmasi benar → redirect
+Home sesuai ADR-054), dark mode dicek visual OK.
+
+**Review Ridwan (0 temuan):** entry point bersih (tidak ada Server Action
+tersentuh di diff); tidak ada import Prisma/Supabase/Outstand HTTP
+client; cross-domain lewat public API, shared types tetap dari
+`@social/shared`; klaim "behavior tidak berubah" diverifikasi
+baris-per-baris untuk 6 kontrol — semua identik secara semantik. Catatan
+non-blocking: file ini belum pakai komposisi penuh
+`Field`/`FieldLabel`/`FieldContent`/`FieldGroup` seperti
+`InviteMemberDialog.tsx` (T-099.2) — wajar karena migrasi bertahap
+(layout `VStack`/`HStack` masih Astryx, menyusul subtask lain).
+
+**QA Najwa (PASS):** `bun run typecheck` PASS, `bun run lint` PASS,
+`bun run test` PASS (235 pass, 4 skip, 0 fail). Semua kontrol form
+(golden path + edge case) PASS: Caption, Media disabled, Account
+checkbox multi-select, Content Format `RadioGroup` switch, Tanggal
+Jadwal kombinasi dengan `TimeInput` Astryx. Pinterest Pin
+Title/Destination Link **tidak bisa diuji** — workspace test
+(Insvire/Raka Pratama) tidak punya akun Pinterest terhubung; risiko
+dinilai rendah karena komponen `Input` sama dengan field lain yang sudah
+terverifikasi dan logic kondisional tidak diubah di diff ini. Alur
+end-to-end PASS semua: Save Draft→reload persist, Schedule→dialog
+konfirmasi→redirect queue (ADR-054), Publish Now→confirm→redirect
+calendar (ADR-054), Resume Unfinished Post (caption ter-restore;
+account/format/jadwal memang tidak ter-restore — desain lama
+`UnsavedNewPost` interface, bukan regresi), toggle Fullscreen↔Standard
+sambil form terisi (state terjaga), light & dark mode kontras OK,
+regresi Calendar/Queue/Drafts tidak ada crash.
+
+**KI-043 baru (bukan blocker, bukan regresi T-100.2):**
+`clearUnsavedNewPost()` di `Modal.tsx` hanya dipanggil di
+`handleSaveDraft`, tidak dipanggil di
+`handleConfirmSchedule`/`handleConfirmPublishNow` — sudah ada sejak
+versi lama file (diverifikasi via `git log -p`). Akibatnya localStorage
+"unsaved draft" tidak terhapus setelah Schedule/Publish Now sukses (kalau
+user sempat trigger `persistUnsavedNewPost` sebelumnya) — `ResumeDialog`
+bisa muncul lagi dengan caption basi di sesi New Post berikutnya. Dicatat
+sebagai **KI-043** (Open) di `PROJECT_STATE.md`, ditindaklanjuti terpisah
+di luar scope T-100.
+
+**Sisa scope T-100:** T-100.3 (`TimeInput` khusus + evaluasi **KI-030**),
+T-100.4 (verifikasi behavior penuh) — T-100 belum ditutup `✅ Done`.
+
+Detail lengkap: `project-manager/tasks/v07-astryx-shadcn-migration.md` §
+T-100, `project-manager/TASKS.md`.
+
+---
+
 ## 2026-09-03 — T-100.1 selesai: struktur Draft Editor Modal dimigrasi ke shadcn (T-100 naik jadi In Progress)
 
 **T-100** (Migrasi Publish — Draft Editor Modal, rilis v0.7, ADR-097) naik
