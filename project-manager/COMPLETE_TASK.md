@@ -8,6 +8,66 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-03 — T-101.2 selesai: Migrasi Publish — Queue ke shadcn/ui (T-101 v0.7, 2/5 subtask)
+
+**T-101.2** (Queue, bagian dari **T-101** Migrasi Publish — Calendar,
+Queue, Drafts, Dashboard, rilis v0.7 migrasi Astryx→shadcn/ui, ADR-097)
+selesai di branch `feature/t-101-publish-calendar-queue-drafts-migration`.
+T-101 tetap `🟡 In Progress` (2 dari 5 subtask tuntas).
+
+**File yang diubah** (semua di
+`apps/web/src/app/(app)/publish/queue/components/`): `QueueList.tsx`,
+`QueueScreen.tsx`.
+
+**Ringkasan migrasi:**
+
+- Tidak ada komponen shadcn baru yang perlu di-install — semua
+  (`Button`, `Card`, `Select`, `Empty`, `Text`, `Separator`, `Tooltip`,
+  `Alert`, `AlertDialog`, `Spinner`) sudah tersedia dari migrasi
+  sebelumnya.
+- Icon aksi (Publish Now, Edit, Cancel Schedule) dan icon jam pindah ke
+  `hugeicons` (`SentIcon`, `PencilEdit01Icon`, `Cancel01Icon`,
+  `Clock01Icon`). Icon platform (Instagram/Facebook) tetap `react-icons`
+  — dikecualikan per ADR-058 (ikon brand), dikonfirmasi bukan
+  pelanggaran oleh Ridwan Architecture Reviewer.
+- Dialog "Batalkan jadwal ini?" (Cancel Schedule, Tier 2 ADR-049) memakai
+  pola `AlertDialogAction` + `preventDefault()` sesuai presedan
+  `MembersTable.tsx` — dialog tetap terbuka sampai proses selesai.
+- **Gap dicatat (bukan penyimpangan):** `useToast` masih dari Astryx —
+  dikonfirmasi (grep) sebagai satu-satunya titik pakai Toast di seluruh
+  app, belum ada padanan shadcn (`sonner`) terpasang. Migrasi toast
+  butuh keputusan sistem baru untuk seluruh app → di luar scope T-101.2.
+  Ridwan menilai ini gap yang sah di bawah kebijakan migrasi incremental
+  ADR-097, bukan pelanggaran, dan menyarankan jadi item backlog terpisah
+  ("pilih & install sistem toast shadcn/sonner, migrasi titik pakai
+  terakhir").
+
+**Verifikasi:**
+
+- `bun run typecheck` PASS 0 error; `bunx eslint` pada 2 file PASS 0
+  error.
+- Verifikasi visual browser (akun Raka Pratama/Owner, workspace
+  Insvire): tampilan normal, filter akun berfungsi (termasuk reset ke
+  "Semua akun"), dialog Cancel Schedule berfungsi end-to-end (toast
+  muncul, item hilang dari list), tidak ada regresi. Light mode, dark
+  mode, mobile 375px dicek — tidak ada overflow/elemen rusak. Console
+  browser bersih.
+- Review arsitektur Ridwan: 0 temuan (entry point `actions.ts` tidak
+  tersentuh, domain `publishing` tidak tersentuh, tidak ada import
+  Prisma/Supabase/Outstand, cross-domain lewat barrel
+  `@/domains/publishing`, semua prop/variant shadcn diverifikasi valid
+  ke source `cva()`).
+
+**Dokumen yang diupdate:** `TASKS.md` (baris ringkasan T-101 + blok
+Update di atas Total task), `tasks/v07-astryx-shadcn-migration.md` § T-101
+(checklist T-101.2 + catatan detail), `PROJECT_STATE.md` (Snapshot, Current
+Focus, Completed Ringkasan — geser T-096 keluar dari daftar 5 item
+terakhir).
+
+Next subtask: **T-101.3** (Drafts: `DraftsList.tsx`).
+
+---
+
 ## 2026-09-03 — T-101.1 selesai: Migrasi Publish — Calendar ke shadcn/ui (T-101 v0.7 dibuka, 1/5 subtask)
 
 **T-101.1** (Calendar, bagian dari **T-101** Migrasi Publish — Calendar,

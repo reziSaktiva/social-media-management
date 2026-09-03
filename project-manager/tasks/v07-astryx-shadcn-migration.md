@@ -715,7 +715,7 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
       sekaligus re-evaluasi **KI-035** poin 1 (StyleX/`xstyle` tidak
       relevan lagi) dan poin 3 (layout mobile sempit, kalau shadcn Grid/
       Tailwind memberi kontrol lebih baik)
-- [ ] **T-101.2** Queue: `QueueList.tsx`, `QueueScreen.tsx`
+- [x] **T-101.2** Queue: `QueueList.tsx`, `QueueScreen.tsx`
 - [ ] **T-101.3** Drafts: `DraftsList.tsx`
 - [ ] **T-101.4** `PublishPageHeader.tsx`, `PublishTabbar.tsx`,
       `app/(app)/publish/layout.tsx`
@@ -760,6 +760,42 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
     variant shadcn diverifikasi valid ke `cva()` source).
   * T-101 tetap `🟡 In Progress` — T-101.2 (Queue), T-101.3 (Drafts),
     T-101.4 (header/tabbar/layout), T-101.5 (Dashboard) belum dikerjakan.
+- Catatan T-101.2 (2026-09-03, Mark UI Engineer, branch
+  `feature/t-101-publish-calendar-queue-drafts-migration`, file di
+  `apps/web/src/app/(app)/publish/queue/components/`):
+  * File diubah: `QueueList.tsx`, `QueueScreen.tsx`. Tidak ada komponen
+    shadcn baru yang perlu di-install — semua (`Button`, `Card`, `Select`,
+    `Empty`, `Text`, `Separator`, `Tooltip`, `Alert`, `AlertDialog`,
+    `Spinner`) sudah tersedia dari migrasi sebelumnya.
+  * Icon aksi (Publish Now, Edit, Cancel Schedule) dan icon jam pindah ke
+    `hugeicons` (`SentIcon`, `PencilEdit01Icon`, `Cancel01Icon`,
+    `Clock01Icon`). Icon platform (Instagram/Facebook) tetap `react-icons` —
+    dikecualikan per ADR-058 (ikon brand), dikonfirmasi bukan pelanggaran
+    oleh Ridwan.
+  * Dialog "Batalkan jadwal ini?" (Cancel Schedule, Tier 2 ADR-049) memakai
+    pola `AlertDialogAction` + `preventDefault()` sesuai presedan
+    `MembersTable.tsx` — dialog tetap terbuka sampai proses selesai.
+  * **Gap dicatat (bukan penyimpangan):** `useToast` masih dari Astryx —
+    dikonfirmasi (grep) sebagai satu-satunya titik pakai Toast di seluruh
+    app, belum ada padanan shadcn (`sonner`) terpasang. Migrasi toast butuh
+    keputusan sistem baru untuk seluruh app → di luar scope T-101.2. Ridwan
+    menilai ini gap yang sah di bawah kebijakan migrasi incremental
+    ADR-097, bukan pelanggaran — dicatat sebagai technical debt terpisah:
+    pilih & install sistem toast shadcn/sonner, migrasi titik pakai
+    terakhir (`useToast` Astryx), di luar scope T-101.
+  * Verifikasi: `bun run typecheck` PASS 0 error; `bunx eslint` pada 2 file
+    PASS 0 error; verifikasi visual browser (akun Raka Pratama/Owner,
+    workspace Insvire) PASS — tampilan normal, filter akun berfungsi
+    (termasuk reset ke "Semua akun"), dialog Cancel Schedule berfungsi
+    end-to-end (toast muncul, item hilang dari list), tidak ada regresi;
+    light mode, dark mode, mobile 375px dicek — tidak ada overflow/elemen
+    rusak; console browser bersih. Review arsitektur Ridwan 0 temuan (entry
+    point `actions.ts` tidak tersentuh, domain `publishing` tidak tersentuh,
+    tidak ada import Prisma/Supabase/Outstand, cross-domain lewat barrel
+    `@/domains/publishing`, semua prop/variant shadcn diverifikasi valid ke
+    source `cva()`).
+  * T-101 tetap `🟡 In Progress` — T-101.3 (Drafts), T-101.4
+    (header/tabbar/layout), T-101.5 (Dashboard) belum dikerjakan.
 
 ---
 
