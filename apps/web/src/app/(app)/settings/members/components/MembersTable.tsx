@@ -47,7 +47,7 @@ import {
   type WorkspaceMemberWithUser,
 } from "@/domains/workspace";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
-import { getInitials } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 
 import {
   SETTINGS_BREADCRUMB_GROUP,
@@ -61,18 +61,21 @@ const STATUS_LABEL: Record<MemberStatus, string> = {
   [MemberStatus.Removed]: "Removed",
 };
 
-// KI-041 (Stone theme shadcn belum punya token --success/--warning, dicatat
-// saat T-097.3): `Badge` shadcn cuma varian default/secondary/destructive/
-// outline/ghost/link — tidak ada "warning". "Pending" (sebelumnya warna
-// warning Astryx) dipetakan ke "outline" (bukan "secondary" seperti
-// Active/Removed) supaya tetap ada pembeda visual antar status TANPA
-// mengarang token warna baru — beda treatment varian yang sudah ada, bukan
-// warna baru. Dilaporkan ke King Rezi sebagai perluasan gap KI-041, bukan
-// keputusan final.
-const STATUS_BADGE_VARIANT: Record<MemberStatus, "secondary" | "outline"> = {
+// KI-041 ditutup: token `--warning`/`--warning-foreground` sudah tersedia
+// di globals.css (nilai final dikonfirmasi King Rezi via Claude Design).
+// "Pending" sekarang pakai `Badge` variant="secondary" + className warna
+// warning eksplisit, mengikuti pola className varian "destructive" bawaan
+// `badge.tsx` (bg-warning/10 + text-warning, gelap: bg-warning/20) —
+// menggantikan workaround `variant="outline"` sebelumnya.
+const STATUS_BADGE_VARIANT: Record<MemberStatus, "secondary"> = {
   [MemberStatus.Active]: "secondary",
-  [MemberStatus.Pending]: "outline",
+  [MemberStatus.Pending]: "secondary",
   [MemberStatus.Removed]: "secondary",
+};
+
+const STATUS_BADGE_CLASSNAME: Partial<Record<MemberStatus, string>> = {
+  [MemberStatus.Pending]:
+    "bg-warning/10 text-warning dark:bg-warning/20 [a]:hover:bg-warning/20",
 };
 
 // Role yang bisa ditetapkan lewat "Change Role" — Owner tidak termasuk,
@@ -268,7 +271,10 @@ export function MembersTable({
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={STATUS_BADGE_VARIANT[member.status]}>
+                          <Badge
+                            variant={STATUS_BADGE_VARIANT[member.status]}
+                            className={STATUS_BADGE_CLASSNAME[member.status]}
+                          >
                             {STATUS_LABEL[member.status]}
                           </Badge>
                         </TableCell>
@@ -319,7 +325,10 @@ export function MembersTable({
                       </div>
                       <Badge
                         variant={STATUS_BADGE_VARIANT[member.status]}
-                        className="shrink-0"
+                        className={cn(
+                          "shrink-0",
+                          STATUS_BADGE_CLASSNAME[member.status],
+                        )}
                       >
                         {STATUS_LABEL[member.status]}
                       </Badge>
