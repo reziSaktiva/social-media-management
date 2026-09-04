@@ -62,16 +62,13 @@ const SUCCESS_REDIRECT_DELAY_MS = 1500;
  * T-097.3: EmptyState Astryx -> `Empty`/`EmptyHeader`/`EmptyMedia`/
  * `EmptyTitle`/`EmptyDescription` shadcn (registry:ui `empty`). Warna icon
  * status (success/warning/error) Astryx (`color="success"|"warning"|"error"`)
- * TIDAK punya padanan token di Stone theme shadcn saat ini — hanya
- * `--destructive` yang tersedia (tidak ada `--success`/`--warning`).
- * Sengaja TIDAK mengarang hex/token baru (aturan CLAUDE.md): "success"
- * dibiarkan netral (default `EmptyMedia variant="icon"` = bg-muted/
- * text-foreground) karena tidak ada token hijau, sedangkan "expired" dan
- * "invalid" sama-sama diberi `text-destructive` — keduanya berarti outcome
- * yang identik bagi user (link tidak bisa dipakai, minta undangan baru),
- * jadi disamakan severity-nya alih-alih dibedakan hanya karena kebetulan
- * salah satu tokennya sudah ada. Gap token success/warning tetap dilaporkan
- * ke King Rezi (KI-041), bukan diputuskan sepihak.
+ * dipetakan ke token semantik shadcn: state "Success" -> `text-success`,
+ * "expired" -> `text-warning`, "invalid" tetap `text-destructive`
+ * (KI-041, token `--success`/`--warning` ditambah di `globals.css` setelah
+ * nilai final dikonfirmasi King Rezi via Claude Design). "expired" dan
+ * "invalid" sekarang dibedakan warna sesuai severity-nya masing-masing
+ * (warning vs destructive), bukan lagi disamakan seperti workaround
+ * sebelumnya.
  */
 export function AcceptInvitePageClient({
   token,
@@ -99,7 +96,7 @@ export function AcceptInvitePageClient({
     return (
       <Empty>
         <EmptyHeader>
-          <EmptyMedia variant="icon">
+          <EmptyMedia variant="icon" className="text-success">
             <HugeiconsIcon
               icon={CheckmarkCircle02Icon}
               strokeWidth={2}
@@ -119,7 +116,7 @@ export function AcceptInvitePageClient({
     return (
       <Empty>
         <EmptyHeader>
-          <EmptyMedia variant="icon" className="text-destructive">
+          <EmptyMedia variant="icon" className="text-warning">
             <HugeiconsIcon
               icon={Clock01Icon}
               strokeWidth={2}

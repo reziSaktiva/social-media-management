@@ -2,34 +2,6 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-// `LinkProvider` (Astryx) dipertahankan sengaja (T-096.2) — komponen Astryx
-// yang belum dimigrasi di route-segment lain (mis. SideNavItem di
-// WorkspaceSideNav/SettingsSideNav) masih memakai `Link` internalnya untuk
-// navigasi client-side lewat next/link. Melepasnya sekarang akan membuat
-// komponen yang belum termigrasi itu diam-diam jatuh ke full-page reload
-// (default fallback `<a>` Astryx tanpa provider) — regresi UX yang di luar
-// scope T-096 (murni ganti Theme/stoneTheme, bukan LinkProvider). Hapus
-// baris ini setelah T-102 cleanup (Astryx sudah tidak dipakai sama sekali).
-import { LinkProvider } from "@astryxdesign/core/Link";
-// `Theme` (Astryx) JUGA dipertahankan — temuan sesi ini (lihat laporan
-// T-096 ke King Rezi), berbeda dari instruksi awal task ("ganti Theme/
-// stoneTheme Astryx dengan pendekatan shadcn"). `Theme` bukan cuma provider
-// styling kosmetik: root instance-nya men-sync atribut `data-theme` ke
-// `document.documentElement`, dan SATU-SATUNYA mekanisme yang membuat
-// `light-dark()` di CSS Astryx (`theme-stone/theme.css`) resolve sesuai
-// mode aplikasi, bukan `prefers-color-scheme` OS mentah (`:root
-// { color-scheme: light dark }` tanpa override eksplisit). Diverifikasi:
-// melepas `<Theme>` membuat SELURUH komponen Astryx yang belum dimigrasi
-// (mayoritas app di luar scope T-096) berhenti mengikuti toggle
-// light/dark in-app — warnanya "nyangkut" mengikuti preferensi OS/browser
-// apa adanya, desync dari `ThemeModeContext`. Class `dark` shadcn di bawah
-// TETAP dipasang berdampingan (bukan pengganti) — dua mekanisme jalan
-// paralel sampai T-102 (semua route-segment sudah shadcn, `Theme` boleh
-// dilepas beneran).
-import { Theme } from "@astryxdesign/core/theme";
-import { stoneTheme } from "@astryxdesign/theme-stone/built";
-import Link from "next/link";
-
 import {
   DEFAULT_THEME_MODE,
   THEME_COOKIE_MAX_AGE,
@@ -43,6 +15,12 @@ import {
 // (T-098) dan ConnectPlatformMenu/tombol disabled Danger Zone (T-099)
 // setelah migrasi dari `IconButton tooltip=...` Astryx.
 import { TooltipProvider } from "@/components/ui/tooltip";
+// T-102.6: `Toaster` sonner dipasang sekali di root supaya `toast()` bisa
+// dipanggil dari mana saja (mis. `QueueScreen.tsx` Cancel Schedule), sama
+// seperti pola `TooltipProvider` di atas. `theme` di-pass dari `mode`
+// context ini sendiri karena `components/ui/sonner.tsx` sengaja tidak
+// pakai `next-themes` (project sudah punya mekanisme tema sendiri).
+import { Toaster } from "@/components/ui/sonner";
 
 type ThemeModeContextValue = {
   mode: ThemeMode;
@@ -104,11 +82,8 @@ export function Providers({
 
   return (
     <ThemeModeContext.Provider value={themeModeValue}>
-      <Theme mode={mode} theme={stoneTheme}>
-        <LinkProvider component={Link}>
-          <TooltipProvider>{children}</TooltipProvider>
-        </LinkProvider>
-      </Theme>
+      <TooltipProvider>{children}</TooltipProvider>
+      <Toaster theme={mode} />
     </ThemeModeContext.Provider>
   );
 }

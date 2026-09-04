@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import type { StatusDotVariant } from "@astryxdesign/core/StatusDot";
 import type { IconType } from "react-icons";
 import { FaFilm, FaRegClock, FaRegImage, FaThumbtack } from "react-icons/fa6";
 
@@ -71,16 +70,13 @@ export const CONTENT_FORMAT_LABEL: Record<ContentFormat, string> = {
 
 /**
  * `ContentFormat` → icon untuk indikator compact footer card Calendar di
- * layar ≤768px (revisi keempat T-033, poin 3) — pengganti `Badge
- * variant="neutral"` yang overflow di card sempit mobile (`Badge` Astryx
- * tidak punya prop size/truncation, sudah dicek CLI sebelumnya). Set icon
- * dari `react-icons/fa6`, mengikuti pola `PLATFORM_ICON`
- * (`../../../components/platform-icons.tsx`) — satu-satunya library icon
- * non-semantik yang sudah dipakai di codebase ini (bukan dependency baru).
- * Dibungkus Astryx `Icon` di pemanggil (bukan render langsung seperti
- * `PLATFORM_ICON`) supaya dapat token color (`secondary`) dan `label`
- * accessible bawaan Icon — beda dari brand icon platform yang sengaja pakai
- * warna brand mentah (ADR-058 poin 6/10).
+ * layar ≤768px (revisi keempat T-033 poin 3, dipertahankan T-102 cleanup)
+ * — 2 `Badge` teks penuh (`CalendarEntryFooter`) overflow di kolom grid
+ * Month/Week yang sempit (~50-90px per hari), jadi diganti icon+dot compact
+ * di bawah breakpoint itu. Set icon dari `react-icons/fa6`, mengikuti pola
+ * `PLATFORM_ICON` (`../../../components/platform-icons.tsx`) — bukan
+ * dependency baru, dirender langsung (bukan dibungkus komponen `Icon`,
+ * shadcn tidak punya padanan primitive itu).
  */
 export const CONTENT_FORMAT_ICON: Record<ContentFormat, IconType> = {
   [ContentFormat.Post]: FaRegImage,
@@ -90,30 +86,23 @@ export const CONTENT_FORMAT_ICON: Record<ContentFormat, IconType> = {
 };
 
 /**
- * `ContentStatus` → `StatusDot` variant untuk indikator compact footer card
- * Calendar di layar ≤768px (revisi keempat T-033, poin 2) — pengganti
- * `Badge` status yang overflow di card sempit mobile (Badge "Scheduled"
- * lebar 77px vs ruang card ~22-39px di 375px). `StatusDot` cuma punya 5
- * variant (`success|warning|error|accent|neutral`) vs 6 `ContentStatus`,
- * jadi tidak bisa 1:1 seperti `CONTENT_STATUS_BADGE_VARIANT`
- * (`../../../components/draft-editor/status-badge.ts`, 6 Badge variant).
- * `Draft` & `ReadyToSchedule` sengaja ditumpuk ke `neutral` — grid Calendar
- * per definisi hanya PERNAH menampilkan `Scheduled`/`Published`/`Failed`
- * (lihat catatan "status yang muncul di grid Calendar" di
- * `project-manager/tasks/v02-publishing-mvp.md`, T-033), jadi 3 status itu
- * yang dijaga tetap unik & semantik (`accent`/`success`/`error`); tumpukan
- * di 2 status yang tidak pernah dirender di Calendar tidak berdampak visual.
+ * `ContentStatus` → warna dot compact (Tailwind class token-backed) untuk
+ * indikator ≤768px (T-102 cleanup) — pengganti `StatusDot` Astryx (5 variant
+ * `success|warning|error|accent|neutral`, sudah dihapus). KI-041: Stone
+ * theme shadcn belum punya token success/warning/info/purple, jadi dot
+ * dipetakan ke token yang SUDAH ADA, selaras dengan
+ * `CONTENT_STATUS_BADGE_VARIANT` (`status-badge.ts`) supaya compact (mobile)
+ * dan full (desktop) tidak mengarang 2 skema warna berbeda: `outline`→
+ * `bg-muted-foreground`, `secondary`→`bg-foreground`, `default`→
+ * `bg-primary`, `destructive`→`bg-destructive`.
  */
-export const CONTENT_STATUS_DOT_VARIANT: Record<
-  ContentStatus,
-  StatusDotVariant
-> = {
-  [ContentStatus.Draft]: "neutral",
-  [ContentStatus.InReview]: "warning",
-  [ContentStatus.ReadyToSchedule]: "neutral",
-  [ContentStatus.Scheduled]: "accent",
-  [ContentStatus.Published]: "success",
-  [ContentStatus.Failed]: "error",
+export const CONTENT_STATUS_DOT_CLASSNAME: Record<ContentStatus, string> = {
+  [ContentStatus.Draft]: "bg-muted-foreground",
+  [ContentStatus.InReview]: "bg-muted-foreground",
+  [ContentStatus.ReadyToSchedule]: "bg-foreground",
+  [ContentStatus.Scheduled]: "bg-foreground",
+  [ContentStatus.Published]: "bg-primary",
+  [ContentStatus.Failed]: "bg-destructive",
 };
 
 /** Senin di index 0 — minggu mulai Senin (sama seperti `getWeekRange`). */

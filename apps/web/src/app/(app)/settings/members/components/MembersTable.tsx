@@ -61,17 +61,14 @@ const STATUS_LABEL: Record<MemberStatus, string> = {
   [MemberStatus.Removed]: "Removed",
 };
 
-// KI-041 (Stone theme shadcn belum punya token --success/--warning, dicatat
-// saat T-097.3): `Badge` shadcn cuma varian default/secondary/destructive/
-// outline/ghost/link — tidak ada "warning". "Pending" (sebelumnya warna
-// warning Astryx) dipetakan ke "outline" (bukan "secondary" seperti
-// Active/Removed) supaya tetap ada pembeda visual antar status TANPA
-// mengarang token warna baru — beda treatment varian yang sudah ada, bukan
-// warna baru. Dilaporkan ke King Rezi sebagai perluasan gap KI-041, bukan
-// keputusan final.
-const STATUS_BADGE_VARIANT: Record<MemberStatus, "secondary" | "outline"> = {
+// KI-041 ditutup: token `--warning`/`--warning-foreground` sudah tersedia
+// di globals.css (nilai final dikonfirmasi King Rezi via Claude Design).
+// "Pending" sekarang pakai `Badge` variant="warning" (`badge.tsx`, code
+// review PR #105) — menggantikan className warna warning ad-hoc yang
+// sebelumnya dituliskan manual di sini.
+const STATUS_BADGE_VARIANT: Record<MemberStatus, "secondary" | "warning"> = {
   [MemberStatus.Active]: "secondary",
-  [MemberStatus.Pending]: "outline",
+  [MemberStatus.Pending]: "warning",
   [MemberStatus.Removed]: "secondary",
 };
 

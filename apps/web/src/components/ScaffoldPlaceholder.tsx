@@ -1,19 +1,22 @@
 "use client";
 
-// Placeholder Astryx-compliant untuk halaman scaffold yang belum
-// diimplementasikan. Dipakai lintas subtree berbeda ([slug]/*, account/*,
-// dan root) sehingga lokasinya di `components/` (LCA, ADR-069) — bukan di
-// salah satu subtree route saja.
+// Placeholder untuk halaman scaffold yang belum diimplementasikan. Dipakai
+// lintas subtree berbeda ([slug]/*, account/*, dan root) sehingga
+// lokasinya di `components/` (LCA, ADR-069) — bukan di salah satu subtree
+// route saja.
 //
-// Menggantikan pola lama `<main>`/`<div>` + warna Tailwind hardcoded
-// (text-zinc-900/600/500) yang rusak kontrasnya di dark mode. Style di sini
-// sepenuhnya lewat komponen Astryx (Center, EmptyState, Badge, Stack) yang
-// otomatis kontras benar di light & dark mode lewat token tema.
+// T-102 cleanup (ADR-097): migrasi dari Astryx (`Center`/`Stack`/
+// `EmptyState`/`Badge`) ke shadcn `Empty` (`components/ui/empty.tsx`) +
+// Tailwind flex — token-backed, kontras benar di light & dark mode via
+// CSS variable shadcn (bukan lagi tema Astryx).
 
-import { Badge } from "@astryxdesign/core/Badge";
-import { Center } from "@astryxdesign/core/Center";
-import { EmptyState } from "@astryxdesign/core/EmptyState";
-import { Stack } from "@astryxdesign/core/Layout";
+import { Badge } from "@/components/ui/badge";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 type ScaffoldPlaceholderProps = {
   /** Judul halaman, ditampilkan sebagai heading utama EmptyState. */
@@ -28,11 +31,17 @@ export function ScaffoldPlaceholder({
   message,
 }: ScaffoldPlaceholderProps) {
   return (
-    <Center height="100vh">
-      <Stack direction="vertical" gap={3} hAlign="center">
-        <Badge variant="neutral" label="Scaffold" />
-        <EmptyState headingLevel={1} title={title} description={message} />
-      </Stack>
-    </Center>
+    // eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx Center, murni Tailwind flex, tidak ada primitive shadcn setara.
+    <div className="flex min-h-svh flex-col items-center justify-center">
+      <Empty>
+        <Badge variant="outline" className="mb-2">
+          Scaffold
+        </Badge>
+        <EmptyHeader>
+          <EmptyTitle>{title}</EmptyTitle>
+          <EmptyDescription>{message}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    </div>
   );
 }

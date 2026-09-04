@@ -21,3 +21,17 @@ export function getInitials(name: string): string {
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return (parts[0]![0] + parts[parts.length - 1]![0]).toUpperCase();
 }
+
+/**
+ * Format kalender `dateKey` ("YYYY-MM-DD") via `formatter` — parse manual
+ * dengan `Date.UTC` supaya tidak kena pergeseran timezone browser (code
+ * review PR #105: dipusatkan di sini, sebelumnya diduplikasi verbatim di
+ * `QueueList.tsx` & `CalendarAgendaList.tsx`, beda cuma opsi `formatter`-nya).
+ */
+export function formatUtcDateKeyHeading(
+  dateKey: string,
+  formatter: Intl.DateTimeFormat,
+): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return formatter.format(new Date(Date.UTC(year!, month! - 1, day)));
+}

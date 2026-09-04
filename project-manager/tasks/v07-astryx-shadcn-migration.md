@@ -292,6 +292,17 @@ dengan T-098/T-099/T-100/T-101 begitu T-096 selesai.
     grep, sisa cuma di komentar dokumentasi). Dikerjakan di branch
     `feature/t-097-auth-flows-onboarding` (dicabang dari
     `feature/t-096-core-infra-migration`).
+- **Update (2026-09-04, KI-041 Resolved, ADR-098):** King Rezi memutuskan
+  menambah token baru (bukan tetap netral selamanya). 4 token CSS variable
+  baru ditambahkan ke Stone theme shadcn di `apps/web/src/app/globals.css`
+  (light+dark): `--success`/`--success-foreground`,
+  `--warning`/`--warning-foreground`, nilai desaturated konsisten
+  `--destructive`, kontras ≥6.3:1 WCAG AA — lihat **ADR-098** (mengamandemen
+  pemetaan token T-095.5). State "success"/"expired" Accept Invite
+  (`AcceptInvitePageClient.tsx`) sekarang memakai token baru; state
+  "invalid" tetap `text-destructive` (tidak diubah). Diverifikasi QA Najwa
+  via `getComputedStyle` di light+dark. Detail: `PROJECT_STATE.md` § KI-041
+  (closed), `DECISIONS.md` § ADR-098.
 
 ---
 
@@ -487,6 +498,14 @@ lahir dari keterbatasan Astryx.
     ke `Badge variant="outline"` (bukan "secondary" seperti Active/
     Removed) karena tidak ada token warning — treatment varian, bukan
     warna baru, konsisten pola sebelumnya di KI-041.
+- **Update (2026-09-04, KI-041 Resolved, ADR-098):** Badge "Pending" di
+  `MembersTable.tsx` sekarang `Badge variant="secondary"` + className token
+  `--warning` baru (lihat catatan T-097 di atas untuk detail token).
+  `badge.tsx` sendiri tidak diubah. QA Najwa memverifikasi CSS-nya benar
+  tapi **tidak bisa diuji dengan data nyata** — ditemukan gap terpisah:
+  `MemberStatus.Pending` tidak pernah di-assign di flow produksi manapun
+  (accept invitation selalu langsung Active), dicatat **KI-046** baru di
+  `PROJECT_STATE.md`.
 
 ---
 
@@ -760,6 +779,18 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
     variant shadcn diverifikasi valid ke `cva()` source).
   * T-101 tetap `🟡 In Progress` — T-101.2 (Queue), T-101.3 (Drafts),
     T-101.4 (header/tabbar/layout), T-101.5 (Dashboard) belum dikerjakan.
+- **Update (2026-09-04, KI-035 poin 3 Resolved):** rancangan agenda/list
+  mobile didesain di Claude Design `templates/publish-calendar.html`
+  (kolom baru "State — Mobile Agenda", additive, tidak mengubah state
+  Week/Month desktop), lalu diimplementasikan: komponen baru
+  `CalendarAgendaList.tsx` (list per-tanggal, reuse `flattenCalendarItemsToEntries`
+  dan `CalendarPostPopover` yang sama dengan grid desktop), `CalendarScreen.tsx`
+  conditional render CSS-only (`hidden md:block` grid vs `block md:hidden`
+  agenda list). QA Najwa: desktop grid tidak berubah, mobile 375px tampil
+  agenda list dikelompokkan per tanggal dengan badge "Hari ini", klik entry
+  buka Popover benar, light+dark oke. Dengan ini **KI-035 status jadi full
+  Resolved** (poin 1 & 2 sudah Resolved sebelumnya di T-101.1/T-102.5).
+  Detail: `PROJECT_STATE.md` § KI-035.
 - Catatan T-101.2 (2026-09-03, Mark UI Engineer, branch
   `feature/t-101-publish-calendar-queue-drafts-migration`, file di
   `apps/web/src/app/(app)/publish/queue/components/`):
@@ -921,26 +952,184 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
 
 ### T-102 · Cleanup & Verifikasi Akhir
 
-`⏳ Not Started` · **Domain** platform/tooling · **ADR** ADR-097 · **Depends** T-097, T-098, T-099, T-100, T-101
+`✅ Done` · **Domain** platform/tooling · **ADR** ADR-097 · **Depends** T-097, T-098, T-099, T-100, T-101
 **Baca dulu:** —
 
 Task penutup — baru dikerjakan setelah **semua** route segment selesai
 dimigrasikan, memastikan tidak ada sisa Astryx di codebase.
 
-- [ ] **T-102.1** Hapus dependency `@astryxdesign/core`,
+- [x] **T-102.2** Grep ulang seluruh `apps/web/src` untuk memastikan **0**
+      import `@astryxdesign/*` tersisa (safety check sebelum uninstall)
+- [x] **T-102.1** Hapus dependency `@astryxdesign/core`,
       `@astryxdesign/theme-stone`, `@astryxdesign/cli` dari
       `apps/web/package.json`; hapus script `astryx`; hapus field
-      `"astryx"` config
-- [ ] **T-102.2** Grep ulang seluruh `apps/web/src` untuk memastikan **0**
-      import `@astryxdesign/*` tersisa (safety check sebelum uninstall)
-- [ ] **T-102.3** Update dokumen `context/ctx-design.md` dan
+      `"astryx"` config — **tuntas sepenuhnya** (2026-09-04): setelah
+      T-102.6 selesai, `@astryxdesign/core` juga sudah dihapus, `bun
+      install` sukses, `bun.lock` sinkron
+- [x] **T-102.3** Update dokumen `context/ctx-design.md` dan
       `context/ctx-implementation.md` yang masih menyebut Astryx sebagai
-      baseline aktif
-- [ ] **T-102.4** QA visual menyeluruh oleh Najwa QA Engineer, per area
+      baseline aktif — **selesai** (2026-09-04): kedua file diperbarui,
+      wording "migrasi berjalan incremental" diganti "migrasi sudah selesai
+      secara kode (0 import `@astryxdesign/*` aktif, dependency sudah
+      dihapus — T-102.1/T-102.2/T-102.6)", sisa v0.7 dipersempit ke T-102.4
+      (QA visual) dan T-102.5 (tutup KI). Scope task ini eksplisit hanya 2
+      file tsb — `context/ctx-development.md` dan
+      `context/ctx-technical-context.md` masih menyebut "migrasi
+      incremental" juga tapi **sengaja tidak disentuh** (di luar scope
+      T-102.3 tertulis).
+- [x] **T-102.4** QA visual menyeluruh oleh Najwa QA Engineer, per area
       (Auth, Onboarding, App Shell, Settings, Publish, Dashboard) — wajib
       manual/browser karena tidak ada test komponen sebagai regression
-      safety-net
-- [ ] **T-102.5** Re-evaluasi & tutup **KI-005** (Astryx Beta — moot),
+      safety-net — **selesai** (2026-09-04): `bun run typecheck`/`lint`/
+      `test` PASS (235 test, 4 skip); verifikasi visual browser (light+dark
+      +mobile 375px) untuk Auth (signup+onboarding end-to-end), App Shell,
+      Settings (General/Connected Accounts/Members), Publish
+      (Calendar/Queue/Drafts), Dashboard, dan Safety Check dialog (ADR-049)
+      — **semua PASS, 0 regresi visual**. Inspeksi DOM konfirmasi 0 sisa
+      elemen Astryx. Gap desain-token KI-041 dikonfirmasi bukan regresi
+      baru (sesuai keputusan sebelumnya). **Temuan di luar scope** (dicatat
+      terpisah, tidak memblokir T-102.4): **KI-045** — role Creator masih
+      bisa akses & edit Settings General/Members/Billing, regresi dari
+      KI-038 (Resolved 2026-08-31) yang sebelumnya hanya menutup
+      `/settings/members`.
+- [x] **T-102.5** Re-evaluasi & tutup **KI-005** (Astryx Beta — moot),
       **KI-030** (TimeInput, kalau belum ditutup di T-100.3), **KI-035**
       poin 1 & 2 (kalau belum ditutup di T-101.1) sesuai hasil migrasi
-      nyata — jangan tutup otomatis tanpa verifikasi
+      nyata — jangan tutup otomatis tanpa verifikasi — **selesai**
+      (2026-09-04): **KI-005** ditutup Resolved — moot, dicek langsung
+      `apps/web/package.json` + grep `@astryxdesign` di `apps/web/src`,
+      tidak ada dependency aktif tersisa (hanya komentar historis).
+      **KI-030** dan **KI-035** poin 1 dikonfirmasi sudah Resolved
+      sebelumnya (T-100.3 2026-09-03, T-101.1 2026-09-03) — tidak
+      dihitung sebagai temuan baru T-102.5. **KI-035** poin 2 (`Badge`
+      Astryx tanpa prop size/truncation) baru ditutup Resolved sekarang:
+      dicek `apps/web/src/components/ui/badge.tsx` (shadcn, `cva`-based,
+      `className` bebas) dan `CalendarEntryFooter.tsx` — root cause lama
+      hilang karena `Badge` sekarang Tailwind-composable; workaround
+      dot+icon compact mobile dipertahankan sebagai keputusan UX, bukan
+      lagi keterpaksaan teknis. **Poin 3** (layout Calendar mobile
+      ~375px) tetap `Open`, di luar scope T-102.5 — butuh rancangan baru
+      di Claude Design (rule 17 `AGENTS.md`). Detail lengkap: `KI-005`,
+      `KI-035` di `PROJECT_STATE.md`.
+- [x] **T-102.6** (baru, ditemukan 2026-09-04) Migrasi `useToast` di
+      `apps/web/src/app/(app)/publish/queue/components/QueueScreen.tsx` dari
+      `@astryxdesign/core/Toast` ke padanan shadcn (mis. `sonner`/toast
+      shadcn — discover dulu via MCP/CLI shadcn, jangan menebak nama).
+      Setelah ini selesai, hapus `@astryxdesign/core` dari
+      `apps/web/package.json` untuk menuntaskan T-102.1 sepenuhnya.
+
+> **Update (2026-09-04):** Grep ulang `apps/web/src` (T-102.2) menemukan 9
+> file dengan import `@astryxdesign/*` aktif yang tersisa meski T-097–T-101
+> sudah ditandai ✅ Done — gap yang tidak tercatat sebelumnya. Dimigrasi
+> Mark UI Engineer di branch `feature/t-102-cleanup-verifikasi-akhir`:
+> `Modal.tsx` & `status-badge.ts` (draft-editor), `calendar-grid-shared.ts`,
+> `CalendarEntryFooter.tsx`, `CalendarPostPopover.tsx` (calendar),
+> `DraftsList.tsx` (drafts), `ScaffoldPlaceholder.tsx`, `Providers.tsx`
+> (Theme/stoneTheme/LinkProvider dilepas sepenuhnya — semua konsumen sudah
+> bersih), `globals.css` (4 baris `@import` Astryx + layer astryx-base/theme
+> dihapus). Pemetaan komponen: `Badge`→shadcn `Badge`, `Banner`→`Alert`/
+> `AlertTitle`, `Divider`→`Separator`, `Heading`→`Text variant="h4"`,
+> `HStack`/`VStack`/`Center`/`Stack`→Tailwind flex, `Link`→`next/link`,
+> `EmptyState`→shadcn `Empty`, `StatusDot`/`Icon` (compact mobile
+> `CalendarEntryFooter`) dipertahankan sebagai custom dot+icon kecil setelah
+> retest 375px menunjukkan `Badge` shadcn overflow di kolom grid sempit —
+> **bukan regresi, keputusan sadar**. Gap desain-token warna semantik
+> `success`/`warning`/`info`/`purple` untuk `ContentStatus` (**KI-041**,
+> berulang sejak T-097/T-099/T-101) tetap terbuka — dipetakan sementara ke
+> variant shadcn existing (`outline`/`secondary`/`default`/`destructive`),
+> bukan keputusan final. `bun run typecheck` & `bun run lint` PASS 0 error.
+> Verifikasi visual manual (light+dark, mobile 375px) PASS, 0 regresi.
+> Setelah migrasi ini, hanya tersisa 1 import `@astryxdesign/*` aktif:
+> `useToast` di `QueueScreen.tsx` (sengaja dipertahankan, belum ada padanan
+> shadcn) — dicatat sebagai **T-102.6** baru. T-102.1 dieksekusi partial:
+> `theme-stone`+`cli`+script/config `astryx` dihapus dari
+> `apps/web/package.json`, `@astryxdesign/core` dipertahankan sampai
+> T-102.6 tuntas. `bun install` sukses, lockfile sinkron.
+
+> **Update (2026-09-04, T-102.6 selesai — T-102.1 tuntas penuh):** **T-102.6**
+> (migrasi `useToast` Astryx → shadcn) selesai dikerjakan Mark UI Engineer di
+> branch `feature/t-102-cleanup-verifikasi-akhir`. Component `sonner`
+> di-install via `bunx shadcn@latest add @shadcn/sonner` ke
+> `apps/web/src/components/ui/sonner.tsx`, lalu diadaptasi: dependensi
+> `useTheme` dari `next-themes` dihapus (project punya mekanisme tema
+> sendiri — cookie + class `dark`, lihat ADR-055/ADR-097 poin 9) — `theme`
+> diterima sebagai prop biasa dengan default `"system"`. `<Toaster
+> theme={mode} />` dipasang sekali di root
+> [`Providers.tsx`](../../apps/web/src/components/Providers.tsx), memakai
+> `mode` dari `useThemeMode` context yang sudah ada — pola yang sama
+> seperti `TooltipProvider`. Di
+> [`QueueScreen.tsx`](../../apps/web/src/app/(app)/publish/queue/components/QueueScreen.tsx),
+> `useToast` dari `@astryxdesign/core/Toast` diganti `toast()` dari
+> `sonner`, pesan dipertahankan persis ("Jadwal dibatalkan — post kembali
+> ke Drafts"). Dependency `sonner` ditambahkan ke `apps/web/package.json`;
+> `next-themes` yang otomatis ditambah CLI dihapus lagi karena jadi unused
+> setelah adaptasi. Dengan ini **T-102.1 tuntas sepenuhnya**:
+> `@astryxdesign/core` dihapus dari `apps/web/package.json`, `bun install`
+> dijalankan di root repo, `bun.lock` sinkron. Verifikasi: `bun run
+> typecheck` PASS 0 error; `bunx eslint .` PASS 0 error (1 pesan info
+> generik "Pages directory cannot be found" dari plugin next/eslint
+> dikonfirmasi pre-existing lewat `git stash` test, bukan regresi). Grep
+> `@astryxdesign` di `apps/web/src` sekarang **0 import aktif** (sisa hanya
+> komentar historis yang menyebut nama package sebagai referensi). **Gap
+> terbuka:** verifikasi visual browser (bagian dari T-102.4) **belum bisa
+> dilakukan** dalam sesi ini — dev server lokal minta login dan tidak ada
+> kredensial test tersedia untuk memverifikasi toast baru tampil benar di
+> Publish → Queue (trigger Cancel Schedule); presedan sama dengan yang
+> dicatat di `COMPLETE_TASK.md` baris 1405. Kode sudah siap tapi eyeball
+> check masih pending — perlu King Rezi kasih kredensial atau cek manual
+> sendiri sebelum T-102.4 ditutup. Subtask v0.7 selesai naik 33 → **35**
+> dari 38 total (T-102.1 dan T-102.6 keduanya jadi ✅). Sisa T-102:
+> T-102.3, T-102.4, T-102.5.
+
+> **Update (2026-09-04, gap verifikasi visual T-102.6 ditutup):** King Rezi
+> mengecek manual sendiri di browser (Publish → Queue → trigger Cancel
+> Schedule) dan mengonfirmasi singkat: **"toast oke"** — toast baru dari
+> `sonner` tampil benar menggantikan toast Astryx lama. Dengan ini, gap
+> verifikasi visual yang tercatat terbuka di update sebelumnya untuk
+> **T-102.6** sudah ditutup sepenuhnya. Catatan: ini **bukan** menutup
+> **T-102.4** (QA visual menyeluruh Najwa QA Engineer, area Auth/
+> Onboarding/App Shell/Settings/Publish/Dashboard) — konfirmasi ini hanya
+> menutup satu titik verifikasi (toast Cancel Schedule), scope T-102.4
+> masih jauh lebih besar dan tetap `[ ]` belum dikerjakan. Status T-102
+> keseluruhan tetap `🟡 In Progress`, sisa T-102.3, T-102.4, T-102.5.
+
+> **Update (2026-09-04, T-102.5 tuntas — T-102 & rilis v0.7 Done):**
+> **T-102.5** (re-evaluasi & tutup Known Issues sisa migrasi) selesai
+> dikerjakan Gibran Project Manager berdasarkan verifikasi langsung ke
+> kode (bukan tebakan). **KI-005** (Astryx masih Beta) ditutup Resolved —
+> **moot**, dicek `apps/web/package.json` + grep `@astryxdesign` di
+> `apps/web/src`, 0 dependency aktif tersisa (hanya komentar historis).
+> **KI-030** (`TimeInput` Astryx) dan **KI-035** poin 1 (StyleX/`xstyle`)
+> dikonfirmasi **sudah Resolved sebelumnya** (T-100.3 dan T-101.1,
+> keduanya 2026-09-03) — tidak dihitung sebagai temuan baru T-102.5.
+> **KI-035** poin 2 (`Badge` Astryx tanpa prop `size`/truncation) **baru
+> ditutup Resolved sekarang**: root cause hilang karena `Badge` sekarang
+> shadcn (`apps/web/src/components/ui/badge.tsx`, `cva`-based,
+> Tailwind-composable via `className`), workaround dot+icon compact
+> mobile di `CalendarEntryFooter.tsx` dipertahankan sebagai keputusan UX
+> sadar (kepadatan layout), bukan lagi keterpaksaan teknis Astryx. **Poin
+> 3** (layout Calendar mobile ~375px) **tetap Open**, di luar scope
+> T-102.5 secara eksplisit — butuh rancangan baru di Claude Design (rule
+> 17 `AGENTS.md`). Dengan T-102.5 tuntas, **seluruh 6 subtask T-102 sudah
+> ✅** (T-102.1, T-102.2, T-102.3, T-102.4, T-102.5, T-102.6) — **T-102
+> ditutup `✅ Done`**, dan dengan itu **rilis v0.7 (migrasi
+> Astryx→shadcn/ui, ADR-097) tuntas 100% (8/8 task)**. Detail KI:
+> `PROJECT_STATE.md` § KI-005, KI-035.
+
+> **Update (2026-09-04, KI-045 Resolved):** root cause dikonfirmasi:
+> `settings/page.tsx` (General) dan `billing/page.tsx` memang **tidak
+> pernah** punya guard role sejak awal (bukan regresi migrasi T-099 seperti
+> dugaan awal saat T-102.4) — hanya `members/page.tsx` yang sudah benar
+> dari fix **KI-038** sebelumnya. Fix:
+> `WorkspaceService.canManageWorkspaceSettings()` +
+> `assertActorCanManageWorkspaceSettings()` (pola sama
+> `canManageMembers`), dipanggil dari guard di `settings/page.tsx`
+> (redirect ke `/settings/account`), `settings/billing/page.tsx` (redirect
+> sama), **dan** dari method `renameWorkspace()` di service layer (bukan
+> cuma guard UI). QA Najwa konfirmasi: Creator (Sinta) redirect di ketiga
+> halaman, Owner (Raka)/Admin (Maya) tetap normal akses, guard Members lama
+> tidak rusak. File: `apps/web/src/domains/workspace/services/workspace.service.ts`,
+> `apps/web/src/app/(app)/settings/page.tsx`,
+> `apps/web/src/app/(app)/settings/billing/page.tsx`. Detail:
+> `PROJECT_STATE.md` § KI-045 (dipindah ke `COMPLETE_TASK.md` setelah
+> Resolved, ID tidak didaur ulang).

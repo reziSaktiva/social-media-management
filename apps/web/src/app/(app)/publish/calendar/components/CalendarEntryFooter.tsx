@@ -1,6 +1,4 @@
-import { Badge } from "@astryxdesign/core/Badge";
-import { Icon } from "@astryxdesign/core/Icon";
-import { StatusDot } from "@astryxdesign/core/StatusDot";
+import { Badge } from "@/components/ui/badge";
 
 import {
   CONTENT_STATUS_BADGE_VARIANT,
@@ -10,7 +8,7 @@ import {
   type CalendarCardEntry,
   CONTENT_FORMAT_ICON,
   CONTENT_FORMAT_LABEL,
-  CONTENT_STATUS_DOT_VARIANT,
+  CONTENT_STATUS_DOT_CLASSNAME,
 } from "./calendar-grid-shared";
 
 export interface CalendarEntryFooterProps {
@@ -20,54 +18,45 @@ export interface CalendarEntryFooterProps {
 /**
  * Footer status/format kartu Calendar (revisi keempat T-033 poin 2-3) —
  * dipakai `CalendarMonthGrid`/`CalendarWeekGrid`, sebelumnya duplikat
- * verbatim di kedua file. ≤768px `Badge` teks overflow di card sempit
- * (Badge "Scheduled" 77px vs ruang card ~22-39px di 375px, Badge tidak
- * punya prop size/truncation) — diganti StatusDot+Icon compact di bawah
- * 768px (breakpoint sama dengan AppShell mobile nav, `md: 768` di
- * `AppShell.tsx`), 2 Badge tetap seperti semula di >768px (tidak berubah).
- * CSS murni (Tailwind `md:`), bukan JS resize-hook — `useMediaQuery`
- * Astryx eksplisit "always returns false on first render" (SSR), berisiko
- * hydration mismatch/layout shift untuk switch yang harus benar di first
- * paint. Detail lengkap tetap ada lewat tap kartu → `CalendarPostPopover`
- * (tidak berubah).
+ * verbatim di kedua file. ≤768px 2 `Badge` teks overflow di kolom grid
+ * yang sempit (breakpoint sama dengan AppShell mobile nav, `md: 768` di
+ * `AppShell.tsx`) — diganti dot+icon compact di bawah 768px, 2 Badge tetap
+ * seperti semula di >768px. CSS murni (Tailwind `md:`), bukan JS
+ * resize-hook. Detail lengkap tetap ada lewat tap kartu → `CalendarPostPopover`.
  *
- * T-101.1: `HStack` -> Tailwind flex (layout-only, ADR-097). `Badge`/
- * `StatusDot`/`Icon` SENGAJA tetap Astryx — Stone theme (shadcn) belum
- * punya token warna semantik (success/warning/info/purple) untuk 6 varian
- * `ContentStatus`, cuma `accent`/`destructive` (dicek `globals.css`, tidak
- * ada `--color-success` dkk). Pola sama persis dengan `Modal.tsx` (T-100.1,
- * status chip header) — koeksistensi Astryx/shadcn di level komponen
- * (bukan cuma route-segment) untuk kasus spesifik ini, bukan keputusan
- * baru. Dilaporkan ke King Rezi sebagai gap desain-token, bukan diputuskan
- * sepihak sebagai final — lihat laporan sesi T-101.1.
+ * T-102 cleanup (ADR-097): `Badge`/dot compact dimigrasi penuh ke shadcn +
+ * Tailwind (`calendar-grid-shared.ts` — `CONTENT_FORMAT_ICON`,
+ * `CONTENT_STATUS_DOT_CLASSNAME`), menggantikan `StatusDot`/`Icon` Astryx.
+ * KI-041 (token warna semantik) masih terbuka — dot dipetakan ke token yang
+ * sudah ada, sama seperti `CONTENT_STATUS_BADGE_VARIANT`, bukan warna baru.
  */
 export function CalendarEntryFooter({ entry }: CalendarEntryFooterProps) {
+  const FormatIcon = CONTENT_FORMAT_ICON[entry.contentFormat];
+
   return (
     <>
-      {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only, lihat catatan di atas */}
+      {/* eslint-disable-next-line no-restricted-syntax -- T-102: layout-only, murni Tailwind flex. */}
       <div className="flex items-center gap-1.5 md:hidden">
-        <StatusDot
-          variant={CONTENT_STATUS_DOT_VARIANT[entry.status]}
-          label={CONTENT_STATUS_LABEL[entry.status]}
-          tooltip={CONTENT_STATUS_LABEL[entry.status]}
+        <span
+          className={`inline-block size-1.5 shrink-0 rounded-full ${CONTENT_STATUS_DOT_CLASSNAME[entry.status]}`}
+          role="img"
+          aria-label={CONTENT_STATUS_LABEL[entry.status]}
+          title={CONTENT_STATUS_LABEL[entry.status]}
         />
-        <Icon
-          icon={CONTENT_FORMAT_ICON[entry.contentFormat]}
-          size="xsm"
-          color="secondary"
-          label={CONTENT_FORMAT_LABEL[entry.contentFormat]}
+        <FormatIcon
+          className="size-3 shrink-0 text-muted-foreground"
+          aria-label={CONTENT_FORMAT_LABEL[entry.contentFormat]}
+          title={CONTENT_FORMAT_LABEL[entry.contentFormat]}
         />
       </div>
-      {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only, lihat catatan di atas */}
+      {/* eslint-disable-next-line no-restricted-syntax -- T-102: layout-only, murni Tailwind flex. */}
       <div className="hidden flex-wrap items-center gap-1 md:flex">
-        <Badge
-          variant="neutral"
-          label={CONTENT_FORMAT_LABEL[entry.contentFormat]}
-        />
-        <Badge
-          variant={CONTENT_STATUS_BADGE_VARIANT[entry.status]}
-          label={CONTENT_STATUS_LABEL[entry.status]}
-        />
+        <Badge variant="outline">
+          {CONTENT_FORMAT_LABEL[entry.contentFormat]}
+        </Badge>
+        <Badge variant={CONTENT_STATUS_BADGE_VARIANT[entry.status]}>
+          {CONTENT_STATUS_LABEL[entry.status]}
+        </Badge>
       </div>
     </>
   );

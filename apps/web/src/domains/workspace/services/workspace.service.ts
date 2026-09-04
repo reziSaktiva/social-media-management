@@ -376,6 +376,36 @@ export class WorkspaceService {
     }
   }
 
+  /**
+   * Gate akses halaman Settings General (Server Component) — true untuk
+   * Owner/Admin aktif, false untuk selainnya (termasuk Creator, yang menurut
+   * matrix `roles-permissions.md` "Tidak ada akses" ke Organization
+   * Settings). Pola sama seperti `canManageMembers` (KI-045).
+   */
+  async canManageWorkspaceSettings(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<boolean> {
+    const actor = await this.getMembership(workspaceId, actorUserId);
+    return (
+      !!actor &&
+      actor.status === MemberStatus.Active &&
+      (actor.role === MemberRole.Owner || actor.role === MemberRole.Admin)
+    );
+  }
+
+  /** Owner/Admin only; dipakai renameWorkspace (Settings General, KI-045). */
+  private async assertActorCanManageWorkspaceSettings(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    actionErrorMessage: string,
+  ): Promise<void> {
+    const actor = await this.assertActiveMembership(workspaceId, actorUserId);
+    if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
+      throw new AuthorizationError(actionErrorMessage);
+    }
+  }
+
   /** Owner tidak bisa jadi target; dipakai removeMember & updateMemberRole. */
   private async getManageableTarget(
     workspaceId: WorkspaceId,
@@ -804,18 +834,24 @@ export class WorkspaceService {
   }
 
   /**
-   * Ganti nama workspace (T-008.4) — RBAC: member aktif mana pun (bukan
-   * Owner-only), reversible/low-stakes, tanpa dialog konfirmasi di UI (beda
-   * dengan Danger Zone). Validasi nama reuse aturan yang sama dengan
-   * `createWorkspace` (panjang max, tidak boleh kosong) — slug TIDAK
-   * ikut berubah di sini.
+   * Ganti nama workspace (T-008.4) — RBAC: Owner/Admin aktif saja (KI-045 —
+   * komentar sebelumnya di sini keliru menyatakan "member aktif mana pun",
+   * tidak konsisten dengan `roles-permissions.md` yang menyatakan Creator
+   * "Tidak ada akses" ke Organization Settings). Reversible/low-stakes,
+   * tanpa dialog konfirmasi di UI (beda dengan Danger Zone). Validasi nama
+   * reuse aturan yang sama dengan `createWorkspace` (panjang max, tidak
+   * boleh kosong) — slug TIDAK ikut berubah di sini.
    */
   async renameWorkspace(
     workspaceId: WorkspaceId,
     actorUserId: UserId,
     name: string,
   ): Promise<WorkspaceRecord> {
-    await this.assertActiveMembership(workspaceId, actorUserId);
+    await this.assertActorCanManageWorkspaceSettings(
+      workspaceId,
+      actorUserId,
+      "Anda tidak memiliki akses untuk mengubah pengaturan workspace ini.",
+    );
 
     const trimmedName = name.trim();
     if (!trimmedName) {
