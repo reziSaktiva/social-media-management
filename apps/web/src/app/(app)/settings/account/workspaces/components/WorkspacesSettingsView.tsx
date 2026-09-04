@@ -2,23 +2,46 @@
 
 import { useState, useTransition } from "react";
 
-import { FaPlus } from "react-icons/fa6";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowRight01Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
 
-import { AlertDialog } from "@astryxdesign/core/AlertDialog";
-import { Avatar } from "@astryxdesign/core/Avatar";
-import { Badge } from "@astryxdesign/core/Badge";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
-import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
-import { Heading } from "@astryxdesign/core/Heading";
-import { HStack } from "@astryxdesign/core/HStack";
-import { Icon } from "@astryxdesign/core/Icon";
-import { Layout, LayoutContent, LayoutFooter } from "@astryxdesign/core/Layout";
-import { List, ListItem } from "@astryxdesign/core/List";
-import { Section } from "@astryxdesign/core/Section";
-import { StatusDot } from "@astryxdesign/core/StatusDot";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { VStack } from "@astryxdesign/core/VStack";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+import { Spinner } from "@/components/ui/spinner";
+
+import { getInitials } from "@/lib/utils";
 
 import {
   SETTINGS_BREADCRUMB_GROUP,
@@ -49,17 +72,19 @@ function formatRoleLabel(role: string): string {
 }
 
 /**
- * Baris "Aktif" — non-interactive, hanya menampilkan Badge status dengan
- * StatusDot sebagai leading icon (spek: "Chip/Badge Aktif dengan dot
- * indicator").
+ * Baris "Aktif" — non-interactive, Badge status dengan dot indikator
+ * (spek: "Chip/Badge Aktif dengan dot indicator"). `Badge` shadcn tidak
+ * punya varian "success" (KI-041, Stone theme belum punya token
+ * `--success`) — dipetakan ke "secondary" (netral, bukan mengarang warna
+ * hijau baru), dot indikatornya cukup `bg-foreground/60` (turunan token
+ * netral yang sudah ada, bukan token warna baru).
  */
 function ActiveBadge() {
   return (
-    <Badge
-      variant="success"
-      icon={<StatusDot variant="success" label="" />}
-      label="Aktif"
-    />
+    <Badge variant="secondary">
+      <span aria-hidden className="size-1.5 rounded-full bg-foreground/60" />
+      Aktif
+    </Badge>
   );
 }
 
@@ -74,36 +99,70 @@ function WorkspaceRow({
 }) {
   if (workspace.isActive) {
     return (
-      <ListItem
-        label={workspace.name}
-        description={formatRoleLabel(workspace.role)}
-        startContent={<Avatar name={workspace.name} size="md" />}
-        endContent={<ActiveBadge />}
-      />
+      <Item>
+        <ItemMedia>
+          <Avatar>
+            <AvatarFallback>{getInitials(workspace.name)}</AvatarFallback>
+          </Avatar>
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{workspace.name}</ItemTitle>
+          <ItemDescription>{formatRoleLabel(workspace.role)}</ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <ActiveBadge />
+        </ItemActions>
+      </Item>
     );
   }
 
   return (
-    <ListItem
-      label={workspace.name}
-      description={
-        isSwitchPending
-          ? "Memindahkan ke workspace ini..."
-          : formatRoleLabel(workspace.role)
-      }
-      startContent={<Avatar name={workspace.name} size="md" />}
-      endContent={<Icon icon="chevronRight" color="tertiary" size="sm" />}
-      onClick={() => onRequestSwitch(workspace)}
-      isDisabled={isSwitchPending}
-    />
+    <Item
+      asChild
+      variant="outline"
+      className="cursor-pointer hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+    >
+      <button
+        type="button"
+        onClick={() => onRequestSwitch(workspace)}
+        disabled={isSwitchPending}
+      >
+        <ItemMedia>
+          <Avatar>
+            <AvatarFallback>{getInitials(workspace.name)}</AvatarFallback>
+          </Avatar>
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{workspace.name}</ItemTitle>
+          <ItemDescription>
+            {isSwitchPending
+              ? "Memindahkan ke workspace ini..."
+              : formatRoleLabel(workspace.role)}
+          </ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <HugeiconsIcon
+            icon={ArrowRight01Icon}
+            strokeWidth={2}
+            className="size-4 text-muted-foreground"
+          />
+        </ItemActions>
+      </button>
+    </Item>
   );
 }
 
 /**
- * View Settings → Account → Workspaces (T-089.3/.4, ADR-088). Client
- * Component murni presentasi + orkestrasi Server Action — semua validasi
- * membership/role tetap di `WorkspaceService` (dipanggil lewat
- * `switchWorkspaceAction`/`createWorkspaceAction` di `../actions`).
+ * View Settings → Account → Workspaces (T-089.3/.4, ADR-088, migrasi
+ * shadcn/ui T-099.3). Client Component murni presentasi + orkestrasi
+ * Server Action — semua validasi membership/role tetap di
+ * `WorkspaceService` (dipanggil lewat `switchWorkspaceAction`/
+ * `createWorkspaceAction` di `../actions`).
+ *
+ * Baris workspace non-aktif dirender lewat `Item asChild` membungkus
+ * `<button>` (pola sama seperti contoh resmi shadcn `item-demo`, varian
+ * `asChild` + `<a>`) — seluruh baris jadi target klik, bukan cuma ikon
+ * chevron-nya.
  */
 export function WorkspacesSettingsView({ workspaces }: Props) {
   const [isSwitchPending, startSwitchTransition] = useTransition();
@@ -164,121 +223,146 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
   }
 
   return (
-    <VStack gap={4} padding={4}>
+    /* eslint-disable-next-line no-restricted-syntax -- T-099.3: file ini
+       sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097), bukan lagi
+       VStack Astryx. */
+    <div className="flex flex-col gap-4 p-4">
       <SettingsPageHead
         pageName="Workspaces"
         breadcrumb={`${SETTINGS_BREADCRUMB_GROUP.account} / Workspaces`}
         action={
-          <Button
-            label="Buat Workspace Baru"
-            variant="primary"
-            icon={<FaPlus />}
-            onClick={() => setDialogOpen(true)}
-          />
+          <Button type="button" onClick={() => setDialogOpen(true)}>
+            <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
+            Buat Workspace Baru
+          </Button>
         }
       />
 
-      {switchError ? <Banner status="error" title={switchError} /> : null}
+      {switchError ? (
+        <Alert variant="destructive">
+          <AlertTitle>{switchError}</AlertTitle>
+        </Alert>
+      ) : null}
 
-      <Section>
-        <List
-          hasDividers
-          density="spacious"
-          header={<Heading level={3}>Workspace Anda</Heading>}
-        >
-          {workspaces.map((workspace) => (
-            <WorkspaceRow
-              key={workspace.id}
-              workspace={workspace}
-              isSwitchPending={
-                isSwitchPending && switchingWorkspaceId === workspace.id
-              }
-              onRequestSwitch={handleRequestSwitch}
-            />
-          ))}
-        </List>
-      </Section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Workspace Anda</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0">
+          <ItemGroup className="gap-0 divide-y divide-border">
+            {workspaces.map((workspace) => (
+              <WorkspaceRow
+                key={workspace.id}
+                workspace={workspace}
+                isSwitchPending={
+                  isSwitchPending && switchingWorkspaceId === workspace.id
+                }
+                onRequestSwitch={handleRequestSwitch}
+              />
+            ))}
+          </ItemGroup>
+        </CardContent>
+      </Card>
 
       <AlertDialog
-        isOpen={pendingSwitchWorkspace !== null}
+        open={pendingSwitchWorkspace !== null}
         onOpenChange={(open) => {
           if (!open && !isSwitchPending) setPendingSwitchWorkspace(null);
         }}
-        title={`Pindah ke workspace ${
-          pendingSwitchWorkspace?.name ?? lastSwitchTargetName
-        }?`}
-        description="Anda akan keluar dari workspace saat ini dan berpindah konteks kerja."
-        cancelLabel="Batal"
-        actionLabel="Pindah"
-        actionVariant="primary"
-        isActionLoading={
-          isSwitchPending && switchingWorkspaceId === pendingSwitchWorkspace?.id
-        }
-        onAction={() => {
-          if (pendingSwitchWorkspace) handleSwitch(pendingSwitchWorkspace.id);
-        }}
-      />
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {`Pindah ke workspace ${
+                pendingSwitchWorkspace?.name ?? lastSwitchTargetName
+              }?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda akan keluar dari workspace saat ini dan berpindah konteks
+              kerja.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={
+                isSwitchPending &&
+                switchingWorkspaceId === pendingSwitchWorkspace?.id
+              }
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingSwitchWorkspace)
+                  handleSwitch(pendingSwitchWorkspace.id);
+              }}
+            >
+              {isSwitchPending &&
+              switchingWorkspaceId === pendingSwitchWorkspace?.id ? (
+                <Spinner />
+              ) : null}
+              Pindah
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog
-        isOpen={isDialogOpen}
+        open={isDialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) resetDialogState();
         }}
-        purpose="form"
-        width={400}
       >
-        <Layout
-          header={
-            <DialogHeader
-              title="Buat Workspace Baru"
-              subtitle="Workspace baru akan langsung aktif dan Anda pindah ke sana setelah dibuat."
-              onOpenChange={(open) => {
-                setDialogOpen(open);
-                if (!open) resetDialogState();
-              }}
-            />
-          }
-          content={
-            <LayoutContent>
-              <VStack gap={4}>
-                {createError ? (
-                  <Banner status="error" title={createError} />
-                ) : null}
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Buat Workspace Baru</DialogTitle>
+            <DialogDescription>
+              Workspace baru akan langsung aktif dan Anda pindah ke sana setelah
+              dibuat.
+            </DialogDescription>
+          </DialogHeader>
 
-                <TextInput
-                  label="Nama Workspace"
-                  value={newWorkspaceName}
-                  onChange={setNewWorkspaceName}
-                  placeholder="Roti Selasar"
-                  width="100%"
-                  isRequired
-                  isDisabled={isCreatePending}
-                />
-              </VStack>
-            </LayoutContent>
-          }
-          footer={
-            <LayoutFooter>
-              <HStack gap={2} hAlign="end">
-                <Button
-                  label="Batal"
-                  variant="secondary"
-                  onClick={handleCloseDialog}
-                  isDisabled={isCreatePending}
-                />
-                <Button
-                  label="Buat Workspace"
-                  variant="primary"
-                  isDisabled={!newWorkspaceName.trim()}
-                  isLoading={isCreatePending}
-                  onClick={handleCreate}
-                />
-              </HStack>
-            </LayoutFooter>
-          }
-        />
+          <FieldGroup>
+            {createError ? (
+              <Alert variant="destructive">
+                <AlertTitle>{createError}</AlertTitle>
+              </Alert>
+            ) : null}
+
+            <Field>
+              <FieldLabel htmlFor="new-workspace-name">
+                Nama Workspace
+              </FieldLabel>
+              <Input
+                id="new-workspace-name"
+                value={newWorkspaceName}
+                onChange={(e) => setNewWorkspaceName(e.target.value)}
+                placeholder="Roti Selasar"
+                required
+                disabled={isCreatePending}
+              />
+            </Field>
+          </FieldGroup>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleCloseDialog}
+              disabled={isCreatePending}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              disabled={!newWorkspaceName.trim() || isCreatePending}
+              onClick={handleCreate}
+            >
+              {isCreatePending ? <Spinner /> : null}
+              Buat Workspace
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
-    </VStack>
+    </div>
   );
 }

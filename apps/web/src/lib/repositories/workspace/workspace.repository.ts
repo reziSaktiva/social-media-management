@@ -4,7 +4,7 @@ import {
   asMemberId,
   asUserId,
   asWorkspaceId,
-  type InvitationStatus,
+  InvitationStatus,
   MemberRole,
   MemberStatus,
   type SocialPlatform,
@@ -23,6 +23,7 @@ import {
 import { prisma } from "@/lib/prisma/client";
 import {
   setCurrentUserId,
+  setInviteLookupToken,
   withCurrentUser,
 } from "@/lib/prisma/with-current-user";
 import { ConflictError, NotFoundError } from "@/lib/utils/errors";
@@ -77,6 +78,7 @@ function toInvitationRecord(
     role: invitation.role as MemberRole,
     token: invitation.token,
     status: invitation.status as InvitationStatus,
+    invitedByUserId: asUserId(invitation.invitedByUserId),
     expiresAt: invitation.expiresAt,
   };
 }
@@ -353,12 +355,79 @@ export const workspaceRepository: IWorkspaceRepository = {
     return toInvitationRecord(invitation);
   },
 
+  /**
+   * Public token-based lookup (T-093.1) — wrapped in its own transaction to
+   * `SET LOCAL app.invite_lookup_token` (code review follow-up migration
+   * `20260831044328_t093_code_review_rls_hardening`) before querying, so the
+   * `workspace_invitations_public_pending_lookup` RLS policy can compare
+   * against the EXACT token being looked up rather than permitting every
+   * `pending` row in the table. Deliberately its own transaction (not
+   * `withCurrentUser`, which sets a DIFFERENT GUC for the membership-based
+   * case) — the invitee has no membership anywhere yet, so
+   * `app.current_user_id` doesn't apply here.
+   */
   async findInvitationByToken(token) {
-    const invitation = await prisma.workspaceInvitation.findUnique({
-      where: { token },
+    const invitation = await prisma.$transaction(async (tx) => {
+      await setInviteLookupToken(tx, token);
+      return tx.workspaceInvitation.findUnique({ where: { token } });
     });
 
     return invitation ? toInvitationRecord(invitation) : null;
+  },
+
+  /** Sama pola tanpa `withCurrentUser` seperti `findInvitationByToken` (lihat catatan interface). */
+  async findUserByEmail(email) {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    return user ? { id: asUserId(user.id) } : null;
+  },
+
+  async acceptInvitation({ workspaceId, invitationId, userId, role }) {
+    return prisma.$transaction(async (tx) => {
+      // RLS chicken-and-egg (KI-026), sama seperti `createWithOwner`: baris
+      // membership baru ini belum ada saat insert dieksekusi, jadi
+      // `app.current_user_id` di-set ke user yang menerima undangan (bukan
+      // aktor lain) — pola `setCurrentUserId` bukan `withCurrentUser` karena
+      // transaksi ini sudah dibuka manual di atas.
+      await setCurrentUserId(tx, userId);
+
+      // Flip status atomik `pending` -> `accepted`; `count === 0` berarti
+      // invitation sudah tidak `pending` lagi (dipakai/dibatalkan di antara
+      // `findInvitationByToken` di service dan transaksi ini) — race guard
+      // supaya token tidak bisa dipakai dua kali (T-093.4).
+      const flipped = await tx.workspaceInvitation.updateMany({
+        where: { id: invitationId, status: InvitationStatus.Pending },
+        data: { status: InvitationStatus.Accepted, acceptedAt: new Date() },
+      });
+      if (flipped.count === 0) {
+        throw new ConflictError(
+          "Undangan ini sudah pernah dipakai atau dibatalkan.",
+        );
+      }
+
+      // `create` murni, bukan `upsert` — `removeMember` hard-delete baris
+      // `workspace_members` dan `WorkspaceInvitation` `@@unique([workspaceId,
+      // email])` mencegah invitation kedua untuk email yang sama di
+      // workspace ini, jadi baris `(workspaceId, userId)` tidak pernah ada
+      // sebelum titik ini. Kalau nanti ada fitur cancel-invitation atau
+      // soft-delete member (RLS `workspace_members` saat ini cuma
+      // meng-cover INSERT lewat `has_accepted_invitation`, tidak UPDATE),
+      // jalur reaktivasi perlu migrasi RLS baru dulu, bukan cukup upsert.
+      const member = await tx.workspaceMember.create({
+        data: {
+          workspaceId,
+          userId,
+          role,
+          status: MemberStatus.Active,
+          joinedAt: new Date(),
+        },
+      });
+
+      return toMemberRecord(member);
+    });
   },
 
   async saveChannelOrder({ workspaceId, userId, orderedConnectedAccountIds }) {

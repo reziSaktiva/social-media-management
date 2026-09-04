@@ -3,17 +3,42 @@
 import { useState } from "react";
 
 import { EMAIL_PATTERN, MemberRole } from "@social/shared";
-import { Badge } from "@astryxdesign/core/Badge";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
-import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
-import { HStack } from "@astryxdesign/core/HStack";
-import { Layout, LayoutContent, LayoutFooter } from "@astryxdesign/core/Layout";
-import { RadioList, RadioListItem } from "@astryxdesign/core/RadioList";
-import { Selector } from "@astryxdesign/core/Selector";
-import { Text } from "@astryxdesign/core/Text";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { VStack } from "@astryxdesign/core/VStack";
+
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+  FieldTitle,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 
 import { inviteMemberAction } from "../actions";
 
@@ -38,12 +63,14 @@ interface Props {
 }
 
 /**
- * Dialog "Undang Anggota Baru" (T-007.6, ADR-080). Dua metode: Copy Link
- * (aktif, default) dan Kirim via Email (disabled, badge "Segera", menunggu
- * T-005). Skeleton dialog form meniru Transfer Ownership/Delete Workspace
- * di WorkspaceGeneralSettings.tsx: Dialog purpose="form" + Layout/
- * DialogHeader/LayoutContent/LayoutFooter, tombol footer isDisabled sampai
- * form valid.
+ * Dialog "Undang Anggota Baru" (T-007.6, ADR-080, migrasi shadcn/ui
+ * T-099.2). Dua metode: Copy Link (aktif, default) dan Kirim via Email
+ * (disabled, badge "Segera", menunggu T-005). Pola pilihan kartu
+ * (label+description+radio dot per baris, satu baris bisa diklik penuh)
+ * ikut contoh resmi shadcn `field-choice-card` (MCP
+ * `get_item_examples_from_registries`) — `FieldLabel` membungkus `Field
+ * orientation="horizontal"` supaya seluruh baris jadi target klik, bukan
+ * cuma radio dot-nya.
  */
 export function InviteMemberDialog({ isOpen, onOpenChange }: Props) {
   const [email, setEmail] = useState("");
@@ -99,112 +126,152 @@ export function InviteMemberDialog({ isOpen, onOpenChange }: Props) {
 
   return (
     <Dialog
-      isOpen={isOpen}
+      open={isOpen}
       onOpenChange={(open) => {
         onOpenChange(open);
         if (!open) resetState();
       }}
-      purpose="form"
-      width={440}
     >
-      <Layout
-        header={
-          <DialogHeader
-            title="Undang Anggota Baru"
-            onOpenChange={onOpenChange}
-          />
-        }
-        content={
-          <LayoutContent>
-            <VStack gap={4}>
-              {error ? <Banner status="error" title={error} /> : null}
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Undang Anggota Baru</DialogTitle>
+        </DialogHeader>
 
-              <TextInput
-                type="email"
-                label="Email Calon Anggota"
-                value={email}
-                onChange={setEmail}
-                description="Link/undangan hanya bisa dipakai oleh email ini."
-                placeholder="nama@perusahaan.com"
-                width="100%"
-                isRequired
-                isDisabled={inviteLink !== null}
-              />
+        <FieldGroup>
+          {error ? (
+            <Alert variant="destructive">
+              <AlertTitle>{error}</AlertTitle>
+            </Alert>
+          ) : null}
 
-              <Selector
-                label="Role"
-                options={ROLE_OPTIONS}
-                value={role}
-                onChange={setRole}
-                placeholder="Pilih role"
-                isDisabled={inviteLink !== null}
-              />
+          <Field>
+            <FieldLabel htmlFor="invite-email">Email Calon Anggota</FieldLabel>
+            <Input
+              id="invite-email"
+              type="email"
+              required
+              disabled={inviteLink !== null}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="nama@perusahaan.com"
+            />
+            <FieldDescription>
+              Link/undangan hanya bisa dipakai oleh email ini.
+            </FieldDescription>
+          </Field>
 
-              <RadioList
-                label="Metode Undangan"
-                value={method}
-                onChange={(value) => setMethod(value as InviteMethod)}
-                isDisabled={inviteLink !== null}
-              >
-                <RadioListItem
-                  value="copy-link"
-                  label="Copy Link"
-                  description="Buat link undangan, lalu bagikan sendiri ke calon anggota (WhatsApp, Slack, dll)."
-                />
-                <RadioListItem
-                  value="email"
-                  label="Kirim via Email"
-                  description="Undangan terkirim otomatis ke email calon anggota. Menunggu provider email disiapkan (T-005)."
-                  isDisabled
-                  endContent={<Badge variant="warning" label="Segera" />}
-                />
-              </RadioList>
+          <Field>
+            <FieldLabel htmlFor="invite-role">Role</FieldLabel>
+            <Select
+              value={role}
+              onValueChange={setRole}
+              disabled={inviteLink !== null}
+            >
+              <SelectTrigger id="invite-role" className="w-full">
+                <SelectValue placeholder="Pilih role" />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
 
-              {inviteLink ? (
-                <VStack gap={2}>
-                  <HStack gap={2} align="end">
-                    <TextInput
-                      type="text"
-                      label="Link Undangan"
-                      value={inviteLink}
-                      onChange={() => {}}
-                      isDisabled
-                      width="100%"
-                    />
-                    <Button
-                      label={copyLabel}
-                      variant="secondary"
-                      onClick={handleCopyLink}
-                    />
-                  </HStack>
-                  <Text type="supporting">
-                    Link untuk {invitedEmail} dibuat.
-                  </Text>
-                </VStack>
-              ) : null}
-            </VStack>
-          </LayoutContent>
-        }
-        footer={
-          <LayoutFooter>
-            {inviteLink ? (
-              <Button
-                label="Tutup"
-                variant="secondary"
-                onClick={() => onOpenChange(false)}
-              />
-            ) : (
-              <Button
-                label="Buat Link Undangan"
-                variant="primary"
-                isDisabled={!isEmailValid || !role}
-                isLoading={isSubmitting}
-                clickAction={handleSubmit}
-              />
-            )}
-          </LayoutFooter>
-        }
-      />
+          <FieldSet>
+            <FieldLabel>Metode Undangan</FieldLabel>
+            <RadioGroup
+              value={method}
+              onValueChange={(value) => setMethod(value as InviteMethod)}
+              disabled={inviteLink !== null}
+            >
+              <FieldLabel htmlFor="invite-method-copy-link">
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldTitle>Copy Link</FieldTitle>
+                    <FieldDescription>
+                      Buat link undangan, lalu bagikan sendiri ke calon anggota
+                      (WhatsApp, Slack, dll)
+                    </FieldDescription>
+                  </FieldContent>
+                  <RadioGroupItem
+                    value="copy-link"
+                    id="invite-method-copy-link"
+                  />
+                </Field>
+              </FieldLabel>
+              <FieldLabel htmlFor="invite-method-email">
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    {/* eslint-disable-next-line no-restricted-syntax -- T-099.2: file ini
+                        sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097), bukan lagi
+                        HStack Astryx. */}
+                    <div className="flex items-center gap-2">
+                      <FieldTitle className="text-muted-foreground">
+                        Kirim via Email
+                      </FieldTitle>
+                      <Badge variant="outline">Segera</Badge>
+                    </div>
+                    <FieldDescription>
+                      Undangan terkirim otomatis ke email calon anggota.
+                      Menunggu provider email disiapkan (T-005).
+                    </FieldDescription>
+                  </FieldContent>
+                  <RadioGroupItem
+                    value="email"
+                    id="invite-method-email"
+                    disabled
+                  />
+                </Field>
+              </FieldLabel>
+            </RadioGroup>
+          </FieldSet>
+
+          {inviteLink ? (
+            <Field>
+              <FieldLabel htmlFor="invite-link">Link Undangan</FieldLabel>
+              <InputGroup>
+                <InputGroupInput id="invite-link" readOnly value={inviteLink} />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    type="button"
+                    variant="secondary"
+                    onClick={handleCopyLink}
+                  >
+                    {copyLabel}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+              <FieldDescription>
+                Link untuk {invitedEmail} dibuat.
+              </FieldDescription>
+            </Field>
+          ) : null}
+        </FieldGroup>
+
+        <DialogFooter>
+          {inviteLink ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => onOpenChange(false)}
+            >
+              Tutup
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              disabled={!isEmailValid || !role || isSubmitting}
+              onClick={handleSubmit}
+            >
+              {isSubmitting ? <Spinner /> : null}
+              Buat Link Undangan
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   );
 }

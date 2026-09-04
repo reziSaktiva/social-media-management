@@ -1,9 +1,13 @@
-import { Banner } from "@astryxdesign/core/Banner";
-import { Card } from "@astryxdesign/core/Card";
-import { Heading } from "@astryxdesign/core/Heading";
-import { Link } from "@astryxdesign/core/Link";
-import { Text } from "@astryxdesign/core/Text";
-import { VStack } from "@astryxdesign/core/VStack";
+import Link from "next/link";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 import { ResetPasswordForm } from "./components/ResetPasswordForm";
 
@@ -16,30 +20,41 @@ export default async function ResetPasswordPage({
 
   if (!token || error) {
     return (
-      <Card padding={8} width="100%">
-        <VStack gap={4}>
-          <Heading level={1}>Tautan Tidak Valid</Heading>
-          <Banner
-            status="error"
-            title="Tautan reset password tidak valid atau sudah kedaluwarsa."
-            description="Minta tautan baru untuk mengatur ulang password Anda."
-          />
-          <Link href="/forgot-password">Minta tautan reset baru</Link>
-        </VStack>
+      <Card>
+        <CardHeader>
+          <CardTitle>Tautan Tidak Valid</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Alert variant="destructive">
+            <AlertTitle>
+              Tautan reset password tidak valid atau sudah kedaluwarsa.
+            </AlertTitle>
+            <AlertDescription>
+              Minta tautan baru untuk mengatur ulang password Anda.
+            </AlertDescription>
+          </Alert>
+          <Link
+            href="/forgot-password"
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Minta tautan reset baru
+          </Link>
+        </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card padding={8} width="100%">
-      <VStack gap={4}>
-        <VStack gap={1}>
-          <Heading level={1}>Buat Password Baru</Heading>
-          <Text type="supporting">Masukkan password baru untuk akun Anda</Text>
-        </VStack>
-
+    <Card>
+      <CardHeader>
+        <CardTitle>Buat Password Baru</CardTitle>
+        <CardDescription>
+          Masukkan password baru untuk akun Anda
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         <ResetPasswordForm token={token} />
-      </VStack>
+      </CardContent>
     </Card>
   );
 }

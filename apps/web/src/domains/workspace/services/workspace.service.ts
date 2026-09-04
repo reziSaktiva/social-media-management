@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import {
   EMAIL_PATTERN,
+  InvitationStatus,
   MemberRole,
   MemberStatus,
   NotificationType,
@@ -26,7 +27,11 @@ import type {
   WorkspaceMembershipSummary,
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
-import type { SidebarChannelAccount, WorkspaceMemberWithUser } from "../types";
+import type {
+  SidebarChannelAccount,
+  WorkspaceInviteAcceptView,
+  WorkspaceMemberWithUser,
+} from "../types";
 
 const MAX_NAME_LENGTH = 100;
 const MAX_SLUG_ATTEMPTS = 6;
@@ -328,6 +333,34 @@ export class WorkspaceService {
     return result;
   }
 
+  /**
+   * Gate akses halaman Members (Server Component) — true untuk Owner/Admin
+   * aktif, false untuk selainnya (termasuk Creator, yang menurut matrix
+   * `roles-permissions.md` "Tidak ada akses" ke Members sama sekali, bukan
+   * cuma tombol aksi disembunyikan). Reuse `canActorManageMembers` (core
+   * boolean, tanpa exception) supaya tidak perlu try/catch + sentinel
+   * string untuk pesan error yang tidak pernah dipakai di jalur ini.
+   */
+  async canManageMembers(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<boolean> {
+    return this.canActorManageMembers(workspaceId, actorUserId);
+  }
+
+  /** Core boolean check — Owner/Admin aktif. Dipakai `canManageMembers` (public, tanpa pesan error) dan `assertActorCanManageMembers` (throwing wrapper, dengan pesan error spesifik per kasus). */
+  private async canActorManageMembers(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<boolean> {
+    const actor = await this.getMembership(workspaceId, actorUserId);
+    return (
+      !!actor &&
+      actor.status === MemberStatus.Active &&
+      (actor.role === MemberRole.Owner || actor.role === MemberRole.Admin)
+    );
+  }
+
   /** Owner/Admin only; dipakai removeMember & updateMemberRole. */
   private async assertActorCanManageMembers(
     workspaceId: WorkspaceId,
@@ -338,6 +371,36 @@ export class WorkspaceService {
     if (!actor || actor.status !== MemberStatus.Active) {
       throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
     }
+    if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
+      throw new AuthorizationError(actionErrorMessage);
+    }
+  }
+
+  /**
+   * Gate akses halaman Settings General (Server Component) — true untuk
+   * Owner/Admin aktif, false untuk selainnya (termasuk Creator, yang menurut
+   * matrix `roles-permissions.md` "Tidak ada akses" ke Organization
+   * Settings). Pola sama seperti `canManageMembers` (KI-045).
+   */
+  async canManageWorkspaceSettings(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<boolean> {
+    const actor = await this.getMembership(workspaceId, actorUserId);
+    return (
+      !!actor &&
+      actor.status === MemberStatus.Active &&
+      (actor.role === MemberRole.Owner || actor.role === MemberRole.Admin)
+    );
+  }
+
+  /** Owner/Admin only; dipakai renameWorkspace (Settings General, KI-045). */
+  private async assertActorCanManageWorkspaceSettings(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    actionErrorMessage: string,
+  ): Promise<void> {
+    const actor = await this.assertActiveMembership(workspaceId, actorUserId);
     if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
       throw new AuthorizationError(actionErrorMessage);
     }
@@ -469,6 +532,100 @@ export class WorkspaceService {
       token,
       expiresAt,
     });
+  }
+
+  /**
+   * Validasi token undangan untuk halaman `/invite/[token]` (T-093.1, ADR-080
+   * poin 1 & 6) — dipanggil dari Server Component (RSC boleh memanggil
+   * Application Service langsung, AGENTS.md #5), TANPA RBAC actor (invitee
+   * belum login/belum jadi member). 3 kondisi invalid/expired/valid:
+   * - Token tidak ditemukan, ATAU statusnya bukan lagi `pending`
+   *   (sudah `accepted`/`revoked`) → `invalid` (link rusak/dipakai/dibatalkan).
+   * - Statusnya masih `pending` tapi `expiresAt` sudah lewat (ADR-072, 7
+   *   hari) → `expired`.
+   * - Sisanya → `valid`, lengkap dengan nama workspace, nama pengundang, role
+   *   (langsung dari invitation, bukan default), email (terkunci di UI), dan
+   *   `isExistingUser` (auto-detect via `findUserByEmail` — menentukan form
+   *   "Buat Akun Baru" vs "Masuk" yang ditampilkan UI).
+   */
+  async getInviteToAccept(token: string): Promise<WorkspaceInviteAcceptView> {
+    const invitation = await this.repository.findInvitationByToken(token);
+    if (!invitation || invitation.status !== InvitationStatus.Pending) {
+      return { state: "invalid" };
+    }
+    if (invitation.expiresAt.getTime() < Date.now()) {
+      return { state: "expired" };
+    }
+
+    // Ketiganya independen — hanya bergantung pada `invitation` yang sudah
+    // resolve di atas, bukan satu sama lain — dijalankan paralel (code
+    // review PR #95) daripada sequential.
+    const [workspace, [inviter], existingUser] = await Promise.all([
+      this.repository.findById(invitation.workspaceId),
+      this.repository.findUsersByIds([invitation.invitedByUserId]),
+      this.repository.findUserByEmail(invitation.email),
+    ]);
+    if (!workspace) {
+      // Data korup (workspace terhapus tapi invitation masih ada) — tidak
+      // seharusnya terjadi (cascade delete, database-strategy.md), tapi
+      // diperlakukan sebagai link tidak valid daripada melempar 500.
+      return { state: "invalid" };
+    }
+
+    return {
+      state: "valid",
+      details: {
+        workspaceName: workspace.name,
+        invitedByName: inviter?.name ?? "Anggota tim",
+        role: invitation.role,
+        email: invitation.email,
+        isExistingUser: Boolean(existingUser),
+      },
+    };
+  }
+
+  /**
+   * Finalisasi accept-invite (T-093.2/.3, ADR-080 poin 6) — dipanggil
+   * SETELAH sign-up/sign-in Better Auth berhasil di client (composition
+   * root: Server Action `acceptInviteAction`). Re-validasi token dari awal
+   * (bukan percaya state yang sudah dibaca `getInviteToAccept` sebelumnya —
+   * bisa sudah expired/dipakai orang lain di antara render halaman dan
+   * submit) DAN memastikan email akun yang baru sign-up/sign-in **sama
+   * persis** dengan `invitation.email` (email-bound, ADR-080 poin 6) —
+   * pertahanan defensif kalau composition root suatu saat salah pasang
+   * actor email (mis. lewat sesi lain yang aktif di tab yang sama).
+   */
+  async acceptInvite(input: {
+    token: string;
+    actorUserId: UserId;
+    actorEmail: string;
+  }): Promise<{ workspaceId: WorkspaceId; role: MemberRole }> {
+    const invitation = await this.repository.findInvitationByToken(input.token);
+    if (!invitation) {
+      throw new NotFoundError("Undangan tidak ditemukan.");
+    }
+    if (invitation.status !== InvitationStatus.Pending) {
+      throw new ConflictError(
+        "Undangan ini sudah pernah dipakai atau dibatalkan.",
+      );
+    }
+    if (invitation.expiresAt.getTime() < Date.now()) {
+      throw new ValidationError("Undangan ini sudah kedaluwarsa.");
+    }
+    if (input.actorEmail.trim().toLowerCase() !== invitation.email) {
+      throw new AuthorizationError(
+        "Email akun Anda tidak cocok dengan email undangan ini.",
+      );
+    }
+
+    const member = await this.repository.acceptInvitation({
+      workspaceId: invitation.workspaceId,
+      invitationId: invitation.id,
+      userId: input.actorUserId,
+      role: invitation.role,
+    });
+
+    return { workspaceId: invitation.workspaceId, role: member.role };
   }
 
   /**
@@ -677,18 +834,24 @@ export class WorkspaceService {
   }
 
   /**
-   * Ganti nama workspace (T-008.4) — RBAC: member aktif mana pun (bukan
-   * Owner-only), reversible/low-stakes, tanpa dialog konfirmasi di UI (beda
-   * dengan Danger Zone). Validasi nama reuse aturan yang sama dengan
-   * `createWorkspace` (panjang max, tidak boleh kosong) — slug TIDAK
-   * ikut berubah di sini.
+   * Ganti nama workspace (T-008.4) — RBAC: Owner/Admin aktif saja (KI-045 —
+   * komentar sebelumnya di sini keliru menyatakan "member aktif mana pun",
+   * tidak konsisten dengan `roles-permissions.md` yang menyatakan Creator
+   * "Tidak ada akses" ke Organization Settings). Reversible/low-stakes,
+   * tanpa dialog konfirmasi di UI (beda dengan Danger Zone). Validasi nama
+   * reuse aturan yang sama dengan `createWorkspace` (panjang max, tidak
+   * boleh kosong) — slug TIDAK ikut berubah di sini.
    */
   async renameWorkspace(
     workspaceId: WorkspaceId,
     actorUserId: UserId,
     name: string,
   ): Promise<WorkspaceRecord> {
-    await this.assertActiveMembership(workspaceId, actorUserId);
+    await this.assertActorCanManageWorkspaceSettings(
+      workspaceId,
+      actorUserId,
+      "Anda tidak memiliki akses untuk mengubah pengaturan workspace ini.",
+    );
 
     const trimmedName = name.trim();
     if (!trimmedName) {

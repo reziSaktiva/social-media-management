@@ -18,6 +18,30 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-09-02 — Gap token warna semantik `--success`/`--warning` belum ada di Stone theme shadcn
+
+**Phase:** M8 Development (v0.7 migrasi Astryx → shadcn/ui, ADR-097)
+
+**Summary:** Saat migrasi Accept Invite (T-097.3) ke shadcn/ui, Mark UI Engineer menemukan Stone theme yang sudah dipetakan ke CSS variable shadcn (T-095.5/T-096.1) hanya berisi token `--destructive`, tanpa padanan `--success`/`--warning`. Astryx lama punya `EmptyState color="success"/"warning"/"error"` untuk 3 state Accept Invite (success/expired/invalid). Ridwan Architecture Reviewer memverifikasi ulang secara independen lewat grep `globals.css` dan mengonfirmasi temuan yang sama.
+
+**Key Insight / Decision:** Tanpa token resmi, tidak boleh mengarang hex/token warna baru di kode tanpa ADR (`AGENTS.md` rule 15) — jadi state "invalid" dipetakan ke `text-destructive` (token yang memang ada), sedangkan "expired"/"success" sengaja dibiarkan netral. Ini keputusan sementara, bukan solusi final — King Rezi perlu memutuskan apakah menambah token `--success`/`--warning` ke Stone theme (perlu ADR baru, mengamandemen pemetaan T-095.5) atau tetap netral selamanya untuk state-state itu.
+
+**Impact:** Dicatat sebagai **KI-041** (Open) di `project-manager/PROJECT_STATE.md`, referensi implementasi di `project-manager/tasks/v07-astryx-shadcn-migration.md` § T-097. Belum ada ADR baru — menunggu keputusan King Rezi terlebih dulu.
+
+---
+
+## 2026-08-31 — Pola bug: backend RBAC benar, tapi UI-level gate lupa dicek (T-093.4)
+
+**Phase:** M8 Development
+
+**Summary:** Saat verifikasi RBAC end-to-end T-093 (3 akun real Owner/Admin/Creator), Najwa QA Engineer menemukan Creator tetap bisa mengakses penuh halaman `/settings/members` (termasuk data member + email lengkap terkirim ke client) padahal `roles-permissions.md` menetapkan Creator "Tidak ada akses" ke halaman itu. Root cause: `MembersTable` hanya menyembunyikan tombol aksi per baris, tidak pernah mengecek role si pengunjung halaman itu sendiri — sementara backend (`assertActorCanManageMembers`, dipakai `removeMember`/`updateMemberRole`/`inviteMember`) sudah benar sejak awal, sehingga tidak ada mutasi tidak sah yang pernah berhasil.
+
+**Key Insight / Decision:** RBAC assertion di service layer melindungi **mutasi**, tapi tidak otomatis melindungi **exposure data lewat halaman/komponen read-only** — keduanya perlu gate terpisah. Pola aman: gate akses halaman (redirect kalau role tidak berhak) harus dicek **di server, sebelum fetch data**, bukan cuma menyembunyikan elemen UI setelah data sudah terkirim ke client. Untuk task RBAC lain (mis. verifikasi role di screen lain), checklist QA sebaiknya eksplisit memisahkan "mutasi diblokir?" dari "halaman/data ikut ter-gate untuk role yang tidak berhak?" — dua pertanyaan berbeda, code review yang hanya menelusuri service layer bisa lolos padahal UI-level gate-nya lupa.
+
+**Impact:** Fix `WorkspaceService.canManageMembers` + gate server-side di `apps/web/src/app/(app)/settings/members/page.tsx` (commit `6fdf272`). Dicatat di `project-manager/tasks/v01-foundation.md` § T-093.4, `project-manager/COMPLETE_TASK.md` (entri 2026-08-31).
+
+---
+
 ## 2026-08-18 — Batas wrapper Astryx: `TimeInput` real-time constraint ditolak King Rezi
 
 **Phase:** M8 Development

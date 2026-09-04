@@ -1,9 +1,8 @@
-import { VStack } from "@astryxdesign/core/VStack";
-
 import type { ConnectedAccountId } from "@social/shared";
 import type { CalendarPostItem, CalendarViewMode } from "@/domains/publishing";
 import type { ConnectedAccountRecord } from "@/domains/workspace";
 
+import { CalendarAgendaList } from "./CalendarAgendaList";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
 import { CalendarToolbar } from "./CalendarToolbar";
 import { CalendarWeekGrid } from "./CalendarWeekGrid";
@@ -32,8 +31,18 @@ type CalendarScreenProps = {
  * navigasi + T-033.6 filter) — `view`/`date`/`items`/`accounts` di sini
  * data nyata dari `page.tsx` (`parseCalendarViewState` +
  * `getWeekRange`/`getMonthRange` + `PublishingService.listCalendarPosts` +
- * `WorkspaceService.listConnectedAccounts`). Popover klik item BELUM
- * diimplementasikan — T-033.8, di luar scope task ini.
+ * `WorkspaceService.listConnectedAccounts`). Popover klik item — T-033.8/
+ * T-101.1, `CalendarPostPopover` (shadcn `Popover`, ADR-090/ADR-091).
+ *
+ * KI-035 poin 3 (mobile ≤768px): di bawah `CalendarToolbar` dirender grid
+ * Week/Month (≥768px, TIDAK berubah — addendum, bukan pengganti) DAN
+ * `CalendarAgendaList` (≤768px, list per-tanggal dari `items`/
+ * `connectedAccountIds` yang SAMA) — toggle murni CSS (`hidden md:block` /
+ * `block md:hidden`, breakpoint sama `CalendarEntryFooter.tsx`/
+ * `MembersTable.tsx`), bukan JS viewport detection. "Minggu"/"Bulan" di
+ * `CalendarToolbar` tetap mengontrol RANGE tanggal yang di-fetch
+ * (`page.tsx`), bukan mode render — Agenda dipakai untuk kedua pilihan itu
+ * saat mobile.
  */
 export function CalendarScreen({
   view,
@@ -43,21 +52,35 @@ export function CalendarScreen({
   connectedAccountIds,
 }: CalendarScreenProps) {
   return (
-    <VStack gap={4}>
+    // T-101.1: `VStack` Astryx -> Tailwind flex (layout-only, ADR-097).
+    // eslint-disable-next-line no-restricted-syntax
+    <div className="flex flex-col gap-4">
       <CalendarToolbar accounts={accounts} />
-      {view === "month" ? (
-        <CalendarMonthGrid
-          date={date}
+
+      {/* eslint-disable-next-line no-restricted-syntax -- KI-035 poin 3: layout-only, toggle CSS-only grid vs agenda */}
+      <div className="hidden md:block">
+        {view === "month" ? (
+          <CalendarMonthGrid
+            date={date}
+            items={items}
+            connectedAccountIds={connectedAccountIds}
+          />
+        ) : (
+          <CalendarWeekGrid
+            date={date}
+            items={items}
+            connectedAccountIds={connectedAccountIds}
+          />
+        )}
+      </div>
+
+      {/* eslint-disable-next-line no-restricted-syntax -- KI-035 poin 3: layout-only */}
+      <div className="block md:hidden">
+        <CalendarAgendaList
           items={items}
           connectedAccountIds={connectedAccountIds}
         />
-      ) : (
-        <CalendarWeekGrid
-          date={date}
-          items={items}
-          connectedAccountIds={connectedAccountIds}
-        />
-      )}
-    </VStack>
+      </div>
+    </div>
   );
 }

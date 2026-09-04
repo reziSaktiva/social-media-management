@@ -30,8 +30,9 @@ Topik yang termasuk dalam scope:
 * **Environment Management** — variabel environment, secret management, local vs staging vs production.
 * **Package & Dependency Strategy** — versioning, lockfile, shared packages.
 * **Developer Experience (DX) Tooling** — linting, formatting, pre-commit hooks, local dev setup.
-* **UI Component System** — Astryx sebagai fondasi permanen, Tailwind
-  layout-only, dan wrapper selektif (ADR-041).
+* **UI Component System** — shadcn/ui sebagai fondasi permanen (ADR-097,
+  membalik ADR-041), Tailwind sebagai styling langsung, dan wrapper selektif;
+  migrasi dari Astryx berjalan incremental per route-segment.
 * **Design Tokens** — Source of Truth font, warna semantic, neutral, status,
   spacing untuk implementasi UI (ADR-038, ADR-041); nilai final berkembang
   iteratif co-equal dengan Claude Design, tidak menunggu designer eksternal
@@ -56,15 +57,16 @@ Topik berikut **tidak dibahas** pada folder ini:
 * `auth-strategy.md` — authentication library (Better Auth), session, provider, token.
 * `database-orm.md` — Prisma sebagai ORM formal (ADR-031), batas Supabase client (Realtime/Storage), Prisma Migrate, connection pooling.
 * `cicd-pipeline.md` — GitHub Actions quality gates, promosi staging→main, Railway CD, migrate on release (ADR-032).
-* `environment-management.md` — katalog env vars, secret native (Railway + `.env.local`), Supabase Cloud `social-media-local` / staging / prod (ADR-033).
+* `environment-management.md` — katalog env vars, secret native (Railway + `.env.local`), Supabase Cloud staging / prod, local menumpang project staging yang sama (ADR-033, amandemen ADR-081).
 * `dx-tooling.md` — ESLint + Prettier, Lefthook + lint-staged, Vitest, script workspace (ADR-034).
-* `dependency-strategy.md` — caret ranges, pengecualian exact pin Astryx Beta,
-  `bun.lockb` root, penempatan dep, aturan `@social/shared`, update manual
-  (ADR-035, ADR-041).
+* `dependency-strategy.md` — caret ranges, `bun.lockb` root, penempatan dep,
+  aturan `@social/shared`, update manual (ADR-035); pengecualian exact pin
+  Astryx Beta superseded oleh migrasi shadcn/ui (ADR-097).
 * `design-tokens.md` — SoT visual tokens (font,
-  brand/neutral/status/feedback colors, spacing); neutral theme Astryx dipakai
-  selama M8, nilai final di-lock iteratif co-equal dengan Claude Design,
-  tanpa menunggu designer eksternal (ADR-038, ADR-056, ADR-057).
+  brand/neutral/status/feedback colors, spacing); token Stone theme (ADR-087)
+  dipetakan ke shadcn/ui (ADR-097), nilai final di-lock iteratif co-equal
+  dengan Claude Design, tanpa menunggu designer eksternal (ADR-038, ADR-056,
+  ADR-057).
 
 ---
 
@@ -109,11 +111,11 @@ Setiap keputusan teknis yang signifikan harus dicatat sebagai ADR di `../../proj
 7. Tetapkan DX tooling di `dx-tooling.md`.
 8. Dokumentasikan aturan dependency di `dependency-strategy.md`.
 9. Gunakan seluruh output sebagai acuan Repository & Bootstrap (M7).
-10. Selama M8, gunakan neutral theme Astryx dan Tailwind khusus layout tanpa
-    menunggu token final.
+10. Gunakan token Stone theme (ADR-087) dan Tailwind sebagai styling langsung
+    komponen shadcn/ui (ADR-097) tanpa menunggu token final.
 11. Setelah feature selesai dan design UI di-approve: isi `design-tokens.md`,
-    lalu mirror ke Astryx theme + Tailwind token bridge — lihat panduan PM di
-    dokumen tersebut (ADR-038, ADR-041).
+    lalu mirror ke CSS variable shadcn/ui + Tailwind token bridge — lihat
+    panduan PM di dokumen tersebut (ADR-038, ADR-097).
 
 ---
 
@@ -172,7 +174,8 @@ ADR-040 mengamandemen ADR-036 secara aditif. Engineering wajib menyediakan route
 ADR-041 mengamandemen ADR-035, ADR-038, dan ADR-036 secara aditif:
 
 * Astryx menggantikan shadcn/ui sebagai fondasi component system permanen;
-* neutral theme Astryx digunakan selama feature development;
+* theme Astryx digunakan selama feature development (awalnya neutral, diganti
+  Stone per ADR-087);
 * Tailwind dibatasi untuk layout dan responsive page composition;
 * wrapper Astryx dibuat selektif, bukan untuk seluruh komponen;
 * feature implementation tidak menunggu design tokens final;
@@ -180,6 +183,16 @@ ADR-041 mengamandemen ADR-035, ADR-038, dan ADR-036 secara aditif:
   unit; dan
 * adopsi luas atau upgrade Astryx wajib melewati smoke test UI serta Next.js
   production build.
+
+**Amandemen lanjutan:** ADR-057 menghapus framing "menunggu designer masuk"
+dari poin di atas (tidak ada designer eksternal, permanen). ADR-082
+menghapus total dependency `@stylexjs/stylex` dan menutup permanen opsi
+`swizzle` — lihat `dependency-strategy.md` § Pengecualian Astryx Beta.
+
+**ADR-097 membalik ADR-041 sepenuhnya:** shadcn/ui menggantikan Astryx
+sebagai fondasi component system permanen. Poin-poin di atas berlaku sebagai
+riwayat keputusan ADR-041 pada saat itu; aturan aktif saat ini ada di
+`## UI Component System` di atas dan `dependency-strategy.md`.
 
 ---
 

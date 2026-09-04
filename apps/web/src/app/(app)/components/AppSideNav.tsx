@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
+import type { NotificationRecord } from "@/domains/notification";
 import type { SidebarChannelAccount } from "@/domains/workspace";
 
 import { SettingsSideNav } from "../settings/components/SettingsSideNav";
@@ -19,17 +20,28 @@ export function AppSideNav({
   userName,
   userEmail,
   channels,
+  initialNotifications,
+  initialUnreadCount,
+  userId,
+  // T-098.4 (KI-042) — diteruskan ke WorkspaceSideNav/SettingsSideNav, lihat
+  // komentar di masing-masing file. Undefined saat dirender di sidebar
+  // desktop (bukan di dalam Sheet mobile).
+  onNavigate,
 }: {
   workspaceName: string;
   userName: string;
   userEmail: string;
   channels: SidebarChannelAccount[];
+  initialNotifications: NotificationRecord[];
+  initialUnreadCount: number;
+  userId: string;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const isSettings = pathname.startsWith("/settings");
 
   if (isSettings) {
-    return <SettingsSideNav />;
+    return <SettingsSideNav onNavigate={onNavigate} />;
   }
 
   return (
@@ -38,6 +50,10 @@ export function AppSideNav({
       userName={userName}
       userEmail={userEmail}
       channels={channels}
+      initialNotifications={initialNotifications}
+      initialUnreadCount={initialUnreadCount}
+      userId={userId}
+      onNavigate={onNavigate}
     />
   );
 }

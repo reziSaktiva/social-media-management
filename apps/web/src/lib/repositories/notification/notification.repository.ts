@@ -58,4 +58,56 @@ export const notificationRepository: INotificationRepository = {
 
     return toRecord(notification);
   },
+
+  /**
+   * Sama seperti `create` — `withCurrentUser(userId, ...)` memakai `userId`
+   * si penerima notifikasi (subjek yang meminta daftarnya sendiri), yang
+   * RLS `notifications_workspace_isolation` cocokkan lewat keanggotaan
+   * workspace aktifnya. Tidak difilter `workspaceId` (lihat komentar
+   * `list` di domain repository interface).
+   */
+  async list(userId) {
+    const notifications = await withCurrentUser(userId, (tx) =>
+      tx.notification.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      }),
+    );
+
+    return notifications.map(toRecord);
+  },
+
+  /** `count` terpisah dari `list` (tanpa `take`) supaya badge unread akurat di atas 50 baris. */
+  async countUnread(userId) {
+    return withCurrentUser(userId, (tx) =>
+      tx.notification.count({
+        where: { userId, isRead: false },
+      }),
+    );
+  },
+
+  /**
+   * `updateMany` (bukan `update`) supaya WHERE mencakup `id` DAN `userId`
+   * sekaligus (defense-in-depth) tanpa melempar error kalau baris tidak
+   * cocok (mis. `id` milik user lain, atau sudah tidak ada) — idempoten
+   * per kontrak interface.
+   */
+  async markAsRead(id, userId) {
+    await withCurrentUser(userId, (tx) =>
+      tx.notification.updateMany({
+        where: { id, userId },
+        data: { isRead: true, readAt: new Date() },
+      }),
+    );
+  },
+
+  async markAllAsRead(userId) {
+    await withCurrentUser(userId, (tx) =>
+      tx.notification.updateMany({
+        where: { userId, isRead: false },
+        data: { isRead: true, readAt: new Date() },
+      }),
+    );
+  },
 };

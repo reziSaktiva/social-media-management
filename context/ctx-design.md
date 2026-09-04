@@ -42,14 +42,14 @@ Project lama bernama **"Modernist"** di akun yang sama **bukan** milik product i
 ## Aturan operasional
 
 1. `04-ux/` tetap **SoT** untuk alur, IA, dan fungsi layar — Claude Design hanya representasi visual yang diturunkan darinya, bukan pengganti.
-2. `design-tokens.md` (`../product-discovery/06-engineering/design-tokens.md`) tetap **SoT design tokens** (ADR-038, ADR-041) — bukan project Claude Design, bukan screenshot.
-3. Implementasi layar M8 **tidak menunggu** token final: gunakan Stone theme Astryx (ADR-087) dan jangan mengarang custom brand hex. Sejak ADR-055, Light/Dark Mode Toggle adalah fitur resmi (kontrol persisten di sidebar footer) — ini bukan pelanggaran Stone theme karena hanya meng-expose mekanisme dark mode bawaan `@astryxdesign/theme-stone`, bukan tema/token baru.
-4. Astryx adalah fondasi komponen permanen. Tailwind hanya untuk layout dan responsive composition; wrapper di `components/ui/` dibuat selektif.
+2. `design-tokens.md` (`../product-discovery/06-engineering/design-tokens.md`) tetap **SoT design tokens** (ADR-038) — bukan project Claude Design, bukan screenshot.
+3. Implementasi layar M8 **tidak menunggu** token final: gunakan Stone theme (ADR-087) sebagai acuan nilai dan jangan mengarang custom brand hex. Sejak ADR-055 (diamandemen ADR-097), Light/Dark Mode Toggle adalah fitur resmi (kontrol persisten di sidebar footer) — mekanismenya lewat Tailwind `dark:` + shadcn theme provider, bukan tema/token baru.
+4. **shadcn/ui adalah fondasi komponen permanen** (ADR-097, membalik ADR-041). Migrasi dari Astryx **sudah tuntas 100%** (rilis v0.7, T-102 `✅ Done`) — 0 import `@astryxdesign/*` aktif tersisa di `apps/web/src`, dependency `@astryxdesign/*` sudah dihapus dari `apps/web/package.json` (T-102.1/T-102.2/T-102.6), lihat `tasks/v07-astryx-shadcn-migration.md` § T-102. Tailwind dipakai langsung sebagai styling komponen shadcn; wrapper di `components/ui/` dibuat selektif.
 5. Wireframe detail di fase M8: **terbatas** — hanya jika dibutuhkan untuk implementasi layar (lihat `PROJECT_STATE` Active Conversation Mode).
 6. Status konten & roles visual harus selaras `roles-permissions.md` (lihat `ctx-business.md`).
 7. Persona di UI copy / contoh: Raka, Maya, Sinta, Dimas, Lara.
 8. Jangan mengarang IA, flow, atau pola navigasi baru yang bertentangan dengan `04-ux/` tanpa ADR / update baseline.
-9. Sinkronisasi antara baseline (`04-ux/`, `design-tokens.md`) dan project Claude Design bersifat **manual/on-request** — dijalankan saat diminta eksplisit, bukan checklist wajib di setiap sesi kerja UI (beda dengan workflow Astryx CLI di `AGENTS.md` yang wajib tiap task). Push saat UX baseline berubah berarti; review sebelum menerima perubahan dari sisi Claude Design (baseline + ADR tetap menang, lihat butir 1).
+9. Sinkronisasi antara baseline (`04-ux/`, `design-tokens.md`) dan project Claude Design bersifat **manual/on-request** — dijalankan saat diminta eksplisit, bukan checklist wajib di setiap sesi kerja UI (beda dengan workflow shadcn CLI/MCP di `AGENTS.md` yang wajib tiap task). Push saat UX baseline berubah berarti; review sebelum menerima perubahan dari sisi Claude Design (baseline + ADR tetap menang, lihat butir 1).
    9a. **Wajib reminder proaktif (ADR-056):** setiap kali ada perubahan yang
    berhubungan dengan UI/UX — baik di dokumen (`04-ux/`, `design-tokens.md`)
    maupun di project Claude Design (via `DesignSync`) — AI **wajib** secara
@@ -81,15 +81,15 @@ Project lama bernama **"Modernist"** di akun yang sama **bukan** milik product i
 | Pola layar editor, inbox, analytics      | `key-screen-patterns.md`                               |
 | Content Format (Post/Reel/Story/Pin)     | `key-screen-patterns.md` (KSP-05-F11) + ADR-039        |
 | Font, warna, neutral, status (SoT)       | `../product-discovery/06-engineering/design-tokens.md` |
-| Komponen UI / styling                    | `monorepo-setup.md` + ADR-041 + Astryx CLI lokal       |
+| Komponen UI / styling                    | `monorepo-setup.md` + ADR-097 + shadcn CLI/MCP lokal   |
 
-Implementasi React mengikuti `ctx-implementation.md`. Gunakan Astryx neutral
-theme selama M8 (Light/Dark Mode Toggle ADR-055 tetap berlaku lintas seluruh
-section — lihat `IconButton` toggle di sidebar footer); komponen sederhana
-boleh diimpor langsung dan komponen kritis/luas memakai wrapper selektif.
-Token yang sudah di-lock (co-equal dengan Claude Design, tidak menunggu
-designer eksternal — ADR-056, ADR-057) dipetakan ke Astryx theme + Tailwind
-token bridge.
+Implementasi React mengikuti `ctx-implementation.md`. Gunakan token neutral
+Stone theme selama M8 (Light/Dark Mode Toggle ADR-055, diamandemen ADR-097,
+tetap berlaku lintas seluruh section — lihat `IconButton`/toggle di sidebar
+footer); komponen sederhana boleh diimpor langsung dan komponen kritis/luas
+memakai wrapper selektif. Token yang sudah di-lock (co-equal dengan Claude
+Design, tidak menunggu designer eksternal — ADR-056, ADR-057) dipetakan ke
+CSS variable shadcn/ui + Tailwind token bridge.
 
 ---
 

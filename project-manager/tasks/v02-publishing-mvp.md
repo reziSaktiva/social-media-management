@@ -180,17 +180,19 @@ Jadi T-029.4/.5/.6 di bawah **desainnya sudah tersedia** — sisa pekerjaan murn
 
 | Field         | Value                                            |
 | ------------- | ------------------------------------------------ |
-| **Status**    | 🟡 In Progress — bagian Queue selesai via T-032.4, bagian Calendar menunggu T-033 |
+| **Status**    | 🟡 In Progress — bagian Queue selesai via T-032.4; bagian Calendar masih belum ada entry point Cancel Schedule (T-033 sudah ✅ Done tapi tidak mencakup ini — lihat catatan) |
 | **Domain**    | publishing                                       |
 | **ADR**       | ADR-049 (Tier 2)                                 |
-| **Depends**   | T-028 ✅, T-032 ✅ (aksi dipicu dari Queue — selesai), T-033 (aksi dipicu dari Calendar — belum) |
+| **Depends**   | T-028 ✅, T-032 ✅ (aksi dipicu dari Queue — selesai), T-033 ✅ (Calendar view selesai 2026-08-28, tapi tidak menambahkan entry point Cancel Schedule — lihat catatan) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                    |
 
-**Catatan (2026-08-20):** T-030.1/.2/.3 sudah diimplementasikan penuh sebagai bagian **T-032.4** (lihat catatan di sana) — bukan pekerjaan terpisah. Ditutup untuk konteks Queue; ketiga checkbox di bawah ditandai selesai untuk bagian itu. Kalau T-033 (Calendar) nanti butuh Cancel Schedule juga, itu tinggal reuse `cancelScheduleAction`/`AlertDialog` yang sama, bukan re-implementasi — status task ini tetap `🟡 In Progress` sampai T-033 menyediakan entry point Calendar-nya.
+**Catatan (2026-08-20):** T-030.1/.2/.3 sudah diimplementasikan penuh sebagai bagian **T-032.4** (lihat catatan di sana) — bukan pekerjaan terpisah. Ditutup untuk konteks Queue; ketiga checkbox di bawah ditandai selesai untuk bagian itu. Reuse `cancelScheduleAction`/`AlertDialog` yang sama untuk Calendar, bukan re-implementasi.
+
+**Catatan (2026-08-28):** T-033 (Calendar view) sudah `✅ Done`, tapi scope-nya berhenti di Popover ringkasan + CTA "Buka Draft Editor" (T-033.8) — **tidak** menambahkan entry point Cancel Schedule langsung di Calendar. Bagian Calendar task ini tetap `🟡 In Progress`, tidak lagi diblokir oleh T-033 yang belum selesai, melainkan menunggu implementasi entry point-nya sendiri (belum ada task terpisah untuk ini).
 
 - [x] **T-030.1** `PublishingService.cancelSchedule` + batalkan di Outstand (T-025) — diimplementasikan via `cancel-schedule.use-case.ts` + `IOutstandAdapter.cancelScheduledPost` (Fake, ADR-059) di T-032.4
 - [x] **T-030.2** Dialog konfirmasi Tier 2 — referensi copy & interaksi sudah ada di prototipe Claude Design (`openCancelScheduleDialog`/`applyCancelSchedule`, `templates/app-prototype/AppPrototype.dc.html`, dibuat via T-032.0 2026-08-19): warning "Post kembali menjadi Draft dan tidak akan dipublikasikan otomatis" + tombol `btn-danger` "Batalkan Jadwal" — diimplementasikan nyata sebagai `AlertDialog` Astryx di T-032.4
-- [ ] **T-030.3** Aksi tersedia dari Queue (tombol icon merah `.icon-btn-danger` per row, desain final T-032.0) + Calendar — **Queue selesai** (T-032.4, 2026-08-20); **Calendar belum**, menunggu T-033
+- [ ] **T-030.3** Aksi tersedia dari Queue (tombol icon merah `.icon-btn-danger` per row, desain final T-032.0) + Calendar — **Queue selesai** (T-032.4, 2026-08-20); **Calendar belum**, entry point-nya belum diimplementasikan meski T-033 sudah selesai
 
 ### T-031 · Redirect otomatis ke sub-screen tujuan setelah aksi terminal
 
@@ -334,19 +336,134 @@ delete-lalu-create-ulang ini saat dikerjakan.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress                                                |
 | **Domain**    | notification                                                 |
 | **ADR**       | ADR-023, ADR-030 (Supabase JWT)                              |
-| **Depends**   | T-026 (sumber event notifikasi) · **T-093** (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094) |
+| **Depends**   | T-026 (sumber event notifikasi) · T-093 ✅ (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094; T-093 sudah Done 2026-08-31, tidak lagi memblokir) |
 | **Baca dulu** | `05-architecture/realtime-strategy.md` · `apps/web/src/lib/better-auth/supabase-jwt.ts` |
 
 `Basic Notifications` berstatus **Should Have** di `mvp-definition.md` — ditempatkan di rilis ini karena hasil publish (`post.published` / `post.error`) tidak berguna tanpa cara memberi tahu pengguna. Domain `notification/` masih stub kosong; model `Notification` sudah ada di schema.
 
-- [ ] **T-036.1** Domain skeleton: service + repository
-- [ ] **T-036.2** Subscribe Supabase Realtime pada tabel `notifications`, event `INSERT`, filter per `user_id` — **hanya** tabel ini (ADR-023)
-- [ ] **T-036.3** Sambungkan Supabase JWT dari session Better Auth (helper sudah ada, belum dipakai di route manapun)
-- [ ] **T-036.4** UI notification bell di sidebar footer + panel daftar
+- [x] **T-036.1** Domain skeleton: service + repository
+- [x] **T-036.2** Subscribe Supabase Realtime pada tabel `notifications`, event `INSERT`, filter per `user_id` — **hanya** tabel ini (ADR-023)
+- [x] **T-036.3** Sambungkan Supabase JWT dari session Better Auth (helper sudah ada, belum dipakai di route manapun)
+- [ ] **T-036.4** UI notification bell di sidebar footer + panel daftar — rancangan sudah ada di Claude Design (**KI-039 Resolved**); dibuka kembali 2026-09-01, lihat catatan di bawah (5 gap visual, verifikasi browser belum dilakukan)
 - [ ] **T-036.5** Trigger notifikasi dari webhook publish result
+
+**Catatan (2026-08-31):** T-036.1 — skeleton `NotificationService.notify()` +
+`notificationRepository.create()` ternyata sudah ada sebelumnya (dibangun
+untuk Transfer Ownership T-008.3) tapi belum pernah punya test; ditambahkan
+`notification.service.test.ts` (2 test case). Method CRUD lain
+(list/markAsRead) sengaja ditunda ke T-036.4 supaya tidak menulis kode yang
+belum terpakai. T-036.2 — file baru
+`apps/web/src/lib/supabase/realtime/notifications.ts`
+(`subscribeToNotificationInserts`) dan
+`apps/web/src/lib/hooks/use-notification-realtime.ts`
+(`useNotificationRealtime`, tanpa JSX). Ditemukan gap infra saat pengerjaan:
+tabel `notifications` belum pernah masuk publication `supabase_realtime`
+(Realtime tidak pernah broadcast apapun sebelumnya), dan RLS yang ada
+berbasis `current_setting('app.current_user_id')`, bukan `auth.uid()` —
+ditutup lewat migration
+`20260831150000_t036_notifications_realtime_setup` (tambah tabel ke
+publication + policy permisif baru `notifications_realtime_own_rows`
+berbasis `auth.uid()`), sudah dijalankan (`db:deploy`) dan diverifikasi via
+MCP Supabase. Ini closing gap yang memang sudah disyaratkan ADR-023, bukan
+keputusan arsitektur baru — tidak ada ADR baru untuk ini.
+
+**Catatan (2026-09-01):** T-036.3 — Route Handler baru
+`apps/web/src/app/api/realtime/token/route.ts` (GET) mengecek session
+Better Auth lalu menerbitkan Supabase Realtime JWT lewat
+`createSupabaseRealtimeJwt` (helper sudah ada sejak awal, baru sekarang
+dipakai). `useNotificationRealtime` diubah untuk fetch token dari endpoint
+itu dan memanggil `client.realtime.setAuth(token)` sebelum subscribe.
+Sekaligus dituntaskan method yang sengaja ditunda dari T-036.1: `list`,
+`markAsRead`, `markAllAsRead` di `INotificationRepository` + implementasi
+Prisma + `NotificationService`, plus Server Actions
+`markNotificationReadAction`/`markAllNotificationsReadAction` di
+`apps/web/src/app/(app)/components/notification-panel/actions.ts`. 3 test
+case baru di `notification.service.test.ts` (total 5).
+
+T-036.4 — bell trigger + badge unread di footer sidebar
+(`WorkspaceSideNav.tsx`, sebelumnya `router.push` ke halaman settings,
+sekarang membuka panel), komponen baru
+`apps/web/src/app/(app)/components/notification-panel/NotificationBell.tsx`
+(bell + panel + state + wiring realtime + mark-as-read). Threading data:
+`layout.tsx` (fetch initial notifications via `NotificationService.list()`)
+→ `AppSideNav.tsx` → `WorkspaceSideNav.tsx`. **KI-039 Resolved** — rancangan
+Notifications Panel ternyata sudah ditambahkan ke Claude Design
+(`components/notifications-panel.html`) sebelum sesi ini dimulai.
+
+Temuan desain: spec Claude Design (NP-D08) menyebut Astryx `Drawer`, tapi
+Astryx ter-pin (`@astryxdesign/core@0.4.3`) tidak punya komponen `Drawer`.
+Emulasi dengan `Dialog` posisi edge gagal full-height (base style `Dialog`
+hardcode `height: fit-content`, bentrok dengan positioning `top`+`bottom`).
+King Rezi memutuskan (dikonfirmasi 2x) pakai wrapper selektif, bukan
+`Dialog` — hasilnya `apps/web/src/components/ui/Drawer.tsx`, wrapper
+selektif pertama di codebase ini, dirakit dari primitive Astryx resmi
+(`useLayer` mode fixed/top-layer via native Popover API, `useFocusTrap`,
+`useScrollLock`, `Stack`/`VStack`) — bukan swizzle/CSS manual. Preseden
+untuk kasus serupa selanjutnya selama Astryx belum expose primitive
+Drawer/Sheet generik.
+
+**Bug ditemukan QA Najwa + fix:** notifikasi Realtime tidak muncul live
+tanpa refresh (channel `SUBSCRIBED`, nol event, tanpa error terlihat). Root
+cause (dikonfirmasi via diagnostic PostgREST 400→200): bukan
+`SUPABASE_JWT_SECRET` mismatch, melainkan `auth.uid()` bawaan Supabase
+selalu cast klaim JWT `sub` ke `::uuid`, padahal `userId` Better Auth
+berformat `cuid()` — pola yang sudah diketahui di `with-current-user.ts`
+(DO-D06) tapi luput diterapkan saat policy
+`notifications_realtime_own_rows` dibuat di T-036.2. RLS gagal dievaluasi
+untuk setiap user asli, Realtime menelan error itu diam-diam. Fix: migration
+baru `20260901120000_t036_fix_realtime_rls_cuid_cast` (drop+recreate policy
+supaya baca klaim `sub` sebagai text langsung, tanpa cast `::uuid`; tidak
+menyentuh `auth.uid()` itu sendiri), diterapkan manual oleh King Rezi
+(classifier auto-mode Claude Code memblokir eksekusi `prisma migrate
+deploy` dari sesi manapun terhadap database live — batasan tooling, bukan
+gap arsitektur). QA ulang: PASS (alur Transfer Ownership + insert manual).
+Ini closing gap bug RLS, sama pola dengan migration T-036.2 — bukan
+keputusan arsitektur baru, tidak ada ADR baru untuk ini.
+
+Lolos review arsitektur Ridwan (tanpa temuan) dan QA Najwa (semua PASS
+termasuk realtime live-update, setelah bug di atas ditemukan dan
+diperbaiki). T-036 tetap `🟡 In Progress` — T-036.5 (trigger dari webhook)
+belum dikerjakan.
+
+**Catatan (2026-09-01) — KI-040:** setelah 2 ronde perbaikan styling panel
+(ronde 1: padding/gap/border-radius list item; ronde 2: empty-state
+vertical-centering + kontras border header dark mode), King Rezi melaporkan
+lewat screenshot Chrome browser asli bahwa panel masih terlihat "banyak
+yang terpotong atau tidak sempurna" dibanding Claude Design — root cause
+belum teridentifikasi presisi (beda dari 2 bug sebelumnya yang sudah
+diverifikasi lewat source Astryx). Dicatat sebagai **KI-040** (Open), butuh
+sesi investigasi visual terpisah; dihentikan sementara atas instruksi
+eksplisit King Rezi. Tidak mengubah status T-036.4 (`[x]`, tetap selesai
+secara fungsional/lolos QA) — ini murni polish visual belum tuntas 100%.
+
+**Catatan (2026-09-01) — T-036.4 dibuka kembali:** review lanjutan
+membandingkan langsung ke spec Claude Design (`components/notifications-panel.html`)
+menemukan 5 gap visual konkret pada `NotificationBell.tsx` yang sebelumnya
+luput: (1) background tint untuk item unread, (2) dot indikator unread,
+(3) icon circle badge, (4) weight/warna title yang harus berbeda per status
+(read vs unread), dan (5) deskripsi yang harus terpotong dengan ellipsis.
+Kelima gap ini sudah diperbaiki oleh subagent lain langsung di
+`apps/web/src/app/(app)/components/notification-panel/NotificationBell.tsx`
+(lint + `tsc` bersih), **tapi verifikasi visual di browser belum sempat
+dilakukan** — dev server minta login dan tidak ada kredensial test yang
+tersedia di sesi ini. Karena subtask ini menyangkut styling UI yang harus
+match spec Claude Design, dan verifikasi visual belum terbukti, checklist
+T-036.4 dikembalikan ke `[ ]` (dari `[x]`) sampai ada sesi berikutnya yang
+memverifikasi tampilan asli di browser cocok dengan spec. Tidak menambah KI
+baru — ini bagian dari root cause investigation yang sama dengan KI-040
+(masih **Open**), bukan temuan independen baru.
+
+**Catatan (2026-09-02) — KI-040 Closed:** ditutup lewat **T-098.3**
+(`tasks/v07-astryx-shadcn-migration.md` § T-098, migrasi `NotificationBell.tsx`
+dari wrapper custom `Drawer.tsx` ke shadcn `Sheet` asli). Diverifikasi Najwa
+QA Engineer lewat browser nyata (light & dark mode) — root cause lama
+(geometri/proporsi wrapper `Drawer` custom) hilang bersama penggantian ke
+`Sheet`. Entry KI-040 sudah dihapus dari `PROJECT_STATE.md` § Known Issues
+sesuai aturan (Resolved yang sudah tercatat `COMPLETE_TASK.md` tidak
+dibiarkan dengan status Resolved di daftar itu).
 
 ---
 

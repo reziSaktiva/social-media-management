@@ -102,13 +102,12 @@ Produk dianggap berhasil apabila:
 
 ---
 
-# Current Status
+# Catatan Penerapan Metrik
 
-Status saat ini:
-
-**Phase:** Product Validation
-
-Karena produk masih berada pada tahap perencanaan dan pengembangan, seluruh metrik di atas berfungsi sebagai target evaluasi di masa mendatang.
+Status/phase proyek saat ini hanya hidup di `project-manager/PROJECT_STATE.md`
+(rule 10, AGENTS.md) — tidak diduplikasi di sini. Selama produk masih berada
+pada tahap perencanaan dan pengembangan, seluruh metrik di atas berfungsi
+sebagai target evaluasi di masa mendatang.
 
 Belum ada target numerik yang ditetapkan.
 

@@ -1,18 +1,177 @@
-@layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
+/*
+ * T-102 cleanup (ADR-097): 4 `@import` Astryx (reset.css, astryx.css,
+ * theme-stone/theme.css, tailwind-theme.css) dihapus di sini — seluruh
+ * route-segment (T-097-101) sudah bermigrasi ke shadcn/ui, jadi CSS
+ * StyleX ter-compile Astryx (`astryx.css`, `@layer astryx-base`) tidak
+ * lagi dibutuhkan oleh komponen manapun. Layer `astryx-base`/
+ * `astryx-theme` dilepas dari daftar `@layer` di bawah untuk hal yang
+ * sama. Mapping warna Stone -> variable shadcn (T-096.1) tetap jalan
+ * seperti biasa (tidak berubah, sudah dipetakan manual ke bawah, bukan
+ * lewat @import Astryx).
+ */
+@layer reset, theme, base, components, utilities;
 
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/preflight.css" layer(base);
-@import "@astryxdesign/core/reset.css";
-@import "@astryxdesign/core/astryx.css";
-@import "@astryxdesign/theme-stone/theme.css";
-@import "@astryxdesign/core/tailwind-theme.css";
-@import "tailwindcss/utilities.css" layer(utilities);
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-figtree);
+  --font-heading: var(--font-montserrat);
   --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning: var(--warning);
+  --color-success-foreground: var(--success-foreground);
+  --color-success: var(--success);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 body {
-  font-family: var(--font-geist-sans), sans-serif;
+  font-family: var(--font-sans), sans-serif;
+}
+
+/*
+ * Warna light/dark di bawah adalah pemetaan literal 1:1 dari
+ * `@astryxdesign/theme-stone` (ADR-087) ke variable shadcn/ui — supaya
+ * visual app tidak berubah saat fondasi Astryx dilepas (T-095.5, lihat
+ * `product-discovery/06-engineering/design-tokens.md` § "Engineering
+ * Mapping — Stone theme → CSS variable shadcn/ui"). Radius TIDAK
+ * dipetakan dari Stone — dipertahankan default preset Maia (T-095.5).
+ */
+:root {
+  --background: #f3f3f5;
+  --foreground: #25252a;
+  --card: #ffffff;
+  --card-foreground: #25252a;
+  --popover: #ffffff;
+  --popover-foreground: #25252a;
+  --primary: #25252a;
+  --primary-foreground: #ffffff;
+  --secondary: #e2e2e8;
+  --secondary-foreground: #25252a;
+  --muted: #e2e2e8;
+  --muted-foreground: #83838a;
+  --accent: #e2e2e8;
+  --accent-foreground: #25252a;
+  --destructive: #58413e;
+  --success: #3d5240;
+  --success-foreground: #eef1ec;
+  --warning: #6b5228;
+  --warning-foreground: #f4ede0;
+  --border: #e2e2e8;
+  --input: #e2e2e8;
+  --ring: #83838a;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #25252a;
+  --sidebar-primary: #25252a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e2e2e8;
+  --sidebar-accent-foreground: #25252a;
+  --sidebar-border: #e2e2e8;
+  --sidebar-ring: #83838a;
+}
+
+.dark {
+  --background: #111015;
+  --foreground: #f3f3f5;
+  --card: #242325;
+  --card-foreground: #f3f3f5;
+  --popover: #25252a;
+  --popover-foreground: #f3f3f5;
+  --primary: #f3f3f5;
+  --primary-foreground: #25252a;
+  --secondary: #3b3b3f;
+  --secondary-foreground: #f3f3f5;
+  --muted: #3b3b3f;
+  --muted-foreground: #9d9da3;
+  --accent: #3b3b3f;
+  --accent-foreground: #f3f3f5;
+  --destructive: #dcc0bc;
+  --success: #c3d1c5;
+  --success-foreground: #1c2a1e;
+  --warning: #e2c896;
+  --warning-foreground: #2e2412;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #5e5e61;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: #1b1b1f;
+  --sidebar-foreground: #f3f3f5;
+  --sidebar-primary: #f3f3f5;
+  --sidebar-primary-foreground: #25252a;
+  --sidebar-accent: #3b3b3f;
+  --sidebar-accent-foreground: #f3f3f5;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #5e5e61;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  /* Stone theme (ADR-087) memakai Montserrat khusus heading (T-095.5 gap,
+     ditutup di T-096.1) — body tetap Figtree via --font-sans. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+  }
 }

@@ -8,12 +8,14 @@ Stack & env → `ctx-technical-context.md`.
 
 ## Baca dulu
 
-| Dokumen                                                                                                  | Topik                                                |
-| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| [`../product-discovery/06-engineering/dx-tooling.md`](../product-discovery/06-engineering/dx-tooling.md) | ESLint, Prettier, Lefthook, Vitest, script (ADR-034) |
-| [`cicd-pipeline.md`](../product-discovery/06-engineering/cicd-pipeline.md)                               | Gates CI yang sama dengan lokal                      |
-| [`monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)                             | Layout workspace & TypeScript                        |
-| [`../README.md`](../README.md)                                                                           | Setup cepat root                                     |
+| Dokumen                                                                                                                  | Topik                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| [`../product-discovery/06-engineering/dx-tooling.md`](../product-discovery/06-engineering/dx-tooling.md)                 | ESLint, Prettier, Lefthook, Vitest, script (ADR-034)                                  |
+| [`../product-discovery/06-engineering/rendering-strategy.md`](../product-discovery/06-engineering/rendering-strategy.md) | Server Component vs Client, Server Actions, streaming, SSR/SSG/ISR (ADR-016, ADR-095) |
+| [`../product-discovery/06-engineering/code-conventions.md`](../product-discovery/06-engineering/code-conventions.md)     | Naming, error handling hierarchy (ADR-095)                                            |
+| [`cicd-pipeline.md`](../product-discovery/06-engineering/cicd-pipeline.md)                                               | Gates CI yang sama dengan lokal                                                       |
+| [`monorepo-setup.md`](../product-discovery/06-engineering/monorepo-setup.md)                                             | Layout workspace & TypeScript                                                         |
+| [`../README.md`](../README.md)                                                                                           | Setup cepat root                                                                      |
 
 Config di repo: `eslint.config.*`, `prettier.config.*`, `lefthook.yml`, `vitest.config.ts` (root).
 
@@ -37,26 +39,29 @@ Sebelum menganggap pekerjaan selesai: typecheck + lint (+ test bila menyentuh lo
 
 ## Aturan coding (operasional)
 
-Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail arsitektur tetap di baseline.
+Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail arsitektur tetap di baseline. Detail penuh rendering & error handling: `rendering-strategy.md`, `code-conventions.md`.
 
 ### Umum
 
 1. Format & lint dipercayakan ke **Prettier + ESLint** — jangan reformatting massal di luar scope task.
 2. TypeScript ketat: hindari `any`; prefer tipe dari `@social/shared` untuk ID/enum lintas BC.
 3. Jangan commit secret; jangan menambah dependency tanpa alasan jelas (ikuti
-   `dependency-strategy.md`). Paket Astryx Beta wajib exact pin; core, neutral
-   theme, dan CLI di-upgrade sebagai satu unit.
+   `dependency-strategy.md`). shadcn/ui adalah kode sumber yang di-copy ke
+   repo, bukan dependency package — tidak ada isu exact pin/Beta seperti
+   Astryx sebelumnya (ADR-097).
 4. Perubahan kecil & terfokus — jangan refactor spekulatif di luar task.
 5. Komentar hanya untuk intent non-obvious; jangan komentar narasi ulang kode.
 
 ### UI / styling
 
-6. Astryx adalah fondasi komponen permanen; gunakan stable release, bukan
-   canary.
-7. Tailwind hanya untuk layout, wrapper, spacing, grid, flex, dan responsive
-   page composition.
-8. Wrapper Astryx dibuat selektif. Hindari `swizzle` dan authoring StyleX pada
-   tahap awal.
+6. shadcn/ui adalah fondasi komponen permanen (ADR-097, membalik ADR-041).
+   Migrasi dari Astryx sudah tuntas 100% (rilis v0.7, T-102 `✅ Done`) — lihat
+   `tasks/v07-astryx-shadcn-migration.md`.
+7. Tailwind dipakai langsung sebagai styling komponen shadcn (bukan lagi
+   layout-only seperti era Astryx).
+8. Wrapper selektif tetap dipakai untuk komponen kritis/dipakai luas.
+   `@stylexjs/stylex` sudah dihapus total dari dependency project (ADR-082,
+   sekarang tidak relevan karena Astryx sendiri sudah tidak dipakai).
 
 ### Naming & file
 
@@ -89,8 +94,8 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
 - [ ] `bun run typecheck` hijau
 - [ ] `bun run lint` hijau
 - [ ] Test relevan hijau (jika ada)
-- [ ] Jika menambah/meng-upgrade Astryx: smoke test UI + dark mode + Tailwind
-      cascade layer + Next.js production build hijau
+- [ ] Jika menambah/mengubah komponen shadcn: smoke test UI + dark mode +
+      Tailwind cascade layer + Next.js production build hijau
 - [ ] Status task diupdate di `TASKS.md` **dan** `tasks/vXX-*.md` (ADR-062),
       `PROJECT_STATE.md` diupdate bila phase/milestone/Known Issues berubah,
       lalu entri baru di `COMPLETE_TASK.md` (ADR-061)

@@ -1,19 +1,29 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button } from "@astryxdesign/core/Button";
-import { HStack } from "@astryxdesign/core/HStack";
-import { IconButton } from "@astryxdesign/core/IconButton";
-import { Selector } from "@astryxdesign/core/Selector";
-import { Text } from "@astryxdesign/core/Text";
-import { VStack } from "@astryxdesign/core/VStack";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 import { ContentStatus } from "@social/shared";
 import type { ConnectedAccountId } from "@social/shared";
 import type { ConnectedAccountRecord } from "@/domains/workspace";
 import { getWeekRange } from "@/domains/publishing";
 import type { CalendarViewMode } from "@/domains/publishing";
+
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Text } from "@/components/ui/text";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import { CONTENT_STATUS_LABEL } from "../../../components/draft-editor/status-badge";
 import { useCalendarPeriodState } from "../hooks/useCalendarPeriodState";
@@ -86,6 +96,15 @@ export interface CalendarToolbarProps {
  * + `.cal-view-select` + `.cal-filter-row`). Client component murni state
  * URL lewat `useCalendarPeriodState` (T-033.2) — tidak menerima `view`/
  * `date` sebagai props supaya satu-satunya sumber kebenaran tetap URL.
+ *
+ * T-101.1: migrasi ke shadcn (`Button`, `Select`, `Text`, `Tooltip`) —
+ * `IconButton` Astryx (icon + tooltip built-in) diganti `Button
+ * variant="ghost" size="icon"` dibungkus `Tooltip`, pola persis
+ * `WorkspaceSideNav.tsx` (T-098.1). Ikon chevron pindah dari `react-icons`
+ * (`FaChevronLeft/Right`) ke `hugeicons` (`ArrowLeft01Icon`/
+ * `ArrowRight01Icon`) — ikon generik non-brand wajib hugeicons di file yang
+ * baru ditulis ulang (`apps/web/.claude/CLAUDE.md`), beda dari
+ * `PLATFORM_ICON` (ikon brand, dikecualikan ADR-058).
  */
 export function CalendarToolbar({ accounts }: CalendarToolbarProps) {
   const { view, date, statuses, connectedAccountIds, setPeriod } =
@@ -123,68 +142,98 @@ export function CalendarToolbar({ accounts }: CalendarToolbarProps) {
     });
   }
 
+  const prevLabel = view === "month" ? "Bulan sebelumnya" : "Minggu sebelumnya";
+  const nextLabel = view === "month" ? "Bulan berikutnya" : "Minggu berikutnya";
+
   return (
-    <VStack gap={3}>
-      <HStack justify="between" align="center" wrap="wrap" gap={2}>
-        <HStack gap={2} align="center">
-          <Button
-            label="Today"
-            variant="secondary"
-            size="sm"
-            onClick={goToday}
-          />
-          <IconButton
-            label={view === "month" ? "Bulan sebelumnya" : "Minggu sebelumnya"}
-            tooltip="Sebelumnya"
-            icon={<FaChevronLeft />}
-            variant="secondary"
-            size="sm"
-            onClick={goPrev}
-          />
-          <IconButton
-            label={view === "month" ? "Bulan berikutnya" : "Minggu berikutnya"}
-            tooltip="Berikutnya"
-            icon={<FaChevronRight />}
-            variant="secondary"
-            size="sm"
-            onClick={goNext}
-          />
-          <Text type="label" weight="bold">
+    // eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only, file sudah dimigrasi shadcn
+    <div className="flex flex-col gap-3">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only */}
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={goToday}>
+            Today
+          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                size="icon-sm"
+                aria-label={prevLabel}
+                onClick={goPrev}
+              >
+                <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{prevLabel}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                size="icon-sm"
+                aria-label={nextLabel}
+                onClick={goNext}
+              >
+                <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{nextLabel}</TooltipContent>
+          </Tooltip>
+          <Text variant="small" as="span" className="font-bold">
             {periodLabel}
           </Text>
-        </HStack>
+        </div>
 
-        <Selector
-          label="Tampilan Calendar"
-          isLabelHidden
+        <Select
           value={view}
-          onChange={(value) => setPeriod({ view: value as CalendarViewMode })}
-          options={VIEW_OPTIONS}
-          width={120}
-          size="sm"
-        />
-      </HStack>
+          onValueChange={(value) =>
+            setPeriod({ view: value as CalendarViewMode })
+          }
+        >
+          <SelectTrigger
+            size="sm"
+            aria-label="Tampilan Calendar"
+            className="w-32"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {VIEW_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-      <HStack gap={2} wrap="wrap">
-        <Selector
-          label="Filter status"
-          isLabelHidden
+      {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only */}
+      <div className="flex flex-wrap gap-2">
+        <Select
           value={statuses[0] ?? ALL_STATUSES_VALUE}
-          onChange={(value) =>
+          onValueChange={(value) =>
             setPeriod({
               statuses:
                 value === ALL_STATUSES_VALUE ? [] : [value as ContentStatus],
             })
           }
-          options={STATUS_OPTIONS}
-          width={180}
-          size="sm"
-        />
-        <Selector
-          label="Filter akun"
-          isLabelHidden
+        >
+          <SelectTrigger size="sm" aria-label="Filter status" className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={connectedAccountIds[0] ?? ALL_ACCOUNTS_VALUE}
-          onChange={(value) =>
+          onValueChange={(value) =>
             setPeriod({
               connectedAccountIds:
                 value === ALL_ACCOUNTS_VALUE
@@ -192,11 +241,19 @@ export function CalendarToolbar({ accounts }: CalendarToolbarProps) {
                   : [value as ConnectedAccountId],
             })
           }
-          options={accountOptions}
-          width={180}
-          size="sm"
-        />
-      </HStack>
-    </VStack>
+        >
+          <SelectTrigger size="sm" aria-label="Filter akun" className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {accountOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 }

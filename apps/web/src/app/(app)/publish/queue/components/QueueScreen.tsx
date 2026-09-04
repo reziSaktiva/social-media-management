@@ -1,9 +1,19 @@
 "use client";
 
-import { AlertDialog } from "@astryxdesign/core/AlertDialog";
-import { Banner } from "@astryxdesign/core/Banner";
-import { useToast } from "@astryxdesign/core/Toast";
-import { VStack } from "@astryxdesign/core/VStack";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Spinner } from "@/components/ui/spinner";
+
+import { toast } from "sonner";
 
 import type { PostId } from "@social/shared";
 import type { QueueGroup } from "@/domains/publishing";
@@ -21,17 +31,28 @@ import { QueueList } from "./QueueList";
  * Copy dialog final dari mockup Claude Design (T-032.0, dikonfirmasi via
  * DesignSync): warning "Post kembali menjadi Draft dan tidak akan
  * dipublikasikan otomatis" + tombol aksi "Batalkan Jadwal" (danger).
+ *
+ * T-101.2: migrasi Astryx `AlertDialog`/`Banner`/`VStack` ke shadcn
+ * `AlertDialog` (pola `AlertDialogAction` + `e.preventDefault()` supaya
+ * dialog tetap terbuka sampai `confirm()` selesai, persis
+ * `MembersTable.tsx` T-099.2) + `Alert variant="destructive"` untuk pesan
+ * error, dibungkus Tailwind `flex flex-col gap-4` (layout-only).
+ * T-102.6: `useToast` Astryx diganti `toast()` sonner (shadcn `Toaster`
+ * dipasang sekali di `Providers.tsx`) — menuntaskan migrasi toast terakhir
+ * di codebase.
  */
 export function QueueScreen({ groups }: { groups: QueueGroup[] }) {
-  const showToast = useToast();
   const cancelConfirm = useConfirmAction<PostId>(cancelScheduleAction, () =>
-    showToast({ body: "Jadwal dibatalkan — post kembali ke Drafts" }),
+    toast("Jadwal dibatalkan — post kembali ke Drafts"),
   );
 
   return (
-    <VStack gap={4}>
+    // eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only, file sudah dimigrasi shadcn
+    <div className="flex flex-col gap-4">
       {cancelConfirm.error ? (
-        <Banner status="error" title={cancelConfirm.error} />
+        <Alert variant="destructive">
+          <AlertTitle>{cancelConfirm.error}</AlertTitle>
+        </Alert>
       ) : null}
 
       <QueueList
@@ -40,17 +61,36 @@ export function QueueScreen({ groups }: { groups: QueueGroup[] }) {
       />
 
       <AlertDialog
-        isOpen={cancelConfirm.isOpen}
+        open={cancelConfirm.isOpen}
         onOpenChange={(open) => {
           if (!open) cancelConfirm.close();
         }}
-        title="Batalkan jadwal ini?"
-        description="Post kembali menjadi Draft dan tidak akan dipublikasikan otomatis."
-        cancelLabel="Batal"
-        actionLabel="Batalkan Jadwal"
-        isActionLoading={cancelConfirm.isLoading}
-        onAction={cancelConfirm.confirm}
-      />
-    </VStack>
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Batalkan jadwal ini?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Post kembali menjadi Draft dan tidak akan dipublikasikan otomatis.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelConfirm.isLoading}>
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={cancelConfirm.isLoading}
+              onClick={(e) => {
+                e.preventDefault();
+                void cancelConfirm.confirm();
+              }}
+            >
+              {cancelConfirm.isLoading ? <Spinner /> : null}
+              Batalkan Jadwal
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }

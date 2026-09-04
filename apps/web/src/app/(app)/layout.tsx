@@ -2,11 +2,11 @@ import { asUserId } from "@social/shared";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { AppShell } from "@astryxdesign/core/AppShell";
-
+import { NotificationService } from "@/domains/notification";
 import { PublishingService } from "@/domains/publishing";
 import { WorkspaceService } from "@/domains/workspace";
 import { auth } from "@/lib/better-auth/auth";
+import { notificationRepository } from "@/lib/repositories/notification";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
@@ -14,6 +14,7 @@ import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { AppSideNav } from "./components/AppSideNav";
 import { DraftEditorProvider } from "./components/draft-editor/Context";
 import { DraftEditorMount } from "./components/draft-editor/Mount";
+import { MobileTopBar } from "./components/MobileTopBar";
 
 export default async function Layout({
   children,
@@ -50,26 +51,83 @@ export default async function Layout({
     asUserId(session.user.id),
   );
 
+  // Bell notifikasi sidebar footer (T-036.4) — data awal via Server
+  // Component (read), bukan Server Action (ADR-095, pola sama channels di
+  // atas). Realtime insert baru ditangani client-side oleh `NotificationBell`
+  // (`useNotificationRealtime`, T-036.2).
+  const notificationService = new NotificationService(notificationRepository);
+  const notifications = await notificationService.list(
+    asUserId(session.user.id),
+  );
+  // Query `count` terpisah dari `list` (yang dibatasi 50 baris) supaya badge
+  // unread di bell tidak under-count begitu user punya >50 notifikasi belum
+  // dibaca.
+  const unreadCount = await notificationService.countUnread(
+    asUserId(session.user.id),
+  );
+
   // Provider + modal duduk di level workspace (bukan lagi di `publish/`)
   // supaya CTA "+ New Post" di sidebar bisa membuka Draft Editor dari section
   // manapun — ADR-053, T-011.2.
+  //
+  // T-096.3: pengganti `AppShell` Astryx (`variant="elevated"`, satu titik
+  // pakai, dampak ke seluruh app). Dipilih layout custom Tailwind (bukan
+  // primitive `Sidebar` shadcn) karena isi slot sideNav (`AppSideNav` ->
+  // `WorkspaceSideNav`/`SettingsSideNav`) masih Astryx murni dan belum masuk
+  // scope T-096 (route-segment App Shell & Navigasi ada di T-098) — memaksa
+  // markup Astryx yang belum dimigrasi ke dalam struktur DOM `SidebarProvider`
+  // /`Sidebar` shadcn berisiko lebih tinggi daripada wrapper flex biasa.
+  // Struktur & warna meniru perilaku `variant="elevated"` yang sudah berjalan
+  // (bukan `variant="section"` yang sempat direferensikan di draft awal
+  // styles.css Claude Design — lihat catatan laporan T-096 ke King Rezi):
+  // shell + kolom sideNav pakai `bg-background` (canvas, sama seperti
+  // `navAreaWash` lama), area konten jadi "kartu" mengambang dengan sudut
+  // membulat memakai `bg-sidebar` (nilai hex-nya identik dengan
+  // `--color-background-surface` lama, lihat design-tokens.md § Engineering
+  // Mapping T-095.5).
+  //
+  // Gap mobile yang dulu sengaja belum ditutup di sini (AppShell Astryx
+  // otomatis menyediakan hamburger + drawer mobile di bawah breakpoint `md`
+  // lewat prop `mobileNav` bawaan, layout custom ini tidak mereplikasi itu)
+  // sekarang ditutup lewat T-098.4 (KI-042): `<aside>` desktop disembunyikan
+  // di bawah `md` (`hidden md:flex`), digantikan `MobileTopBar` (hamburger +
+  // Sheet shadcn berisi `AppSideNav` yang sama persis) — lihat
+  // components/MobileTopBar.tsx. Breakpoint `md` (768px) mengikuti rancangan
+  // Claude Design (foundations/layout.html § "Shell — Mobile").
   return (
     <DraftEditorProvider workspaceId={workspaceId}>
-      <AppShell
-        contentPadding={4}
-        variant="elevated"
-        height="fill"
-        sideNav={
-          <AppSideNav
-            workspaceName={workspace.name}
-            userName={session.user.name}
-            userEmail={session.user.email}
-            channels={channels}
-          />
-        }
-      >
-        {children}
-      </AppShell>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-096.3: file ini
+          sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097 poin 4),
+          bukan lagi AppShell Astryx — <div> layout langsung, bukan
+          VStack/HStack. */}
+      <div className="relative flex h-dvh flex-col bg-background text-foreground">
+        <MobileTopBar
+          workspaceName={workspace.name}
+          userName={session.user.name}
+          userEmail={session.user.email}
+          channels={channels}
+          initialNotifications={notifications}
+          initialUnreadCount={unreadCount}
+          userId={session.user.id}
+        />
+        {/* eslint-disable-next-line no-restricted-syntax -- T-096.3, sama seperti di atas */}
+        <div className="relative flex min-h-0 flex-1">
+          <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto bg-background md:flex">
+            <AppSideNav
+              workspaceName={workspace.name}
+              userName={session.user.name}
+              userEmail={session.user.email}
+              channels={channels}
+              initialNotifications={notifications}
+              initialUnreadCount={unreadCount}
+              userId={session.user.id}
+            />
+          </aside>
+          <main className="relative min-w-0 flex-1 overflow-y-auto rounded-tl-3xl bg-sidebar p-4">
+            {children}
+          </main>
+        </div>
+      </div>
       <DraftEditorMount />
     </DraftEditorProvider>
   );

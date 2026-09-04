@@ -40,7 +40,7 @@ Dokumen ini melengkapi `monorepo-setup.md` (workspace layout, `@social/shared`, 
 | DS-D04 | Penempatan dependency | Root = tooling monorepo; `apps/web` = runtime app; `packages/shared` = tanpa runtime deps (tipe murni) |
 | DS-D05 | Shared packages | Tetap satu `@social/shared` di MVP; package baru di `packages/` hanya dengan alasan kuat (lihat aturan) |
 | DS-D06 | Sinkronisasi versi lintas workspace | **Tanpa Bun Catalog** di MVP; cukup caret + satu lockfile |
-| DS-D07 | Pengecualian Astryx Beta | Paket Astryx memakai **exact stable version**, tanpa canary; core + theme di-upgrade bersama dan wajib melewati smoke test (ADR-041) |
+| DS-D07 | Pengecualian Astryx Beta | **Superseded oleh ADR-097** (migrasi ke shadcn/ui) — Astryx tidak lagi jadi fondasi permanen; aturan exact pin di bawah ini historis, berlaku hanya untuk sisa kode Astryx yang belum termigrasi |
 
 ---
 
@@ -53,26 +53,32 @@ Dokumen ini melengkapi `monorepo-setup.md` (workspace layout, `@social/shared`, 
 | Dependency npm publik | Caret range | `"next": "^15.0.0"`, `"prisma": "^6.0.0"` |
 | Workspace internal | Protocol workspace | `"@social/shared": "workspace:*"` |
 | Exact pin | Hanya jika ada alasan kuat (bug kritis, vendor minta pin) | `"some-lib": "1.2.3"` — dicatat di PR/ADR bila jangka panjang |
-| Astryx Beta | Exact stable version | `"@astryxdesign/core": "0.1.8"`, `"@astryxdesign/theme-neutral": "0.1.8"` |
+| Astryx Beta | Exact stable version | `"@astryxdesign/core": "0.1.8"`, `"@astryxdesign/theme-stone": "0.4.3"` (ADR-087) |
 
 **Prinsip:**
 - `package.json` menyatakan **rentang yang diterima**; `bun.lockb` menyatakan **versi yang terpasang**.
 - Jangan mengandalkan "latest" atau range terbuka (`*`, `latest`) untuk dependency produksi.
 - Major bump (breaking) selalu disengaja: baca changelog, jalankan typecheck/lint/test, lalu commit lockfile bersama perubahan kode.
 
-### Pengecualian Astryx Beta (DS-D07)
+### Pengecualian Astryx Beta (DS-D07) — superseded oleh ADR-097
+
+**Sudah tidak berlaku sebagai aturan aktif.** shadcn/ui (fondasi permanen
+sejak ADR-097) adalah kode sumber yang di-*copy* ke repo, bukan dependency
+package — tidak ada isu versioning Beta/exact pin seperti Astryx. Section di
+bawah dipertahankan sebagai riwayat, berlaku hanya selama masih ada kode
+Astryx yang belum termigrasi (lihat `tasks/v07-astryx-shadcn-migration.md`).
 
 ADR-041 mengamendemen aturan caret ADR-035 khusus untuk Astryx selama masih
 Beta:
 
-- `@astryxdesign/core`, `@astryxdesign/theme-neutral`, dan
-  `@astryxdesign/cli` memakai exact stable version yang sama; initial adoption
-  memakai `0.1.8`;
-- peer `@stylexjs/stylex` dipasang exact pada versi kompatibel yang diverifikasi
-  (`0.19.0`);
+- `@astryxdesign/core`, theme package aktif (`@astryxdesign/theme-stone`,
+  ADR-087), dan `@astryxdesign/cli` memakai exact stable version yang sama;
 - jangan memakai tag `latest`, wildcard, atau canary;
 - core dan theme selalu di-upgrade sebagai satu unit;
-- hindari `swizzle` dan authoring StyleX pada tahap awal; dan
+- `@stylexjs/stylex` **dihapus total** dari dependency project (ADR-082,
+  amandemen ADR-041) — Astryx dipakai Tailwind-layout-only; `swizzle` juga
+  tertutup permanen sebagai konsekuensinya (swizzle butuh compiler StyleX
+  yang sama); dan
 - setiap upgrade wajib melewati staging serta smoke test Button, Dialog, form
   controls, Table, dark mode, Tailwind cascade layer, typecheck, lint, test, dan
   Next.js production build.
@@ -163,9 +169,15 @@ Domain modules **tetap** di `apps/web/src/domains/` (ADR-026) — jangan dipromo
 5. Commit package.json + bun.lockb (+ perubahan kode adaptasi) dalam satu PR
 ```
 
-Untuk Astryx, tambahkan langkah khusus: bump core + theme + CLI sebagai satu
-unit, verifikasi peer StyleX, jalankan smoke test UI dan production build di
-branch terpisah, lalu uji di staging sebelum promosi.
+Untuk komponen shadcn (kode yang di-copy ke repo, ADR-097), update berarti
+menarik ulang komponen dari CLI/MCP dan menyesuaikan customisasi lokal —
+jalankan smoke test UI dan production build di branch terpisah, lalu uji di
+staging sebelum promosi. (Langkah khusus Astryx di bawah historis, berlaku
+untuk sisa kode Astryx yang belum termigrasi.)
+
+Untuk Astryx (legacy), tambahkan langkah khusus: bump core + theme + CLI
+sebagai satu unit, verifikasi peer StyleX, jalankan smoke test UI dan
+production build di branch terpisah, lalu uji di staging sebelum promosi.
 
 | Situasi | Tindakan |
 |---------|----------|

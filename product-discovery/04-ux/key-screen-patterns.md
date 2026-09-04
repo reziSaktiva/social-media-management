@@ -151,11 +151,11 @@ Calendar adalah **tampilan default** saat pengguna masuk ke Publish. Layar ini m
 | KSP-02-F02 | Status Visual per Item | **Diperbarui (polishing UI, 2026-08-27) — hanya 3 dari 6 status yang bisa tampil di grid**: Scheduled, Published, Failed. Item Draft/In Review/Ready to Schedule tidak pernah muncul di Calendar karena belum punya `scheduledAt`/`publishedAt` untuk diplot ke sel tanggal/jam (konsisten sejak T-033.1) — jadi tidak "menampilkan status" ke-6 itu, tapi memang tidak pernah punya baris untuk ditampilkan. Filter dropdown status (KSP-02-F09) tetap menampilkan 6 opsi penuh untuk konsistensi dengan Queue, meski memilih Draft/In Review/Ready to Schedule selalu menghasilkan grid kosong. Representasi visual: `Badge` di layar >768px, `StatusDot` (titik warna, tanpa label teks — detail lewat tap→Popover KSP-02-F08) di layar ≤768px karena `Badge` tidak punya kontrol ukuran dan overflow di kolom sempit | UXP-04, UXP-06 |
 | KSP-02-F03 | Identitas Akun per Item | Setiap item menampilkan identitas akun tujuan (platform + nama akun) | UXP-04 |
 | KSP-02-F10 | Indikator Tipe Konten | **Baru (polishing UI, 2026-08-27).** Setiap item menampilkan indikator tipe konten — Post/Reel/Story/Pin — dari field `contentFormat` yang sudah ada di domain model (`CalendarItemTargetRecord`, bukan field baru). Representasi: `Badge` di layar >768px, icon compact di layar ≤768px (sama pola breakpoint dengan KSP-02-F02) | UXP-04 |
-| KSP-02-F04 | Klik Item → Popover → Draft Editor | ~~Klik item langsung membuka Draft Editor~~ — **Diamandemen ADR-090, komponen dikoreksi ADR-091**: klik item membuka Astryx `Popover` (KSP-02-F08) dulu; CTA di dalam Popover yang membuka Draft Editor. Berlaku khusus Calendar — Queue dan Drafts tetap klik → langsung Draft Editor (tidak berubah) | UXP-01 |
+| KSP-02-F04 | Klik Item → Popover → Draft Editor | ~~Klik item langsung membuka Draft Editor~~ — **Diamandemen ADR-090, komponen dikoreksi ADR-091**: klik item membuka `Popover` (KSP-02-F08) dulu; CTA di dalam Popover yang membuka Draft Editor. Berlaku khusus Calendar — Queue dan Drafts tetap klik → langsung Draft Editor (tidak berubah) | UXP-01 |
 | KSP-02-F05 | Ganti Periode | Pengguna berpindah ke minggu/bulan lain lewat tombol Today, navigasi ‹ › (prev/next), dan toggle tampilan Minggu/Bulan. Label periode menyesuaikan (mis. "14–20 Jul" untuk minggu dalam 1 bulan, "28 Jul – 3 Ags" kalau minggu melintasi 2 bulan; "Agustus 2026" untuk tampilan bulan). State periode (`view=week\|month`, `date=<timestamp>`) dibawa lewat query param pada route tunggal `/publish/calendar` (tidak menambah route baru, konsisten ADR-046) | UXP-03 |
 | KSP-02-F06 | Status Failed yang Mencolok | Item dengan status Failed ditampilkan dengan visual yang berbeda dan tidak bisa diabaikan | UXP-04 |
 | KSP-02-F07 | Disconnected Account Warning | Jika akun dalam item berstatus Disconnected, indikator warning tampil di item tersebut | UXP-04, UXP-06 |
-| KSP-02-F08 | Popover Ringkasan Post | **Baru (ADR-090, komponen dikoreksi ADR-091: Popover, bukan HoverCard — trigger klik, punya `isOpen` controlled, CTA aman di dalamnya).** Klik item Calendar membuka Astryx `Popover` (anatomi: Header + Body + Trigger) berisi: avatar + nama akun, platform, potongan caption, thumbnail media (kalau ada), status chip (reuse KSP-02-F02). Untuk post yang sudah Published, tambah section metrik (Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate` — field `PostMetrics` yang sudah ada, tanpa field baru) + tautan "Go to post". CTA di dalam Popover membuka Draft Editor (modal, ADR-052) untuk item tersebut | UXP-01, UXP-04 |
+| KSP-02-F08 | Popover Ringkasan Post | **Baru (ADR-090, komponen dikoreksi ADR-091: Popover, bukan HoverCard — trigger klik, punya `isOpen` controlled, CTA aman di dalamnya).** Klik item Calendar membuka `Popover` (anatomi: Header + Body + Trigger) berisi: avatar + nama akun, platform, potongan caption, thumbnail media (kalau ada), status chip (reuse KSP-02-F02). Untuk post yang sudah Published, tambah section metrik (Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate` — field `PostMetrics` yang sudah ada, tanpa field baru) + tautan "Go to post". CTA di dalam Popover membuka Draft Editor (modal, ADR-052) untuk item tersebut | UXP-01, UXP-04 |
 | KSP-02-F09 | Filter Status & Channel | Dropdown filter status post ("All Posts" / per status) dan filter akun (Channels) di atas grid. Filter Tags dan Timezone per-view dari referensi Buffer **tidak diadopsi** (tidak ada konsep Tag di domain model; Timezone bukan setting per-view di backlog — konsisten keputusan T-032.0 untuk Queue) | UXP-03 |
 
 ---
@@ -269,7 +269,7 @@ Queue menampilkan konten yang **sudah terjadwal** (status `Scheduled`), dikelomp
 
 **Zona filter:** Baris terpisah di bawah tab, filter akun kecil rata kanan — bukan menyatu dengan CTA New Post.
 
-**Zona list:** Dikelompokkan per tanggal (heading), lalu per jam di dalamnya. Setiap item = 1 Card Astryx sendiri (bukan satu card menaungi seluruh list), berisi waktu, platform + nama akun, potongan caption, dan 3 tombol aksi (F07). Tidak ada badge status.
+**Zona list:** Dikelompokkan per tanggal (heading), lalu per jam di dalamnya. Setiap item = 1 `Card` sendiri (bukan satu card menaungi seluruh list), berisi waktu, platform + nama akun, potongan caption, dan 3 tombol aksi (F07). Tidak ada badge status.
 
 ---
 
@@ -369,11 +369,11 @@ Draft Editor adalah **layar kerja terpenting** dalam produk. Raka menulis, melen
 
 **Catatan (ADR-052):** Draft Editor sekarang dibuka sebagai modal di atas sub-screen Publish manapun yang aktif — bukan panel/layar penuh dengan route sendiri (mengoverride NP-D02, lihat NP-D11 di `navigation-patterns.md`). Berlaku untuk New Post dan Edit Draft.
 
-**Variant Dialog belum difinalkan** — sedang dibandingkan langsung di Claude Design lewat toggle di header modal (sejajar status chip, sebelah kiri tombol Close):
-- **`fullscreen` (default saat ini):** menutupi seluruh viewport — sidebar navigasi & Calendar/Queue/Drafts tertutup total selama modal terbuka. Trade-off yang disadari dan diterima demi kecepatan alur kerja, tapi berarti modal ini tidak punya backdrop gelap terlihat (tidak ada apa-apa di belakang untuk digelapkan).
-- **`standard` (alternatif):** card besar mengambang dengan backdrop gelap — layar di belakang (termasuk sidebar) tetap terlihat, redup.
+**Variant Dialog — final sejak ADR-065.** Toggle di header modal (sejajar status chip, sebelah kiri tombol Close) tetap ada sebagai fitur resmi produk, dengan default berikut:
+- **`standard` (default, ADR-065):** card besar mengambang dengan backdrop gelap — layar di belakang (termasuk sidebar) tetap terlihat, redup.
+- **`fullscreen` (alternatif via toggle):** menutupi seluruh viewport — sidebar navigasi & Calendar/Queue/Drafts tertutup total selama modal terbuka. Tidak punya backdrop gelap terlihat (tidak ada apa-apa di belakang untuk digelapkan).
 
-Keputusan final ditentukan sebelum implementasi kode (Tahap 3) dimulai; baseline ini akan diperbarui begitu variant final dipilih.
+Tidak dipersist antar sesi (session-only), sama seperti pola Light/Dark Mode Toggle (ADR-055).
 
 ---
 
@@ -401,7 +401,7 @@ Keputusan final ditentukan sebelum implementasi kode (Tahap 3) dimulai; baseline
 
 Draft Editor dibagi menjadi dua area utama:
 
-Layout di bawah ini kini dirender di dalam modal (ADR-052, default `variant="fullscreen"`, alternatif `variant="standard"` masih dibandingkan — lihat Catatan di Identitas) — bukan halaman route sendiri. Header modal menampilkan judul, status chip, toggle variant, dan tombol Close, bukan "← Kembali".
+Layout di bawah ini kini dirender di dalam modal (ADR-052, default `variant="standard"` sejak ADR-065, alternatif `variant="fullscreen"` via toggle — lihat Catatan di Identitas) — bukan halaman route sendiri. Header modal menampilkan judul, status chip, toggle variant, dan tombol Close, bukan "← Kembali".
 
 ```
 ┌─────────────────────────────────────────────────────────┐
