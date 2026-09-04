@@ -292,6 +292,17 @@ dengan T-098/T-099/T-100/T-101 begitu T-096 selesai.
     grep, sisa cuma di komentar dokumentasi). Dikerjakan di branch
     `feature/t-097-auth-flows-onboarding` (dicabang dari
     `feature/t-096-core-infra-migration`).
+- **Update (2026-09-04, KI-041 Resolved, ADR-098):** King Rezi memutuskan
+  menambah token baru (bukan tetap netral selamanya). 4 token CSS variable
+  baru ditambahkan ke Stone theme shadcn di `apps/web/src/app/globals.css`
+  (light+dark): `--success`/`--success-foreground`,
+  `--warning`/`--warning-foreground`, nilai desaturated konsisten
+  `--destructive`, kontras ≥6.3:1 WCAG AA — lihat **ADR-098** (mengamandemen
+  pemetaan token T-095.5). State "success"/"expired" Accept Invite
+  (`AcceptInvitePageClient.tsx`) sekarang memakai token baru; state
+  "invalid" tetap `text-destructive` (tidak diubah). Diverifikasi QA Najwa
+  via `getComputedStyle` di light+dark. Detail: `PROJECT_STATE.md` § KI-041
+  (closed), `DECISIONS.md` § ADR-098.
 
 ---
 
@@ -487,6 +498,14 @@ lahir dari keterbatasan Astryx.
     ke `Badge variant="outline"` (bukan "secondary" seperti Active/
     Removed) karena tidak ada token warning — treatment varian, bukan
     warna baru, konsisten pola sebelumnya di KI-041.
+- **Update (2026-09-04, KI-041 Resolved, ADR-098):** Badge "Pending" di
+  `MembersTable.tsx` sekarang `Badge variant="secondary"` + className token
+  `--warning` baru (lihat catatan T-097 di atas untuk detail token).
+  `badge.tsx` sendiri tidak diubah. QA Najwa memverifikasi CSS-nya benar
+  tapi **tidak bisa diuji dengan data nyata** — ditemukan gap terpisah:
+  `MemberStatus.Pending` tidak pernah di-assign di flow produksi manapun
+  (accept invitation selalu langsung Active), dicatat **KI-046** baru di
+  `PROJECT_STATE.md`.
 
 ---
 
@@ -760,6 +779,18 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
     variant shadcn diverifikasi valid ke `cva()` source).
   * T-101 tetap `🟡 In Progress` — T-101.2 (Queue), T-101.3 (Drafts),
     T-101.4 (header/tabbar/layout), T-101.5 (Dashboard) belum dikerjakan.
+- **Update (2026-09-04, KI-035 poin 3 Resolved):** rancangan agenda/list
+  mobile didesain di Claude Design `templates/publish-calendar.html`
+  (kolom baru "State — Mobile Agenda", additive, tidak mengubah state
+  Week/Month desktop), lalu diimplementasikan: komponen baru
+  `CalendarAgendaList.tsx` (list per-tanggal, reuse `flattenCalendarItemsToEntries`
+  dan `CalendarPostPopover` yang sama dengan grid desktop), `CalendarScreen.tsx`
+  conditional render CSS-only (`hidden md:block` grid vs `block md:hidden`
+  agenda list). QA Najwa: desktop grid tidak berubah, mobile 375px tampil
+  agenda list dikelompokkan per tanggal dengan badge "Hari ini", klik entry
+  buka Popover benar, light+dark oke. Dengan ini **KI-035 status jadi full
+  Resolved** (poin 1 & 2 sudah Resolved sebelumnya di T-101.1/T-102.5).
+  Detail: `PROJECT_STATE.md` § KI-035.
 - Catatan T-101.2 (2026-09-03, Mark UI Engineer, branch
   `feature/t-101-publish-calendar-queue-drafts-migration`, file di
   `apps/web/src/app/(app)/publish/queue/components/`):
@@ -1084,3 +1115,21 @@ dimigrasikan, memastikan tidak ada sisa Astryx di codebase.
 > ditutup `✅ Done`**, dan dengan itu **rilis v0.7 (migrasi
 > Astryx→shadcn/ui, ADR-097) tuntas 100% (8/8 task)**. Detail KI:
 > `PROJECT_STATE.md` § KI-005, KI-035.
+
+> **Update (2026-09-04, KI-045 Resolved):** root cause dikonfirmasi:
+> `settings/page.tsx` (General) dan `billing/page.tsx` memang **tidak
+> pernah** punya guard role sejak awal (bukan regresi migrasi T-099 seperti
+> dugaan awal saat T-102.4) — hanya `members/page.tsx` yang sudah benar
+> dari fix **KI-038** sebelumnya. Fix:
+> `WorkspaceService.canManageWorkspaceSettings()` +
+> `assertActorCanManageWorkspaceSettings()` (pola sama
+> `canManageMembers`), dipanggil dari guard di `settings/page.tsx`
+> (redirect ke `/settings/account`), `settings/billing/page.tsx` (redirect
+> sama), **dan** dari method `renameWorkspace()` di service layer (bukan
+> cuma guard UI). QA Najwa konfirmasi: Creator (Sinta) redirect di ketiga
+> halaman, Owner (Raka)/Admin (Maya) tetap normal akses, guard Members lama
+> tidak rusak. File: `apps/web/src/domains/workspace/services/workspace.service.ts`,
+> `apps/web/src/app/(app)/settings/page.tsx`,
+> `apps/web/src/app/(app)/settings/billing/page.tsx`. Detail:
+> `PROJECT_STATE.md` § KI-045 (dipindah ke `COMPLETE_TASK.md` setelah
+> Resolved, ID tidak didaur ulang).
