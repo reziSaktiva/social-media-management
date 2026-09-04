@@ -64,11 +64,10 @@ ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
 ## UI Components (ADR-097, membalik ADR-041)
 
 - **shadcn/ui adalah fondasi component system permanen** (ADR-097, membalik
-  ADR-041). Migrasi dari Astryx **sudah selesai secara kode** — 0 import
-  `@astryxdesign/*` aktif tersisa di `apps/web/src`, dependency
-  `@astryxdesign/*` sudah dihapus dari `apps/web/package.json` (T-102.1,
-  T-102.2, T-102.6); sisa pekerjaan v0.7 hanya QA visual menyeluruh
-  (T-102.4) dan cleanup dokumen (T-102.3) — lihat ADR-097 dan
+  ADR-041). Migrasi dari Astryx **sudah tuntas 100%** (rilis v0.7, T-102
+  `✅ Done`) — 0 import `@astryxdesign/*` aktif tersisa di `apps/web/src`,
+  dependency `@astryxdesign/*` sudah dihapus dari `apps/web/package.json`
+  (T-102.1, T-102.2, T-102.6) — lihat ADR-097 dan
   `tasks/v07-astryx-shadcn-migration.md` § T-102; feature tidak menunggu
   design tokens final. Light/Dark Mode Toggle (ADR-055, diamandemen ADR-097) tetap
   fitur resmi — mekanismenya lewat Tailwind `dark:` + shadcn theme provider,

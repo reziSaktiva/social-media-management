@@ -8,6 +8,41 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-04 — Docs consistency audit (topik T-102/migrasi shadcn) — 5 file wording usang diperbaiki
+
+Dijalankan via skill `docs-consistency-audit` (scope topic-based: T-102 /
+migrasi shadcn), dipicu King Rezi setelah verifikasi status migrasi Astryx →
+shadcn di PR #105. `TASKS.md`, `PROJECT_STATE.md`, dan
+`tasks/v07-astryx-shadcn-migration.md` sendiri sudah konsisten (T-102
+`✅ Done`, v0.7 tuntas 100%) — temuan hanya berupa **wording usang** (kategori
+5, referensi usang) di 5 dokumen lain yang masih menyiratkan migrasi
+"berjalan incremental"/"coexist sementara" atau menyebut sisa pekerjaan yang
+sebenarnya sudah tuntas:
+
+- [`AGENTS.md`](../AGENTS.md) — 3 lokasi: baris "Stack & layout" (§ UI),
+  hard rule 14, dan section "Workflow shadcn/ui wajib" — diganti jadi
+  menyatakan migrasi tuntas 100% (T-102 `✅ Done`, 0 dependency
+  `@astryxdesign/*` tersisa).
+- [`context/ctx-design.md`](../context/ctx-design.md) poin 4 — hapus klaim
+  "sisa pekerjaan v0.7 hanya T-102.4/T-102.3" (keduanya sudah selesai).
+- [`context/ctx-implementation.md`](../context/ctx-implementation.md) §
+  UI Components — sama, hapus klaim sisa pekerjaan.
+- [`context/ctx-development.md`](../context/ctx-development.md) aturan 6 —
+  ganti "berjalan incremental per route-segment" jadi "tuntas 100%".
+- [`context/ctx-technical-context.md`](../context/ctx-technical-context.md)
+  tabel Stack, baris UI Components — sama.
+
+Tidak ada temuan Kelas B (ambigu). Temuan tambahan di luar scope file
+project — body [PR #105](https://github.com/reziSaktiva/social-media-management/pull/105)
+di GitHub masih menyebut "T-102.5 belum dikerjakan" dan tidak menyebut
+KI-045/KI-041/KI-035/KI-046/KI-047 — **diperbaiki setelah izin eksplisit
+King Rezi** (`gh pr edit 105`): body diupdate mencerminkan status terkini
+(T-102.5 tuntas, rilis v0.7 selesai 100%, KI-045/KI-041/KI-035 semua
+Resolved dengan detail root cause & fix masing-masing, 2 KI baru
+KI-046/KI-047 dicatat sebagai out-of-scope tidak memblokir merge).
+
+---
+
 ## 2026-09-04 — Tutup KI-045, KI-041, KI-035 (RBAC Settings, token Stone `--success`/`--warning` ADR-098, Calendar mobile agenda) — 2 KI baru dicatat
 
 Sesi lanjutan pasca-T-102 (rilis v0.7 tuntas), branch

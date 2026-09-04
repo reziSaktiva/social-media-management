@@ -129,7 +129,7 @@ kedua tool — tidak ada instruksi khusus per-tool selain tabel di atas.
 - Auth: **Better Auth** · ORM: **Prisma 7** · DB/Storage/Realtime: **Supabase**
 - Integrasi sosial: **Outstand** (via Anti-Corruption Layer), bukan SDK network langsung
 - Arsitektur: **Modular Monolith + DDD** · domain di `apps/web/src/domains/`
-- UI: **shadcn/ui** (ADR-097, membalik ADR-041) · Stone theme token (ADR-087) · **Tailwind** sebagai styling langsung; migrasi dari Astryx berjalan incremental per route-segment
+- UI: **shadcn/ui** (ADR-097, membalik ADR-041) · Stone theme token (ADR-087) · **Tailwind** sebagai styling langsung; migrasi dari Astryx sudah tuntas 100% (rilis v0.7, T-102)
 - Deploy: **Railway** (web + cron) · CI: **GitHub Actions**
 - Staging web: URL & detail deploy di `PROJECT_STATE.md` (KI-025) /
   `COMPLETE_TASK.md` — pakai untuk smoke test manual sebelum PR
@@ -168,8 +168,8 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
 12. Bahasa komunikasi & dokumentasi project: **Bahasa Indonesia** (kecuali user meminta lain).
 13. Jangan commit / push kecuali user meminta eksplisit. Jangan commit secret (`.env.local`, kredensial).
 14. UI produk memakai **shadcn/ui** (ADR-097, membalik ADR-041). Wrapper
-    dibuat selektif. Migrasi dari Astryx berjalan incremental per
-    route-segment — Astryx & shadcn boleh coexist sementara, lihat
+    dibuat selektif. Migrasi dari Astryx sudah tuntas 100% (rilis v0.7,
+    T-102 `✅ Done`, 0 dependency `@astryxdesign/*` tersisa) — lihat
     `tasks/v07-astryx-shadcn-migration.md`.
 15. Sebelum menulis atau mengubah komponen UI, baca
     `apps/web/.claude/CLAUDE.md` (agent docs resmi, lihat bawah) dan/atau
@@ -220,9 +220,9 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
 ## Workflow shadcn/ui wajib (ADR-097)
 
 **shadcn/ui** menggantikan Astryx sebagai fondasi component system permanen
-(ADR-097, membalik ADR-041). Migrasi berjalan incremental per
-route-segment — Astryx dan shadcn boleh coexist sementara selama migrasi
-berjalan (lihat `tasks/v07-astryx-shadcn-migration.md`).
+(ADR-097, membalik ADR-041). Migrasi sudah tuntas 100% (rilis v0.7, T-102
+`✅ Done`, 0 dependency `@astryxdesign/*` tersisa) — lihat
+`tasks/v07-astryx-shadcn-migration.md`.
 
 Untuk setiap task UI di `apps/web`: baca `apps/web/.claude/CLAUDE.md` dulu —
 dokumen ini akan ditulis ulang mengikuti workflow shadcn CLI/MCP (ADR-097

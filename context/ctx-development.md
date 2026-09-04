@@ -55,7 +55,7 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
 ### UI / styling
 
 6. shadcn/ui adalah fondasi komponen permanen (ADR-097, membalik ADR-041).
-   Migrasi dari Astryx berjalan incremental per route-segment — lihat
+   Migrasi dari Astryx sudah tuntas 100% (rilis v0.7, T-102 `✅ Done`) — lihat
    `tasks/v07-astryx-shadcn-migration.md`.
 7. Tailwind dipakai langsung sebagai styling komponen shadcn (bukan lagi
    layout-only seperti era Astryx).
