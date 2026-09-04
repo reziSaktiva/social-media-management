@@ -921,18 +921,20 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
 
 ### T-102 · Cleanup & Verifikasi Akhir
 
-`⏳ Not Started` · **Domain** platform/tooling · **ADR** ADR-097 · **Depends** T-097, T-098, T-099, T-100, T-101
+`🟡 In Progress` · **Domain** platform/tooling · **ADR** ADR-097 · **Depends** T-097, T-098, T-099, T-100, T-101
 **Baca dulu:** —
 
 Task penutup — baru dikerjakan setelah **semua** route segment selesai
 dimigrasikan, memastikan tidak ada sisa Astryx di codebase.
 
-- [ ] **T-102.1** Hapus dependency `@astryxdesign/core`,
+- [x] **T-102.2** Grep ulang seluruh `apps/web/src` untuk memastikan **0**
+      import `@astryxdesign/*` tersisa (safety check sebelum uninstall)
+- [x] **T-102.1** Hapus dependency `@astryxdesign/core`,
       `@astryxdesign/theme-stone`, `@astryxdesign/cli` dari
       `apps/web/package.json`; hapus script `astryx`; hapus field
-      `"astryx"` config
-- [ ] **T-102.2** Grep ulang seluruh `apps/web/src` untuk memastikan **0**
-      import `@astryxdesign/*` tersisa (safety check sebelum uninstall)
+      `"astryx"` config — **tuntas sepenuhnya** (2026-09-04): setelah
+      T-102.6 selesai, `@astryxdesign/core` juga sudah dihapus, `bun
+      install` sukses, `bun.lock` sinkron
 - [ ] **T-102.3** Update dokumen `context/ctx-design.md` dan
       `context/ctx-implementation.md` yang masih menyebut Astryx sebagai
       baseline aktif
@@ -944,3 +946,84 @@ dimigrasikan, memastikan tidak ada sisa Astryx di codebase.
       **KI-030** (TimeInput, kalau belum ditutup di T-100.3), **KI-035**
       poin 1 & 2 (kalau belum ditutup di T-101.1) sesuai hasil migrasi
       nyata — jangan tutup otomatis tanpa verifikasi
+- [x] **T-102.6** (baru, ditemukan 2026-09-04) Migrasi `useToast` di
+      `apps/web/src/app/(app)/publish/queue/components/QueueScreen.tsx` dari
+      `@astryxdesign/core/Toast` ke padanan shadcn (mis. `sonner`/toast
+      shadcn — discover dulu via MCP/CLI shadcn, jangan menebak nama).
+      Setelah ini selesai, hapus `@astryxdesign/core` dari
+      `apps/web/package.json` untuk menuntaskan T-102.1 sepenuhnya.
+
+> **Update (2026-09-04):** Grep ulang `apps/web/src` (T-102.2) menemukan 9
+> file dengan import `@astryxdesign/*` aktif yang tersisa meski T-097–T-101
+> sudah ditandai ✅ Done — gap yang tidak tercatat sebelumnya. Dimigrasi
+> Mark UI Engineer di branch `feature/t-102-cleanup-verifikasi-akhir`:
+> `Modal.tsx` & `status-badge.ts` (draft-editor), `calendar-grid-shared.ts`,
+> `CalendarEntryFooter.tsx`, `CalendarPostPopover.tsx` (calendar),
+> `DraftsList.tsx` (drafts), `ScaffoldPlaceholder.tsx`, `Providers.tsx`
+> (Theme/stoneTheme/LinkProvider dilepas sepenuhnya — semua konsumen sudah
+> bersih), `globals.css` (4 baris `@import` Astryx + layer astryx-base/theme
+> dihapus). Pemetaan komponen: `Badge`→shadcn `Badge`, `Banner`→`Alert`/
+> `AlertTitle`, `Divider`→`Separator`, `Heading`→`Text variant="h4"`,
+> `HStack`/`VStack`/`Center`/`Stack`→Tailwind flex, `Link`→`next/link`,
+> `EmptyState`→shadcn `Empty`, `StatusDot`/`Icon` (compact mobile
+> `CalendarEntryFooter`) dipertahankan sebagai custom dot+icon kecil setelah
+> retest 375px menunjukkan `Badge` shadcn overflow di kolom grid sempit —
+> **bukan regresi, keputusan sadar**. Gap desain-token warna semantik
+> `success`/`warning`/`info`/`purple` untuk `ContentStatus` (**KI-041**,
+> berulang sejak T-097/T-099/T-101) tetap terbuka — dipetakan sementara ke
+> variant shadcn existing (`outline`/`secondary`/`default`/`destructive`),
+> bukan keputusan final. `bun run typecheck` & `bun run lint` PASS 0 error.
+> Verifikasi visual manual (light+dark, mobile 375px) PASS, 0 regresi.
+> Setelah migrasi ini, hanya tersisa 1 import `@astryxdesign/*` aktif:
+> `useToast` di `QueueScreen.tsx` (sengaja dipertahankan, belum ada padanan
+> shadcn) — dicatat sebagai **T-102.6** baru. T-102.1 dieksekusi partial:
+> `theme-stone`+`cli`+script/config `astryx` dihapus dari
+> `apps/web/package.json`, `@astryxdesign/core` dipertahankan sampai
+> T-102.6 tuntas. `bun install` sukses, lockfile sinkron.
+
+> **Update (2026-09-04, T-102.6 selesai — T-102.1 tuntas penuh):** **T-102.6**
+> (migrasi `useToast` Astryx → shadcn) selesai dikerjakan Mark UI Engineer di
+> branch `feature/t-102-cleanup-verifikasi-akhir`. Component `sonner`
+> di-install via `bunx shadcn@latest add @shadcn/sonner` ke
+> `apps/web/src/components/ui/sonner.tsx`, lalu diadaptasi: dependensi
+> `useTheme` dari `next-themes` dihapus (project punya mekanisme tema
+> sendiri — cookie + class `dark`, lihat ADR-055/ADR-097 poin 9) — `theme`
+> diterima sebagai prop biasa dengan default `"system"`. `<Toaster
+> theme={mode} />` dipasang sekali di root
+> [`Providers.tsx`](../../apps/web/src/components/Providers.tsx), memakai
+> `mode` dari `useThemeMode` context yang sudah ada — pola yang sama
+> seperti `TooltipProvider`. Di
+> [`QueueScreen.tsx`](../../apps/web/src/app/(app)/publish/queue/components/QueueScreen.tsx),
+> `useToast` dari `@astryxdesign/core/Toast` diganti `toast()` dari
+> `sonner`, pesan dipertahankan persis ("Jadwal dibatalkan — post kembali
+> ke Drafts"). Dependency `sonner` ditambahkan ke `apps/web/package.json`;
+> `next-themes` yang otomatis ditambah CLI dihapus lagi karena jadi unused
+> setelah adaptasi. Dengan ini **T-102.1 tuntas sepenuhnya**:
+> `@astryxdesign/core` dihapus dari `apps/web/package.json`, `bun install`
+> dijalankan di root repo, `bun.lock` sinkron. Verifikasi: `bun run
+> typecheck` PASS 0 error; `bunx eslint .` PASS 0 error (1 pesan info
+> generik "Pages directory cannot be found" dari plugin next/eslint
+> dikonfirmasi pre-existing lewat `git stash` test, bukan regresi). Grep
+> `@astryxdesign` di `apps/web/src` sekarang **0 import aktif** (sisa hanya
+> komentar historis yang menyebut nama package sebagai referensi). **Gap
+> terbuka:** verifikasi visual browser (bagian dari T-102.4) **belum bisa
+> dilakukan** dalam sesi ini — dev server lokal minta login dan tidak ada
+> kredensial test tersedia untuk memverifikasi toast baru tampil benar di
+> Publish → Queue (trigger Cancel Schedule); presedan sama dengan yang
+> dicatat di `COMPLETE_TASK.md` baris 1405. Kode sudah siap tapi eyeball
+> check masih pending — perlu King Rezi kasih kredensial atau cek manual
+> sendiri sebelum T-102.4 ditutup. Subtask v0.7 selesai naik 33 → **35**
+> dari 38 total (T-102.1 dan T-102.6 keduanya jadi ✅). Sisa T-102:
+> T-102.3, T-102.4, T-102.5.
+
+> **Update (2026-09-04, gap verifikasi visual T-102.6 ditutup):** King Rezi
+> mengecek manual sendiri di browser (Publish → Queue → trigger Cancel
+> Schedule) dan mengonfirmasi singkat: **"toast oke"** — toast baru dari
+> `sonner` tampil benar menggantikan toast Astryx lama. Dengan ini, gap
+> verifikasi visual yang tercatat terbuka di update sebelumnya untuk
+> **T-102.6** sudah ditutup sepenuhnya. Catatan: ini **bukan** menutup
+> **T-102.4** (QA visual menyeluruh Najwa QA Engineer, area Auth/
+> Onboarding/App Shell/Settings/Publish/Dashboard) — konfirmasi ini hanya
+> menutup satu titik verifikasi (toast Cancel Schedule), scope T-102.4
+> masih jauh lebih besar dan tetap `[ ]` belum dikerjakan. Status T-102
+> keseluruhan tetap `🟡 In Progress`, sisa T-102.3, T-102.4, T-102.5.

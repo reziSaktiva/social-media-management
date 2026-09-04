@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-101 Migrasi Publish — Calendar, Queue, Drafts, Dashboard — ✅ Done (2026-09-03, ADR-097)**, seluruh 5/5 subtask tuntas (T-101.1 Calendar, T-101.2 Queue, T-101.3 Drafts, T-101.4 header/tabbar/layout, T-101.5 Dashboard), lolos verifikasi visual Mark UI Engineer + review Ridwan (0 temuan tiap subtask); re-evaluasi **KI-035** poin 1 Resolved, poin 3 tetap Open — lihat `TASKS.md`/`tasks/v07-astryx-shadcn-migration.md` § T-101 untuk detail. Task berikutnya rilis v0.7: **T-102 Cleanup & Verifikasi Akhir** (⏳ Not Started). T-100 Migrasi Publish — Draft Editor Modal sudah ✅ Done (2026-09-03). T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** **T-102 Cleanup & Verifikasi Akhir — 🟡 In Progress** (rilis v0.7, ADR-097): T-102.1, T-102.2, T-102.6 sudah ✅; sisa T-102.3, T-102.4, T-102.5 — lihat `TASKS.md`/`tasks/v07-astryx-shadcn-migration.md` § T-102 untuk detail. T-101 dan T-100 sudah ✅ Done (2026-09-03). T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 85 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.67     |
+| Version      | 1.0.68     |
 | Status       | Active     |
-| Last Updated | 2026-09-03 |
+| Last Updated | 2026-09-04 |
 
 ---
 
@@ -42,8 +42,9 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
   `tasks/v07-astryx-shadcn-migration.md`, T-095–T-102) — permintaan
   eksplisit King Rezi, dikerjakan **sebelum** T-025/T-036. Strategi
   incremental per route-segment, Astryx & shadcn coexist sementara.
-  T-095/T-096/T-097/T-098/T-099/T-100 sudah `✅ Done`; **T-101** `🟡 In
-  Progress` (4/5 subtask); T-102 tersisa.
+  T-095/T-096/T-097/T-098/T-099/T-100/T-101 sudah `✅ Done`; **T-102** `🟡
+  In Progress` (T-102.1, T-102.2, T-102.6 selesai; sisa T-102.3, T-102.4,
+  T-102.5).
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
 * `AGENTS.md` di root sudah ada; skill resmi vendor yang relevan (Prisma,
   Better Auth, Vercel, Supabase) sudah terpasang di `.claude/skills/` —

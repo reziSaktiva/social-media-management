@@ -1,28 +1,17 @@
 /*
- * T-096.1 (temuan, belum diputuskan King Rezi — lihat laporan sesi ini):
- * `@import` Astryx di bawah SENGAJA DIPERTAHANKAN, berbeda dari instruksi
- * awal task ("hapus seluruh @import Astryx"). `astryx.css` bukan sekadar
- * reset/tema kosmetik — isinya CSS StyleX ter-compile untuk SELURUH
- * komponen Astryx (header file-nya: "Astryx Pre-compiled StyleX CSS —
- * all components"), dibungkus `@layer astryx-base`. Menghapusnya membuat
- * setiap komponen
- * Astryx yang BELUM dimigrasi (semua route-segment di luar scope T-096 —
- * auth, onboarding, settings, publish, dashboard, T-097-101) kehilangan
- * seluruh styling-nya (diverifikasi: halaman /login jadi teks polos tanpa
- * border/spacing sama sekali). Ini bertentangan dengan strategi coexist
- * incremental ADR-097 (Astryx harus tetap tampil benar sampai route
- * segmentnya sendiri dimigrasi). Import dipertahankan sampai T-102
- * (cleanup, setelah T-097-101 selesai) — bagian lain T-096.1 (mapping
- * warna Stone -> variable shadcn, font Montserrat --font-heading) tetap
- * jalan seperti biasa di bawah.
+ * T-102 cleanup (ADR-097): 4 `@import` Astryx (reset.css, astryx.css,
+ * theme-stone/theme.css, tailwind-theme.css) dihapus di sini — seluruh
+ * route-segment (T-097-101) sudah bermigrasi ke shadcn/ui, jadi CSS
+ * StyleX ter-compile Astryx (`astryx.css`, `@layer astryx-base`) tidak
+ * lagi dibutuhkan oleh komponen manapun. Layer `astryx-base`/
+ * `astryx-theme` dilepas dari daftar `@layer` di bawah untuk hal yang
+ * sama. Mapping warna Stone -> variable shadcn (T-096.1) tetap jalan
+ * seperti biasa (tidak berubah, sudah dipetakan manual ke bawah, bukan
+ * lewat @import Astryx).
  */
-@layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
+@layer reset, theme, base, components, utilities;
 
 @import "tailwindcss";
-@import "@astryxdesign/core/reset.css";
-@import "@astryxdesign/core/astryx.css";
-@import "@astryxdesign/theme-stone/theme.css";
-@import "@astryxdesign/core/tailwind-theme.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 

@@ -3,21 +3,15 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-
-import { Badge } from "@astryxdesign/core/Badge";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Divider } from "@astryxdesign/core/Divider";
-import { Heading } from "@astryxdesign/core/Heading";
-import { HStack } from "@astryxdesign/core/HStack";
-import { Link } from "@astryxdesign/core/Link";
-import { Text } from "@astryxdesign/core/Text";
-import { VStack } from "@astryxdesign/core/VStack";
+import NextLink from "next/link";
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 
 import { ContentFormat, ContentStatus, SocialPlatform } from "@social/shared";
 
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -32,7 +26,9 @@ import { FieldDescription } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
+import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
@@ -158,24 +154,28 @@ function ResumeDialog({
             tidak punya dialog ini.
           </DialogDescription>
         </DialogHeader>
-        <VStack gap={3}>
-          <VStack gap={1}>
-            <Text type="supporting">Caption</Text>
+        {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack/HStack, murni komposisi Tailwind flex, tidak ada primitive shadcn setara. */}
+        <div className="flex flex-col gap-3">
+          {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}
+          <div className="flex flex-col gap-1">
+            <Text variant="muted">Caption</Text>
             <Text>{preview || "(kosong)"}</Text>
-          </VStack>
-          <VStack gap={1}>
-            <Text type="supporting">Terakhir diedit</Text>
+          </div>
+          {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}
+          <div className="flex flex-col gap-1">
+            <Text variant="muted">Terakhir diedit</Text>
             <Text>
               {unsaved ? formatRelativeTime(new Date(unsaved.savedAt)) : "-"}
             </Text>
-          </VStack>
-          <HStack gap={3} justify="end">
+          </div>
+          {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx HStack, murni Tailwind flex. */}
+          <div className="flex items-center justify-end gap-3">
             <Button variant="secondary" onClick={onDiscard}>
               Mulai Baru
             </Button>
             <Button onClick={onResume}>Resume</Button>
-          </HStack>
-        </VStack>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -550,16 +550,13 @@ function DraftEditorForm({
         <div className="flex items-center gap-2">
           {pendingAction ? null : (
             <>
-              <Badge
-                label={CONTENT_STATUS_LABEL[status]}
-                variant={CONTENT_STATUS_BADGE_VARIANT[status]}
-                icon={
-                  <span
-                    aria-hidden="true"
-                    className="inline-block size-1.5 rounded-full bg-current"
-                  />
-                }
-              />
+              <Badge variant={CONTENT_STATUS_BADGE_VARIANT[status]}>
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-1.5 rounded-full bg-current"
+                />
+                {CONTENT_STATUS_LABEL[status]}
+              </Badge>
               <Button variant="ghost" size="sm" onClick={onToggleDialogVariant}>
                 {dialogVariant === "fullscreen" ? "Standard" : "Fullscreen"}
               </Button>
@@ -578,13 +575,17 @@ function DraftEditorForm({
       {/* eslint-disable-next-line no-restricted-syntax -- T-100.1: area body scrollable Dialog (dulu Astryx LayoutContent) tidak punya padanan primitive shadcn, murni Tailwind. */}
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
         {pendingAction ? (
-          <VStack gap={3}>
+          // eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex.
+          <div className="flex flex-col gap-3">
             {notice?.status === "error" ? (
-              <Banner status="error" title={notice.title} />
+              <Alert variant="destructive">
+                <AlertTitle>{notice.title}</AlertTitle>
+              </Alert>
             ) : null}
             <Text>Caption: {caption || "(kosong)"}</Text>
-            <VStack gap={1}>
-              <Text type="supporting">Akun:</Text>
+            {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}
+            <div className="flex flex-col gap-1">
+              <Text variant="muted">Akun:</Text>
               {selectedAccounts.map((account) => (
                 <Text key={account.id}>
                   · {PLATFORM_LABEL[account.platform]} {account.handle} —{" "}
@@ -596,7 +597,7 @@ function DraftEditorForm({
                   }
                 </Text>
               ))}
-            </VStack>
+            </div>
             {pendingAction === "publish-now" ? (
               <Text>Waktu: Sekarang</Text>
             ) : (
@@ -604,20 +605,30 @@ function DraftEditorForm({
                 Waktu: {scheduleDate ?? "-"} {scheduleTime ?? ""}
               </Text>
             )}
-          </VStack>
+          </div>
         ) : (
-          <VStack gap={4}>
+          // eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex.
+          <div className="flex flex-col gap-4">
             {notice ? (
-              <Banner status={notice.status} title={notice.title} />
+              <Alert
+                variant={notice.status === "error" ? "destructive" : "default"}
+              >
+                <AlertTitle>{notice.title}</AlertTitle>
+              </Alert>
             ) : null}
 
             {isLoadingDraft ? (
-              <Text type="supporting">Memuat draft…</Text>
+              <Text variant="muted">Memuat draft…</Text>
             ) : (
-              <HStack gap={6} align="start" wrap="wrap">
-                <VStack gap={5} width="100%" maxWidth={500}>
-                  <VStack gap={3}>
-                    <Heading level={2}>Caption</Heading>
+              // eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx HStack, murni Tailwind flex.
+              <div className="flex flex-wrap items-start gap-6">
+                {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}
+                <div className="flex w-full max-w-125 flex-col gap-5">
+                  {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}
+                  <div className="flex flex-col gap-3">
+                    <Text variant="h4" as="h3">
+                      Caption
+                    </Text>
                     <Label htmlFor="draft-caption" className="sr-only">
                       Caption
                     </Label>
@@ -630,10 +641,13 @@ function DraftEditorForm({
                     <FieldDescription>
                       AI Caption Assist belum termasuk revisi ini.
                     </FieldDescription>
-                  </VStack>
+                  </div>
 
-                  <VStack gap={3}>
-                    <Heading level={2}>Media</Heading>
+                  {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}
+                  <div className="flex flex-col gap-3">
+                    <Text variant="h4" as="h3">
+                      Media
+                    </Text>
                     <Label htmlFor="draft-media" className="sr-only">
                       Media
                     </Label>
@@ -642,16 +656,20 @@ function DraftEditorForm({
                       Lampiran media akan tersedia setelah OutstandAdapter Media
                       API siap.
                     </FieldDescription>
-                  </VStack>
-                </VStack>
+                  </div>
+                </div>
 
-                <VStack gap={4} width="100%" maxWidth={340}>
-                  <VStack gap={3}>
-                    <Heading level={2}>Account Selector</Heading>
+                {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}
+                <div className="flex w-full max-w-85 flex-col gap-4">
+                  {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}
+                  <div className="flex flex-col gap-3">
+                    <Text variant="h4" as="h3">
+                      Account Selector
+                    </Text>
                     {isLoadingAccounts ? (
-                      <Text type="supporting">Memuat akun terhubung…</Text>
+                      <Text variant="muted">Memuat akun terhubung…</Text>
                     ) : accounts.length === 0 ? (
-                      <Text type="supporting">
+                      <Text variant="muted">
                         Belum ada akun terhubung untuk workspace ini.
                       </Text>
                     ) : (
@@ -666,8 +684,10 @@ function DraftEditorForm({
                         const checkboxId = `draft-account-${account.id}`;
 
                         return (
-                          <VStack key={account.id} gap={2}>
-                            <HStack justify="between" align="center">
+                          // eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex.
+                          <div key={account.id} className="flex flex-col gap-2">
+                            {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx HStack, murni Tailwind flex. */}
+                            <div className="flex items-center justify-between">
                               <LabeledControl
                                 htmlFor={checkboxId}
                                 control={
@@ -684,16 +704,21 @@ function DraftEditorForm({
                                 {account.handle}
                               </LabeledControl>
                               {isDisconnected ? (
-                                <Badge label="Disconnected" variant="warning" />
+                                <Badge variant="destructive">
+                                  Disconnected
+                                </Badge>
                               ) : null}
-                            </HStack>
+                            </div>
 
                             {isDisconnected ? (
-                              <Text type="supporting">
+                              <Text variant="muted">
                                 Akun ini terputus —{" "}
-                                <Link href="/settings/connected-accounts">
+                                <NextLink
+                                  href="/settings/connected-accounts"
+                                  className="text-primary underline underline-offset-4 hover:no-underline"
+                                >
                                   Reconnect
-                                </Link>
+                                </NextLink>
                                 .
                               </Text>
                             ) : null}
@@ -735,8 +760,9 @@ function DraftEditorForm({
 
                             {isChecked &&
                             account.platform === SocialPlatform.Pinterest ? (
-                              <VStack gap={2}>
-                                <Text type="supporting">Format: Pin</Text>
+                              // eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex.
+                              <div className="flex flex-col gap-2">
+                                <Text variant="muted">Format: Pin</Text>
                                 <Label htmlFor={`${checkboxId}-pin-title`}>
                                   Pin Title{" "}
                                   <span className="text-muted-foreground">
@@ -763,25 +789,29 @@ function DraftEditorForm({
                                     setPinLink(event.target.value)
                                   }
                                 />
-                              </VStack>
+                              </div>
                             ) : null}
 
                             {isChecked &&
                             !formats &&
                             account.platform !== SocialPlatform.Pinterest ? (
-                              <Text type="supporting">Format: Post</Text>
+                              <Text variant="muted">Format: Post</Text>
                             ) : null}
 
-                            <Divider />
-                          </VStack>
+                            <Separator />
+                          </div>
                         );
                       })
                     )}
-                  </VStack>
+                  </div>
 
-                  <VStack gap={3}>
-                    <Heading level={2}>Jadwal</Heading>
-                    <HStack gap={2}>
+                  {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}
+                  <div className="flex flex-col gap-3">
+                    <Text variant="h4" as="h3">
+                      Jadwal
+                    </Text>
+                    {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx HStack, murni Tailwind flex. */}
+                    <div className="flex items-center gap-2">
                       <Label htmlFor="draft-schedule-date" className="sr-only">
                         Tanggal
                       </Label>
@@ -806,12 +836,12 @@ function DraftEditorForm({
                           setScheduleTime(event.target.value || undefined)
                         }
                       />
-                    </HStack>
-                  </VStack>
-                </VStack>
-              </HStack>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
-          </VStack>
+          </div>
         )}
       </div>
       {isLoadingDraft ? null : pendingAction === "schedule" ? (

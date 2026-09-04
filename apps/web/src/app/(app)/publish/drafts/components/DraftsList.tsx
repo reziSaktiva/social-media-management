@@ -1,15 +1,9 @@
 "use client";
 
-// Badge Astryx sengaja dipertahankan untuk indikator warna status — Stone
-// theme shadcn belum punya token semantik success/warning/info/purple untuk
-// 6 varian ContentStatus (hanya accent/destructive). Pola sama seperti
-// Modal.tsx (T-100.1) dan CalendarPostPopover.tsx (T-101.1), bukan
-// penyimpangan baru.
-import { Badge } from "@astryxdesign/core/Badge";
-
 import type { PublishingPostRecord } from "@/domains/publishing";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Empty,
@@ -37,8 +31,8 @@ import {
  * `List`/`ListItem` diganti `Card`/`Empty`/`Item`+`ItemGroup` (registry:ui
  * `item`), presedan sama dengan `ConnectedAccountsList.tsx` (T-099.3) dan
  * `WorkspacesSettingsView.tsx` (T-099.3) — baris klik penuh lewat
- * `Item asChild` membungkus `<button>`. `Badge` Astryx SENGAJA dipertahankan
- * untuk indikator warna status (lihat komentar import di atas).
+ * `Item asChild` membungkus `<button>`. `Badge` dimigrasi ke shadcn di
+ * T-102 cleanup (KI-041 masih terbuka — lihat `status-badge.ts`).
  */
 export function DraftsList({ drafts }: { drafts: PublishingPostRecord[] }) {
   const { openEditDraft } = useDraftEditor();
@@ -77,9 +71,10 @@ export function DraftsList({ drafts }: { drafts: PublishingPostRecord[] }) {
                     </ItemContent>
                     <ItemActions>
                       <Badge
-                        label={CONTENT_STATUS_LABEL[draft.status]}
                         variant={CONTENT_STATUS_BADGE_VARIANT[draft.status]}
-                      />
+                      >
+                        {CONTENT_STATUS_LABEL[draft.status]}
+                      </Badge>
                     </ItemActions>
                   </button>
                 </Item>

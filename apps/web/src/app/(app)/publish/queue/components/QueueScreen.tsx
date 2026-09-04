@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
-import { useToast } from "@astryxdesign/core/Toast";
+import { toast } from "sonner";
 
 import type { PostId } from "@social/shared";
 import type { QueueGroup } from "@/domains/publishing";
@@ -37,16 +37,13 @@ import { QueueList } from "./QueueList";
  * dialog tetap terbuka sampai `confirm()` selesai, persis
  * `MembersTable.tsx` T-099.2) + `Alert variant="destructive"` untuk pesan
  * error, dibungkus Tailwind `flex flex-col gap-4` (layout-only).
- * `useToast` SENGAJA tetap `@astryxdesign/core/Toast` — belum ada padanan
- * shadcn toast (`sonner`/`toast`) di-install di `components/ui/` mana pun
- * di seluruh app (dicek grep, ini satu-satunya titik pakai), jadi migrasi
- * toast di luar scope T-101.2 (perlu keputusan sistem toast baru, bukan
- * satu file) — dilaporkan sebagai gap, bukan diputuskan sepihak.
+ * T-102.6: `useToast` Astryx diganti `toast()` sonner (shadcn `Toaster`
+ * dipasang sekali di `Providers.tsx`) — menuntaskan migrasi toast terakhir
+ * di codebase.
  */
 export function QueueScreen({ groups }: { groups: QueueGroup[] }) {
-  const showToast = useToast();
   const cancelConfirm = useConfirmAction<PostId>(cancelScheduleAction, () =>
-    showToast({ body: "Jadwal dibatalkan — post kembali ke Drafts" }),
+    toast("Jadwal dibatalkan — post kembali ke Drafts"),
   );
 
   return (

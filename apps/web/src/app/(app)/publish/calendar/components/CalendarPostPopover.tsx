@@ -2,11 +2,10 @@
 
 import { type ReactNode, useState } from "react";
 
-import { Badge } from "@astryxdesign/core/Badge";
-
 import { ContentStatus } from "@social/shared";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -76,10 +75,10 @@ export interface CalendarPostPopoverProps {
  * punya field media (lihat `CalendarItemRecord`), jadi placeholder di sini
  * permanen, bukan state loading.
  *
- * T-101.1: `Badge` status/format SENGAJA tetap Astryx (gap token warna
- * semantik shadcn/Stone theme — lihat catatan `CalendarEntryFooter.tsx`),
- * komponen lain (`Popover`, `Avatar`, `Divider`->`Separator`, `Button`,
- * `Text`, layout) sudah shadcn penuh.
+ * T-102 cleanup: `Badge` status/format dimigrasi ke shadcn (KI-041 masih
+ * terbuka — lihat `status-badge.ts`), melengkapi komponen lain (`Popover`,
+ * `Avatar`, `Divider`->`Separator`, `Button`, `Text`, layout) yang sudah
+ * shadcn sejak T-101.1.
  */
 export function CalendarPostPopover({
   entry,
@@ -122,14 +121,12 @@ export function CalendarPostPopover({
                 {getInitials(entry.accountHandle)}
               </AvatarFallback>
             </Avatar>
-            <Badge
-              variant="neutral"
-              label={CONTENT_FORMAT_LABEL[entry.contentFormat]}
-            />
-            <Badge
-              variant={CONTENT_STATUS_BADGE_VARIANT[entry.status]}
-              label={CONTENT_STATUS_LABEL[entry.status]}
-            />
+            <Badge variant="outline">
+              {CONTENT_FORMAT_LABEL[entry.contentFormat]}
+            </Badge>
+            <Badge variant={CONTENT_STATUS_BADGE_VARIANT[entry.status]}>
+              {CONTENT_STATUS_LABEL[entry.status]}
+            </Badge>
           </div>
 
           <Text variant="p" as="span" className="mt-0! text-sm">

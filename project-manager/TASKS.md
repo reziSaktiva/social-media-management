@@ -61,8 +61,56 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 7 ✅ · 1 ⏳     | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 85 task · 32 selesai · 210 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 85 task · 32 selesai · 211 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-04, T-102.6 selesai — T-102.1 tuntas penuh):** **T-102.6**
+> (migrasi `useToast` Astryx → shadcn) selesai dikerjakan Mark UI Engineer di
+> branch `feature/t-102-cleanup-verifikasi-akhir`. Component `sonner`
+> di-install via `bunx shadcn@latest add @shadcn/sonner`, diadaptasi untuk
+> memakai mekanisme tema project sendiri (cookie + class `dark`, bukan
+> `next-themes`) — `<Toaster theme={mode} />` dipasang di root
+> `Providers.tsx` memakai `useThemeMode` context yang sudah ada. Di
+> `QueueScreen.tsx`, `useToast` dari `@astryxdesign/core/Toast` diganti
+> `toast()` dari `sonner`, pesan dipertahankan persis. Dependency `sonner`
+> ditambahkan ke `apps/web/package.json`. Dengan ini **T-102.1 tuntas
+> sepenuhnya** — `@astryxdesign/core` (sisa terakhir dependency Astryx)
+> dihapus dari `apps/web/package.json`, `bun install` sukses, `bun.lock`
+> sinkron. Verifikasi: `bun run typecheck` PASS 0 error, `bunx eslint .`
+> PASS 0 error, grep `@astryxdesign` di `apps/web/src` sekarang **0 import
+> aktif**. **Gap terbuka:** verifikasi visual browser toast baru (bagian
+> dari T-102.4) belum bisa dilakukan sesi ini — dev server minta login,
+> tidak ada kredensial test tersedia; perlu King Rezi cek manual sebelum
+> T-102.4 ditutup. Subtask v0.7 selesai naik 33 → **35** dari 38 total
+> (T-102.1 dan T-102.6 sama-sama jadi ✅). Sisa T-102: T-102.3, T-102.4,
+> T-102.5. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-102.
+
+> **Update (2026-09-04, gap verifikasi visual toast ditutup):** King Rezi
+> mengecek manual di Publish → Queue → Cancel Schedule dan mengonfirmasi
+> "toast oke" — gap verifikasi visual T-102.6 di update sebelumnya sudah
+> ditutup. T-102.4 (QA visual menyeluruh, scope lebih besar) tetap belum
+> selesai. Status T-102 tidak berubah (`🟡 In Progress`, sisa T-102.3,
+> T-102.4, T-102.5). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-102.
+>
+> **Update (2026-09-04, T-102 in progress — gap ditemukan):** **T-102**
+> (Cleanup & Verifikasi Akhir) mulai dikerjakan di branch
+> `feature/t-102-cleanup-verifikasi-akhir`, status `🟡 In Progress`.
+> **T-102.2** (grep ulang `@astryxdesign/*`) ✅ selesai — menemukan gap
+> tidak tercatat: 9 file masih import Astryx aktif meski T-097–T-101 sudah
+> ✅ Done. Dimigrasi ke shadcn (Mark UI Engineer): `Modal.tsx`,
+> `status-badge.ts` (draft-editor), `calendar-grid-shared.ts`,
+> `CalendarEntryFooter.tsx`, `CalendarPostPopover.tsx` (calendar),
+> `DraftsList.tsx` (drafts), `ScaffoldPlaceholder.tsx`, `Providers.tsx`
+> (Theme/stoneTheme/LinkProvider Astryx dilepas sepenuhnya), `globals.css`
+> (4 baris `@import` Astryx dihapus). typecheck/lint PASS 0 error,
+> verifikasi visual (light+dark, mobile 375px) PASS 0 regresi. **T-102.1**
+> dieksekusi **partial**: `@astryxdesign/theme-stone` + `@astryxdesign/cli`
+> + script/config `astryx` dihapus dari `apps/web/package.json`;
+> `@astryxdesign/core` **belum** bisa dihapus karena `useToast` di
+> `QueueScreen.tsx` masih bergantung padanya (belum ada padanan Toast
+> shadcn) — dicatat subtask baru **T-102.6** untuk menuntaskan ini.
+> Subtask v0.7 naik 37 → **38** (T-102.6 baru), total subtask 210 → **211**.
+> Detail: `tasks/v07-astryx-shadcn-migration.md` § T-102.
+>
 > **Update (2026-09-03, T-101.5 selesai — T-101 Done):** **T-101** (Migrasi
 > Publish — Calendar, Queue, Drafts, Dashboard) ditutup `✅ Done` — seluruh
 > 5/5 subtask tuntas. Subtask terakhir **T-101.5** (Dashboard:
@@ -319,7 +367,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
-| **T-102** | Cleanup & Verifikasi Akhir                      | ⏳      | **Not Started** — task terakhir rilis v0.7, `Depends` T-097, T-098, T-099, T-100, T-101 (semua sudah Done). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-102 |
+| **T-102** | Cleanup & Verifikasi Akhir                      | 🟡      | **In Progress** — T-102.1 ✅ (tuntas penuh), T-102.2 ✅, T-102.6 ✅ (migrasi `useToast` → `sonner`, verifikasi visual toast dikonfirmasi manual King Rezi "toast oke" 2026-09-04). Sisa: T-102.3, T-102.4 (QA visual menyeluruh, scope lebih besar dari toast), T-102.5. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-102 |
 | **T-101** | Migrasi Publish — Calendar, Queue, Drafts, Dashboard | ✅      | **Selesai (2026-09-03)** — seluruh 5/5 subtask tuntas: T-101.1 (Calendar), T-101.2 (Queue), T-101.3 (Drafts), T-101.4 (header/tabbar/layout), T-101.5 (Dashboard). Lolos review Ridwan (0 temuan) tiap subtask. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-101 |
 | **T-100** | Migrasi Publish — Draft Editor Modal             | ✅      | **Selesai (2026-09-03)** — seluruh 4/4 subtask tuntas (struktur modal + layout, form controls shadcn, `TimeInput` → native `<input type="time">` (**KI-030 Closed**), verifikasi behavior penuh end-to-end). Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh). Temuan minor: **KI-043**, **KI-044**. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-100 |
 | **T-099** | Migrasi Settings                                 | ✅      | **Selesai (2026-09-02)** — 3/3 subtask (`WorkspaceGeneralSettings.tsx`/`ProfileForm.tsx`/`preferences/page.tsx`/`SettingsPageHead.tsx`, `MembersTable.tsx`/`InviteMemberDialog.tsx`/`InviteMemberAction.tsx`, `ConnectedAccountsList.tsx`/`ConnectPlatformMenu.tsx`/`WorkspacesSettingsView.tsx`), lolos review Ridwan (0 temuan) + QA Najwa (PASS, 1 temuan minor viewport sempit dicatat di **KI-042**). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-099 |
