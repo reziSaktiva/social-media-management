@@ -946,10 +946,21 @@ dimigrasikan, memastikan tidak ada sisa Astryx di codebase.
       `context/ctx-technical-context.md` masih menyebut "migrasi
       incremental" juga tapi **sengaja tidak disentuh** (di luar scope
       T-102.3 tertulis).
-- [ ] **T-102.4** QA visual menyeluruh oleh Najwa QA Engineer, per area
+- [x] **T-102.4** QA visual menyeluruh oleh Najwa QA Engineer, per area
       (Auth, Onboarding, App Shell, Settings, Publish, Dashboard) — wajib
       manual/browser karena tidak ada test komponen sebagai regression
-      safety-net
+      safety-net — **selesai** (2026-09-04): `bun run typecheck`/`lint`/
+      `test` PASS (235 test, 4 skip); verifikasi visual browser (light+dark
+      +mobile 375px) untuk Auth (signup+onboarding end-to-end), App Shell,
+      Settings (General/Connected Accounts/Members), Publish
+      (Calendar/Queue/Drafts), Dashboard, dan Safety Check dialog (ADR-049)
+      — **semua PASS, 0 regresi visual**. Inspeksi DOM konfirmasi 0 sisa
+      elemen Astryx. Gap desain-token KI-041 dikonfirmasi bukan regresi
+      baru (sesuai keputusan sebelumnya). **Temuan di luar scope** (dicatat
+      terpisah, tidak memblokir T-102.4): **KI-045** — role Creator masih
+      bisa akses & edit Settings General/Members/Billing, regresi dari
+      KI-038 (Resolved 2026-08-31) yang sebelumnya hanya menutup
+      `/settings/members`.
 - [ ] **T-102.5** Re-evaluasi & tutup **KI-005** (Astryx Beta — moot),
       **KI-030** (TimeInput, kalau belum ditutup di T-100.3), **KI-035**
       poin 1 & 2 (kalau belum ditutup di T-101.1) sesuai hasil migrasi
