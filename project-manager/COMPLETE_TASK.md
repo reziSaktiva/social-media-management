@@ -8,6 +8,51 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-04 — T-102.5 tuntas — T-102 (Cleanup & Verifikasi Akhir) Done, rilis v0.7 selesai 100%
+
+Gibran Project Manager menutup **T-102.5** (Re-evaluasi & tutup Known Issues
+sisa migrasi Astryx→shadcn, rilis v0.7, ADR-097) berdasarkan verifikasi
+langsung ke kode, bukan tebakan:
+
+- **KI-005** (Astryx masih Beta) ditutup **Resolved (2026-09-04) — moot**.
+  Dicek `apps/web/package.json` dan grep `@astryxdesign` di seluruh
+  `apps/web/src`: tidak ada dependency `@astryxdesign/*` tersisa, hanya
+  komentar historis (bukan import aktif) di `globals.css`,
+  `MembersTable.tsx`, `ChannelsSection.tsx`, `layout.tsx` auth/onboarding,
+  `text.tsx`, `lib/utils.ts`. Astryx sudah dihapus total (T-102.1 tuntas
+  penuh) sehingga risiko "Astryx masih Beta" tidak relevan lagi.
+- **KI-030** (`TimeInput` Astryx) dan **KI-035** poin 1 (StyleX/`xstyle`)
+  dikonfirmasi **sudah Resolved sebelumnya** (T-100.3 dan T-101.1, keduanya
+  2026-09-03) — tidak dihitung sebagai temuan baru T-102.5, kontennya tidak
+  diubah.
+- **KI-035** poin 2 (`Badge` Astryx tanpa prop `size`/truncation, workaround
+  `StatusDot`+`Icon` compact di Calendar mobile) **baru dievaluasi dan
+  ditutup Resolved (2026-09-04, T-102.5)**. Dicek
+  `apps/web/src/components/ui/badge.tsx` (shadcn `Badge`, `cva`-based,
+  `className` bebas — bukan API tertutup props-only seperti Astryx) dan
+  `CalendarEntryFooter.tsx` (komentar internal file sudah menyebut migrasi
+  penuh ke shadcn+Tailwind, T-102 cleanup ADR-097). Root cause lama hilang
+  karena `Badge` sekarang Tailwind-composable — size/truncation bisa
+  ditangani lewat class Tailwind di titik pemakaian. Workaround dot+icon
+  compact mobile (<768px) **dipertahankan**, tapi sekarang sebagai
+  **keputusan UX** (kepadatan layout kartu Calendar sempit), bukan lagi
+  keterpaksaan teknis Astryx — bukan bug.
+- **KI-035** poin 3 (layout Calendar mobile ~375px) **tetap Open**, di luar
+  scope T-102.5 (task eksplisit hanya minta poin 1 & 2), butuh rancangan
+  baru di Claude Design (rule 17 `AGENTS.md`).
+
+Dengan T-102.5 tuntas, seluruh 6 subtask **T-102** (T-102.1, T-102.2,
+T-102.3, T-102.4, T-102.5, T-102.6) sudah ✅ — **T-102 ditutup `✅ Done`**,
+dan dengan itu **rilis v0.7 (migrasi Astryx→shadcn/ui, ADR-097) tuntas
+100% (8/8 task, 38/38 subtask)**. Task selesai naik 32 → **33** dari 85
+total (dihitung ulang langsung dari `tasks/v07-astryx-shadcn-migration.md`,
+bukan asumsi). File yang diubah: `PROJECT_STATE.md` (KI-005, KI-035,
+Snapshot, Completed Ringkasan), `tasks/v07-astryx-shadcn-migration.md`
+(T-102.5 dicentang, status T-102 → Done, update note baru), `TASKS.md`
+(indeks v0.7, Total, Fokus sekarang, update note baru).
+
+---
+
 ## 2026-09-04 — Gap verifikasi visual T-102.6 (toast) ditutup — konfirmasi manual King Rezi
 
 King Rezi mengecek manual sendiri di browser (Publish → Queue → trigger

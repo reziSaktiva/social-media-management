@@ -921,7 +921,7 @@ Astryx) — layak jadi task tersendiri terpisah dari Publish lainnya.
 
 ### T-102 · Cleanup & Verifikasi Akhir
 
-`🟡 In Progress` · **Domain** platform/tooling · **ADR** ADR-097 · **Depends** T-097, T-098, T-099, T-100, T-101
+`✅ Done` · **Domain** platform/tooling · **ADR** ADR-097 · **Depends** T-097, T-098, T-099, T-100, T-101
 **Baca dulu:** —
 
 Task penutup — baru dikerjakan setelah **semua** route segment selesai
@@ -961,10 +961,25 @@ dimigrasikan, memastikan tidak ada sisa Astryx di codebase.
       bisa akses & edit Settings General/Members/Billing, regresi dari
       KI-038 (Resolved 2026-08-31) yang sebelumnya hanya menutup
       `/settings/members`.
-- [ ] **T-102.5** Re-evaluasi & tutup **KI-005** (Astryx Beta — moot),
+- [x] **T-102.5** Re-evaluasi & tutup **KI-005** (Astryx Beta — moot),
       **KI-030** (TimeInput, kalau belum ditutup di T-100.3), **KI-035**
       poin 1 & 2 (kalau belum ditutup di T-101.1) sesuai hasil migrasi
-      nyata — jangan tutup otomatis tanpa verifikasi
+      nyata — jangan tutup otomatis tanpa verifikasi — **selesai**
+      (2026-09-04): **KI-005** ditutup Resolved — moot, dicek langsung
+      `apps/web/package.json` + grep `@astryxdesign` di `apps/web/src`,
+      tidak ada dependency aktif tersisa (hanya komentar historis).
+      **KI-030** dan **KI-035** poin 1 dikonfirmasi sudah Resolved
+      sebelumnya (T-100.3 2026-09-03, T-101.1 2026-09-03) — tidak
+      dihitung sebagai temuan baru T-102.5. **KI-035** poin 2 (`Badge`
+      Astryx tanpa prop size/truncation) baru ditutup Resolved sekarang:
+      dicek `apps/web/src/components/ui/badge.tsx` (shadcn, `cva`-based,
+      `className` bebas) dan `CalendarEntryFooter.tsx` — root cause lama
+      hilang karena `Badge` sekarang Tailwind-composable; workaround
+      dot+icon compact mobile dipertahankan sebagai keputusan UX, bukan
+      lagi keterpaksaan teknis. **Poin 3** (layout Calendar mobile
+      ~375px) tetap `Open`, di luar scope T-102.5 — butuh rancangan baru
+      di Claude Design (rule 17 `AGENTS.md`). Detail lengkap: `KI-005`,
+      `KI-035` di `PROJECT_STATE.md`.
 - [x] **T-102.6** (baru, ditemukan 2026-09-04) Migrasi `useToast` di
       `apps/web/src/app/(app)/publish/queue/components/QueueScreen.tsx` dari
       `@astryxdesign/core/Toast` ke padanan shadcn (mis. `sonner`/toast
@@ -1046,3 +1061,26 @@ dimigrasikan, memastikan tidak ada sisa Astryx di codebase.
 > menutup satu titik verifikasi (toast Cancel Schedule), scope T-102.4
 > masih jauh lebih besar dan tetap `[ ]` belum dikerjakan. Status T-102
 > keseluruhan tetap `🟡 In Progress`, sisa T-102.3, T-102.4, T-102.5.
+
+> **Update (2026-09-04, T-102.5 tuntas — T-102 & rilis v0.7 Done):**
+> **T-102.5** (re-evaluasi & tutup Known Issues sisa migrasi) selesai
+> dikerjakan Gibran Project Manager berdasarkan verifikasi langsung ke
+> kode (bukan tebakan). **KI-005** (Astryx masih Beta) ditutup Resolved —
+> **moot**, dicek `apps/web/package.json` + grep `@astryxdesign` di
+> `apps/web/src`, 0 dependency aktif tersisa (hanya komentar historis).
+> **KI-030** (`TimeInput` Astryx) dan **KI-035** poin 1 (StyleX/`xstyle`)
+> dikonfirmasi **sudah Resolved sebelumnya** (T-100.3 dan T-101.1,
+> keduanya 2026-09-03) — tidak dihitung sebagai temuan baru T-102.5.
+> **KI-035** poin 2 (`Badge` Astryx tanpa prop `size`/truncation) **baru
+> ditutup Resolved sekarang**: root cause hilang karena `Badge` sekarang
+> shadcn (`apps/web/src/components/ui/badge.tsx`, `cva`-based,
+> Tailwind-composable via `className`), workaround dot+icon compact
+> mobile di `CalendarEntryFooter.tsx` dipertahankan sebagai keputusan UX
+> sadar (kepadatan layout), bukan lagi keterpaksaan teknis Astryx. **Poin
+> 3** (layout Calendar mobile ~375px) **tetap Open**, di luar scope
+> T-102.5 secara eksplisit — butuh rancangan baru di Claude Design (rule
+> 17 `AGENTS.md`). Dengan T-102.5 tuntas, **seluruh 6 subtask T-102 sudah
+> ✅** (T-102.1, T-102.2, T-102.3, T-102.4, T-102.5, T-102.6) — **T-102
+> ditutup `✅ Done`**, dan dengan itu **rilis v0.7 (migrasi
+> Astryx→shadcn/ui, ADR-097) tuntas 100% (8/8 task)**. Detail KI:
+> `PROJECT_STATE.md` § KI-005, KI-035.

@@ -59,9 +59,29 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
-| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 7 ✅ · 1 ⏳     | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
+| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 8 ✅          | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 85 task · 32 selesai · 211 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 85 task · 33 selesai · 211 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-04, T-102.5 tuntas — T-102 Done, rilis v0.7 selesai
+> 100%):** **T-102.5** (re-evaluasi & tutup Known Issues sisa migrasi)
+> selesai berdasarkan verifikasi langsung ke kode (dikerjakan Gibran
+> Project Manager). **KI-005** (Astryx masih Beta) ditutup Resolved —
+> moot, 0 dependency `@astryxdesign/*` tersisa di
+> `apps/web/package.json`/`apps/web/src` (hanya komentar historis).
+> **KI-030** (`TimeInput`) dan **KI-035** poin 1 (StyleX/`xstyle`)
+> dikonfirmasi sudah Resolved sebelumnya (T-100.3, T-101.1, keduanya
+> 2026-09-03) — tidak dihitung ulang sebagai temuan baru T-102.5.
+> **KI-035** poin 2 (`Badge` Astryx tanpa prop size/truncation) baru
+> ditutup Resolved sekarang — root cause hilang karena `Badge` sekarang
+> shadcn (Tailwind-composable). Poin 3 (layout Calendar mobile ~375px)
+> tetap `Open`, di luar scope. Dengan T-102.5 tuntas, seluruh 6 subtask
+> **T-102** sudah ✅ — **T-102 ditutup `✅ Done`**, dan **rilis v0.7
+> (migrasi Astryx→shadcn/ui, ADR-097) tuntas 100% (8/8 task)**. Task
+> selesai naik 32 → **33** dari 85 total; subtask total v0.7 tetap 38 dari
+> 38 (semua sudah ✅ sebelumnya, T-102.5 melengkapi sisa satu-satunya
+> checklist `[ ]`). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-102,
+> `PROJECT_STATE.md` § KI-005, KI-035.
 
 > **Update (2026-09-04, T-102.6 selesai — T-102.1 tuntas penuh):** **T-102.6**
 > (migrasi `useToast` Astryx → shadcn) selesai dikerjakan Mark UI Engineer di
@@ -367,7 +387,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
-| **T-102** | Cleanup & Verifikasi Akhir                      | 🟡      | **In Progress** — T-102.1 ✅ (tuntas penuh), T-102.2 ✅, T-102.3 ✅ (update `ctx-design.md`/`ctx-implementation.md`), T-102.4 ✅ (QA visual menyeluruh Najwa QA Engineer, PASS 0 regresi; **KI-045** ditemukan — regresi RBAC Creator, di luar scope), T-102.6 ✅ (migrasi `useToast` → `sonner`, verifikasi visual toast dikonfirmasi manual King Rezi "toast oke" 2026-09-04). Sisa: T-102.5. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-102 |
+| **T-102** | Cleanup & Verifikasi Akhir                      | ✅      | **Done** — seluruh 6 subtask tuntas: T-102.1 (hapus dependency Astryx), T-102.2 (grep 0 import aktif), T-102.3 (update `ctx-design.md`/`ctx-implementation.md`), T-102.4 (QA visual menyeluruh Najwa QA Engineer, PASS 0 regresi; **KI-045** ditemukan — regresi RBAC Creator, di luar scope), T-102.5 (re-evaluasi & tutup KI-005 moot, KI-030 & KI-035 poin 1 dikonfirmasi closed sebelumnya, KI-035 poin 2 baru ditutup Resolved), T-102.6 (migrasi `useToast` → `sonner`, verifikasi visual toast dikonfirmasi manual King Rezi "toast oke" 2026-09-04). Dengan ini rilis **v0.7 tuntas 100%**. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-102 |
 | **T-101** | Migrasi Publish — Calendar, Queue, Drafts, Dashboard | ✅      | **Selesai (2026-09-03)** — seluruh 5/5 subtask tuntas: T-101.1 (Calendar), T-101.2 (Queue), T-101.3 (Drafts), T-101.4 (header/tabbar/layout), T-101.5 (Dashboard). Lolos review Ridwan (0 temuan) tiap subtask. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-101 |
 | **T-100** | Migrasi Publish — Draft Editor Modal             | ✅      | **Selesai (2026-09-03)** — seluruh 4/4 subtask tuntas (struktur modal + layout, form controls shadcn, `TimeInput` → native `<input type="time">` (**KI-030 Closed**), verifikasi behavior penuh end-to-end). Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh). Temuan minor: **KI-043**, **KI-044**. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-100 |
 | **T-099** | Migrasi Settings                                 | ✅      | **Selesai (2026-09-02)** — 3/3 subtask (`WorkspaceGeneralSettings.tsx`/`ProfileForm.tsx`/`preferences/page.tsx`/`SettingsPageHead.tsx`, `MembersTable.tsx`/`InviteMemberDialog.tsx`/`InviteMemberAction.tsx`, `ConnectedAccountsList.tsx`/`ConnectPlatformMenu.tsx`/`WorkspacesSettingsView.tsx`), lolos review Ridwan (0 temuan) + QA Najwa (PASS, 1 temuan minor viewport sempit dicatat di **KI-042**). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-099 |
