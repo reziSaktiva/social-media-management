@@ -11,6 +11,14 @@ import { WorkspaceGeneralSettings } from "./components/WorkspaceGeneralSettings"
 // Settings → Organization → General (T-008.4). ADR-076: workspaceId dari
 // getWorkspaceContext() (header proxy.ts), bukan resolve ulang dari slug —
 // pola sama seperti (app)/settings/members/page.tsx.
+//
+// RBAC (roles-permissions.md, KI-045): Creator "Tidak ada akses" ke
+// Organization Settings sama sekali — bukan cuma section/tombol
+// disembunyikan. Gate dicek di sini, SEBELUM data workspace/members
+// dimuat, sama seperti pola members/page.tsx. Redirect ke "/settings/account"
+// (profile pribadi user, bukan "/settings" — halaman ini sendiri yang
+// sedang di-guard) karena halaman itu bisa diakses semua role tanpa
+// bergantung pada role workspace.
 export default async function Page() {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -20,6 +28,14 @@ export default async function Page() {
 
   const workspaceService = new WorkspaceService(workspaceRepository);
   const actorUserId = asUserId(session.user.id);
+
+  const canAccessSettings = await workspaceService.canManageWorkspaceSettings(
+    workspaceId,
+    actorUserId,
+  );
+  if (!canAccessSettings) {
+    redirect("/settings/account");
+  }
 
   const [workspace, membership, members] = await Promise.all([
     workspaceService.getWorkspaceById(workspaceId),
