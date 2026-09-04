@@ -19,8 +19,13 @@ const TABS = [
  * (bukan tab konten client-side biasa) — tiap `TabsTrigger` dirender
  * `asChild` sebagai `next/link` `Link` supaya tetap navigasi Next.js
  * (prefetch, back/forward, tanpa full reload), dan `Tabs` dikontrol lewat
- * `value`/`onValueChange` yang disinkronkan ke `usePathname()` supaya
- * active state selalu benar setelah navigasi (bukan state Radix internal).
+ * `value` yang disinkronkan ke `usePathname()` supaya active state selalu
+ * benar setelah navigasi (bukan state Radix internal). Tidak ada
+ * `onValueChange` karena tidak ada state lokal untuk di-set — aktivasi
+ * sesungguhnya terjadi lewat navigasi `Link` (klik/Enter), bukan lewat
+ * fokus. `activationMode="manual"` supaya perpindahan fokus lewat panah
+ * tidak memicu mode "automatic" bawaan Radix (yang butuh `onValueChange`
+ * untuk sinkron dan diam-diam no-op tanpanya).
  */
 export function PublishTabbar() {
   const pathname = usePathname();
@@ -30,7 +35,7 @@ export function PublishTabbar() {
     "calendar";
 
   return (
-    <Tabs value={activeTab}>
+    <Tabs value={activeTab} activationMode="manual">
       <TabsList variant="line">
         {TABS.map((tab) => (
           <TabsTrigger key={tab.value} value={tab.value} asChild>

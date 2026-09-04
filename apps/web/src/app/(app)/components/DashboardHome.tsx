@@ -197,7 +197,7 @@ export function DashboardHome({
                     </Text>
                   </div>
                   <Progress
-                    value={summary.avgEngagementRate * 100}
+                    value={Math.min(summary.avgEngagementRate * 100, 100)}
                     aria-label="Rata-rata engagement rate"
                   />
                 </div>

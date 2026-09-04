@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
   Cancel01Icon,
   Clock01Icon,
@@ -62,6 +62,39 @@ function formatScheduledTime(date: Date): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+/**
+ * Tombol aksi item Queue (Publish Now/Edit/Cancel Schedule) — dipusatkan
+ * di sini (T-101.2 review) supaya 3 blok `Tooltip`+`Button` yang identik
+ * strukturnya (beda ikon/label/variant/handler saja) tidak diduplikasi.
+ */
+function QueueItemActionButton({
+  icon,
+  label,
+  variant,
+  onClick,
+}: {
+  icon: IconSvgElement;
+  label: string;
+  variant: "ghost" | "destructive";
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={variant}
+          size="icon-sm"
+          aria-label={label}
+          onClick={onClick}
+        >
+          <HugeiconsIcon icon={icon} />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 const ALL_ACCOUNTS_FILTER_VALUE = "all";
@@ -215,47 +248,26 @@ export function QueueList({ groups, onCancelSchedule }: QueueListProps) {
 
                           {/* eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only */}
                           <div className="flex items-center gap-1">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  aria-label="Publish Now"
-                                  onClick={() =>
-                                    openEditDraft(item.id, "publish-now")
-                                  }
-                                >
-                                  <HugeiconsIcon icon={SentIcon} />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Publish Now</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  aria-label="Edit"
-                                  onClick={() => openEditDraft(item.id)}
-                                >
-                                  <HugeiconsIcon icon={PencilEdit01Icon} />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="destructive"
-                                  size="icon-sm"
-                                  aria-label="Cancel Schedule"
-                                  onClick={() => onCancelSchedule?.(item.id)}
-                                >
-                                  <HugeiconsIcon icon={Cancel01Icon} />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Cancel Schedule</TooltipContent>
-                            </Tooltip>
+                            <QueueItemActionButton
+                              icon={SentIcon}
+                              label="Publish Now"
+                              variant="ghost"
+                              onClick={() =>
+                                openEditDraft(item.id, "publish-now")
+                              }
+                            />
+                            <QueueItemActionButton
+                              icon={PencilEdit01Icon}
+                              label="Edit"
+                              variant="ghost"
+                              onClick={() => openEditDraft(item.id)}
+                            />
+                            <QueueItemActionButton
+                              icon={Cancel01Icon}
+                              label="Cancel Schedule"
+                              variant="destructive"
+                              onClick={() => onCancelSchedule?.(item.id)}
+                            />
                           </div>
                         </div>
 

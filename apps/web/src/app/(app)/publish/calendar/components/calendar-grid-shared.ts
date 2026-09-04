@@ -43,6 +43,20 @@ export const CALENDAR_DAY_COLUMNS = 7;
 export const MAX_VISIBLE_PER_CELL = 3;
 
 /**
+ * Class trigger kartu entry Calendar (T-101.1) — replikasi manual visual
+ * `Card` (`components/ui/card.tsx`: `rounded-2xl bg-card ring-1
+ * ring-foreground/10`) ditambah state interaktif (`p-1.5 text-left
+ * transition-colors hover:bg-muted/50 focus-visible:*`), dipakai sebagai
+ * `<button>` trigger tunggal `PopoverTrigger asChild`. Astryx
+ * `ClickableCard` sebelumnya menyatukan ini dalam satu komponen; shadcn
+ * belum punya padanan siap-pakai, jadi dipusatkan di sini (bukan
+ * diduplikasi di `CalendarMonthGrid`/`CalendarWeekGrid`) supaya perubahan
+ * visual kartu klik (ring, radius, hover) cukup diubah sekali.
+ */
+export const CALENDAR_ENTRY_BUTTON_CLASSNAME =
+  "w-full rounded-2xl bg-card p-1.5 text-left ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
+
+/**
  * `ContentFormat` → label singkat untuk indikator compact di card Calendar
  * (revisi ketiga T-033, Month poin 7 / Week poin 5) — belum ada mapping
  * label existing untuk enum ini di codebase manapun, pola sama

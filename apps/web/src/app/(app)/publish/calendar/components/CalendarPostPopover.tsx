@@ -132,7 +132,7 @@ export function CalendarPostPopover({
             />
           </div>
 
-          <Text variant="p" as="span" className="text-sm">
+          <Text variant="p" as="span" className="mt-0! text-sm">
             {entry.caption || "(Tanpa caption)"}
           </Text>
 

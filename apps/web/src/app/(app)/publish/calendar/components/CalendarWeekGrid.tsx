@@ -13,12 +13,15 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
 import { PLATFORM_ICON } from "../../../components/platform-icons";
+import { CONTENT_STATUS_LABEL } from "../../../components/draft-editor/status-badge";
 import { CalendarEntryFooter } from "./CalendarEntryFooter";
 import { CalendarPostPopover } from "./CalendarPostPopover";
 import {
   addDays,
+  CALENDAR_ENTRY_BUTTON_CLASSNAME,
   type CalendarCardEntry,
   columnDividerClassName,
+  CONTENT_FORMAT_LABEL,
   DAY_LABELS,
   flattenCalendarItemsToEntries,
   MAX_VISIBLE_PER_CELL,
@@ -191,8 +194,8 @@ export function CalendarWeekGrid({
                                 type="button"
                                 aria-label={`${entry.accountHandle} — ${
                                   entry.caption || "(Tanpa caption)"
-                                }`}
-                                className="w-full rounded-2xl bg-card p-1.5 text-left ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                } — ${CONTENT_FORMAT_LABEL[entry.contentFormat]} — ${CONTENT_STATUS_LABEL[entry.status]}`}
+                                className={CALENDAR_ENTRY_BUTTON_CLASSNAME}
                               >
                                 {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only */}
                                 <div className="flex flex-col gap-1">
