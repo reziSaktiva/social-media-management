@@ -73,9 +73,9 @@ function StatTile({ label, value }: { label: string; value: string }) {
         {/* eslint-disable-next-line no-restricted-syntax -- T-101.5: layout-only, file sudah dimigrasi shadcn */}
         <div className="flex flex-col gap-2">
           <Text variant="muted">{label}</Text>
-          <h2 className="font-heading text-2xl font-semibold tracking-tight">
+          <Text variant="h3" as="h2" className="mt-0 scroll-m-0">
             {value}
-          </h2>
+          </Text>
         </div>
       </CardContent>
     </Card>

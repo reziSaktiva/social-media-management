@@ -7,7 +7,7 @@ import type { CalendarPostItem } from "@/domains/publishing";
 
 import { Badge } from "@/components/ui/badge";
 import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
+import { cn, formatUtcDateKeyHeading } from "@/lib/utils";
 
 import {
   CONTENT_STATUS_BADGE_VARIANT,
@@ -35,15 +35,11 @@ const AGENDA_DATE_HEADING_FORMATTER = new Intl.DateTimeFormat("id-ID", {
   timeZone: "UTC",
 });
 
-/** Parse manual `dateKey` ("YYYY-MM-DD") via `Date.UTC` — sama alasan
- * `formatGroupDateHeading` (`QueueList.tsx`): menghindari pergeseran
- * timezone browser saat `new Date("YYYY-MM-DD")` diparse sebagai UTC lalu
- * ditampilkan di formatter non-UTC. */
+/** Parse UTC-safe dipusatkan di `formatUtcDateKeyHeading` (`@/lib/utils`,
+ * code review PR #105) — sama helper dipakai `formatGroupDateHeading`
+ * (`QueueList.tsx`), beda cuma opsi `AGENDA_DATE_HEADING_FORMATTER`. */
 function formatAgendaDateHeading(dateKey: string): string {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return AGENDA_DATE_HEADING_FORMATTER.format(
-    new Date(Date.UTC(year, month - 1, day)),
-  );
+  return formatUtcDateKeyHeading(dateKey, AGENDA_DATE_HEADING_FORMATTER);
 }
 
 export interface CalendarAgendaListProps {

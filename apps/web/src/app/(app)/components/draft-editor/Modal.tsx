@@ -704,9 +704,7 @@ function DraftEditorForm({
                                 {account.handle}
                               </LabeledControl>
                               {isDisconnected ? (
-                                <Badge variant="destructive">
-                                  Disconnected
-                                </Badge>
+                                <Badge variant="warning">Disconnected</Badge>
                               ) : null}
                             </div>
 

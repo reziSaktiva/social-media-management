@@ -12,6 +12,7 @@ import {
 import type { ConnectedAccountId, PostId } from "@social/shared";
 import type { QueueGroup } from "@/domains/publishing";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
+import { formatUtcDateKeyHeading } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,13 +49,10 @@ const DATE_HEADING_FORMATTER = new Intl.DateTimeFormat("id-ID", {
 
 /** `group.date` adalah kalender UTC "YYYY-MM-DD" — format tampilan lengkap
  * (mis. "Senin, 14 Juli", mengikuti mockup Claude Design KSP-03) adalah
- * tanggung jawab UI (T-032.3). Parse manual dengan `Date.UTC` supaya tidak
- * kena pergeseran timezone browser. */
+ * tanggung jawab UI (T-032.3). Parse UTC-safe dipusatkan di
+ * `formatUtcDateKeyHeading` (`@/lib/utils`, code review PR #105). */
 function formatGroupDateHeading(dateKey: string): string {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return DATE_HEADING_FORMATTER.format(
-    new Date(Date.UTC(year, month - 1, day)),
-  );
+  return formatUtcDateKeyHeading(dateKey, DATE_HEADING_FORMATTER);
 }
 
 function formatScheduledTime(date: Date): string {

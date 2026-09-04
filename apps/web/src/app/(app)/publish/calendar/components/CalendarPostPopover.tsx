@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Text } from "@/components/ui/text";
-import { getInitials } from "@/lib/utils/get-initials";
+import { getInitials } from "@/lib/utils";
 
 import {
   CONTENT_STATUS_BADGE_VARIANT,
