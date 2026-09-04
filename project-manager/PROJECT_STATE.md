@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-100 Migrasi Publish — Draft Editor Modal — ✅ Done (2026-09-03, ADR-097)**, seluruh 4/4 subtask tuntas (T-100.1 struktur modal + layout, T-100.2 form controls shadcn, T-100.3 `TimeInput` → native `<input type="time">` (**KI-030 Closed**), T-100.4 verifikasi behavior penuh end-to-end), lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh; temuan minor **KI-043**, **KI-044**) — lihat `TASKS.md`/`tasks/v07-astryx-shadcn-migration.md` § T-100 untuk detail. **T-101 Migrasi Publish — Calendar, Queue, Drafts, Dashboard** menyusul sebagai task berikutnya rilis v0.7, lalu **T-102**. T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** **T-101 Migrasi Publish — Calendar, Queue, Drafts, Dashboard — ✅ Done (2026-09-03, ADR-097)**, seluruh 5/5 subtask tuntas (T-101.1 Calendar, T-101.2 Queue, T-101.3 Drafts, T-101.4 header/tabbar/layout, T-101.5 Dashboard), lolos verifikasi visual Mark UI Engineer + review Ridwan (0 temuan tiap subtask); re-evaluasi **KI-035** poin 1 Resolved, poin 3 tetap Open — lihat `TASKS.md`/`tasks/v07-astryx-shadcn-migration.md` § T-101 untuk detail. Task berikutnya rilis v0.7: **T-102 Cleanup & Verifikasi Akhir** (⏳ Not Started). T-100 Migrasi Publish — Draft Editor Modal sudah ✅ Done (2026-09-03). T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap di antrean — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 85 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.64     |
+| Version      | 1.0.67     |
 | Status       | Active     |
 | Last Updated | 2026-09-03 |
 
@@ -42,8 +42,8 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
   `tasks/v07-astryx-shadcn-migration.md`, T-095–T-102) — permintaan
   eksplisit King Rezi, dikerjakan **sebelum** T-025/T-036. Strategi
   incremental per route-segment, Astryx & shadcn coexist sementara.
-  T-095/T-096/T-097/T-098/T-099 sudah `✅ Done`; **T-100** `🟡 In
-  Progress` (3/4 subtask); T-101, T-102 tersisa.
+  T-095/T-096/T-097/T-098/T-099/T-100 sudah `✅ Done`; **T-101** `🟡 In
+  Progress` (4/5 subtask); T-102 tersisa.
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
 * `AGENTS.md` di root sudah ada; skill resmi vendor yang relevan (Prisma,
   Better Auth, Vercel, Supabase) sudah terpasang di `.claude/skills/` —
@@ -378,9 +378,9 @@ Settings → General → Danger Zone kalau perlu. Tidak memblokir M8.
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | Sebagian Resolved — sisa scope: poin 3 (layout mobile sempit ~375px) |
 | Kategori | Tech-Debt / Infra |
-| Terkait | T-033 (`tasks/v02-publishing-mvp.md` § T-033) |
+| Terkait | T-033 (`tasks/v02-publishing-mvp.md` § T-033), T-101.1 (`tasks/v07-astryx-shadcn-migration.md` § T-101) |
 
 Ditemukan 2026-08-27 saat polishing grid Calendar (Month/Week, di atas
 T-033.1–.6/.8, sebelum T-033.7). Tiga temuan, dicatat sebagai referensi ke
@@ -403,6 +403,20 @@ layak ADR:
    (grid 7-kolom fixed di-shrink). Perbaikan lanjutan (mis. tampilan
    agenda/list khusus mobile) butuh rancangan baru di Claude Design dulu
    (rule 17 `AGENTS.md`), bukan sekadar tweak CSS.
+
+**Update 2026-09-03 (T-101.1, migrasi Calendar ke shadcn/ui):**
+
+- **Poin 1 (StyleX/`xstyle`) — Resolved.** Tidak relevan lagi: grid
+  Calendar sekarang 100% Tailwind (`grid-cols-7`), tidak ada dependency
+  ke `xstyle` Astryx sama sekali.
+- **Poin 3 (layout mobile sempit ~375px) — tetap Open.** Diverifikasi
+  browser mobile 375px: toolbar filter sudah stack vertikal, footer card
+  sudah pakai `StatusDot`+`Icon` compact (bukan `Badge` penuh) — sudah
+  berfungsi baik, tapi belum ada perubahan mendasar ke pola agenda/list
+  karena itu butuh rancangan baru di Claude Design (di luar scope
+  T-101.1).
+- Poin 2 (`Badge` Astryx tanpa prop `size`/truncation) tidak dievaluasi
+  ulang di sesi ini — masih Open, di luar scope T-101.1.
 
 ### KI-036 · Dashboard (`app/(app)/page.tsx`) fetch data lewat Server Action, menyimpang RS-D02
 
@@ -665,11 +679,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-101 Migrasi Publish — Calendar, Queue, Drafts, Dashboard selesai (2026-09-03, ADR-097)** — task keenam rilis v0.7 (migrasi Astryx→shadcn/ui), seluruh 5/5 subtask tuntas: T-101.1 (Calendar), T-101.2 (Queue), T-101.3 (Drafts), T-101.4 (header/tabbar/layout), T-101.5 (Dashboard: `DashboardHome.tsx` — `Card`/`Empty`/`Select`/`Progress` shadcn, komponen baru `progress`; label persentase `Progress` dirender manual, gap desain-token konsisten presedan T-101.1/T-101.3; **KI-036** tetap technical debt terpisah, tidak disentuh). Lolos review Ridwan (0 temuan tiap subtask). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-101, `COMPLETE_TASK.md`.
+* **T-101.4 Migrasi Publish — Header/Tabbar/Layout selesai (2026-09-03, ADR-097)** — subtask keempat dari 5 di T-101 (rilis v0.7, migrasi Astryx→shadcn/ui): `PublishPageHeader.tsx` (Tailwind flex + `<h1>` raw + `Text`/`Button` shadcn), `PublishTabbar.tsx` (shadcn `Tabs`/`TabsList`/`TabsTrigger` route-driven via `usePathname()`, tiap trigger `asChild` sebagai `next/link`), `layout.tsx` (Tailwind flex). Komponen shadcn baru: `tabs`. Implementasi Mark UI Engineer, lolos review Ridwan (0 temuan) — typecheck/lint bersih, verifikasi visual browser (akun Raka Pratama/Owner, light/dark mode, tab switching Calendar→Queue→Drafts→History, mobile 375px) tanpa regresi. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-101, `COMPLETE_TASK.md`.
+* **T-101.3 Migrasi Publish — Drafts selesai (2026-09-03, ADR-097)** — subtask ketiga dari 5 di T-101 (rilis v0.7, migrasi Astryx→shadcn/ui): `DraftsList.tsx` dimigrasi penuh ke shadcn (`Card`/`CardContent`, `Empty`/`EmptyHeader`/`EmptyTitle`/`EmptyDescription`, `Item`/`ItemGroup`/`ItemContent`/`ItemTitle`/`ItemDescription`/`ItemActions`), tidak ada komponen shadcn baru (presedan dari T-099.3). `Badge` Astryx sengaja dipertahankan untuk indikator status warna, presedan sama dengan T-100.1/T-101.1. Implementasi Mark UI Engineer, lolos review Ridwan (0 temuan) — typecheck/lint bersih, verifikasi visual browser (akun Raka Pratama/Owner, light/dark mode, mobile 375px) tanpa regresi. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-101, `COMPLETE_TASK.md`.
+* **T-101.2 Migrasi Publish — Queue selesai (2026-09-03, ADR-097)** — subtask kedua dari 5 di T-101 (rilis v0.7, migrasi Astryx→shadcn/ui): `QueueList.tsx`, `QueueScreen.tsx` dimigrasi penuh ke shadcn (`Button`/`Card`/`Select`/`Empty`/`Text`/`Separator`/`Tooltip`/`Alert`/`AlertDialog`/`Spinner`, semua sudah tersedia dari migrasi sebelumnya, tidak ada komponen baru). Icon aksi pindah ke `hugeicons`, icon platform tetap `react-icons` (dikecualikan ADR-058). Dialog Cancel Schedule (Tier 2 ADR-049) pakai pola `AlertDialogAction`+`preventDefault()`. Implementasi Mark UI Engineer, lolos review Ridwan (0 temuan) — typecheck/lint bersih, verifikasi visual browser (light/dark mode, mobile 375px) tanpa regresi. Gap dicatat (bukan penyimpangan): `useToast` masih Astryx, belum ada padanan shadcn (`sonner`) — technical debt terpisah, di luar scope T-101.2. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-101, `COMPLETE_TASK.md`.
 * **T-100 Migrasi Publish — Draft Editor Modal selesai (2026-09-03, ADR-097)** — task kelima rilis v0.7 (migrasi Astryx→shadcn/ui), 4/4 subtask tuntas: T-100.1 (struktur modal + layout, `Dialog`/`DialogHeader`/`DialogFooter` shadcn + Tailwind layout manual, varian Standard/Fullscreen ADR-065/052 dipertahankan), T-100.2 (form controls: Caption `Textarea`, Media `Input type="file"`, Account `Checkbox`, Content Format `RadioGroup`, Pinterest `Input`, Tanggal Jadwal native `<input type="date">`), T-100.3 (`TimeInput` → native `<input type="time">`, **KI-030 Closed**), T-100.4 (verifikasi behavior penuh end-to-end oleh Najwa QA Engineer — golden path + edge case seluruh alur Schedule/Publish Now/Save Draft/Edit Draft/ResumeDialog/toggle Fullscreen, tidak ada regresi). Lolos review Ridwan (0 temuan tiap subtask) + QA Najwa (PASS penuh). Temuan minor sepanjang task: **KI-043** (`clearUnsavedNewPost()` tidak dipanggil di jalur Schedule/Publish Now), **KI-044** (tidak ada validasi mencegah Schedule ke waktu yang sudah lewat). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-100, `COMPLETE_TASK.md`.
-* **T-099 Migrasi Settings selesai (2026-09-02, ADR-097)** — task rilis v0.7 (migrasi Astryx→shadcn/ui), 3/3 subtask tuntas: T-099.1 (General/Profile/Preferences settings), T-099.2 (`MembersTable.tsx` — helper `pixel()`/`proportional()` Astryx dihapus total diganti shadcn `Table` primitive, `InviteMemberDialog.tsx`, `InviteMemberAction.tsx`), T-099.3 (`ConnectedAccountsList.tsx`, `ConnectPlatformMenu.tsx`, `WorkspacesSettingsView.tsx`). Implementasi Mark UI Engineer, lolos review Ridwan (0 temuan) + QA Najwa (PASS, 1 temuan minor). Komponen shadcn baru: `alert-dialog`, `avatar`, `badge`, `dropdown-menu`, `item`, `radio-group`, `select`, `table`, `toggle`/`toggle-group`, `tooltip`. Temuan minor viewport sempit dicatat **KI-042**; gap **KI-041** meluas (Badge "Pending" pakai `outline`). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-099, `COMPLETE_TASK.md`.
-* **T-098 Migrasi App Shell & Navigasi selesai (2026-09-02, ADR-097)** — task keempat rilis v0.7 (migrasi Astryx→shadcn/ui), 4/4 subtask tuntas: T-098.1–.3 (`WorkspaceSideNav.tsx`/`SettingsSideNav.tsx`/`ChannelsSection.tsx`, `NotificationBell.tsx` ke shadcn `Sheet` + hapus `Drawer.tsx` custom, re-verifikasi **KI-040** → Closed), T-098.4 (sidebar mobile hamburger+`Sheet` via `MobileTopBar.tsx` baru, `MembersTable.tsx` card layout mobile, menutup **KI-042**). Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh — typecheck/lint/Vitest bersih 235 lulus/4 skipped, desktop tanpa regresi, mobile 375px/320px berfungsi benar). 2 temuan di luar scope dicatat tapi bukan blocker (tabel Members di 768px persis butuh scroll horizontal — pre-existing; card Analytics Snapshot Home putih saat dark mode — bug pre-existing). **KI-042 Closed.** Detail: `tasks/v07-astryx-shadcn-migration.md` § T-098, `COMPLETE_TASK.md`.
-* **T-097 Migrasi Auth Flows & Onboarding selesai (2026-09-02, ADR-097)** — task ketiga rilis v0.7 (migrasi Astryx→shadcn/ui), 5/5 subtask tuntas: T-097.1 (Login & Register), T-097.2 (Forgot/Reset password), T-097.3 (Accept Invite), T-097.4 (`app/(auth)/layout.tsx`), T-097.5 (Onboarding flow). Implementasi Mark UI Engineer, lolos review Ridwan (0 temuan) + QA Najwa (semua PASS: typecheck 0 error, lint 0 error, Vitest 235 passed/4 skipped, browser E2E golden+edge case). Komponen shadcn baru: `alert`, `checkbox`, `label`, `separator`, `field`, `empty`, `input-group`. Gap desain ditemukan (dicatat, tidak ditutup sendiri): Stone theme shadcn belum punya token `--success`/`--warning` — **KI-041** baru. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-097, `COMPLETE_TASK.md`.
-* **T-096 Migrasi Core Infra & Shared Primitives selesai (2026-09-01, ADR-097)** — task kedua rilis v0.7 (migrasi Astryx→shadcn/ui), 4/4 subtask tuntas: `globals.css` baru berbasis Tailwind v4 + shadcn (`@import` Astryx sengaja dipertahankan sementara untuk route-segment yang belum dimigrasi, dihapus di T-102), `Providers.tsx` (class `dark` shadcn berdampingan dengan `<Theme>` Astryx, bukan pengganti, supaya dark/light mode tidak desync; dilepas di T-102), root `app/(app)/layout.tsx` dimigrasi ke komposisi shadcn (gap sidebar mobile hamburger+drawer sengaja belum direplikasi, dicatat KI-042), primitive baru `Button`/`Card`/`Dialog`/`Input` (CLI shadcn resmi) + `Text`/Typography (ditulis manual). Dikerjakan Mark UI Engineer, typecheck & lint bersih, verifikasi visual manual browser tanpa regresi, dikonfirmasi King Rezi. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-096, `COMPLETE_TASK.md`.
 ---
 
 ## Recent Decisions (Ringkasan)

@@ -8,6 +8,308 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-03 — T-101.5 selesai: Migrasi Dashboard ke shadcn/ui — T-101 Done (5/5 subtask, v0.7)
+
+**T-101.5** (Dashboard: `DashboardHome.tsx`, subtask terakhir dari **T-101**
+Migrasi Publish — Calendar, Queue, Drafts, Dashboard, rilis v0.7 migrasi
+Astryx→shadcn/ui, ADR-097) selesai di branch
+`feature/t-101-publish-calendar-queue-drafts-migration`. Dengan ini
+**T-101 ditutup `✅ Done` (5/5 subtask)**.
+
+**File yang diubah**: `apps/web/src/app/(app)/components/DashboardHome.tsx`
+— migrasi penuh dari Astryx (`Card`, `EmptyState`, `Grid`, `Heading`,
+`HStack`, `ProgressBar`, `Section`, `Selector`, `Text`, `VStack`) ke
+shadcn/ui.
+
+**File baru**: `apps/web/src/components/ui/progress.tsx` (via `bunx
+shadcn@latest add progress`, belum pernah ada sebelumnya, di-discover dulu
+via MCP search/view/examples sebelum install).
+
+**Pemetaan komponen:**
+
+- `VStack`/`HStack`/`Section` → Tailwind flex/grid (pola sama
+  `PublishPageHeader.tsx` T-101.4)
+- `Heading level={1}`/`level={2}` → `<h1>`/`<h2>` raw + Tailwind (pola sama
+  `SettingsPageHead` T-099.1)
+- `Text type="supporting"` → shadcn `Text variant="muted"`/`"small"`
+- `Selector` (weekly/monthly) → shadcn `Select`/`SelectTrigger`/
+  `SelectValue`/`SelectContent`/`SelectItem` (pola sama
+  `CalendarToolbar.tsx` T-101.1)
+- `Card` → shadcn `Card`/`CardContent`
+- `EmptyState` → shadcn `Empty`/`EmptyHeader`/`EmptyTitle`/
+  `EmptyDescription`
+- `Grid` (3 StatTile) → `grid grid-cols-1 sm:grid-cols-3 gap-4`
+- `ProgressBar` → shadcn `Progress` (Radix, skala value 0-100) — tidak ada
+  value-label formatting bawaan seperti Astryx (`hasValueLabel`/
+  `formatValueLabel`), jadi label persentase dirender manual sebagai
+  `Text` di atas komponen `Progress` — dicatat sebagai gap desain-token/API
+  konsisten dengan presedan gap serupa di T-101.1/T-101.3, bukan
+  penyimpangan baru.
+
+**Tidak diubah**: state `period`, `useTransition`, Server Action
+`getDashboardSummaryAction`, guard `latestRequestedPeriod` — murni migrasi
+presentasi. **KI-036** (dashboard fetch via Server Action menyimpang
+RS-D02) tetap technical debt terpisah, tidak disentuh.
+
+**Gate rule 17 AGENTS.md:** rancangan Home/Dashboard dicek dulu ke Claude
+Design project "Social Media Management" (`templates/home.html`, KSP-01 —
+Home, section Analytics Snapshot) — sudah ada, implementasi lanjut tanpa
+hambatan.
+
+**Verifikasi**: `bun run typecheck` PASS 0 error; `bunx eslint` PASS 0
+error; verifikasi visual browser (Mark UI Engineer) — empty state dark
+mode PASS, golden path dark+light mode PASS, mobile 375px PASS (tidak
+overflow), interaksi ganti periode Mingguan↔Bulanan via Select berfungsi,
+console browser bersih. Review arsitektur Ridwan Architecture Reviewer:
+**0 temuan** (logic tidak berubah, tidak ada import Prisma/Supabase/
+Outstand, cross-domain lewat barrel `@/domains/analytics`, prop/variant
+shadcn diverifikasi valid ke source `cva()`).
+
+**Dampak indeks:** `TASKS.md` — v0.7 breakdown 6 ✅ · 1 🟡 · 1 ⏳ → **7 ✅
+· 1 ⏳**; task selesai global 31 → **32**; hitungan subtask v0.7 tidak
+berubah (37, dihitung ulang langsung dari
+`tasks/v07-astryx-shadcn-migration.md`). Task berikutnya rilis v0.7:
+**T-102 Cleanup & Verifikasi Akhir**.
+
+Detail lengkap: `project-manager/tasks/v07-astryx-shadcn-migration.md` §
+T-101.
+
+---
+
+## 2026-09-03 — T-101.4 selesai: Migrasi Publish — Header/Tabbar/Layout ke shadcn/ui (T-101 v0.7, 4/5 subtask)
+
+**T-101.4** (Header/Tabbar/Layout, bagian dari **T-101** Migrasi Publish —
+Calendar, Queue, Drafts, Dashboard, rilis v0.7 migrasi Astryx→shadcn/ui,
+ADR-097) selesai di branch
+`feature/t-101-publish-calendar-queue-drafts-migration`. T-101 tetap `🟡
+In Progress` (4 dari 5 subtask tuntas).
+
+**File yang diubah**:
+`apps/web/src/app/(app)/publish/components/PublishPageHeader.tsx`,
+`apps/web/src/app/(app)/publish/components/PublishTabbar.tsx`,
+`apps/web/src/app/(app)/publish/layout.tsx`.
+
+**Ringkasan migrasi:**
+
+- `PublishPageHeader.tsx`: `HStack`/`VStack`/`Heading`/`Text`/`Button`
+  Astryx → Tailwind flex + `<h1>` raw (pola sama dengan
+  `SettingsPageHead` T-099.1) + `Text` (`variant="muted"`) + `Button`
+  shadcn. Icon `PlusSignIcon` (hugeicons) mengganti label literal "+".
+- `PublishTabbar.tsx`: `TabList`/`Tab` Astryx → shadcn `Tabs`/`TabsList`
+  (`variant="line"`)/`TabsTrigger` (Radix Tabs). Karena navigasi rute
+  (bukan tab client-side), tiap `TabsTrigger` di-render `asChild` sebagai
+  `next/link` Link, `Tabs` dikontrol lewat `value` dari `usePathname()`
+  supaya active state sinkron dengan URL (tanpa `onValueChange`, murni
+  route-driven).
+- `layout.tsx`: `VStack` Astryx → Tailwind flex, tetap composition murni
+  tanpa business logic.
+- Komponen shadcn baru: `tabs` (`bunx shadcn@latest add @shadcn/tabs` →
+  `apps/web/src/components/ui/tabs.tsx`, style `radix-maia`). Komponen
+  lain (`Button`, `Text`) sudah tersedia dari migrasi sebelumnya.
+- Catatan minor (bukan penyimpangan): ukuran heading "Publish"
+  (`text-2xl font-semibold`) keputusan gaya Mark UI Engineer karena tidak
+  ada variant `Text` shadcn yang cocok untuk page-header ringkas — sama
+  alasan dengan `SettingsPageHead` (T-099.1) pakai `<h2>` raw. Nit
+  non-arsitektur dari Ridwan: docstring di `PublishTabbar.tsx` menyebut
+  `onValueChange` padahal tidak dipakai di kode (kosmetik).
+- History tab menampilkan halaman scaffold placeholder (T-034, di luar
+  scope task ini) — bukan regresi.
+
+**Verifikasi:** `bun run typecheck` PASS 0 error; `bunx eslint` pada 4
+file yang diubah PASS 0 error/warning; verifikasi visual browser (Mark UI
+Engineer, akun Raka Pratama/Owner, workspace Insvire) PASS — light/dark
+mode, tab switching Calendar→Queue→Drafts→History (active underline &
+subtitle header berpindah benar, routing Next.js tanpa full reload),
+tombol "+ New Post" membuka Draft Editor modal, mobile ~375px rapi, tidak
+ada regresi. Review arsitektur Ridwan: 0 temuan (entry point tanpa
+business logic, tidak ada import Prisma/Supabase/HTTP Outstand, tidak ada
+pelanggaran cross-domain/shared types).
+
+Detail lengkap: `tasks/v07-astryx-shadcn-migration.md` § T-101.
+
+---
+
+## 2026-09-03 — T-101.3 selesai: Migrasi Publish — Drafts ke shadcn/ui (T-101 v0.7, 3/5 subtask)
+
+**T-101.3** (Drafts, bagian dari **T-101** Migrasi Publish — Calendar,
+Queue, Drafts, Dashboard, rilis v0.7 migrasi Astryx→shadcn/ui, ADR-097)
+selesai di branch `feature/t-101-publish-calendar-queue-drafts-migration`.
+T-101 tetap `🟡 In Progress` (3 dari 5 subtask tuntas).
+
+**File yang diubah**:
+`apps/web/src/app/(app)/publish/drafts/components/DraftsList.tsx`.
+
+**Ringkasan migrasi:**
+
+- Migrasi penuh dari Astryx (`VStack`, `Card`, `EmptyState`,
+  `List`/`ListItem`) ke shadcn/ui (`Card`/`CardContent`,
+  `Empty`/`EmptyHeader`/`EmptyTitle`/`EmptyDescription`,
+  `Item`/`ItemGroup`/`ItemContent`/`ItemTitle`/`ItemDescription`/
+  `ItemActions`).
+- Tidak ada komponen shadcn baru yang di-install — `Card`/`Empty`/`Item`
+  sudah ada dari migrasi T-099.3 (`ConnectedAccountsList.tsx`,
+  `WorkspacesSettingsView.tsx`), dipakai sebagai presedan langsung
+  (baris klik-penuh pakai `Item asChild` membungkus `<button>`, divider
+  antar baris pakai `divide-y divide-border` pada `ItemGroup`).
+- **Keputusan desain:** `Badge` Astryx (`@astryxdesign/core/Badge`)
+  sengaja dipertahankan untuk indikator warna status (6 varian status
+  semantik `neutral/warning/info/purple/success/error`, Stone theme
+  shadcn cuma punya `default/secondary/destructive/outline/ghost/link`)
+  — presedan sama persis dengan `Modal.tsx` (T-100.1) dan
+  `CalendarPostPopover.tsx`/`CalendarEntryFooter.tsx` (T-101.1), bukan
+  penyimpangan baru.
+
+**Verifikasi:**
+
+- `bun run typecheck` PASS 0 error; `bunx eslint` pada file yang diubah
+  PASS 0 error/warning.
+- Verifikasi visual browser (Mark UI Engineer, akun Raka Pratama/Owner,
+  workspace Insvire): list drafts render normal, klik baris membuka
+  modal Edit Draft dengan benar. Light mode OK, dark mode OK, mobile
+  375px OK (tidak ada overflow/elemen rusak, caption panjang wrap dengan
+  baik). Console browser bersih.
+- Review arsitektur Ridwan: 0 temuan — file murni komponen UI client,
+  tidak menyentuh Server Action/domain layer, import
+  `PublishingPostRecord` lewat barrel `@/domains/publishing` (public
+  API, bukan implementasi langsung), tidak ada import Prisma/Supabase/
+  HTTP Outstand, props/variant shadcn (`Card`, `Empty`, `Item`, dst.)
+  dicocokkan valid ke source `cva()` di `apps/web/src/components/ui/`.
+  `eslint-disable no-restricted-syntax` pada `<div>` pembungkus dicek
+  valid — ada exception rule resmi di `eslint.config.mjs` untuk file
+  yang sudah dimigrasi shadcn.
+
+**Status setelah T-101.3:** T-101 tetap `🟡 In Progress` — sisa T-101.4
+(`PublishPageHeader.tsx`, `PublishTabbar.tsx`,
+`app/(app)/publish/layout.tsx`) dan T-101.5 (Dashboard:
+`DashboardHome.tsx`) belum dikerjakan.
+
+---
+
+## 2026-09-03 — T-101.2 selesai: Migrasi Publish — Queue ke shadcn/ui (T-101 v0.7, 2/5 subtask)
+
+**T-101.2** (Queue, bagian dari **T-101** Migrasi Publish — Calendar,
+Queue, Drafts, Dashboard, rilis v0.7 migrasi Astryx→shadcn/ui, ADR-097)
+selesai di branch `feature/t-101-publish-calendar-queue-drafts-migration`.
+T-101 tetap `🟡 In Progress` (2 dari 5 subtask tuntas).
+
+**File yang diubah** (semua di
+`apps/web/src/app/(app)/publish/queue/components/`): `QueueList.tsx`,
+`QueueScreen.tsx`.
+
+**Ringkasan migrasi:**
+
+- Tidak ada komponen shadcn baru yang perlu di-install — semua
+  (`Button`, `Card`, `Select`, `Empty`, `Text`, `Separator`, `Tooltip`,
+  `Alert`, `AlertDialog`, `Spinner`) sudah tersedia dari migrasi
+  sebelumnya.
+- Icon aksi (Publish Now, Edit, Cancel Schedule) dan icon jam pindah ke
+  `hugeicons` (`SentIcon`, `PencilEdit01Icon`, `Cancel01Icon`,
+  `Clock01Icon`). Icon platform (Instagram/Facebook) tetap `react-icons`
+  — dikecualikan per ADR-058 (ikon brand), dikonfirmasi bukan
+  pelanggaran oleh Ridwan Architecture Reviewer.
+- Dialog "Batalkan jadwal ini?" (Cancel Schedule, Tier 2 ADR-049) memakai
+  pola `AlertDialogAction` + `preventDefault()` sesuai presedan
+  `MembersTable.tsx` — dialog tetap terbuka sampai proses selesai.
+- **Gap dicatat (bukan penyimpangan):** `useToast` masih dari Astryx —
+  dikonfirmasi (grep) sebagai satu-satunya titik pakai Toast di seluruh
+  app, belum ada padanan shadcn (`sonner`) terpasang. Migrasi toast
+  butuh keputusan sistem baru untuk seluruh app → di luar scope T-101.2.
+  Ridwan menilai ini gap yang sah di bawah kebijakan migrasi incremental
+  ADR-097, bukan pelanggaran, dan menyarankan jadi item backlog terpisah
+  ("pilih & install sistem toast shadcn/sonner, migrasi titik pakai
+  terakhir").
+
+**Verifikasi:**
+
+- `bun run typecheck` PASS 0 error; `bunx eslint` pada 2 file PASS 0
+  error.
+- Verifikasi visual browser (akun Raka Pratama/Owner, workspace
+  Insvire): tampilan normal, filter akun berfungsi (termasuk reset ke
+  "Semua akun"), dialog Cancel Schedule berfungsi end-to-end (toast
+  muncul, item hilang dari list), tidak ada regresi. Light mode, dark
+  mode, mobile 375px dicek — tidak ada overflow/elemen rusak. Console
+  browser bersih.
+- Review arsitektur Ridwan: 0 temuan (entry point `actions.ts` tidak
+  tersentuh, domain `publishing` tidak tersentuh, tidak ada import
+  Prisma/Supabase/Outstand, cross-domain lewat barrel
+  `@/domains/publishing`, semua prop/variant shadcn diverifikasi valid
+  ke source `cva()`).
+
+**Dokumen yang diupdate:** `TASKS.md` (baris ringkasan T-101 + blok
+Update di atas Total task), `tasks/v07-astryx-shadcn-migration.md` § T-101
+(checklist T-101.2 + catatan detail), `PROJECT_STATE.md` (Snapshot, Current
+Focus, Completed Ringkasan — geser T-096 keluar dari daftar 5 item
+terakhir).
+
+Next subtask: **T-101.3** (Drafts: `DraftsList.tsx`).
+
+---
+
+## 2026-09-03 — T-101.1 selesai: Migrasi Publish — Calendar ke shadcn/ui (T-101 v0.7 dibuka, 1/5 subtask)
+
+**T-101.1** (Calendar, bagian dari **T-101** Migrasi Publish — Calendar,
+Queue, Drafts, Dashboard, rilis v0.7 migrasi Astryx→shadcn/ui, ADR-097)
+selesai di branch `feature/t-101-publish-calendar-queue-drafts-migration`.
+T-101 berubah `⏳ Not Started` → `🟡 In Progress` (baru 1 dari 5 subtask
+tuntas).
+
+**File yang diubah** (semua di
+`apps/web/src/app/(app)/publish/calendar/components/`):
+`CalendarScreen.tsx`, `CalendarToolbar.tsx`, `CalendarPostPopover.tsx`,
+`CalendarEntryFooter.tsx`, `CalendarMonthGrid.tsx`,
+`CalendarWeekGrid.tsx`. Baru: `apps/web/src/components/ui/popover.tsx`
+(generated via shadcn CLI).
+
+**Ringkasan migrasi:**
+
+- 4 dari 6 file (`CalendarMonthGrid`, `CalendarWeekGrid`,
+  `CalendarToolbar`, `CalendarScreen`) full shadcn.
+- `CalendarPostPopover.tsx` dimigrasi ke shadcn `Popover` (controlled
+  `open`/`onOpenChange`), pola ADR-090/091 dipertahankan penuh (klik post
+  → Popover ringkasan → CTA "Buka Draft Editor"; dikonfirmasi browser,
+  hover tidak membuka popover).
+- `CalendarPostPopover.tsx` dan `CalendarEntryFooter.tsx` sengaja
+  mempertahankan Astryx `Badge`/`StatusDot`/`Icon` untuk indikator status
+  warna — Stone theme shadcn belum punya token semantik
+  `success`/`warning`/`info`/`purple` untuk 6 varian `ContentStatus`
+  (hanya `accent`/`destructive`). Gap desain-token yang sama seperti
+  `Modal.tsx` (T-100.1), bukan penyimpangan baru.
+
+**Re-evaluasi KI-035** (gap infrastruktur ditemukan saat T-033):
+
+- Poin 1 (StyleX/`xstyle` tidak ter-setup) — **ditutup Resolved**, grid
+  Calendar sekarang 100% Tailwind (`grid-cols-7`), tidak ada dependency
+  `xstyle` sama sekali.
+- Poin 3 (layout mobile sempit ~375px) — **tetap Open**. Diverifikasi
+  browser mobile 375px: toolbar filter stack vertikal, footer card pakai
+  `StatusDot`+`Icon` compact — sudah berfungsi baik, tapi perubahan
+  mendasar ke pola agenda/list butuh rancangan baru di Claude Design
+  (di luar scope T-101.1).
+- Poin 2 (`Badge` Astryx tanpa prop `size`/truncation) tidak dievaluasi
+  ulang, tetap Open, di luar scope T-101.1.
+- Status KI-035 diubah jadi "Sebagian Resolved — sisa scope: poin 3".
+
+**Verifikasi:**
+
+- `bun run typecheck` PASS, 0 error.
+- `bun run lint`/`bunx eslint` 7 file PASS, 0 error/warning.
+- Verifikasi visual browser (Mark UI Engineer, akun Maya Anggraini/Admin,
+  workspace Insvire) PASS semua: month view, week view, toolbar (navigasi
+  Today/‹/›, filter status+akun, toggle Week/Month), Popover klik-post
+  (light-dismiss OK), light mode, dark mode, mobile 375px — tidak ada
+  regresi visual.
+- Review arsitektur Ridwan: 0 temuan — entry point tidak tersentuh, tidak
+  ada import Prisma/Supabase/HTTP Outstand di komponen ini, cross-domain
+  tetap lewat public API index, tidak ada refactor business logic/state
+  management diam-diam, props/variant shadcn yang dipakai sudah
+  diverifikasi valid ke `cva()` source.
+
+Belum di-commit. Detail lengkap:
+`tasks/v07-astryx-shadcn-migration.md` § T-101, `TASKS.md`,
+`PROJECT_STATE.md` § KI-035.
+
+---
+
 ## 2026-09-03 — T-100 ditutup ✅ Done sepenuhnya: Migrasi Publish — Draft Editor Modal (4/4 subtask tuntas)
 
 **T-100** (Migrasi Publish — Draft Editor Modal, rilis v0.7, migrasi

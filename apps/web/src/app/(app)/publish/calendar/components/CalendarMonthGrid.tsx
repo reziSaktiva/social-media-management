@@ -1,28 +1,27 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button } from "@astryxdesign/core/Button";
-import { Card } from "@astryxdesign/core/Card";
-import { ClickableCard } from "@astryxdesign/core/ClickableCard";
-import { Divider } from "@astryxdesign/core/Divider";
-import { Grid } from "@astryxdesign/core/Grid";
-import { HStack } from "@astryxdesign/core/HStack";
-import { StackItem } from "@astryxdesign/core/Stack";
-import { Text } from "@astryxdesign/core/Text";
-import { VStack } from "@astryxdesign/core/VStack";
 
 import type { ConnectedAccountId } from "@social/shared";
 import type { CalendarPostItem } from "@/domains/publishing";
 import { getMonthRange } from "@/domains/publishing";
 
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/utils";
+
 import { PLATFORM_ICON } from "../../../components/platform-icons";
+import { CONTENT_STATUS_LABEL } from "../../../components/draft-editor/status-badge";
 import { CalendarEntryFooter } from "./CalendarEntryFooter";
 import { CalendarPostPopover } from "./CalendarPostPopover";
 import {
   addDays,
-  CALENDAR_DAY_COLUMNS,
+  CALENDAR_ENTRY_BUTTON_CLASSNAME,
   type CalendarCardEntry,
   columnDividerClassName,
+  CONTENT_FORMAT_LABEL,
   DAY_LABELS,
   flattenCalendarItemsToEntries,
   formatCalendarHour,
@@ -32,10 +31,10 @@ import {
   useExpandableKeys,
 } from "./calendar-grid-shared";
 
-/** Tinggi minimum sel Month, termasuk padding — lebar kolom sekarang responsive (`Grid columns={CALENDAR_DAY_COLUMNS}`), tinggi tetap fixed. */
+/** Tinggi minimum sel Month, termasuk padding — lebar kolom sekarang responsive (Tailwind `grid-cols-7`), tinggi tetap fixed. */
 const MONTH_CELL_MIN_HEIGHT = 200;
 
-/** Sisi kotak avatar platform (Card berisi `PlatformGlyph` di tengah, poin 5 — bukan lagi box kosong terpisah dari icon). Dinaikkan di revisi kelima T-033 (poin 1) — ukuran sebelumnya (14) hasil pengecilan agresif revisi ketiga jadi terlalu kecil untuk dibaca. */
+/** Sisi kotak avatar platform (bulatan berisi `PlatformGlyph` di tengah, poin 5 — bukan lagi box kosong terpisah dari icon). Dinaikkan di revisi kelima T-033 (poin 1) — ukuran sebelumnya (14) hasil pengecilan agresif revisi ketiga jadi terlalu kecil untuk dibaca. */
 const MONTH_THUMBNAIL_SIZE = 20;
 
 /** Sisi ikon platform di dalam `MONTH_THUMBNAIL_SIZE` — dinaikkan bersamaan (revisi kelima T-033, poin 1). */
@@ -95,6 +94,14 @@ export interface CalendarMonthGridProps {
  * "+N More" yang expand/collapse di tempat (state lokal) — bukan modal
  * (di luar scope T-033.4). Klik kartu post membuka Popover ringkasan
  * (T-033.8, ADR-090/ADR-091, `CalendarPostPopover`).
+ *
+ * T-101.1: migrasi ke shadcn — `Grid columns={7}` -> Tailwind `grid-cols-7`,
+ * `Divider variant="strong"` -> `Separator`, `ClickableCard` (tanpa padanan
+ * shadcn siap-pakai) -> `<button>` polos diberi kelas visual Card (ring +
+ * rounded + bg-card, `text-left` supaya konten tetap rata kiri) sebagai
+ * trigger tunggal `PopoverTrigger asChild` (`CalendarPostPopover`). Sel
+ * masih `overflow-y-auto` (padanan `isScrollable` Astryx) dengan alasan
+ * sama seperti sebelumnya — lihat komentar di JSX di bawah.
  */
 export function CalendarMonthGrid({
   date,
@@ -124,151 +131,159 @@ export function CalendarMonthGrid({
   }, [items, connectedAccountIdsKey]);
 
   return (
-    <Card padding={3}>
-      <VStack gap={2}>
-        <Grid columns={CALENDAR_DAY_COLUMNS} gap={0}>
-          {DAY_LABELS.map((label, index) => (
-            <VStack
-              key={label}
-              align="center"
-              className={columnDividerClassName(index)}
-            >
-              <Text type="supporting" size="xsm">
-                {label}
-              </Text>
-            </VStack>
-          ))}
-        </Grid>
+    <Card className="gap-2 p-3">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only, file sudah dimigrasi shadcn */}
+      <div className="grid grid-cols-7 gap-0">
+        {DAY_LABELS.map((label, index) => (
+          // eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only
+          <div
+            key={label}
+            className={cn(
+              "flex flex-col items-center",
+              columnDividerClassName(index),
+            )}
+          >
+            <Text variant="muted" as="span" className="text-xs">
+              {label}
+            </Text>
+          </div>
+        ))}
+      </div>
 
-        <Divider variant="strong" />
+      <Separator />
 
-        <VStack gap={0}>
-          {weeks.map((week, weekIndex) => (
-            <VStack gap={0} key={week[0]?.dateKey ?? weekIndex}>
-              <Grid columns={CALENDAR_DAY_COLUMNS} gap={0}>
-                {week.map((day, columnIndex) => {
-                  const entries = entriesByDate.get(day.dateKey) ?? [];
-                  const isExpanded = expandedDateKeys.has(day.dateKey);
-                  const visibleEntries = isExpanded
-                    ? entries
-                    : entries.slice(0, MAX_VISIBLE_PER_CELL);
-                  const hiddenCount = entries.length - visibleEntries.length;
-                  const isToday = day.dateKey === todayKey;
+      {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only */}
+      <div className="flex flex-col gap-0">
+        {weeks.map((week, weekIndex) => (
+          // eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only
+          <div
+            className="flex flex-col gap-0"
+            key={week[0]?.dateKey ?? weekIndex}
+          >
+            {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only */}
+            <div className="grid grid-cols-7 gap-0">
+              {week.map((day, columnIndex) => {
+                const entries = entriesByDate.get(day.dateKey) ?? [];
+                const isExpanded = expandedDateKeys.has(day.dateKey);
+                const visibleEntries = isExpanded
+                  ? entries
+                  : entries.slice(0, MAX_VISIBLE_PER_CELL);
+                const hiddenCount = entries.length - visibleEntries.length;
+                const isToday = day.dateKey === todayKey;
 
-                  return (
-                    // `isScrollable` (bukan untuk scroll sungguhan — sel selalu tumbuh
-                    // vertikal via `minHeight`) dipakai supaya sel ini jadi scroll
-                    // container (`overflow: auto`), yang per spec CSS Grid membuat
-                    // "automatic minimum size"-nya sendiri jadi 0 — mencegah 1 kartu
-                    // dengan konten lebar "mencuri" lebar kolom dari kartu lain di
-                    // baris yang sama (root cause "grid tidak sejajar", revisi ketiga
-                    // T-033 Bagian A). Tanpa ini, `<Grid columns={7}>` (`repeat(7,
-                    // 1fr)` = `repeat(7, minmax(auto, 1fr))`) membiarkan 1 sel padat
-                    // menentukan lebar kolomnya sendiri, bukan 1/7 rata seperti header.
-                    <VStack
-                      key={day.dateKey}
-                      gap={1.5}
-                      minHeight={MONTH_CELL_MIN_HEIGHT}
-                      padding={1}
-                      paddingInline={2}
-                      isScrollable
-                      className={columnDividerClassName(columnIndex)}
+                return (
+                  // `overflow-y-auto` (bukan untuk scroll sungguhan — sel selalu
+                  // tumbuh vertikal via `min-height`) dipakai supaya sel ini jadi
+                  // scroll container, yang per spec CSS Grid membuat "automatic
+                  // minimum size"-nya sendiri jadi 0 — mencegah 1 kartu dengan
+                  // konten lebar "mencuri" lebar kolom dari kartu lain di baris
+                  // yang sama (root cause "grid tidak sejajar", revisi ketiga
+                  // T-033 Bagian A). Tanpa ini, `grid-cols-7` (`repeat(7,
+                  // minmax(auto, 1fr))`) membiarkan 1 sel padat menentukan lebar
+                  // kolomnya sendiri, bukan 1/7 rata seperti header.
+                  // eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only
+                  <div
+                    key={day.dateKey}
+                    className={cn(
+                      "flex flex-col gap-1.5 overflow-y-auto px-2 py-1",
+                      columnDividerClassName(columnIndex),
+                    )}
+                    style={{ minHeight: MONTH_CELL_MIN_HEIGHT }}
+                  >
+                    <Text
+                      variant="muted"
+                      as="span"
+                      className={cn(
+                        "text-xs",
+                        !day.isCurrentMonth
+                          ? "text-muted-foreground/50"
+                          : isToday
+                            ? "font-bold text-primary"
+                            : "text-muted-foreground",
+                      )}
                     >
-                      <Text
-                        type="supporting"
-                        size="xsm"
-                        color={
-                          !day.isCurrentMonth
-                            ? "disabled"
-                            : isToday
-                              ? "accent"
-                              : "secondary"
-                        }
-                        weight={isToday ? "bold" : "normal"}
-                      >
-                        {day.date.getUTCDate()}
-                      </Text>
+                      {day.date.getUTCDate()}
+                    </Text>
 
-                      {day.isCurrentMonth &&
-                        visibleEntries.map((entry) => {
-                          const PlatformGlyph =
-                            PLATFORM_ICON[entry.platform].Icon;
-                          return (
-                            <CalendarPostPopover key={entry.key} entry={entry}>
-                              <ClickableCard
-                                label={`${entry.accountHandle} — ${
-                                  entry.caption || "(Tanpa caption)"
-                                }`}
-                                padding={1.5}
-                                width="100%"
-                              >
-                                <VStack gap={1}>
-                                  {/* Header: avatar+nama (kiri, menyusut/truncate lewat StackItem
-                                      "fill") sejajar dengan jam (kanan) — satu baris, bukan avatar
-                                      disandingkan seluruh blok teks seperti sebelum revisi ketiga. */}
-                                  <HStack gap={1} align="center">
-                                    <Card
-                                      variant="muted"
-                                      padding={0}
-                                      width={MONTH_THUMBNAIL_SIZE}
-                                      height={MONTH_THUMBNAIL_SIZE}
-                                    >
-                                      <VStack
-                                        align="center"
-                                        justify="center"
-                                        height="100%"
-                                      >
-                                        <PlatformGlyph
-                                          size={MONTH_PLATFORM_ICON_SIZE}
-                                          color={
-                                            PLATFORM_ICON[entry.platform].color
-                                          }
-                                        />
-                                      </VStack>
-                                    </Card>
-                                    <StackItem size="fill">
-                                      <Text size="sm" maxLines={1}>
-                                        {entry.accountHandle}
-                                      </Text>
-                                    </StackItem>
-                                    <Text
-                                      type="supporting"
-                                      size="xsm"
-                                      color="secondary"
-                                    >
-                                      {formatCalendarHour(entry.hour)}
-                                    </Text>
-                                  </HStack>
+                    {day.isCurrentMonth &&
+                      visibleEntries.map((entry) => {
+                        const PlatformGlyph =
+                          PLATFORM_ICON[entry.platform].Icon;
+                        return (
+                          <CalendarPostPopover key={entry.key} entry={entry}>
+                            <button
+                              type="button"
+                              aria-label={`${entry.accountHandle} — ${
+                                entry.caption || "(Tanpa caption)"
+                              } — ${CONTENT_FORMAT_LABEL[entry.contentFormat]} — ${CONTENT_STATUS_LABEL[entry.status]}`}
+                              className={CALENDAR_ENTRY_BUTTON_CLASSNAME}
+                            >
+                              {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only */}
+                              <div className="flex flex-col gap-1">
+                                {/* Header: avatar+nama (kiri, menyusut/truncate lewat
+                                    `min-w-0 flex-1`) sejajar dengan jam (kanan) — satu
+                                    baris, bukan avatar disandingkan seluruh blok teks
+                                    seperti sebelum revisi ketiga. */}
+                                {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only */}
+                                <div className="flex items-center gap-1">
+                                  {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only */}
+                                  <div
+                                    className="flex shrink-0 items-center justify-center rounded-2xl bg-muted"
+                                    style={{
+                                      width: MONTH_THUMBNAIL_SIZE,
+                                      height: MONTH_THUMBNAIL_SIZE,
+                                    }}
+                                  >
+                                    <PlatformGlyph
+                                      size={MONTH_PLATFORM_ICON_SIZE}
+                                      color={
+                                        PLATFORM_ICON[entry.platform].color
+                                      }
+                                    />
+                                  </div>
+                                  <Text
+                                    variant="small"
+                                    as="span"
+                                    className="min-w-0 flex-1 truncate font-normal"
+                                  >
+                                    {entry.accountHandle}
+                                  </Text>
+                                  <Text
+                                    variant="muted"
+                                    as="span"
+                                    className="text-xs"
+                                  >
+                                    {formatCalendarHour(entry.hour)}
+                                  </Text>
+                                </div>
 
-                                  <CalendarEntryFooter entry={entry} />
-                                </VStack>
-                              </ClickableCard>
-                            </CalendarPostPopover>
-                          );
-                        })}
+                                <CalendarEntryFooter entry={entry} />
+                              </div>
+                            </button>
+                          </CalendarPostPopover>
+                        );
+                      })}
 
-                      {day.isCurrentMonth &&
-                        entries.length > MAX_VISIBLE_PER_CELL && (
-                          <Button
-                            label={
-                              isExpanded
-                                ? "Tampilkan lebih sedikit"
-                                : `+${hiddenCount} More`
-                            }
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleExpanded(day.dateKey)}
-                          />
-                        )}
-                    </VStack>
-                  );
-                })}
-              </Grid>
-              <Divider variant="strong" />
-            </VStack>
-          ))}
-        </VStack>
-      </VStack>
+                    {day.isCurrentMonth &&
+                      entries.length > MAX_VISIBLE_PER_CELL && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleExpanded(day.dateKey)}
+                        >
+                          {isExpanded
+                            ? "Tampilkan lebih sedikit"
+                            : `+${hiddenCount} More`}
+                        </Button>
+                      )}
+                  </div>
+                );
+              })}
+            </div>
+            <Separator />
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }

@@ -1,5 +1,3 @@
-import { VStack } from "@astryxdesign/core/VStack";
-
 import type { ConnectedAccountId } from "@social/shared";
 import type { CalendarPostItem, CalendarViewMode } from "@/domains/publishing";
 import type { ConnectedAccountRecord } from "@/domains/workspace";
@@ -32,8 +30,8 @@ type CalendarScreenProps = {
  * navigasi + T-033.6 filter) — `view`/`date`/`items`/`accounts` di sini
  * data nyata dari `page.tsx` (`parseCalendarViewState` +
  * `getWeekRange`/`getMonthRange` + `PublishingService.listCalendarPosts` +
- * `WorkspaceService.listConnectedAccounts`). Popover klik item BELUM
- * diimplementasikan — T-033.8, di luar scope task ini.
+ * `WorkspaceService.listConnectedAccounts`). Popover klik item — T-033.8/
+ * T-101.1, `CalendarPostPopover` (shadcn `Popover`, ADR-090/ADR-091).
  */
 export function CalendarScreen({
   view,
@@ -43,7 +41,9 @@ export function CalendarScreen({
   connectedAccountIds,
 }: CalendarScreenProps) {
   return (
-    <VStack gap={4}>
+    // T-101.1: `VStack` Astryx -> Tailwind flex (layout-only, ADR-097).
+    // eslint-disable-next-line no-restricted-syntax
+    <div className="flex flex-col gap-4">
       <CalendarToolbar accounts={accounts} />
       {view === "month" ? (
         <CalendarMonthGrid
@@ -58,6 +58,6 @@ export function CalendarScreen({
           connectedAccountIds={connectedAccountIds}
         />
       )}
-    </VStack>
+    </div>
   );
 }

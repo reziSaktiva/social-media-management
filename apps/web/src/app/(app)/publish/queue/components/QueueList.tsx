@@ -1,21 +1,40 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Card } from "@astryxdesign/core/Card";
-import { Divider } from "@astryxdesign/core/Divider";
-import { EmptyState } from "@astryxdesign/core/EmptyState";
-import { Heading } from "@astryxdesign/core/Heading";
-import { HStack } from "@astryxdesign/core/HStack";
-import { Icon } from "@astryxdesign/core/Icon";
-import { IconButton } from "@astryxdesign/core/IconButton";
-import { Selector } from "@astryxdesign/core/Selector";
-import { Text } from "@astryxdesign/core/Text";
-import { VStack } from "@astryxdesign/core/VStack";
-import { FaPaperPlane, FaPen, FaXmark } from "react-icons/fa6";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import {
+  Cancel01Icon,
+  Clock01Icon,
+  PencilEdit01Icon,
+  SentIcon,
+} from "@hugeicons/core-free-icons";
 
 import type { ConnectedAccountId, PostId } from "@social/shared";
 import type { QueueGroup } from "@/domains/publishing";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Text } from "@/components/ui/text";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import { PLATFORM_ICON } from "../../../components/platform-icons";
 import { useDraftEditor } from "../../../components/draft-editor/Context";
@@ -45,6 +64,39 @@ function formatScheduledTime(date: Date): string {
   });
 }
 
+/**
+ * Tombol aksi item Queue (Publish Now/Edit/Cancel Schedule) — dipusatkan
+ * di sini (T-101.2 review) supaya 3 blok `Tooltip`+`Button` yang identik
+ * strukturnya (beda ikon/label/variant/handler saja) tidak diduplikasi.
+ */
+function QueueItemActionButton({
+  icon,
+  label,
+  variant,
+  onClick,
+}: {
+  icon: IconSvgElement;
+  label: string;
+  variant: "ghost" | "destructive";
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={variant}
+          size="icon-sm"
+          aria-label={label}
+          onClick={onClick}
+        >
+          <HugeiconsIcon icon={icon} />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 const ALL_ACCOUNTS_FILTER_VALUE = "all";
 
 interface AccountFilterOption {
@@ -63,6 +115,17 @@ export interface QueueListProps {
   onCancelSchedule?: (postId: PostId) => void;
 }
 
+/**
+ * T-101.2: migrasi ke shadcn — Astryx `Selector`/`Card`/`Divider`/
+ * `EmptyState`/`Heading`/`IconButton`/`Icon`/`Text`/`HStack`/`VStack`
+ * diganti komponen shadcn (`Select`, `Card`, `Separator`, `Empty`, `Text`,
+ * `Button` variant `ghost`/`destructive` size `icon-sm` dibungkus
+ * `Tooltip`) + Tailwind `flex`/`grid` layout-only. Ikon aksi
+ * (Publish Now/Edit/Cancel Schedule) & jam pindah dari `react-icons` ke
+ * `hugeicons` (preset Maia) — `PLATFORM_ICON` (ikon brand) SENGAJA tetap
+ * `react-icons`, dikecualikan ADR-058 (sama seperti `CalendarToolbar.tsx`
+ * T-101.1).
+ */
 export function QueueList({ groups, onCancelSchedule }: QueueListProps) {
   const { openEditDraft } = useDraftEditor();
   const [accountFilter, setAccountFilter] = useState<string>(
@@ -103,114 +166,150 @@ export function QueueList({ groups, onCancelSchedule }: QueueListProps) {
   }, [groups, accountFilter]);
 
   return (
-    <VStack gap={4}>
-      <HStack justify="end">
-        <Selector
-          label="Filter akun"
-          isLabelHidden
-          placeholder="Semua akun"
-          value={accountFilter}
-          onChange={(value) => setAccountFilter(value)}
-          options={[
-            { value: ALL_ACCOUNTS_FILTER_VALUE, label: "Semua akun" },
-            ...accountOptions,
-          ]}
-          width={180}
-          size="sm"
-        />
-      </HStack>
+    // eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only, file sudah dimigrasi shadcn
+    <div className="flex flex-col gap-4">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only */}
+      <div className="flex justify-end">
+        <Select value={accountFilter} onValueChange={setAccountFilter}>
+          <SelectTrigger size="sm" aria-label="Filter akun" className="w-44">
+            <SelectValue placeholder="Semua akun" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_ACCOUNTS_FILTER_VALUE}>
+              Semua akun
+            </SelectItem>
+            {accountOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {filteredGroups.length === 0 ? (
-        <Card padding={4}>
-          <EmptyState
-            title="Belum ada jadwal"
-            description="Post yang dijadwalkan akan muncul di sini, dikelompokkan per tanggal."
-          />
+        <Card>
+          <CardContent>
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>Belum ada jadwal</EmptyTitle>
+                <EmptyDescription>
+                  Post yang dijadwalkan akan muncul di sini, dikelompokkan per
+                  tanggal.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </CardContent>
         </Card>
       ) : (
-        <VStack gap={6}>
+        // eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only
+        <div className="flex flex-col gap-6">
           {filteredGroups.map((group) => (
-            <VStack gap={3} key={group.date}>
-              <VStack gap={1}>
-                <Heading level={3}>
+            // eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only
+            <div className="flex flex-col gap-3" key={group.date}>
+              {/* eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only */}
+              <div className="flex flex-col gap-1">
+                <Text variant="h4" as="h3">
                   {formatGroupDateHeading(group.date)}
-                </Heading>
-                <Divider variant="strong" />
-              </VStack>
+                </Text>
+                <Separator />
+              </div>
 
-              <VStack gap={3}>
+              {/* eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only */}
+              <div className="flex flex-col gap-3">
                 {group.items.map((item) => (
-                  <Card padding={4} key={item.id}>
-                    <VStack gap={2}>
-                      <HStack justify="between" align="start" gap={2}>
-                        <VStack gap={1}>
-                          <Text maxLines={2}>
-                            {item.caption || "(Tanpa caption)"}
-                          </Text>
-                          <HStack gap={1} align="center">
-                            <Icon icon="clock" size="sm" color="secondary" />
-                            <Text type="supporting">
-                              {formatScheduledTime(item.scheduledAt)}
+                  <Card size="sm" key={item.id}>
+                    <CardContent>
+                      {/* eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only */}
+                      <div className="flex flex-col gap-2">
+                        {/* eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only */}
+                        <div className="flex items-start justify-between gap-2">
+                          {/* eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only */}
+                          <div className="flex flex-col gap-1">
+                            <Text variant="p" className="line-clamp-2 text-sm">
+                              {item.caption || "(Tanpa caption)"}
                             </Text>
-                          </HStack>
-                        </VStack>
-
-                        <HStack gap={1}>
-                          <IconButton
-                            label="Publish Now"
-                            tooltip="Publish Now"
-                            icon={<FaPaperPlane />}
-                            variant="ghost"
-                            onClick={() =>
-                              openEditDraft(item.id, "publish-now")
-                            }
-                          />
-                          <IconButton
-                            label="Edit"
-                            tooltip="Edit"
-                            icon={<FaPen />}
-                            variant="ghost"
-                            onClick={() => openEditDraft(item.id)}
-                          />
-                          <IconButton
-                            label="Cancel Schedule"
-                            tooltip="Cancel Schedule"
-                            icon={<FaXmark />}
-                            variant="destructive"
-                            onClick={() => onCancelSchedule?.(item.id)}
-                          />
-                        </HStack>
-                      </HStack>
-
-                      <HStack gap={3} wrap="wrap">
-                        {item.targets.map((target) => {
-                          const PlatformGlyph =
-                            PLATFORM_ICON[target.platform].Icon;
-                          return (
-                            <HStack gap={1} align="center" key={target.id}>
-                              <PlatformGlyph
-                                size={12}
-                                color={PLATFORM_ICON[target.platform].color}
+                            {/* eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only */}
+                            <div className="flex items-center gap-1">
+                              <HugeiconsIcon
+                                icon={Clock01Icon}
+                                size={14}
+                                className="text-muted-foreground"
                               />
-                              <Text type="supporting">
-                                {target.accountHandle}
+                              <Text
+                                variant="muted"
+                                as="span"
+                                className="text-xs"
+                              >
+                                {formatScheduledTime(item.scheduledAt)}
                               </Text>
-                            </HStack>
-                          );
-                        })}
-                      </HStack>
+                            </div>
+                          </div>
 
-                      <Text type="supporting" size="xsm">
-                        Dibuat {formatRelativeTime(item.createdAt)}
-                      </Text>
-                    </VStack>
+                          {/* eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only */}
+                          <div className="flex items-center gap-1">
+                            <QueueItemActionButton
+                              icon={SentIcon}
+                              label="Publish Now"
+                              variant="ghost"
+                              onClick={() =>
+                                openEditDraft(item.id, "publish-now")
+                              }
+                            />
+                            <QueueItemActionButton
+                              icon={PencilEdit01Icon}
+                              label="Edit"
+                              variant="ghost"
+                              onClick={() => openEditDraft(item.id)}
+                            />
+                            <QueueItemActionButton
+                              icon={Cancel01Icon}
+                              label="Cancel Schedule"
+                              variant="destructive"
+                              onClick={() => onCancelSchedule?.(item.id)}
+                            />
+                          </div>
+                        </div>
+
+                        {/* eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only */}
+                        <div className="flex flex-wrap gap-3">
+                          {item.targets.map((target) => {
+                            const PlatformGlyph =
+                              PLATFORM_ICON[target.platform].Icon;
+                            return (
+                              // eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only
+                              <div
+                                className="flex items-center gap-1"
+                                key={target.id}
+                              >
+                                <PlatformGlyph
+                                  size={12}
+                                  color={PLATFORM_ICON[target.platform].color}
+                                />
+                                <Text
+                                  variant="muted"
+                                  as="span"
+                                  className="text-xs"
+                                >
+                                  {target.accountHandle}
+                                </Text>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <Text variant="muted" as="span" className="text-xs">
+                          Dibuat {formatRelativeTime(item.createdAt)}
+                        </Text>
+                      </div>
+                    </CardContent>
                   </Card>
                 ))}
-              </VStack>
-            </VStack>
+              </div>
+            </div>
           ))}
-        </VStack>
+        </div>
       )}
-    </VStack>
+    </div>
   );
 }

@@ -59,10 +59,104 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
-| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 6 ✅ · 2 ⏳     | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
+| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 7 ✅ · 1 ⏳     | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 85 task · 31 selesai · 210 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 85 task · 32 selesai · 210 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-03, T-101.5 selesai — T-101 Done):** **T-101** (Migrasi
+> Publish — Calendar, Queue, Drafts, Dashboard) ditutup `✅ Done` — seluruh
+> 5/5 subtask tuntas. Subtask terakhir **T-101.5** (Dashboard:
+> `DashboardHome.tsx`) tuntas di branch
+> `feature/t-101-publish-calendar-queue-drafts-migration` — migrasi penuh
+> dari Astryx (`Card`, `EmptyState`, `Grid`, `Heading`, `HStack`,
+> `ProgressBar`, `Section`, `Selector`, `Text`, `VStack`) ke shadcn/ui.
+> Komponen shadcn baru: `progress` (`Progress`, Radix). `Selector`
+> weekly/monthly → shadcn `Select` (pola `CalendarToolbar.tsx` T-101.1).
+> Gap dicatat (bukan penyimpangan): shadcn `Progress` tidak punya
+> value-label formatting bawaan seperti Astryx — label persentase
+> dirender manual sebagai `Text` terpisah, konsisten dengan presedan gap
+> desain-token T-101.1/T-101.3. State/Server Action (`period`,
+> `useTransition`, `getDashboardSummaryAction`, guard
+> `latestRequestedPeriod`) tidak disentuh — murni migrasi presentasi;
+> **KI-036** tetap technical debt terpisah. Lolos implementasi Mark UI
+> Engineer (typecheck/lint PASS 0 error, verifikasi visual browser — empty
+> state dark mode, golden path dark+light mode, mobile 375px, ganti
+> periode via Select, console bersih) dan review arsitektur Ridwan (0
+> temuan). Hitungan subtask v0.7 tidak berubah (37 — hanya status
+> checklist T-101.5 yang berubah), dihitung ulang langsung dari
+> `tasks/v07-astryx-shadcn-migration.md`. Task selesai naik 31 → **32**
+> (breakdown v0.7: 6 ✅ · 1 🟡 · 1 ⏳ → **7 ✅ · 1 ⏳**). Next task migrasi
+> shadcn v0.7: **T-102** (Cleanup & Verifikasi Akhir). Detail:
+> `tasks/v07-astryx-shadcn-migration.md` § T-101, `COMPLETE_TASK.md`.
+>
+> **Update (2026-09-03, T-101.4 selesai):** **T-101** (Migrasi Publish —
+> Calendar, Queue, Drafts, Dashboard) tetap `🟡 In Progress` — subtask
+> **T-101.4** (`PublishPageHeader.tsx`/`PublishTabbar.tsx`/
+> `app/(app)/publish/layout.tsx`) tuntas di branch
+> `feature/t-101-publish-calendar-queue-drafts-migration`. Komponen shadcn
+> baru: `tabs` (`Tabs`/`TabsList`/`TabsTrigger`, style `radix-maia`); yang
+> lain (`Button`, `Text`) sudah tersedia dari migrasi sebelumnya. Lolos
+> implementasi Mark UI Engineer (typecheck/lint PASS, verifikasi visual
+> browser akun Raka Pratama/Owner, light/dark mode, tab switching
+> Calendar→Queue→Drafts→History route-driven via `usePathname()`, mobile
+> 375px, tidak ada regresi) dan review arsitektur Ridwan (0 temuan).
+> Hitungan subtask v0.7 tidak berubah (37 — hanya status checklist
+> T-101.4 yang berubah), dihitung ulang langsung dari
+> `tasks/v07-astryx-shadcn-migration.md`. Task selesai tidak berubah
+> (masih 31, T-101 sekarang 4/5 subtask). Next subtask: **T-101.5**
+> (Dashboard: `DashboardHome.tsx`). Detail:
+> `tasks/v07-astryx-shadcn-migration.md` § T-101.
+>
+> **Update (2026-09-03, T-101.3 selesai):** **T-101** (Migrasi Publish —
+> Calendar, Queue, Drafts, Dashboard) tetap `🟡 In Progress` — subtask
+> **T-101.3** (Drafts: `DraftsList.tsx`) tuntas di branch
+> `feature/t-101-publish-calendar-queue-drafts-migration`, tidak ada
+> komponen shadcn baru (semua sudah tersedia dari migrasi T-099.3), lolos
+> implementasi Mark UI Engineer (typecheck/lint PASS, verifikasi visual
+> browser akun Raka Pratama/Owner, light/dark mode, mobile 375px, tidak
+> ada regresi) dan review arsitektur Ridwan (0 temuan). `Badge` Astryx
+> sengaja dipertahankan untuk indikator status warna, presedan sama
+> dengan T-100.1/T-101.1. Hitungan subtask v0.7 tidak berubah (37 — hanya
+> status checklist T-101.3 yang berubah), dihitung ulang langsung dari
+> `tasks/v07-astryx-shadcn-migration.md`. Task selesai tidak berubah
+> (masih 31, T-101 sekarang 3/5 subtask). Next subtask: **T-101.4**
+> (`PublishPageHeader.tsx`/`PublishTabbar.tsx`/`app/(app)/publish/layout.tsx`).
+> Detail: `tasks/v07-astryx-shadcn-migration.md` § T-101.
+>
+> **Update (2026-09-03, T-101.2 selesai):** **T-101** (Migrasi Publish —
+> Calendar, Queue, Drafts, Dashboard) tetap `🟡 In Progress` — subtask
+> **T-101.2** (Queue: `QueueList.tsx`/`QueueScreen.tsx`) tuntas di branch
+> `feature/t-101-publish-calendar-queue-drafts-migration`, tidak ada
+> komponen shadcn baru (semua sudah tersedia dari migrasi sebelumnya),
+> lolos implementasi Mark UI Engineer (typecheck/lint PASS, verifikasi
+> visual browser akun Raka Pratama/Owner, light/dark mode, mobile 375px,
+> tidak ada regresi) dan review arsitektur Ridwan (0 temuan). Icon aksi
+> pindah ke `hugeicons`, icon platform tetap `react-icons` (dikecualikan
+> ADR-058). Gap dicatat (bukan penyimpangan): `useToast` masih dari Astryx,
+> belum ada padanan shadcn (`sonner`) — di luar scope T-101.2, dicatat
+> sebagai technical debt terpisah. Hitungan subtask v0.7 tidak berubah (37
+> — hanya status checklist T-101.2 yang berubah), dihitung ulang langsung
+> dari `tasks/v07-astryx-shadcn-migration.md`. Task selesai tidak berubah
+> (masih 31, T-101 sekarang 2/5 subtask). Next subtask: **T-101.3**
+> (Drafts). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-101.
+>
+> **Update (2026-09-03, T-101.1 selesai):** **T-101** (Migrasi Publish —
+> Calendar, Queue, Drafts, Dashboard) berubah `⏳ Not Started` → `🟡 In
+> Progress` — subtask **T-101.1** (Calendar:
+> `CalendarMonthGrid.tsx`/`CalendarWeekGrid.tsx`/`CalendarToolbar.tsx`/
+> `CalendarPostPopover.tsx` → shadcn `Popover`/`CalendarEntryFooter.tsx`/
+> `CalendarScreen.tsx`) tuntas di branch
+> `feature/t-101-publish-calendar-queue-drafts-migration`, lolos
+> verifikasi visual Mark UI Engineer (browser real, akun Maya Anggraini/
+> Admin) dan review arsitektur Ridwan (0 temuan). Pola ADR-090/091
+> dipertahankan penuh. Re-evaluasi **KI-035**: poin 1 (StyleX/`xstyle`)
+> ditutup Resolved (grid sudah 100% Tailwind), poin 3 (layout mobile
+> sempit ~375px) tetap Open. Hitungan subtask v0.7 tidak berubah (37 —
+> hanya status checklist T-101.1 yang berubah), dihitung ulang langsung
+> dari `tasks/v07-astryx-shadcn-migration.md`. Task selesai tidak berubah
+> (masih 31, T-101 baru 1/5 subtask). Next subtask: **T-101.2** (Queue).
+> Detail: `tasks/v07-astryx-shadcn-migration.md` § T-101.
+>
 > **Update (2026-09-03, T-100.4 selesai — T-100 Done):** **T-100** (Migrasi
 > Publish — Draft Editor Modal) ditutup `✅ Done` — seluruh 4/4 subtask
 > tuntas. Subtask **T-100.4** (verifikasi behavior penuh end-to-end, murni
@@ -225,7 +319,8 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
-| **T-101** | Migrasi Publish — Calendar, Queue, Drafts, Dashboard | ⏳      | **Not Started** — task berikutnya migrasi shadcn v0.7 setelah T-100 Done, `Depends` T-096. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-101 |
+| **T-102** | Cleanup & Verifikasi Akhir                      | ⏳      | **Not Started** — task terakhir rilis v0.7, `Depends` T-097, T-098, T-099, T-100, T-101 (semua sudah Done). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-102 |
+| **T-101** | Migrasi Publish — Calendar, Queue, Drafts, Dashboard | ✅      | **Selesai (2026-09-03)** — seluruh 5/5 subtask tuntas: T-101.1 (Calendar), T-101.2 (Queue), T-101.3 (Drafts), T-101.4 (header/tabbar/layout), T-101.5 (Dashboard). Lolos review Ridwan (0 temuan) tiap subtask. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-101 |
 | **T-100** | Migrasi Publish — Draft Editor Modal             | ✅      | **Selesai (2026-09-03)** — seluruh 4/4 subtask tuntas (struktur modal + layout, form controls shadcn, `TimeInput` → native `<input type="time">` (**KI-030 Closed**), verifikasi behavior penuh end-to-end). Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh). Temuan minor: **KI-043**, **KI-044**. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-100 |
 | **T-099** | Migrasi Settings                                 | ✅      | **Selesai (2026-09-02)** — 3/3 subtask (`WorkspaceGeneralSettings.tsx`/`ProfileForm.tsx`/`preferences/page.tsx`/`SettingsPageHead.tsx`, `MembersTable.tsx`/`InviteMemberDialog.tsx`/`InviteMemberAction.tsx`, `ConnectedAccountsList.tsx`/`ConnectPlatformMenu.tsx`/`WorkspacesSettingsView.tsx`), lolos review Ridwan (0 temuan) + QA Najwa (PASS, 1 temuan minor viewport sempit dicatat di **KI-042**). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-099 |
 | **T-098** | Migrasi App Shell & Navigasi                     | ✅      | **Selesai (2026-09-02)** — seluruh 4/4 subtask tuntas: T-098.1–.3 (`WorkspaceSideNav`/`SettingsSideNav`/`ChannelsSection`, `NotificationBell` ke `Sheet` + hapus `Drawer.tsx`, re-verifikasi **KI-040** → Closed), T-098.4 (sidebar mobile + tabel mobile card, menutup **KI-042** — lolos review Ridwan 0 temuan + QA Najwa PASS penuh). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-098 |

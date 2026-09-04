@@ -1,5 +1,4 @@
 import { Badge } from "@astryxdesign/core/Badge";
-import { HStack } from "@astryxdesign/core/HStack";
 import { Icon } from "@astryxdesign/core/Icon";
 import { StatusDot } from "@astryxdesign/core/StatusDot";
 
@@ -31,11 +30,22 @@ export interface CalendarEntryFooterProps {
  * hydration mismatch/layout shift untuk switch yang harus benar di first
  * paint. Detail lengkap tetap ada lewat tap kartu → `CalendarPostPopover`
  * (tidak berubah).
+ *
+ * T-101.1: `HStack` -> Tailwind flex (layout-only, ADR-097). `Badge`/
+ * `StatusDot`/`Icon` SENGAJA tetap Astryx — Stone theme (shadcn) belum
+ * punya token warna semantik (success/warning/info/purple) untuk 6 varian
+ * `ContentStatus`, cuma `accent`/`destructive` (dicek `globals.css`, tidak
+ * ada `--color-success` dkk). Pola sama persis dengan `Modal.tsx` (T-100.1,
+ * status chip header) — koeksistensi Astryx/shadcn di level komponen
+ * (bukan cuma route-segment) untuk kasus spesifik ini, bukan keputusan
+ * baru. Dilaporkan ke King Rezi sebagai gap desain-token, bukan diputuskan
+ * sepihak sebagai final — lihat laporan sesi T-101.1.
  */
 export function CalendarEntryFooter({ entry }: CalendarEntryFooterProps) {
   return (
     <>
-      <HStack gap={1.5} align="center" className="flex md:hidden">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only, lihat catatan di atas */}
+      <div className="flex items-center gap-1.5 md:hidden">
         <StatusDot
           variant={CONTENT_STATUS_DOT_VARIANT[entry.status]}
           label={CONTENT_STATUS_LABEL[entry.status]}
@@ -47,8 +57,9 @@ export function CalendarEntryFooter({ entry }: CalendarEntryFooterProps) {
           color="secondary"
           label={CONTENT_FORMAT_LABEL[entry.contentFormat]}
         />
-      </HStack>
-      <HStack gap={1} align="center" wrap="wrap" className="hidden md:flex">
+      </div>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only, lihat catatan di atas */}
+      <div className="hidden flex-wrap items-center gap-1 md:flex">
         <Badge
           variant="neutral"
           label={CONTENT_FORMAT_LABEL[entry.contentFormat]}
@@ -57,7 +68,7 @@ export function CalendarEntryFooter({ entry }: CalendarEntryFooterProps) {
           variant={CONTENT_STATUS_BADGE_VARIANT[entry.status]}
           label={CONTENT_STATUS_LABEL[entry.status]}
         />
-      </HStack>
+      </div>
     </>
   );
 }
