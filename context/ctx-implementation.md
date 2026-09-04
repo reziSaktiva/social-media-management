@@ -64,21 +64,24 @@ ACK; pemrosesan domain berjalan sesudah ACK melalui job internal.
 ## UI Components (ADR-097, membalik ADR-041)
 
 - **shadcn/ui adalah fondasi component system permanen** (ADR-097, membalik
-  ADR-041). Migrasi dari Astryx berjalan incremental per route-segment
-  (Astryx & shadcn boleh coexist sementara selama migrasi — lihat ADR-097 dan
-  `tasks/v07-astryx-shadcn-migration.md`); feature tidak menunggu design
-  tokens final. Light/Dark Mode Toggle (ADR-055, diamandemen ADR-097) tetap
+  ADR-041). Migrasi dari Astryx **sudah selesai secara kode** — 0 import
+  `@astryxdesign/*` aktif tersisa di `apps/web/src`, dependency
+  `@astryxdesign/*` sudah dihapus dari `apps/web/package.json` (T-102.1,
+  T-102.2, T-102.6); sisa pekerjaan v0.7 hanya QA visual menyeluruh
+  (T-102.4) dan cleanup dokumen (T-102.3) — lihat ADR-097 dan
+  `tasks/v07-astryx-shadcn-migration.md` § T-102; feature tidak menunggu
+  design tokens final. Light/Dark Mode Toggle (ADR-055, diamandemen ADR-097) tetap
   fitur resmi — mekanismenya lewat Tailwind `dark:` + shadcn theme provider,
   `ThemeModeContext`/`useThemeMode` (`apps/web/src/components/Providers.tsx`)
   tidak berubah.
 - `src/components/ui/` berisi wrapper/re-export **selektif** untuk komponen
   kritis, dipakai luas, default konsisten, atau adaptasi behavior produk.
 - shadcn/ui adalah kode sumber yang di-_copy_ ke repo (bukan dependency
-  package tertutup seperti Astryx) — tidak ada isu versioning Beta/canary;
-  komponen sederhana yang hanya dipakai lokal boleh diimpor langsung dari
-  lokasi hasil copy-nya.
+  package tertutup seperti Astryx dulu) — tidak ada isu versioning
+  Beta/canary; komponen sederhana yang hanya dipakai lokal boleh diimpor
+  langsung dari lokasi hasil copy-nya.
 - Tailwind dipakai langsung sebagai styling utama komponen shadcn (bukan lagi
-  layout-only seperti era Astryx, ADR-097 poin 4).
+  layout-only seperti era Astryx dulu, ADR-097 poin 4).
 - Nilai final `design-tokens.md` (co-equal dengan Claude Design, tidak
   menunggu designer eksternal — ADR-056, ADR-057) dipetakan ke CSS variable
   shadcn + Tailwind token bridge tanpa mengganti fondasi komponen.

@@ -935,9 +935,17 @@ dimigrasikan, memastikan tidak ada sisa Astryx di codebase.
       `"astryx"` config — **tuntas sepenuhnya** (2026-09-04): setelah
       T-102.6 selesai, `@astryxdesign/core` juga sudah dihapus, `bun
       install` sukses, `bun.lock` sinkron
-- [ ] **T-102.3** Update dokumen `context/ctx-design.md` dan
+- [x] **T-102.3** Update dokumen `context/ctx-design.md` dan
       `context/ctx-implementation.md` yang masih menyebut Astryx sebagai
-      baseline aktif
+      baseline aktif — **selesai** (2026-09-04): kedua file diperbarui,
+      wording "migrasi berjalan incremental" diganti "migrasi sudah selesai
+      secara kode (0 import `@astryxdesign/*` aktif, dependency sudah
+      dihapus — T-102.1/T-102.2/T-102.6)", sisa v0.7 dipersempit ke T-102.4
+      (QA visual) dan T-102.5 (tutup KI). Scope task ini eksplisit hanya 2
+      file tsb — `context/ctx-development.md` dan
+      `context/ctx-technical-context.md` masih menyebut "migrasi
+      incremental" juga tapi **sengaja tidak disentuh** (di luar scope
+      T-102.3 tertulis).
 - [ ] **T-102.4** QA visual menyeluruh oleh Najwa QA Engineer, per area
       (Auth, Onboarding, App Shell, Settings, Publish, Dashboard) — wajib
       manual/browser karena tidak ada test komponen sebagai regression
