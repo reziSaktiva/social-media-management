@@ -347,7 +347,7 @@ delete-lalu-create-ulang ini saat dikerjakan.
 - [x] **T-036.1** Domain skeleton: service + repository
 - [x] **T-036.2** Subscribe Supabase Realtime pada tabel `notifications`, event `INSERT`, filter per `user_id` — **hanya** tabel ini (ADR-023)
 - [x] **T-036.3** Sambungkan Supabase JWT dari session Better Auth (helper sudah ada, belum dipakai di route manapun)
-- [ ] **T-036.4** UI notification bell di sidebar footer + panel daftar — rancangan sudah ada di Claude Design (**KI-039 Resolved**); dibuka kembali 2026-09-01, lihat catatan di bawah (5 gap visual, verifikasi browser belum dilakukan)
+- [x] **T-036.4** UI notification bell di sidebar footer + panel daftar — rancangan sudah ada di Claude Design (**KI-039 Resolved**); ditutup 2026-09-07, lihat catatan di bawah
 - [ ] **T-036.5** Trigger notifikasi dari webhook publish result
 
 **Catatan (2026-08-31):** T-036.1 — skeleton `NotificationService.notify()` +
@@ -464,6 +464,78 @@ QA Engineer lewat browser nyata (light & dark mode) — root cause lama
 `Sheet`. Entry KI-040 sudah dihapus dari `PROJECT_STATE.md` § Known Issues
 sesuai aturan (Resolved yang sudah tercatat `COMPLETE_TASK.md` tidak
 dibiarkan dengan status Resolved di daftar itu).
+
+**Penutupan (2026-09-07) — T-036.4 Done:** dicek dulu ke Claude Design
+(project "Social Media Management", `components/notifications-panel.html`
++ `styles.css` § "Notifications Drawer") sesuai gate AGENTS.md rule 17,
+lalu dibandingkan baris demi baris ke `NotificationBell.tsx`. 4 dari 5 gap
+yang dicatat 2026-09-01 sudah benar sejak sesi T-098.3 (bg tint unread,
+dot indikator, weight/warna title read vs unread, deskripsi truncate
+ellipsis) — hanya 1 gap tersisa yang ditemukan: **icon circle status**
+masih dipetakan ke workaround netral `bg-muted text-foreground` untuk
+kasus "success", padahal **KI-041 sudah Resolved** (ADR-098, 2026-09-04)
+menambah token asli `--success`/`--warning` ke Stone theme shadcn — gap
+ini murni kode yang belum di-update mengikuti token baru itu, bukan temuan
+desain baru. Diperbaiki: `bg-muted text-foreground` → `bg-success/10
+text-success` (pola identik `bg-destructive/10 text-destructive` yang
+sudah ada untuk "error"), komentar kode yang menyebut KI-041 belum
+resolved juga diperbarui.
+
+Verifikasi visual: dev server sesi ini sudah berjalan dengan sesi login
+nyata (workspace "Insvire", akun Maya Anggraini) — tabel `notifications`
+kosong (0 baris di seluruh database, dicek via Supabase MCP), jadi
+item unread/read tidak bisa dipicu dari data nyata tanpa T-036.5 (trigger
+webhook, belum dikerjakan). Diverifikasi dengan menyisipkan data
+sementara langsung di state React (bukan menulis ke database — akses
+Supabase MCP sesi ini read-only) untuk 3 skenario (unread-success,
+unread-error, read), dibaca lewat DOM computed style (bukan hanya
+screenshot, karena overlay Next.js dev-tools indicator menutupi sudut
+kiri-bawah sidebar footer di Browser pane preview): warna icon success
+resolve ke `rgb(195,209,197)` (persis token `--success` dark mode
+`#c3d1c5`) dan error ke token `--destructive` — sesuai spec. Dot unread,
+`font-semibold` vs `font-normal text-muted-foreground` pada title, dan
+`truncate` pada deskripsi juga dikonfirmasi hadir di markup. Data
+sementara ini **tidak disimpan** — hanya di state komponen sesi browser,
+direvert dari kode sebelum sesi selesai (`git diff` bersih). `bun run
+typecheck` PASS. T-036.5 (trigger webhook) tetap task terpisah, belum
+dikerjakan — T-036 tetap `🟡 In Progress`.
+
+**Follow-up (2026-09-07) — regresi alignment header ditemukan King Rezi
+langsung di browser:** setelah penutupan di atas, King Rezi mereview
+tampilan asli di localhost:3000 dan melaporkan 3 hal: (1) title
+"Notifications", "Mark all as read", dan tombol close tidak sejajar, (2)
+padding/margin header tidak sesuai spec, (3) minta dipastikan ulang kode
+sama persis dengan Claude Design. Root cause: tombol close **bawaan**
+`SheetContent` (shadcn) diposisikan `absolute top-4 right-4` — independen
+dari baris flex header manapun — sedangkan `SheetHeader` sebelumnya masih
+memakai padding default `p-6` (24px, bukan `p-4`/16px sesuai spec
+`.notif-header { padding: var(--spacing-4) }`). Kombinasi keduanya
+membuat title+"Mark all as read" (flex row, pusat vertikal mengikuti
+padding 24px) dan tombol close (pusat vertikal mengikuti posisi absolute
+16px) tidak pernah sejajar secara matematis, berapa pun classname
+di-tweak di baris flex-nya saja.
+
+**Perbaikan:** `SheetContent showCloseButton={false}` (menonaktifkan
+tombol close bawaan yang absolute), tombol close dirender manual sebagai
+flex-sibling di dalam grup aksi kanan bersama "Mark all as read" — pola
+identik dengan `DialogHeader` di `draft-editor/Modal.tsx` (baris ~530-573)
+yang sudah lebih dulu memecahkan masalah yang sama untuk `Dialog`. Header
+diubah ke `p-4` (16px, token `--spacing-4`) + `gap-3` (12px, token
+`--spacing-3`) — match persis `.notif-header` spec Claude Design. Grup
+kanan (`.notif-header-actions` spec) dibungkus `<div className="flex
+items-center gap-3">` supaya title vs grup-aksi diatur `justify-between`,
+dan di dalam grup, markall vs close diatur `gap-3` juga (sesuai
+`.notif-header-actions { gap: var(--spacing-3) }`).
+
+**Verifikasi:** dicek lewat `getBoundingClientRect()` tiap elemen header —
+kedua button (`top: 16, bottom: 48`, height 32px identik) dan title
+(`top: 20, bottom: 44`, center di 32px — persis sama dengan center kedua
+button) sekarang benar-benar sejajar secara matematis, bukan cuma terlihat
+sejajar. `getComputedStyle` header: `padding: 16px`, `gap: 12px`,
+`alignItems: center`, `justifyContent: space-between` — match spec.
+Diverifikasi juga klik tombol close manual (`setIsOpen(false)`, sheet
+controlled) benar-benar menutup panel (`sheet-content` hilang dari DOM).
+`bun run typecheck` PASS.
 
 ---
 

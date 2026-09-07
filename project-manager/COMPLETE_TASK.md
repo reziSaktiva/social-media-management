@@ -8,6 +8,123 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-07 — Follow-up T-036.4: regresi alignment header notification panel diperbaiki (feedback King Rezi)
+
+Setelah penutupan T-036.4 (entri di bawah), King Rezi mereview langsung
+tampilan asli di `localhost:3000` dan melaporkan 3 hal lewat elemen yang
+diselect di browser: (1) title "Notifications", tombol "Mark all as
+read", dan tombol close tidak sejajar satu baris, (2) padding/margin
+header sheet tidak sesuai, (3) minta dipastikan kode sama persis dengan
+Claude Design.
+
+**Root cause:** tombol close **bawaan** komponen `SheetContent` (shadcn)
+diposisikan `absolute top-4 right-4` — posisinya independen dari flex row
+header manapun. `SheetHeader` di `NotificationBell.tsx` sebelumnya juga
+masih memakai padding default `p-6` (24px), bukan `p-4` (16px) sesuai
+token spec Claude Design `.notif-header { padding: var(--spacing-4) }`.
+Kombinasi keduanya membuat pusat vertikal title+"Mark all as read" (di
+dalam baris flex, mengikuti padding 24px) dan pusat vertikal tombol close
+(mengikuti posisi absolute 16px) secara matematis tidak akan pernah
+sejajar, berapa pun classname flex row-nya diubah — bug ini bukan salah
+alignment CSS biasa, tapi dua elemen di layout system yang berbeda
+(flow normal vs absolute).
+
+**Perbaikan** (`NotificationBell.tsx`):
+- `SheetContent showCloseButton={false}` — menonaktifkan tombol close
+  bawaan yang absolute.
+- Tombol close dirender manual sebagai flex-sibling di dalam grup aksi
+  kanan bersama "Mark all as read" — pola yang identik dengan
+  `DialogHeader` di `apps/web/src/app/(app)/components/draft-editor/Modal.tsx`
+  (baris ~530-573), yang sudah lebih dulu memecahkan masalah yang persis
+  sama untuk `Dialog`, jadi bukan pola baru yang dikarang.
+- Header diubah ke `p-4` (16px, token `--spacing-4`) + `gap-3` (12px,
+  token `--spacing-3`) — match `.notif-header` spec Claude Design persis.
+- Grup kanan dibungkus `<div className="flex items-center gap-3">`
+  (padanan `.notif-header-actions` spec) supaya title vs grup-aksi diatur
+  `justify-between`, dan di dalam grup markall vs close diatur `gap-3`
+  juga.
+
+**Verifikasi:** dicek ulang di browser (dev server sesi King Rezi di
+`localhost:3000`, workspace "Insvire"). `getBoundingClientRect()` tiap
+elemen header dibaca lewat DOM — title (`top:20, bottom:44`, pusat 32px)
+dan kedua button (`top:16, bottom:48`, tinggi 32px identik, pusat 32px)
+sekarang benar-benar sejajar secara matematis, bukan cuma terlihat
+sejajar di screenshot. `getComputedStyle` header mengonfirmasi
+`padding: 16px`, `gap: 12px`, `align-items: center`,
+`justify-content: space-between` — seluruhnya match token spec. Diklik
+juga tombol close manual (`onClick={() => setIsOpen(false)}`, Sheet
+controlled) untuk memastikan masih benar-benar menutup panel
+(`sheet-content` hilang dari DOM setelah klik, dikonfirmasi). `bun run
+typecheck` PASS.
+
+**Status:** perbaikan menyatu ke T-036.4 (`[x]` Done, tidak membuka
+kembali status task) karena ini perbaikan visual dalam scope yang sama,
+bukan gap fungsional baru. Detail: `tasks/v02-publishing-mvp.md` § T-036
+(catatan "Follow-up (2026-09-07)").
+
+---
+
+## 2026-09-07 — T-036.4 ditutup: notification bell/panel diverifikasi cocok spec Claude Design
+
+Sesuai gate AGENTS.md rule 17 (cek Claude Design sebelum menulis kode UI),
+dicek dulu project "Social Media Management" di Claude Design —
+`components/notifications-panel.html` + section "Notifications Drawer" di
+`styles.css` — sebelum melanjutkan T-036.4 yang sempat dibuka kembali
+2026-09-01 (5 gap visual dicatat, verifikasi browser belum sempat
+dilakukan).
+
+**Temuan:** dibandingkan baris demi baris ke
+`apps/web/src/app/(app)/components/notification-panel/NotificationBell.tsx`,
+4 dari 5 gap yang dicatat 2026-09-01 ternyata sudah benar sejak migrasi
+T-098.3 (background tint item unread, dot indikator unread, weight/warna
+title read vs unread, deskripsi ellipsis/`truncate`). Hanya **1 gap
+tersisa**: icon circle status untuk kasus "success" masih memakai
+workaround netral `bg-muted text-foreground` — komentar kode saat itu
+menjelaskan ini karena token `--success`/`--warning` belum ada di Stone
+theme shadcn (KI-041). Namun **KI-041 sudah Resolved** sejak 2026-09-04
+(ADR-098, 4 token CSS variable baru light+dark ditambahkan) — jadi gap ini
+murni kode yang belum di-update mengikuti token baru, bukan temuan desain
+baru.
+
+**Perbaikan:** `bg-muted text-foreground` → `bg-success/10 text-success`
+(pola identik dengan `bg-destructive/10 text-destructive` yang sudah
+dipakai untuk kasus "error"), komentar kode yang menyebut KI-041 belum
+resolved diperbarui supaya tidak stale.
+
+**Verifikasi visual:** database `notifications` kosong (0 baris,
+dikonfirmasi via Supabase MCP) — T-036.5 (trigger dari webhook) belum
+dikerjakan sehingga belum ada jalur produksi yang mengisi tabel ini. Akses
+Supabase MCP sesi ini read-only (INSERT ditolak), jadi verifikasi
+dilakukan dengan menyisipkan data notifikasi sementara langsung di state
+React `NotificationBell` (3 skenario: unread-success, unread-error, read)
+untuk keperluan screenshot/inspeksi — **tidak pernah ditulis ke database**.
+Browser pane preview punya overlay Next.js dev-tools indicator yang
+menutupi sudut kiri-bawah sidebar footer, sehingga verifikasi warna
+dilakukan lewat computed style DOM (bukan hanya screenshot manual): icon
+"success" resolve ke `rgb(195,209,197)` (persis token `--success` dark
+mode `#c3d1c5`), icon "error" resolve ke token `--destructive`. Dot unread,
+`font-semibold` vs `font-normal text-muted-foreground` pada title, dan
+class `truncate` pada deskripsi juga terkonfirmasi hadir di markup sesuai
+spec. Data sementara direvert dari kode sebelum sesi selesai — `git diff`
+pada file ini hanya berisi 1 perubahan (`bg-success/10 text-success` +
+update komentar). `bun run typecheck` PASS.
+
+**Status:** T-036.4 ditandai `[x]` Done. T-036 tetap `🟡 In Progress` —
+T-036.5 (trigger notifikasi dari webhook publish result, masih menunggu
+integrasi Outstand nyata/T-025) belum dikerjakan. Detail:
+`tasks/v02-publishing-mvp.md` § T-036, `TASKS.md` § Fokus sekarang.
+
+**Catatan tambahan (di luar scope, tidak ditindaklanjuti sesi ini):**
+Supabase advisor melaporkan 8 tabel tanpa Row Level Security aktif
+(`_prisma_migrations`, `identity_user`, `identity_session`,
+`identity_account`, `identity_verification`, `workspaces`,
+`background_jobs`, `outstand_webhook_events`) — exposed penuh ke role
+`anon`/`authenticated`. Tidak diperbaiki sendiri (mengaktifkan RLS tanpa
+policy akan memblokir akses), perlu keputusan eksplisit King Rezi soal
+policy yang tepat untuk tiap tabel.
+
+---
+
 ## 2026-09-04 — Docs consistency audit (topik T-102/migrasi shadcn) — 5 file wording usang diperbaiki
 
 Dijalankan via skill `docs-consistency-audit` (scope topic-based: T-102 /
