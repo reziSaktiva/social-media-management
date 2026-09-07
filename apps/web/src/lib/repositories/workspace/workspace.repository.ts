@@ -430,6 +430,54 @@ export const workspaceRepository: IWorkspaceRepository = {
     });
   },
 
+  /** Ordered by `createdAt` ascending — sama urutan invitation dibuat, konsisten dengan `listMembers` (`joinedAt` ascending). */
+  async listPendingInvitations(workspaceId, actingUserId) {
+    const invitations = await withCurrentUser(actingUserId, (tx) =>
+      tx.workspaceInvitation.findMany({
+        where: {
+          workspaceId,
+          status: InvitationStatus.Pending,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+    );
+
+    return invitations.map(toInvitationRecord);
+  },
+
+  async revokeInvitation(workspaceId, invitationId, actingUserId) {
+    await withCurrentUser(actingUserId, async (tx) => {
+      // Flip status atomik `pending` -> `revoked` dalam satu statement —
+      // sama pola race guard seperti `acceptInvitation` (compare-and-swap
+      // lewat `updateMany` + cek `count`, bukan SELECT-lalu-UPDATE terpisah).
+      // Ini mencegah race dengan `acceptInvitation`: kalau invitee accept
+      // duluan (status sudah `accepted`), `updateMany` di sini tidak akan
+      // match apa pun, jadi tidak menimpa status yang sudah benar.
+      const revoked = await tx.workspaceInvitation.updateMany({
+        where: {
+          id: invitationId,
+          workspaceId,
+          status: InvitationStatus.Pending,
+        },
+        data: { status: InvitationStatus.Revoked },
+      });
+      if (revoked.count === 0) {
+        // Update tidak kena — cari tahu alasannya cuma untuk pesan error
+        // yang tepat, tidak mempengaruhi hasil di atas.
+        const invitation = await tx.workspaceInvitation.findFirst({
+          where: { id: invitationId, workspaceId },
+        });
+        if (!invitation) {
+          throw new NotFoundError("Undangan tidak ditemukan.");
+        }
+        throw new ConflictError(
+          "Undangan ini sudah pernah dipakai atau dibatalkan.",
+        );
+      }
+    });
+  },
+
   async saveChannelOrder({ workspaceId, userId, orderedConnectedAccountIds }) {
     // `tx` di dalam `withCurrentUser` sudah berupa interactive transaction
     // client (Prisma.TransactionClient) — tidak mengekspos `$transaction`

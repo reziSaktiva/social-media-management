@@ -8,6 +8,61 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-07 — KI-046 Resolved (Promoted to T-007.7, ADR-100), KI-049 ditemukan (Open), ADR-101 mengamandemen ADR-100, T-007.8 diimplementasikan+direview+di-QA tuntas
+
+Kronologi lengkap satu sesi (semua terjadi hari yang sama, setelah T-025/T-026/T-036 tuntas):
+
+**1. Investigasi KI-046.** King Rezi bertanya rekomendasi kerjaan berikutnya — dipilih investigasi **KI-046** (`MemberStatus.Pending` tidak pernah di-assign di flow produksi manapun, ditemukan Najwa QA Engineer 2026-09-04). Dikonfirmasi lewat kode: benar tidak pernah di-assign. King Rezi diberi 3 opsi, memilih **opsi 2**: direservasi untuk metode invite "Kirim via Email" (T-007.7). Dikunci lewat **ADR-100** — desain alur: baris `workspace_members` dibuat langsung `Pending` saat invite dikirim via email (bukan menunggu accept), diupdate `Active` saat user accept; metode Copy Link tidak berubah. Implementasi konkret menunggu T-005 selesai (masih blocked). **KI-046 ditutup: Promoted to T-007.7.**
+
+**2. KI-049 ditemukan.** King Rezi bertanya soal skenario invite Copy Link lalu link dibuka email lain (bukan target undangan). Ditemukan gap security nyata: karena `requireEmailVerification: false` (KI-001), kalau email A belum pernah punya akun, siapa pun yang memegang link bisa membuat akun atas nama email A dan membajak identitasnya — form `/invite/[token]` mengunci field email jadi read-only ke email A, tapi itu cuma memastikan string email cocok, bukan membuktikan kepemilikan inbox. Dicatat sebagai **KI-049** (Security/Bug, status **Open** — belum ada mitigasi, murni pencatatan, tidak ada kode yang diubah untuk temuan ini). Referensi balik ditambahkan di `tasks/v01-foundation.md` § T-007.1 dan § T-093 (field Terkait KI di task yang disebut KI-049).
+
+**3. ADR-101 — perluasan visibilitas Pending ke kedua metode invite.** King Rezi lalu meminta: begitu user diundang lewat metode **apa pun** (bukan cuma Email), harus otomatis muncul di Members list dengan status Pending. Ditemukan constraint skema `WorkspaceMember.userId` bersifat `NOT NULL`, yang membuat pendekatan asli ADR-100 (pre-create baris `workspace_members` asli) tidak bisa diterapkan untuk Copy Link (target belum tentu punya `User` account). Diajukan 2 opsi (ubah skema jadi nullable vs gabungan data presentasi); King Rezi memilih **opsi gabungan data** — dikunci lewat **ADR-101** (mengamandemen ADR-100; status ADR-100 di `DECISIONS.md` dan file ADR-nya ditandai `Accepted — Amended by ADR-101 (2026-09-07)` bersamaan). Desain final: `/settings/members` menggabungkan `workspace_members` (Active/Removed) + `WorkspaceInvitation` berstatus `pending` & belum expired (baris virtual, identitas dari `invitation.email`), tanpa migrasi skema. Aksi baris virtual hanya "Cancel Invitation" (revoke), bukan Change Role. Task baru **T-007.8** ditambahkan di `tasks/v01-foundation.md` § T-007 — tidak bergantung T-005 (data sudah tersedia dari Copy Link, T-007.1 ✅).
+
+**4. T-007.8 — implementasi, review, QA (tuntas, ✅ Done).** Diimplementasikan **Prabowo Feature Engineer**: merge presentasi `workspace_members` + `WorkspaceInvitation` pending belum expired di `WorkspaceService`, aksi `revokeInvitation` (RBAC `assertActorCanManageMembers`), tanpa migrasi skema (sesuai ADR-101 poin 4). Direview **Ridwan Architecture Reviewer**: 1 temuan — race condition di `revokeInvitation` — sudah diperbaiki Prabowo, re-verifikasi bersih (typecheck/lint/test: 269 passed, 5 skipped, 0 error). QA end-to-end **Najwa QA Engineer** (browser real): golden path invite → baris Pending muncul → cancel → link jadi graceful-invalid (PASS); golden path accept → baris Pending hilang jadi Active (PASS); member existing tidak regresi (PASS); mobile 375px (PASS); RBAC Creator tetap tidak bisa akses `/settings/members` (PASS); invitation expired tidak muncul di list (PASS) — **semua PASS, 0 bug ditemukan**. Task induk **T-007** tetap `🟡 In Progress` (sisa scope T-007.7, blocked T-005) — hanya T-007.8 yang ditutup `✅ Done`.
+
+Dokumentasi diperbarui bersamaan: `tasks/v01-foundation.md` (T-007.8 dicentang selesai + catatan implementasi/review/QA, referensi balik KI-049 di T-007.1/T-093), `TASKS.md` (subtask total 211 → 212, dihitung ulang langsung dari file, entri Update baru), `PROJECT_STATE.md` (Snapshot § Top Next Tasks, Completed Ringkasan — 5 bullet terjaga, Recent Decisions — ADR-101 ditambah di atas ADR-096 digeser keluar, Version 1.0.73 → 1.0.74), `DECISIONS.md` (status ADR-100 diamandemen).
+
+Detail: `tasks/v01-foundation.md` § T-007/T-007.1/T-007.7/T-007.8/T-093, `decisions/ADR-100-*.md`, `decisions/ADR-101-*.md`, `PROJECT_STATE.md` § KI-049.
+
+---
+
+## 2026-09-07 — KI-049 dicatat: invite Copy Link rawan identity takeover kalau penerima bukan target undangan
+
+King Rezi menemukan gap lewat diskusi: kalau invite dikirim via **Copy Link** ke email A, tapi link-nya terbuka oleh email B (link diteruskan/dibagikan ke orang yang salah), dan **email A belum pernah punya akun**, email B ternyata bisa langsung membuat akun **atas nama email A** (isi Nama + Password pilihannya sendiri) di form `/invite/[token]` dan berhasil join workspace sebagai identitas "A".
+
+**Root cause dikonfirmasi lewat kode:**
+- `AcceptInviteForm.tsx` mengunci field email jadi `readOnly` (pre-filled dari `invitation.email`) — tapi ini cuma memastikan **string email** yang dikirim ke `authClient.signUp.email()` cocok, bukan membuktikan siapa yang benar-benar memegang inbox itu.
+- `WorkspaceService.acceptInvite` (`workspace.service.ts:615`) sudah benar mengecek `actorEmail === invitation.email` — tapi guard ini tidak menolong karena `actorEmail` datang dari sesi Better Auth yang baru saja dibuat sendiri oleh siapa pun yang mengisi form itu.
+- Akar masalahnya: `requireEmailVerification: false` di `auth.ts:53` (bagian dari **KI-001**, provider email belum ditetapkan) — tidak ada email konfirmasi yang mengecek kepemilikan inbox sebelum akun baru dianggap sah.
+
+**Dampak:** email B bisa efektif membajak identitas email A (akun baru + password buatan B) sebelum pemilik asli A sempat daftar — begitu pemilik asli mencoba daftar belakangan, ditolak "email sudah terdaftar", terkunci keluar dari identitasnya sendiri.
+
+**Lingkup gap:** hanya berlaku kalau email A **belum** pernah punya akun (`isExistingUser: false`). Kalau email A sudah terdaftar, skenario ini aman — email B tetap butuh password akun A untuk sign-in.
+
+Dicatat sebagai **KI-049** (Security/Bug, Open) di `PROJECT_STATE.md` — belum ada keputusan mitigasi (opsi yang dipertimbangkan: tunda Copy Link sampai email verification tersedia, atau tambahkan verifikasi email terpisah khusus alur accept-invite). Murni pencatatan investigasi, tidak ada kode yang diubah sesi ini.
+
+---
+
+## 2026-09-07 — KI-046 Resolved (Promoted to T-007.7): `MemberStatus.Pending` direservasi untuk metode invite "Kirim via Email", ADR-100
+
+King Rezi diminta memutuskan nasib `MemberStatus.Pending` (ditemukan Najwa QA Engineer 2026-09-04 tidak pernah di-assign di flow produksi manapun — dicatat KI-046). Diberikan 3 opsi: (1) hapus sebagai dead code, (2) disiapkan untuk metode invite "Kirim via Email" (T-007.7, ADR-080), (3) dibiarkan status quo tanpa keputusan. **King Rezi memilih opsi 2.**
+
+Ditulis **ADR-100** (`decisions/ADR-100-memberstatus-pending-direservasi-metode-invite-kirim-via-email.md`) yang mengunci desain:
+- Saat invite dikirim via email (T-007.7, masih blocked T-005), baris `workspace_members` dibuat **langsung saat itu juga** dengan status `Pending` — bukan menunggu user accept — supaya invite yang terkirim langsung terlihat di `/settings/members`.
+- Saat user accept lewat `/invite/[token]` (pola T-093), baris yang sudah ada **diupdate** jadi `Active` (bukan insert baru); role tetap dari `WorkspaceInvitation`.
+- Metode **Copy Link** (T-007.1, sudah jalan) **tidak berubah** — tetap tidak pre-create membership, insert langsung `Active` saat accept. Perbedaan disengaja: Copy Link bisa dibagikan ke siapa saja sebelum dibuka, tidak ada dasar untuk pre-create; Kirim via Email tahu pasti target penerima.
+- Implementasi kode **belum dikerjakan** — tetap menunggu T-005 (email provider) selesai. Ini murni keputusan desain, bukan task implementasi.
+
+Perubahan dokumen (murni dokumentasi, tidak ada kode diubah):
+- `DECISIONS.md` — entri ADR-100 ditambahkan di atas ADR-099.
+- `decisions/ADR-100-memberstatus-pending-direservasi-metode-invite-kirim-via-email.md` — file ADR baru.
+- `tasks/v01-foundation.md` § T-007.7 — catatan desain ditambahkan ke checklist item yang sudah ada (tidak menambah subtask baru, T-007.7 sudah ada sejak ADR-080).
+- `PROJECT_STATE.md` — KI-046 status diubah `Open` → `Promoted to T-007.7 (ADR-100)`; bullet baru ditambahkan ke Completed (Ringkasan) (bullet terlama T-102.5 digeser keluar batas 5 item, riwayatnya tetap aman di sini); Recent Decisions (Ringkasan) ditambah ADR-100, ADR-095 digeser keluar batas 5.
+
+Tidak memblokir apa pun — T-007.7 tetap menunggu T-005 seperti sebelumnya, hanya sekarang desainnya sudah eksplisit dikunci.
+
+---
+
 ## 2026-09-07 — T-026 & T-036 ditutup `✅ Done`: KI-048 Resolved, verifikasi end-to-end nyata
 
 Kelanjutan langsung dari entri di bawah (T-026 sudah selesai kode, blocked deploy migration, KI-048). Sejak itu:

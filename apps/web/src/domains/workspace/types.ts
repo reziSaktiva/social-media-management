@@ -7,6 +7,7 @@ import type {
   SocialPlatform,
   UserId,
 } from "@social/shared";
+import type { WorkspaceInvitationRecord } from "./repositories/workspace.repository";
 
 /**
  * Shape consumed by UI surfaces that render a quick-glance list of connected
@@ -69,6 +70,21 @@ export type WorkspaceInviteAcceptView =
   | { state: "valid"; details: WorkspaceInviteAcceptDetails }
   | { state: "expired" }
   | { state: "invalid" };
+
+/**
+ * Satu baris gabungan Members list (T-007.8, ADR-101) — union eksplisit,
+ * BUKAN invitation dipaksa ke shape `WorkspaceMemberWithUser` dengan field
+ * dipalsukan (`name`/`userId` dummy). `kind` adalah discriminant supaya UI
+ * (`MembersTable.tsx`) bisa merender dua jenis baris dengan aman tanpa
+ * runtime check ad-hoc per field. `member` — baris asli dari
+ * `workspace_members` (status Active/Removed). `invitation` — baris virtual
+ * dari `WorkspaceInvitation` (`status = pending`, belum expired) yang belum
+ * punya `User`/nama sampai di-accept (T-093) — identitas ditampilkan pakai
+ * `invitation.email`.
+ */
+export type MemberListRow =
+  | { kind: "member"; member: WorkspaceMemberWithUser }
+  | { kind: "pending-invitation"; invitation: WorkspaceInvitationRecord };
 
 /**
  * Label tampilan role — satu sumber untuk semua UI (Settings → Members,

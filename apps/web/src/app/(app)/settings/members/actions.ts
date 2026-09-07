@@ -1,6 +1,11 @@
 "use server";
 
-import { MemberRole, asMemberId, asUserId } from "@social/shared";
+import {
+  MemberRole,
+  asInvitationId,
+  asMemberId,
+  asUserId,
+} from "@social/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { WorkspaceService } from "@/domains/workspace";
@@ -91,6 +96,37 @@ export async function inviteMemberAction(
     token: invitation.token,
     inviteLink: `${baseUrl}/invite/${invitation.token}`,
   };
+}
+
+/**
+ * Cancel Invitation untuk baris virtual Pending (T-007.8, ADR-101 poin 5) —
+ * pola sama persis `removeMemberAction`. RBAC (Owner/Admin) divalidasi di
+ * `WorkspaceService.cancelInvitation` (reuse `assertActorCanManageMembers`),
+ * bukan di sini (entry point tanpa business logic, AGENTS.md #5).
+ */
+export async function cancelInvitationAction(
+  invitationId: string,
+): Promise<{ error?: string }> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const workspaceService = new WorkspaceService(workspaceRepository);
+
+  try {
+    await workspaceService.cancelInvitation(
+      workspaceId,
+      asUserId(session.user.id),
+      asInvitationId(invitationId),
+    );
+  } catch (error) {
+    return toActionError(error);
+  }
+
+  revalidatePath("/settings/members");
+  return {};
 }
 
 export async function updateMemberRoleAction(

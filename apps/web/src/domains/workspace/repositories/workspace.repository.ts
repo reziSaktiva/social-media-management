@@ -230,6 +230,37 @@ export interface IWorkspaceRepository {
   }): Promise<WorkspaceMemberRecord>;
 
   /**
+   * Undangan `pending` yang belum melewati `expiresAt` (T-007.8, ADR-101) —
+   * sumber baris virtual "Pending" di `/settings/members`, berlaku untuk
+   * invitation yang dibuat lewat metode manapun (Copy Link maupun Kirim via
+   * Email — keduanya sama-sama tabel `WorkspaceInvitation`, ADR-101 poin 3).
+   * Sengaja TIDAK menyertakan invitation yang sudah `accepted`/`revoked`
+   * atau sudah lewat `expiresAt` — baris itu tidak lagi relevan ditampilkan
+   * sebagai "menunggu respons". `actingUserId` (RLS, KI-026 follow-up) —
+   * member aktif workspace ini yang memicu query (bukan filter hasil).
+   */
+  listPendingInvitations(
+    workspaceId: WorkspaceId,
+    actingUserId: UserId,
+  ): Promise<WorkspaceInvitationRecord[]>;
+
+  /**
+   * Batalkan undangan pending (Cancel Invitation, T-007.8, ADR-101 poin 5) —
+   * set `WorkspaceInvitation.status` jadi `revoked`. Melempar `NotFoundError`
+   * bila invitation tidak ditemukan di workspace ini, atau `ConflictError`
+   * bila statusnya sudah bukan `pending` lagi (sudah accepted/revoked/expired
+   * di antara load halaman dan klik Cancel — race guard, pola sama seperti
+   * `acceptInvitation`). `actingUserId` (RLS, KI-026 follow-up) — RBAC
+   * (Owner/Admin, `assertActorCanManageMembers`) sudah diverifikasi di
+   * `WorkspaceService.cancelInvitation` sebelum method ini dipanggil.
+   */
+  revokeInvitation(
+    workspaceId: WorkspaceId,
+    invitationId: InvitationId,
+    actingUserId: UserId,
+  ): Promise<void>;
+
+  /**
    * Persist urutan channel sidebar personal user (T-012.1). Full rewrite
    * (delete+createMany) — caller (`WorkspaceService.saveChannelOrder`)
    * sudah memfilter `orderedConnectedAccountIds` supaya hanya berisi id

@@ -8,6 +8,7 @@ import {
 } from "@social/shared";
 import type {
   ConnectedAccountId,
+  InvitationId,
   MemberId,
   UserId,
   WorkspaceId,
@@ -28,6 +29,7 @@ import type {
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
 import type {
+  MemberListRow,
   SidebarChannelAccount,
   WorkspaceInviteAcceptView,
   WorkspaceMemberWithUser,
@@ -331,6 +333,58 @@ export class WorkspaceService {
       });
     }
     return result;
+  }
+
+  /**
+   * Gabungan member asli + undangan pending, siap-render untuk
+   * `/settings/members` (T-007.8, ADR-101). Dua sumber digabung sebagai
+   * `MemberListRow[]` (union eksplisit, lihat catatan di `types.ts`) — BUKAN
+   * invitation dipaksa ke shape `WorkspaceMemberWithUser`. Anggota asli
+   * (Active/Removed) ditampilkan lebih dulu, diikuti undangan pending —
+   * urutan masing-masing kelompok mengikuti urutan repository-nya sendiri
+   * (`joinedAt`/`createdAt` ascending), tidak di-interleave berdasar waktu.
+   */
+  async listMembersAndPendingInvitations(
+    workspaceId: WorkspaceId,
+    actingUserId: UserId,
+  ): Promise<MemberListRow[]> {
+    const [members, pendingInvitations] = await Promise.all([
+      this.listMembersWithUser(workspaceId, actingUserId),
+      this.repository.listPendingInvitations(workspaceId, actingUserId),
+    ]);
+
+    return [
+      ...members.map((member): MemberListRow => ({ kind: "member", member })),
+      ...pendingInvitations.map((invitation): MemberListRow => ({
+        kind: "pending-invitation",
+        invitation,
+      })),
+    ];
+  }
+
+  /**
+   * Batalkan undangan pending (Cancel Invitation, T-007.8, ADR-101 poin 5) —
+   * satu-satunya aksi untuk baris virtual Pending (tidak ada "Change Role"
+   * untuk baris ini, belum ada member sungguhan untuk diubah rolenya). RBAC
+   * SAMA dengan `removeMember`/`inviteMember`, reuse
+   * `assertActorCanManageMembers` — bukan RBAC baru.
+   */
+  async cancelInvitation(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    invitationId: InvitationId,
+  ): Promise<void> {
+    await this.assertActorCanManageMembers(
+      workspaceId,
+      actorUserId,
+      "Hanya Owner atau Admin yang bisa membatalkan undangan.",
+    );
+
+    await this.repository.revokeInvitation(
+      workspaceId,
+      invitationId,
+      actorUserId,
+    );
   }
 
   /**

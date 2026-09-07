@@ -61,7 +61,22 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 8 ✅          | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 85 task · 35 selesai · 211 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 85 task · 35 selesai · 212 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-07, T-007.8 Done — ADR-101):** **T-007.8** (Members
+> list menampilkan undangan pending via gabungan `workspace_members` +
+> `WorkspaceInvitation`, berlaku Copy Link & Kirim via Email) ditutup
+> `✅ Done` — lolos implementasi Prabowo Feature Engineer, review
+> arsitektur Ridwan Architecture Reviewer (1 temuan race condition di
+> `revokeInvitation`, sudah diperbaiki), dan QA end-to-end Najwa QA
+> Engineer (browser real, semua skenario **PASS**, 0 bug). **T-007**
+> (task induk) tetap `🟡 In Progress` — satu-satunya sisa scope adalah
+> T-007.7 (Kirim via Email), masih blocked T-005. Subtask total naik
+> 211 → **212** (v0.1 subtask 67 → 68, task-level v0.1 tidak berubah
+> karena T-007 sendiri belum ✅ Done), dihitung ulang langsung dari
+> `tasks/v01-foundation.md`, sesuai aturan maintenance. Detail:
+> `tasks/v01-foundation.md` § T-007.8, `decisions/ADR-101-*.md`,
+> `COMPLETE_TASK.md`.
 
 > **Update (2026-09-07, T-026 & T-036 Done — KI-048 Resolved):** **T-026**
 > (Webhook handler Outstand) dan **T-036** (In-app notification + Supabase
