@@ -48,6 +48,7 @@ function createFakeRepository(
     listCalendarPosts: async () => [],
     cancelSchedule: async () => null,
     markPostFailed: async () => undefined,
+    findPostTargetsByOutstandPostId: async () => null,
     ...overrides,
   };
 }

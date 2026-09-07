@@ -38,6 +38,38 @@ export interface PublishingScheduleRecord extends PublishingPostRecord {
 }
 
 /**
+ * Satu target dalam hasil `findPostTargetsByOutstandPostId` (T-026, webhook
+ * Outstand) — `outstandAccountId` disertakan supaya caller (`WebhookProcessor`)
+ * bisa mencocokkan `PostTargetOutcome.outstandAccountId` (dari
+ * `IOutstandAdapter.fetchPostOutcome`) ke `postTargetId` internal tanpa
+ * query terpisah per akun.
+ */
+export interface WebhookPostTargetLookupRecord {
+  postTargetId: PostTargetId;
+  connectedAccountId: ConnectedAccountId;
+  outstandAccountId: string;
+}
+
+/**
+ * Hasil `findPostTargetsByOutstandPostId` (T-026) — post-level info +
+ * seluruh target milik post itu. `authorId` dipakai `WebhookProcessor`
+ * sebagai `actingUserId` untuk memanggil `updateTargetOutcome`/
+ * `markPostFailed` SETELAH lookup ini (kedua method itu tetap dibungkus
+ * `withCurrentUser`, TIDAK bypass RLS sendiri) — lihat catatan lengkap di
+ * migration `20260907120000_t026_outstand_webhook_system_lookups` untuk
+ * kenapa method INI (baca) perlu bypass RLS: webhook route tidak punya
+ * Better Auth session/`userId` untuk di-set sebelum tahu post/workspace mana
+ * yang dimaksud (chicken-and-egg — RLS default-deny tanpa
+ * `app.current_user_id` yang valid).
+ */
+export interface WebhookPostLookupRecord {
+  postId: PostId;
+  workspaceId: WorkspaceId;
+  authorId: UserId;
+  targets: WebhookPostTargetLookupRecord[];
+}
+
+/**
  * Satu target (akun + platform) milik queue item (T-032.2, KSP-03).
  * `accountHandle` dipetakan dari `WorkspaceConnectedAccount.handle` supaya
  * UI Queue (T-032.3) tidak perlu query terpisah per akun.
@@ -372,4 +404,29 @@ export interface IPublishingRepository {
     input: { workspaceId: WorkspaceId; postId: PostId },
     userId: UserId,
   ): Promise<void>;
+
+  /**
+   * Webhook Outstand (T-026.3/.4) — lookup post + seluruh target-nya by
+   * `outstandPostId` post-level (dari payload webhook `post.published`/
+   * `post.error`). Returns `null` kalau tidak ada `PublishingPost` dengan
+   * `outstandPostId` itu (mis. event untuk post yang sudah di-soft-delete,
+   * atau id yang tidak dikenal).
+   *
+   * **TIDAK menerima `userId`** — beda dari method lain di interface ini.
+   * Webhook route (`/api/webhooks/outstand`) tidak punya Better Auth
+   * session, jadi tidak ada acting user yang bisa di-set untuk
+   * `withCurrentUser` SEBELUM lookup ini selesai (chicken-and-egg: baru
+   * lewat method ini kita tahu `authorId`-nya). Implementasi Prisma
+   * (`src/lib/repositories/publishing/publishing.repository.ts`) memakai
+   * SECURITY DEFINER SQL function (migration
+   * `20260907120000_t026_outstand_webhook_system_lookups`) untuk membaca
+   * lintas-RLS secara sempit, hanya untuk lookup exact-match by external id
+   * ini — BUKAN bypass umum. `WebhookProcessor` (pemanggil) memakai
+   * `authorId` hasil method ini sebagai `actingUserId` untuk
+   * `updateTargetOutcome`/`markPostFailed` setelahnya (kedua method itu
+   * tetap RLS-safe seperti biasa, tidak ikut bypass).
+   */
+  findPostTargetsByOutstandPostId(
+    outstandPostId: string,
+  ): Promise<WebhookPostLookupRecord | null>;
 }

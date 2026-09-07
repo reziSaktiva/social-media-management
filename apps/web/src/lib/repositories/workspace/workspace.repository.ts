@@ -579,4 +579,45 @@ export const workspaceRepository: IWorkspaceRepository = {
       throw error;
     }
   },
+
+  async markAccountReconnectRequired(outstandAccountId) {
+    // System-context read (T-026.5, webhook Outstand) — bypasses RLS via a
+    // narrow SECURITY DEFINER SQL function (migration
+    // `20260907120000_t026_outstand_webhook_system_lookups`), NOT
+    // `withCurrentUser` — sama alasan seperti
+    // `publishingRepository.findPostTargetsByOutstandPostId`, lihat catatan
+    // lengkap di interface method ini.
+    const rows = await prisma.$queryRaw<AccountOwnerLookupRow[]>`
+      SELECT * FROM "public"."webhook_find_account_owner_by_outstand_account_id"(${outstandAccountId})
+    `;
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const [row] = rows;
+    const workspaceId = asWorkspaceId(row.workspace_id);
+    const connectedAccountId = asConnectedAccountId(row.connected_account_id);
+    const ownerUserId = asUserId(row.owner_user_id);
+
+    // Write path tetap RLS-safe seperti method lain di file ini —
+    // `ownerUserId` (Owner workspace ini, dibaca lewat bypass di atas)
+    // dijamin member aktif di workspace-nya sendiri, jadi `withCurrentUser`
+    // di sini tidak butuh bypass tambahan.
+    await withCurrentUser(ownerUserId, (tx) =>
+      tx.workspaceConnectedAccount.updateMany({
+        where: { id: connectedAccountId, workspaceId },
+        data: { reconnectRequired: true },
+      }),
+    );
+
+    return { workspaceId, connectedAccountId, ownerUserId };
+  },
 };
+
+/** Row shape returned by the raw SQL call above — snake_case, mirrors the SQL function's RETURNS TABLE. */
+interface AccountOwnerLookupRow {
+  workspace_id: string;
+  connected_account_id: string;
+  owner_user_id: string;
+}

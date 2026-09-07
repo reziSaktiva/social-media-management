@@ -8,6 +8,46 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-07 — T-026 & T-036 ditutup `✅ Done`: KI-048 Resolved, verifikasi end-to-end nyata
+
+Kelanjutan langsung dari entri di bawah (T-026 sudah selesai kode, blocked deploy migration, KI-048). Sejak itu:
+
+1. **King Rezi menjalankan `bun run db:deploy`** — 3 migration T-026 (`20260907120000_t026_outstand_webhook_system_lookups`, `20260907130000_t026_unique_outstand_post_id`, `20260907140000_t026_relax_webhook_event_type_check`) **terverifikasi ter-apply** ke database dev. Najwa QA Engineer cross-check langsung via Supabase MCP: fungsi `webhook_find_post_targets_by_outstand_post_id`/`webhook_find_account_owner_by_outstand_account_id` sudah ada, unique index `publishing_posts_outstand_post_id_unique` sudah ada, CHECK constraint `event_type` sudah dilonggarkan jadi non-empty string (bukan whitelist 3 nilai).
+2. **King Rezi mengisi `OUTSTAND_WEBHOOK_SECRET` dengan nilai dummy sementara** di `apps/web/.env.local` (bukan kredensial asli Outstand — belum ada — murni untuk memungkinkan testing lokal HMAC signature). `OUTSTAND_API_KEY` tetap kosong/dikomentari, `FakeOutstandAdapter` tetap aktif jalur produksi — tidak ada perubahan pada ADR-059.
+3. **Najwa QA Engineer retest end-to-end nyata** (HTTP request langsung ke `/api/webhooks/outstand`, dev server lokal, tanpa cookie session — mensimulasikan Outstand asli) untuk 5 skenario, **SEMUA PASS**:
+   - Golden path `post.published` — `PublishingPostTarget.status` kedua target jadi `published`, `platformPostId`/`platformPostUrl` terisi.
+   - `post.error` — diproses bersih, tidak ada lagi error DB "function does not exist" (bug lama, sekarang tuntas).
+   - `account.token_expired` — `WorkspaceConnectedAccount.reconnectRequired` jadi `true` + notifikasi baru untuk Owner workspace (menutup **T-036.5** juga).
+   - Event type tak dikenal (`something.unknown`) — `200 OK`, tidak error (constraint DB sudah benar dilonggarkan).
+   - Idempotensi (event id sama 2x → kedua `2xx`, tidak reproses) + signature invalid (`401`, tidak ada row tersimpan) — regresi aman.
+
+**Housekeeping (bukan bug, catatan untuk QA webhook berikutnya):** `FakeOutstandAdapter` (ADR-059) menyimpan state target-per-post di memori proses server, bukan database — jadi setelah restart dev server, hanya post yang dibuat lewat alur Schedule/Publish Now ASLI (bukan seed langsung Prisma) yang bisa diuji `fetchPostOutcome`.
+
+**Hasil:** **T-026 (Webhook handler Outstand)** dan **T-036 (In-app notification + Supabase Realtime)** keduanya ditutup **`✅ Done`**. **KI-048 Resolved.** ADR-099 (SECURITY DEFINER system-context lookup) tetap dicatat sebagai preseden arsitektur untuk T-027 (job runner). Detail: `tasks/v02-publishing-mvp.md` § T-026, § T-036; `TASKS.md`; `PROJECT_STATE.md` § Blockers.
+
+---
+
+## 2026-09-07 — T-026 Webhook handler Outstand: implementasi penuh, blocked deploy migration (ADR-099)
+
+Route `/api/webhooks/outstand` (sebelumnya `501` placeholder) diimplementasikan penuh dalam satu sesi: implementasi Elon Backend Engineer → review arsitektur Ridwan Architecture Reviewer (temuan diperbaiki) → QA end-to-end Najwa QA Engineer (bug ditemukan diperbaiki). Kode **lolos** `typecheck`/`lint`/`test` (261 pass, 4 skip) — tapi **T-026 tetap `🟡 In Progress`**, belum bisa `✅ Done` karena blocker deploy migration (lihat bawah). T-036.5 (trigger notifikasi dari webhook) ikut tertutup sebagai bagian pekerjaan yang sama.
+
+**Implementasi:**
+1. **HMAC-SHA256 verification** (`apps/web/src/lib/adapters/outstand/verify-webhook-signature.ts`) atas raw body, `timingSafeEqual` (bukan `===`) terhadap header `X-Outstand-Signature`. `OUTSTAND_WEBHOOK_SECRET` kosong atau signature invalid → `401`, payload tidak diproses.
+2. **Durable-before-ACK**: persist idempoten ke `OutstandWebhookEvent` (unique `outstandEventId`, fallback fingerprint SHA-256 raw body kalau Outstand tidak mengirim event id) SEBELUM diproses, `2xx` hanya setelah persist berhasil. Event id duplikat → `200` langsung tanpa reproses; race condition ditangani via unique constraint DB + catch `P2002` (bukan cuma app-level check, diverifikasi Ridwan).
+3. **Pemrosesan INLINE SINKRON** (bukan async lewat job queue) — `OutstandWebhookProcessor` baru (`apps/web/src/domains/publishing/services/outstand-webhook-processor.ts`) menangani `post.published`/`post.error` (fetchPostOutcome → updateTargetOutcome per akun → markPostFailed kalau semua target gagal → notifikasi ke `authorId` post untuk `post.error`) dan `account.token_expired` (markAccountReconnectRequired → notifikasi ke Owner workspace). Event type tak dikenal diterima tapi tidak diproses (`2xx`, bukan error).
+4. **NotificationType baru** (`packages/shared/src/enums.ts`): `PostPublishFailed`, `AccountReconnectRequired`.
+5. Bug ditemukan & diperbaiki sepanjang sesi (bukan open issue): `apps/web/src/proxy.ts` tidak punya `/api/webhooks` di `BYPASS_PREFIXES` (webhook asli tanpa cookie session di-redirect 307 ke `/login`) — fixed, diverifikasi ulang via curl asli; CHECK constraint `event_type` di migration lama (`20260723121000_align_outstand_contract`) menolak event type di luar whitelist 3 nilai — fixed via migration baru (lihat blocker di bawah).
+
+**Known gap disengaja (bukan ADR, dicatat untuk T-027):** desain arsitektur asli (`integration-layer.md`) mendeskripsikan Route Handler → enqueue JOB-01 → ACK, lalu job runner (T-027, belum dikerjakan sama sekali) yang memproses async. Karena T-027 belum ada, pemrosesan dilakukan inline sinkron di Route Handler yang sama sebagai sequencing pragmatis. Saat T-027 dikerjakan, webhook processing ini semestinya dipindah jadi enqueue+async sesuai desain asli — dicatat di `PROJECT_STATE.md` § Known Issues (KI-048) dan catatan T-027.
+
+**ADR-099 — SECURITY DEFINER System-Context Lookup untuk Webhook Outstand:** route webhook tidak punya Better Auth session/`userId` (webhook eksternal), tapi RLS `publishing_posts`/`publishing_post_targets`/`workspace_connected_accounts` mewajibkan `app.current_user_id` cocok member aktif (default-deny tanpa itu) — lookup awal (cari post/akun dari `outstandPostId`/`outstandAccountId`) tidak bisa lewat `withCurrentUser` biasa karena justru lookup itu sendiri yang menghasilkan `userId` yang sah. Keputusan: 2 fungsi Postgres `SECURITY DEFINER` baru — `webhook_find_post_targets_by_outstand_post_id` dan `webhook_find_account_owner_by_outstand_account_id` (migration `20260907120000_t026_outstand_webhook_system_lookups`), scope sempit (exact-match by external id saja), `EXECUTE` direvoke dari `PUBLIC`, hanya di-grant ke role `app_runtime`. Setelah `userId` resolve, semua operasi TULIS tetap lewat `withCurrentUser` normal — bypass hanya di baca. Defense-in-depth tambahan (migration `20260907130000_t026_unique_outstand_post_id`): partial unique index global pada `publishing_posts.outstand_post_id` + guard assert eksplisit di kode, menutup temuan Ridwan (tanpa index ini kolom itu tidak unik sama sekali, berisiko JOIN lintas tenant). Pola ini jadi preseden untuk T-027 (job runner) saat butuh akses sistem serupa — dicatat eksplisit di ADR-099. Detail: `project-manager/decisions/ADR-099-security-definer-system-context-lookup-webhook-outstand.md`.
+
+**BLOCKER — task belum bisa `✅ Done`:** Najwa QA Engineer menemukan 3 migration Prisma baru dari T-026 belum pernah `prisma migrate deploy` ke database dev/live: `20260907120000_t026_outstand_webhook_system_lookups`, `20260907130000_t026_unique_outstand_post_id`, `20260907140000_t026_relax_webhook_event_type_check` (fix CHECK constraint `event_type` supaya event type masa depan tetap `2xx`, bukan `503`). Tanpa deploy, seluruh pemrosesan webhook silently gagal (Postgres error "function does not exist", tapi route tetap balas `200 {"ok":true}` karena desain "ACK meski proses gagal") — DB tidak pernah ter-update, notifikasi tidak pernah terkirim. Bukan bug kode — murni migration menunggu dijalankan. Konsisten dengan gap tercatat 2026-09-01 (T-036): classifier auto-mode Claude Code memblokir eksekusi `prisma migrate deploy` dari sesi manapun terhadap database live — bukan sesuatu yang bisa dijalankan AI sendiri. King Rezi/tim perlu menjalankan `bun run db:deploy` (atau `prisma migrate deploy` manual) terhadap database dev yang dipakai, lalu retest 3 skenario (post.published, post.error, account.token_expired) yang belum bisa diverifikasi Najwa karena terblokir ini. Dicatat sebagai **KI-048** di `PROJECT_STATE.md` § Known Issues + Blockers.
+
+Detail lengkap checklist: `tasks/v02-publishing-mvp.md` § T-026 dan § T-036 (T-036.5).
+
+---
+
 ## 2026-09-07 — Follow-up T-036.4: regresi alignment header notification panel diperbaiki (feedback King Rezi)
 
 Setelah penutupan T-036.4 (entri di bawah), King Rezi mereview langsung

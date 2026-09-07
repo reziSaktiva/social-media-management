@@ -5,7 +5,7 @@
 **Tujuan rilis:** Memungkinkan pengguna membuat dan menjadwalkan konten.
 **Baseline rilis:** `product-discovery/02-product/release-roadmap.md` → v0.2
 
-**Rantai blocker rilis ini:** Real OutstandAdapter (T-025) belum ada → schedule hanya jalan lewat Fake · Connect account (T-013) belum ada → connected account harus di-seed · webhook (T-026) + job runner (T-027) masih 501 → **tidak ada transisi status post pasca-schedule**. Tiga task itu membuka hampir semua sisa rilis ini.
+**Rantai blocker rilis ini:** Real OutstandAdapter (T-025) belum ada → schedule hanya jalan lewat Fake · Connect account (T-013) belum ada → connected account harus di-seed · job runner (T-027) masih 501 → **belum ada transisi status post otomatis saat waktunya tiba** (webhook T-026 sudah ✅ Done 2026-09-07 — menangani transisi status pasca-publish/error/token-expired, tapi trigger-nya masih inbound webhook Outstand, bukan job scheduler). Task-task ini membuka hampir semua sisa rilis ini.
 
 ---
 
@@ -103,21 +103,25 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 
 | Field         | Value                                                              |
 | ------------- | ------------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                      |
+| **Status**    | ✅ Done                                                            |
 | **Domain**    | integration                                                        |
-| **ADR**       | ADR-020, ADR-040                                                   |
-| **Terkait**   | KI-003 (via T-025), KI-015 (`PROJECT_STATE.md` § Blockers)                    |
+| **ADR**       | ADR-020, ADR-040, ADR-099                                          |
+| **Terkait**   | KI-003 (via T-025), KI-015                                         |
 | **Depends**   | T-025                                                              |
 | **Baca dulu** | `05-architecture/integration-layer.md`                              |
 
 `/api/webhooks/outstand` masih return 501. Model `OutstandWebhookEvent` sudah ada di schema, `OUTSTAND_WEBHOOK_SECRET` sudah didefinisikan di `src/lib/env.ts` tapi belum dipakai.
 
-- [ ] **T-026.1** Verifikasi HMAC-SHA256 signature sebelum setiap pemrosesan
-- [ ] **T-026.2** Durable-before-ACK — persist event dulu, baru ACK, baru proses
-- [ ] **T-026.3** Handler `post.published` → update `PublishingPostTarget` outcome
-- [ ] **T-026.4** Handler `post.error` → outcome gagal + trigger notifikasi (T-036)
-- [ ] **T-026.5** Handler `account.token_expired` → tandai akun perlu reconnect (T-015)
-- [ ] **T-026.6** Idempotensi: event duplikat tidak boleh menggandakan efek
+- [x] **T-026.1** Verifikasi HMAC-SHA256 signature sebelum setiap pemrosesan
+- [x] **T-026.2** Durable-before-ACK — persist event dulu, baru ACK, baru proses
+- [x] **T-026.3** Handler `post.published` → update `PublishingPostTarget` outcome
+- [x] **T-026.4** Handler `post.error` → outcome gagal + trigger notifikasi (T-036)
+- [x] **T-026.5** Handler `account.token_expired` → tandai akun perlu reconnect (T-015)
+- [x] **T-026.6** Idempotensi: event duplikat tidak boleh menggandakan efek
+
+**Selesai kode (2026-09-07):** seluruh 6 checklist di atas diimplementasikan penuh (Elon Backend Engineer → review Ridwan → QA Najwa, siklus fix di tiap tahap), lolos `typecheck`/`lint`/`test` (261 pass, 4 skip). Pemrosesan **inline sinkron** di Route Handler (bukan enqueue+async sesuai desain asli `integration-layer.md`) karena T-027 (job runner) belum dikerjakan sama sekali — saat T-027 dikerjakan, webhook processing ini semestinya dipindah ke enqueue+async. Keputusan arsitektur baru (2 fungsi Postgres `SECURITY DEFINER` untuk lookup system-context tanpa `userId`) dicatat sebagai **ADR-099**. Ini juga menutup **T-036.5**.
+
+**Ditutup `✅ Done` (2026-09-07):** 3 migration baru (`20260907120000_t026_outstand_webhook_system_lookups`, `20260907130000_t026_unique_outstand_post_id`, `20260907140000_t026_relax_webhook_event_type_check`) sudah dijalankan King Rezi (`bun run db:deploy`) dan **terverifikasi ter-apply** ke DB dev (Najwa QA Engineer cross-check langsung via Supabase MCP: fungsi `webhook_find_post_targets_by_outstand_post_id`/`webhook_find_account_owner_by_outstand_account_id` ada, unique index `publishing_posts_outstand_post_id_unique` ada, CHECK constraint `event_type` sudah dilonggarkan). Retest end-to-end nyata (HTTP request langsung ke `/api/webhooks/outstand`, dev server lokal, tanpa cookie session, mensimulasikan Outstand asli — `OUTSTAND_WEBHOOK_SECRET` diisi dummy sementara di `.env.local` khusus untuk memungkinkan verifikasi HMAC, `OUTSTAND_API_KEY` tetap kosong/Fake adapter tetap aktif, tidak ada perubahan ADR-059) untuk 5 skenario, **SEMUA PASS**: golden path `post.published` (kedua `PublishingPostTarget` jadi `published`, `platformPostId`/`platformPostUrl` terisi), `post.error` (diproses bersih, bug lama "function does not exist" tuntas), `account.token_expired` (`reconnectRequired` jadi `true` + notifikasi Owner, menutup **T-036.5**), event type tak dikenal (`200 OK`, tidak error), idempotensi + signature invalid (regresi aman). **KI-048 Resolved.** Detail lengkap: `COMPLETE_TASK.md` (2026-09-07).
 
 ### T-027 · Job runner + Railway Cron
 
@@ -298,7 +302,7 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 | **Status**    | ⏳ Not Started                                                |
 | **Domain**    | publishing                                                   |
 | **ADR**       | ADR-046                                                      |
-| **Depends**   | T-026 (status akhir datang dari webhook)                     |
+| **Depends**   | T-026 ✅ (status akhir datang dari webhook — sudah Done 2026-09-07, tidak lagi memblokir) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                                |
 
 Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai placeholder.
@@ -336,10 +340,10 @@ delete-lalu-create-ulang ini saat dikerjakan.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | notification                                                 |
 | **ADR**       | ADR-023, ADR-030 (Supabase JWT)                              |
-| **Depends**   | T-026 (sumber event notifikasi) · T-093 ✅ (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094; T-093 sudah Done 2026-08-31, tidak lagi memblokir) |
+| **Depends**   | T-026 ✅ (sumber event notifikasi) · T-093 ✅ (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094; T-093 sudah Done 2026-08-31, tidak lagi memblokir) |
 | **Baca dulu** | `05-architecture/realtime-strategy.md` · `apps/web/src/lib/better-auth/supabase-jwt.ts` |
 
 `Basic Notifications` berstatus **Should Have** di `mvp-definition.md` — ditempatkan di rilis ini karena hasil publish (`post.published` / `post.error`) tidak berguna tanpa cara memberi tahu pengguna. Domain `notification/` masih stub kosong; model `Notification` sudah ada di schema.
@@ -348,7 +352,9 @@ delete-lalu-create-ulang ini saat dikerjakan.
 - [x] **T-036.2** Subscribe Supabase Realtime pada tabel `notifications`, event `INSERT`, filter per `user_id` — **hanya** tabel ini (ADR-023)
 - [x] **T-036.3** Sambungkan Supabase JWT dari session Better Auth (helper sudah ada, belum dipakai di route manapun)
 - [x] **T-036.4** UI notification bell di sidebar footer + panel daftar — rancangan sudah ada di Claude Design (**KI-039 Resolved**); ditutup 2026-09-07, lihat catatan di bawah
-- [ ] **T-036.5** Trigger notifikasi dari webhook publish result
+- [x] **T-036.5** Trigger notifikasi dari webhook publish result — diimplementasikan sebagai bagian **T-026** (`OutstandWebhookProcessor`, 2026-09-07): `post.error` → notifikasi ke `authorId` post, `account.token_expired` → notifikasi ke Owner workspace
+
+**Catatan (2026-09-07) — T-036 ditutup `✅ Done`:** kode T-036.5 sudah lengkap dan lolos `typecheck`/`lint`/`test` di sesi yang sama dengan T-026. Blocker sebelumnya (3 migration T-026 belum di-deploy, **KI-048**) sudah resolved — King Rezi menjalankan `bun run db:deploy`, migration terverifikasi ter-apply, dan Najwa QA Engineer retest end-to-end nyata skenario `account.token_expired` (HTTP request langsung ke `/api/webhooks/outstand`): `WorkspaceConnectedAccount.reconnectRequired` jadi `true` **dan** notifikasi baru untuk Owner workspace, PASS. Dengan ini seluruh 5/5 subtask T-036 terverifikasi tuntas — task ditutup `✅ Done`. Detail retest lengkap: `tasks/v02-publishing-mvp.md` § T-026, `COMPLETE_TASK.md` (2026-09-07).
 
 **Catatan (2026-08-31):** T-036.1 — skeleton `NotificationService.notify()` +
 `notificationRepository.create()` ternyata sudah ada sebelumnya (dibangun

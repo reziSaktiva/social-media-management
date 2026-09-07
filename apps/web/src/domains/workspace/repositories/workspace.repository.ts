@@ -310,4 +310,30 @@ export interface IWorkspaceRepository {
     name: string,
     actingUserId: UserId,
   ): Promise<WorkspaceRecord>;
+
+  /**
+   * Webhook Outstand `account.token_expired` (T-026.5, T-015) — tandai
+   * `WorkspaceConnectedAccount.reconnectRequired = true` by external
+   * `outstandAccountId` (payload webhook membawa id Outstand, bukan id
+   * internal kita). Returns `null` kalau tidak ada akun dengan
+   * `outstandAccountId` itu.
+   *
+   * **TIDAK menerima `actingUserId`** — sama alasan dengan
+   * `IPublishingRepository.findPostTargetsByOutstandPostId` (T-026): webhook
+   * route tidak punya session, jadi tidak ada acting user sebelum akun ini
+   * ditemukan. Implementasi Prisma resolve `workspace.ownerId` (kolom tanpa
+   * RLS di tabel `workspaces`) lewat SECURITY DEFINER SQL function (migration
+   * `20260907120000_t026_outstand_webhook_system_lookups`) untuk BACA lintas
+   * akun, lalu memakai Owner itu sendiri sebagai `actingUserId` untuk
+   * MENULIS `reconnectRequired` lewat `withCurrentUser` yang sudah ada
+   * (Owner workspace dijamin member aktif di workspace-nya sendiri, jadi RLS
+   * tetap terpenuhi untuk langkah tulis). `ownerUserId` dikembalikan supaya
+   * `WebhookProcessor` bisa langsung memakainya untuk trigger notifikasi
+   * (T-026.5) tanpa query terpisah.
+   */
+  markAccountReconnectRequired(outstandAccountId: string): Promise<{
+    workspaceId: WorkspaceId;
+    connectedAccountId: ConnectedAccountId;
+    ownerUserId: UserId;
+  } | null>;
 }

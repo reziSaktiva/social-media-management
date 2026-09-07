@@ -54,6 +54,7 @@ function createFakeRepository(
     setPendingOwnerTransfer: async () => undefined,
     clearPendingOwnerTransfer: async () => undefined,
     acceptOwnershipTransfer: async () => undefined,
+    markAccountReconnectRequired: async () => null,
     renameWorkspace: async (workspaceId, name) => ({
       id: workspaceId,
       name,

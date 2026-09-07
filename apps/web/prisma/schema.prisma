@@ -229,6 +229,17 @@ model PublishingPost {
   // job id sendiri (`outstandJobId`, sudah dihapus). Diisi lewat
   // `IPublishingRepository.setOutstandPostId` setelah
   // `OutstandAdapter.schedulePost`/`publishNow` resolve.
+  // Unique constraint (bukan `@@unique` biasa — kolom ini nullable & harus
+  // mengecualikan baris soft-deleted) dijaga lewat PARTIAL unique index raw
+  // SQL, bukan Prisma DSL (partial/`WHERE` index tidak representable di
+  // schema Prisma) — lihat migration
+  // `20260907130000_t026_unique_outstand_post_id`. Ditambahkan setelah
+  // review Ridwan Architecture Reviewer menemukan
+  // `webhook_find_post_targets_by_outstand_post_id` (migration
+  // `20260907120000_t026_outstand_webhook_system_lookups`) mengandalkan
+  // keunikan kolom ini tanpa constraint DB — lapis pertama defense-in-depth,
+  // lapis kedua: guard runtime di
+  // `PublishingRepository.findPostTargetsByOutstandPostId`.
   outstandPostId String?   @map("outstand_post_id")
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
