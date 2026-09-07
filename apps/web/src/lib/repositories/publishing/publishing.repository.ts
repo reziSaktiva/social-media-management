@@ -467,7 +467,7 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async markPostFailed({ workspaceId, postId }, userId) {
-    await withCurrentUser(userId, (tx) =>
+    const { count } = await withCurrentUser(userId, (tx) =>
       tx.publishingPost.updateMany({
         where: {
           id: postId,
@@ -481,6 +481,16 @@ export const publishingRepository: IPublishingRepository = {
         data: { status: ContentStatus.Failed },
       }),
     );
+
+    if (count === 0) {
+      // `updateMany` tidak throw kalau 0 baris ter-update (mis. RLS
+      // default-deny karena actingUserId sudah bukan active member) —
+      // beda dari `update()` di atas yang throw P2025. Tanpa guard ini,
+      // webhook route akan ACK sukses padahal status post tidak berubah.
+      throw new Error(
+        `markPostFailed: tidak ada baris ter-update untuk postId=${postId}, workspaceId=${workspaceId}`,
+      );
+    }
   },
 
   async listQueue({ workspaceId }, userId) {

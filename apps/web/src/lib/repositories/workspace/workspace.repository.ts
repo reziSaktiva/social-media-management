@@ -595,6 +595,19 @@ export const workspaceRepository: IWorkspaceRepository = {
       return null;
     }
 
+    // `outstand_account_id` cuma unique PER WORKSPACE — kalau akun yang
+    // sama kebetulan ter-connect di lebih dari satu workspace (skenario
+    // agency), fungsi SQL di atas mengembalikan SEMUA baris (tidak lagi
+    // `LIMIT 1`). Jangan tebak salah satu secara diam-diam — refuse dan
+    // biarkan route.ts menandai receipt `failed` (defense-in-depth yang
+    // sama dengan guard di `publishingRepository.findPostTargetsByOutstandPostId`).
+    const distinctWorkspaceIds = new Set(rows.map((row) => row.workspace_id));
+    if (distinctWorkspaceIds.size > 1) {
+      throw new Error(
+        `markAccountReconnectRequired: outstandAccountId=${outstandAccountId} cocok dengan ${distinctWorkspaceIds.size} workspace berbeda — menolak menebak salah satu.`,
+      );
+    }
+
     const [row] = rows;
     const workspaceId = asWorkspaceId(row.workspace_id);
     const connectedAccountId = asConnectedAccountId(row.connected_account_id);

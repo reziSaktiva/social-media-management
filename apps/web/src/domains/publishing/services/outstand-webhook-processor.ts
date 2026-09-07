@@ -108,9 +108,14 @@ export class OutstandWebhookProcessor {
       );
     }
 
-    const post = await this.repository.findPostTargetsByOutstandPostId(
-      event.outstandPostId,
-    );
+    // Lookup DB (post/target) dan fetch outcome ke Outstand sama-sama hanya
+    // bergantung pada `event.outstandPostId` — independen satu sama lain,
+    // jadi dijalankan paralel (bukan sekuensial) supaya latency di hot path
+    // webhook-ke-ACK tidak menumpuk round-trip DB + HTTP eksternal.
+    const [post, outcomes] = await Promise.all([
+      this.repository.findPostTargetsByOutstandPostId(event.outstandPostId),
+      this.outstandAdapter.fetchPostOutcome(event.outstandPostId),
+    ]);
     if (!post) {
       // Post tidak ditemukan (mis. sudah soft-delete, atau id tidak
       // dikenal) — bukan error internal, event ini tidak lagi actionable.
@@ -120,17 +125,16 @@ export class OutstandWebhookProcessor {
       };
     }
 
-    const outcomes = await this.outstandAdapter.fetchPostOutcome(
-      event.outstandPostId,
-    );
     const outcomeByOutstandAccountId = new Map(
       outcomes.map((outcome) => [outcome.outstandAccountId, outcome]),
     );
 
-    let updatedCount = 0;
+    const targetsToUpdate: Array<{
+      target: (typeof post.targets)[number];
+      outcome: NonNullable<ReturnType<typeof outcomeByOutstandAccountId.get>>;
+    }> = [];
     for (const target of post.targets) {
       const outcome = outcomeByOutstandAccountId.get(target.outstandAccountId);
-
       // Outstand belum melaporkan outcome akun ini (mis. masih "pending" di
       // sisi mereka, atau webhook ini cuma menyangkut sebagian akun) —
       // biarkan status DB apa adanya, konsisten dengan pola
@@ -138,23 +142,51 @@ export class OutstandWebhookProcessor {
       if (!outcome || outcome.status === "pending") {
         continue;
       }
+      targetsToUpdate.push({ target, outcome });
+    }
 
-      // `post.authorId` (hasil lookup di atas, dijamin non-null oleh
-      // guard baseline di caller — post ini pernah schedule/publish,
-      // bukan Imported/ADR-093) dipakai sebagai acting user untuk
-      // `withCurrentUser` — repository method ini TIDAK ikut bypass RLS,
-      // hanya lookup di atas yang bypass (lihat catatan interface-nya).
-      await this.repository.updateTargetOutcome(
-        {
-          postTargetId: target.postTargetId,
-          status: outcome.status,
-          platformPostId: outcome.platformPostId ?? undefined,
-          platformPostUrl: outcome.platformPostUrl ?? undefined,
-          error: outcome.error ?? undefined,
-        },
-        post.authorId,
+    // `Promise.allSettled` (bukan `for`+`await` sekuensial) supaya satu
+    // target yang gagal ter-update (mis. error DB transient) TIDAK
+    // menggagalkan seluruh loop di tengah jalan dan meninggalkan target
+    // lain yang belum sempat dicoba — semua target tetap dicoba, lalu
+    // kegagalan diagregasi dan di-throw di akhir supaya tetap terlihat
+    // oleh caller (route.ts menandai receipt `failed`).
+    const results = await Promise.allSettled(
+      targetsToUpdate.map(({ target, outcome }) =>
+        // `post.authorId` (hasil lookup di atas, dijamin non-null oleh
+        // guard baseline di caller — post ini pernah schedule/publish,
+        // bukan Imported/ADR-093) dipakai sebagai acting user untuk
+        // `withCurrentUser` — repository method ini TIDAK ikut bypass RLS,
+        // hanya lookup di atas yang bypass (lihat catatan interface-nya).
+        this.repository.updateTargetOutcome(
+          {
+            postTargetId: target.postTargetId,
+            // Non-"pending" sudah dijamin oleh filter di atas (baris
+            // `outcome.status === "pending"` di loop pembentukan
+            // `targetsToUpdate`) — narrowing per-elemen tidak ikut terbawa
+            // lewat push ke array, jadi assert eksplisit di sini.
+            status: outcome.status as "published" | "failed",
+            platformPostId: outcome.platformPostId ?? undefined,
+            platformPostUrl: outcome.platformPostUrl ?? undefined,
+            error: outcome.error ?? undefined,
+          },
+          post.authorId,
+        ),
+      ),
+    );
+
+    const updatedCount = results.filter((r) => r.status === "fulfilled").length;
+    const failures = results.filter(
+      (r): r is PromiseRejectedResult => r.status === "rejected",
+    );
+    if (failures.length > 0) {
+      throw new Error(
+        `updateTargetOutcome gagal untuk ${failures.length}/${targetsToUpdate.length} target: ${failures
+          .map((f) =>
+            f.reason instanceof Error ? f.reason.message : String(f.reason),
+          )
+          .join("; ")}`,
       );
-      updatedCount += 1;
     }
 
     // Semua target yang SUDAH DIKETAHUI outcome-nya berstatus failed →

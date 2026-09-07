@@ -120,10 +120,29 @@ export async function POST(request: Request): Promise<Response> {
   );
 
   try {
-    await processor.process(parsedEvent);
+    const result = await processor.process(parsedEvent);
+    if (result.outcome !== "processed") {
+      // `outcome`/`detail` sebelumnya di-discard sepenuhnya di sini —
+      // receipt tetap ditandai `processed` (bukan error, ini bukan
+      // kegagalan), tapi log supaya `ignored_unknown_event`/
+      // `skipped_no_match` tetap terlihat di server log, bukan menghilang
+      // tanpa jejak observability sama sekali.
+      console.log(
+        `[outstand-webhook] receipt ${receipt.id}: ${result.outcome}${result.detail ? ` (${result.detail})` : ""}`,
+      );
+    }
     await outstandWebhookReceiptStore.markProcessed(receipt.id);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    // Receipt row (DB) menyimpan pesan gagal, tapi itu pasif — tidak ada
+    // yang secara aktif memonitor tabel itu. Log server (Railway log
+    // aggregation) supaya kegagalan pemrosesan (termasuk pelanggaran
+    // data-integrity cross-tenant dari guard repository) setidaknya
+    // terlihat, bukan cuma diam di baris DB yang tidak pernah dilihat siapa
+    // pun sampai ada yang mencari secara manual.
+    console.error(
+      `[outstand-webhook] processing gagal untuk receipt ${receipt.id}: ${message}`,
+    );
     await outstandWebhookReceiptStore.markFailed(receipt.id, message);
   }
 

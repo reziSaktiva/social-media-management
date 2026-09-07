@@ -73,7 +73,8 @@ export function parseOutstandWebhookPayload(
   const outstandAccountId =
     typeof data.accountId === "string" ? data.accountId : undefined;
 
-  const vendorEventId = typeof json.id === "string" ? json.id : undefined;
+  const vendorEventId =
+    typeof json.id === "string" && json.id.length > 0 ? json.id : undefined;
   const outstandEventId = vendorEventId ?? fingerprintRawBody(rawBody);
 
   return {
