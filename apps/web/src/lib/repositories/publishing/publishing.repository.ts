@@ -17,6 +17,7 @@ import type {
   PublishingPostRecord,
   PublishingScheduleRecord,
   QueueItemRecord,
+  WebhookPostLookupRecord,
 } from "@/domains/publishing";
 import type {
   Prisma,
@@ -466,7 +467,7 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async markPostFailed({ workspaceId, postId }, userId) {
-    await withCurrentUser(userId, (tx) =>
+    const { count } = await withCurrentUser(userId, (tx) =>
       tx.publishingPost.updateMany({
         where: {
           id: postId,
@@ -480,6 +481,16 @@ export const publishingRepository: IPublishingRepository = {
         data: { status: ContentStatus.Failed },
       }),
     );
+
+    if (count === 0) {
+      // `updateMany` tidak throw kalau 0 baris ter-update (mis. RLS
+      // default-deny karena actingUserId sudah bukan active member) —
+      // beda dari `update()` di atas yang throw P2025. Tanpa guard ini,
+      // webhook route akan ACK sukses padahal status post tidak berubah.
+      throw new Error(
+        `markPostFailed: tidak ada baris ter-update untuk postId=${postId}, workspaceId=${workspaceId}`,
+      );
+    }
   },
 
   async listQueue({ workspaceId }, userId) {
@@ -541,4 +552,76 @@ export const publishingRepository: IPublishingRepository = {
 
     return posts.map(mapCalendarItem);
   },
+
+  async findPostTargetsByOutstandPostId(outstandPostId) {
+    // System-context read (T-026, webhook Outstand) — bypasses per-tenant
+    // RLS via a narrow SECURITY DEFINER SQL function (migration
+    // `20260907120000_t026_outstand_webhook_system_lookups`), NOT
+    // `withCurrentUser`, karena tidak ada acting `userId` sebelum lookup ini
+    // resolve. Lihat catatan panjang di interface method ini dan di
+    // migration itu sendiri untuk alasan lengkap — ini keputusan yang
+    // dilaporkan ke King Rezi, bukan diputuskan diam-diam.
+    const rows = await prisma.$queryRaw<WebhookPostTargetLookupRow[]>`
+      SELECT * FROM "public"."webhook_find_post_targets_by_outstand_post_id"(${outstandPostId})
+    `;
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const [first] = rows;
+
+    // Guard defensif (code review Ridwan Architecture Reviewer, T-026 —
+    // defense-in-depth lapis kedua di samping partial unique index pada
+    // `publishing_posts.outstand_post_id`, migration
+    // `20260907130000_t026_unique_outstand_post_id`): fungsi SQL di atas
+    // JOIN lintas `publishing_post_targets`, jadi kalau constraint unique
+    // itu ternyata tidak menjamin apa yang diasumsikan (mis. dijalankan di
+    // DB yang belum ter-migrate), baris yang di-return bisa berasal dari
+    // post/workspace BERBEDA — memakai baris pertama untuk
+    // `postId`/`workspaceId` tapi tetap memasukkan SEMUA baris sebagai
+    // `targets` akan menulis outcome publish ke post/tenant yang salah.
+    // Throw loud di sini (pola ADR-059), bukan diam-diam memakai baris
+    // pertama dan mencampur target lintas tenant.
+    const mismatched = rows.filter(
+      (row) =>
+        row.post_id !== first.post_id ||
+        row.workspace_id !== first.workspace_id,
+    );
+    if (mismatched.length > 0) {
+      throw new Error(
+        `findPostTargetsByOutstandPostId: data integrity violation — ` +
+          `outstand_post_id="${outstandPostId}" resolved to rows across ` +
+          `multiple posts/workspaces (expected exactly one post per ` +
+          `outstand_post_id, enforced by partial unique index ` +
+          `publishing_posts_outstand_post_id_unique). post_id/workspace_id ` +
+          `values found: ${JSON.stringify([
+            ...new Set(rows.map((row) => `${row.post_id}/${row.workspace_id}`)),
+          ])}`,
+      );
+    }
+
+    const record: WebhookPostLookupRecord = {
+      postId: asPostId(first.post_id),
+      workspaceId: asWorkspaceId(first.workspace_id),
+      authorId: asUserId(first.author_id),
+      targets: rows.map((row) => ({
+        postTargetId: asPostTargetId(row.post_target_id),
+        connectedAccountId: asConnectedAccountId(row.connected_account_id),
+        outstandAccountId: row.outstand_account_id,
+      })),
+    };
+
+    return record;
+  },
 };
+
+/** Row shape returned by the raw SQL call above — snake_case, mirrors the SQL function's RETURNS TABLE. */
+interface WebhookPostTargetLookupRow {
+  post_id: string;
+  workspace_id: string;
+  author_id: string;
+  post_target_id: string;
+  connected_account_id: string;
+  outstand_account_id: string;
+}

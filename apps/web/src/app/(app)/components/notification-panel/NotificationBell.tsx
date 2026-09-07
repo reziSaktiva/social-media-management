@@ -5,6 +5,7 @@ import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   AlertCircleIcon,
+  Cancel01Icon,
   CheckmarkCircle02Icon,
   Notification03Icon,
 } from "@hugeicons/core-free-icons";
@@ -83,19 +84,17 @@ function NotificationRow({
       {/* eslint-disable-next-line no-restricted-syntax -- T-098.2, sama seperti di atas */}
       <div className="shrink-0">
         {/* Gap desain #3 (spec `.notif-icon` + `.is-success`/`.is-error`):
-            circle status 32px, background muted sesuai status. KI-041 —
-            Stone theme shadcn belum punya token `--success`/`--warning`
-            (cuma `--destructive`), jadi "error" dipetakan ke
-            `destructive` (token yang memang ada) dan "success" dibiarkan
-            netral (`muted`) — sama seperti precedent Accept Invite T-097.3,
-            bukan token/hex baru yang dikarang. */}
+            circle status 32px, background muted sesuai status. KI-041
+            (tokens `--success`/`--warning` belum ada) sudah Resolved lewat
+            ADR-098 (2026-09-04) — sekarang dipetakan ke token semantik asli
+            (`success`/`destructive`), bukan lagi workaround netral `muted`. */}
         {/* eslint-disable-next-line no-restricted-syntax -- T-098.2, sama seperti di atas */}
         <div
           className={cn(
             "flex size-8 items-center justify-center rounded-full",
             isError
               ? "bg-destructive/10 text-destructive"
-              : "bg-muted text-foreground",
+              : "bg-success/10 text-success",
           )}
         >
           <HugeiconsIcon
@@ -242,22 +241,48 @@ export function NotificationBell({
       </div>
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent className="w-full gap-0 p-0 sm:max-w-sm">
-          {/* Fix regresi styling (dilaporkan King Rezi di NotificationBell
-              versi Astryx): header butuh border-bottom pemisah dari list —
-              spec Claude Design `.notif-header { border-bottom: 1px solid
-              var(--color-border) }`. `pr-14` mencadangkan ruang dari tombol
-              close bawaan `SheetContent` (absolute top-4 right-4). */}
-          <SheetHeader className="flex-row items-center justify-between gap-2 border-b border-border pr-14">
+        {/* Fix regresi alignment (dilaporkan King Rezi, review langsung ke
+            spec Claude Design `.notif-header`): tombol close bawaan
+            `SheetContent` di-absolute-position `top-4 right-4` independen
+            dari baris flex header, jadi tidak pernah sejajar dengan title +
+            "Mark all as read" — `pr-14` sebelumnya cuma mencadangkan ruang,
+            tidak memperbaiki alignment vertikal. `showCloseButton={false}`
+            + tombol close dirender manual di dalam grup aksi kanan (pola
+            sama seperti `draft-editor/Modal.tsx` DialogHeader) supaya
+            title/"Mark all as read"/close jadi flex-sibling satu baris,
+            dijamin sejajar oleh `items-center`. */}
+        <SheetContent
+          showCloseButton={false}
+          className="w-full gap-0 p-0 sm:max-w-sm"
+        >
+          {/* Padding `p-4` (16px) = token spec `.notif-header { padding:
+              var(--spacing-4) }` — sebelumnya masih p-6 (24px) bawaan
+              `SheetHeader`, tidak match spec. `gap-3` (12px) = token
+              `--spacing-3` yang dipakai spec baik untuk gap header maupun
+              gap internal `.notif-header-actions`. */}
+          <SheetHeader className="flex-row items-center justify-between gap-3 border-b border-border p-4">
             <SheetTitle>Notifications</SheetTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={unreadCount === 0}
-              onClick={handleMarkAllRead}
-            >
-              Mark all as read
-            </Button>
+            {/* `.notif-header-actions` spec: markall + close dikelompokkan
+                jadi satu grup rata-kanan, gap-3. */}
+            {/* eslint-disable-next-line no-restricted-syntax -- padanan `.notif-header-actions`, murni Tailwind flex, tidak ada primitive shadcn setara. */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={unreadCount === 0}
+                onClick={handleMarkAllRead}
+              >
+                Mark all as read
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Close"
+                onClick={() => setIsOpen(false)}
+              >
+                <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+              </Button>
+            </div>
           </SheetHeader>
 
           {/* eslint-disable-next-line no-restricted-syntax -- T-098.2, sama seperti di atas */}

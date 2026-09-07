@@ -43,11 +43,22 @@ import {
 // cocok untuk invite link yang bisa dibuka siapa pun kapan pun, login atau
 // tidak). Halaman itu sendiri (Server Component) yang memvalidasi token dan
 // menentukan form mana yang tampil — proxy tidak perlu tahu detail itu.
+// `/api/webhooks/outstand` (T-026, ADR-040) ditambahkan ke daftar bypass ini
+// karena Outstand mengirim request server-to-server tanpa cookie session
+// sama sekali (bukan browser) — otentikasinya lewat HMAC-SHA256 signature
+// yang divalidasi di dalam route handler webhook itu sendiri, sama seperti
+// pola `/api/v1` di atas. Tanpa bypass ini, gate session di bawah
+// me-redirect 307 ke /login SEBELUM request Outstand pernah sampai ke
+// handler webhook — ditemukan Najwa QA lewat curl POST asli (v0.2 T-026
+// Bug 1). Discope ke provider spesifik (bukan seluruh `/api/webhooks`)
+// supaya route webhook provider lain yang ditambahkan nanti TIDAK otomatis
+// mewarisi bypass ini tanpa verifikasi signature-nya sendiri direview.
 const BYPASS_PREFIXES = [
   "/api/auth",
   "/api/jobs",
   "/api/health",
   "/api/v1",
+  "/api/webhooks/outstand",
   "/invite",
 ];
 

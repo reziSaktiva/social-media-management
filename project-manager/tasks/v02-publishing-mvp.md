@@ -5,7 +5,7 @@
 **Tujuan rilis:** Memungkinkan pengguna membuat dan menjadwalkan konten.
 **Baseline rilis:** `product-discovery/02-product/release-roadmap.md` → v0.2
 
-**Rantai blocker rilis ini:** Real OutstandAdapter (T-025) belum ada → schedule hanya jalan lewat Fake · Connect account (T-013) belum ada → connected account harus di-seed · webhook (T-026) + job runner (T-027) masih 501 → **tidak ada transisi status post pasca-schedule**. Tiga task itu membuka hampir semua sisa rilis ini.
+**Rantai blocker rilis ini:** Real OutstandAdapter (T-025) belum ada → schedule hanya jalan lewat Fake · Connect account (T-013) belum ada → connected account harus di-seed · job runner (T-027) masih 501 → **belum ada transisi status post otomatis saat waktunya tiba** (webhook T-026 sudah ✅ Done 2026-09-07 — menangani transisi status pasca-publish/error/token-expired, tapi trigger-nya masih inbound webhook Outstand, bukan job scheduler). Task-task ini membuka hampir semua sisa rilis ini.
 
 ---
 
@@ -103,21 +103,25 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 
 | Field         | Value                                                              |
 | ------------- | ------------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                      |
+| **Status**    | ✅ Done                                                            |
 | **Domain**    | integration                                                        |
-| **ADR**       | ADR-020, ADR-040                                                   |
-| **Terkait**   | KI-003 (via T-025), KI-015 (`PROJECT_STATE.md` § Blockers)                    |
+| **ADR**       | ADR-020, ADR-040, ADR-099                                          |
+| **Terkait**   | KI-003 (via T-025), KI-015                                         |
 | **Depends**   | T-025                                                              |
 | **Baca dulu** | `05-architecture/integration-layer.md`                              |
 
 `/api/webhooks/outstand` masih return 501. Model `OutstandWebhookEvent` sudah ada di schema, `OUTSTAND_WEBHOOK_SECRET` sudah didefinisikan di `src/lib/env.ts` tapi belum dipakai.
 
-- [ ] **T-026.1** Verifikasi HMAC-SHA256 signature sebelum setiap pemrosesan
-- [ ] **T-026.2** Durable-before-ACK — persist event dulu, baru ACK, baru proses
-- [ ] **T-026.3** Handler `post.published` → update `PublishingPostTarget` outcome
-- [ ] **T-026.4** Handler `post.error` → outcome gagal + trigger notifikasi (T-036)
-- [ ] **T-026.5** Handler `account.token_expired` → tandai akun perlu reconnect (T-015)
-- [ ] **T-026.6** Idempotensi: event duplikat tidak boleh menggandakan efek
+- [x] **T-026.1** Verifikasi HMAC-SHA256 signature sebelum setiap pemrosesan
+- [x] **T-026.2** Durable-before-ACK — persist event dulu, baru ACK, baru proses
+- [x] **T-026.3** Handler `post.published` → update `PublishingPostTarget` outcome
+- [x] **T-026.4** Handler `post.error` → outcome gagal + trigger notifikasi (T-036)
+- [x] **T-026.5** Handler `account.token_expired` → tandai akun perlu reconnect (T-015)
+- [x] **T-026.6** Idempotensi: event duplikat tidak boleh menggandakan efek
+
+**Selesai kode (2026-09-07):** seluruh 6 checklist di atas diimplementasikan penuh (Elon Backend Engineer → review Ridwan → QA Najwa, siklus fix di tiap tahap), lolos `typecheck`/`lint`/`test` (261 pass, 4 skip). Pemrosesan **inline sinkron** di Route Handler (bukan enqueue+async sesuai desain asli `integration-layer.md`) karena T-027 (job runner) belum dikerjakan sama sekali — saat T-027 dikerjakan, webhook processing ini semestinya dipindah ke enqueue+async. Keputusan arsitektur baru (2 fungsi Postgres `SECURITY DEFINER` untuk lookup system-context tanpa `userId`) dicatat sebagai **ADR-099**. Ini juga menutup **T-036.5**.
+
+**Ditutup `✅ Done` (2026-09-07):** 3 migration baru (`20260907120000_t026_outstand_webhook_system_lookups`, `20260907130000_t026_unique_outstand_post_id`, `20260907140000_t026_relax_webhook_event_type_check`) sudah dijalankan King Rezi (`bun run db:deploy`) dan **terverifikasi ter-apply** ke DB dev (Najwa QA Engineer cross-check langsung via Supabase MCP: fungsi `webhook_find_post_targets_by_outstand_post_id`/`webhook_find_account_owner_by_outstand_account_id` ada, unique index `publishing_posts_outstand_post_id_unique` ada, CHECK constraint `event_type` sudah dilonggarkan). Retest end-to-end nyata (HTTP request langsung ke `/api/webhooks/outstand`, dev server lokal, tanpa cookie session, mensimulasikan Outstand asli — `OUTSTAND_WEBHOOK_SECRET` diisi dummy sementara di `.env.local` khusus untuk memungkinkan verifikasi HMAC, `OUTSTAND_API_KEY` tetap kosong/Fake adapter tetap aktif, tidak ada perubahan ADR-059) untuk 5 skenario, **SEMUA PASS**: golden path `post.published` (kedua `PublishingPostTarget` jadi `published`, `platformPostId`/`platformPostUrl` terisi), `post.error` (diproses bersih, bug lama "function does not exist" tuntas), `account.token_expired` (`reconnectRequired` jadi `true` + notifikasi Owner, menutup **T-036.5**), event type tak dikenal (`200 OK`, tidak error), idempotensi + signature invalid (regresi aman). **KI-048 Resolved.** Detail lengkap: `COMPLETE_TASK.md` (2026-09-07).
 
 ### T-027 · Job runner + Railway Cron
 
@@ -298,7 +302,7 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 | **Status**    | ⏳ Not Started                                                |
 | **Domain**    | publishing                                                   |
 | **ADR**       | ADR-046                                                      |
-| **Depends**   | T-026 (status akhir datang dari webhook)                     |
+| **Depends**   | T-026 ✅ (status akhir datang dari webhook — sudah Done 2026-09-07, tidak lagi memblokir) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                                |
 
 Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai placeholder.
@@ -336,10 +340,10 @@ delete-lalu-create-ulang ini saat dikerjakan.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | notification                                                 |
 | **ADR**       | ADR-023, ADR-030 (Supabase JWT)                              |
-| **Depends**   | T-026 (sumber event notifikasi) · T-093 ✅ (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094; T-093 sudah Done 2026-08-31, tidak lagi memblokir) |
+| **Depends**   | T-026 ✅ (sumber event notifikasi) · T-093 ✅ (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094; T-093 sudah Done 2026-08-31, tidak lagi memblokir) |
 | **Baca dulu** | `05-architecture/realtime-strategy.md` · `apps/web/src/lib/better-auth/supabase-jwt.ts` |
 
 `Basic Notifications` berstatus **Should Have** di `mvp-definition.md` — ditempatkan di rilis ini karena hasil publish (`post.published` / `post.error`) tidak berguna tanpa cara memberi tahu pengguna. Domain `notification/` masih stub kosong; model `Notification` sudah ada di schema.
@@ -347,8 +351,10 @@ delete-lalu-create-ulang ini saat dikerjakan.
 - [x] **T-036.1** Domain skeleton: service + repository
 - [x] **T-036.2** Subscribe Supabase Realtime pada tabel `notifications`, event `INSERT`, filter per `user_id` — **hanya** tabel ini (ADR-023)
 - [x] **T-036.3** Sambungkan Supabase JWT dari session Better Auth (helper sudah ada, belum dipakai di route manapun)
-- [ ] **T-036.4** UI notification bell di sidebar footer + panel daftar — rancangan sudah ada di Claude Design (**KI-039 Resolved**); dibuka kembali 2026-09-01, lihat catatan di bawah (5 gap visual, verifikasi browser belum dilakukan)
-- [ ] **T-036.5** Trigger notifikasi dari webhook publish result
+- [x] **T-036.4** UI notification bell di sidebar footer + panel daftar — rancangan sudah ada di Claude Design (**KI-039 Resolved**); ditutup 2026-09-07, lihat catatan di bawah
+- [x] **T-036.5** Trigger notifikasi dari webhook publish result — diimplementasikan sebagai bagian **T-026** (`OutstandWebhookProcessor`, 2026-09-07): `post.error` → notifikasi ke `authorId` post, `account.token_expired` → notifikasi ke Owner workspace
+
+**Catatan (2026-09-07) — T-036 ditutup `✅ Done`:** kode T-036.5 sudah lengkap dan lolos `typecheck`/`lint`/`test` di sesi yang sama dengan T-026. Blocker sebelumnya (3 migration T-026 belum di-deploy, **KI-048**) sudah resolved — King Rezi menjalankan `bun run db:deploy`, migration terverifikasi ter-apply, dan Najwa QA Engineer retest end-to-end nyata skenario `account.token_expired` (HTTP request langsung ke `/api/webhooks/outstand`): `WorkspaceConnectedAccount.reconnectRequired` jadi `true` **dan** notifikasi baru untuk Owner workspace, PASS. Dengan ini seluruh 5/5 subtask T-036 terverifikasi tuntas — task ditutup `✅ Done`. Detail retest lengkap: `tasks/v02-publishing-mvp.md` § T-026, `COMPLETE_TASK.md` (2026-09-07).
 
 **Catatan (2026-08-31):** T-036.1 — skeleton `NotificationService.notify()` +
 `notificationRepository.create()` ternyata sudah ada sebelumnya (dibangun
@@ -464,6 +470,78 @@ QA Engineer lewat browser nyata (light & dark mode) — root cause lama
 `Sheet`. Entry KI-040 sudah dihapus dari `PROJECT_STATE.md` § Known Issues
 sesuai aturan (Resolved yang sudah tercatat `COMPLETE_TASK.md` tidak
 dibiarkan dengan status Resolved di daftar itu).
+
+**Penutupan (2026-09-07) — T-036.4 Done:** dicek dulu ke Claude Design
+(project "Social Media Management", `components/notifications-panel.html`
++ `styles.css` § "Notifications Drawer") sesuai gate AGENTS.md rule 17,
+lalu dibandingkan baris demi baris ke `NotificationBell.tsx`. 4 dari 5 gap
+yang dicatat 2026-09-01 sudah benar sejak sesi T-098.3 (bg tint unread,
+dot indikator, weight/warna title read vs unread, deskripsi truncate
+ellipsis) — hanya 1 gap tersisa yang ditemukan: **icon circle status**
+masih dipetakan ke workaround netral `bg-muted text-foreground` untuk
+kasus "success", padahal **KI-041 sudah Resolved** (ADR-098, 2026-09-04)
+menambah token asli `--success`/`--warning` ke Stone theme shadcn — gap
+ini murni kode yang belum di-update mengikuti token baru itu, bukan temuan
+desain baru. Diperbaiki: `bg-muted text-foreground` → `bg-success/10
+text-success` (pola identik `bg-destructive/10 text-destructive` yang
+sudah ada untuk "error"), komentar kode yang menyebut KI-041 belum
+resolved juga diperbarui.
+
+Verifikasi visual: dev server sesi ini sudah berjalan dengan sesi login
+nyata (workspace "Insvire", akun Maya Anggraini) — tabel `notifications`
+kosong (0 baris di seluruh database, dicek via Supabase MCP), jadi
+item unread/read tidak bisa dipicu dari data nyata tanpa T-036.5 (trigger
+webhook, belum dikerjakan). Diverifikasi dengan menyisipkan data
+sementara langsung di state React (bukan menulis ke database — akses
+Supabase MCP sesi ini read-only) untuk 3 skenario (unread-success,
+unread-error, read), dibaca lewat DOM computed style (bukan hanya
+screenshot, karena overlay Next.js dev-tools indicator menutupi sudut
+kiri-bawah sidebar footer di Browser pane preview): warna icon success
+resolve ke `rgb(195,209,197)` (persis token `--success` dark mode
+`#c3d1c5`) dan error ke token `--destructive` — sesuai spec. Dot unread,
+`font-semibold` vs `font-normal text-muted-foreground` pada title, dan
+`truncate` pada deskripsi juga dikonfirmasi hadir di markup. Data
+sementara ini **tidak disimpan** — hanya di state komponen sesi browser,
+direvert dari kode sebelum sesi selesai (`git diff` bersih). `bun run
+typecheck` PASS. T-036.5 (trigger webhook) tetap task terpisah, belum
+dikerjakan — T-036 tetap `🟡 In Progress`.
+
+**Follow-up (2026-09-07) — regresi alignment header ditemukan King Rezi
+langsung di browser:** setelah penutupan di atas, King Rezi mereview
+tampilan asli di localhost:3000 dan melaporkan 3 hal: (1) title
+"Notifications", "Mark all as read", dan tombol close tidak sejajar, (2)
+padding/margin header tidak sesuai spec, (3) minta dipastikan ulang kode
+sama persis dengan Claude Design. Root cause: tombol close **bawaan**
+`SheetContent` (shadcn) diposisikan `absolute top-4 right-4` — independen
+dari baris flex header manapun — sedangkan `SheetHeader` sebelumnya masih
+memakai padding default `p-6` (24px, bukan `p-4`/16px sesuai spec
+`.notif-header { padding: var(--spacing-4) }`). Kombinasi keduanya
+membuat title+"Mark all as read" (flex row, pusat vertikal mengikuti
+padding 24px) dan tombol close (pusat vertikal mengikuti posisi absolute
+16px) tidak pernah sejajar secara matematis, berapa pun classname
+di-tweak di baris flex-nya saja.
+
+**Perbaikan:** `SheetContent showCloseButton={false}` (menonaktifkan
+tombol close bawaan yang absolute), tombol close dirender manual sebagai
+flex-sibling di dalam grup aksi kanan bersama "Mark all as read" — pola
+identik dengan `DialogHeader` di `draft-editor/Modal.tsx` (baris ~530-573)
+yang sudah lebih dulu memecahkan masalah yang sama untuk `Dialog`. Header
+diubah ke `p-4` (16px, token `--spacing-4`) + `gap-3` (12px, token
+`--spacing-3`) — match persis `.notif-header` spec Claude Design. Grup
+kanan (`.notif-header-actions` spec) dibungkus `<div className="flex
+items-center gap-3">` supaya title vs grup-aksi diatur `justify-between`,
+dan di dalam grup, markall vs close diatur `gap-3` juga (sesuai
+`.notif-header-actions { gap: var(--spacing-3) }`).
+
+**Verifikasi:** dicek lewat `getBoundingClientRect()` tiap elemen header —
+kedua button (`top: 16, bottom: 48`, height 32px identik) dan title
+(`top: 20, bottom: 44`, center di 32px — persis sama dengan center kedua
+button) sekarang benar-benar sejajar secara matematis, bukan cuma terlihat
+sejajar. `getComputedStyle` header: `padding: 16px`, `gap: 12px`,
+`alignItems: center`, `justifyContent: space-between` — match spec.
+Diverifikasi juga klik tombol close manual (`setIsOpen(false)`, sheet
+controlled) benar-benar menutup panel (`sheet-content` hilang dari DOM).
+`bun run typecheck` PASS.
 
 ---
 
