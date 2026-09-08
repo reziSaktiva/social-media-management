@@ -551,7 +551,7 @@ controlled) benar-benar menutup panel (`sheet-content` hilang dari DOM).
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress — kontinu by design, snapshot pertama (T-037.1–.3) sudah dicatat |
 | **Domain**    | DX                                                           |
 | **ADR**       | ADR-034                                                      |
 | **Depends**   | —                                                            |
@@ -559,9 +559,11 @@ controlled) benar-benar menutup panel (`sheet-content` hilang dari DOM).
 
 Berjalan **kontinu** selama rilis ini, bukan sekali selesai: setiap kali konvensi baru muncul dari praktik nyata (bukan teori), catat ke `ctx-development.md` supaya lapisan konteks yang dibaca setiap agent tidak menjadi basi. Prioritas rendah — tidak memblokir rilis.
 
-- [ ] **T-037.1** Catat konvensi struktur repository: interface di `src/domains/*/repositories/`, implementasi Prisma di `src/lib/repositories/*/` — sudah konsisten di `workspace` + `publishing`, tapi belum tertulis sebagai aturan sehingga domain baru bisa menyimpang
-- [ ] **T-037.2** Catat konvensi penempatan use-case terpisah dari service (preseden: `schedule-posts.use-case.ts`)
-- [ ] **T-037.3** Catat konvensi test: service diuji dengan repository fake (preseden yang sudah ada di `publishing`/`workspace`)
+- [x] **T-037.1** Catat konvensi struktur repository: interface di `src/domains/*/repositories/`, implementasi Prisma di `src/lib/repositories/*/` — sudah konsisten di `workspace` + `publishing`, tapi belum tertulis sebagai aturan sehingga domain baru bisa menyimpang
+- [x] **T-037.2** Catat konvensi penempatan use-case terpisah dari service (preseden: `schedule-posts.use-case.ts`)
+- [x] **T-037.3** Catat konvensi test: service diuji dengan repository fake (preseden yang sudah ada di `publishing`/`workspace`)
+
+**Selesai (2026-09-08):** ketiga subtask dicatat sebagai aturan #14–#18 baru di `context/ctx-development.md` (section "Struktur repository & use-case" + tambahan poin #18 di section "Testing"), dengan preseden nyata yang diverifikasi di kode: repository dua-lapis (`domains/publishing/repositories/` ↔ `lib/repositories/publishing/`), use-case terpisah (`SchedulePostsUseCase`, `PublishNowUseCase`, `CancelScheduleUseCase`, `AnalyticsIngestionUseCase`), dan pola `createFakeRepository()` di `publishing.service.test.ts`. Task tetap berjalan kontinu (prioritas rendah, tidak memblokir rilis) — subtask ini ditutup sebagai snapshot pertama, bukan penutupan total scope task.
 
 ---
 
