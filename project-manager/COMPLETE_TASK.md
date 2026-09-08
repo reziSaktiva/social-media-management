@@ -8,6 +8,48 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-08 — T-037 mulai dikerjakan: snapshot pertama aturan coding DX
+
+**T-037** (Perkaya aturan coding di `context/ctx-development.md`, domain
+DX, v0.2 Publishing MVP) pindah status `⏳ Not Started` → `🟡 In Progress`
+di branch `feature/t-037-dx-coding-conventions`. Task ini **kontinu by
+design** — dirancang berjalan terus selama rilis v0.2 seiring pola coding
+baru muncul, bukan sekali selesai lalu ditutup `✅ Done`.
+
+**`context/ctx-development.md`** — ditambah section baru "Struktur
+repository & use-case" (poin #14-15) dan poin #18 baru di section
+"Testing", plus renumbering poin Git/PR jadi #19-20 supaya urut. Konvensi
+yang dicatat: (a) repository dua-lapis — interface di
+`domains/*/repositories/` vs implementasi Prisma di `lib/repositories/*/`;
+(b) use-case class terpisah dari service kalau ada dependency wajib +
+urutan operasi kritis, preseden `SchedulePostsUseCase`/`PublishNowUseCase`/
+`CancelScheduleUseCase`/`AnalyticsIngestionUseCase`; (c) pola test fake
+repository via factory `createFakeRepository()` + overrides, preseden
+`publishing.service.test.ts`.
+
+**`project-manager/tasks/v02-publishing-mvp.md`** — T-037.1/.2/.3
+dicentang `[x]`, ditambah paragraf "Selesai (2026-09-08)" berisi
+ringkasan, field Status task diubah dari `⏳ Not Started` jadi
+`🟡 In Progress — kontinu by design, snapshot pertama (T-037.1–.3) sudah
+dicatat`.
+
+**`project-manager/TASKS.md`** — breakdown status v0.2 dihitung ulang
+langsung dari `tasks/v02-publishing-mvp.md`: dari "🟡 11 ✅ · 11 ⏳" (drift —
+prefix `🟡` tidak match hitungan manapun, T-030 yang sebenarnya
+`🟡 In Progress` ikut terhitung sebagai bagian 11 ⏳) menjadi **11 ✅ ·
+2 🟡 · 9 ⏳** (T-030 dan T-037 sama-sama `🟡`). Task selesai (36) dan total
+task/subtask (85 task, 212 subtask) tidak berubah. Paragraf "Update
+(2026-09-08, T-037 mulai dikerjakan)" ditambahkan di area riwayat
+`TASKS.md`.
+
+Tidak ada perubahan phase/milestone/Known Issues — `PROJECT_STATE.md`
+tidak disentuh. Belum di-commit/push (menunggu instruksi eksplisit King
+Rezi). File yang disentuh: `context/ctx-development.md`,
+`project-manager/tasks/v02-publishing-mvp.md`,
+`project-manager/TASKS.md`.
+
+---
+
 ## 2026-09-08 — KI-047 Phase 4 (terakhir): Survei prototype screens + Resolved
 
 Fase penutup KI-047, setelah Phase 1 (token), Phase 2 (readme.md), Phase 3

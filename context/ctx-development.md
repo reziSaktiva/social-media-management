@@ -76,15 +76,43 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
     pemakainya. Detail & contoh di `monorepo-setup.md` section
     `## src/app/ — App Router Structure` (ADR-069, resolusi KI-010).
 
+### Struktur repository & use-case
+
+14. Repository per domain selalu dipisah jadi dua lapis: interface
+    (`IXxxRepository`) di `apps/web/src/domains/<domain>/repositories/`,
+    implementasi Prisma nyata di `apps/web/src/lib/repositories/<domain>/`.
+    Domain layer hanya bergantung ke interface (hard rule 6 `AGENTS.md` —
+    domain tidak boleh impor Prisma langsung); Server Action/Application
+    Service yang meng-_inject_ implementasi Prisma dari `lib/repositories`.
+    Preseden: `domains/publishing/repositories/publishing.repository.ts` ↔
+    `lib/repositories/publishing/`.
+15. Kalau sebuah alur butuh dependency tambahan yang wajib ada di
+    constructor (mis. `IOutstandAdapter`) dan urutan operasinya kritis
+    (persist dulu → panggil adapter → persist outcome), taruh sebagai
+    **use-case class terpisah** (`xxx.use-case.ts`) — bukan method baru di
+    service umum domain tersebut. Tujuannya supaya lupa pass dependency
+    ketahuan TypeScript di call site (compile error), bukan baru meledak
+    saat runtime. Preseden: `SchedulePostsUseCase`, `PublishNowUseCase`,
+    `CancelScheduleUseCase` (`domains/publishing/services/*.use-case.ts`),
+    `AnalyticsIngestionUseCase` (`domains/analytics/services/`).
+
 ### Testing
 
-14. Unit/domain test: **Vitest** (`bun run test`).
-15. Test yang ditambah harus relevan dengan behavior yang diubah; jangan stub berlebihan tanpa nilai.
+16. Unit/domain test: **Vitest** (`bun run test`).
+17. Test yang ditambah harus relevan dengan behavior yang diubah; jangan stub berlebihan tanpa nilai.
+18. Service/use-case diuji dengan **fake repository** — bukan mock Prisma
+    dan bukan DB nyata. Pola: factory function `createFakeRepository()`
+    yang mengembalikan objek literal `implements IXxxRepository` dengan
+    default no-op per method, lalu `overrides: Partial<IXxxRepository>`
+    di-spread untuk test case tertentu. Preseden:
+    `domains/publishing/services/publishing.service.test.ts`. Ini analog
+    dengan pola `FakeOutstandAdapter` (ADR-059) tapi untuk repository,
+    bukan adapter eksternal.
 
 ### Git / PR (saat diminta user)
 
-16. Commit hanya jika user meminta — Conventional Commits, imperative, fokus “why”.
-17. Jangan `--no-verify` / force push ke main kecuali diminta eksplisit.
+19. Commit hanya jika user meminta — Conventional Commits, imperative, fokus “why”.
+20. Jangan `--no-verify` / force push ke main kecuali diminta eksplisit.
 
 ---
 

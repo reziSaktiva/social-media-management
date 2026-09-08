@@ -53,7 +53,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 🟡 14 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 2 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
-| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 🟡 11 ✅ · 11 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
+| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 11 ✅ · 2 🟡 · 9 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
@@ -63,6 +63,29 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 
 **Total:** 85 task · 36 selesai · 212 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-08, T-037 mulai dikerjakan):** **T-037** (Perkaya aturan
+> coding di `context/ctx-development.md`) pindah status `⏳ Not Started` →
+> `🟡 In Progress` — snapshot pertama (T-037.1–.3) sudah dicatat di
+> `context/ctx-development.md`: section baru "Struktur repository &
+> use-case" (poin #14-15: repository dua-lapis interface vs implementasi
+> Prisma, use-case class terpisah dari service untuk dependency
+> wajib+urutan operasi kritis, preseden `SchedulePostsUseCase`/
+> `PublishNowUseCase`/`CancelScheduleUseCase`/`AnalyticsIngestionUseCase`),
+> plus poin #18 baru di section Testing (pola test fake repository via
+> factory `createFakeRepository()` + overrides, preseden
+> `publishing.service.test.ts`); poin Git/PR di-renumber jadi #19-20. Task
+> ini **kontinu by design** (bukan sekali selesai lalu ditutup `✅ Done`) —
+> berjalan terus selama rilis v0.2 seiring pola coding baru muncul.
+> Sekaligus dikoreksi drift breakdown status v0.2 yang sebelumnya "🟡 11 ✅
+> · 11 ⏳" (prefix `🟡` tidak match hitungan manapun, dan T-030 yang
+> sebenarnya `🟡 In Progress` ikut terhitung sebagai bagian 11 ⏳) menjadi
+> **11 ✅ · 2 🟡 · 9 ⏳** (T-030 dan T-037 sama-sama `🟡`), dihitung ulang
+> langsung dari `tasks/v02-publishing-mvp.md`. Task selesai (36) dan total
+> task/subtask (85 task, 212 subtask) tidak berubah — hanya distribusi
+> status yang dikoreksi/diperbarui. Dikerjakan di branch
+> `feature/t-037-dx-coding-conventions`. Detail: `tasks/v02-publishing-mvp.md`
+> § T-037, `COMPLETE_TASK.md`.
+>
 > **Update (2026-09-07, T-007.8 Done — ADR-101):** **T-007.8** (Members
 > list menampilkan undangan pending via gabungan `workspace_members` +
 > `WorkspaceInvitation`, berlaku Copy Link & Kirim via Email) ditutup
