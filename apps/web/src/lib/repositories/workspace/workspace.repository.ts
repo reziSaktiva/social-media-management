@@ -430,6 +430,53 @@ export const workspaceRepository: IWorkspaceRepository = {
     });
   },
 
+  /** Ordered by `createdAt` ascending — sama urutan invitation dibuat, konsisten dengan `listMembers` (`joinedAt` ascending). */
+  async listPendingInvitations(workspaceId, actingUserId) {
+    const invitations = await withCurrentUser(actingUserId, (tx) =>
+      tx.workspaceInvitation.findMany({
+        where: {
+          workspaceId,
+          status: InvitationStatus.Pending,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+    );
+
+    return invitations.map(toInvitationRecord);
+  },
+
+  async revokeInvitation(workspaceId, invitationId, actingUserId) {
+    await withCurrentUser(actingUserId, async (tx) => {
+      // Flip status atomik `pending` -> `revoked` dalam satu statement —
+      // sama pola race guard seperti `acceptInvitation` (compare-and-swap
+      // lewat `updateMany` + cek `count`, bukan SELECT-lalu-UPDATE terpisah).
+      // Ini mencegah race dengan `acceptInvitation`: kalau invitee accept
+      // duluan (status sudah `accepted`), `updateMany` di sini tidak akan
+      // match apa pun, jadi tidak menimpa status yang sudah benar. `expiresAt`
+      // juga di-guard di where-clause supaya invitation yang sudah lewat
+      // masa berlaku (tapi status-nya masih `pending`, tidak ada proses yang
+      // secara aktif menandainya expired) tidak ikut ke-flip jadi `revoked`.
+      const revoked = await tx.workspaceInvitation.updateMany({
+        where: {
+          id: invitationId,
+          workspaceId,
+          status: InvitationStatus.Pending,
+          expiresAt: { gt: new Date() },
+        },
+        data: { status: InvitationStatus.Revoked },
+      });
+      if (revoked.count === 0) {
+        // Update tidak kena — tidak dibedakan lagi NotFound vs Conflict
+        // vs expired lewat query kedua (round-trip tambahan untuk pesan
+        // yang lebih presisi tidak sepadan di jalur double-click ini).
+        throw new ConflictError(
+          "Undangan tidak ditemukan, sudah dipakai/dibatalkan, atau sudah kedaluwarsa.",
+        );
+      }
+    });
+  },
+
   async saveChannelOrder({ workspaceId, userId, orderedConnectedAccountIds }) {
     // `tx` di dalam `withCurrentUser` sudah berupa interactive transaction
     // client (Prisma.TransactionClient) — tidak mengekspos `$transaction`

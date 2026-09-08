@@ -94,6 +94,31 @@ function createFakeRepository(
       return invitation;
     },
     findInvitationByToken: async (token) => invitations.get(token) ?? null,
+    listPendingInvitations: async (workspaceId) =>
+      [...invitations.values()].filter(
+        (invitation) =>
+          invitation.workspaceId === workspaceId &&
+          invitation.status === InvitationStatus.Pending &&
+          invitation.expiresAt.getTime() > Date.now(),
+      ),
+    revokeInvitation: async (_workspaceId, invitationId) => {
+      const entry = [...invitations.entries()].find(
+        ([, invitation]) => invitation.id === invitationId,
+      );
+      if (!entry) {
+        throw new NotFoundError("Undangan tidak ditemukan.");
+      }
+      const [token, invitation] = entry;
+      if (invitation.status !== InvitationStatus.Pending) {
+        throw new ConflictError(
+          "Undangan ini sudah pernah dipakai atau dibatalkan.",
+        );
+      }
+      invitations.set(token, {
+        ...invitation,
+        status: InvitationStatus.Revoked,
+      });
+    },
     findUserByEmail: async () => null,
     acceptInvitation: async ({ workspaceId, invitationId, userId, role }) => {
       const entry = [...invitations.entries()].find(
@@ -1152,6 +1177,170 @@ describe("WorkspaceService.acceptInvite (T-093.2/.3)", () => {
         actorEmail: "invitee@example.com",
       }),
     ).resolves.toEqual({ workspaceId: WORKSPACE_ID, role: MemberRole.Creator });
+  });
+});
+
+describe("WorkspaceService.listMembersAndPendingInvitations (T-007.8, ADR-101)", () => {
+  const OWNER_USER = asUserId("owner-user");
+  const OWNER_MEMBER_ID = asMemberId("member-owner");
+
+  it("gabungan member asli + undangan pending sebagai MemberListRow[], member dulu baru invitation", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers([member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner)]),
+        listMembers: async () => [
+          member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
+        ],
+        findUsersByIds: async () => [
+          { id: OWNER_USER, name: "Raka", email: "raka@example.com" },
+        ],
+        listPendingInvitations: async () => [pendingInvitation()],
+      }),
+    );
+
+    const rows = await service.listMembersAndPendingInvitations(
+      WORKSPACE_ID,
+      OWNER_USER,
+    );
+
+    expect(rows).toEqual([
+      {
+        kind: "member",
+        member: {
+          id: OWNER_MEMBER_ID,
+          userId: OWNER_USER,
+          name: "Raka",
+          email: "raka@example.com",
+          role: MemberRole.Owner,
+          status: MemberStatus.Active,
+        },
+      },
+      { kind: "pending-invitation", invitation: pendingInvitation() },
+    ]);
+  });
+
+  it("mengembalikan array kosong ketika tidak ada member maupun undangan pending", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listMembers: async () => [],
+        listPendingInvitations: async () => [],
+      }),
+    );
+
+    await expect(
+      service.listMembersAndPendingInvitations(WORKSPACE_ID, OWNER_USER),
+    ).resolves.toEqual([]);
+  });
+});
+
+describe("WorkspaceService.cancelInvitation (T-007.8, ADR-101)", () => {
+  const OWNER_USER = asUserId("owner-user");
+  const ADMIN_USER = asUserId("admin-user");
+  const CREATOR_USER = asUserId("creator-user");
+  const OWNER_MEMBER_ID = asMemberId("member-owner");
+  const ADMIN_MEMBER_ID = asMemberId("member-admin");
+  const CREATOR_MEMBER_ID = asMemberId("member-creator");
+
+  function baseSeed(): WorkspaceMemberRecord[] {
+    return [
+      member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
+      member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
+      member(CREATOR_USER, CREATOR_MEMBER_ID, MemberRole.Creator),
+    ];
+  }
+
+  it("allows Owner to cancel a pending invitation", async () => {
+    let revoked: string | null = null;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        revokeInvitation: async (_workspaceId, invitationId) => {
+          revoked = invitationId;
+        },
+      }),
+    );
+
+    await expect(
+      service.cancelInvitation(
+        WORKSPACE_ID,
+        OWNER_USER,
+        asInvitationId("invitation-1"),
+      ),
+    ).resolves.toBeUndefined();
+    expect(revoked).toBe(asInvitationId("invitation-1"));
+  });
+
+  it("allows Admin to cancel a pending invitation", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        revokeInvitation: async () => undefined,
+      }),
+    );
+
+    await expect(
+      service.cancelInvitation(
+        WORKSPACE_ID,
+        ADMIN_USER,
+        asInvitationId("invitation-1"),
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it("rejects Creator as actor — RBAC sama dengan removeMember/inviteMember", async () => {
+    let calls = 0;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        revokeInvitation: async () => {
+          calls += 1;
+        },
+      }),
+    );
+
+    await expect(
+      service.cancelInvitation(
+        WORKSPACE_ID,
+        CREATOR_USER,
+        asInvitationId("invitation-1"),
+      ),
+    ).rejects.toThrow(AuthorizationError);
+    expect(calls).toBe(0);
+  });
+
+  it("rejects a non-member actor", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.cancelInvitation(
+        WORKSPACE_ID,
+        asUserId("stranger-user"),
+        asInvitationId("invitation-1"),
+      ),
+    ).rejects.toThrow(AuthorizationError);
+  });
+
+  it("propagates ConflictError from the repository when the invitation is no longer pending", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        revokeInvitation: async () => {
+          throw new ConflictError(
+            "Undangan ini sudah pernah dipakai atau dibatalkan.",
+          );
+        },
+      }),
+    );
+
+    await expect(
+      service.cancelInvitation(
+        WORKSPACE_ID,
+        OWNER_USER,
+        asInvitationId("invitation-1"),
+      ),
+    ).rejects.toThrow(ConflictError);
   });
 });
 

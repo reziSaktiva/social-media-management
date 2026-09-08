@@ -1,6 +1,12 @@
 "use server";
 
-import { MemberRole, asMemberId, asUserId } from "@social/shared";
+import {
+  MemberRole,
+  asInvitationId,
+  asMemberId,
+  asUserId,
+} from "@social/shared";
+import type { UserId, WorkspaceId } from "@social/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { WorkspaceService } from "@/domains/workspace";
@@ -25,21 +31,39 @@ function isValidMemberRole(value: unknown): value is MemberRole {
   return Object.values(MemberRole).includes(value as MemberRole);
 }
 
-export async function removeMemberAction(
-  targetMemberId: string,
-): Promise<{ error?: string }> {
+/**
+ * Boilerplate bersama seluruh Server Action di file ini (dulu diduplikasi
+ * identik 4x — code review PR #108): resolve workspace context, wajibkan
+ * session (redirect ke `/login` kalau tidak ada), siapkan `WorkspaceService`.
+ */
+async function getMemberActionContext(): Promise<{
+  workspaceId: WorkspaceId;
+  actorUserId: UserId;
+  workspaceService: WorkspaceService;
+}> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
     redirect("/login");
   }
 
-  const workspaceService = new WorkspaceService(workspaceRepository);
+  return {
+    workspaceId,
+    actorUserId: asUserId(session.user.id),
+    workspaceService: new WorkspaceService(workspaceRepository),
+  };
+}
+
+export async function removeMemberAction(
+  targetMemberId: string,
+): Promise<{ error?: string }> {
+  const { workspaceId, actorUserId, workspaceService } =
+    await getMemberActionContext();
 
   try {
     await workspaceService.removeMember(
       workspaceId,
-      asUserId(session.user.id),
+      actorUserId,
       asMemberId(targetMemberId),
     );
   } catch (error) {
@@ -65,21 +89,15 @@ export async function inviteMemberAction(
     return { error: "Role tidak valid." };
   }
 
-  const { workspaceId } = await getWorkspaceContext();
-  const session = await getCachedSession();
-  if (!session) {
-    redirect("/login");
-  }
-
-  const workspaceService = new WorkspaceService(workspaceRepository);
+  const { workspaceId, actorUserId, workspaceService } =
+    await getMemberActionContext();
 
   let invitation: Awaited<ReturnType<WorkspaceService["inviteMember"]>>;
   try {
-    invitation = await workspaceService.inviteMember(
-      workspaceId,
-      asUserId(session.user.id),
-      { email, role },
-    );
+    invitation = await workspaceService.inviteMember(workspaceId, actorUserId, {
+      email,
+      role,
+    });
   } catch (error) {
     return toActionError(error);
   }
@@ -93,6 +111,32 @@ export async function inviteMemberAction(
   };
 }
 
+/**
+ * Cancel Invitation untuk baris virtual Pending (T-007.8, ADR-101 poin 5) —
+ * pola sama persis `removeMemberAction`. RBAC (Owner/Admin) divalidasi di
+ * `WorkspaceService.cancelInvitation` (reuse `assertActorCanManageMembers`),
+ * bukan di sini (entry point tanpa business logic, AGENTS.md #5).
+ */
+export async function cancelInvitationAction(
+  invitationId: string,
+): Promise<{ error?: string }> {
+  const { workspaceId, actorUserId, workspaceService } =
+    await getMemberActionContext();
+
+  try {
+    await workspaceService.cancelInvitation(
+      workspaceId,
+      actorUserId,
+      asInvitationId(invitationId),
+    );
+  } catch (error) {
+    return toActionError(error);
+  }
+
+  revalidatePath("/settings/members");
+  return {};
+}
+
 export async function updateMemberRoleAction(
   targetMemberId: string,
   newRole: MemberRole,
@@ -101,18 +145,13 @@ export async function updateMemberRoleAction(
     return { error: "Role tidak valid." };
   }
 
-  const { workspaceId } = await getWorkspaceContext();
-  const session = await getCachedSession();
-  if (!session) {
-    redirect("/login");
-  }
-
-  const workspaceService = new WorkspaceService(workspaceRepository);
+  const { workspaceId, actorUserId, workspaceService } =
+    await getMemberActionContext();
 
   try {
     await workspaceService.updateMemberRole(
       workspaceId,
-      asUserId(session.user.id),
+      actorUserId,
       asMemberId(targetMemberId),
       newRole,
     );
