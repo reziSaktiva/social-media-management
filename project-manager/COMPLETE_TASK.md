@@ -8,6 +8,44 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-08 — ADR-102: Default Tema Ikuti Preferensi OS (Amandemen ADR-055)
+
+Perubahan ad-hoc di luar scope T-039.4, diminta King Rezi di sesi yang sama
+setelah T-039.4 selesai — tidak masuk task backlog formal. Default tema
+saat cookie `theme` belum pernah ditulis (user belum pernah toggle
+eksplisit) diubah dari hardcode Light menjadi mengikuti
+`prefers-color-scheme` OS user. Sekali user menekan toggle Light/Dark,
+cookie `theme` ditulis dan jadi preferensi permanen yang override sistem
+(perilaku toggle tidak berubah).
+
+Mekanisme (menjaga prinsip "no flash" ADR-055): `apps/web/src/app/layout.tsx`
+merender `<Script id="theme-system-default" strategy="beforeInteractive">`
+yang set class `dark` di `<html>` sebelum React hydrate kalau cookie belum
+ada (plus `suppressHydrationWarning`); `apps/web/src/components/Providers.tsx`
+tetap inisialisasi state `mode` identik `initialMode` dari server lalu
+mengoreksinya ke preferensi OS lewat `useLayoutEffect` (bukan `useEffect`)
+sebelum paint pertama — mencegah hydration mismatch di consumer seperti
+toggle icon `WorkspaceSideNav`/`Toaster`. Auto-persist cookie dipindah
+supaya hanya terjadi saat `toggleMode()` benar-benar dipanggil user, bukan
+otomatis saat mount (supaya default hasil deteksi sistem tidak
+"terkunci" jadi preferensi eksplisit sebelum user memilih). Percobaan
+pertama (resolve OS langsung di lazy initializer `useState`) ditolak
+review Ridwan Architecture Reviewer karena menyebabkan hydration mismatch
+baru — diperbaiki dengan pola `useLayoutEffect` di atas.
+
+File yang diubah: `apps/web/src/app/layout.tsx`,
+`apps/web/src/components/Providers.tsx` (`DEFAULT_THEME_MODE` di
+`apps/web/src/lib/theme/theme-cookie.ts` tetap ada sebagai fallback).
+Branch `feature/t-039-4-onboarding-workspace-picker` (belum commit/push).
+Verifikasi: typecheck/lint bersih, 272 unit test pass (tidak ada test baru
+untuk logic ini — dicatat sebagai gap), verifikasi manual browser
+(emulasi `prefers-color-scheme` dark/light, toggle eksplisit tetap
+menulis cookie benar). Detail lengkap: `DECISIONS.md` ADR-102, status
+ADR-055 diupdate jadi "Accepted — Amended by ADR-097 (2026-09-01), Amended
+by ADR-102 (2026-09-08)".
+
+---
+
 ## 2026-09-08 — T-039.4 diimplementasikan+direview+di-QA tuntas — T-039 ditutup ✅ Done, KI-023 Resolved
 
 Subtask terakhir T-039 (Migrasi Routing & Settings, ADR-076) yang tersisa —
