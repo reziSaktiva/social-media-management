@@ -309,7 +309,7 @@ Semua route `/account/*` dan `/settings/*` sebelumnya masih placeholder "Scaffol
 
 | Field         | Value                                                                  |
 | ------------- | ----------------------------------------------------------------------- |
-| **Status**    | ✅ Done — seluruh subtask T-039.1–.5 selesai (2026-09-08): T-039.4 (onboarding picker workspace) sudah diimplementasikan, lolos review arsitektur Ridwan (tidak ada temuan) dan QA Najwa end-to-end browser (6/6 skenario PASS) — kode masih di branch `feature/t-039-4-onboarding-workspace-picker` (checkout dari `staging`), **belum di-commit/push/merge**, menunggu King Rezi |
+| **Status**    | ✅ Done — seluruh subtask T-039.1–.5 selesai (2026-09-08): T-039.4 (onboarding picker workspace) sudah diimplementasikan, lolos review arsitektur Ridwan (tidak ada temuan) dan QA Najwa end-to-end browser (6/6 skenario PASS) — kode sudah di-commit & push, dibuka sebagai PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) dari branch `feature/t-039-4-onboarding-workspace-picker` (checkout dari `staging`) ke `staging`, **belum di-merge**, menunggu King Rezi |
 | **Domain**    | workspace · platform                                                    |
 | **ADR**       | ADR-076                                                                  |
 | **Terkait**   | KI-023, KI-024 (`PROJECT_STATE.md`) — KI-024 ditemukan saat T-039.5, belum ada task formal |
@@ -341,7 +341,7 @@ QA Najwa end-to-end browser (localhost): **PASS 6/6 skenario** — (1) 1 workspa
 
 Verifikasi: `bun run typecheck`/`lint` bersih, `bun run test` (root) 272 pass (naik dari 269, dari `actions.test.ts` baru)/5 skip.
 
-**Belum di-commit/push/merge** — kode masih di working tree branch `feature/t-039-4-onboarding-workspace-picker` (checkout dari `staging`), menunggu King Rezi memutuskan commit/push (rule 13 AGENTS.md). Dengan ini seluruh subtask T-039.1–.5 selesai, menutup sisa scope KI-023 (lihat catatan update KI-023 di `PROJECT_STATE.md`).
+**Sudah di-commit & push, belum di-merge** — kode dibuka sebagai PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) dari branch `feature/t-039-4-onboarding-workspace-picker` (checkout dari `staging`) ke `staging`, menunggu King Rezi me-review/merge (rule 13 AGENTS.md). Dengan ini seluruh subtask T-039.1–.5 selesai, menutup sisa scope KI-023 (lihat catatan update KI-023 di `PROJECT_STATE.md`).
 
 - [x] **T-039.5** (ADR-077) Migrasi kode pola sidebar Settings dari secondary nav ke sidebar tunggal pola Buffer: (a) `sideNav` di `AppShell` (`apps/web/src/app/(app)/layout.tsx`) jadi kondisional per-route — `WorkspaceSideNav` di luar `/settings`, `SettingsSideNav` di dalam `/settings`; (b) hapus `Layout`+`LayoutPanel role="navigation"` secondary nav di `apps/web/src/app/(app)/settings/layout.tsx`, content jadi full-width; (c) tambah header back-navigation ("← Settings" → Home) di `SettingsSideNav.tsx`; referensi visual sudah ada di readme.md Claude Design (`.settings-sidebar`)
 

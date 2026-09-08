@@ -11,8 +11,10 @@ import {
 
 import {
   DEFAULT_THEME_MODE,
+  PREFERS_DARK_MEDIA_QUERY,
   THEME_COOKIE_MAX_AGE,
   THEME_COOKIE_NAME,
+  isExplicitThemeCookieValue,
   type ThemeMode,
 } from "@/lib/theme/theme-cookie";
 
@@ -52,9 +54,10 @@ function persistThemeMode(mode: ThemeMode) {
 }
 
 function hasThemeCookie(): boolean {
-  return document.cookie
+  const entry = document.cookie
     .split("; ")
-    .some((entry) => entry.startsWith(`${THEME_COOKIE_NAME}=`));
+    .find((item) => item.startsWith(`${THEME_COOKIE_NAME}=`));
+  return isExplicitThemeCookieValue(entry?.slice(THEME_COOKIE_NAME.length + 1));
 }
 
 // `useLayoutEffect` melempar warning React kalau dipanggil saat SSR — di
@@ -95,9 +98,8 @@ export function Providers({
   useIsomorphicLayoutEffect(() => {
     if (hasThemeCookie()) return;
     if (typeof window === "undefined" || !window.matchMedia) return;
-    const systemMode: ThemeMode = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches
+    const systemMode: ThemeMode = window.matchMedia(PREFERS_DARK_MEDIA_QUERY)
+      .matches
       ? "dark"
       : "light";
     setMode((current) => (current === systemMode ? current : systemMode));

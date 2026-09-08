@@ -5,7 +5,12 @@ import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
-import { THEME_COOKIE_NAME, parseThemeMode } from "@/lib/theme/theme-cookie";
+import {
+  PREFERS_DARK_MEDIA_QUERY,
+  THEME_COOKIE_NAME,
+  isExplicitThemeCookieValue,
+  parseThemeMode,
+} from "@/lib/theme/theme-cookie";
 import { cn } from "@/lib/utils";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
@@ -66,7 +71,9 @@ export default async function RootLayout({
       )}
     >
       <head>
-        {cookieStore.get(THEME_COOKIE_NAME)?.value ? null : (
+        {isExplicitThemeCookieValue(
+          cookieStore.get(THEME_COOKIE_NAME)?.value,
+        ) ? null : (
           // Cookie belum ada (user belum pernah pilih Light/Dark eksplisit)
           // — default ikut sistem operasi (T-039, amendemen ADR-055).
           // `beforeInteractive` menjalankan script ini sebelum hydration
@@ -74,7 +81,7 @@ export default async function RootLayout({
           // mode. Konsisten dengan `resolveInitialMode()` di
           // `components/Providers.tsx` — ubah keduanya bersamaan.
           <Script id="theme-system-default" strategy="beforeInteractive">
-            {`(function(){try{if(window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.classList.add("dark");}}catch(e){}})();`}
+            {`(function(){try{if(window.matchMedia(${JSON.stringify(PREFERS_DARK_MEDIA_QUERY)}).matches){document.documentElement.classList.add("dark");}}catch(e){}})();`}
           </Script>
         )}
       </head>

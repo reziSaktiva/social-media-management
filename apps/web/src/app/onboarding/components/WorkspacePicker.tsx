@@ -2,21 +2,9 @@
 
 import { useState, useTransition } from "react";
 
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
-
 import { Alert, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemTitle,
-} from "@/components/ui/item";
-import { getInitials } from "@/lib/utils";
+import { ItemGroup } from "@/components/ui/item";
+import { WorkspacePickableRow } from "@/components/workspace/WorkspacePickableRow";
 
 import { selectWorkspaceAction } from "./actions";
 
@@ -30,18 +18,16 @@ interface Props {
   workspaces: WorkspaceOption[];
 }
 
-function formatRoleLabel(role: string): string {
-  if (!role) return role;
-  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
-}
-
 /**
  * State "Pilih Workspace" di `/onboarding` (T-039.4) — user existing dengan
  * >1 membership aktif tapi cookie `active-workspace-id` hilang. Tidak ada
  * baris "Aktif" (belum ada workspace aktif sama sekali di titik ini) dan
  * tidak ada `AlertDialog` konfirmasi (beda dari `WorkspaceRow` di Settings →
  * Account → Workspaces, T-089) — klik langsung memilih, sesuai desain
- * Claude Design `templates/onboarding.html`.
+ * Claude Design `templates/onboarding.html`. Baris workspace direuse dari
+ * `WorkspacePickableRow` (dibagi dengan `WorkspacesSettingsView`, code
+ * review PR #109) — hanya orkestrasi klik (langsung pilih di sini, dialog
+ * konfirmasi di Settings) yang beda, bukan markup barisnya.
  */
 export function WorkspacePicker({ workspaces }: Props) {
   const [isPending, startTransition] = useTransition();
@@ -74,41 +60,14 @@ export function WorkspacePicker({ workspaces }: Props) {
         {workspaces.map((workspace) => {
           const isSelecting = isPending && selectingId === workspace.id;
           return (
-            <Item
+            <WorkspacePickableRow
               key={workspace.id}
-              asChild
-              variant="outline"
-              className="cursor-pointer hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
-            >
-              <button
-                type="button"
-                onClick={() => handleSelect(workspace.id)}
-                disabled={isPending}
-              >
-                <ItemMedia>
-                  <Avatar>
-                    <AvatarFallback>
-                      {getInitials(workspace.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                </ItemMedia>
-                <ItemContent>
-                  <ItemTitle>{workspace.name}</ItemTitle>
-                  <ItemDescription>
-                    {isSelecting
-                      ? "Memilih workspace ini..."
-                      : formatRoleLabel(workspace.role)}
-                  </ItemDescription>
-                </ItemContent>
-                <ItemActions>
-                  <HugeiconsIcon
-                    icon={ArrowRight01Icon}
-                    strokeWidth={2}
-                    className="size-4 text-muted-foreground"
-                  />
-                </ItemActions>
-              </button>
-            </Item>
+              name={workspace.name}
+              role={workspace.role}
+              pendingLabel={isSelecting ? "Memilih workspace ini..." : null}
+              disabled={isPending}
+              onClick={() => handleSelect(workspace.id)}
+            />
           );
         })}
       </ItemGroup>

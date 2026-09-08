@@ -36,7 +36,7 @@ baru — diperbaiki dengan pola `useLayoutEffect` di atas.
 File yang diubah: `apps/web/src/app/layout.tsx`,
 `apps/web/src/components/Providers.tsx` (`DEFAULT_THEME_MODE` di
 `apps/web/src/lib/theme/theme-cookie.ts` tetap ada sebagai fallback).
-Branch `feature/t-039-4-onboarding-workspace-picker` (belum commit/push).
+Branch `feature/t-039-4-onboarding-workspace-picker` — sudah di-commit & push, PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) ke `staging`, belum di-merge.
 Verifikasi: typecheck/lint bersih, 272 unit test pass (tidak ada test baru
 untuk logic ini — dicatat sebagai gap), verifikasi manual browser
 (emulasi `prefers-color-scheme` dark/light, toggle eksplisit tetap
@@ -54,7 +54,7 @@ diimplementasikan setelah desainnya disetujui King Rezi di Claude Design
 (dicatat 2026-08-24).
 
 **Perubahan kode** (branch `feature/t-039-4-onboarding-workspace-picker`,
-dibuat dari `staging`, **belum di-commit/push/merge**):
+dibuat dari `staging` — sudah di-commit & push, PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109), belum di-merge):
 
 - `apps/web/src/app/onboarding/page.tsx` — diubah dari "cek 1 default
   workspace, kalau tidak ada tampilkan form" menjadi memanggil

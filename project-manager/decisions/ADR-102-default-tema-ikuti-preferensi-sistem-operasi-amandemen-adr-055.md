@@ -95,10 +95,10 @@ environment yang tidak mendukung `prefers-color-scheme`), bukan dihapus.
   `apps/web/src/components/Providers.tsx`. `DEFAULT_THEME_MODE` di
   `apps/web/src/lib/theme/theme-cookie.ts` tidak dihapus, tetap dipakai
   sebagai fallback.
-* Branch: `feature/t-039-4-onboarding-workspace-picker` (belum commit —
-  masih working tree saat ADR ini ditulis; akan dicommit terpisah dari
-  T-039.4, tapi di branch yang sama karena diminta King Rezi tepat setelah
-  T-039.4 selesai, di sesi kerja yang sama).
+* Branch: `feature/t-039-4-onboarding-workspace-picker` — sudah di-commit &
+  push, ikut dalam PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) ke `staging` (di branch yang sama dengan
+  T-039.4 karena diminta King Rezi tepat setelah T-039.4 selesai, di sesi
+  kerja yang sama), belum di-merge.
 * Bukan task backlog formal (`TASKS.md`/`tasks/vXX-*.md`) — permintaan
   ad-hoc King Rezi di luar scope T-039.4, tidak menambah entri task baru.
 * Verifikasi: typecheck bersih, lint bersih, 272 unit test pass (tidak ada
