@@ -246,12 +246,14 @@ export interface IWorkspaceRepository {
 
   /**
    * Batalkan undangan pending (Cancel Invitation, T-007.8, ADR-101 poin 5) —
-   * set `WorkspaceInvitation.status` jadi `revoked`. Melempar `NotFoundError`
-   * bila invitation tidak ditemukan di workspace ini, atau `ConflictError`
-   * bila statusnya sudah bukan `pending` lagi (sudah accepted/revoked/expired
-   * di antara load halaman dan klik Cancel — race guard, pola sama seperti
-   * `acceptInvitation`). `actingUserId` (RLS, KI-026 follow-up) — RBAC
-   * (Owner/Admin, `assertActorCanManageMembers`) sudah diverifikasi di
+   * set `WorkspaceInvitation.status` jadi `revoked`. Compare-and-swap
+   * (`updateMany` dengan guard `status: pending` DAN `expiresAt` belum lewat)
+   * — kalau tidak ada baris yang match (tidak ditemukan di workspace ini,
+   * statusnya sudah bukan `pending` lagi, atau sudah lewat `expiresAt`),
+   * melempar `ConflictError` generik (satu error, tanpa query kedua untuk
+   * membedakan alasannya — race guard, pola sama seperti `acceptInvitation`).
+   * `actingUserId` (RLS, KI-026 follow-up) — RBAC (Owner/Admin,
+   * `assertActorCanManageMembers`) sudah diverifikasi di
    * `WorkspaceService.cancelInvitation` sebelum method ini dipanggil.
    */
   revokeInvitation(

@@ -353,12 +353,25 @@ export class WorkspaceService {
       this.repository.listPendingInvitations(workspaceId, actingUserId),
     ]);
 
+    // Dua query di atas tidak atomik (race dengan acceptInvitation) — kalau
+    // invitee accept persis di antara kedua read, invitation itu bisa masih
+    // kebaca `pending` padahal member Active-nya sudah ada. De-dup by email
+    // supaya orang yang sama tidak dobel muncul sebagai member + invitation.
+    const activeMemberEmails = new Set(
+      members.map((member) => member.email.toLowerCase()),
+    );
+
     return [
       ...members.map((member): MemberListRow => ({ kind: "member", member })),
-      ...pendingInvitations.map((invitation): MemberListRow => ({
-        kind: "pending-invitation",
-        invitation,
-      })),
+      ...pendingInvitations
+        .filter(
+          (invitation) =>
+            !activeMemberEmails.has(invitation.email.toLowerCase()),
+        )
+        .map((invitation): MemberListRow => ({
+          kind: "pending-invitation",
+          invitation,
+        })),
     ];
   }
 

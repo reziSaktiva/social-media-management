@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import type { prisma as prismaClient } from "@/lib/prisma/client";
 import type { withCurrentUser as withCurrentUserFn } from "@/lib/prisma/with-current-user";
-import { ConflictError, NotFoundError } from "@/lib/utils/errors";
+import { ConflictError } from "@/lib/utils/errors";
 
 /**
  * Ridwan Architecture Reviewer (temuan moderate, T-007.8) — integration test
@@ -42,7 +42,7 @@ describe.skipIf(!hasDb)(
       }
     });
 
-    it("revokes a pending invitation (count 1), rejects an already-non-pending one with ConflictError, and rejects a missing one with NotFoundError", async () => {
+    it("revokes a pending invitation (count 1), rejects an already-non-pending one with ConflictError, and rejects a missing one with ConflictError too (single generic error, no second lookup query)", async () => {
       ({ prisma } = await import("@/lib/prisma/client"));
       ({ withCurrentUser } = await import("@/lib/prisma/with-current-user"));
       const { workspaceRepository } = await import("./workspace.repository");
@@ -102,14 +102,15 @@ describe.skipIf(!hasDb)(
         ),
       ).rejects.toThrow(ConflictError);
 
-      // Missing invitation entirely -> NotFoundError, not ConflictError.
+      // Missing invitation entirely -> ConflictError (single generic error,
+      // CAS miss no longer runs a second query to distinguish the reason).
       await expect(
         workspaceRepository.revokeInvitation(
           workspace.id as never,
           `${invitation.id}-does-not-exist` as never,
           ownerId as never,
         ),
-      ).rejects.toThrow(NotFoundError);
+      ).rejects.toThrow(ConflictError);
     });
   },
 );

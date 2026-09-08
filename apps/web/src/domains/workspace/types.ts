@@ -81,6 +81,15 @@ export type WorkspaceInviteAcceptView =
  * dari `WorkspaceInvitation` (`status = pending`, belum expired) yang belum
  * punya `User`/nama sampai di-accept (T-093) — identitas ditampilkan pakai
  * `invitation.email`.
+ *
+ * PERHATIAN untuk T-007.7 (invite via Email, ADR-100, masih blocked T-005):
+ * alur itu akan pre-create baris `workspace_members` ASLI berstatus
+ * `MemberStatus.Pending` — yaitu `kind: "member"` dengan `member.status ===
+ * Pending`, BUKAN `kind: "pending-invitation"`. Members list akan punya dua
+ * representasi "pending" yang berbeda struktur & aksi (virtual row ini cuma
+ * "Cancel Invitation"; member Pending asli bisa "Change Role"/"Remove") —
+ * rencanakan reconciliation UI-nya saat T-007.7 diimplementasikan, jangan
+ * asumsikan otomatis konsisten.
  */
 export type MemberListRow =
   | { kind: "member"; member: WorkspaceMemberWithUser }

@@ -453,26 +453,25 @@ export const workspaceRepository: IWorkspaceRepository = {
       // lewat `updateMany` + cek `count`, bukan SELECT-lalu-UPDATE terpisah).
       // Ini mencegah race dengan `acceptInvitation`: kalau invitee accept
       // duluan (status sudah `accepted`), `updateMany` di sini tidak akan
-      // match apa pun, jadi tidak menimpa status yang sudah benar.
+      // match apa pun, jadi tidak menimpa status yang sudah benar. `expiresAt`
+      // juga di-guard di where-clause supaya invitation yang sudah lewat
+      // masa berlaku (tapi status-nya masih `pending`, tidak ada proses yang
+      // secara aktif menandainya expired) tidak ikut ke-flip jadi `revoked`.
       const revoked = await tx.workspaceInvitation.updateMany({
         where: {
           id: invitationId,
           workspaceId,
           status: InvitationStatus.Pending,
+          expiresAt: { gt: new Date() },
         },
         data: { status: InvitationStatus.Revoked },
       });
       if (revoked.count === 0) {
-        // Update tidak kena — cari tahu alasannya cuma untuk pesan error
-        // yang tepat, tidak mempengaruhi hasil di atas.
-        const invitation = await tx.workspaceInvitation.findFirst({
-          where: { id: invitationId, workspaceId },
-        });
-        if (!invitation) {
-          throw new NotFoundError("Undangan tidak ditemukan.");
-        }
+        // Update tidak kena — tidak dibedakan lagi NotFound vs Conflict
+        // vs expired lewat query kedua (round-trip tambahan untuk pesan
+        // yang lebih presisi tidak sepadan di jalur double-click ini).
         throw new ConflictError(
-          "Undangan ini sudah pernah dipakai atau dibatalkan.",
+          "Undangan tidak ditemukan, sudah dipakai/dibatalkan, atau sudah kedaluwarsa.",
         );
       }
     });

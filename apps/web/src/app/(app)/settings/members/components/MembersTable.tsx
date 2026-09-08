@@ -208,6 +208,61 @@ function InvitationActions({
 }
 
 /**
+ * Scaffold AlertDialog konfirmasi bersama (dulu diduplikasi 3x identik
+ * hanya beda title/description/label/variant — code review PR #108):
+ * Remove member, Change role, Cancel invitation semua memakainya.
+ */
+function ConfirmActionDialog({
+  isOpen,
+  onClose,
+  title,
+  description,
+  confirmLabel,
+  isLoading,
+  onConfirm,
+  variant,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  isLoading: boolean;
+  onConfirm: () => void;
+  variant?: "destructive";
+}) {
+  return (
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogAction
+            variant={variant}
+            disabled={isLoading}
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
+          >
+            {isLoading ? <Spinner /> : null}
+            {confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/**
  * `MembersTable` (T-099.2, migrasi shadcn/ui). shadcn `Table` — beda dari
  * `@astryxdesign/core/Table` — cuma primitive semantik `<table>` tanpa
  * sistem kolom data-driven (tidak ada `TableColumn[]`/helper
@@ -476,100 +531,49 @@ export function MembersTable({
         </CardContent>
       </Card>
 
-      <AlertDialog
-        open={removeConfirm.isOpen}
-        onOpenChange={(open) => {
-          if (!open) removeConfirm.close();
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Keluarkan anggota ini?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {removeConfirm.target
-                ? `Keluarkan ${removeConfirm.target.name} dari workspace ini? Mereka akan kehilangan akses (ADR-049, Tier 2).`
-                : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={removeConfirm.isLoading}
-              onClick={(e) => {
-                e.preventDefault();
-                void removeConfirm.confirm();
-              }}
-            >
-              {removeConfirm.isLoading ? <Spinner /> : null}
-              Keluarkan
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmActionDialog
+        isOpen={removeConfirm.isOpen}
+        onClose={removeConfirm.close}
+        title="Keluarkan anggota ini?"
+        description={
+          removeConfirm.target
+            ? `Keluarkan ${removeConfirm.target.name} dari workspace ini? Mereka akan kehilangan akses (ADR-049, Tier 2).`
+            : ""
+        }
+        confirmLabel="Keluarkan"
+        isLoading={removeConfirm.isLoading}
+        onConfirm={() => void removeConfirm.confirm()}
+        variant="destructive"
+      />
 
-      <AlertDialog
-        open={roleConfirm.isOpen}
-        onOpenChange={(open) => {
-          if (!open) roleConfirm.close();
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Ubah role anggota ini?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {roleConfirm.target
-                ? `Ubah role ${roleConfirm.target.member.name} dari ${MEMBER_ROLE_LABEL[roleConfirm.target.member.role]} ke ${MEMBER_ROLE_LABEL[roleConfirm.target.newRole]}?`
-                : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={roleConfirm.isLoading}
-              onClick={(e) => {
-                e.preventDefault();
-                void roleConfirm.confirm();
-              }}
-            >
-              {roleConfirm.isLoading ? <Spinner /> : null}
-              Ubah Role
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmActionDialog
+        isOpen={roleConfirm.isOpen}
+        onClose={roleConfirm.close}
+        title="Ubah role anggota ini?"
+        description={
+          roleConfirm.target
+            ? `Ubah role ${roleConfirm.target.member.name} dari ${MEMBER_ROLE_LABEL[roleConfirm.target.member.role]} ke ${MEMBER_ROLE_LABEL[roleConfirm.target.newRole]}?`
+            : ""
+        }
+        confirmLabel="Ubah Role"
+        isLoading={roleConfirm.isLoading}
+        onConfirm={() => void roleConfirm.confirm()}
+      />
 
-      <AlertDialog
-        open={cancelInvitationConfirm.isOpen}
-        onOpenChange={(open) => {
-          if (!open) cancelInvitationConfirm.close();
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Batalkan undangan ini?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {cancelInvitationConfirm.target
-                ? `Batalkan undangan untuk ${cancelInvitationConfirm.target.email}? Link undangan yang sudah dibagikan tidak akan bisa dipakai lagi.`
-                : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={cancelInvitationConfirm.isLoading}
-              onClick={(e) => {
-                e.preventDefault();
-                void cancelInvitationConfirm.confirm();
-              }}
-            >
-              {cancelInvitationConfirm.isLoading ? <Spinner /> : null}
-              Batalkan Undangan
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmActionDialog
+        isOpen={cancelInvitationConfirm.isOpen}
+        onClose={cancelInvitationConfirm.close}
+        title="Batalkan undangan ini?"
+        description={
+          cancelInvitationConfirm.target
+            ? `Batalkan undangan untuk ${cancelInvitationConfirm.target.email}? Link undangan yang sudah dibagikan tidak akan bisa dipakai lagi.`
+            : ""
+        }
+        confirmLabel="Batalkan Undangan"
+        isLoading={cancelInvitationConfirm.isLoading}
+        onConfirm={() => void cancelInvitationConfirm.confirm()}
+        variant="destructive"
+      />
     </div>
   );
 }
