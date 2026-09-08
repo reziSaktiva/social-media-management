@@ -70,7 +70,7 @@ export function WorkspacePicker({ workspaces }: Props) {
         </Alert>
       ) : null}
 
-      <ItemGroup className="gap-0 divide-y divide-border">
+      <ItemGroup className="gap-2">
         {workspaces.map((workspace) => {
           const isSelecting = isPending && selectingId === workspace.id;
           return (

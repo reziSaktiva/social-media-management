@@ -57,23 +57,37 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Pilih Workspace</CardTitle>
-        <CardDescription>
-          Anda tergabung di beberapa workspace. Pilih salah satu untuk
-          melanjutkan.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <WorkspacePicker
-          workspaces={memberships.map((membership) => ({
-            id: membership.workspaceId,
-            name: membership.name,
-            role: membership.role,
-          }))}
-        />
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Buat Workspace</CardTitle>
+          <CardDescription>
+            Butuh ruang kerja baru? Buat workspace tambahan kapan saja.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CreateWorkspaceForm />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pilih Workspace</CardTitle>
+          <CardDescription>
+            Anda tergabung di beberapa workspace. Pilih salah satu untuk
+            melanjutkan.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <WorkspacePicker
+            workspaces={memberships.map((membership) => ({
+              id: membership.workspaceId,
+              name: membership.name,
+              role: membership.role,
+            }))}
+          />
+        </CardContent>
+      </Card>
+    </>
   );
 }
