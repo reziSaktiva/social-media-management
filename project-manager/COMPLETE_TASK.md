@@ -179,7 +179,7 @@ File yang diubah: `readme.md` (via `DesignSync`).
 ## 2026-09-08 — KI-047 Phase 2b: Resync tabel Components di readme.md ke shadcn/ui
 
 Lanjutan Phase 2a (lihat entri di bawah). Sebelum menulis, dibaca langsung
-16 file di `apps/web/src/components/ui/` (bukan ditebak dari nama Astryx
+17 file di `apps/web/src/components/ui/` (bukan ditebak dari nama Astryx
 padanannya) untuk memastikan kolom "shadcn/ui equivalent" akurat terhadap
 komponen yang benar-benar terpasang — termasuk `button.tsx`/`badge.tsx`
 (`cva` variant list), `card.tsx`, `field.tsx`, `item.tsx`, `dialog.tsx`,
