@@ -309,7 +309,7 @@ Semua route `/account/*` dan `/settings/*` sebelumnya masih placeholder "Scaffol
 
 | Field         | Value                                                                  |
 | ------------- | ----------------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress — T-039.1/.2/.3/.5 selesai (review Ridwan + QA Najwa lolos); T-039.4 desain sudah selesai di Claude Design (2026-08-24), implementasi kode belum dikerjakan — menunggu approval King Rezi (rule 17 AGENTS.md) |
+| **Status**    | ✅ Done — seluruh subtask T-039.1–.5 selesai (2026-09-08): T-039.4 (onboarding picker workspace) sudah diimplementasikan, lolos review arsitektur Ridwan (tidak ada temuan) dan QA Najwa end-to-end browser (6/6 skenario PASS) — kode masih di branch `feature/t-039-4-onboarding-workspace-picker` (checkout dari `staging`), **belum di-commit/push/merge**, menunggu King Rezi |
 | **Domain**    | workspace · platform                                                    |
 | **ADR**       | ADR-076                                                                  |
 | **Terkait**   | KI-023, KI-024 (`PROJECT_STATE.md`) — KI-024 ditemukan saat T-039.5, belum ada task formal |
@@ -329,9 +329,19 @@ task ini dieksekusi sudah akurat/up-to-date.
 - [x] **T-039.1** Hapus dynamic segment `apps/web/src/app/[slug]/...`, pindahkan seluruh route workspace-scoped (Home, Publish, Engage, Analyze, Start Page, Settings) ke route group baru `apps/web/src/app/(app)/...`
 - [x] **T-039.2** Gabungkan `apps/web/src/app/account/...` (saat ini terpisah) ke dalam `settings/account/*`, konsisten dengan konsolidasi Settings jadi dua grup "Organization" + "Account" (satu entry point avatar/user menu)
 - [x] **T-039.3** Ganti resolusi workspace di Middleware/`src/proxy.ts` dari parsing URL `[slug]` menjadi baca cookie `active-workspace-id` (HTTP-only), tetap divalidasi ulang terhadap `workspace_members` di setiap request
-- [ ] **T-039.4** Bangun halaman `/onboarding` dengan picker workspace — re-entry point untuk dua skenario: user baru tanpa workspace (buat workspace pertama) dan user existing yang kehilangan cookie workspace aktif (pilih dari daftar workspace)
+- [x] **T-039.4** Bangun halaman `/onboarding` dengan picker workspace — re-entry point untuk dua skenario: user baru tanpa workspace (buat workspace pertama) dan user existing yang kehilangan cookie workspace aktif (pilih dari daftar workspace)
 
 **Catatan T-039.4 (2026-08-24) — desain selesai, implementasi kode belum dimulai:** Rancangan sudah dibuat di Claude Design (project "Social Media Management") mengikuti gate rule 17 `AGENTS.md` — file baru `templates/onboarding.html` (2 state referensi: "Belum Punya Workspace" — form buat workspace baru; "Pilih Workspace (>1, cookie hilang)" — list `.ws-pick-item` yang bisa diklik, masing-masing langsung set active workspace + redirect ke Home) dan class baru di `styles.css` (`.ws-pick-list`, `.ws-pick-item`, `.ws-pick-avatar`, `.ws-pick-body`, `.ws-pick-name`, `.ws-pick-role`, `.ws-pick-chevron`, mereplikasi pola Astryx `List`+`ListItem`/`Item`). Implementasi kode di `apps/web` **belum dikerjakan sama sekali** — menunggu approval King Rezi atas desain ini sebelum dilanjutkan. Branch `feature/t039-4-onboarding-workspace-picker` sudah dibuat (checkout dari `staging`), belum ada commit. Detail lengkap proses & keputusan: `COMPLETE_TASK.md`.
+
+**Catatan eksekusi T-039.4 (2026-09-08) — implementasi selesai, lolos review + QA:** Setelah desain disetujui, diimplementasikan di `apps/web/src/app/onboarding/page.tsx` — diubah dari "cek 1 default workspace, kalau tidak ada tampilkan form" menjadi memanggil `WorkspaceService.listWorkspacesForUser(userId)` dan branching 3 skenario: 0 workspace → render `CreateWorkspaceForm` (state lama, tidak berubah); 1 workspace → tetap `redirect("/onboarding/resume")` (Route Handler existing dari T-039.3, tidak berubah); >1 workspace → render `WorkspacePicker` (baru) — menutup gap lama di mana `onboarding/resume` auto-pick diam-diam workspace tertua tanpa menanyakan user. File baru: `apps/web/src/app/onboarding/components/WorkspacePicker.tsx` (Client Component, list workspace pakai `Item`/`ItemGroup` shadcn — pola sama `WorkspacesSettingsView.tsx` T-089 — tanpa `AlertDialog` konfirmasi karena belum ada "workspace aktif" untuk ditinggalkan di titik re-entry ini, klik baris langsung memanggil Server Action). `apps/web/src/app/onboarding/components/actions.ts` ditambah `selectWorkspaceAction(workspaceId)` — validasi membership aktif lewat reuse `WorkspaceService.switchWorkspace`, set cookie `active-workspace-id`, redirect Home; error (bukan anggota aktif) → `{error}` lewat `toActionError`, tanpa redirect. Test baru `apps/web/src/app/onboarding/components/actions.test.ts` menutup gap coverage untuk `selectWorkspaceAction` (3 skenario: unauthenticated → redirect login; sukses → set cookie + redirect home; gagal membership → return `{error}` tanpa redirect/cookie).
+
+Review arsitektur Ridwan: **LOLOS, tidak ada temuan** (entry point tanpa business logic, domain tidak import Prisma langsung, reuse `switchWorkspace` untuk skenario "belum ada workspace aktif" dinilai semantically tepat, bukan penyalahgunaan API).
+
+QA Najwa end-to-end browser (localhost): **PASS 6/6 skenario** — (1) 1 workspace + cookie hilang auto-redirect Home tanpa picker; (2) >1 workspace + cookie hilang tampil picker, klik pilih → redirect Home + cookie ter-set benar (dites akun Raka, 4 workspace); (3) 0 workspace → form create workspace lama tidak regresi; (4) error membership invalid → alert error muncul tanpa crash/redirect; (5) visual "Pilih Workspace" cocok Claude Design (title, subtitle, avatar+nama+role+chevron, klik langsung tanpa dialog); (6) regresi Settings → Account → Workspaces tetap normal. Data test QA (`qa-onboarding-t0394@kopiselasar.com` + workspace-nya) sudah dibersihkan sendiri oleh Najwa via Danger Zone.
+
+Verifikasi: `bun run typecheck`/`lint` bersih, `bun run test` (root) 272 pass (naik dari 269, dari `actions.test.ts` baru)/5 skip.
+
+**Belum di-commit/push/merge** — kode masih di working tree branch `feature/t-039-4-onboarding-workspace-picker` (checkout dari `staging`), menunggu King Rezi memutuskan commit/push (rule 13 AGENTS.md). Dengan ini seluruh subtask T-039.1–.5 selesai, menutup sisa scope KI-023 (lihat catatan update KI-023 di `PROJECT_STATE.md`).
 
 - [x] **T-039.5** (ADR-077) Migrasi kode pola sidebar Settings dari secondary nav ke sidebar tunggal pola Buffer: (a) `sideNav` di `AppShell` (`apps/web/src/app/(app)/layout.tsx`) jadi kondisional per-route — `WorkspaceSideNav` di luar `/settings`, `SettingsSideNav` di dalam `/settings`; (b) hapus `Layout`+`LayoutPanel role="navigation"` secondary nav di `apps/web/src/app/(app)/settings/layout.tsx`, content jadi full-width; (c) tambah header back-navigation ("← Settings" → Home) di `SettingsSideNav.tsx`; referensi visual sudah ada di readme.md Claude Design (`.settings-sidebar`)
 
@@ -377,11 +387,12 @@ verifikasi hijau (typecheck bersih, lint bersih, 80 test pass termasuk
   Organization/Account, urutan & label item) — tidak ada perubahan di
   Claude Design, cuma jadi referensi.
 
-**T-039.4 tetap terbuka** sebagai next step terpisah — halaman `/onboarding`
-dengan picker workspace untuk user yang punya >1 workspace saat cookie
-hilang. Saat ini `onboarding/resume/route.ts` otomatis memilih salah satu
-lewat `getDefaultWorkspaceForUser` — bukan bug, itu batasan scope saat ini,
-menunggu T-039.4.
+**Update (2026-09-08) — T-039.4 sudah diimplementasikan, lihat catatan
+eksekusi T-039.4 di atas.** Sebelumnya `onboarding/resume/route.ts` otomatis
+memilih salah satu workspace lewat `getDefaultWorkspaceForUser` untuk kasus
+>1 workspace (bukan bug, batasan scope sementara) — sekarang skenario itu
+sudah ditangani `WorkspacePicker` yang menanyakan pilihan user secara
+eksplisit.
 
 **Catatan eksekusi T-039.5 (2026-08-11, ADR-077):** Dikerjakan Mark UI
 Engineer → review arsitektur Ridwan (lolos, tidak ada temuan) → QA Najwa
@@ -403,8 +414,9 @@ langsung juga benar).
   sekarang full-width dengan sidebar tunggal).
 
 T-039.5 menutup sisa gap render sidebar Settings di KI-023 (bersama ADR-077).
-Sisa scope terbuka KI-023/T-039 sekarang hanya **T-039.4** (onboarding
-picker workspace).
+**Update (2026-09-08):** T-039.4 (onboarding picker workspace) juga sudah
+selesai diimplementasikan (lihat catatan eksekusi T-039.4 di atas) — seluruh
+scope KI-023/T-039 sekarang tuntas, tidak ada sisa subtask terbuka.
 
 **Catatan spin-off (2026-08-24):** Setelah T-039.4 didesain, King Rezi
 menemukan gap terpisah — tidak ada cara *sengaja* pindah workspace setelah
