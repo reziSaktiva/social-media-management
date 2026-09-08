@@ -347,27 +347,6 @@ email, lalu diupdate jadi `Active` saat user accept. Implementasi konkret
 menunggu T-005 selesai — dipindah jadi bagian scope resmi **T-007.7**,
 bukan lagi Known Issue berdiri sendiri.
 
-### KI-047 · Claude Design "Social Media Management" belum disinkronkan ke Stone theme shadcn (masih dokumentasi Astryx lama)
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Process / Design Gap |
-| Terkait | ADR-097, ADR-098 |
-
-Ditemukan saat mengerjakan KI-041 (2026-09-04): seluruh project Claude
-Design "Social Media Management" (`readme.md`, `theme.json`, `styles.css`,
-`foundations/color.html` sebelum diedit sesi ini) ternyata masih 100%
-dokumentasi **Astryx lama** ("Astryx fidelity policy", basis
-`@astryxdesign/theme-neutral@0.1.8`) — tidak pernah disinkronkan ke **Stone
-theme shadcn/ui** yang jadi baseline kode sejak migrasi ADR-097 (T-095–T-102,
-selesai 2026-09-04). Artinya foundations/tokens/warna yang didokumentasikan
-di Claude Design saat ini tidak mencerminkan kode aktual — gap dokumentasi
-besar, di luar scope sesi ini (yang hanya menambah 2 section baru secara
-additive di `foundations/color.html` dan `templates/publish-calendar.html`
-tanpa resync menyeluruh). Perlu keputusan King Rezi: apakah worth resync
-besar-besaran Claude Design ke Stone/shadcn, dan kapan. Tidak memblokir M8.
-
 ### KI-049 · Invite via Copy Link — email tidak diverifikasi kepemilikan inbox, rawan identity takeover
 
 | Field | Value |
@@ -461,12 +440,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **KI-047 Resolved — Resync Claude Design ke Stone/shadcn tuntas 4 phase (2026-09-08)** — Claude Design "Social Media Management" yang sebelumnya 100% dokumentasi Astryx lama sekarang disinkronkan ke Stone theme (ADR-087) → shadcn/ui (ADR-097): **Phase 1** nilai token (`theme.json`/`styles.css`/`foundations/color.html`), **Phase 2** metodologi + tabel Components di `readme.md` (2a/2b/2c), **Phase 3** 8 file `components/*.html`, **Phase 4** survei 24 file screens/foundations (cuma 2 butuh fix — `foundations/type.html`, `AppPrototype.dc.html`). Prinsip yang dipegang konsisten tiap phase: perbaiki klaim faktual yang basi, tapi **jangan revisi catatan sejarah** yang sudah akurat untuk masanya. Detail lengkap tiap phase: `COMPLETE_TASK.md`.
 * **T-039 ditutup `✅ Done` — onboarding picker workspace T-039.4, KI-023 Resolved (2026-09-08)** — halaman `/onboarding` sekarang branching 3 skenario: 0 workspace → form buat workspace baru (tidak berubah); 1 workspace → tetap auto-redirect `onboarding/resume` (tidak berubah); >1 workspace → `WorkspacePicker` baru (Client Component, pola `Item`/`ItemGroup` shadcn) yang menanyakan pilihan user secara eksplisit lewat Server Action `selectWorkspaceAction` (reuse `WorkspaceService.switchWorkspace`), menggantikan auto-pick diam-diam `getDefaultWorkspaceForUser`. Lolos review arsitektur Ridwan (0 temuan) dan QA Najwa end-to-end browser (6/6 skenario PASS, termasuk verifikasi dengan akun 4-workspace nyata). Dengan ini seluruh subtask T-039.1–.5 tuntas, menutup sisa scope **KI-023**. Kode sudah di-commit & push, dibuka sebagai PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) dari branch `feature/t-039-4-onboarding-workspace-picker` ke `staging`, belum di-merge. Detail: `tasks/v01-foundation.md` § T-039.
 * **T-007.8 ditutup `✅ Done` — Members list gabungan Pending, ADR-101 (2026-09-07)** — Members list (`/settings/members`) sekarang menampilkan undangan pending sebagai baris status Pending, berlaku **kedua metode invite** (Copy Link + Kirim via Email), lewat gabungan data `workspace_members` + `WorkspaceInvitation` (tanpa migrasi skema, sesuai ADR-101 yang mengamandemen ADR-100). Diimplementasikan Prabowo Feature Engineer, direview Ridwan Architecture Reviewer (1 temuan race condition di `revokeInvitation`, sudah diperbaiki, re-verifikasi bersih 269 passed/5 skipped), QA end-to-end Najwa QA Engineer (browser real: golden path invite→pending row→cancel, golden path accept→pending hilang jadi Active, mobile 375px, RBAC Creator tetap tidak bisa akses, invitation expired tidak muncul — **semua PASS, 0 bug**). Task induk **T-007** tetap `🟡 In Progress` (sisa scope T-007.7, blocked T-005). Detail: `tasks/v01-foundation.md` § T-007.8, `decisions/ADR-101-*.md`.
 * **KI-046 Resolved — Promoted to T-007.7, ADR-100 (2026-09-07)** — `MemberStatus.Pending` yang sebelumnya tidak pernah di-assign di flow produksi manapun dikunci desainnya: King Rezi memutuskan status ini direservasi untuk metode invite "Kirim via Email" (T-007.7, masih blocked T-005), bukan dead code. Baris `workspace_members` akan dibuat langsung `Pending` saat invite dikirim via email, diupdate `Active` saat user accept — Copy Link tidak berubah (tetap insert `Active` langsung saat accept). Implementasi konkret menunggu T-005 selesai; ADR ini murni mengunci desain. Detail: `decisions/ADR-100-memberstatus-pending-direservasi-metode-invite-kirim-via-email.md`, `tasks/v01-foundation.md` § T-007.7.
-* **T-026 & T-036 ditutup `✅ Done` — KI-048 Resolved (2026-09-07)** — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply; Najwa QA Engineer cross-check ter-apply via Supabase MCP, lalu retest end-to-end nyata (HTTP request langsung ke `/api/webhooks/outstand`) 5 skenario — golden path `post.published`, `post.error`, `account.token_expired` (menutup T-036.5), event type tak dikenal, idempotensi + signature invalid — **semua PASS**. Kedua task ini akhirnya tuntas penuh setelah kode-nya selesai lebih dulu (2026-09-07, ADR-099). Detail: `tasks/v02-publishing-mvp.md` § T-026/T-036, `COMPLETE_TASK.md`.
-* **T-026 Webhook handler Outstand — kode selesai, blocked deploy migration (2026-09-07, ADR-099)** — implementasi penuh route `/api/webhooks/outstand` (HMAC-SHA256 verify, durable-before-ACK, handler `post.published`/`post.error`/`account.token_expired`, idempotensi), dikerjakan Elon Backend Engineer → review Ridwan (temuan diperbaiki) → QA end-to-end Najwa (bug diperbaiki), lolos `typecheck`/`lint`/`test` (261 pass/4 skip). Menutup **T-036.5** sekaligus. **ADR-099** (2 fungsi Postgres `SECURITY DEFINER` untuk lookup system-context tanpa `userId` webhook, preseden untuk T-027) dicatat. Detail: `tasks/v02-publishing-mvp.md` § T-026/T-036, `COMPLETE_TASK.md`.
----
+* **T-026 & T-036 ditutup `✅ Done` — KI-048 Resolved (2026-09-07)** — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply; Najwa QA Engineer cross-check ter-apply via Supabase MCP, lalu retest end-to-end nyata (HTTP request langsung ke `/api/webhooks/outstand`) 5 skenario — golden path `post.published`, `post.error`, `account.token_expired` (menutup T-036.5), event type tak dikenal, idempotensi + signature invalid — **semua PASS**. Kedua task ini akhirnya tuntas penuh setelah kode-nya selesai lebih dulu (2026-09-07, ADR-099). Detail: `tasks/v02-publishing-mvp.md` § T-026/T-036, `COMPLETE_TASK.md`.---
 
 ## Recent Decisions (Ringkasan)
 
