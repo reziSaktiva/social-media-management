@@ -53,6 +53,8 @@ function createFakeRepository(
     countScheduledByAccount: async () => new Map(),
     listQueue: async () => [],
     listCalendarPosts: async () => [],
+    listHistory: async () => [],
+    getHistoryById: async () => null,
     cancelSchedule: async () => null,
     markPostFailed: async () => undefined,
     ...overrides,

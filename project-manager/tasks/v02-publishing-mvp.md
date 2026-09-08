@@ -295,15 +295,16 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress                                                |
 | **Domain**    | publishing                                                   |
 | **ADR**       | ADR-046                                                      |
-| **Depends**   | T-026 (status akhir datang dari webhook)                     |
+| **Depends**   | T-026 (status akhir *real* datang dari webhook — tidak memblokir T-034.1, lihat catatan 2026-09-08) |
+| **Terkait**   | KI-048 (draft Claude Design belum direview), KI-049 (gap `failedAt`/`failureReason`) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                                |
 
 Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai placeholder.
 
-- [ ] **T-034.1** Query riwayat + status per target (published / error)
+- [x] **T-034.1** Query riwayat + status per target (published / error)
 - [ ] **T-034.2** UI daftar riwayat + filter
 - [ ] **T-034.3** Halaman detail post: hasil per akun, pesan error, link ke post asli
 - [ ] **T-034.4** Aksi retry manual untuk target yang gagal
@@ -313,6 +314,45 @@ resmi — dokumentasi resminya merekomendasikan hapus post yang gagal
 (`delete-a-post-from-social-networks`) lalu buat post baru (`create-a-post`),
 bukan re-trigger job yang sama. T-034.4 wajib mengikuti pola
 delete-lalu-create-ulang ini saat dikerjakan.
+
+**Selesai T-034.1 (2026-09-08):** `IPublishingRepository.listHistory`/`getHistoryById`
++ tipe `PublishingPostTargetStatus`/`HistoryItemTargetRecord`/`HistoryItemRecord`
+(`apps/web/src/domains/publishing/repositories/publishing.repository.ts`),
+`PublishingService.listHistory`/`getHistoryById` + konstanta
+`HISTORY_TERMINAL_STATUSES` (`Published`/`Failed`, invariant "History = post
+selesai" di-clamp di service) (`apps/web/src/domains/publishing/services/publishing.service.ts`),
+implementasi Prisma (`apps/web/src/lib/repositories/publishing/publishing.repository.ts`),
+4 file test terkait. Dikerjakan Prabowo Feature Engineer, lolos review
+arsitektur Ridwan (Architecture Reviewer) tanpa temuan blocking. **Tidak
+diblokir T-026** walau field `Depends` menyebutnya — Fake adapter (ADR-059)
+sudah mengisi outcome per target secara sinkron lewat `updateTargetOutcome`
+saat `PublishNowUseCase`/`SchedulePostsUseCase` berjalan, jadi status
+`published`/`failed` untuk data yang lahir dari jalur Fake sudah tersedia
+tanpa menunggu webhook nyata; `Depends: T-026` tetap relevan khusus untuk
+status *real* pasca-integrasi Outstand asli (T-025), bukan blocker untuk
+query/listing itu sendiri. T-034.2/T-034.3 menunggu review desain (lihat
+KI-048), T-034.4 belum dikerjakan — task tetap `🟡 In Progress`.
+
+**Gap non-blocking ditemukan Ridwan (2026-09-08), dicatat KI-049:** kolom
+`PublishingPost.failedAt`/`.failureReason` di schema Prisma tidak pernah
+ditulis oleh jalur manapun (`markPostFailed` cuma meng-update `status`) —
+sudah didokumentasikan sebagai gap di komentar kode
+`IPublishingRepository.listHistory`, dan sengaja tidak dimasukkan ke
+`HistoryItemRecord` supaya tidak menyesatkan UI dengan field yang selalu
+`null`. Lihat `PROJECT_STATE.md` § KI-049 untuk follow-up ke depan.
+
+**Draft Claude Design (2026-09-08), lihat KI-048:** 2 screen baru sudah
+di-push ke project Claude Design "Social Media Management" —
+`templates/publish-history.html` (daftar riwayat + filter Status/Akun,
+untuk T-034.2) dan `templates/publish-history-detail.html` (ringkasan
+post + "Hasil per Akun": link post asli untuk `Published`, pesan error +
+tombol retry untuk `Error`, untuk T-034.3/T-034.4). **Draft awal, belum
+direview/dikonfirmasi King Rezi** — jangan anggap T-034.2/T-034.3 sudah
+"ada desainnya" untuk keperluan gate rule 17 `AGENTS.md` sampai
+dikonfirmasi eksplisit. Dikerjakan langsung oleh main agent (bukan
+didelegasikan ke Neymar Product Designer) atas instruksi eksplisit King
+Rezi di sesi ini — deviasi dari mandat wajib Neymar di
+`.claude/agents/neymar-product-designer.md`, bukan inisiatif AI.
 
 ### T-035 · Delete Post + dialog konfirmasi
 

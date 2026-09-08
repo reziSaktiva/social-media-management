@@ -8,6 +8,65 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-08 — T-034.1 (Publishing History) selesai, koreksi status T-026, draft Claude Design (KI-048), gap non-blocking dicatat (KI-049)
+
+Sesi kerja T-034 (Publishing History + detail post, domain publishing,
+ADR-046):
+
+**T-034.1 selesai.** `IPublishingRepository.listHistory`/`getHistoryById`
++ tipe `PublishingPostTargetStatus`/`HistoryItemTargetRecord`/
+`HistoryItemRecord`
+(`apps/web/src/domains/publishing/repositories/publishing.repository.ts`),
+`PublishingService.listHistory`/`getHistoryById` + konstanta
+`HISTORY_TERMINAL_STATUSES` (`Published`/`Failed`)
+(`apps/web/src/domains/publishing/services/publishing.service.ts`),
+implementasi Prisma (`apps/web/src/lib/repositories/publishing/publishing.repository.ts`),
+4 file test terkait. Dikerjakan Prabowo Feature Engineer, lolos review
+arsitektur Ridwan (Architecture Reviewer) tanpa temuan blocking. T-034
+naik `⏳ Not Started` → `🟡 In Progress` (1/4 subtask tuntas). Tidak
+diblokir `Depends: T-026` (webhook) karena Fake adapter (ADR-059) sudah
+mengisi outcome per target secara sinkron lewat `updateTargetOutcome` saat
+`PublishNowUseCase`/`SchedulePostsUseCase` berjalan.
+
+**Koreksi drift status T-026 (diverifikasi, bukan ditemukan).** Sesi ini
+diminta memperbaiki klaim di `TASKS.md` yang disebut menyatakan "T-026
+(webhook) sudah ✅ Done (2026-09-07)". Setelah verifikasi langsung ke
+`TASKS.md` (isi file, `git log`/`git blame` untuk histori komit), **klaim
+tersebut tidak pernah ada** di file manapun — tidak ada commit yang pernah
+menuliskannya, dan status T-026 di `tasks/v02-publishing-mvp.md` sudah
+konsisten `⏳ Not Started` sejak awal (webhook `/api/webhooks/outstand`
+masih 501, diblokir T-025 → KI-003). Tidak ada perubahan teks yang
+diperlukan untuk item ini — dicatat di sini murni untuk jejak audit bahwa
+premis itu sudah dicek dan tidak valid pada state repo saat ini.
+
+**Draft Claude Design (KI-048).** 2 screen baru di-push ke project Claude
+Design "Social Media Management": `templates/publish-history.html`
+(daftar riwayat + filter Status/Akun) dan
+`templates/publish-history-detail.html` (ringkasan post + "Hasil per
+Akun" — link post asli untuk `Published`, pesan error + tombol retry
+untuk `Error`). **Draft awal, belum direview/dikonfirmasi King Rezi** —
+T-034.2/T-034.3 tidak ditandai "sudah ada desainnya" sampai ada konfirmasi
+eksplisit. Dikerjakan langsung oleh main agent (bukan Neymar Product
+Designer) atas instruksi eksplisit King Rezi di sesi ini — dicatat sebagai
+deviasi proses, bukan inisiatif AI melewati mandat wajib Neymar.
+
+**Gap non-blocking dicatat (KI-049).** Ridwan Architecture Reviewer
+menemukan `PublishingPost.failedAt`/`.failureReason` (schema Prisma) tidak
+pernah ditulis oleh jalur manapun (`markPostFailed` cuma meng-update
+`status`) — sudah didokumentasikan sebagai komentar kode di
+`IPublishingRepository.listHistory`, sengaja tidak dimasukkan ke
+`HistoryItemRecord`. Dicatat sebagai Known Issue eksplisit untuk follow-up
+ke depan (bukan task formal), non-blocking untuk T-034.
+
+**Dokumen yang diperbarui:** `tasks/v02-publishing-mvp.md` § T-034
+(checklist T-034.1, catatan selesai, catatan draft desain, field
+Terkait), `TASKS.md` (indeks v0.2: 9 ✅ · 2 🟡 · 11 ⏳ → 9 ✅ · 3 🟡 · 10 ⏳;
+tabel Fokus sekarang tambah baris T-034; update note baru), `PROJECT_STATE.md`
+(Snapshot, Known Issues KI-048/KI-049 baru, Completed Ringkasan — bullet
+T-101.4 lama dilepas supaya tetap 5 item, versi 1.0.69 → 1.0.70).
+
+---
+
 ## 2026-09-04 — Docs consistency audit (topik T-102/migrasi shadcn) — 5 file wording usang diperbaiki
 
 Dijalankan via skill `docs-consistency-audit` (scope topic-based: T-102 /

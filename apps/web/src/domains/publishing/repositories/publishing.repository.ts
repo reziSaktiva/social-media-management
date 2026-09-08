@@ -122,6 +122,55 @@ export interface CalendarItemRecord {
   targets: CalendarItemTargetRecord[];
 }
 
+/**
+ * Status outcome satu `PublishingPostTarget` (T-034.1) — union yang sama
+ * dengan parameter `updateTargetOutcome` di bawah, ditambah nilai awal
+ * `"pending"` (baris baru dibuat oleh `schedulePost`/`publishNow`, belum
+ * pernah di-update outcome-nya). Ditaruh di sini (bukan `packages/shared`)
+ * karena belum ada BC lain yang mengonsumsinya — konsisten alasan
+ * `SnapshotPeriod` di domain analytics (T-040).
+ */
+export type PublishingPostTargetStatus =
+  "pending" | "scheduled" | "published" | "failed";
+
+/**
+ * Satu target (akun + platform) untuk History (T-034.1) — `QueueItemTargetRecord`
+ * + outcome final per akun: `status`/`error` (diisi `updateTargetOutcome`,
+ * dipanggil sinkron oleh `PublishNowUseCase`/`SchedulePostsUseCase` untuk
+ * hasil yang sudah diketahui saat itu juga, dan nantinya oleh handler
+ * webhook T-026 untuk hasil async) + `platformPostUrl` (sama field yang
+ * dipakai `CalendarItemTargetRecord`, untuk link "ke post asli" di UI
+ * detail T-034.3).
+ */
+export interface HistoryItemTargetRecord extends QueueItemTargetRecord {
+  status: PublishingPostTargetStatus;
+  platformPostUrl: string | null;
+  error: string | null;
+}
+
+/**
+ * Satu `PublishingPost` untuk History (T-034.1, KSP-D10) — beda dari
+ * `CalendarItemRecord` (mencakup semua status), History HANYA mencakup
+ * post yang percobaan publish-nya sudah SELESAI: `Published` atau
+ * `Failed` — begitu percobaan publish selesai, item pindah dari
+ * Queue/Calendar ke History (KSP-03, catatan T-033). `targets` membawa
+ * outcome final per akun untuk UI daftar (T-034.2) dan detail (T-034.3).
+ *
+ * `updatedAt` disertakan (beda dari `CalendarItemRecord`/`QueueItemRecord`)
+ * karena dipakai sebagai proksi "waktu selesai" untuk pengurutan — lihat
+ * catatan gap `failedAt`/`failureReason` di `IPublishingRepository.listHistory`.
+ */
+export interface HistoryItemRecord {
+  id: PostId;
+  caption: string;
+  status: ContentStatus;
+  scheduledAt: Date | null;
+  publishedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  targets: HistoryItemTargetRecord[];
+}
+
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/publishing. */
 export interface IPublishingRepository {
   createDraft(input: {
@@ -311,6 +360,57 @@ export interface IPublishingRepository {
     },
     userId: UserId,
   ): Promise<CalendarItemRecord[]>;
+
+  /**
+   * History (T-034.1, KSP-D10) — post berstatus `Published`/`Failed`
+   * (percobaan publish sudah selesai, KSP-03) milik workspace, diurutkan
+   * `updatedAt` descending (paling baru berubah status duluan — proksi
+   * "waktu selesai" karena `PublishingPost.failedAt` tidak pernah diisi
+   * oleh jalur manapun saat ini, lihat gap di bawah).
+   *
+   * `statuses` — caller (`PublishingService.listHistory`) WAJIB sudah
+   * mempersempitnya ke subset `HISTORY_TERMINAL_STATUSES` sebelum
+   * memanggil method ini (invariant "History = post selesai" ditegakkan
+   * di service, bukan di sini) — repository ini murni proyeksi data
+   * terfilter, sama pola dengan `listCalendarPosts`/`listQueue`.
+   * `connectedAccountIds` opsional, sama pola dengan `listCalendarPosts`.
+   *
+   * **Gap diketahui (dilaporkan ke King Rezi, bukan diperbaiki di sini):**
+   * `PublishingPost.failedAt`/`.failureReason` ada di schema tapi TIDAK
+   * PERNAH ditulis oleh jalur manapun (`markPostFailed` hanya mengubah
+   * `status`) — sengaja tidak dimasukkan ke `HistoryItemRecord` supaya
+   * tidak menyesatkan UI dengan field yang selalu `null`. Pesan error
+   * final per akun tetap tersedia lewat `HistoryItemTargetRecord.error`
+   * (diisi `updateTargetOutcome`), sumber data yang benar-benar terisi.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  listHistory(
+    input: {
+      workspaceId: WorkspaceId;
+      statuses?: ContentStatus[];
+      connectedAccountIds?: ConnectedAccountId[];
+    },
+    userId: UserId,
+  ): Promise<HistoryItemRecord[]>;
+
+  /**
+   * Detail satu History item (T-034.1) — mendukung route
+   * `/publish/history/[postId]` (UI-nya T-034.3), supaya composition
+   * root halaman detail tidak perlu query seluruh riwayat workspace
+   * hanya untuk menampilkan satu post. Returns `null` kalau post tidak
+   * ditemukan, bukan milik `workspaceId` ini, ATAU statusnya BUKAN
+   * `Published`/`Failed` (post yang belum selesai publish bukan
+   * "history" — invariant sama dengan `listHistory`, ditegakkan langsung
+   * di implementasi Prisma karena tidak ada input `statuses` yang bisa
+   * dipersempit di sini).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  getHistoryById(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<HistoryItemRecord | null>;
 
   /**
    * Cancel Schedule (T-030.1, ADR-049 Tier 2) — kebalikan dari

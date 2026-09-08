@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-102 Cleanup & Verifikasi Akhir — ✅ Done** (rilis v0.7, ADR-097): seluruh 6 subtask tuntas — dengan ini **rilis v0.7 (migrasi Astryx→shadcn/ui) tuntas 100%** — lihat `TASKS.md`/`tasks/v07-astryx-shadcn-migration.md` § T-102 untuk detail. **KI-045** (regresi RBAC Creator akses Settings General/Members/Billing), **KI-041** (token `--success`/`--warning` Stone theme, ADR-098), dan **KI-035** (layout Calendar mobile) sudah **Resolved (2026-09-04)** — lihat `COMPLETE_TASK.md`. 2 Known Issue baru dicatat: **KI-046** (`MemberStatus.Pending` tidak pernah di-assign di flow produksi), **KI-047** (Claude Design belum disinkronkan ke Stone theme shadcn). T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) sekarang jadi fokus berikutnya — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
+* **Top Next Tasks:** **T-102 Cleanup & Verifikasi Akhir — ✅ Done** (rilis v0.7, ADR-097): seluruh 6 subtask tuntas — dengan ini **rilis v0.7 (migrasi Astryx→shadcn/ui) tuntas 100%** — lihat `TASKS.md`/`tasks/v07-astryx-shadcn-migration.md` § T-102 untuk detail. **KI-045** (regresi RBAC Creator akses Settings General/Members/Billing), **KI-041** (token `--success`/`--warning` Stone theme, ADR-098), dan **KI-035** (layout Calendar mobile) sudah **Resolved (2026-09-04)** — lihat `COMPLETE_TASK.md`. 2 Known Issue baru dicatat: **KI-046** (`MemberStatus.Pending` tidak pernah di-assign di flow produksi), **KI-047** (Claude Design belum disinkronkan ke Stone theme shadcn). **T-034 Publishing History + detail post** (rilis v0.2) naik ke `🟡 In Progress` (2026-09-08) — T-034.1 (query riwayat) tuntas lolos review Ridwan, tidak diblokir T-026 karena Fake adapter (ADR-059) sudah mengisi outcome per target secara sinkron. Draft Claude Design untuk T-034.2/T-034.3 sudah dibuat (dikerjakan main agent atas instruksi eksplisit King Rezi, bukan Neymar) tapi **belum direview/dikonfirmasi** — **KI-048**. Gap non-blocking `failedAt`/`failureReason` `PublishingPost` dicatat **KI-049**. T-025 Real OutstandAdapter dan T-036 In-app notification + Supabase Realtime (🟡 In Progress, T-036.1–.3 selesai; T-036.4 dibuka kembali untuk verifikasi visual, tersisa juga T-036.5 trigger dari webhook) tetap jadi fokus berikutnya — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 85 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.69     |
+| Version      | 1.0.70     |
 | Status       | Active     |
-| Last Updated | 2026-09-04 |
+| Last Updated | 2026-09-08 |
 
 ---
 
@@ -604,6 +604,54 @@ additive di `foundations/color.html` dan `templates/publish-calendar.html`
 tanpa resync menyeluruh). Perlu keputusan King Rezi: apakah worth resync
 besar-besaran Claude Design ke Stone/shadcn, dan kapan. Tidak memblokir M8.
 
+### KI-048 · Draft Claude Design T-034 (Publish History) belum direview King Rezi
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Design Gap / Process |
+| Terkait | T-034 |
+
+Ditemukan/dicatat 2026-09-08 saat sesi kerja T-034 (Publishing History +
+detail post): 2 screen baru — `templates/publish-history.html` (daftar
+riwayat + filter Status/Akun) dan `templates/publish-history-detail.html`
+(ringkasan post + "Hasil per Akun": link post asli untuk `Published`,
+pesan error + tombol retry untuk `Error`) — sudah di-push ke project Claude
+Design "Social Media Management". Ini **draft awal, belum
+di-review/dikonfirmasi King Rezi** — jangan anggap T-034.2/T-034.3 "sudah
+ada desainnya" untuk keperluan gate rule 17 `AGENTS.md` sampai ada
+konfirmasi eksplisit.
+
+**Deviasi proses (dicatat eksplisit, bukan pelanggaran diam-diam):**
+pekerjaan Claude Design ini dikerjakan langsung oleh main agent (bukan
+didelegasikan ke Neymar Product Designer) atas instruksi eksplisit King
+Rezi di sesi ini — menyimpang dari mandat wajib Neymar di
+`.claude/agents/neymar-product-designer.md`, tapi atas dasar instruksi
+langsung King Rezi, bukan inisiatif AI melewati mandat tersebut. Tidak
+memblokir M8.
+
+### KI-049 · `PublishingPost.failedAt`/`.failureReason` tidak pernah ditulis oleh jalur manapun
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-034, T-029 |
+
+Ditemukan Ridwan Architecture Reviewer saat review T-034.1 (2026-09-08):
+kolom `failedAt`/`failureReason` di model Prisma `PublishingPost` ada di
+schema tapi tidak pernah ditulis oleh jalur manapun — `markPostFailed`
+(dipakai `PublishNowUseCase`, lihat T-029) hanya meng-update kolom
+`status`. Gap ini sudah didokumentasikan sebagai komentar kode di
+`IPublishingRepository.listHistory` (`apps/web/src/domains/publishing/repositories/publishing.repository.ts`)
+dan sengaja **tidak** dimasukkan ke `HistoryItemRecord` supaya tidak
+menyesatkan UI History (T-034.2/T-034.3) dengan field yang selalu `null`
+— pesan error final per akun tetap tersedia lewat
+`HistoryItemTargetRecord.error` (diisi `updateTargetOutcome`, sumber data
+yang benar-benar terisi). Non-blocking untuk T-034; direkomendasikan Ridwan
+sebagai catatan follow-up eksplisit ke depan (belum ada task formal),
+bukan urgent. Tidak memblokir M8.
+
 ---
 
 ## Blockers
@@ -647,11 +695,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-034.1 selesai — Publishing History query riwayat + status per target (2026-09-08)** — `IPublishingRepository.listHistory`/`getHistoryById` + `PublishingService.listHistory`/`getHistoryById` (`HISTORY_TERMINAL_STATUSES`: `Published`/`Failed`) + implementasi Prisma, dikerjakan Prabowo Feature Engineer, lolos review arsitektur Ridwan (0 temuan blocking). Tidak diblokir `Depends: T-026` (webhook) — Fake adapter (ADR-059) sudah mengisi outcome per target secara sinkron. T-034 naik `⏳ Not Started` → `🟡 In Progress`. Draft Claude Design untuk T-034.2/T-034.3 dibuat (**KI-048**, belum direview) dan gap non-blocking `failedAt`/`failureReason` dicatat (**KI-049**). Detail: `tasks/v02-publishing-mvp.md` § T-034.
 * **Tutup KI-045, KI-041, KI-035 — RBAC Settings, token Stone `--success`/`--warning` (ADR-098), Calendar mobile agenda (2026-09-04)** — sesi lanjutan pasca-T-102: **KI-045** (Creator masih bisa akses Settings General/Billing) diperbaiki via `WorkspaceService.canManageWorkspaceSettings()` + guard di kedua halaman + `renameWorkspace()`; root cause ternyata guard memang tidak pernah ada sejak awal, bukan regresi T-099. **KI-041** ditutup lewat ADR-098 (4 token CSS variable baru light+dark, desaturated konsisten `--destructive`) — dipakai di Accept Invite (success/expired) dan badge "Pending" `MembersTable.tsx`. **KI-035** full Resolved — poin 3 (layout Calendar mobile ~375px) ditutup lewat komponen baru `CalendarAgendaList.tsx` (list per-tanggal, reuse data source & Popover desktop), `CalendarScreen.tsx` conditional render CSS-only. Lolos review Ridwan (0 temuan) + QA Najwa (semua PASS, 235 test hijau). 2 Known Issue baru ditemukan: **KI-046** (`MemberStatus.Pending` tidak pernah di-assign di flow produksi), **KI-047** (Claude Design belum disinkronkan ke Stone theme shadcn). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-097/T-101/T-102, `DECISIONS.md` § ADR-098.
 * **T-102.5 tuntas — T-102 (Cleanup & Verifikasi Akhir) Done, v0.7 selesai (2026-09-04, ADR-097)** — subtask terakhir T-102 (rilis v0.7, migrasi Astryx→shadcn/ui): re-evaluasi & tutup Known Issues sisa migrasi. **KI-005** (Astryx Beta) ditutup Resolved — moot, 0 dependency `@astryxdesign/*` tersisa. **KI-030** (TimeInput) dan **KI-035** poin 1 (StyleX/`xstyle`) dikonfirmasi sudah Resolved sebelumnya (T-100.3, T-101.1). **KI-035** poin 2 (`Badge` Astryx tanpa prop size/truncation) ditutup Resolved — root cause hilang karena `Badge` sekarang shadcn (Tailwind-composable), workaround dot+icon compact mobile dipertahankan sebagai keputusan UX bukan keterpaksaan teknis; poin 3 (layout mobile ~375px) tetap Open, di luar scope. Dengan ini **T-102 dan rilis v0.7 tuntas 100%** (8/8 task). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-102.
 * **T-102.3 & T-102.4 tuntas (2026-09-04, ADR-097)** — dua subtask lanjutan T-102 (Cleanup & Verifikasi Akhir, rilis v0.7): T-102.3 (update `ctx-design.md`/`ctx-implementation.md`, hapus wording "migrasi berjalan incremental" karena kode sudah bersih 0 import `@astryxdesign/*`), T-102.4 (QA visual menyeluruh oleh Najwa QA Engineer — Auth, App Shell, Settings, Publish, Dashboard, light/dark/mobile 375px — PASS 0 regresi visual; `bun run typecheck`/`lint`/`test` PASS 235 test). Ditemukan **KI-045** (regresi RBAC: role Creator masih bisa akses Settings General/Members/Billing, di luar scope T-102.4). Sisa T-102: T-102.5. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-102.
 * **T-101 Migrasi Publish — Calendar, Queue, Drafts, Dashboard selesai (2026-09-03, ADR-097)** — task keenam rilis v0.7 (migrasi Astryx→shadcn/ui), seluruh 5/5 subtask tuntas: T-101.1 (Calendar), T-101.2 (Queue), T-101.3 (Drafts), T-101.4 (header/tabbar/layout), T-101.5 (Dashboard: `DashboardHome.tsx` — `Card`/`Empty`/`Select`/`Progress` shadcn, komponen baru `progress`; label persentase `Progress` dirender manual, gap desain-token konsisten presedan T-101.1/T-101.3; **KI-036** tetap technical debt terpisah, tidak disentuh). Lolos review Ridwan (0 temuan tiap subtask). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-101, `COMPLETE_TASK.md`.
-* **T-101.4 Migrasi Publish — Header/Tabbar/Layout selesai (2026-09-03, ADR-097)** — subtask keempat dari 5 di T-101 (rilis v0.7, migrasi Astryx→shadcn/ui): `PublishPageHeader.tsx` (Tailwind flex + `<h1>` raw + `Text`/`Button` shadcn), `PublishTabbar.tsx` (shadcn `Tabs`/`TabsList`/`TabsTrigger` route-driven via `usePathname()`, tiap trigger `asChild` sebagai `next/link`), `layout.tsx` (Tailwind flex). Komponen shadcn baru: `tabs`. Implementasi Mark UI Engineer, lolos review Ridwan (0 temuan) — typecheck/lint bersih, verifikasi visual browser (akun Raka Pratama/Owner, light/dark mode, tab switching Calendar→Queue→Drafts→History, mobile 375px) tanpa regresi. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-101, `COMPLETE_TASK.md`.
 ---
 
 ## Recent Decisions (Ringkasan)

@@ -9,14 +9,18 @@ import {
   ContentStatus,
   type SocialPlatform,
 } from "@social/shared";
-import type {
-  CalendarItemRecord,
-  CalendarItemTargetRecord,
-  IPublishingRepository,
-  PublishingCancelScheduleRecord,
-  PublishingPostRecord,
-  PublishingScheduleRecord,
-  QueueItemRecord,
+import {
+  HISTORY_TERMINAL_STATUSES,
+  type CalendarItemRecord,
+  type CalendarItemTargetRecord,
+  type HistoryItemRecord,
+  type HistoryItemTargetRecord,
+  type IPublishingRepository,
+  type PublishingCancelScheduleRecord,
+  type PublishingPostRecord,
+  type PublishingPostTargetStatus,
+  type PublishingScheduleRecord,
+  type QueueItemRecord,
 } from "@/domains/publishing";
 import type {
   Prisma,
@@ -92,6 +96,28 @@ function mapCalendarItem(post: QueuePostWithTargets): CalendarItemRecord {
       contentFormat: target.contentFormat as ContentFormat,
       accountHandle: target.connectedAccount.handle,
       platformPostUrl: target.platformPostUrl,
+    })),
+  };
+}
+
+function mapHistoryItem(post: QueuePostWithTargets): HistoryItemRecord {
+  return {
+    id: asPostId(post.id),
+    caption: post.caption,
+    status: post.status as ContentStatus,
+    scheduledAt: post.scheduledAt,
+    publishedAt: post.publishedAt,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+    targets: post.targets.map((target): HistoryItemTargetRecord => ({
+      id: asPostTargetId(target.id),
+      connectedAccountId: asConnectedAccountId(target.connectedAccountId),
+      platform: target.platform as SocialPlatform,
+      contentFormat: target.contentFormat as ContentFormat,
+      accountHandle: target.connectedAccount.handle,
+      status: target.status as PublishingPostTargetStatus,
+      platformPostUrl: target.platformPostUrl,
+      error: target.error,
     })),
   };
 }
@@ -540,5 +566,62 @@ export const publishingRepository: IPublishingRepository = {
     );
 
     return posts.map(mapCalendarItem);
+  },
+
+  async listHistory({ workspaceId, statuses, connectedAccountIds }, userId) {
+    // `statuses` sudah di-clamp ke HISTORY_TERMINAL_STATUSES oleh
+    // `PublishingService.listHistory` — repository ini murni proyeksi,
+    // tidak menegakkan invariant sendiri (konsisten `listCalendarPosts`).
+    const effectiveStatuses =
+      statuses && statuses.length > 0 ? statuses : HISTORY_TERMINAL_STATUSES;
+    const posts = await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.findMany({
+        where: {
+          workspaceId,
+          deletedAt: null,
+          status: { in: [...effectiveStatuses] },
+          ...(connectedAccountIds && connectedAccountIds.length > 0
+            ? {
+                targets: {
+                  some: { connectedAccountId: { in: connectedAccountIds } },
+                },
+              }
+            : {}),
+        },
+        // Proksi "waktu selesai" — lihat catatan gap `failedAt` di
+        // `IPublishingRepository.listHistory`.
+        orderBy: { updatedAt: "desc" },
+        include: {
+          targets: {
+            include: { connectedAccount: true },
+          },
+        },
+      }),
+    );
+
+    return posts.map(mapHistoryItem);
+  },
+
+  async getHistoryById({ workspaceId, postId }, userId) {
+    const post = await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.findFirst({
+        where: {
+          id: postId,
+          workspaceId,
+          deletedAt: null,
+          // Invariant "history = post selesai" ditegakkan langsung di
+          // sini (beda dari `listHistory`, tidak ada input `statuses`
+          // untuk method single-item ini).
+          status: { in: [...HISTORY_TERMINAL_STATUSES] },
+        },
+        include: {
+          targets: {
+            include: { connectedAccount: true },
+          },
+        },
+      }),
+    );
+
+    return post ? mapHistoryItem(post) : null;
   },
 };
