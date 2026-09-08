@@ -8,6 +8,111 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-08 — ADR-102: Default Tema Ikuti Preferensi OS (Amandemen ADR-055)
+
+Perubahan ad-hoc di luar scope T-039.4, diminta King Rezi di sesi yang sama
+setelah T-039.4 selesai — tidak masuk task backlog formal. Default tema
+saat cookie `theme` belum pernah ditulis (user belum pernah toggle
+eksplisit) diubah dari hardcode Light menjadi mengikuti
+`prefers-color-scheme` OS user. Sekali user menekan toggle Light/Dark,
+cookie `theme` ditulis dan jadi preferensi permanen yang override sistem
+(perilaku toggle tidak berubah).
+
+Mekanisme (menjaga prinsip "no flash" ADR-055): `apps/web/src/app/layout.tsx`
+merender `<Script id="theme-system-default" strategy="beforeInteractive">`
+yang set class `dark` di `<html>` sebelum React hydrate kalau cookie belum
+ada (plus `suppressHydrationWarning`); `apps/web/src/components/Providers.tsx`
+tetap inisialisasi state `mode` identik `initialMode` dari server lalu
+mengoreksinya ke preferensi OS lewat `useLayoutEffect` (bukan `useEffect`)
+sebelum paint pertama — mencegah hydration mismatch di consumer seperti
+toggle icon `WorkspaceSideNav`/`Toaster`. Auto-persist cookie dipindah
+supaya hanya terjadi saat `toggleMode()` benar-benar dipanggil user, bukan
+otomatis saat mount (supaya default hasil deteksi sistem tidak
+"terkunci" jadi preferensi eksplisit sebelum user memilih). Percobaan
+pertama (resolve OS langsung di lazy initializer `useState`) ditolak
+review Ridwan Architecture Reviewer karena menyebabkan hydration mismatch
+baru — diperbaiki dengan pola `useLayoutEffect` di atas.
+
+File yang diubah: `apps/web/src/app/layout.tsx`,
+`apps/web/src/components/Providers.tsx` (`DEFAULT_THEME_MODE` di
+`apps/web/src/lib/theme/theme-cookie.ts` tetap ada sebagai fallback).
+Branch `feature/t-039-4-onboarding-workspace-picker` — sudah di-commit & push, PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) ke `staging`, belum di-merge.
+Verifikasi: typecheck/lint bersih, 272 unit test pass (tidak ada test baru
+untuk logic ini — dicatat sebagai gap), verifikasi manual browser
+(emulasi `prefers-color-scheme` dark/light, toggle eksplisit tetap
+menulis cookie benar). Detail lengkap: `DECISIONS.md` ADR-102, status
+ADR-055 diupdate jadi "Accepted — Amended by ADR-097 (2026-09-01), Amended
+by ADR-102 (2026-09-08)".
+
+---
+
+## 2026-09-08 — T-039.4 diimplementasikan+direview+di-QA tuntas — T-039 ditutup ✅ Done, KI-023 Resolved
+
+Subtask terakhir T-039 (Migrasi Routing & Settings, ADR-076) yang tersisa —
+**T-039.4** (halaman `/onboarding` dengan picker workspace) — sudah
+diimplementasikan setelah desainnya disetujui King Rezi di Claude Design
+(dicatat 2026-08-24).
+
+**Perubahan kode** (branch `feature/t-039-4-onboarding-workspace-picker`,
+dibuat dari `staging` — sudah di-commit & push, PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109), belum di-merge):
+
+- `apps/web/src/app/onboarding/page.tsx` — diubah dari "cek 1 default
+  workspace, kalau tidak ada tampilkan form" menjadi memanggil
+  `WorkspaceService.listWorkspacesForUser(userId)` dan branching 3
+  skenario: 0 workspace → render `CreateWorkspaceForm` (state lama, tidak
+  berubah); 1 workspace → tetap `redirect("/onboarding/resume")` (Route
+  Handler existing dari T-039.3, tidak berubah); >1 workspace → render
+  `WorkspacePicker` (baru) — menutup gap lama di mana `onboarding/resume`
+  auto-pick diam-diam workspace tertua (`getDefaultWorkspaceForUser`) tanpa
+  menanyakan user.
+- `apps/web/src/app/onboarding/components/WorkspacePicker.tsx` (file baru)
+  — Client Component, list workspace pakai `Item`/`ItemGroup` shadcn (pola
+  sama `WorkspacesSettingsView.tsx` T-089), tanpa `AlertDialog` konfirmasi
+  karena belum ada "workspace aktif" untuk ditinggalkan di titik re-entry
+  ini, klik baris langsung memanggil Server Action.
+- `apps/web/src/app/onboarding/components/actions.ts` — ditambah
+  `selectWorkspaceAction(workspaceId)`: validasi membership aktif lewat
+  reuse `WorkspaceService.switchWorkspace`, set cookie
+  `active-workspace-id`, redirect Home; error (bukan anggota aktif) →
+  `{error}` lewat `toActionError`, tanpa redirect.
+- `apps/web/src/app/onboarding/components/actions.test.ts` (file baru) —
+  unit test untuk `selectWorkspaceAction`, 3 skenario: unauthenticated →
+  redirect login; sukses → set cookie + redirect home; gagal membership →
+  return `{error}` tanpa redirect/cookie.
+
+**Verifikasi:** `bun run typecheck`/`lint` bersih, `bun run test` (root)
+272 pass (naik dari 269 karena `actions.test.ts` baru)/5 skip.
+
+**Review arsitektur Ridwan:** LOLOS, tidak ada temuan — entry point tanpa
+business logic, domain tidak import Prisma langsung, reuse
+`switchWorkspace` untuk skenario "belum ada workspace aktif" dinilai
+semantically tepat, bukan penyalahgunaan API.
+
+**QA Najwa QA Engineer** (end-to-end browser, localhost): PASS 6/6 skenario
+— (1) 1 workspace + cookie hilang → auto-redirect Home tanpa picker; (2)
+>1 workspace + cookie hilang → tampil picker, klik pilih → redirect Home +
+cookie ter-set benar (dites akun Raka, 4 workspace); (3) 0 workspace → form
+create workspace lama tidak regresi; (4) error handling membership invalid
+→ alert error muncul tanpa crash/redirect; (5) visual "Pilih Workspace"
+cocok Claude Design (title, subtitle, avatar+nama+role+chevron, klik
+langsung tanpa dialog); (6) regresi Settings → Account → Workspaces tetap
+normal. Data test QA (`qa-onboarding-t0394@kopiselasar.com` + workspace-nya)
+sudah dibersihkan sendiri oleh Najwa via Danger Zone.
+
+**Dokumentasi diperbarui bersamaan:** `tasks/v01-foundation.md` (T-039.4
+dicentang selesai + catatan eksekusi lengkap, Status field T-039 naik jadi
+`✅ Done`, paragraf lama yang menyebut T-039.4 masih terbuka diupdate),
+`TASKS.md` (indeks v0.1 14 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 2 ⏳, Total task selesai
+35 → 36, blurb baru di Fokus sekarang), `PROJECT_STATE.md` (Snapshot § Top
+Next Tasks, entri **KI-023 dihapus dari Known Issues** karena sudah
+Resolved dan tercatat di sini — sesuai konvensi ADR-066/ADR-067, Completed
+Ringkasan — 5 bullet terjaga, bullet T-036.4 digeser keluar, Version
+1.0.75 → 1.0.76).
+
+Detail: `tasks/v01-foundation.md` § T-039 (catatan eksekusi T-039.4).
+
+---
+
 ## 2026-09-07 — KI-046 Resolved (Promoted to T-007.7, ADR-100), KI-049 ditemukan (Open), ADR-101 mengamandemen ADR-100, T-007.8 diimplementasikan+direview+di-QA tuntas
 
 Kronologi lengkap satu sesi (semua terjadi hari yang sama, setelah T-025/T-026/T-036 tuntas):

@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-007.8 Members list gabungan Pending (ADR-101) — ✅ Done** (2026-09-07, side-quest di luar rantai utama) — lolos implementasi Prabowo Feature Engineer, review arsitektur Ridwan (1 temuan race condition di `revokeInvitation`, sudah diperbaiki), QA end-to-end Najwa (browser real, semua PASS, 0 bug). **T-026 Webhook handler Outstand — ✅ Done** (2026-09-07) dan **T-036 In-app notification + Supabase Realtime — ✅ Done** (2026-09-07) — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply, Najwa QA Engineer retest 5 skenario webhook end-to-end nyata, semua PASS. **KI-048 Resolved**. ADR-099 (SECURITY DEFINER system-context lookup untuk webhook) dicatat sebagai preseden untuk T-027. Fokus berikutnya kembali ke **T-025 Real OutstandAdapter** (terhenti menunggu kredensial) dan **T-027 Job runner + Railway Cron** — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus. Sebelumnya: **T-102 Cleanup & Verifikasi Akhir — ✅ Done** (rilis v0.7, ADR-097) menuntaskan migrasi Astryx→shadcn/ui 100%; **KI-045**, **KI-041** (ADR-098), **KI-035** sudah Resolved (2026-09-04); **KI-046** Resolved (Promoted to T-007.7, ADR-100, 2026-09-07); **KI-047**, **KI-049** (2026-09-07 — invite Copy Link rawan identity takeover kalau email penerima bukan target undangan & belum punya akun, akar masalah KI-001) dicatat sebagai gap baru/Open — **KI-049 tidak terkait/tidak berubah statusnya** oleh selesainya T-007.8, masih genuinely Open.
+* **Top Next Tasks:** **T-039 Migrasi Routing & Settings (ADR-076) — ✅ Done** (2026-09-08) — subtask terakhir **T-039.4** (onboarding picker workspace) diimplementasikan, lolos review arsitektur Ridwan (0 temuan) + QA Najwa end-to-end browser (6/6 skenario PASS); **KI-023 Resolved**, entrinya sudah dihapus dari Known Issues (riwayat lengkap di `COMPLETE_TASK.md`). Kode sudah di-commit & push, dibuka sebagai PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) dari branch `feature/t-039-4-onboarding-workspace-picker` ke `staging`, belum di-merge. Sebelumnya: **T-007.8 Members list gabungan Pending (ADR-101) — ✅ Done** (2026-09-07, side-quest di luar rantai utama) — lolos implementasi Prabowo Feature Engineer, review arsitektur Ridwan (1 temuan race condition di `revokeInvitation`, sudah diperbaiki), QA end-to-end Najwa (browser real, semua PASS, 0 bug). **T-026 Webhook handler Outstand — ✅ Done** (2026-09-07) dan **T-036 In-app notification + Supabase Realtime — ✅ Done** (2026-09-07) — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply, Najwa QA Engineer retest 5 skenario webhook end-to-end nyata, semua PASS. **KI-048 Resolved**. ADR-099 (SECURITY DEFINER system-context lookup untuk webhook) dicatat sebagai preseden untuk T-027. Fokus berikutnya kembali ke **T-025 Real OutstandAdapter** (terhenti menunggu kredensial) dan **T-027 Job runner + Railway Cron** — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus. Sebelumnya: **T-102 Cleanup & Verifikasi Akhir — ✅ Done** (rilis v0.7, ADR-097) menuntaskan migrasi Astryx→shadcn/ui 100%; **KI-045**, **KI-041** (ADR-098), **KI-035** sudah Resolved (2026-09-04); **KI-046** Resolved (Promoted to T-007.7, ADR-100, 2026-09-07); **KI-047**, **KI-049** (2026-09-07 — invite Copy Link rawan identity takeover kalau email penerima bukan target undangan & belum punya akun, akar masalah KI-001) dicatat sebagai gap baru/Open — **KI-049 tidak terkait/tidak berubah statusnya** oleh selesainya T-007.8, masih genuinely Open.
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 85 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.75     |
+| Version      | 1.0.76     |
 | Status       | Active     |
-| Last Updated | 2026-09-07 |
+| Last Updated | 2026-09-08 |
 
 ---
 
@@ -184,78 +184,6 @@ Sama seperti `OUTSTAND_API_KEY` (lihat KI-003):
 
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — kode Google OAuth di `auth.ts` sudah siap (`socialProviders.google` terdaftar kondisional lewat `env.ts`), tapi tanpa env ini "Sign in with Google" tidak aktif. Masih placeholder dummy.
 - `JOB_SECRET` — **resolved 2026-08-14**: sudah diisi nilai asli generated di Railway staging (env var), dan job runner (T-027, `POST /api/jobs/run` via Railway Cron `X-Job-Secret`) sudah terverifikasi end-to-end 2x run berturut-turut SUCCESS di staging. Local `.env.local` masih boleh memakai nilai dummy untuk dev.
-
-### KI-023 · Kode `apps/web` belum dimigrasikan ke baseline routing/Settings baru (ADR-076/ADR-077)
-
-| Field | Value |
-|-------|-------|
-| Status | Sebagian Resolved — sisa scope: T-039.4 (onboarding picker workspace); T-089 (workspace switcher, ADR-088) sudah ✅ Done (2026-08-24), tidak lagi bagian sisa scope |
-| Kategori | Tech-Debt |
-| Terkait | T-009, T-039, T-089, ADR-076, ADR-077, ADR-088, ADR-089 |
-
-Ditemukan awalnya sebagai gap "Workspace Selector tidak pernah
-diimplementasikan" (baseline navigasi lama, IA-D05/NP-D07 versi lama).
-Investigasi lanjutan 2026-08-10 menyimpulkan premis itu sendiri sudah
-tidak relevan: **ADR-076** menghapus konsep Workspace Selector dari
-baseline sama sekali — bukan cuma belum dibangun, tapi memang tidak lagi
-jadi bagian desain (digantikan entry point avatar/user menu tunggal ke
-Settings gabungan Organization + Account).
-
-**Update 2026-08-11 — bagian inti gap ini sudah ditutup oleh T-039.1–.3:**
-`apps/web/src/app/[slug]/...` sudah dipindah ke route group `(app)/...`,
-`apps/web/src/app/account/...` sudah digabung ke `(app)/settings/account/*`
-(dua grup Organization + Account), dan Middleware/`src/proxy.ts` sudah
-resolve workspace dari cookie `active-workspace-id` (tervalidasi ulang
-terhadap `workspace_members` per request) alih-alih dari URL/komponen
-statis. Sudah lolos review arsitektur Ridwan + QA Najwa (detail lengkap di
-`tasks/v01-foundation.md` § T-039).
-
-**Update 2026-08-11 — T-039.5 (ADR-077) juga sudah ditutup:** migrasi kode
-pola sidebar Settings ke sidebar tunggal pola Buffer (`AppShell` `sideNav`
-kondisional per-route, hapus `LayoutPanel` secondary nav, header
-back-navigation di `SettingsSideNav`) sudah lolos review Ridwan (tidak ada
-temuan) dan QA Najwa end-to-end browser (PASS semua golden path, 79/79
-test). Detail: `tasks/v01-foundation.md` § T-039.
-
-Sisa gap: halaman `/onboarding` dengan picker workspace (re-entry point
-untuk user dengan >1 workspace saat cookie hilang) — ini **T-039.4**,
-belum dikerjakan. Untuk skenario "cookie hilang, tepat 1 workspace",
-`onboarding/resume/route.ts` (bagian T-039.3) sudah menangani otomatis
-lewat `getDefaultWorkspaceForUser`; sisanya (>1 workspace, perlu pilihan
-eksplisit user) masih menunggu T-039.4.
-
-**Update 2026-08-24:** Desain T-039.4 sudah selesai di Claude Design
-(`templates/onboarding.html` + class `.ws-pick-*` di `styles.css`) —
-gate rule 17 `AGENTS.md` sudah terpenuhi untuk UI ini. Implementasi kode
-di `apps/web` masih belum dikerjakan, menunggu approval King Rezi atas
-desain tersebut. Detail: `tasks/v01-foundation.md` § T-039 (catatan
-T-039.4), `COMPLETE_TASK.md`.
-
-**Update 2026-08-24 (lanjutan) — gap terpisah ditemukan, ADR-088:** Setelah
-T-039.4 didesain, King Rezi menyadari tidak ada cara *sengaja* pindah
-workspace setelah user pernah memilih satu (picker T-039.4 hanya re-entry
-saat cookie hilang). Diamandemen lewat **ADR-088** — halaman baru Settings
-→ Account → Workspaces (switch antar membership + create workspace
-tambahan), desainnya sudah selesai di Claude Design
-(`templates/settings-workspaces.html` + 6 halaman lain + dialog + styles).
-Dipecah jadi task baru **T-089** (bukan subtask T-039.6), lihat
-`tasks/v01-foundation.md` § T-089. Mekanisme switch: overwrite langsung
-cookie `active-workspace-id` setelah validasi membership + redirect Home
-— bukan hapus-cookie-lalu-onboarding-ulang. **Implementasi kode kedua
-fitur (T-039.4 dan T-089 switcher baru) masih sama-sama belum
-dikerjakan** — hanya desain + ADR yang selesai di sesi ini. Detail:
-`COMPLETE_TASK.md`.
-
-**Update 2026-08-24 (lanjutan lagi) — T-089 diimplementasikan lalu
-mekanismenya diamandemen, ADR-089:** T-089.2/.3/.4 (kode `apps/web`) sudah
-diselesaikan, lolos review Ridwan + QA Najwa, T-089 ditutup `✅ Done`.
-Setelah itu King Rezi mengubah rancangan switch di Claude Design —
-klik row workspace sekarang membuka dialog konfirmasi Tier 2 (reuse
-`AlertDialog`, pola Logout/Remove Member) sebelum overwrite cookie
-dieksekusi, bukan langsung switch seperti versi awal ADR-088. Diamandemen
-lewat **ADR-089**, dicatat subtask baru **T-089.6**. Gap QA retest formal
-sempat terbuka sebagai KI-034 — sudah Resolved 2026-08-24 (QA Najwa lolos
-penuh, tidak ada bug), lihat `COMPLETE_TASK.md`.
 
 ### KI-024 · Header sidebar Settings belum sesuai spec Design System (back-button vs judul)
 
@@ -533,11 +461,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-039 ditutup `✅ Done` — onboarding picker workspace T-039.4, KI-023 Resolved (2026-09-08)** — halaman `/onboarding` sekarang branching 3 skenario: 0 workspace → form buat workspace baru (tidak berubah); 1 workspace → tetap auto-redirect `onboarding/resume` (tidak berubah); >1 workspace → `WorkspacePicker` baru (Client Component, pola `Item`/`ItemGroup` shadcn) yang menanyakan pilihan user secara eksplisit lewat Server Action `selectWorkspaceAction` (reuse `WorkspaceService.switchWorkspace`), menggantikan auto-pick diam-diam `getDefaultWorkspaceForUser`. Lolos review arsitektur Ridwan (0 temuan) dan QA Najwa end-to-end browser (6/6 skenario PASS, termasuk verifikasi dengan akun 4-workspace nyata). Dengan ini seluruh subtask T-039.1–.5 tuntas, menutup sisa scope **KI-023**. Kode sudah di-commit & push, dibuka sebagai PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) dari branch `feature/t-039-4-onboarding-workspace-picker` ke `staging`, belum di-merge. Detail: `tasks/v01-foundation.md` § T-039.
 * **T-007.8 ditutup `✅ Done` — Members list gabungan Pending, ADR-101 (2026-09-07)** — Members list (`/settings/members`) sekarang menampilkan undangan pending sebagai baris status Pending, berlaku **kedua metode invite** (Copy Link + Kirim via Email), lewat gabungan data `workspace_members` + `WorkspaceInvitation` (tanpa migrasi skema, sesuai ADR-101 yang mengamandemen ADR-100). Diimplementasikan Prabowo Feature Engineer, direview Ridwan Architecture Reviewer (1 temuan race condition di `revokeInvitation`, sudah diperbaiki, re-verifikasi bersih 269 passed/5 skipped), QA end-to-end Najwa QA Engineer (browser real: golden path invite→pending row→cancel, golden path accept→pending hilang jadi Active, mobile 375px, RBAC Creator tetap tidak bisa akses, invitation expired tidak muncul — **semua PASS, 0 bug**). Task induk **T-007** tetap `🟡 In Progress` (sisa scope T-007.7, blocked T-005). Detail: `tasks/v01-foundation.md` § T-007.8, `decisions/ADR-101-*.md`.
 * **KI-046 Resolved — Promoted to T-007.7, ADR-100 (2026-09-07)** — `MemberStatus.Pending` yang sebelumnya tidak pernah di-assign di flow produksi manapun dikunci desainnya: King Rezi memutuskan status ini direservasi untuk metode invite "Kirim via Email" (T-007.7, masih blocked T-005), bukan dead code. Baris `workspace_members` akan dibuat langsung `Pending` saat invite dikirim via email, diupdate `Active` saat user accept — Copy Link tidak berubah (tetap insert `Active` langsung saat accept). Implementasi konkret menunggu T-005 selesai; ADR ini murni mengunci desain. Detail: `decisions/ADR-100-memberstatus-pending-direservasi-metode-invite-kirim-via-email.md`, `tasks/v01-foundation.md` § T-007.7.
 * **T-026 & T-036 ditutup `✅ Done` — KI-048 Resolved (2026-09-07)** — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply; Najwa QA Engineer cross-check ter-apply via Supabase MCP, lalu retest end-to-end nyata (HTTP request langsung ke `/api/webhooks/outstand`) 5 skenario — golden path `post.published`, `post.error`, `account.token_expired` (menutup T-036.5), event type tak dikenal, idempotensi + signature invalid — **semua PASS**. Kedua task ini akhirnya tuntas penuh setelah kode-nya selesai lebih dulu (2026-09-07, ADR-099). Detail: `tasks/v02-publishing-mvp.md` § T-026/T-036, `COMPLETE_TASK.md`.
 * **T-026 Webhook handler Outstand — kode selesai, blocked deploy migration (2026-09-07, ADR-099)** — implementasi penuh route `/api/webhooks/outstand` (HMAC-SHA256 verify, durable-before-ACK, handler `post.published`/`post.error`/`account.token_expired`, idempotensi), dikerjakan Elon Backend Engineer → review Ridwan (temuan diperbaiki) → QA end-to-end Najwa (bug diperbaiki), lolos `typecheck`/`lint`/`test` (261 pass/4 skip). Menutup **T-036.5** sekaligus. **ADR-099** (2 fungsi Postgres `SECURITY DEFINER` untuk lookup system-context tanpa `userId` webhook, preseden untuk T-027) dicatat. Detail: `tasks/v02-publishing-mvp.md` § T-026/T-036, `COMPLETE_TASK.md`.
-* **T-036.4 tuntas — notification bell/panel cocok spec Claude Design (2026-09-07)** — dicek dulu ke Claude Design (`components/notifications-panel.html` + `styles.css`) sesuai rule 17, dibandingkan ke `NotificationBell.tsx`: 4/5 gap yang dicatat 2026-09-01 sudah benar sejak T-098.3, 1 gap tersisa (icon circle status masih pakai workaround netral `bg-muted`) diperbaiki jadi `bg-success/10 text-success` mengikuti token asli KI-041/ADR-098 yang sudah Resolved. **Follow-up sama hari:** King Rezi mereview langsung di browser dan melaporkan title/"Mark all as read"/close tidak sejajar + padding header tidak sesuai spec — root cause tombol close bawaan `SheetContent` yang `absolute top-4 right-4` (independen dari flex row header, tidak pernah bisa sejajar apa pun classname-nya). Diperbaiki: `showCloseButton={false}` + tombol close dirender manual sebagai flex-sibling (pola sama `draft-editor/Modal.tsx`), header `p-4`+`gap-3` match token `--spacing-4`/`--spacing-3` spec. Diverifikasi lewat `getBoundingClientRect()` tiap elemen (title & kedua button center vertikal identik di 32px). `bun run typecheck` PASS. Detail: `tasks/v02-publishing-mvp.md` § T-036.
 ---
 
 ## Recent Decisions (Ringkasan)

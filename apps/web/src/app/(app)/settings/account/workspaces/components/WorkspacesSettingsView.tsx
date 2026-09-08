@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowRight01Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import { PlusSignIcon } from "@hugeicons/core-free-icons";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import {
@@ -40,8 +40,9 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Spinner } from "@/components/ui/spinner";
+import { WorkspacePickableRow } from "@/components/workspace/WorkspacePickableRow";
 
-import { getInitials } from "@/lib/utils";
+import { formatRoleLabel, getInitials } from "@/lib/utils";
 
 import {
   SETTINGS_BREADCRUMB_GROUP,
@@ -59,16 +60,6 @@ export interface WorkspaceSummary {
 
 interface Props {
   workspaces: WorkspaceSummary[];
-}
-
-// Label role ditampilkan title-case terlepas dari casing mentah yang
-// dikirim page.tsx (MemberRole enum di packages/shared bernilai lowercase
-// "owner"/"admin"/"creator") — kontrak prop di sini sengaja `role: string`
-// polos (bukan import MemberRole) supaya komponen ini tidak terikat ke
-// shared enum, cukup format tampilan.
-function formatRoleLabel(role: string): string {
-  if (!role) return role;
-  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 }
 
 /**
@@ -117,38 +108,13 @@ function WorkspaceRow({
   }
 
   return (
-    <Item
-      asChild
-      variant="outline"
-      className="cursor-pointer hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
-    >
-      <button
-        type="button"
-        onClick={() => onRequestSwitch(workspace)}
-        disabled={isSwitchPending}
-      >
-        <ItemMedia>
-          <Avatar>
-            <AvatarFallback>{getInitials(workspace.name)}</AvatarFallback>
-          </Avatar>
-        </ItemMedia>
-        <ItemContent>
-          <ItemTitle>{workspace.name}</ItemTitle>
-          <ItemDescription>
-            {isSwitchPending
-              ? "Memindahkan ke workspace ini..."
-              : formatRoleLabel(workspace.role)}
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            strokeWidth={2}
-            className="size-4 text-muted-foreground"
-          />
-        </ItemActions>
-      </button>
-    </Item>
+    <WorkspacePickableRow
+      name={workspace.name}
+      role={workspace.role}
+      pendingLabel={isSwitchPending ? "Memindahkan ke workspace ini..." : null}
+      disabled={isSwitchPending}
+      onClick={() => onRequestSwitch(workspace)}
+    />
   );
 }
 
@@ -159,10 +125,10 @@ function WorkspaceRow({
  * `WorkspaceService` (dipanggil lewat `switchWorkspaceAction`/
  * `createWorkspaceAction` di `../actions`).
  *
- * Baris workspace non-aktif dirender lewat `Item asChild` membungkus
- * `<button>` (pola sama seperti contoh resmi shadcn `item-demo`, varian
- * `asChild` + `<a>`) — seluruh baris jadi target klik, bukan cuma ikon
- * chevron-nya.
+ * Baris workspace non-aktif direuse dari `WorkspacePickableRow` (dibagi
+ * dengan `WorkspacePicker` di onboarding, code review PR #109) — seluruh
+ * baris jadi target klik (pola `Item asChild` + `<button>`, sama seperti
+ * contoh resmi shadcn `item-demo`), bukan cuma ikon chevron-nya.
  */
 export function WorkspacesSettingsView({ workspaces }: Props) {
   const [isSwitchPending, startSwitchTransition] = useTransition();
