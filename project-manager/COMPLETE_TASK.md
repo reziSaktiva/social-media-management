@@ -8,6 +8,151 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-09 — Temuan susulan KI-054 — `DraftsList.tsx` kotak-kotak terpisah, bukan list rata
+
+Branch `fix/ki-054-draft-history-design-sync` (sesi lanjutan, setelah KI-054
+dan KI-051 sudah ditandai Resolved di entri sebelumnya). King Rezi menemukan
+1 gap visual tambahan khusus di halaman Publish → Drafts.
+
+**Temuan:** `DraftsList.tsx` menampilkan tiap baris draft sebagai kotak
+individual dengan sudut membulat dan celah di antaranya (terlihat seperti
+kartu-kartu terpisah bertumpuk), padahal mockup Claude Design
+(`templates/publish-drafts.html`) dan komponen sejenis `QueueList.tsx`
+menampilkan list rata menyatu dengan garis pemisah tipis antar baris.
+
+**Root cause:** Komponen dasar `Item` (`apps/web/src/components/ui/item.tsx`)
+punya `rounded-2xl border` di base `cva()`-nya yang selalu aktif apa pun
+variant-nya — variant cuma mengubah warna border, bukan menghilangkan
+radius/border-nya. `DraftsList.tsx` sebelumnya memakai `Item
+variant="outline"` per baris di dalam satu `ItemGroup` (`divide-y`) —
+kombinasi ini membuat tiap baris draft tampil sebagai kotak bulat terpisah
+dengan celah optik di sudut-sudutnya, alih-alih list rata dengan garis
+pemisah tipis. `QueueList.tsx` (komponen sejenis untuk tab Queue) tidak
+punya masalah ini karena tidak memakai `Item`/`ItemGroup` sama sekali — dia
+pakai `<Separator />` polos antar baris di dalam satu `Card`.
+
+**Perbaikan:** `apps/web/src/app/(app)/publish/drafts/components/DraftsList.tsx`
+baris ~57-61 — hapus `variant="outline"` dari `Item`, tambahkan
+`rounded-none border-transparent` ke className, supaya tiap baris rata
+tanpa border/rounded individual, hanya mengandalkan garis pemisah dari
+`divide-y` di `ItemGroup` (persis pola `QueueList.tsx`).
+
+**Verifikasi:** `tsc --noEmit` pass, `eslint` pass, dicek visual di browser
+preview (computed style `borderRadius: 0px`, `borderColor: transparent` —
+list sekarang tampil menyatu rapi, tidak ada lagi efek kotak-kotak
+terpisah).
+
+**Status dokumentasi:** dicatat sebagai riwayat tambahan pada section
+**KI-054** di `PROJECT_STATE.md` (status tetap Resolved, bukan dibuka
+ulang) — bullet Completed (Ringkasan) KI-054 juga diperbarui untuk
+menyebutkan temuan ini. Tidak ada ADR baru (bug-fix implementasi kecil,
+bukan keputusan arsitektur). Tidak ada perubahan `TASKS.md` (KI-054 tidak
+terikat task formal).
+
+---
+
+## 2026-09-09 — KI-051 Resolved + KI-054 Resolved penuh — varian `Badge` "success" di-wire, Design Drift tuntas 5/5 poin
+
+Branch `fix/ki-054-draft-history-design-sync` (sesi lanjutan, sama dengan
+entri KI-054 poin 1 di bawah). Mark UI Engineer menutup **KI-051**
+(`Badge` shadcn belum punya varian "success"), yang sekaligus menutup poin
+5 KI-054 (satu-satunya poin yang masih Open).
+
+**KI-051 — Resolved.** Perubahan:
+1. `apps/web/src/components/ui/badge.tsx` — varian `success` ditambahkan
+   ke `cva()`, pola tint sama dengan `warning`/`destructive` yang sudah ada
+   (`bg-success/10 text-success ... dark:bg-success/20 ...`), memakai token
+   `--success`/`--success-foreground` yang sudah ada sejak ADR-098.
+2. `apps/web/src/app/(app)/components/draft-editor/status-badge.ts` —
+   `CONTENT_STATUS_BADGE_VARIANT[ContentStatus.Published]`: `"default"` →
+   `"success"`. Berlaku otomatis ke semua pemakai (Calendar, Drafts, modal
+   draft-editor) karena satu sumber kebenaran — tidak ada regresi visual
+   pada status lain (Scheduled tetap warning/kuning, dll).
+3. `apps/web/src/app/(app)/publish/history/history-status.ts` —
+   `HISTORY_STATUS_BADGE_VARIANT[ContentStatus.Published]` dan
+   `TARGET_STATUS_BADGE_VARIANT.published`: `"default"` → `"success"`.
+4. Komentar block usang di kedua file (menjelaskan "belum ada varian
+   success, pakai default sebagai pengganti") diperbarui mengikuti
+   perubahan.
+
+Di luar scope, sengaja tidak diubah: status `ReadyToSchedule`/`Scheduled`
+tetap `secondary`/`warning` — mockup minta warna "info"/"purple" tersendiri,
+tapi itu butuh token warna baru yang belum di-lock desain (dicatat DT-D02,
+bukan bagian KI-051). Diverifikasi `tsc --noEmit` pass, `eslint` pass,
+browser preview.
+
+**KI-054 — Resolved penuh (naik dari Partially Resolved).** Evaluasi
+5 poin: poin 1 (struktur baris History) Fixed sesi sebelumnya; poin 2
+(ikon brand vs dot warna) accepted deviation (keputusan King Rezi); poin 3
+(filter row) sudah sesuai dari awal; poin 4 (struktur Drafts) sudah sesuai
+dari awal; poin 5 (warna chip status) sekarang Fixed lewat penutupan
+KI-051 — status "Published" di Drafts & History sudah hijau (success)
+sesuai mockup. Status `Draft` tetap `outline` (abu-abu netral) di kedua
+halaman — sudah sesuai mockup (`chip-draft` di Design System juga
+neutral/gray, bukan warna cerah), bukan gap tersisa. Status
+`Failed`/`Error` sudah `destructive` (merah) dari awal, juga sesuai.
+Seluruh 5 poin sudah punya resolusi (fixed atau accepted deviation) —
+tidak ada task formal terpisah untuk KI-054, ditutup langsung di
+`PROJECT_STATE.md`.
+
+Tidak ada ADR baru (murni wiring token existing ke komponen, bukan
+keputusan desain baru). Tidak ada perubahan `TASKS.md` (KI-051/KI-054
+tidak terikat task formal).
+
+---
+
+## 2026-09-09 — KI-054 poin 1 Fixed — HistoryList kartu individual per entri sesuai mockup
+
+Branch `fix/ki-054-draft-history-design-sync`. Menindaklanjuti KI-054 (design
+drift `DraftsList`/`HistoryList` vs mockup Claude Design) yang dilaporkan
+King Rezi di sesi sebelumnya.
+
+**Poin 1 (struktur baris History) — Fixed.** File
+`apps/web/src/app/(app)/publish/history/components/HistoryList.tsx`.
+Sebelumnya tiap entri History dirender sebagai blok vertikal 4-baris di
+dalam SATU `Card` bersama (`ItemGroup` + `divide-y`, pola sama dengan
+`DraftsList`/`QueueList`). Sekarang tiap entri jadi `Item variant="outline"`
+terpisah (kartu individual, border+radius sendiri), dirender berjajar dalam
+`ItemGroup` dengan `gap-2` (bukan `divide-y`). Layout satu baris horizontal:
+jam → ikon+handle platform → caption+meta (`flex-1`, truncate) → `Badge`
+status di kanan. Hover mengubah border kartu individual
+(`hover:border-foreground/40` + `hover:bg-card!` untuk menimpa hover
+background bawaan komponen `Item`), sesuai mockup
+`templates/publish-history.html` (`.history-card`/`.queue-row`).
+Diverifikasi: `tsc --noEmit` pass, eslint pass, visual browser preview (dark
+mode) dicek cocok dengan mockup.
+
+**Temuan tambahan (bukan bagian asli KI-054, ditemukan saat verifikasi
+padding) — Fixed.** Di file yang sama, teks handle akun (nama akun di
+sebelah ikon platform tiap target publish) sebelumnya dipaksa `text-xs`
+(12px) padahal spec Design System (`.acc-name` di `styles.css`, token
+`--text-body-size`) adalah 14px (`text-sm`). Override dihapus, kembali ke
+default varian `muted` komponen `Text` (`text-sm`). Diverifikasi via
+`tsc --noEmit` dan visual browser preview.
+
+**Poin 2 (representasi ikon platform) — accepted deviation, tidak diubah.**
+King Rezi memutuskan secara verbal di sesi ini untuk tetap memakai ikon
+brand penuh untuk multi-platform (bukan dot warna kecil seperti mockup
+single-platform) — deviation yang disengaja, bukan bug. Tidak perlu ADR
+(keputusan kecil, bukan keputusan arsitektur).
+
+**Poin 3 (filter row)** sudah sesuai mockup dari awal, tidak disentuh.
+**Poin 4 (struktur DraftsList)** sudah cukup selaras dari awal, di luar
+scope sesi ini, sengaja tidak diubah.
+
+**Poin 5 (warna chip status Draft/Ready/Published/Error) — masih Open**,
+blocked by KI-051 (varian "success"/warna custom `Badge` shadcn belum ada).
+Tidak ada perubahan untuk poin ini di sesi ini.
+
+Status KI-054 di `PROJECT_STATE.md` diubah dari `Open` menjadi
+`Partially Resolved` (poin 1 & temuan tambahan Fixed, poin 2 accepted
+deviation, poin 5 masih Open menunggu KI-051). Tidak ada task formal T-xxx
+yang terikat ke KI-054, dan tidak ada subtask di `TASKS.md`/`tasks/vXX-*.md`
+yang mengacu ke KI-054, jadi kedua file itu tidak disentuh. Tidak ada ADR
+baru.
+
+---
+
 ## 2026-09-09 — T-014 (Disconnect account + dialog konfirmasi) tuntas 3/3 subtask `✅ Done`
 
 Sesi lanjutan setelah T-014.1 (lihat entri di bawah) — menuntaskan T-014.2

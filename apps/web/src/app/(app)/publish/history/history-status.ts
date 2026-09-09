@@ -28,14 +28,11 @@ export const HISTORY_STATUS_LABEL: Record<ContentStatus, string> = {
 
 /**
  * Badge variant untuk chip status post-level History — reuse konvensi
- * `CONTENT_STATUS_BADGE_VARIANT` (Published → `default`, Failed →
- * `destructive`). Tidak ada varian shadcn `Badge` "success" khusus saat ini
- * (`components/ui/badge.tsx` cuma punya default/secondary/destructive/
- * warning/outline/ghost/link) — token `--success` sudah ada di
- * `globals.css` tapi belum di-wire ke `Badge`, itu perubahan komponen
- * shadcn murni (di luar scope Prabowo, lihat AGENTS.md "Di luar scope").
- * `default` (warna primary) dipakai sebagai padanan "chip sukses" sampai
- * varian itu ditambahkan.
+ * `CONTENT_STATUS_BADGE_VARIANT` (Published → `success`, Failed →
+ * `destructive`). Varian shadcn `Badge` "success" (token `--success`,
+ * ADR-098) sudah di-wire ke `components/ui/badge.tsx` saat penutupan
+ * KI-051 — dipakai di sini supaya chip "Published" tampil hijau sesuai
+ * mockup Claude Design (`components/status-chips.html`).
  */
 export const HISTORY_STATUS_BADGE_VARIANT: Record<ContentStatus, BadgeVariant> =
   {
@@ -43,7 +40,7 @@ export const HISTORY_STATUS_BADGE_VARIANT: Record<ContentStatus, BadgeVariant> =
     [ContentStatus.InReview]: "warning",
     [ContentStatus.ReadyToSchedule]: "secondary",
     [ContentStatus.Scheduled]: "warning",
-    [ContentStatus.Published]: "default",
+    [ContentStatus.Published]: "success",
     [ContentStatus.Failed]: "destructive",
   };
 
@@ -62,6 +59,6 @@ export const TARGET_STATUS_BADGE_VARIANT: Record<
 > = {
   pending: "outline",
   scheduled: "warning",
-  published: "default",
+  published: "success",
   failed: "destructive",
 };

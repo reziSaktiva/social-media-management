@@ -185,95 +185,81 @@ export function HistoryList({ groups, accounts }: HistoryListProps) {
                 {formatGroupDateHeading(group.date)}
               </Text>
 
-              <Card>
-                <CardContent className="px-0">
-                  <ItemGroup className="gap-0 divide-y divide-border">
-                    {group.items.map((item) => {
-                      const isPublished =
-                        item.status === ContentStatus.Published;
-                      const effectiveDate = item.publishedAt ?? item.updatedAt;
+              <ItemGroup className="gap-2">
+                {group.items.map((item) => {
+                  const isPublished = item.status === ContentStatus.Published;
+                  const effectiveDate = item.publishedAt ?? item.updatedAt;
 
-                      return (
-                        <Item
-                          key={item.id}
-                          asChild
-                          variant="outline"
-                          className="cursor-pointer items-start hover:bg-muted"
+                  return (
+                    <Item
+                      key={item.id}
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="cursor-pointer flex-nowrap items-center gap-4 rounded-2xl bg-card p-4 transition-colors hover:border-foreground/40 hover:bg-card!"
+                    >
+                      <Link href={`/publish/history/${item.id}`}>
+                        <Text
+                          variant="muted"
+                          as="span"
+                          className="w-12 shrink-0 text-xs"
                         >
-                          <Link href={`/publish/history/${item.id}`}>
-                            <ItemContent>
-                              {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
-                              <div className="flex items-center justify-between gap-2">
-                                <Text
-                                  variant="muted"
-                                  as="span"
-                                  className="text-xs"
-                                >
-                                  {formatItemTime(effectiveDate)}
-                                </Text>
-                                <Badge
-                                  variant={
-                                    HISTORY_STATUS_BADGE_VARIANT[item.status]
-                                  }
-                                >
-                                  {HISTORY_STATUS_LABEL[item.status]}
-                                </Badge>
-                              </div>
+                          {formatItemTime(effectiveDate)}
+                        </Text>
 
-                              {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
-                              <div className="flex flex-wrap gap-3">
-                                {item.targets.map((target) => {
-                                  const PlatformGlyph =
-                                    PLATFORM_ICON[target.platform].Icon;
-                                  return (
-                                    // eslint-disable-next-line no-restricted-syntax -- layout-only
-                                    <div
-                                      className="flex items-center gap-1"
-                                      key={target.id}
-                                    >
-                                      <PlatformGlyph
-                                        size={12}
-                                        color={
-                                          PLATFORM_ICON[target.platform].color
-                                        }
-                                      />
-                                      <Text
-                                        variant="muted"
-                                        as="span"
-                                        className="text-xs"
-                                      >
-                                        {target.accountHandle}
-                                      </Text>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-
-                              <ItemTitle className="line-clamp-2 font-normal">
-                                {item.caption || "(Tanpa caption)"}
-                              </ItemTitle>
-
-                              <Text
-                                variant="muted"
-                                as="span"
-                                className={
-                                  isPublished
-                                    ? "text-xs"
-                                    : "text-xs text-destructive"
-                                }
+                        {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
+                        <div className="flex shrink-0 flex-wrap items-center gap-3">
+                          {item.targets.map((target) => {
+                            const PlatformGlyph =
+                              PLATFORM_ICON[target.platform].Icon;
+                            return (
+                              // eslint-disable-next-line no-restricted-syntax -- layout-only
+                              <div
+                                className="flex items-center gap-1"
+                                key={target.id}
                               >
-                                {isPublished
-                                  ? `Dipublikasikan ${formatRelativeTime(effectiveDate)}`
-                                  : getPrimaryErrorMessage(item)}
-                              </Text>
-                            </ItemContent>
-                          </Link>
-                        </Item>
-                      );
-                    })}
-                  </ItemGroup>
-                </CardContent>
-              </Card>
+                                <PlatformGlyph
+                                  size={12}
+                                  color={PLATFORM_ICON[target.platform].color}
+                                />
+                                <Text variant="muted" as="span">
+                                  {target.accountHandle}
+                                </Text>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <ItemContent className="min-w-0 flex-1">
+                          <ItemTitle className="truncate font-normal">
+                            {item.caption || "(Tanpa caption)"}
+                          </ItemTitle>
+                          <Text
+                            variant="muted"
+                            as="span"
+                            className={
+                              isPublished
+                                ? "truncate text-xs"
+                                : "truncate text-xs text-destructive"
+                            }
+                          >
+                            {isPublished
+                              ? `Dipublikasikan ${formatRelativeTime(effectiveDate)}`
+                              : getPrimaryErrorMessage(item)}
+                          </Text>
+                        </ItemContent>
+
+                        <Badge
+                          className="shrink-0"
+                          variant={HISTORY_STATUS_BADGE_VARIANT[item.status]}
+                        >
+                          {HISTORY_STATUS_LABEL[item.status]}
+                        </Badge>
+                      </Link>
+                    </Item>
+                  );
+                })}
+              </ItemGroup>
             </div>
           ))}
         </div>

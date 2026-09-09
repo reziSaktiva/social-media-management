@@ -1307,6 +1307,7 @@ describe("WorkspaceService.listMembersAndPendingInvitations (T-007.8, ADR-101)",
   const OWNER_MEMBER_ID = asMemberId("member-owner");
 
   it("gabungan member asli + undangan pending sebagai MemberListRow[], member dulu baru invitation", async () => {
+    const invitation = pendingInvitation();
     const service = new WorkspaceService(
       createFakeRepository({
         ...seedMembers([member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner)]),
@@ -1316,7 +1317,7 @@ describe("WorkspaceService.listMembersAndPendingInvitations (T-007.8, ADR-101)",
         findUsersByIds: async () => [
           { id: OWNER_USER, name: "Raka", email: "raka@example.com" },
         ],
-        listPendingInvitations: async () => [pendingInvitation()],
+        listPendingInvitations: async () => [invitation],
       }),
     );
 
@@ -1337,7 +1338,7 @@ describe("WorkspaceService.listMembersAndPendingInvitations (T-007.8, ADR-101)",
           status: MemberStatus.Active,
         },
       },
-      { kind: "pending-invitation", invitation: pendingInvitation() },
+      { kind: "pending-invitation", invitation },
     ]);
   });
 

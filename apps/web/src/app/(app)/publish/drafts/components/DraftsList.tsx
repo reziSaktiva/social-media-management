@@ -57,8 +57,7 @@ export function DraftsList({ drafts }: { drafts: PublishingPostRecord[] }) {
                 <Item
                   key={draft.id}
                   asChild
-                  variant="outline"
-                  className="cursor-pointer hover:bg-muted"
+                  className="cursor-pointer rounded-none border-transparent hover:bg-muted"
                 >
                   <button type="button" onClick={() => openEditDraft(draft.id)}>
                     <ItemContent>
