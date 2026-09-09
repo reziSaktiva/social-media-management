@@ -8,7 +8,7 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
-## 2026-09-09 — T-034.4 (Retry manual publishing) selesai, T-034 tuntas 4/4 subtask `✅ Done`, ADR-099, KI-052 baru
+## 2026-09-09 — T-034.4 (Retry manual publishing) selesai, T-034 tuntas 4/4 subtask `✅ Done`, ADR-102, KI-052 baru
 
 Sesi lanjutan T-034 (Publishing History + detail post), menutup sisa
 subtask terakhir setelah T-034.1–.3 selesai (lihat entri 2026-09-08 di
@@ -21,7 +21,7 @@ post-level (satu ID untuk semua target dalam satu post), retry satu target
 yang gagal itu harus recreate seluruh post atau hanya target yang gagal.
 Diajukan ke King Rezi lewat `AskUserQuestion` — dijawab: **single-target**
 (hanya target yang gagal, target lain yang sudah `published` tidak
-disentuh) untuk mencegah duplikat konten. Dicatat **ADR-099** (melengkapi
+disentuh) untuk mencegah duplikat konten. Dicatat **ADR-102** (melengkapi
 ADR-092, bukan membatalkan).
 
 **2. Implementasi.** Dikerjakan multi-subagent dalam satu sesi:
@@ -55,7 +55,7 @@ History + detail post) tuntas 4/4 subtask** — task naik `🟡 In Progress`
 211 — T-034.4 sudah terdefinisi sebelumnya).
 
 Detail lengkap: `tasks/v02-publishing-mvp.md` § T-034, `DECISIONS.md` §
-ADR-099 (`decisions/ADR-099-retry-manual-publishing-scope-single-target.md`),
+ADR-102 (`decisions/ADR-102-retry-manual-publishing-scope-single-target.md`),
 `PROJECT_STATE.md` § KI-052.
 
 ---

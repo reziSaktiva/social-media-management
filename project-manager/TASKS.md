@@ -63,7 +63,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 
 **Total:** 85 task · 34 selesai · 211 subtask terdefinisi (v0.1–v0.3, v0.7).
 
-> **Update (2026-09-09, ADR-099):** **T-034.4** (Aksi retry manual untuk
+> **Update (2026-09-09, ADR-102):** **T-034.4** (Aksi retry manual untuk
 > target publishing yang gagal) selesai — scope retry single-target
 > diputuskan King Rezi lewat `AskUserQuestion` untuk melengkapi ADR-092.
 > **T-034** naik `🟡 In Progress` → `✅ Done` (4/4 subtask tuntas). Task
@@ -452,7 +452,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | **T-097** | Migrasi Auth Flows & Onboarding                  | ✅      | **Selesai (2026-09-02)** — 5/5 subtask (Login/Register, Forgot/Reset password, Accept Invite, `(auth)/layout.tsx`, Onboarding), lolos review Ridwan (0 temuan) + QA Najwa (semua PASS). Gap desain token `--success`/`--warning` Stone theme dicatat **KI-041** — **Resolved 2026-09-04** (ADR-098, King Rezi memutuskan menambah 4 token baru ke Stone theme). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-097 |
 | **T-096** | Migrasi Core Infra & Shared Primitives           | ✅      | **Selesai (2026-09-01)** — `globals.css`, `Providers.tsx`, root `app/(app)/layout.tsx`, primitive `Button`/`Card`/`Dialog`/`Input`/`Text`. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-096 untuk detail & 2 keputusan penting (CSS/Theme Astryx dipertahankan sementara) |
 | **T-095** | Setup Fondasi shadcn/ui & Tooling Migrasi        | ✅      | **Selesai (2026-09-01)** — task pertama rilis v0.7 (migrasi Astryx→shadcn/ui, ADR-097), seluruh 7 subtask tuntas: T-095.1 (init shadcn/ui, base Radix + preset Maia), T-095.2 (MCP server shadcn di `.mcp.json`+`.cursor/mcp.json`), T-095.3 (tulis ulang `apps/web/.claude/CLAUDE.md` ke workflow shadcn CLI/MCP), T-095.4 (rule 14/15 `AGENTS.md`, sudah selesai lebih dulu di commit `07a3aa2`), T-095.5 (pemetaan Stone→shadcn di `design-tokens.md`), T-095.6 (update subagent Mark UI Engineer ke shadcn, izin eksplisit King Rezi), T-095.7 (sinkronisasi docs baseline) |
-| **T-034** | Publishing History + detail post                | ✅      | **Done (2026-09-09)** — seluruh 4/4 subtask tuntas: query riwayat, UI daftar+filter, halaman detail post, dan T-034.4 (retry manual per-target, **ADR-099** melengkapi ADR-092 — scope single-target, hindari duplikat konten). Lolos review Ridwan + QA Najwa (259 test pass, verifikasi browser PASS). Lihat `tasks/v02-publishing-mvp.md` § T-034 |
+| **T-034** | Publishing History + detail post                | ✅      | **Done (2026-09-09)** — seluruh 4/4 subtask tuntas: query riwayat, UI daftar+filter, halaman detail post, dan T-034.4 (retry manual per-target, **ADR-102** melengkapi ADR-092 — scope single-target, hindari duplikat konten). Lolos review Ridwan + QA Najwa (259 test pass, verifikasi browser PASS). Lihat `tasks/v02-publishing-mvp.md` § T-034 |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
 | **T-036** | In-app notification + Supabase Realtime         | 🟡      | T-036.1/.2/.3 selesai. T-036.4 dibuka kembali (2026-09-01) — gap visual vs Claude Design belum terverifikasi di browser (lihat KI-040). Tersisa T-036.4 (verifikasi visual) dan T-036.5 (trigger dari webhook) |
 

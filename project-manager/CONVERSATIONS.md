@@ -38,7 +38,7 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 **Key Insight / Decision:** King Rezi memilih **single-target** — retry hanya me-recreate akun yang gagal, target lain di post yang sama yang sudah `published` tidak disentuh sama sekali. Alasannya: whole-post-recreate berisiko me-re-publish ulang konten yang sudah sukses tayang di akun lain (duplikat konten, UX buruk), sementara desain UI Claude Design yang sudah dikonfirmasi sebelumnya (KI-048) memang menempatkan tombol "Coba Lagi" per-baris akun, bukan per-post — jadi single-target juga konsisten dengan desain yang sudah ada.
 
-**Impact:** Dicatat sebagai **ADR-099** (melengkapi ADR-092, tidak membatalkan) di `project-manager/DECISIONS.md`. Implementasi: kolom Prisma baru `PublishingPostTarget.retryOutstandPostId`, method adapter baru `IOutstandAdapter.deletePost`, use-case `retry-failed-target.use-case.ts`. Dengan T-034.4 selesai mengikuti keputusan ini, **T-034 tuntas 4/4 subtask, `✅ Done`** — detail di `project-manager/tasks/v02-publishing-mvp.md` § T-034.
+**Impact:** Dicatat sebagai **ADR-102** (melengkapi ADR-092, tidak membatalkan) di `project-manager/DECISIONS.md`. Implementasi: kolom Prisma baru `PublishingPostTarget.retryOutstandPostId`, method adapter baru `IOutstandAdapter.deletePost`, use-case `retry-failed-target.use-case.ts`. Dengan T-034.4 selesai mengikuti keputusan ini, **T-034 tuntas 4/4 subtask, `✅ Done`** — detail di `project-manager/tasks/v02-publishing-mvp.md` § T-034.
 
 ---
 

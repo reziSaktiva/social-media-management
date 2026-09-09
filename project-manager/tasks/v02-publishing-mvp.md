@@ -297,7 +297,7 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 | ------------- | ------------------------------------------------------------ |
 | **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing                                                   |
-| **ADR**       | ADR-046, ADR-092, ADR-099                                    |
+| **ADR**       | ADR-046, ADR-092, ADR-102                                    |
 | **Depends**   | T-026 (status akhir *real* datang dari webhook — tidak memblokir T-034.1, lihat catatan 2026-09-08) |
 | **Terkait**   | KI-048 (Resolved 2026-09-08 — App Prototype diwire + desain dikonfirmasi King Rezi), KI-049 (gap `failedAt`/`failureReason`), KI-050 (gap meta author di halaman detail post), KI-051 (Badge shadcn belum ada varian success), KI-052 (hydration warning `formatRelativeTime` di `HistoryList.tsx`) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                                |
@@ -416,7 +416,7 @@ Sebelum implementasi, muncul pertanyaan scope yang belum dijawab ADR-092
 SEMUA target) — diajukan ke King Rezi lewat `AskUserQuestion`, dijawab:
 retry **hanya me-recreate target yang gagal (single-target)**, target lain
 yang sudah `published` di post yang sama tidak disentuh. Keputusan ini
-dicatat **ADR-099** (melengkapi ADR-092, tidak membatalkannya).
+dicatat **ADR-102** (melengkapi ADR-092, tidak membatalkannya).
 
 Elon Backend Engineer menulis kontrak adapter: `IOutstandAdapter.deletePost(outstandPostId,
 accountIds?)` (best-effort) di `packages/shared/src/contracts/outstand-adapter.ts`
