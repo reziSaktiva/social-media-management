@@ -3,16 +3,6 @@
 import { toast } from "sonner";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,12 +22,12 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
-import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ConfirmActionDialog } from "@/components/shared/ConfirmActionDialog";
 
 import {
   getConnectionStatusLabel,
@@ -268,41 +258,16 @@ export function ConnectedAccountsList({
         </CardContent>
       </Card>
 
-      <AlertDialog
-        open={disconnectConfirm.isOpen}
-        onOpenChange={(open) => {
-          if (!open) disconnectConfirm.close();
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Putuskan koneksi {targetPlatformLabel} {target?.handle}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Post yang sudah terjadwal untuk akun ini akan tetap di antrean —
-              tidak otomatis dibatalkan. Post baru tidak bisa dijadwalkan ke
-              akun ini sampai disambungkan kembali.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={disconnectConfirm.isLoading}>
-              Batal
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={disconnectConfirm.isLoading}
-              onClick={(e) => {
-                e.preventDefault();
-                void disconnectConfirm.confirm();
-              }}
-            >
-              {disconnectConfirm.isLoading ? <Spinner /> : null}
-              Putuskan Koneksi
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmActionDialog
+        isOpen={disconnectConfirm.isOpen}
+        onClose={disconnectConfirm.close}
+        title={`Putuskan koneksi ${targetPlatformLabel} ${target?.handle ?? ""}?`}
+        description="Post yang sudah terjadwal untuk akun ini akan tetap di antrean — tidak otomatis dibatalkan. Post baru tidak bisa dijadwalkan ke akun ini sampai disambungkan kembali."
+        confirmLabel="Putuskan Koneksi"
+        isLoading={disconnectConfirm.isLoading}
+        onConfirm={() => void disconnectConfirm.confirm()}
+        variant="destructive"
+      />
     </div>
   );
 }

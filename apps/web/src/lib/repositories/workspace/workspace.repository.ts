@@ -664,9 +664,16 @@ export const workspaceRepository: IWorkspaceRepository = {
     // `ownerUserId` (Owner workspace ini, dibaca lewat bypass di atas)
     // dijamin member aktif di workspace-nya sendiri, jadi `withCurrentUser`
     // di sini tidak butuh bypass tambahan.
+    // `status: { not: "disconnected" }` — akun yang sudah di-disconnect
+    // manual (T-014) tidak boleh dihidupkan lagi jadi "Perlu Reconnect"
+    // hanya karena webhook Outstand telat/independen dari disconnect lokal.
     await withCurrentUser(ownerUserId, (tx) =>
       tx.workspaceConnectedAccount.updateMany({
-        where: { id: connectedAccountId, workspaceId },
+        where: {
+          id: connectedAccountId,
+          workspaceId,
+          status: { not: "disconnected" },
+        },
         data: { reconnectRequired: true },
       }),
     );
@@ -686,14 +693,13 @@ export const workspaceRepository: IWorkspaceRepository = {
       });
       if (result.count > 0) return;
 
-      const existing = await tx.workspaceConnectedAccount.findFirst({
-        where: { id: connectedAccountId, workspaceId },
-        select: { id: true },
-      });
-      if (!existing) {
-        throw new NotFoundError("Akun terhubung tidak ditemukan.");
-      }
-      throw new ConflictError("Akun ini sudah terputus.");
+      // Update tidak kena — tidak dibedakan lagi NotFound vs Conflict lewat
+      // query kedua (round-trip tambahan untuk pesan yang lebih presisi
+      // tidak sepadan di jalur double-click ini), sama pola seperti
+      // `revokeInvitation`.
+      throw new ConflictError(
+        "Akun terhubung tidak ditemukan atau sudah terputus.",
+      );
     });
   },
 };

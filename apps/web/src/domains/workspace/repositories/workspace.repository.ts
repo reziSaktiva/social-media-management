@@ -382,11 +382,15 @@ export interface IWorkspaceRepository {
    * sudah terjadwal untuk akun ini SENGAJA tetap di antrean (KSP-D09), tidak
    * otomatis dibatalkan. `actingUserId` (RLS, KI-026 follow-up) — RBAC
    * (Owner/Admin) sudah diverifikasi di `WorkspaceService.disconnectAccount`
-   * sebelum method ini dipanggil. Melempar `NotFoundError` bila
-   * `connectedAccountId` tidak ditemukan di `workspaceId` ini, atau
-   * `ConflictError` bila akun sudah berstatus `"disconnected"` (defense-in-
-   * depth — UI real tidak menampilkan tombol Disconnect untuk akun yang
-   * sudah disconnected, tapi backend tetap menolak eksplisit).
+   * sebelum method ini dipanggil. Melempar `ConflictError` generik bila
+   * `updateMany` tidak match — baik karena `connectedAccountId` tidak
+   * ditemukan di `workspaceId` ini maupun karena akun sudah berstatus
+   * `"disconnected"` (defense-in-depth — UI real tidak menampilkan tombol
+   * Disconnect untuk akun yang sudah disconnected, tapi backend tetap
+   * menolak eksplisit). Tidak dibedakan lagi NotFound vs Conflict lewat
+   * query kedua — sama pola seperti `revokeInvitation`, round-trip
+   * tambahan untuk pesan yang lebih presisi tidak sepadan di jalur
+   * double-click ini.
    */
   disconnectAccount(
     workspaceId: WorkspaceId,

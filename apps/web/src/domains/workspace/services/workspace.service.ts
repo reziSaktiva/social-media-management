@@ -461,8 +461,14 @@ export class WorkspaceService {
     );
   }
 
-  /** Owner/Admin only; dipakai renameWorkspace (Settings General, KI-045). */
-  private async assertActorCanManageWorkspaceSettings(
+  /**
+   * Owner/Admin only — gate bersama untuk `assertActorCanManageWorkspaceSettings`
+   * (renameWorkspace, Settings General, KI-045) dan
+   * `assertActorCanManageConnectedAccounts` (disconnectAccount, T-014.2).
+   * Kondisi role-nya identik di kedua area fitur; pesan error tetap
+   * spesifik per caller lewat `actionErrorMessage`.
+   */
+  private async assertActorHasOwnerOrAdminRole(
     workspaceId: WorkspaceId,
     actorUserId: UserId,
     actionErrorMessage: string,
@@ -471,6 +477,19 @@ export class WorkspaceService {
     if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
       throw new AuthorizationError(actionErrorMessage);
     }
+  }
+
+  /** Owner/Admin only; dipakai renameWorkspace (Settings General, KI-045). */
+  private async assertActorCanManageWorkspaceSettings(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    actionErrorMessage: string,
+  ): Promise<void> {
+    await this.assertActorHasOwnerOrAdminRole(
+      workspaceId,
+      actorUserId,
+      actionErrorMessage,
+    );
   }
 
   /** Owner tidak bisa jadi target; dipakai removeMember & updateMemberRole. */
@@ -935,16 +954,17 @@ export class WorkspaceService {
     );
   }
 
-  /** Owner/Admin only; dipakai disconnectAccount. Pola sama seperti `assertActorCanManageWorkspaceSettings`/`assertActorCanManageMembers` (gate RBAC berbeda per area fitur meski kondisi role-nya identik, konsisten dengan konvensi codebase ini). */
+  /** Owner/Admin only; dipakai disconnectAccount. Reuse `assertActorHasOwnerOrAdminRole` (dedup, bukan gate RBAC baru). */
   private async assertActorCanManageConnectedAccounts(
     workspaceId: WorkspaceId,
     actorUserId: UserId,
     actionErrorMessage: string,
   ): Promise<void> {
-    const actor = await this.assertActiveMembership(workspaceId, actorUserId);
-    if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
-      throw new AuthorizationError(actionErrorMessage);
-    }
+    await this.assertActorHasOwnerOrAdminRole(
+      workspaceId,
+      actorUserId,
+      actionErrorMessage,
+    );
   }
 
   /**
