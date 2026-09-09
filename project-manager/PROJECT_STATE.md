@@ -613,6 +613,52 @@ mengandalkan garis pemisah `divide-y` di `ItemGroup` (sama seperti
 `QueueList.tsx`). Diverifikasi `tsc --noEmit`, eslint, dan browser preview
 (computed style `borderRadius: 0px`, `borderColor: transparent`).
 
+### KI-055 · 5 komponen menyimpang dari Claude Design (Drafts, Profile, Workspaces, Members, Connected Accounts)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Design Gap |
+| Terkait | Claude Design `templates/publish-drafts.html`, `settings-profile.html`, `settings-workspaces.html`, `settings-members.html`, `settings-connected-accounts.html`, `components/table.html` |
+
+Ditemukan King Rezi (2026-09-09) lewat audit manual perbandingan
+Claude Design ↔ `apps/web`, 5 poin:
+
+1. **List draft posts (`/publish/drafts`)** — seharusnya memakai `Card`
+   yang di dalamnya berisi `Table` shadcn, **tanpa** header/judul per
+   kolom (`TableHeader`/`TableHead` dihilangkan). Saat ini belum
+   memakai pola ini.
+2. **Ukuran avatar (`/settings/account` → Profile)** — avatar render
+   terlalu kecil dibanding `templates/settings-profile.html`.
+3. **List workspace (`/settings/account/workspaces`)** — alasan sama
+   seperti poin 1: seharusnya `Card` + `Table` shadcn tanpa header
+   kolom (bukan pola `.ws-pick-item` list yang didokumentasikan di
+   Claude Design — King Rezi memutuskan pola `Card`+`Table` sebagai
+   standar baru untuk list ini, menyimpang sengaja dari dokumentasi
+   Claude Design saat ini).
+4. **Garis bawah header table (`/settings/.../members`, dan berlaku
+   untuk SEMUA komponen `Table` di project ini)** — seharusnya ada
+   **2 garis** di bawah `TableHeader`/`thead`, bukan 1. Perlu dicek
+   lewat MCP shadcn (`view_items_in_registries`/`shadcn view
+   @shadcn/table`) untuk cara implementasi yang tepat sebelum
+   diterapkan ke seluruh instance `Table`.
+5. **Connected Accounts (`/settings/connected-accounts`)** — alasan
+   sama seperti poin 1 & 3: seharusnya `Card` + `Table` shadcn tanpa
+   header kolom.
+
+**Catatan penting:** poin 1, 3, 5 memutuskan pola `Card`+`Table` tanpa
+header kolom sebagai standar baru untuk ketiga list ini — ini
+**mengubah pola yang saat ini terdokumentasi di Claude Design** (mis.
+`.ws-pick-item` untuk workspace picker). Sesuai rule 16 (`AGENTS.md`)
+dan `.claude/skills/claude-design-scope-discipline/SKILL.md`, perubahan
+pola di Claude Design harus dilakukan dulu (lewat `DesignSync`/Neymar
+Product Designer) sebelum implementasi kode menyimpang permanen dari
+dokumentasi — bukan diam-diam dibiarkan divergen. Poin 4 (2 garis
+header table) juga scope-nya lintas komponen (semua `Table`), bukan
+cuma Members — perlu dicek dulu apakah ini juga perubahan pola Claude
+Design atau murni bug implementasi shadcn yang belum sesuai token asli.
+Tidak memblokir M8.
+
 ---
 
 ## Blockers
