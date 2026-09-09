@@ -63,6 +63,32 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 
 **Total:** 85 task · 33 selesai · 211 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-08, T-034.2/T-034.3 selesai — KI-048 Resolved):**
+> **T-034** (Publishing History + detail post, `tasks/v02-publishing-mvp.md`)
+> tetap `🟡 In Progress` (3/4 subtask tuntas) — draft Claude Design T-034.2/
+> T-034.3 direview bareng King Rezi di chat, dikonfirmasi 5 poin (App
+> Prototype wajib dipasang dulu, filter cukup Status+Akun, grouping per
+> tanggal pola Queue, tombol retry visual-only karena T-034.4 belum
+> dikerjakan, link "Lihat post asli" disabled bukan hilang kalau kosong).
+> App Prototype diwire (main agent, deviasi eksplisit sama seperti draft
+> awal) — History tab sekarang bisa diklik penuh, diverifikasi match
+> remote. **KI-048 ditutup Resolved.** Implementasi kode (Prabowo Feature
+> Engineer): `group-history-items.ts`, `HistoryList.tsx`, `HistoryDetail.tsx`,
+> `history-status.ts` + wiring `page.tsx`/`[postId]/page.tsx` — reuse
+> komponen shadcn existing, tanpa field baru di `HistoryItemRecord`
+> (konsisten KI-049). Lolos review arsitektur Ridwan (0 temuan blocking; 1
+> catatan non-blocking `Badge` shadcn belum ada varian success → **KI-051**
+> baru). QA Najwa: 248 test pass/4 skipped, 1 bug ditemukan (`postId`
+> non-UUID di `/publish/history/[postId]` crash 500) dan sudah diperbaiki +
+> diverifikasi ulang (`getHistoryById` treat `PrismaClientKnownRequestError`
+> P2007/P2023 sebagai not-found). Gap meta author di halaman detail
+> dicatat **KI-050** (di luar scope, menunggu keputusan King Rezi). Sisa
+> T-034: **T-034.4** (retry manual, ADR-092). Hitungan task/subtask tidak
+> berubah (85 task, 33 selesai, 211 subtask — hanya status checklist
+> T-034.2/T-034.3 yang berubah), dihitung ulang langsung dari
+> `tasks/v02-publishing-mvp.md`. Detail: `tasks/v02-publishing-mvp.md`
+> § T-034, `COMPLETE_TASK.md`.
+
 > **Update (2026-09-08, T-034.1 selesai):** **T-034** (Publishing History +
 > detail post, `tasks/v02-publishing-mvp.md`) naik status `⏳ Not Started` →
 > `🟡 In Progress` — subtask **T-034.1** (query riwayat + status per target)
@@ -417,7 +443,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | **T-097** | Migrasi Auth Flows & Onboarding                  | ✅      | **Selesai (2026-09-02)** — 5/5 subtask (Login/Register, Forgot/Reset password, Accept Invite, `(auth)/layout.tsx`, Onboarding), lolos review Ridwan (0 temuan) + QA Najwa (semua PASS). Gap desain token `--success`/`--warning` Stone theme dicatat **KI-041** — **Resolved 2026-09-04** (ADR-098, King Rezi memutuskan menambah 4 token baru ke Stone theme). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-097 |
 | **T-096** | Migrasi Core Infra & Shared Primitives           | ✅      | **Selesai (2026-09-01)** — `globals.css`, `Providers.tsx`, root `app/(app)/layout.tsx`, primitive `Button`/`Card`/`Dialog`/`Input`/`Text`. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-096 untuk detail & 2 keputusan penting (CSS/Theme Astryx dipertahankan sementara) |
 | **T-095** | Setup Fondasi shadcn/ui & Tooling Migrasi        | ✅      | **Selesai (2026-09-01)** — task pertama rilis v0.7 (migrasi Astryx→shadcn/ui, ADR-097), seluruh 7 subtask tuntas: T-095.1 (init shadcn/ui, base Radix + preset Maia), T-095.2 (MCP server shadcn di `.mcp.json`+`.cursor/mcp.json`), T-095.3 (tulis ulang `apps/web/.claude/CLAUDE.md` ke workflow shadcn CLI/MCP), T-095.4 (rule 14/15 `AGENTS.md`, sudah selesai lebih dulu di commit `07a3aa2`), T-095.5 (pemetaan Stone→shadcn di `design-tokens.md`), T-095.6 (update subagent Mark UI Engineer ke shadcn, izin eksplisit King Rezi), T-095.7 (sinkronisasi docs baseline) |
-| **T-034** | Publishing History + detail post                | 🟡      | T-034.1 (query riwayat) selesai (2026-09-08). T-034.2/.3 menunggu review desain (draft belum dikonfirmasi, **KI-048**), T-034.4 belum dikerjakan. Lihat `tasks/v02-publishing-mvp.md` § T-034 |
+| **T-034** | Publishing History + detail post                | 🟡      | T-034.1–.3 selesai (2026-09-08) — desain dikonfirmasi King Rezi, App Prototype diwire, **KI-048 Resolved**. Tersisa **T-034.4** (retry manual, ADR-092). Lihat `tasks/v02-publishing-mvp.md` § T-034 |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
 | **T-036** | In-app notification + Supabase Realtime         | 🟡      | T-036.1/.2/.3 selesai. T-036.4 dibuka kembali (2026-09-01) — gap visual vs Claude Design belum terverifikasi di browser (lihat KI-040). Tersisa T-036.4 (verifikasi visual) dan T-036.5 (trigger dari webhook) |
 

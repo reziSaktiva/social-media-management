@@ -22,11 +22,11 @@ import {
   type PublishingScheduleRecord,
   type QueueItemRecord,
 } from "@/domains/publishing";
-import type {
+import {
   Prisma,
-  PublishingPost,
-  PublishingPostTarget,
-  WorkspaceConnectedAccount,
+  type PublishingPost,
+  type PublishingPostTarget,
+  type WorkspaceConnectedAccount,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import {
@@ -44,6 +44,26 @@ import {
  * implementasi repository ini.
  */
 class ScheduleOwnershipGuardFailed extends Error {}
+
+/**
+ * Guard bug T-034.2/T-034.3 (laporan QA Najwa, 2026-09-08): kolom `id`
+ * bertipe `uuid` di Postgres — `postId` dari URL segment `[postId]` yang
+ * bukan format UUID valid (mis. "not-a-valid-uuid") membuat Postgres
+ * menolak query dengan "invalid input syntax for type uuid" sebelum
+ * sempat mengevaluasi kondisi `WHERE`, jadi Prisma melempar
+ * `PrismaClientKnownRequestError` (bukan return `null` seperti kasus
+ * "tidak ketemu" biasa). Konsisten pola `isRecordNotFound` di
+ * `workspace.repository.ts`: treat sebagai "tidak ketemu" di sini
+ * (repository), bukan dibiarkan bocor sebagai Prisma error mentah ke
+ * `PublishingService` (AGENTS.md #6) — caller (`getHistoryById`) tetap
+ * cukup menangani `null` seperti kasus not-found lainnya.
+ */
+function isInvalidIdFormat(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2007" || error.code === "P2023")
+  );
+}
 
 function mapPost(post: PublishingPost): PublishingPostRecord {
   return {
@@ -603,24 +623,32 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async getHistoryById({ workspaceId, postId }, userId) {
-    const post = await withCurrentUser(userId, (tx) =>
-      tx.publishingPost.findFirst({
-        where: {
-          id: postId,
-          workspaceId,
-          deletedAt: null,
-          // Invariant "history = post selesai" ditegakkan langsung di
-          // sini (beda dari `listHistory`, tidak ada input `statuses`
-          // untuk method single-item ini).
-          status: { in: [...HISTORY_TERMINAL_STATUSES] },
-        },
-        include: {
-          targets: {
-            include: { connectedAccount: true },
+    let post;
+    try {
+      post = await withCurrentUser(userId, (tx) =>
+        tx.publishingPost.findFirst({
+          where: {
+            id: postId,
+            workspaceId,
+            deletedAt: null,
+            // Invariant "history = post selesai" ditegakkan langsung di
+            // sini (beda dari `listHistory`, tidak ada input `statuses`
+            // untuk method single-item ini).
+            status: { in: [...HISTORY_TERMINAL_STATUSES] },
           },
-        },
-      }),
-    );
+          include: {
+            targets: {
+              include: { connectedAccount: true },
+            },
+          },
+        }),
+      );
+    } catch (error) {
+      if (isInvalidIdFormat(error)) {
+        return null;
+      }
+      throw error;
+    }
 
     return post ? mapHistoryItem(post) : null;
   },

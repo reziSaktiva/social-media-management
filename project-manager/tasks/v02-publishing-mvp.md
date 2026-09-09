@@ -299,14 +299,14 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 | **Domain**    | publishing                                                   |
 | **ADR**       | ADR-046                                                      |
 | **Depends**   | T-026 (status akhir *real* datang dari webhook — tidak memblokir T-034.1, lihat catatan 2026-09-08) |
-| **Terkait**   | KI-048 (draft Claude Design belum direview), KI-049 (gap `failedAt`/`failureReason`) |
+| **Terkait**   | KI-048 (Resolved 2026-09-08 — App Prototype diwire + desain dikonfirmasi King Rezi), KI-049 (gap `failedAt`/`failureReason`), KI-050 (gap meta author di halaman detail post), KI-051 (Badge shadcn belum ada varian success) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                                |
 
 Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai placeholder.
 
 - [x] **T-034.1** Query riwayat + status per target (published / error)
-- [ ] **T-034.2** UI daftar riwayat + filter
-- [ ] **T-034.3** Halaman detail post: hasil per akun, pesan error, link ke post asli
+- [x] **T-034.2** UI daftar riwayat + filter
+- [x] **T-034.3** Halaman detail post: hasil per akun, pesan error, link ke post asli
 - [ ] **T-034.4** Aksi retry manual untuk target yang gagal
 
 **Catatan (ADR-092, 2026-08-26):** Outstand API tidak punya endpoint retry
@@ -353,6 +353,64 @@ dikonfirmasi eksplisit. Dikerjakan langsung oleh main agent (bukan
 didelegasikan ke Neymar Product Designer) atas instruksi eksplisit King
 Rezi di sesi ini — deviasi dari mandat wajib Neymar di
 `.claude/agents/neymar-product-designer.md`, bukan inisiatif AI.
+
+**Selesai T-034.2/T-034.3 (2026-09-08) — KI-048 Resolved.** Draft Claude
+Design di atas direview bareng King Rezi di chat (Artifact review dari
+`templates/publish-history.html`/`templates/publish-history-detail.html`
+memakai token desain asli). King Rezi mengonfirmasi 5 poin: (1) App
+Prototype wajib dipasang dulu — ditemukan saat itu juga bahwa tab History
+belum terdaftar di runner interaktif (`SCREENS`, tab handler, redirect
+Publish Now di `templates/app-prototype/AppPrototype.dc.html` masih toast
+"belum masuk scope MVP" + stand-in ke Calendar); (2) filter cukup 2
+dropdown (Status/Akun), tanpa date range/search; (3) grouping per tanggal
+di list sudah sesuai pola Queue; (4) tombol "Coba Lagi" (retry) posisi/
+label sudah final tapi murni visual — belum diwire karena T-034.4 belum
+dikerjakan; (5) link "Lihat post asli" disabled (bukan hilang) kalau
+`platformPostUrl` kosong. Main agent (bukan Neymar — deviasi eksplisit
+yang sama seperti draft awal) langsung menutup gap App Prototype: entry
+`publish-history`/`publish-history-detail` ditambahkan ke `SCREENS`, tab
+click handler `route()` diarahkan ke `publish-history` (bukan toast lagi),
+redirect `publishnow-confirm` diarahkan ke `publish-history` (bukan
+stand-in `publish-calendar`) — sudah di-push ke Claude Design dan
+diverifikasi remote match persis. **KI-048 Resolved** — draft sudah
+terkonfirmasi King Rezi dan App Prototype sudah bisa diklik penuh.
+
+Implementasi kode dikerjakan Prabowo Feature Engineer: file baru
+`apps/web/src/domains/publishing/services/group-history-items.ts`
+(+`.test.ts`), `apps/web/src/app/(app)/publish/history/history-status.ts`,
+`apps/web/src/app/(app)/publish/history/components/HistoryList.tsx`,
+`apps/web/src/app/(app)/publish/history/[postId]/components/HistoryDetail.tsx`;
+file diubah `apps/web/src/app/(app)/publish/history/page.tsx`,
+`.../history/[postId]/page.tsx`, `apps/web/src/domains/publishing/index.ts`,
+`apps/web/src/app/(app)/publish/components/PublishPageHeader.tsx`. T-034.4
+(retry manual) sengaja tidak diimplementasikan — tombol retry di UI murni
+visual + disabled. Tidak ada field baru ditambahkan ke
+`HistoryItemRecord`/`HistoryItemTargetRecord` (konsisten KI-049). Reuse
+komponen shadcn existing (`Card`, `Item`/`ItemGroup`, `Badge`, `Select`,
+`Empty`, `Text`, `Separator`, `Button`, `Tooltip`) — tidak ada komponen
+baru. Review arsitektur Ridwan **lolos tanpa temuan blocking** — satu
+catatan non-blocking: `Badge` shadcn belum punya varian "success" (dipakai
+`default` sebagai pengganti untuk status "Published"), dicatat **KI-051**.
+
+QA Najwa QA Engineer: test suite 248 pass/4 skipped/0 fail + verifikasi
+browser end-to-end, golden path dan hampir semua edge case PASS. 1 bug
+ditemukan: `/publish/history/[postId]` dengan `postId` format bukan UUID
+crash HTTP 500 (seharusnya `notFound()`). Diperbaiki Prabowo di
+`apps/web/src/lib/repositories/publishing/publishing.repository.ts`
+(method `getHistoryById`) — tangkap `PrismaClientKnownRequestError` kode
+`P2007`/`P2023`, treat sebagai "tidak ketemu" (return `null`), pola sama
+`isRecordNotFound` di `workspace.repository.ts`. Diverifikasi ulang:
+typecheck/lint/test tetap hijau (248 pass), 3 skenario manual (postId
+invalid → 404, UUID valid tak ada → 404, UUID valid & ada → 200) semua
+benar.
+
+**Gap didokumentasikan (bukan diputuskan sendiri):** meta "dibuat oleh
+siapa" di halaman detail post sengaja dihilangkan dari desain awal —
+`HistoryItemRecord` tidak membawa data `authorId`, di luar scope T-034.2/
+.3 untuk menambahkannya — dicatat **KI-050**, menunggu keputusan King
+Rezi apakah field ini wajib. Task ini tetap `🟡 In Progress` — sisa
+**T-034.4** (retry manual, ADR-092: pola delete-lalu-create-ulang, bukan
+re-trigger job).
 
 ### T-035 · Delete Post + dialog konfirmasi
 

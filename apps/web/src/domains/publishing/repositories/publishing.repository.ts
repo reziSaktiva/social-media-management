@@ -403,7 +403,12 @@ export interface IPublishingRepository {
    * `Published`/`Failed` (post yang belum selesai publish bukan
    * "history" — invariant sama dengan `listHistory`, ditegakkan langsung
    * di implementasi Prisma karena tidak ada input `statuses` yang bisa
-   * dipersempit di sini).
+   * dipersempit di sini). Juga returns `null` (bukan throw) kalau
+   * `postId` bukan format UUID valid — implementasi Prisma menangkap
+   * `PrismaClientKnownRequestError` (P2007/P2023, "invalid input syntax
+   * for type uuid") dan memperlakukannya sama seperti "tidak ketemu",
+   * supaya route `[postId]` yang menerima ID mentah dari URL tetap jatuh
+   * ke `notFound()`, bukan 500 (bug T-034.2/T-034.3, QA Najwa 2026-09-08).
    *
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */

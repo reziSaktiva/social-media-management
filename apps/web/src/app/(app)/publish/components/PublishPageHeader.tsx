@@ -14,7 +14,7 @@ const TAB_SUBTITLE: Record<string, string> = {
   calendar: "Jadwal publish dalam tampilan kalender",
   queue: "Antrean linear berdasarkan waktu publish",
   drafts: "Draft yang belum terjadwal",
-  history: "Riwayat post yang sudah dipublikasikan",
+  history: "Riwayat post yang sudah diproses — published maupun error",
 };
 
 /**
