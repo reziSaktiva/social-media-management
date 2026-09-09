@@ -18,10 +18,12 @@ export const CONTENT_STATUS_LABEL: Record<ContentStatus, string> = {
 
 /**
  * Status → shadcn `Badge` variant (T-102 cleanup, ADR-097). `badge.tsx`
- * sekarang punya variant `warning` (token `--warning`, ADR-098) — dipakai di
- * sini untuk `InReview`/`Scheduled` supaya tetap beda warna dari
+ * punya variant `warning` (token `--warning`, ADR-098) — dipakai di sini
+ * untuk `InReview`/`Scheduled` supaya tetap beda warna dari
  * `Draft`/`ReadyToSchedule` yang berbagi tahap yang sama (code review PR
- * #105), bukan cuma beda label teks.
+ * #105), bukan cuma beda label teks. `Published` memakai variant `success`
+ * (token `--success`, ADR-098, di-wire ke `Badge` saat penutupan KI-051)
+ * supaya konsisten dengan mockup Claude Design (`components/status-chips.html`).
  */
 export const CONTENT_STATUS_BADGE_VARIANT: Record<ContentStatus, BadgeVariant> =
   {
@@ -29,6 +31,6 @@ export const CONTENT_STATUS_BADGE_VARIANT: Record<ContentStatus, BadgeVariant> =
     [ContentStatus.InReview]: "warning",
     [ContentStatus.ReadyToSchedule]: "secondary",
     [ContentStatus.Scheduled]: "warning",
-    [ContentStatus.Published]: "default",
+    [ContentStatus.Published]: "success",
     [ContentStatus.Failed]: "destructive",
   };
