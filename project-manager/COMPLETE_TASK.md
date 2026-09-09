@@ -8,6 +8,31 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-09 — T-014.1 (Dialog konfirmasi disconnect di Claude Design) diverifikasi & ditandai `✅ Done`
+
+King Rezi menanyakan status T-014.1, lalu menyampaikan dialog konfirmasi
+disconnect sudah ada di App Prototype Claude Design. Diverifikasi lewat
+`DesignSync` (`list_files` + `get_file` pada project "Social Media
+Management") — `templates/settings-connected-accounts.html` memang sudah
+memuat AlertDialog Tier 2 (KSP-08-F07, ADR-048) lengkap: judul dinamis
+platform/handle, sub-teks penjelasan post terjadwal tetap di antrean,
+tombol Batal/Putuskan Koneksi, dan wiring open/close/escape/backdrop-click.
+Ada comment eksplisit `<!-- T-014.1 — Disconnect Confirmation (KSP-08-F07,
+ADR-048) -->` di file tersebut, dan integrasi dengan `AppPrototype.dc.html`
+(`openDisconnectDialog`) sudah dihindari duplikasi lewat guard
+`window.top !== window.self`.
+
+Setelah konfirmasi King Rezi, diupdate:
+- `tasks/v01-foundation.md` § T-014 — checkbox T-014.1 jadi `[x]`, Status
+  task naik dari `⏳ Not Started` ke `🟡 In Progress` (T-014.2 dan T-014.3
+  masih belum dikerjakan — implementasi kode nyata `disconnectAccount` +
+  RBAC gate, dan UI dialog konfirmasi di kode nyata apps/web).
+- `TASKS.md` — breakdown v0.1 di indeks release (5 🟡 → 6 🟡, 2 ⏳ → 1 ⏳),
+  ditambah catatan rilis singkat di bagian Catatan Rilis.
+
+Tidak ada perubahan kode `apps/web` di sesi ini — murni verifikasi status
+dokumentasi terhadap Claude Design.
+
 ## 2026-09-09 — T-034.4 (Retry manual publishing) selesai, T-034 tuntas 4/4 subtask `✅ Done`, ADR-103, KI-052 baru
 
 Sesi lanjutan T-034 (Publishing History + detail post), menutup sisa

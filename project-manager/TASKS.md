@@ -52,7 +52,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
-| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 🟡 14 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 2 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
+| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 🟡 14 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · 1 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 12 ✅ · 2 🟡 · 8 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
@@ -554,6 +554,8 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 > **T-089** (Workspace Switcher deliberate, ADR-088) sudah ✅ **Done** (2026-08-24) — seluruh subtask T-089.1–.5 selesai, lolos review Ridwan + QA Najwa; **T-089.6** ditambah sesi yang sama (dialog konfirmasi Tier 2 sebelum switch, ADR-089) — sudah lewat QA Najwa formal, KI-034 Resolved 2026-08-24. Detail: `tasks/v01-foundation.md` § T-089.
 
 > **T-093** (Accept Invite page) sudah ✅ **Done** (2026-08-31) — 4/4 subtask selesai, verifikasi RBAC end-to-end (Najwa QA Engineer, 3 akun real Owner/Admin/Creator) tuntas, 1 bug ditemukan & diperbaiki selama verifikasi (KI-038 Resolved). Detail: `tasks/v01-foundation.md` § T-093.
+
+> **T-014.1** (Dialog konfirmasi disconnect di App Prototype Claude Design) ditandai ✅ **Done** (2026-09-09) — diverifikasi lewat `DesignSync` bahwa `templates/settings-connected-accounts.html` sudah memuat AlertDialog Tier 2 (KSP-08-F07, ADR-048) lengkap dengan wiring. **T-014.2** (kode nyata + RBAC gate) dan **T-014.3** (UI dialog konfirmasi di kode nyata) masih `⏳ Not Started` — task **T-014** naik status dari ⏳ ke 🟡 **In Progress**. Detail: `tasks/v01-foundation.md` § T-014.
 
 **Rantai blocker terbesar:** T-025 (Real OutstandAdapter) → T-027 (job runner). **T-026 (webhook) sudah ✅ Done (2026-09-07)** — inbound webhook processing tidak butuh Real OutstandAdapter untuk berjalan (`FakeOutstandAdapter` tetap dipakai jalur produksi, ADR-059), jadi rantai sekarang lebih pendek. Sisa T-025 dan T-027 tetap mengunci sebagian besar v0.2 (T-024, T-034), seluruh v0.3, dan seluruh v0.4. Menyelesaikan T-025 membuka lebih banyak pekerjaan daripada task lain manapun.
 
