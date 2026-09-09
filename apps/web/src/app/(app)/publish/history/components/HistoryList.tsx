@@ -63,7 +63,7 @@ function formatItemTime(date: Date): string {
  */
 function getPrimaryErrorMessage(item: HistoryItemRecord): string {
   const failedTarget = item.targets.find(
-    (target) => target.status === "failed" && target.error,
+    (target) => target.status === "failed" && target.error != null,
   );
   return failedTarget?.error ?? "Gagal dipublikasikan.";
 }
