@@ -76,8 +76,14 @@ function createFakeRepository(
     countScheduledByAccount: async () => new Map(),
     listQueue: async () => [],
     listCalendarPosts: async () => [],
+    listHistory: async () => [],
+    getHistoryById: async () => null,
     cancelSchedule: async () => null,
     markPostFailed: async () => undefined,
+    getRetryTarget: async () => null,
+    resetTargetForRetry: async () => undefined,
+    setRetryOutstandPostId: async () => undefined,
+    reconcilePostStatusAfterRetry: async () => undefined,
     findPostTargetsByOutstandPostId: async () => null,
     ...overrides,
   } satisfies IPublishingRepository;
@@ -110,6 +116,7 @@ function createFakeAdapter(
     publishNow: async () => ({ outstandPostId: "unused" }),
     fetchPostOutcome,
     cancelScheduledPost: async () => undefined,
+    deletePost: async () => undefined,
     fetchPostMetrics: async () => ({
       impressions: 0,
       reach: 0,

@@ -202,6 +202,32 @@ export interface IOutstandAdapter {
   cancelScheduledPost(outstandPostId: string): Promise<void>;
 
   /**
+   * Retry manual (T-034.4, ADR-092) — Outstand tidak punya endpoint retry
+   * resmi; rekomendasi dokumentasi resminya adalah hapus post yang gagal
+   * (`delete-a-post-from-social-networks`) lalu buat post baru
+   * (`create-a-post`), bukan re-trigger job yang sama. Method ini memetakan
+   * langkah "hapus" itu.
+   *
+   * **Keputusan scope (dikonfirmasi King Rezi, bukan asumsi):** retry hanya
+   * me-recreate TARGET yang gagal (satu akun), BUKAN seluruh post — target
+   * lain di post yang sama yang sudah `published` tidak disentuh. Karena
+   * itu, `accountIds` opsional membatasi penghapusan ke akun tertentu saja
+   * di dalam `outstandPostId`; kosongkan untuk menghapus seluruh post
+   * (dipakai jalur lain di luar retry, kalau ada). Recreate target yang
+   * gagal memakai `publishNow`/`schedulePost` yang sudah ada (dipanggil
+   * dengan array `targets` berisi 1 target) — TIDAK ada method create baru
+   * di kontrak ini untuk itu.
+   *
+   * Best-effort di level use-case (pola sama seperti `cancelScheduledPost`:
+   * kegagalan panggilan ini di real adapter nanti cukup di-log oleh
+   * pemanggil, bukan dilempar ke user) — tapi di level adapter, method ini
+   * tetap boleh throw error seperti method lain kalau real adapter (T-025)
+   * gagal memanggil Outstand; pemanggil (use-case publishing) yang
+   * menentukan bagaimana error itu ditangani.
+   */
+  deletePost(outstandPostId: string, accountIds?: string[]): Promise<void>;
+
+  /**
    * Analytics (T-041) — metrik satu post yang sudah dipublikasikan.
    * `outstandPostId` adalah external reference post-level dari
    * `PublishingPost.outstandPostId` (redesain 2026-08-26 — dulu per-target

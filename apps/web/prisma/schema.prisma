@@ -256,26 +256,38 @@ model PublishingPost {
 }
 
 model PublishingPostTarget {
-  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId             String   @map("post_id") @db.Uuid
-  connectedAccountId String   @map("connected_account_id") @db.Uuid
-  platform           String
-  contentFormat      String   @default("post") @map("content_format")
-  platformOptions    Json?    @map("platform_options")
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId              String   @map("post_id") @db.Uuid
+  connectedAccountId  String   @map("connected_account_id") @db.Uuid
+  platform            String
+  contentFormat       String   @default("post") @map("content_format")
+  platformOptions     Json?    @map("platform_options")
   // Redesain ACL Outstand (2026-08-26, ADR baru): `outstandJobId` (dulu
   // per-target job id, model yang salah — Outstand tidak punya job per
   // akun) diganti `platformPostId` — ID post di platform ASLI (Instagram,
   // dst.), BEDA dari `outstandPostId` post-level di `PublishingPost`.
   // Diisi belakangan via `OutstandAdapter.fetchPostOutcome` (polling) atau
   // webhook (T-026), bukan sinkron dari `schedulePost`/`publishNow`.
-  platformPostId     String?  @map("platform_post_id")
-  status             String   @default("pending")
+  platformPostId      String?  @map("platform_post_id")
+  status              String   @default("pending")
   // Redesain 2026-08-26: `publishedUrl` → `platformPostUrl`, sumber data
   // sama seperti `platformPostId` di atas (async, per akun).
-  platformPostUrl    String?  @map("platform_post_url")
-  error              String?
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  platformPostUrl     String?  @map("platform_post_url")
+  error               String?
+  // Retry manual (T-034.4, ADR-092) — id post-level BARU dari
+  // `OutstandAdapter.publishNow` khusus untuk recreate TARGET INI SAJA
+  // (keputusan scope: retry single-target, bukan seluruh post). BEDA dari
+  // `PublishingPost.outstandPostId`, yang tetap merepresentasikan create
+  // original untuk SEMUA target awal dan tidak disentuh oleh retry —
+  // konsekuensinya target yang berhasil di-retry punya id post-level
+  // sendiri yang berbeda dari saudara-saudaranya di post yang sama. Dipakai
+  // sebagai argumen `fetchPostOutcome` untuk resolve outcome retry ini
+  // (bukan `PublishingPost.outstandPostId`, yang outcome-nya sudah tidak
+  // relevan untuk target yang sedang di-retry). Nullable — kosong sampai
+  // retry pertama kali dijalankan untuk target ini.
+  retryOutstandPostId String?  @map("retry_outstand_post_id")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   post             PublishingPost            @relation(fields: [postId], references: [id], onDelete: Cascade)
   connectedAccount WorkspaceConnectedAccount @relation(fields: [connectedAccountId], references: [id], onDelete: Cascade)

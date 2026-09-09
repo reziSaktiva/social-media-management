@@ -154,6 +154,80 @@ export interface CalendarItemRecord {
   targets: CalendarItemTargetRecord[];
 }
 
+/**
+ * Status outcome satu `PublishingPostTarget` (T-034.1) — union yang sama
+ * dengan parameter `updateTargetOutcome` di bawah, ditambah nilai awal
+ * `"pending"` (baris baru dibuat oleh `schedulePost`/`publishNow`, belum
+ * pernah di-update outcome-nya). Ditaruh di sini (bukan `packages/shared`)
+ * karena belum ada BC lain yang mengonsumsinya — konsisten alasan
+ * `SnapshotPeriod` di domain analytics (T-040).
+ */
+export type PublishingPostTargetStatus =
+  "pending" | "scheduled" | "published" | "failed";
+
+/**
+ * Satu target (akun + platform) untuk History (T-034.1) — `QueueItemTargetRecord`
+ * + outcome final per akun: `status`/`error` (diisi `updateTargetOutcome`,
+ * dipanggil sinkron oleh `PublishNowUseCase`/`SchedulePostsUseCase` untuk
+ * hasil yang sudah diketahui saat itu juga, dan nantinya oleh handler
+ * webhook T-026 untuk hasil async) + `platformPostUrl` (sama field yang
+ * dipakai `CalendarItemTargetRecord`, untuk link "ke post asli" di UI
+ * detail T-034.3).
+ */
+export interface HistoryItemTargetRecord extends QueueItemTargetRecord {
+  status: PublishingPostTargetStatus;
+  platformPostUrl: string | null;
+  error: string | null;
+}
+
+/**
+ * Satu `PublishingPost` untuk History (T-034.1, KSP-D10) — beda dari
+ * `CalendarItemRecord` (mencakup semua status), History HANYA mencakup
+ * post yang percobaan publish-nya sudah SELESAI: `Published` atau
+ * `Failed` — begitu percobaan publish selesai, item pindah dari
+ * Queue/Calendar ke History (KSP-03, catatan T-033). `targets` membawa
+ * outcome final per akun untuk UI daftar (T-034.2) dan detail (T-034.3).
+ *
+ * `updatedAt` disertakan (beda dari `CalendarItemRecord`/`QueueItemRecord`)
+ * karena dipakai sebagai proksi "waktu selesai" untuk pengurutan — lihat
+ * catatan gap `failedAt`/`failureReason` di `IPublishingRepository.listHistory`.
+ */
+export interface HistoryItemRecord {
+  id: PostId;
+  caption: string;
+  status: ContentStatus;
+  scheduledAt: Date | null;
+  publishedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  targets: HistoryItemTargetRecord[];
+}
+
+/**
+ * Satu target + data post induk yang dibutuhkan untuk validasi & recreate
+ * retry manual (T-034.4, ADR-092). `postOutstandPostId` adalah
+ * `PublishingPost.outstandPostId` post-level (dari create ORIGINAL yang
+ * mencakup semua target awal, termasuk target yang gagal ini) — dipakai
+ * use-case untuk memutuskan apakah `outstandAdapter.deletePost` perlu
+ * dipanggil (skip kalau `null`, tidak ada apa pun untuk dihapus di sisi
+ * Outstand). `outstandAccountId` dari `WorkspaceConnectedAccount` (bukan
+ * `connectedAccountId` Prisma) — dibutuhkan untuk memanggil
+ * `outstandAdapter.deletePost`/`publishNow`.
+ */
+export interface RetryTargetRecord {
+  postId: PostId;
+  workspaceId: WorkspaceId;
+  postOutstandPostId: string | null;
+  caption: string;
+  targetId: PostTargetId;
+  targetStatus: PublishingPostTargetStatus;
+  connectedAccountId: ConnectedAccountId;
+  outstandAccountId: string;
+  platform: SocialPlatform;
+  contentFormat: ContentFormat;
+  platformOptions: Record<string, unknown> | null;
+}
+
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/publishing. */
 export interface IPublishingRepository {
   createDraft(input: {
@@ -345,6 +419,62 @@ export interface IPublishingRepository {
   ): Promise<CalendarItemRecord[]>;
 
   /**
+   * History (T-034.1, KSP-D10) — post berstatus `Published`/`Failed`
+   * (percobaan publish sudah selesai, KSP-03) milik workspace, diurutkan
+   * `updatedAt` descending (paling baru berubah status duluan — proksi
+   * "waktu selesai" karena `PublishingPost.failedAt` tidak pernah diisi
+   * oleh jalur manapun saat ini, lihat gap di bawah).
+   *
+   * `statuses` — caller (`PublishingService.listHistory`) WAJIB sudah
+   * mempersempitnya ke subset `HISTORY_TERMINAL_STATUSES` sebelum
+   * memanggil method ini (invariant "History = post selesai" ditegakkan
+   * di service, bukan di sini) — repository ini murni proyeksi data
+   * terfilter, sama pola dengan `listCalendarPosts`/`listQueue`.
+   * `connectedAccountIds` opsional, sama pola dengan `listCalendarPosts`.
+   *
+   * **Gap diketahui (dilaporkan ke King Rezi, bukan diperbaiki di sini):**
+   * `PublishingPost.failedAt`/`.failureReason` ada di schema tapi TIDAK
+   * PERNAH ditulis oleh jalur manapun (`markPostFailed` hanya mengubah
+   * `status`) — sengaja tidak dimasukkan ke `HistoryItemRecord` supaya
+   * tidak menyesatkan UI dengan field yang selalu `null`. Pesan error
+   * final per akun tetap tersedia lewat `HistoryItemTargetRecord.error`
+   * (diisi `updateTargetOutcome`), sumber data yang benar-benar terisi.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  listHistory(
+    input: {
+      workspaceId: WorkspaceId;
+      statuses?: ContentStatus[];
+      connectedAccountIds?: ConnectedAccountId[];
+    },
+    userId: UserId,
+  ): Promise<HistoryItemRecord[]>;
+
+  /**
+   * Detail satu History item (T-034.1) — mendukung route
+   * `/publish/history/[postId]` (UI-nya T-034.3), supaya composition
+   * root halaman detail tidak perlu query seluruh riwayat workspace
+   * hanya untuk menampilkan satu post. Returns `null` kalau post tidak
+   * ditemukan, bukan milik `workspaceId` ini, ATAU statusnya BUKAN
+   * `Published`/`Failed` (post yang belum selesai publish bukan
+   * "history" — invariant sama dengan `listHistory`, ditegakkan langsung
+   * di implementasi Prisma karena tidak ada input `statuses` yang bisa
+   * dipersempit di sini). Juga returns `null` (bukan throw) kalau
+   * `postId` bukan format UUID valid — implementasi Prisma menangkap
+   * `PrismaClientKnownRequestError` (P2007/P2023, "invalid input syntax
+   * for type uuid") dan memperlakukannya sama seperti "tidak ketemu",
+   * supaya route `[postId]` yang menerima ID mentah dari URL tetap jatuh
+   * ke `notFound()`, bukan 500 (bug T-034.2/T-034.3, QA Najwa 2026-09-08).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  getHistoryById(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<HistoryItemRecord | null>;
+
+  /**
    * Cancel Schedule (T-030.1, ADR-049 Tier 2) — kebalikan dari
    * `schedulePost`: post kembali ke status Draft (`scheduledAt` di-null-kan)
    * dan seluruh `PublishingPostTarget` milik post itu dihapus (post Draft
@@ -401,6 +531,80 @@ export interface IPublishingRepository {
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   markPostFailed(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Retry manual (T-034.4, ADR-092) — ambil satu `PublishingPostTarget` +
+   * data post induk yang dibutuhkan `RetryFailedTargetUseCase` untuk
+   * validasi (post ditemukan, target milik post & workspace ini) dan
+   * recreate (`caption`, `outstandAccountId`, `contentFormat`,
+   * `platformOptions`, `postOutstandPostId` untuk delete best-effort).
+   * Returns `null` kalau post tidak ditemukan di `workspaceId` ini, ATAU
+   * target tidak ditemukan/bukan milik `postId` ini — use-case
+   * memperlakukan `null` sebagai `NotFoundError` generik, tidak
+   * membedakan penyebab (pola sama seperti guard gabungan
+   * `schedulePost`/`publishNow`). Validasi `targetStatus === "failed"`
+   * SENGAJA tidak ditegakkan di sini (repository murni proyeksi data) —
+   * itu domain rule yang ditegakkan use-case, supaya pesan error yang
+   * dilempar bisa spesifik ("retry hanya untuk target gagal") alih-alih
+   * disamakan dengan not-found generik.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  getRetryTarget(
+    input: { workspaceId: WorkspaceId; postId: PostId; targetId: PostTargetId },
+    userId: UserId,
+  ): Promise<RetryTargetRecord | null>;
+
+  /**
+   * Retry manual (T-034.4) — reset SATU target sebelum recreate: status
+   * kembali ke `pending`, outcome percobaan gagal sebelumnya
+   * (`platformPostId`/`platformPostUrl`/`error`) dibersihkan supaya tidak
+   * ada jejak kegagalan lama nyangkut kalau retry ini sukses. Murni state
+   * DB lokal (tidak ada network call) — dipanggil SEBELUM
+   * `outstandAdapter.deletePost`/`publishNow` di use-case, konsisten pola
+   * "persist dulu, network call sesudah" yang sudah dipakai
+   * `schedulePost`/`publishNow`/`cancelSchedule`.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  resetTargetForRetry(
+    input: { targetId: PostTargetId },
+    userId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Retry manual (T-034.4) — persist `PublishingPostTarget.retryOutstandPostId`
+   * (kolom baru, migration `20260909024403_t034_4_retry_outstand_post_id`)
+   * SETELAH `outstandAdapter.publishNow` resolve dengan SATU id post-level
+   * BARU khusus target ini — BEDA dari `PublishingPost.outstandPostId`
+   * (tetap merepresentasikan create original untuk semua target awal,
+   * tidak disentuh retry single-target). Dipakai sebagai argumen
+   * `fetchPostOutcome` berikutnya untuk target yang di-retry ini.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  setRetryOutstandPostId(
+    input: { targetId: PostTargetId; retryOutstandPostId: string },
+    userId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Retry manual (T-034.4) — recompute status `PublishingPost` level-post
+   * SETELAH outcome retry satu target diketahui: kalau TIDAK ADA lagi
+   * target berstatus `failed` di post ini, post naik dari `Failed` ke
+   * `Published` (invariant `HISTORY_TERMINAL_STATUSES`, konsisten semantik
+   * `markPostFailed`/`PublishNowUseCase` — "post = published kalau minimal
+   * 1 target sukses"). Kalau retry masih gagal lagi (minimal satu target
+   * `failed` tersisa), post TETAP `Failed` — tidak diubah. Idempoten
+   * (`updateMany` hanya menyentuh baris yang masih `Failed`), aman
+   * dipanggil berkali-kali.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  reconcilePostStatusAfterRetry(
     input: { workspaceId: WorkspaceId; postId: PostId },
     userId: UserId,
   ): Promise<void>;

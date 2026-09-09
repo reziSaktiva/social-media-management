@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-039 Migrasi Routing & Settings (ADR-076) — ✅ Done** (2026-09-08) — subtask terakhir **T-039.4** (onboarding picker workspace) diimplementasikan, lolos review arsitektur Ridwan (0 temuan) + QA Najwa end-to-end browser (6/6 skenario PASS); **KI-023 Resolved**, entrinya sudah dihapus dari Known Issues (riwayat lengkap di `COMPLETE_TASK.md`). Kode sudah di-commit & push, dibuka sebagai PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) dari branch `feature/t-039-4-onboarding-workspace-picker` ke `staging`, belum di-merge. Sebelumnya: **T-007.8 Members list gabungan Pending (ADR-101) — ✅ Done** (2026-09-07, side-quest di luar rantai utama) — lolos implementasi Prabowo Feature Engineer, review arsitektur Ridwan (1 temuan race condition di `revokeInvitation`, sudah diperbaiki), QA end-to-end Najwa (browser real, semua PASS, 0 bug). **T-026 Webhook handler Outstand — ✅ Done** (2026-09-07) dan **T-036 In-app notification + Supabase Realtime — ✅ Done** (2026-09-07) — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply, Najwa QA Engineer retest 5 skenario webhook end-to-end nyata, semua PASS. **KI-048 Resolved**. ADR-099 (SECURITY DEFINER system-context lookup untuk webhook) dicatat sebagai preseden untuk T-027. Fokus berikutnya kembali ke **T-025 Real OutstandAdapter** (terhenti menunggu kredensial) dan **T-027 Job runner + Railway Cron** — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus. Sebelumnya: **T-102 Cleanup & Verifikasi Akhir — ✅ Done** (rilis v0.7, ADR-097) menuntaskan migrasi Astryx→shadcn/ui 100%; **KI-045**, **KI-041** (ADR-098), **KI-035** sudah Resolved (2026-09-04); **KI-046** Resolved (Promoted to T-007.7, ADR-100, 2026-09-07); **KI-047**, **KI-049** (2026-09-07 — invite Copy Link rawan identity takeover kalau email penerima bukan target undangan & belum punya akun, akar masalah KI-001) dicatat sebagai gap baru/Open — **KI-049 tidak terkait/tidak berubah statusnya** oleh selesainya T-007.8, masih genuinely Open.
+* **Top Next Tasks:** **T-034 Publishing History + detail post** (rilis v0.2) sekarang **✅ Done** (2026-09-09) — seluruh 4/4 subtask tuntas: query riwayat, UI daftar riwayat + filter, halaman detail post, dan **T-034.4** (retry manual per-target, **ADR-103** melengkapi ADR-092 — scope single-target, bukan whole-post, untuk hindari duplikat konten). Lolos review Ridwan (0 temuan blocking) dan QA Najwa (259 test pass, verifikasi browser golden path + edge case semua PASS). 1 Known Issue baru non-blocking: **KI-052** (hydration warning `formatRelativeTime` di `HistoryList.tsx`). 3 Known Issue lama masih **Open**, belum berubah statusnya oleh penutupan T-034.4: **KI-049** (gap `failedAt`/`failureReason`), **KI-050** (gap meta author di halaman detail), **KI-051** (`Badge` shadcn belum ada varian success). Digabung (merge `staging`) dengan pekerjaan paralel: **T-039 Migrasi Routing & Settings (ADR-076) — ✅ Done** (2026-09-08) — subtask terakhir **T-039.4** (onboarding picker workspace) diimplementasikan, lolos review arsitektur Ridwan (0 temuan) + QA Najwa end-to-end browser (6/6 skenario PASS); **KI-023 Resolved**. Sebelumnya: **T-007.8 Members list gabungan Pending (ADR-101) — ✅ Done** (2026-09-07, side-quest di luar rantai utama) — lolos implementasi Prabowo Feature Engineer, review arsitektur Ridwan (1 temuan race condition di `revokeInvitation`, sudah diperbaiki), QA end-to-end Najwa (browser real, semua PASS, 0 bug). **T-026 Webhook handler Outstand — ✅ Done** (2026-09-07) dan **T-036 In-app notification + Supabase Realtime — ✅ Done** (2026-09-07) — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply, Najwa QA Engineer retest 5 skenario webhook end-to-end nyata, semua PASS. **KI-048 Resolved**. ADR-099 (SECURITY DEFINER system-context lookup untuk webhook) dicatat sebagai preseden untuk T-027. Fokus berikutnya: **T-025 Real OutstandAdapter** (terhenti menunggu kredensial), **T-027 Job runner + Railway Cron**, dan **T-037** (Perkaya aturan coding, kontinu by design, `🟡 In Progress`) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus. Sebelumnya: **T-102 Cleanup & Verifikasi Akhir — ✅ Done** (rilis v0.7, ADR-097) menuntaskan migrasi Astryx→shadcn/ui 100%; **KI-045**, **KI-041** (ADR-098), **KI-035** sudah Resolved (2026-09-04); **KI-046** Resolved (Promoted to T-007.7, ADR-100, 2026-09-07); **KI-047**, **KI-053** (2026-09-07 — invite Copy Link rawan identity takeover kalau email penerima bukan target undangan & belum punya akun, akar masalah KI-001; direnumber dari KI-049 semula saat merge `staging` — nomor itu sudah dipakai lebih dulu oleh Known Issue lain, gap `failedAt`/`failureReason`, di cabang ini) dicatat sebagai gap baru/Open — **KI-053 tidak terkait/tidak berubah statusnya** oleh selesainya T-007.8, masih genuinely Open.
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 85 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.76     |
+| Version      | 1.0.77     |
 | Status       | Active     |
-| Last Updated | 2026-09-08 |
+| Last Updated | 2026-09-09 |
 
 ---
 
@@ -347,7 +347,7 @@ email, lalu diupdate jadi `Active` saat user accept. Implementasi konkret
 menunggu T-005 selesai — dipindah jadi bagian scope resmi **T-007.7**,
 bukan lagi Known Issue berdiri sendiri.
 
-### KI-049 · Invite via Copy Link — email tidak diverifikasi kepemilikan inbox, rawan identity takeover
+### KI-053 · Invite via Copy Link — email tidak diverifikasi kepemilikan inbox, rawan identity takeover
 
 | Field | Value |
 |-------|-------|
@@ -390,6 +390,112 @@ Belum ada keputusan mitigasi (opsi yang mungkin: tunda Copy Link sampai
 T-005/email verification selesai, atau tambahkan verifikasi email terpisah
 khusus alur accept-invite). Tidak memblokir M8 saat ini, tapi risiko
 keamanan nyata untuk Copy Link yang sudah dipakai di production.
+
+### KI-048 · Draft Claude Design T-034 (Publish History) belum direview King Rezi — Resolved
+
+| Field | Value |
+|-------|-------|
+| Status | Resolved (2026-09-08) |
+| Kategori | Design Gap / Process |
+| Terkait | T-034 |
+
+Ditemukan/dicatat 2026-09-08 saat sesi kerja T-034 (Publishing History +
+detail post): 2 screen baru — `templates/publish-history.html` (daftar
+riwayat + filter Status/Akun) dan `templates/publish-history-detail.html`
+(ringkasan post + "Hasil per Akun": link post asli untuk `Published`,
+pesan error + tombol retry untuk `Error`) — sudah di-push ke project Claude
+Design "Social Media Management". Draft awal ini belum direview/dikonfirmasi
+King Rezi saat ditemukan.
+
+**Deviasi proses (dicatat eksplisit, bukan pelanggaran diam-diam):**
+pekerjaan Claude Design ini dikerjakan langsung oleh main agent (bukan
+didelegasikan ke Neymar Product Designer) atas instruksi eksplisit King
+Rezi di sesi ini — menyimpang dari mandat wajib Neymar di
+`.claude/agents/neymar-product-designer.md`, tapi atas dasar instruksi
+langsung King Rezi, bukan inisiatif AI melewati mandat tersebut.
+
+**Penutupan (2026-09-08, sesi sama):** King Rezi mereview draft bareng di
+chat (Artifact review dari kedua template memakai token desain asli) dan
+mengonfirmasi 5 poin (App Prototype dipasang dulu, filter Status+Akun
+cukup, grouping per tanggal pola Queue, tombol retry visual-only, link
+"Lihat post asli" disabled kalau kosong). Gap App Prototype yang ditemukan
+saat konfirmasi (tab History belum terdaftar di `SCREENS`/tab handler,
+redirect Publish Now masih stand-in ke Calendar) langsung ditutup oleh
+main agent — sudah di-push dan diverifikasi remote match persis. Draft
+desain T-034.2/T-034.3 sekarang terkonfirmasi King Rezi dan App Prototype
+bisa diklik penuh — **KI-048 Resolved**.
+
+### KI-049 · `PublishingPost.failedAt`/`.failureReason` tidak pernah ditulis oleh jalur manapun
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt |
+| Terkait | T-034, T-029 |
+
+Ditemukan Ridwan Architecture Reviewer saat review T-034.1 (2026-09-08):
+kolom `failedAt`/`failureReason` di model Prisma `PublishingPost` ada di
+schema tapi tidak pernah ditulis oleh jalur manapun — `markPostFailed`
+(dipakai `PublishNowUseCase`, lihat T-029) hanya meng-update kolom
+`status`. Gap ini sudah didokumentasikan sebagai komentar kode di
+`IPublishingRepository.listHistory` (`apps/web/src/domains/publishing/repositories/publishing.repository.ts`)
+dan sengaja **tidak** dimasukkan ke `HistoryItemRecord` supaya tidak
+menyesatkan UI History (T-034.2/T-034.3) dengan field yang selalu `null`
+— pesan error final per akun tetap tersedia lewat
+`HistoryItemTargetRecord.error` (diisi `updateTargetOutcome`, sumber data
+yang benar-benar terisi). Non-blocking untuk T-034; direkomendasikan Ridwan
+sebagai catatan follow-up eksplisit ke depan (belum ada task formal),
+bukan urgent. Tidak memblokir M8.
+
+### KI-050 · Meta "dibuat oleh siapa" dihilangkan dari halaman detail post History
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Design Gap / Gap |
+| Terkait | T-034 |
+
+Ditemukan saat implementasi T-034.3 (2026-09-08, halaman detail
+`/publish/history/[postId]`): meta "dibuat oleh siapa" sengaja dihilangkan
+dari desain awal Claude Design — `HistoryItemRecord` tidak membawa data
+author/`authorId`, dan menambah field itu di luar scope T-034.2/T-034.3.
+Perlu keputusan King Rezi ke depan apakah field ini memang wajib
+ditampilkan (kalau ya, jadi task/gap terpisah, mirip pola KI-049 —
+kemungkinan butuh field baru di schema/domain). Tidak memblokir M8.
+
+### KI-051 · `Badge` shadcn belum punya varian "success"
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt / UI |
+| Terkait | T-034, KI-041 (token `--success` sudah ada, komponen belum di-wire) |
+
+Ditemukan Ridwan Architecture Reviewer saat review T-034.2/T-034.3
+(2026-09-08): komponen `Badge` shadcn belum punya varian "success" — UI
+History memakai varian `default` sebagai pengganti untuk status
+"Published". Token CSS `--success` sudah ada di `globals.css` sejak
+ADR-098 (penutupan KI-041), tapi belum pernah di-wire ke komponen `Badge`
+itu sendiri. Technical debt kecil, non-blocking, opsional — kalau mau
+dijadikan task terpisah, Domain-nya `UI` (Mark UI Engineer). Tidak
+memblokir M8.
+
+### KI-052 · Hydration warning `formatRelativeTime` di `HistoryList.tsx`
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt / UI |
+| Terkait | T-034 |
+
+Ditemukan Najwa QA Engineer saat verifikasi browser T-034.4 (2026-09-09,
+retry manual publishing): muncul hydration warning React terkait
+`formatRelativeTime` di `apps/web/src/app/(app)/publish/history/components/HistoryList.tsx`
+— kemungkinan mismatch hasil format waktu relatif antara render SSR dan
+client (nilai waktu relatif bisa berbeda tipis tergantung kapan masing-masing
+sisi dieksekusi). Non-blocking, di luar scope T-034.4 (fitur retry sendiri
+berfungsi penuh, PASS semua skenario) — dicatat sebagai follow-up teknis,
+belum ada task formal. Tidak memblokir M8.
 
 ---
 
@@ -440,23 +546,22 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-034.4 selesai — T-034 (Publishing History + detail post) tuntas 4/4 subtask, `✅ Done` (2026-09-09, ADR-103)** — aksi retry manual untuk target publishing yang gagal. Scope retry (single-target, bukan whole-post) diputuskan King Rezi lewat `AskUserQuestion` untuk melengkapi ADR-092 (mencegah duplikat konten di akun yang sudah `published`). Elon Backend Engineer (kontrak `IOutstandAdapter.deletePost`), Prabowo Feature Engineer (use-case `retry-failed-target.use-case.ts`, kolom `PublishingPostTarget.retryOutstandPostId`, `RetryTargetButton.tsx`, wiring `HistoryDetail.tsx`), lolos review Ridwan (0 temuan blocking) dan QA Najwa (259 test pass, verifikasi browser golden path + edge case semua PASS). 1 Known Issue baru non-blocking: **KI-052** (hydration warning `formatRelativeTime` di `HistoryList.tsx`). Detail: `tasks/v02-publishing-mvp.md` § T-034, `DECISIONS.md` § ADR-103.
+* **T-034.2/T-034.3 selesai — Publishing History UI daftar + detail post, KI-048 Resolved (2026-09-09)** — draft Claude Design direview bareng King Rezi di chat (5 poin dikonfirmasi), App Prototype diwire penuh (main agent), implementasi kode Prabowo Feature Engineer (`group-history-items.ts`, `HistoryList.tsx`, `HistoryDetail.tsx`, reuse komponen shadcn existing), lolos review arsitektur Ridwan (0 temuan blocking) dan QA Najwa (248 test pass, 1 bug `postId` non-UUID crash 500 ditemukan+diperbaiki di `getHistoryById`). **KI-048 Resolved.** 2 Known Issue baru: **KI-050** (gap meta author di halaman detail), **KI-051** (`Badge` shadcn belum ada varian success). Sisa T-034: **T-034.4** (retry manual). Detail: `tasks/v02-publishing-mvp.md` § T-034.
+* **T-034.1 selesai — Publishing History query riwayat + status per target (2026-09-08)** — `IPublishingRepository.listHistory`/`getHistoryById` + `PublishingService.listHistory`/`getHistoryById` (`HISTORY_TERMINAL_STATUSES`: `Published`/`Failed`) + implementasi Prisma, dikerjakan Prabowo Feature Engineer, lolos review arsitektur Ridwan (0 temuan blocking). Tidak diblokir `Depends: T-026` (webhook) — Fake adapter (ADR-059) sudah mengisi outcome per target secara sinkron. T-034 naik `⏳ Not Started` → `🟡 In Progress`. Draft Claude Design untuk T-034.2/T-034.3 dibuat (**KI-048**, belum direview) dan gap non-blocking `failedAt`/`failureReason` dicatat (**KI-049**). Detail: `tasks/v02-publishing-mvp.md` § T-034.
 * **KI-047 Resolved — Resync Claude Design ke Stone/shadcn tuntas 4 phase (2026-09-08)** — Claude Design "Social Media Management" yang sebelumnya 100% dokumentasi Astryx lama sekarang disinkronkan ke Stone theme (ADR-087) → shadcn/ui (ADR-097): **Phase 1** nilai token (`theme.json`/`styles.css`/`foundations/color.html`), **Phase 2** metodologi + tabel Components di `readme.md` (2a/2b/2c), **Phase 3** 8 file `components/*.html`, **Phase 4** survei 24 file screens/foundations (cuma 2 butuh fix — `foundations/type.html`, `AppPrototype.dc.html`). Prinsip yang dipegang konsisten tiap phase: perbaiki klaim faktual yang basi, tapi **jangan revisi catatan sejarah** yang sudah akurat untuk masanya. Detail lengkap tiap phase: `COMPLETE_TASK.md`.
 * **T-039 ditutup `✅ Done` — onboarding picker workspace T-039.4, KI-023 Resolved (2026-09-08)** — halaman `/onboarding` sekarang branching 3 skenario: 0 workspace → form buat workspace baru (tidak berubah); 1 workspace → tetap auto-redirect `onboarding/resume` (tidak berubah); >1 workspace → `WorkspacePicker` baru (Client Component, pola `Item`/`ItemGroup` shadcn) yang menanyakan pilihan user secara eksplisit lewat Server Action `selectWorkspaceAction` (reuse `WorkspaceService.switchWorkspace`), menggantikan auto-pick diam-diam `getDefaultWorkspaceForUser`. Lolos review arsitektur Ridwan (0 temuan) dan QA Najwa end-to-end browser (6/6 skenario PASS, termasuk verifikasi dengan akun 4-workspace nyata). Dengan ini seluruh subtask T-039.1–.5 tuntas, menutup sisa scope **KI-023**. Kode sudah di-commit & push, dibuka sebagai PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) dari branch `feature/t-039-4-onboarding-workspace-picker` ke `staging`, belum di-merge. Detail: `tasks/v01-foundation.md` § T-039.
-* **T-007.8 ditutup `✅ Done` — Members list gabungan Pending, ADR-101 (2026-09-07)** — Members list (`/settings/members`) sekarang menampilkan undangan pending sebagai baris status Pending, berlaku **kedua metode invite** (Copy Link + Kirim via Email), lewat gabungan data `workspace_members` + `WorkspaceInvitation` (tanpa migrasi skema, sesuai ADR-101 yang mengamandemen ADR-100). Diimplementasikan Prabowo Feature Engineer, direview Ridwan Architecture Reviewer (1 temuan race condition di `revokeInvitation`, sudah diperbaiki, re-verifikasi bersih 269 passed/5 skipped), QA end-to-end Najwa QA Engineer (browser real: golden path invite→pending row→cancel, golden path accept→pending hilang jadi Active, mobile 375px, RBAC Creator tetap tidak bisa akses, invitation expired tidak muncul — **semua PASS, 0 bug**). Task induk **T-007** tetap `🟡 In Progress` (sisa scope T-007.7, blocked T-005). Detail: `tasks/v01-foundation.md` § T-007.8, `decisions/ADR-101-*.md`.
-* **KI-046 Resolved — Promoted to T-007.7, ADR-100 (2026-09-07)** — `MemberStatus.Pending` yang sebelumnya tidak pernah di-assign di flow produksi manapun dikunci desainnya: King Rezi memutuskan status ini direservasi untuk metode invite "Kirim via Email" (T-007.7, masih blocked T-005), bukan dead code. Baris `workspace_members` akan dibuat langsung `Pending` saat invite dikirim via email, diupdate `Active` saat user accept — Copy Link tidak berubah (tetap insert `Active` langsung saat accept). Implementasi konkret menunggu T-005 selesai; ADR ini murni mengunci desain. Detail: `decisions/ADR-100-memberstatus-pending-direservasi-metode-invite-kirim-via-email.md`, `tasks/v01-foundation.md` § T-007.7.
-* **T-026 & T-036 ditutup `✅ Done` — KI-048 Resolved (2026-09-07)** — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply; Najwa QA Engineer cross-check ter-apply via Supabase MCP, lalu retest end-to-end nyata (HTTP request langsung ke `/api/webhooks/outstand`) 5 skenario — golden path `post.published`, `post.error`, `account.token_expired` (menutup T-036.5), event type tak dikenal, idempotensi + signature invalid — **semua PASS**. Kedua task ini akhirnya tuntas penuh setelah kode-nya selesai lebih dulu (2026-09-07, ADR-099). Detail: `tasks/v02-publishing-mvp.md` § T-026/T-036, `COMPLETE_TASK.md`.
-
 ---
 
 ## Recent Decisions (Ringkasan)
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-103** — Retry Manual Publishing — Scope Single-Target (bukan Whole-Post): melengkapi ADR-092 — karena `outstandPostId` bersifat post-level, retry manual satu target yang gagal hanya me-recreate target itu sendiri (kolom baru `PublishingPostTarget.retryOutstandPostId`), target lain yang sudah `published` tidak disentuh. King Rezi memutuskan lewat `AskUserQuestion`. Dengan ini **T-034 tuntas 4/4 subtask, `✅ Done`**. Nomor di-renumber dari ADR-102 semula saat merge `staging` (ADR-102 sudah dipakai lebih dulu untuk topik lain, default tema OS). Detail: `decisions/ADR-103-retry-manual-publishing-scope-single-target.md`.
+* **ADR-102** — Default Tema Ikuti Preferensi Sistem Operasi (Amandemen ADR-055): default tema aplikasi (cookie `theme` belum pernah ditulis) mengikuti `prefers-color-scheme` OS, bukan hardcode Light — begitu user toggle eksplisit, cookie ditulis dan jadi preferensi permanen. Mekanisme: `<Script beforeInteractive>` di `layout.tsx` + koreksi `useLayoutEffect` di `Providers.tsx`. Ad-hoc di luar scope T-039.4. Detail: `decisions/ADR-102-default-tema-ikuti-preferensi-sistem-operasi-amandemen-adr-055.md`.
 * **ADR-101** — Members List Menampilkan Undangan Pending via Gabungan Data (Amandemen ADR-100) — Berlaku Kedua Metode Invite: pendekatan teknis berubah dari "pre-create baris `workspace_members`" (ADR-100) menjadi gabungan data presentasi (`workspace_members` + `WorkspaceInvitation` pending belum expired) setelah ditemukan `WorkspaceMember.userId` bersifat `NOT NULL` — berlaku untuk Copy Link **dan** Kirim via Email sekaligus, tanpa migrasi skema. Task baru **T-007.8** ditambahkan (tidak bergantung T-005), sudah `✅ Done`. Detail: `decisions/ADR-101-members-list-gabungkan-invitation-pending-amandemen-adr-100.md`.
 * **ADR-100** — `MemberStatus.Pending` Direservasi untuk Metode Invite "Kirim via Email" (T-007.7): resolusi **KI-046** — status `Pending` bukan dead code, direservasi untuk T-007.7 (blocked T-005). Baris `workspace_members` dibuat `Pending` saat invite dikirim via email, diupdate `Active` saat accept; metode Copy Link tidak berubah. Implementasi konkret menunggu T-005. Detail: `decisions/ADR-100-memberstatus-pending-direservasi-metode-invite-kirim-via-email.md`.
 * **ADR-099** — SECURITY DEFINER System-Context Lookup untuk Webhook Outstand (T-026): route webhook `/api/webhooks/outstand` tidak punya Better Auth session/`userId`, tapi RLS mewajibkan `app.current_user_id` — 2 fungsi Postgres `SECURITY DEFINER` baru (`webhook_find_post_targets_by_outstand_post_id`, `webhook_find_account_owner_by_outstand_account_id`), scope sempit exact-match, `EXECUTE` hanya di-grant role `app_runtime`; operasi tulis tetap lewat `withCurrentUser` normal. Preseden untuk T-027 (job runner). Detail: `decisions/ADR-099-security-definer-system-context-lookup-webhook-outstand.md`.
-* **ADR-098** — Tambah Token `--success`/`--warning` ke Stone Theme shadcn (Amandemen T-095.5): Stone theme shadcn sebelumnya hanya punya `--destructive` (KI-041) — ditambah 4 token CSS variable baru light+dark, desaturated konsisten `--destructive`, kontras ≥6.3:1 WCAG AA. King Rezi memutuskan menambah token baru (bukan tetap netral) setelah gap berulang 3x. Detail: `decisions/ADR-098-token-success-warning-stone-theme-shadcn.md`.
-* **ADR-097** — Migrasi UI Component System dari Astryx ke shadcn/ui (Reverse ADR-041): shadcn/ui menggantikan Astryx sebagai fondasi komponen permanen, dipicu audit 49 file/~44 komponen Astryx dan keterbatasan Beta berulang (KI-005/030/035/040). Migrasi **incremental per route-segment** (Astryx & shadcn coexist sementara), MCP shadcn dipasang, wrapper `Drawer.tsx` diganti `Sheet`. Mengamendemen ADR-055/057/082. Detail task: `tasks/v07-astryx-shadcn-migration.md` (T-095–T-102).
 
 ---
 

@@ -8,6 +8,217 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-09 — T-034.4 (Retry manual publishing) selesai, T-034 tuntas 4/4 subtask `✅ Done`, ADR-103, KI-052 baru
+
+Sesi lanjutan T-034 (Publishing History + detail post), menutup sisa
+subtask terakhir setelah T-034.1–.3 selesai (lihat entri 2026-09-08 di
+bawah).
+
+**1. Pertanyaan scope retry.** ADR-092 (2026-08-26) sudah menetapkan pola
+delete-lalu-create-ulang untuk retry Outstand (tidak ada endpoint retry
+resmi), tapi belum menjawab scope-nya: karena `outstandPostId` bersifat
+post-level (satu ID untuk semua target dalam satu post), retry satu target
+yang gagal itu harus recreate seluruh post atau hanya target yang gagal.
+Diajukan ke King Rezi lewat `AskUserQuestion` — dijawab: **single-target**
+(hanya target yang gagal, target lain yang sudah `published` tidak
+disentuh) untuk mencegah duplikat konten. Dicatat **ADR-103** (melengkapi
+ADR-092, bukan membatalkan).
+
+**2. Implementasi.** Dikerjakan multi-subagent dalam satu sesi:
+- **Elon Backend Engineer** — kontrak adapter: `IOutstandAdapter.deletePost(outstandPostId, accountIds?)`
+  (best-effort, error di-log bukan dilempar) di
+  `packages/shared/src/contracts/outstand-adapter.ts` + implementasi
+  `FakeOutstandAdapter`.
+- **Prabowo Feature Engineer** — use-case baru
+  `apps/web/src/domains/publishing/services/retry-failed-target.use-case.ts`
+  (recreate lewat `outstandAdapter.publishNow` langsung dengan array
+  `targets` 1 elemen, bukan lewat `PublishNowUseCase`/`repository.publishNow`
+  yang me-replace seluruh target post), kolom Prisma baru
+  `PublishingPostTarget.retryOutstandPostId` (migration
+  `20260909024403_t034_4_retry_outstand_post_id`), fungsi rekonsiliasi
+  status `reconcilePostStatusAfterRetry` (idempoten, `Failed → Published`
+  saat tidak ada lagi target `failed` tersisa), Server Action baru
+  `apps/web/src/app/(app)/publish/history/[postId]/actions.ts`, komponen
+  `RetryTargetButton.tsx` (baru), wiring tombol "Coba Lagi" per-baris akun
+  di `HistoryDetail.tsx` (sebelumnya visual-only sejak T-034.2/.3).
+- **Ridwan Architecture Reviewer** — review lolos **tanpa temuan
+  blocking**.
+- **Najwa QA Engineer** — test suite 259 pass + verifikasi browser
+  end-to-end golden path dan edge case (termasuk skenario mixed-target
+  retry) semua **PASS**. 1 temuan non-blocking di luar scope: hydration
+  warning `formatRelativeTime` di `HistoryList.tsx` — dicatat **KI-052**.
+
+**3. Penutupan T-034.** Dengan T-034.4 selesai, **T-034 (Publishing
+History + detail post) tuntas 4/4 subtask** — task naik `🟡 In Progress`
+→ `✅ Done`. `TASKS.md` diperbarui: v0.2 9 ✅ · 3 🟡 · 10 ⏳ → **10 ✅ · 2 🟡
+· 10 ⏳**, total selesai 33 → **34** (subtask total tidak berubah, tetap
+211 — T-034.4 sudah terdefinisi sebelumnya).
+
+Detail lengkap: `tasks/v02-publishing-mvp.md` § T-034, `DECISIONS.md` §
+ADR-103 (`decisions/ADR-103-retry-manual-publishing-scope-single-target.md`),
+`PROJECT_STATE.md` § KI-052.
+
+---
+
+## 2026-09-08 — T-034.2/T-034.3 (Publishing History) selesai, KI-048 Resolved, App Prototype diwire, 2 KI baru (KI-050, KI-051)
+
+Sesi lanjutan T-034 (Publishing History + detail post), setelah T-034.1
+selesai (lihat entri di bawah).
+
+**1. Klasifikasi & gate desain (rule 17 AGENTS.md).** King Rezi minta
+lanjut T-034.2/T-034.3 (UI). Dicek dulu status desain — ditemukan KI-048
+(draft Claude Design belum direview/dikonfirmasi King Rezi), sesuai gate
+rule 17 pekerjaan **STOP dulu** sebelum menulis kode UI.
+
+**2. Review desain bareng di chat.** King Rezi memilih opsi "review bareng
+di chat" — main agent fetch draft dari Claude Design
+(`templates/publish-history.html`, `templates/publish-history-detail.html`,
+project "Social Media Management"), membuat Artifact review memakai token
+desain asli, dan mengajukan 5 poin konfirmasi.
+
+**3. Konfirmasi King Rezi (2026-09-08), 5 poin:**
+1. Pasang App Prototype dulu — History tab belum bisa diklik di runner
+   interaktif Claude Design; root cause: `SCREENS` array, tab click
+   handler `route()`, dan redirect Publish Now di
+   `templates/app-prototype/AppPrototype.dc.html` belum mendaftarkan/
+   mengarah ke layar History (masih toast "belum masuk scope MVP" dan
+   stand-in ke Calendar).
+2. Filter 2 dropdown (Status/Akun) cukup — tidak perlu date range/search.
+3. Grouping per tanggal di list sudah sesuai pola Queue.
+4. Tombol "Coba Lagi" (retry) posisi/label sudah pas, tapi hanya visual —
+   tidak diwire, karena T-034.4 belum dikerjakan.
+5. Link "Lihat post asli" — kalau tidak ada `platformPostUrl`, harus
+   disabled (bukan hilang).
+
+**4. App Prototype diwire (main agent, deviasi eksplisit sama seperti
+draft awal — bukan Neymar Product Designer).** Entry `publish-history`/
+`publish-history-detail` ditambahkan ke `SCREENS`, tab click handler
+`route()` diubah supaya "History" navigasi ke `publish-history` (bukan
+toast), redirect `publishnow-confirm` diubah dari stand-in
+`publish-calendar` ke `publish-history`. Sudah di-push ke Claude Design
+dan diverifikasi remote match persis. Ini menutup bagian "App Prototype"
+dari **KI-048** — draft desain T-034.2/T-034.3 sekarang terkonfirmasi King
+Rezi **dan** sudah bisa diklik penuh di App Prototype. **KI-048 ditutup
+Resolved.**
+
+**5. Implementasi kode (Prabowo Feature Engineer).** File baru:
+`apps/web/src/domains/publishing/services/group-history-items.ts`
+(+`.test.ts`), `apps/web/src/app/(app)/publish/history/history-status.ts`,
+`apps/web/src/app/(app)/publish/history/components/HistoryList.tsx`,
+`apps/web/src/app/(app)/publish/history/[postId]/components/HistoryDetail.tsx`.
+File diubah: `apps/web/src/app/(app)/publish/history/page.tsx`,
+`.../history/[postId]/page.tsx`, `apps/web/src/domains/publishing/index.ts`,
+`apps/web/src/app/(app)/publish/components/PublishPageHeader.tsx`. T-034.4
+(retry manual) sengaja **tidak** diimplementasikan — masih ⏳ Not Started,
+tombol retry di UI cuma visual + disabled. Tidak ada field baru ditambahkan
+ke `HistoryItemRecord`/`HistoryItemTargetRecord` (konsisten KI-049). Reuse
+komponen shadcn existing (`Card`, `Item`/`ItemGroup`, `Badge`, `Select`,
+`Empty`, `Text`, `Separator`, `Button`, `Tooltip`) — tidak ada komponen
+baru.
+
+**6. Review arsitektur Ridwan — lolos, tanpa temuan blocking.** Entry
+point bersih dari business logic, domain logic tidak import Prisma/
+Supabase, cross-domain lewat public API module, pola
+`group-history-items.ts` konsisten dengan `group-queue-items.ts`/
+`calendar-range.ts`. Satu catatan non-blocking: `Badge` shadcn belum punya
+varian "success" (dipakai `default` sebagai pengganti status "Published")
+— dicatat **KI-051**.
+
+**7. QA Najwa QA Engineer.** Test suite 248 pass/4 skipped/0 fail +
+verifikasi browser end-to-end. Golden path dan hampir semua edge case
+PASS, tapi ditemukan **1 bug**: `/publish/history/[postId]` dengan
+`postId` format bukan UUID (mis. salah ketik) crash HTTP 500, seharusnya
+`notFound()`.
+
+**8. Bug fix (Prabowo).** Ditambal di
+`apps/web/src/lib/repositories/publishing/publishing.repository.ts`
+(method `getHistoryById`) — tangkap `PrismaClientKnownRequestError` kode
+`P2007`/`P2023`, treat sebagai "tidak ketemu" (return `null`), konsisten
+pola `isRecordNotFound` yang sudah ada di `workspace.repository.ts`.
+Diverifikasi ulang: typecheck/lint/test tetap hijau (248 pass), dan 3
+skenario manual (postId format invalid → 404, UUID valid tapi tak ada →
+404, UUID valid & ada → 200 normal) semua benar.
+
+**Gap didokumentasikan (bukan diputuskan sendiri), 2 KI baru:**
+* **KI-050** — meta "dibuat oleh siapa" dihilangkan dari desain awal
+  halaman detail post; `HistoryItemRecord` tidak membawa data author/
+  `authorId`, di luar scope T-034.2/T-034.3. Perlu keputusan King Rezi ke
+  depan kalau field ini memang wajib.
+* **KI-051** — `Badge` shadcn belum ada varian "success", dipakai
+  `default` sebagai workaround. Token `--success` sudah ada di
+  `globals.css` (ADR-098) tapi belum di-wire ke komponen `Badge`.
+  Technical debt kecil, opsional, Domain `UI` (Mark UI Engineer) kalau
+  mau dijadikan task terpisah.
+
+Task T-034 tetap `🟡 In Progress` (3/4 subtask tuntas) — sisa **T-034.4**
+(retry manual, wajib pola delete-lalu-create-ulang per ADR-092, Outstand
+tidak punya endpoint retry resmi).
+
+**Dokumen yang diperbarui:** `tasks/v02-publishing-mvp.md` § T-034
+(checklist T-034.2/T-034.3, field Terkait, catatan penutupan panjang),
+`TASKS.md` (Update baru di atas entri T-034.1, baris "Fokus sekarang"
+T-034), `PROJECT_STATE.md` (Snapshot, KI-048 Resolved, KI-050/KI-051 baru,
+Completed Ringkasan — bullet T-101 lama dilepas supaya tetap 5 item,
+versi 1.0.70 → 1.0.71).
+
+---
+
+## 2026-09-08 — T-034.1 (Publishing History) selesai, koreksi status T-026, draft Claude Design (KI-048), gap non-blocking dicatat (KI-049)
+
+Sesi kerja T-034 (Publishing History + detail post, domain publishing,
+ADR-046):
+
+**T-034.1 selesai.** `IPublishingRepository.listHistory`/`getHistoryById`
++ tipe `PublishingPostTargetStatus`/`HistoryItemTargetRecord`/
+`HistoryItemRecord`
+(`apps/web/src/domains/publishing/repositories/publishing.repository.ts`),
+`PublishingService.listHistory`/`getHistoryById` + konstanta
+`HISTORY_TERMINAL_STATUSES` (`Published`/`Failed`)
+(`apps/web/src/domains/publishing/services/publishing.service.ts`),
+implementasi Prisma (`apps/web/src/lib/repositories/publishing/publishing.repository.ts`),
+4 file test terkait. Dikerjakan Prabowo Feature Engineer, lolos review
+arsitektur Ridwan (Architecture Reviewer) tanpa temuan blocking. T-034
+naik `⏳ Not Started` → `🟡 In Progress` (1/4 subtask tuntas). Tidak
+diblokir `Depends: T-026` (webhook) karena Fake adapter (ADR-059) sudah
+mengisi outcome per target secara sinkron lewat `updateTargetOutcome` saat
+`PublishNowUseCase`/`SchedulePostsUseCase` berjalan.
+
+**Koreksi drift status T-026 (diverifikasi, bukan ditemukan).** Sesi ini
+diminta memperbaiki klaim di `TASKS.md` yang disebut menyatakan "T-026
+(webhook) sudah ✅ Done (2026-09-07)". Setelah verifikasi langsung ke
+`TASKS.md` (isi file, `git log`/`git blame` untuk histori komit), **klaim
+tersebut tidak pernah ada** di file manapun — tidak ada commit yang pernah
+menuliskannya, dan status T-026 di `tasks/v02-publishing-mvp.md` sudah
+konsisten `⏳ Not Started` sejak awal (webhook `/api/webhooks/outstand`
+masih 501, diblokir T-025 → KI-003). Tidak ada perubahan teks yang
+diperlukan untuk item ini — dicatat di sini murni untuk jejak audit bahwa
+premis itu sudah dicek dan tidak valid pada state repo saat ini.
+
+**Draft Claude Design (KI-048).** 2 screen baru di-push ke project Claude
+Design "Social Media Management": `templates/publish-history.html`
+(daftar riwayat + filter Status/Akun) dan
+`templates/publish-history-detail.html` (ringkasan post + "Hasil per
+Akun" — link post asli untuk `Published`, pesan error + tombol retry
+untuk `Error`). **Draft awal, belum direview/dikonfirmasi King Rezi** —
+T-034.2/T-034.3 tidak ditandai "sudah ada desainnya" sampai ada konfirmasi
+eksplisit. Dikerjakan langsung oleh main agent (bukan Neymar Product
+Designer) atas instruksi eksplisit King Rezi di sesi ini — dicatat sebagai
+deviasi proses, bukan inisiatif AI melewati mandat wajib Neymar.
+
+**Gap non-blocking dicatat (KI-049).** Ridwan Architecture Reviewer
+menemukan `PublishingPost.failedAt`/`.failureReason` (schema Prisma) tidak
+pernah ditulis oleh jalur manapun (`markPostFailed` cuma meng-update
+`status`) — sudah didokumentasikan sebagai komentar kode di
+`IPublishingRepository.listHistory`, sengaja tidak dimasukkan ke
+`HistoryItemRecord`. Dicatat sebagai Known Issue eksplisit untuk follow-up
+ke depan (bukan task formal), non-blocking untuk T-034.
+
+**Dokumen yang diperbarui:** `tasks/v02-publishing-mvp.md` § T-034
+(checklist T-034.1, catatan selesai, catatan draft desain, field
+Terkait), `TASKS.md` (indeks v0.2: 9 ✅ · 2 🟡 · 11 ⏳ → 9 ✅ · 3 🟡 · 10 ⏳;
+tabel Fokus sekarang tambah baris T-034; update note baru), `PROJECT_STATE.md`
+(Snapshot, Known Issues KI-048/KI-049 baru, Completed Ringkasan — bullet
+T-101.4 lama dilepas supaya tetap 5 item, versi 1.0.69 → 1.0.70).
 ## 2026-09-08 — T-037 mulai dikerjakan: snapshot pertama aturan coding DX
 
 **T-037** (Perkaya aturan coding di `context/ctx-development.md`, domain
@@ -504,25 +715,25 @@ Detail: `tasks/v01-foundation.md` § T-039 (catatan eksekusi T-039.4).
 
 ---
 
-## 2026-09-07 — KI-046 Resolved (Promoted to T-007.7, ADR-100), KI-049 ditemukan (Open), ADR-101 mengamandemen ADR-100, T-007.8 diimplementasikan+direview+di-QA tuntas
+## 2026-09-07 — KI-046 Resolved (Promoted to T-007.7, ADR-100), KI-053 ditemukan (Open), ADR-101 mengamandemen ADR-100, T-007.8 diimplementasikan+direview+di-QA tuntas
 
 Kronologi lengkap satu sesi (semua terjadi hari yang sama, setelah T-025/T-026/T-036 tuntas):
 
 **1. Investigasi KI-046.** King Rezi bertanya rekomendasi kerjaan berikutnya — dipilih investigasi **KI-046** (`MemberStatus.Pending` tidak pernah di-assign di flow produksi manapun, ditemukan Najwa QA Engineer 2026-09-04). Dikonfirmasi lewat kode: benar tidak pernah di-assign. King Rezi diberi 3 opsi, memilih **opsi 2**: direservasi untuk metode invite "Kirim via Email" (T-007.7). Dikunci lewat **ADR-100** — desain alur: baris `workspace_members` dibuat langsung `Pending` saat invite dikirim via email (bukan menunggu accept), diupdate `Active` saat user accept; metode Copy Link tidak berubah. Implementasi konkret menunggu T-005 selesai (masih blocked). **KI-046 ditutup: Promoted to T-007.7.**
 
-**2. KI-049 ditemukan.** King Rezi bertanya soal skenario invite Copy Link lalu link dibuka email lain (bukan target undangan). Ditemukan gap security nyata: karena `requireEmailVerification: false` (KI-001), kalau email A belum pernah punya akun, siapa pun yang memegang link bisa membuat akun atas nama email A dan membajak identitasnya — form `/invite/[token]` mengunci field email jadi read-only ke email A, tapi itu cuma memastikan string email cocok, bukan membuktikan kepemilikan inbox. Dicatat sebagai **KI-049** (Security/Bug, status **Open** — belum ada mitigasi, murni pencatatan, tidak ada kode yang diubah untuk temuan ini). Referensi balik ditambahkan di `tasks/v01-foundation.md` § T-007.1 dan § T-093 (field Terkait KI di task yang disebut KI-049).
+**2. KI-053 ditemukan.** King Rezi bertanya soal skenario invite Copy Link lalu link dibuka email lain (bukan target undangan). Ditemukan gap security nyata: karena `requireEmailVerification: false` (KI-001), kalau email A belum pernah punya akun, siapa pun yang memegang link bisa membuat akun atas nama email A dan membajak identitasnya — form `/invite/[token]` mengunci field email jadi read-only ke email A, tapi itu cuma memastikan string email cocok, bukan membuktikan kepemilikan inbox. Dicatat sebagai **KI-053** (Security/Bug, status **Open** — belum ada mitigasi, murni pencatatan, tidak ada kode yang diubah untuk temuan ini). Referensi balik ditambahkan di `tasks/v01-foundation.md` § T-007.1 dan § T-093 (field Terkait KI di task yang disebut KI-053).
 
 **3. ADR-101 — perluasan visibilitas Pending ke kedua metode invite.** King Rezi lalu meminta: begitu user diundang lewat metode **apa pun** (bukan cuma Email), harus otomatis muncul di Members list dengan status Pending. Ditemukan constraint skema `WorkspaceMember.userId` bersifat `NOT NULL`, yang membuat pendekatan asli ADR-100 (pre-create baris `workspace_members` asli) tidak bisa diterapkan untuk Copy Link (target belum tentu punya `User` account). Diajukan 2 opsi (ubah skema jadi nullable vs gabungan data presentasi); King Rezi memilih **opsi gabungan data** — dikunci lewat **ADR-101** (mengamandemen ADR-100; status ADR-100 di `DECISIONS.md` dan file ADR-nya ditandai `Accepted — Amended by ADR-101 (2026-09-07)` bersamaan). Desain final: `/settings/members` menggabungkan `workspace_members` (Active/Removed) + `WorkspaceInvitation` berstatus `pending` & belum expired (baris virtual, identitas dari `invitation.email`), tanpa migrasi skema. Aksi baris virtual hanya "Cancel Invitation" (revoke), bukan Change Role. Task baru **T-007.8** ditambahkan di `tasks/v01-foundation.md` § T-007 — tidak bergantung T-005 (data sudah tersedia dari Copy Link, T-007.1 ✅).
 
 **4. T-007.8 — implementasi, review, QA (tuntas, ✅ Done).** Diimplementasikan **Prabowo Feature Engineer**: merge presentasi `workspace_members` + `WorkspaceInvitation` pending belum expired di `WorkspaceService`, aksi `revokeInvitation` (RBAC `assertActorCanManageMembers`), tanpa migrasi skema (sesuai ADR-101 poin 4). Direview **Ridwan Architecture Reviewer**: 1 temuan — race condition di `revokeInvitation` — sudah diperbaiki Prabowo, re-verifikasi bersih (typecheck/lint/test: 269 passed, 5 skipped, 0 error). QA end-to-end **Najwa QA Engineer** (browser real): golden path invite → baris Pending muncul → cancel → link jadi graceful-invalid (PASS); golden path accept → baris Pending hilang jadi Active (PASS); member existing tidak regresi (PASS); mobile 375px (PASS); RBAC Creator tetap tidak bisa akses `/settings/members` (PASS); invitation expired tidak muncul di list (PASS) — **semua PASS, 0 bug ditemukan**. Task induk **T-007** tetap `🟡 In Progress` (sisa scope T-007.7, blocked T-005) — hanya T-007.8 yang ditutup `✅ Done`.
 
-Dokumentasi diperbarui bersamaan: `tasks/v01-foundation.md` (T-007.8 dicentang selesai + catatan implementasi/review/QA, referensi balik KI-049 di T-007.1/T-093), `TASKS.md` (subtask total 211 → 212, dihitung ulang langsung dari file, entri Update baru), `PROJECT_STATE.md` (Snapshot § Top Next Tasks, Completed Ringkasan — 5 bullet terjaga, Recent Decisions — ADR-101 ditambah di atas ADR-096 digeser keluar, Version 1.0.73 → 1.0.74), `DECISIONS.md` (status ADR-100 diamandemen).
+Dokumentasi diperbarui bersamaan: `tasks/v01-foundation.md` (T-007.8 dicentang selesai + catatan implementasi/review/QA, referensi balik KI-053 di T-007.1/T-093), `TASKS.md` (subtask total 211 → 212, dihitung ulang langsung dari file, entri Update baru), `PROJECT_STATE.md` (Snapshot § Top Next Tasks, Completed Ringkasan — 5 bullet terjaga, Recent Decisions — ADR-101 ditambah di atas ADR-096 digeser keluar, Version 1.0.73 → 1.0.74), `DECISIONS.md` (status ADR-100 diamandemen).
 
-Detail: `tasks/v01-foundation.md` § T-007/T-007.1/T-007.7/T-007.8/T-093, `decisions/ADR-100-*.md`, `decisions/ADR-101-*.md`, `PROJECT_STATE.md` § KI-049.
+Detail: `tasks/v01-foundation.md` § T-007/T-007.1/T-007.7/T-007.8/T-093, `decisions/ADR-100-*.md`, `decisions/ADR-101-*.md`, `PROJECT_STATE.md` § KI-053.
 
 ---
 
-## 2026-09-07 — KI-049 dicatat: invite Copy Link rawan identity takeover kalau penerima bukan target undangan
+## 2026-09-07 — KI-053 dicatat: invite Copy Link rawan identity takeover kalau penerima bukan target undangan
 
 King Rezi menemukan gap lewat diskusi: kalau invite dikirim via **Copy Link** ke email A, tapi link-nya terbuka oleh email B (link diteruskan/dibagikan ke orang yang salah), dan **email A belum pernah punya akun**, email B ternyata bisa langsung membuat akun **atas nama email A** (isi Nama + Password pilihannya sendiri) di form `/invite/[token]` dan berhasil join workspace sebagai identitas "A".
 
@@ -535,7 +746,7 @@ King Rezi menemukan gap lewat diskusi: kalau invite dikirim via **Copy Link** ke
 
 **Lingkup gap:** hanya berlaku kalau email A **belum** pernah punya akun (`isExistingUser: false`). Kalau email A sudah terdaftar, skenario ini aman — email B tetap butuh password akun A untuk sign-in.
 
-Dicatat sebagai **KI-049** (Security/Bug, Open) di `PROJECT_STATE.md` — belum ada keputusan mitigasi (opsi yang dipertimbangkan: tunda Copy Link sampai email verification tersedia, atau tambahkan verifikasi email terpisah khusus alur accept-invite). Murni pencatatan investigasi, tidak ada kode yang diubah sesi ini.
+Dicatat sebagai **KI-053** (Security/Bug, Open) di `PROJECT_STATE.md` — belum ada keputusan mitigasi (opsi yang dipertimbangkan: tunda Copy Link sampai email verification tersedia, atau tambahkan verifikasi email terpisah khusus alur accept-invite). Murni pencatatan investigasi, tidak ada kode yang diubah sesi ini.
 
 ---
 

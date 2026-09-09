@@ -145,6 +145,45 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
     return undefined;
   },
 
+  /**
+   * Retry manual (T-034.4, ADR-092) — sama fidelitasnya dengan
+   * `cancelScheduledPost`: instant no-op sukses, tanpa simulasi delay/gagal,
+   * tanpa network call. Fake tidak menyimpan state Outstand asli untuk
+   * benar-benar "dihapus" — cukup lupakan target yang dihapus dari memori
+   * `targetsByOutstandPostId` supaya `fetchPostOutcome` berikutnya untuk
+   * `outstandPostId` yang sama tidak lagi melaporkan akun yang sudah
+   * dihapus itu, konsisten dengan perilaku Outstand asli pasca-delete.
+   *
+   * `accountIds` kosong/undefined menghapus SELURUH target yang tercatat
+   * untuk `outstandPostId` ini (post-level delete) — kalau diisi, hanya
+   * target dengan `outstandAccountId` yang cocok yang dilupakan (selaras
+   * keputusan scope T-034.4: retry single-target, target lain tidak
+   * disentuh).
+   */
+  async deletePost(outstandPostId, accountIds) {
+    const targets = targetsByOutstandPostId.get(outstandPostId);
+    if (!targets) {
+      return undefined;
+    }
+
+    if (!accountIds || accountIds.length === 0) {
+      targetsByOutstandPostId.delete(outstandPostId);
+      return undefined;
+    }
+
+    const remaining = targets.filter(
+      (target) => !accountIds.includes(target.outstandAccountId),
+    );
+
+    if (remaining.length === 0) {
+      targetsByOutstandPostId.delete(outstandPostId);
+    } else {
+      targetsByOutstandPostId.set(outstandPostId, remaining);
+    }
+
+    return undefined;
+  },
+
   async fetchPostMetrics(outstandPostId) {
     const impressions =
       500 + deterministicInt(outstandPostId, "impressions", 4500);

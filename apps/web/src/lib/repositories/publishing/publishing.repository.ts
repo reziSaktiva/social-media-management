@@ -9,21 +9,26 @@ import {
   ContentStatus,
   type SocialPlatform,
 } from "@social/shared";
-import type {
-  CalendarItemRecord,
-  CalendarItemTargetRecord,
-  IPublishingRepository,
-  PublishingCancelScheduleRecord,
-  PublishingPostRecord,
-  PublishingScheduleRecord,
-  QueueItemRecord,
-  WebhookPostLookupRecord,
+import {
+  HISTORY_TERMINAL_STATUSES,
+  type CalendarItemRecord,
+  type CalendarItemTargetRecord,
+  type HistoryItemRecord,
+  type HistoryItemTargetRecord,
+  type IPublishingRepository,
+  type PublishingCancelScheduleRecord,
+  type PublishingPostRecord,
+  type PublishingPostTargetStatus,
+  type PublishingScheduleRecord,
+  type QueueItemRecord,
+  type RetryTargetRecord,
+  type WebhookPostLookupRecord,
 } from "@/domains/publishing";
-import type {
+import {
   Prisma,
-  PublishingPost,
-  PublishingPostTarget,
-  WorkspaceConnectedAccount,
+  type PublishingPost,
+  type PublishingPostTarget,
+  type WorkspaceConnectedAccount,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import {
@@ -41,6 +46,26 @@ import {
  * implementasi repository ini.
  */
 class ScheduleOwnershipGuardFailed extends Error {}
+
+/**
+ * Guard bug T-034.2/T-034.3 (laporan QA Najwa, 2026-09-08): kolom `id`
+ * bertipe `uuid` di Postgres — `postId` dari URL segment `[postId]` yang
+ * bukan format UUID valid (mis. "not-a-valid-uuid") membuat Postgres
+ * menolak query dengan "invalid input syntax for type uuid" sebelum
+ * sempat mengevaluasi kondisi `WHERE`, jadi Prisma melempar
+ * `PrismaClientKnownRequestError` (bukan return `null` seperti kasus
+ * "tidak ketemu" biasa). Konsisten pola `isRecordNotFound` di
+ * `workspace.repository.ts`: treat sebagai "tidak ketemu" di sini
+ * (repository), bukan dibiarkan bocor sebagai Prisma error mentah ke
+ * `PublishingService` (AGENTS.md #6) — caller (`getHistoryById`) tetap
+ * cukup menangani `null` seperti kasus not-found lainnya.
+ */
+function isInvalidIdFormat(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2007" || error.code === "P2023")
+  );
+}
 
 function mapPost(post: PublishingPost): PublishingPostRecord {
   return {
@@ -93,6 +118,28 @@ function mapCalendarItem(post: QueuePostWithTargets): CalendarItemRecord {
       contentFormat: target.contentFormat as ContentFormat,
       accountHandle: target.connectedAccount.handle,
       platformPostUrl: target.platformPostUrl,
+    })),
+  };
+}
+
+function mapHistoryItem(post: QueuePostWithTargets): HistoryItemRecord {
+  return {
+    id: asPostId(post.id),
+    caption: post.caption,
+    status: post.status as ContentStatus,
+    scheduledAt: post.scheduledAt,
+    publishedAt: post.publishedAt,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+    targets: post.targets.map((target): HistoryItemTargetRecord => ({
+      id: asPostTargetId(target.id),
+      connectedAccountId: asConnectedAccountId(target.connectedAccountId),
+      platform: target.platform as SocialPlatform,
+      contentFormat: target.contentFormat as ContentFormat,
+      accountHandle: target.connectedAccount.handle,
+      status: target.status as PublishingPostTargetStatus,
+      platformPostUrl: target.platformPostUrl,
+      error: target.error,
     })),
   };
 }
@@ -551,6 +598,153 @@ export const publishingRepository: IPublishingRepository = {
     );
 
     return posts.map(mapCalendarItem);
+  },
+
+  async listHistory({ workspaceId, statuses, connectedAccountIds }, userId) {
+    // `statuses` sudah di-clamp ke HISTORY_TERMINAL_STATUSES oleh
+    // `PublishingService.listHistory` — repository ini murni proyeksi,
+    // tidak menegakkan invariant sendiri (konsisten `listCalendarPosts`).
+    const effectiveStatuses =
+      statuses && statuses.length > 0 ? statuses : HISTORY_TERMINAL_STATUSES;
+    const posts = await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.findMany({
+        where: {
+          workspaceId,
+          deletedAt: null,
+          status: { in: [...effectiveStatuses] },
+          ...(connectedAccountIds && connectedAccountIds.length > 0
+            ? {
+                targets: {
+                  some: { connectedAccountId: { in: connectedAccountIds } },
+                },
+              }
+            : {}),
+        },
+        // Proksi "waktu selesai" — lihat catatan gap `failedAt` di
+        // `IPublishingRepository.listHistory`.
+        orderBy: { updatedAt: "desc" },
+        include: {
+          targets: {
+            include: { connectedAccount: true },
+          },
+        },
+      }),
+    );
+
+    return posts.map(mapHistoryItem);
+  },
+
+  async getHistoryById({ workspaceId, postId }, userId) {
+    let post;
+    try {
+      post = await withCurrentUser(userId, (tx) =>
+        tx.publishingPost.findFirst({
+          where: {
+            id: postId,
+            workspaceId,
+            deletedAt: null,
+            // Invariant "history = post selesai" ditegakkan langsung di
+            // sini (beda dari `listHistory`, tidak ada input `statuses`
+            // untuk method single-item ini).
+            status: { in: [...HISTORY_TERMINAL_STATUSES] },
+          },
+          include: {
+            targets: {
+              include: { connectedAccount: true },
+            },
+          },
+        }),
+      );
+    } catch (error) {
+      if (isInvalidIdFormat(error)) {
+        return null;
+      }
+      throw error;
+    }
+
+    return post ? mapHistoryItem(post) : null;
+  },
+
+  async getRetryTarget({ workspaceId, postId, targetId }, userId) {
+    const target = await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.findFirst({
+        where: {
+          id: targetId,
+          postId,
+          post: { workspaceId, deletedAt: null },
+        },
+        include: { post: true, connectedAccount: true },
+      }),
+    );
+
+    if (!target) {
+      return null;
+    }
+
+    const record: RetryTargetRecord = {
+      postId: asPostId(target.post.id),
+      workspaceId: asWorkspaceId(target.post.workspaceId),
+      postOutstandPostId: target.post.outstandPostId,
+      caption: target.post.caption,
+      targetId: asPostTargetId(target.id),
+      targetStatus: target.status as PublishingPostTargetStatus,
+      connectedAccountId: asConnectedAccountId(target.connectedAccountId),
+      outstandAccountId: target.connectedAccount.outstandAccountId,
+      platform: target.platform as SocialPlatform,
+      contentFormat: target.contentFormat as ContentFormat,
+      platformOptions: target.platformOptions as Record<string, unknown> | null,
+    };
+
+    return record;
+  },
+
+  async resetTargetForRetry({ targetId }, userId) {
+    await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.update({
+        where: { id: targetId },
+        data: {
+          status: "pending",
+          platformPostId: null,
+          platformPostUrl: null,
+          error: null,
+          retryOutstandPostId: null,
+        },
+      }),
+    );
+  },
+
+  async setRetryOutstandPostId({ targetId, retryOutstandPostId }, userId) {
+    await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.update({
+        where: { id: targetId },
+        data: { retryOutstandPostId },
+      }),
+    );
+  },
+
+  async reconcilePostStatusAfterRetry({ workspaceId, postId }, userId) {
+    await withCurrentUser(userId, async (tx) => {
+      // Idempoten by design: kalau masih ada target `failed` (retry gagal
+      // lagi, atau target lain di post ini yang belum di-retry), post
+      // TETAP `Failed` — tidak ada updateMany yang dieksekusi.
+      const remainingFailedCount = await tx.publishingPostTarget.count({
+        where: { postId, status: "failed" },
+      });
+
+      if (remainingFailedCount > 0) {
+        return;
+      }
+
+      await tx.publishingPost.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          status: ContentStatus.Failed,
+          deletedAt: null,
+        },
+        data: { status: ContentStatus.Published },
+      });
+    });
   },
 
   async findPostTargetsByOutstandPostId(outstandPostId) {

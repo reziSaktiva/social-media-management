@@ -15,6 +15,7 @@ import type { PostMetricsRecord } from "@/domains/analytics";
 import { NotFoundError } from "@/lib/utils/errors";
 import type {
   CalendarItemRecord,
+  HistoryItemRecord,
   IPublishingRepository,
   PublishingPostRecord,
   QueueItemRecord,
@@ -51,8 +52,14 @@ function createFakeRepository(
     countScheduledByAccount: async () => new Map(),
     listQueue: async () => [],
     listCalendarPosts: async () => [],
+    listHistory: async () => [],
+    getHistoryById: async () => null,
     cancelSchedule: async () => null,
     markPostFailed: async () => undefined,
+    getRetryTarget: async () => null,
+    resetTargetForRetry: async () => undefined,
+    setRetryOutstandPostId: async () => undefined,
+    reconcilePostStatusAfterRetry: async () => undefined,
     findPostTargetsByOutstandPostId: async () => null,
     ...overrides,
   };
@@ -553,5 +560,174 @@ describe("PublishingService.listCalendarPosts", () => {
     expect(byId.get(publishedA.id)?.metrics).toEqual([metricA]);
     expect(byId.get(publishedB.id)?.metrics).toEqual([]);
     expect(byId.get(scheduled.id)?.metrics).toBeNull();
+  });
+});
+
+function createHistoryItem(
+  overrides: Partial<HistoryItemRecord> = {},
+): HistoryItemRecord {
+  return {
+    id: asPostId("post-1"),
+    caption: "Hello",
+    status: ContentStatus.Published,
+    scheduledAt: null,
+    publishedAt: new Date("2026-07-14T10:00:00Z"),
+    createdAt: new Date("2026-07-13T00:00:00Z"),
+    updatedAt: new Date("2026-07-14T10:00:00Z"),
+    targets: [
+      {
+        id: asPostTargetId("target-1"),
+        connectedAccountId: asConnectedAccountId("conn-1"),
+        platform: SocialPlatform.Instagram,
+        contentFormat: ContentFormat.Post,
+        accountHandle: "@raka",
+        status: "published",
+        platformPostUrl: "https://instagram.com/p/xyz",
+        error: null,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+describe("PublishingService.listHistory", () => {
+  it("mengembalikan array kosong kalau tidak ada riwayat", async () => {
+    const service = new PublishingService(
+      createFakeRepository({ listHistory: async () => [] }),
+    );
+
+    await expect(
+      service.listHistory({ workspaceId: WORKSPACE_ID }, AUTHOR_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("default statuses ke [Published, Failed] kalau tidak diisi caller", async () => {
+    let received: Parameters<IPublishingRepository["listHistory"]>[0] | null =
+      null;
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async (input) => {
+          received = input;
+          return [];
+        },
+      }),
+    );
+
+    await service.listHistory({ workspaceId: WORKSPACE_ID }, AUTHOR_ID);
+
+    expect(received).toEqual({
+      workspaceId: WORKSPACE_ID,
+      statuses: [ContentStatus.Published, ContentStatus.Failed],
+    });
+  });
+
+  it("meneruskan connectedAccountIds apa adanya ke repository", async () => {
+    let received: Parameters<IPublishingRepository["listHistory"]>[0] | null =
+      null;
+    const connectedAccountIds = [asConnectedAccountId("conn-1")];
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async (input) => {
+          received = input;
+          return [];
+        },
+      }),
+    );
+
+    await service.listHistory(
+      { workspaceId: WORKSPACE_ID, connectedAccountIds },
+      AUTHOR_ID,
+    );
+
+    expect(received).toEqual({
+      workspaceId: WORKSPACE_ID,
+      connectedAccountIds,
+      statuses: [ContentStatus.Published, ContentStatus.Failed],
+    });
+  });
+
+  it("meng-clamp statuses ke subset terminal (Published/Failed) sebelum memanggil repository", async () => {
+    let received: Parameters<IPublishingRepository["listHistory"]>[0] | null =
+      null;
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async (input) => {
+          received = input;
+          return [];
+        },
+      }),
+    );
+
+    await service.listHistory(
+      {
+        workspaceId: WORKSPACE_ID,
+        statuses: [
+          ContentStatus.Draft,
+          ContentStatus.Published,
+          ContentStatus.Scheduled,
+        ],
+      },
+      AUTHOR_ID,
+    );
+
+    expect(received).toEqual({
+      workspaceId: WORKSPACE_ID,
+      statuses: [ContentStatus.Published],
+    });
+  });
+
+  it("tidak memanggil repository sama sekali kalau semua status yang diminta bukan status terminal", async () => {
+    let calls = 0;
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async () => {
+          calls += 1;
+          return [];
+        },
+      }),
+    );
+
+    const result = await service.listHistory(
+      { workspaceId: WORKSPACE_ID, statuses: [ContentStatus.Draft] },
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual([]);
+    expect(calls).toBe(0);
+  });
+
+  it("mengembalikan hasil repository apa adanya (sudah terurut, tanpa post-processing)", async () => {
+    const items = [
+      createHistoryItem(),
+      createHistoryItem({ id: asPostId("post-2") }),
+    ];
+    const service = new PublishingService(
+      createFakeRepository({ listHistory: async () => items }),
+    );
+
+    await expect(
+      service.listHistory({ workspaceId: WORKSPACE_ID }, AUTHOR_ID),
+    ).resolves.toBe(items);
+  });
+});
+
+describe("PublishingService.getHistoryById", () => {
+  it("throws NotFoundError when the repository returns null", async () => {
+    const service = new PublishingService(createFakeRepository());
+
+    await expect(
+      service.getHistoryById(WORKSPACE_ID, asPostId("post-1"), AUTHOR_ID),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("returns the history item when found", async () => {
+    const item = createHistoryItem();
+    const service = new PublishingService(
+      createFakeRepository({ getHistoryById: async () => item }),
+    );
+
+    await expect(
+      service.getHistoryById(WORKSPACE_ID, asPostId("post-1"), AUTHOR_ID),
+    ).resolves.toBe(item);
   });
 });

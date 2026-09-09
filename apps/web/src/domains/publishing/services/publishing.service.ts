@@ -9,6 +9,7 @@ import type { PostMetricsRecord } from "@/domains/analytics";
 import { NotFoundError } from "@/lib/utils/errors";
 import type {
   CalendarItemRecord,
+  HistoryItemRecord,
   IPublishingRepository,
   PublishingPostRecord,
 } from "../repositories/publishing.repository";
@@ -43,6 +44,19 @@ interface PostMetricsPort {
 export interface CalendarPostItem extends CalendarItemRecord {
   metrics: PostMetricsRecord[] | null;
 }
+
+/**
+ * Status post yang dianggap "selesai" dan karenanya boleh muncul di
+ * History (T-034.1, KSP-D10 · KSP-03 catatan: "begitu percobaan publish
+ * selesai, item pindah ke History"). Single source of truth dipakai oleh
+ * `PublishingService.listHistory` (clamp filter caller) dan implementasi
+ * Prisma `getHistoryById` (guard invariant post tunggal) — lihat
+ * `IPublishingRepository.listHistory`.
+ */
+export const HISTORY_TERMINAL_STATUSES: readonly ContentStatus[] = [
+  ContentStatus.Published,
+  ContentStatus.Failed,
+];
 
 export class PublishingService {
   constructor(
@@ -186,5 +200,74 @@ export class PublishingService {
           ? (metricsByPost.get(item.id) ?? [])
           : null,
     }));
+  }
+
+  /**
+   * History (T-034.1, KSP-D10) — post yang percobaan publish-nya sudah
+   * selesai (`Published`/`Failed`), beserta status/error per target,
+   * diurutkan repository descending oleh `updatedAt` (proksi waktu
+   * selesai, lihat catatan gap di `IPublishingRepository.listHistory`).
+   *
+   * `statuses` input **di-clamp** ke `HISTORY_TERMINAL_STATUSES` di sini
+   * (bukan dipercaya mentah seperti `listCalendarPosts`) — invariant
+   * "History = post selesai" harus tetap berlaku walau caller di masa
+   * depan (mis. filter dropdown T-034.2) mengirim status lain. Kalau
+   * hasil clamp kosong (semua status yang diminta bukan status terminal),
+   * repository tidak dipanggil sama sekali — selalu array kosong, bukan
+   * "semua status" seperti default `listCalendarPosts`.
+   *
+   * Method ini murni delegasi + clamp — belum ada post-processing metrik
+   * seperti `listCalendarPosts` (di luar scope T-034.1; kalau UI detail
+   * T-034.3 butuh metrik nanti, tambahkan `PostMetricsPort` yang sama
+   * lewat constructor, bukan keputusan sepihak di sini).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`.
+   */
+  async listHistory(
+    input: {
+      workspaceId: WorkspaceId;
+      statuses?: ContentStatus[];
+      connectedAccountIds?: ConnectedAccountId[];
+    },
+    userId: UserId,
+  ): Promise<HistoryItemRecord[]> {
+    const requestedStatuses =
+      input.statuses && input.statuses.length > 0
+        ? input.statuses
+        : HISTORY_TERMINAL_STATUSES;
+    const statuses = requestedStatuses.filter((status) =>
+      HISTORY_TERMINAL_STATUSES.includes(status),
+    );
+
+    if (statuses.length === 0) {
+      return [];
+    }
+
+    return this.repository.listHistory({ ...input, statuses }, userId);
+  }
+
+  /**
+   * Detail satu History item (T-034.1) — dipakai composition root route
+   * `/publish/history/[postId]` (UI-nya T-034.3). Sama pola dengan
+   * `getDraftById`: `NotFoundError` kalau post tidak ada, bukan milik
+   * `workspaceId` ini, atau statusnya bukan `Published`/`Failed` (guard
+   * invariant "history = selesai" ditegakkan di repository, lihat
+   * `IPublishingRepository.getHistoryById`).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`.
+   */
+  async getHistoryById(
+    workspaceId: WorkspaceId,
+    postId: PostId,
+    userId: UserId,
+  ): Promise<HistoryItemRecord> {
+    const post = await this.repository.getHistoryById(
+      { workspaceId, postId },
+      userId,
+    );
+    if (!post) {
+      throw new NotFoundError("Riwayat post tidak ditemukan.");
+    }
+    return post;
   }
 }

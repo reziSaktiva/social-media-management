@@ -299,24 +299,151 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing                                                   |
-| **ADR**       | ADR-046                                                      |
+| **ADR**       | ADR-046, ADR-092, ADR-103                                    |
 | **Depends**   | T-026 ✅ (status akhir datang dari webhook — sudah Done 2026-09-07, tidak lagi memblokir) |
+| **Terkait**   | KI-048 (Resolved 2026-09-08 — App Prototype diwire + desain dikonfirmasi King Rezi), KI-049 (gap `failedAt`/`failureReason`), KI-050 (gap meta author di halaman detail post), KI-051 (Badge shadcn belum ada varian success), KI-052 (hydration warning `formatRelativeTime` di `HistoryList.tsx`) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                                |
 
 Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai placeholder.
 
-- [ ] **T-034.1** Query riwayat + status per target (published / error)
-- [ ] **T-034.2** UI daftar riwayat + filter
-- [ ] **T-034.3** Halaman detail post: hasil per akun, pesan error, link ke post asli
-- [ ] **T-034.4** Aksi retry manual untuk target yang gagal
+- [x] **T-034.1** Query riwayat + status per target (published / error)
+- [x] **T-034.2** UI daftar riwayat + filter
+- [x] **T-034.3** Halaman detail post: hasil per akun, pesan error, link ke post asli
+- [x] **T-034.4** Aksi retry manual untuk target yang gagal
 
 **Catatan (ADR-092, 2026-08-26):** Outstand API tidak punya endpoint retry
 resmi — dokumentasi resminya merekomendasikan hapus post yang gagal
 (`delete-a-post-from-social-networks`) lalu buat post baru (`create-a-post`),
 bukan re-trigger job yang sama. T-034.4 wajib mengikuti pola
 delete-lalu-create-ulang ini saat dikerjakan.
+
+**Selesai T-034.1 (2026-09-08):** `IPublishingRepository.listHistory`/`getHistoryById`
++ tipe `PublishingPostTargetStatus`/`HistoryItemTargetRecord`/`HistoryItemRecord`
+(`apps/web/src/domains/publishing/repositories/publishing.repository.ts`),
+`PublishingService.listHistory`/`getHistoryById` + konstanta
+`HISTORY_TERMINAL_STATUSES` (`Published`/`Failed`, invariant "History = post
+selesai" di-clamp di service) (`apps/web/src/domains/publishing/services/publishing.service.ts`),
+implementasi Prisma (`apps/web/src/lib/repositories/publishing/publishing.repository.ts`),
+4 file test terkait. Dikerjakan Prabowo Feature Engineer, lolos review
+arsitektur Ridwan (Architecture Reviewer) tanpa temuan blocking. **Tidak
+diblokir T-026** walau field `Depends` menyebutnya — Fake adapter (ADR-059)
+sudah mengisi outcome per target secara sinkron lewat `updateTargetOutcome`
+saat `PublishNowUseCase`/`SchedulePostsUseCase` berjalan, jadi status
+`published`/`failed` untuk data yang lahir dari jalur Fake sudah tersedia
+tanpa menunggu webhook nyata; `Depends: T-026` tetap relevan khusus untuk
+status *real* pasca-integrasi Outstand asli (T-025), bukan blocker untuk
+query/listing itu sendiri. T-034.2/T-034.3 menunggu review desain (lihat
+KI-048), T-034.4 belum dikerjakan — task tetap `🟡 In Progress`.
+
+**Gap non-blocking ditemukan Ridwan (2026-09-08), dicatat KI-049:** kolom
+`PublishingPost.failedAt`/`.failureReason` di schema Prisma tidak pernah
+ditulis oleh jalur manapun (`markPostFailed` cuma meng-update `status`) —
+sudah didokumentasikan sebagai gap di komentar kode
+`IPublishingRepository.listHistory`, dan sengaja tidak dimasukkan ke
+`HistoryItemRecord` supaya tidak menyesatkan UI dengan field yang selalu
+`null`. Lihat `PROJECT_STATE.md` § KI-049 untuk follow-up ke depan.
+
+**Draft Claude Design (2026-09-08), lihat KI-048:** 2 screen baru sudah
+di-push ke project Claude Design "Social Media Management" —
+`templates/publish-history.html` (daftar riwayat + filter Status/Akun,
+untuk T-034.2) dan `templates/publish-history-detail.html` (ringkasan
+post + "Hasil per Akun": link post asli untuk `Published`, pesan error +
+tombol retry untuk `Error`, untuk T-034.3/T-034.4). **Draft awal, belum
+direview/dikonfirmasi King Rezi** — jangan anggap T-034.2/T-034.3 sudah
+"ada desainnya" untuk keperluan gate rule 17 `AGENTS.md` sampai
+dikonfirmasi eksplisit. Dikerjakan langsung oleh main agent (bukan
+didelegasikan ke Neymar Product Designer) atas instruksi eksplisit King
+Rezi di sesi ini — deviasi dari mandat wajib Neymar di
+`.claude/agents/neymar-product-designer.md`, bukan inisiatif AI.
+
+**Selesai T-034.2/T-034.3 (2026-09-08) — KI-048 Resolved.** Draft Claude
+Design di atas direview bareng King Rezi di chat (Artifact review dari
+`templates/publish-history.html`/`templates/publish-history-detail.html`
+memakai token desain asli). King Rezi mengonfirmasi 5 poin: (1) App
+Prototype wajib dipasang dulu — ditemukan saat itu juga bahwa tab History
+belum terdaftar di runner interaktif (`SCREENS`, tab handler, redirect
+Publish Now di `templates/app-prototype/AppPrototype.dc.html` masih toast
+"belum masuk scope MVP" + stand-in ke Calendar); (2) filter cukup 2
+dropdown (Status/Akun), tanpa date range/search; (3) grouping per tanggal
+di list sudah sesuai pola Queue; (4) tombol "Coba Lagi" (retry) posisi/
+label sudah final tapi murni visual — belum diwire karena T-034.4 belum
+dikerjakan; (5) link "Lihat post asli" disabled (bukan hilang) kalau
+`platformPostUrl` kosong. Main agent (bukan Neymar — deviasi eksplisit
+yang sama seperti draft awal) langsung menutup gap App Prototype: entry
+`publish-history`/`publish-history-detail` ditambahkan ke `SCREENS`, tab
+click handler `route()` diarahkan ke `publish-history` (bukan toast lagi),
+redirect `publishnow-confirm` diarahkan ke `publish-history` (bukan
+stand-in `publish-calendar`) — sudah di-push ke Claude Design dan
+diverifikasi remote match persis. **KI-048 Resolved** — draft sudah
+terkonfirmasi King Rezi dan App Prototype sudah bisa diklik penuh.
+
+Implementasi kode dikerjakan Prabowo Feature Engineer: file baru
+`apps/web/src/domains/publishing/services/group-history-items.ts`
+(+`.test.ts`), `apps/web/src/app/(app)/publish/history/history-status.ts`,
+`apps/web/src/app/(app)/publish/history/components/HistoryList.tsx`,
+`apps/web/src/app/(app)/publish/history/[postId]/components/HistoryDetail.tsx`;
+file diubah `apps/web/src/app/(app)/publish/history/page.tsx`,
+`.../history/[postId]/page.tsx`, `apps/web/src/domains/publishing/index.ts`,
+`apps/web/src/app/(app)/publish/components/PublishPageHeader.tsx`. T-034.4
+(retry manual) sengaja tidak diimplementasikan — tombol retry di UI murni
+visual + disabled. Tidak ada field baru ditambahkan ke
+`HistoryItemRecord`/`HistoryItemTargetRecord` (konsisten KI-049). Reuse
+komponen shadcn existing (`Card`, `Item`/`ItemGroup`, `Badge`, `Select`,
+`Empty`, `Text`, `Separator`, `Button`, `Tooltip`) — tidak ada komponen
+baru. Review arsitektur Ridwan **lolos tanpa temuan blocking** — satu
+catatan non-blocking: `Badge` shadcn belum punya varian "success" (dipakai
+`default` sebagai pengganti untuk status "Published"), dicatat **KI-051**.
+
+QA Najwa QA Engineer: test suite 248 pass/4 skipped/0 fail + verifikasi
+browser end-to-end, golden path dan hampir semua edge case PASS. 1 bug
+ditemukan: `/publish/history/[postId]` dengan `postId` format bukan UUID
+crash HTTP 500 (seharusnya `notFound()`). Diperbaiki Prabowo di
+`apps/web/src/lib/repositories/publishing/publishing.repository.ts`
+(method `getHistoryById`) — tangkap `PrismaClientKnownRequestError` kode
+`P2007`/`P2023`, treat sebagai "tidak ketemu" (return `null`), pola sama
+`isRecordNotFound` di `workspace.repository.ts`. Diverifikasi ulang:
+typecheck/lint/test tetap hijau (248 pass), 3 skenario manual (postId
+invalid → 404, UUID valid tak ada → 404, UUID valid & ada → 200) semua
+benar.
+
+**Gap didokumentasikan (bukan diputuskan sendiri):** meta "dibuat oleh
+siapa" di halaman detail post sengaja dihilangkan dari desain awal —
+`HistoryItemRecord` tidak membawa data `authorId`, di luar scope T-034.2/
+.3 untuk menambahkannya — dicatat **KI-050**, menunggu keputusan King
+Rezi apakah field ini wajib.
+
+**Selesai T-034.4 (2026-09-09) — T-034 tuntas 4/4 subtask, `✅ Done`.**
+Sebelum implementasi, muncul pertanyaan scope yang belum dijawab ADR-092
+(delete-lalu-create-ulang, tapi `outstandPostId` bersifat post-level untuk
+SEMUA target) — diajukan ke King Rezi lewat `AskUserQuestion`, dijawab:
+retry **hanya me-recreate target yang gagal (single-target)**, target lain
+yang sudah `published` di post yang sama tidak disentuh. Keputusan ini
+dicatat **ADR-103** (melengkapi ADR-092, tidak membatalkannya).
+
+Elon Backend Engineer menulis kontrak adapter: `IOutstandAdapter.deletePost(outstandPostId,
+accountIds?)` (best-effort) di `packages/shared/src/contracts/outstand-adapter.ts`
++ implementasi `FakeOutstandAdapter`. Prabowo Feature Engineer mengerjakan
+use-case baru `retry-failed-target.use-case.ts` (recreate lewat
+`outstandAdapter.publishNow` langsung dengan 1 target, bukan lewat
+`PublishNowUseCase`/`repository.publishNow` yang me-replace seluruh target
+post), kolom Prisma baru `PublishingPostTarget.retryOutstandPostId`
+(migration `20260909024403_t034_4_retry_outstand_post_id`), fungsi
+rekonsiliasi status post `reconcilePostStatusAfterRetry` (idempoten,
+`Failed → Published` kalau tidak ada lagi target `failed` tersisa), Server
+Action baru `apps/web/src/app/(app)/publish/history/[postId]/actions.ts`,
+komponen `RetryTargetButton.tsx` (baru), wiring di `HistoryDetail.tsx`
+(tombol "Coba Lagi" per-baris akun, sebelumnya visual-only sejak
+T-034.2/.3).
+
+Review arsitektur Ridwan Architecture Reviewer **lolos tanpa temuan
+blocking**. QA Najwa QA Engineer: 259 test pass + verifikasi browser
+end-to-end golden path dan edge case (termasuk skenario mixed-target
+retry) semua **PASS**. 1 temuan non-blocking, di luar scope T-034.4:
+hydration warning pada `formatRelativeTime` di `HistoryList.tsx`
+(kemungkinan mismatch SSR/client saat format waktu relatif) — dicatat
+**KI-052** di `PROJECT_STATE.md`.
 
 ### T-035 · Delete Post + dialog konfirmasi
 

@@ -53,7 +53,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 🟡 14 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 2 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
-| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 11 ✅ · 2 🟡 · 9 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
+| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 12 ✅ · 2 🟡 · 8 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
@@ -61,7 +61,80 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 8 ✅          | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 85 task · 36 selesai · 212 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 85 task · 37 selesai · 212 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-09, merge `staging` — resolve konflik PR #112 vs T-026
+> webhook):** Cabang `feature/t-034-publishing-history` (T-034, ADR-103)
+> digabung dengan `staging` yang sudah membawa T-026/T-036 (`✅ Done`),
+> T-007.8 (`✅ Done`, ADR-101), dan T-037 (`🟡 In Progress`) — keduanya sudah
+> disebut di update terpisah di bawah, ditulis dari sesi masing-masing
+> sebelum merge ini. Hitungan final dihitung ulang langsung dari seluruh
+> file `tasks/vXX-*.md` setelah merge: v0.1 **14 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 2
+> ⏳** (tidak berubah oleh merge ini), v0.2 **12 ✅ · 2 🟡 · 8 ⏳** (T-026,
+> T-034, T-036 sama-sama `✅ Done`; T-030 dan T-037 sama-sama `🟡`). Task
+> selesai total naik ke **37**, subtask total tetap **212** (tidak ada
+> subtask baru dari merge ini, hanya gabungan status dari 2 baris kerja
+> paralel).
+
+> **Update (2026-09-09, ADR-103):** **T-034.4** (Aksi retry manual untuk
+> target publishing yang gagal) selesai — scope retry single-target
+> diputuskan King Rezi lewat `AskUserQuestion` untuk melengkapi ADR-092.
+> **T-034** naik `🟡 In Progress` → `✅ Done` (4/4 subtask tuntas). Task
+> selesai naik 33 → **34** (v0.2: 9 ✅ · 3 🟡 · 10 ⏳ → **10 ✅ · 2 🟡 · 10
+> ⏳**). Jumlah subtask total tidak berubah (T-034.4 sudah terdefinisi
+> sebelumnya, tetap 211) — dihitung ulang langsung dari
+> `tasks/v02-publishing-mvp.md`, sesuai aturan maintenance. (Catatan: nomor
+> ADR di-renumber dari ADR-102 ke **ADR-103** saat merge `staging` di atas
+> — ADR-102 sudah dipakai duluan oleh sesi lain di `staging` untuk topik
+> tidak berkaitan, default tema OS.)
+
+> **Update (2026-09-08, T-034.2/T-034.3 selesai — KI-048 Resolved):**
+> **T-034** (Publishing History + detail post, `tasks/v02-publishing-mvp.md`)
+> tetap `🟡 In Progress` (3/4 subtask tuntas) — draft Claude Design T-034.2/
+> T-034.3 direview bareng King Rezi di chat, dikonfirmasi 5 poin (App
+> Prototype wajib dipasang dulu, filter cukup Status+Akun, grouping per
+> tanggal pola Queue, tombol retry visual-only karena T-034.4 belum
+> dikerjakan, link "Lihat post asli" disabled bukan hilang kalau kosong).
+> App Prototype diwire (main agent, deviasi eksplisit sama seperti draft
+> awal) — History tab sekarang bisa diklik penuh, diverifikasi match
+> remote. **KI-048 ditutup Resolved.** Implementasi kode (Prabowo Feature
+> Engineer): `group-history-items.ts`, `HistoryList.tsx`, `HistoryDetail.tsx`,
+> `history-status.ts` + wiring `page.tsx`/`[postId]/page.tsx` — reuse
+> komponen shadcn existing, tanpa field baru di `HistoryItemRecord`
+> (konsisten KI-049). Lolos review arsitektur Ridwan (0 temuan blocking; 1
+> catatan non-blocking `Badge` shadcn belum ada varian success → **KI-051**
+> baru). QA Najwa: 248 test pass/4 skipped, 1 bug ditemukan (`postId`
+> non-UUID di `/publish/history/[postId]` crash 500) dan sudah diperbaiki +
+> diverifikasi ulang (`getHistoryById` treat `PrismaClientKnownRequestError`
+> P2007/P2023 sebagai not-found). Gap meta author di halaman detail
+> dicatat **KI-050** (di luar scope, menunggu keputusan King Rezi). Sisa
+> T-034: **T-034.4** (retry manual, ADR-092). Hitungan task/subtask tidak
+> berubah (85 task, 33 selesai, 211 subtask — hanya status checklist
+> T-034.2/T-034.3 yang berubah), dihitung ulang langsung dari
+> `tasks/v02-publishing-mvp.md`. Detail: `tasks/v02-publishing-mvp.md`
+> § T-034, `COMPLETE_TASK.md`.
+
+> **Update (2026-09-08, T-034.1 selesai):** **T-034** (Publishing History +
+> detail post, `tasks/v02-publishing-mvp.md`) naik status `⏳ Not Started` →
+> `🟡 In Progress` — subtask **T-034.1** (query riwayat + status per target)
+> tuntas, dikerjakan Prabowo Feature Engineer, lolos review arsitektur
+> Ridwan (0 temuan blocking). Tidak diblokir `Depends: T-026` (webhook)
+> karena Fake adapter (ADR-059) sudah mengisi outcome per target secara
+> sinkron — lihat catatan T-034 di file release. Sekaligus **dikoreksi
+> drift status T-026** (webhook handler) yang sempat dianggap sudah selesai
+> di sesi sebelumnya (klaim itu ternyata tidak pernah tertulis di dokumen
+> manapun setelah diverifikasi ulang — tidak ada perubahan teks yang
+> diperlukan; status T-026 tetap `⏳ Not Started` di
+> `tasks/v02-publishing-mvp.md`, konsisten sejak awal). 2 Known Issue baru
+> dicatat di `PROJECT_STATE.md`: **KI-048** (draft Claude Design T-034
+> belum direview — dikerjakan main agent, bukan Neymar, atas instruksi
+> eksplisit King Rezi) dan **KI-049** (gap non-blocking `failedAt`/
+> `failureReason` `PublishingPost`, temuan Ridwan). Breakdown v0.2 berubah
+> dari "9 ✅ · 2 🟡 · 11 ⏳" menjadi **9 ✅ · 3 🟡 · 10 ⏳** (T-034 pindah dari
+> ⏳ ke 🟡). Task selesai tidak berubah (masih 33 — T-034 belum Done),
+> subtask total tidak berubah (211 — hanya status checklist T-034.1 yang
+> berubah), dihitung ulang langsung dari `tasks/v02-publishing-mvp.md`.
+> Detail: `tasks/v02-publishing-mvp.md` § T-034, `COMPLETE_TASK.md`.
 
 > **Update (2026-09-08, T-037 mulai dikerjakan):** **T-037** (Perkaya aturan
 > coding di `context/ctx-development.md`) pindah status `⏳ Not Started` →
@@ -447,6 +520,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | **T-097** | Migrasi Auth Flows & Onboarding                  | ✅      | **Selesai (2026-09-02)** — 5/5 subtask (Login/Register, Forgot/Reset password, Accept Invite, `(auth)/layout.tsx`, Onboarding), lolos review Ridwan (0 temuan) + QA Najwa (semua PASS). Gap desain token `--success`/`--warning` Stone theme dicatat **KI-041** — **Resolved 2026-09-04** (ADR-098, King Rezi memutuskan menambah 4 token baru ke Stone theme). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-097 |
 | **T-096** | Migrasi Core Infra & Shared Primitives           | ✅      | **Selesai (2026-09-01)** — `globals.css`, `Providers.tsx`, root `app/(app)/layout.tsx`, primitive `Button`/`Card`/`Dialog`/`Input`/`Text`. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-096 untuk detail & 2 keputusan penting (CSS/Theme Astryx dipertahankan sementara) |
 | **T-095** | Setup Fondasi shadcn/ui & Tooling Migrasi        | ✅      | **Selesai (2026-09-01)** — task pertama rilis v0.7 (migrasi Astryx→shadcn/ui, ADR-097), seluruh 7 subtask tuntas: T-095.1 (init shadcn/ui, base Radix + preset Maia), T-095.2 (MCP server shadcn di `.mcp.json`+`.cursor/mcp.json`), T-095.3 (tulis ulang `apps/web/.claude/CLAUDE.md` ke workflow shadcn CLI/MCP), T-095.4 (rule 14/15 `AGENTS.md`, sudah selesai lebih dulu di commit `07a3aa2`), T-095.5 (pemetaan Stone→shadcn di `design-tokens.md`), T-095.6 (update subagent Mark UI Engineer ke shadcn, izin eksplisit King Rezi), T-095.7 (sinkronisasi docs baseline) |
+| **T-034** | Publishing History + detail post                | ✅      | **Done (2026-09-09)** — seluruh 4/4 subtask tuntas: query riwayat, UI daftar+filter, halaman detail post, dan T-034.4 (retry manual per-target, **ADR-102** melengkapi ADR-092 — scope single-target, hindari duplikat konten). Lolos review Ridwan + QA Najwa (259 test pass, verifikasi browser PASS). Lihat `tasks/v02-publishing-mvp.md` § T-034 |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
 | **T-026** | Webhook handler Outstand                        | ✅      | **Done (2026-09-07)** — seluruh 6 subtask (HMAC verify, durable-before-ACK, `post.published`/`post.error`/`account.token_expired`, idempotensi), lolos `typecheck`/`lint`/`test` (261 pass/4 skip) + retest end-to-end nyata 5 skenario (Najwa QA Engineer), semua PASS. **KI-048 Resolved**. ADR-099 (SECURITY DEFINER system-context lookup) dicatat sebagai preseden untuk T-027 |
 | **T-036** | In-app notification + Supabase Realtime         | ✅      | **Done (2026-09-07)** — seluruh 5 subtask tuntas (T-036.5 diverifikasi end-to-end nyata sebagai bagian retest T-026: `account.token_expired` → notifikasi Owner PASS) |
