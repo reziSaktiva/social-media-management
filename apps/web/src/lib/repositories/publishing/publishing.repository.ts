@@ -707,6 +707,7 @@ export const publishingRepository: IPublishingRepository = {
           platformPostId: null,
           platformPostUrl: null,
           error: null,
+          retryOutstandPostId: null,
         },
       }),
     );

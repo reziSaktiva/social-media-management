@@ -121,6 +121,8 @@ export class RetryFailedTargetUseCase {
     let error: string | null = null;
     let platformPostUrl: string | null = null;
 
+    let outstandPostId: string | null = null;
+
     try {
       const result = await this.outstandAdapter.publishNow({
         caption: target.caption,
@@ -132,6 +134,7 @@ export class RetryFailedTargetUseCase {
           },
         ],
       });
+      outstandPostId = result.outstandPostId;
 
       await this.repository.setRetryOutstandPostId(
         {
@@ -140,36 +143,6 @@ export class RetryFailedTargetUseCase {
         },
         input.actingUserId,
       );
-
-      // Retry dari halaman History selalu berarti aksi langsung — sama
-      // seperti PublishNowUseCase, panggil fetchPostOutcome SEGERA supaya
-      // UI mendapat outcome final tanpa menunggu polling/webhook (T-026)
-      // belakangan.
-      const outcomes = await this.outstandAdapter.fetchPostOutcome(
-        result.outstandPostId,
-      );
-      const outcome = outcomes.find(
-        (candidate) => candidate.outstandAccountId === target.outstandAccountId,
-      );
-
-      // Outstand belum melaporkan outcome akun ini (mis. masih "pending")
-      // — biarkan status `pending` dari `resetTargetForRetry` tidak
-      // diubah, sama semantik dengan PublishNowUseCase.
-      if (outcome && outcome.status !== "pending") {
-        await this.repository.updateTargetOutcome(
-          {
-            postTargetId: input.targetId,
-            status: outcome.status,
-            platformPostId: outcome.platformPostId ?? undefined,
-            platformPostUrl: outcome.platformPostUrl ?? undefined,
-            error: outcome.error ?? undefined,
-          },
-          input.actingUserId,
-        );
-        status = outcome.status;
-        error = outcome.error;
-        platformPostUrl = outcome.platformPostUrl;
-      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await this.repository.updateTargetOutcome(
@@ -180,13 +153,62 @@ export class RetryFailedTargetUseCase {
       error = message;
     }
 
-    // Recompute status post: naik ke Published kalau tidak ada lagi
-    // target `failed` (invariant HISTORY_TERMINAL_STATUSES, konsisten
-    // PublishNowUseCase) — tetap Failed kalau retry gagal lagi.
-    await this.repository.reconcilePostStatusAfterRetry(
-      { workspaceId: input.workspaceId, postId: input.postId },
-      input.actingUserId,
-    );
+    if (outstandPostId) {
+      try {
+        // Retry dari halaman History selalu berarti aksi langsung — sama
+        // seperti PublishNowUseCase, panggil fetchPostOutcome SEGERA supaya
+        // UI mendapat outcome final tanpa menunggu polling/webhook (T-026)
+        // belakangan.
+        const outcomes =
+          await this.outstandAdapter.fetchPostOutcome(outstandPostId);
+        const outcome = outcomes.find(
+          (candidate) =>
+            candidate.outstandAccountId === target.outstandAccountId,
+        );
+
+        // Outstand belum melaporkan outcome akun ini (mis. masih "pending")
+        // — biarkan status `pending` dari `resetTargetForRetry` tidak
+        // diubah, sama semantik dengan PublishNowUseCase.
+        if (outcome && outcome.status !== "pending") {
+          await this.repository.updateTargetOutcome(
+            {
+              postTargetId: input.targetId,
+              status: outcome.status,
+              platformPostId: outcome.platformPostId ?? undefined,
+              platformPostUrl: outcome.platformPostUrl ?? undefined,
+              error: outcome.error ?? undefined,
+            },
+            input.actingUserId,
+          );
+          status = outcome.status;
+          error = outcome.error;
+          platformPostUrl = outcome.platformPostUrl;
+        }
+      } catch (err) {
+        // publishNow sudah sukses (post benar-benar dibuat di Outstand) —
+        // kegagalan fetchPostOutcome di sini murni gagal MEMBACA outcome-nya,
+        // bukan bukti publish itu sendiri gagal. Jangan tandai target
+        // "failed" atas dasar ini — biarkan `pending` (webhook/polling T-026
+        // akan melengkapinya belakangan), sama seperti kasus outcome belum
+        // dilaporkan Outstand di atas.
+        console.error(
+          `[RetryFailedTargetUseCase] postId=${input.postId} targetId=${input.targetId} outstandPostId=${outstandPostId} — fetchPostOutcome gagal (publish sudah terkirim, status dibiarkan pending):`,
+          err,
+        );
+      }
+    }
+
+    // Recompute status post: naik ke Published kalau tidak ada lagi target
+    // `failed` (invariant HISTORY_TERMINAL_STATUSES, konsisten
+    // PublishNowUseCase) — tetap Failed kalau retry gagal lagi ATAU
+    // outcome-nya masih belum diketahui (`pending`), supaya post tidak naik
+    // ke Published sebelum outcome target ini benar-benar terkonfirmasi.
+    if (status !== "pending") {
+      await this.repository.reconcilePostStatusAfterRetry(
+        { workspaceId: input.workspaceId, postId: input.postId },
+        input.actingUserId,
+      );
+    }
 
     return { targetId: input.targetId, status, error, platformPostUrl };
   }

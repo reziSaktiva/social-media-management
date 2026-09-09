@@ -31,8 +31,9 @@ export async function retryFailedTargetAction(
     redirect("/login");
   }
 
+  let result;
   try {
-    await new RetryFailedTargetUseCase(
+    result = await new RetryFailedTargetUseCase(
       publishingRepository,
       getOutstandAdapter(),
     ).execute({
@@ -47,5 +48,7 @@ export async function retryFailedTargetAction(
   }
 
   revalidatePath(`/publish/history/${postId}`);
-  return {};
+  return result.status === "failed"
+    ? { error: result.error ?? "Retry gagal — silakan coba lagi." }
+    : {};
 }
