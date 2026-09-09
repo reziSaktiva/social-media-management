@@ -1,3 +1,18 @@
+"use client";
+
+import { toast } from "sonner";
+
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +32,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
   TooltipContent,
@@ -29,6 +45,7 @@ import {
   type ConnectedAccountRecord,
   type ConnectionDisplayStatus,
 } from "@/domains/workspace";
+import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 import { formatConnectedDate } from "@/lib/utils/format-date";
 import { getInitials } from "@/lib/utils";
 
@@ -37,6 +54,7 @@ import {
   SETTINGS_BREADCRUMB_GROUP,
   SettingsPageHead,
 } from "../../components/SettingsPageHead";
+import { disconnectAccountAction } from "../actions";
 import { ConnectPlatformMenu } from "./ConnectPlatformMenu";
 
 // KI-041 (Stone theme shadcn belum punya token --success/--warning, dicatat
@@ -96,11 +114,18 @@ function PlatformStatusDot({
  * `disabled` (dan class `disabled:pointer-events-none` bawaan `Button`)
  * membuat elemen itu sendiri tidak menerima event hover, jadi `Tooltip`
  * radix butuh elemen pembungkus yang BISA menerima hover sebagai trigger.
+ *
+ * T-014.3: "Disconnect" (state `active`) sekarang aktif — membuka dialog
+ * konfirmasi Tier 2 (ADR-049) lewat `onRequestDisconnect`, pola persis
+ * `QueueScreen.tsx` (Cancel Schedule) / `MembersTable.tsx` (Remove member).
+ * `reconnect-required` tetap disabled, di luar scope (T-015).
  */
 function ConnectedAccountAction({
   displayStatus,
+  onRequestDisconnect,
 }: {
   displayStatus: ConnectionDisplayStatus;
+  onRequestDisconnect: () => void;
 }) {
   switch (displayStatus) {
     case "reconnect-required":
@@ -120,25 +145,27 @@ function ConnectedAccountAction({
       );
     case "active":
       return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span tabIndex={0} className="inline-flex">
-              <Button type="button" variant="secondary" size="sm" disabled>
-                Disconnect
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            Tersedia setelah T-014 (Disconnect akun) selesai
-          </TooltipContent>
-        </Tooltip>
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          onClick={onRequestDisconnect}
+        >
+          Disconnect
+        </Button>
       );
     case "disconnected":
       return null;
   }
 }
 
-function ConnectedAccountRow({ account }: { account: ConnectedAccountRecord }) {
+function ConnectedAccountRow({
+  account,
+  onRequestDisconnect,
+}: {
+  account: ConnectedAccountRecord;
+  onRequestDisconnect: (account: ConnectedAccountRecord) => void;
+}) {
   const displayStatus = resolveConnectionDisplayStatus(account);
   const entry = PLATFORM_ICON[account.platform];
   const platformLabel = entry?.label ?? account.platform;
@@ -162,7 +189,10 @@ function ConnectedAccountRow({ account }: { account: ConnectedAccountRecord }) {
         <Badge variant={STATUS_BADGE_VARIANT[displayStatus]}>
           {getConnectionStatusLabel(account)}
         </Badge>
-        <ConnectedAccountAction displayStatus={displayStatus} />
+        <ConnectedAccountAction
+          displayStatus={displayStatus}
+          onRequestDisconnect={() => onRequestDisconnect(account)}
+        />
       </ItemActions>
     </Item>
   );
@@ -183,6 +213,16 @@ export function ConnectedAccountsList({
 }: {
   accounts: ConnectedAccountRecord[];
 }) {
+  const disconnectConfirm = useConfirmAction<ConnectedAccountRecord>(
+    (account) => disconnectAccountAction(account.id),
+    () => toast("Akun berhasil diputus koneksinya"),
+  );
+
+  const target = disconnectConfirm.target;
+  const targetPlatformLabel = target
+    ? (PLATFORM_ICON[target.platform]?.label ?? target.platform)
+    : "";
+
   return (
     /* eslint-disable-next-line no-restricted-syntax -- T-099.3: file ini
        sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097), bukan lagi
@@ -193,6 +233,12 @@ export function ConnectedAccountsList({
         breadcrumb={`${SETTINGS_BREADCRUMB_GROUP.organization} / Connected Accounts`}
         action={<ConnectPlatformMenu />}
       />
+
+      {disconnectConfirm.error ? (
+        <Alert variant="destructive">
+          <AlertTitle>{disconnectConfirm.error}</AlertTitle>
+        </Alert>
+      ) : null}
 
       <Card>
         <CardContent className={accounts.length === 0 ? undefined : "px-0"}>
@@ -209,12 +255,54 @@ export function ConnectedAccountsList({
           ) : (
             <ItemGroup className="gap-0 divide-y divide-border">
               {accounts.map((account) => (
-                <ConnectedAccountRow key={account.id} account={account} />
+                <ConnectedAccountRow
+                  key={account.id}
+                  account={account}
+                  onRequestDisconnect={(requested) =>
+                    disconnectConfirm.open(requested)
+                  }
+                />
               ))}
             </ItemGroup>
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={disconnectConfirm.isOpen}
+        onOpenChange={(open) => {
+          if (!open) disconnectConfirm.close();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Putuskan koneksi {targetPlatformLabel} {target?.handle}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Post yang sudah terjadwal untuk akun ini akan tetap di antrean —
+              tidak otomatis dibatalkan. Post baru tidak bisa dijadwalkan ke
+              akun ini sampai disambungkan kembali.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disconnectConfirm.isLoading}>
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={disconnectConfirm.isLoading}
+              onClick={(e) => {
+                e.preventDefault();
+                void disconnectConfirm.confirm();
+              }}
+            >
+              {disconnectConfirm.isLoading ? <Spinner /> : null}
+              Putuskan Koneksi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

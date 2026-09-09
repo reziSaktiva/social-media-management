@@ -8,6 +8,64 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-09 — T-014 (Disconnect account + dialog konfirmasi) tuntas 3/3 subtask `✅ Done`
+
+Sesi lanjutan setelah T-014.1 (lihat entri di bawah) — menuntaskan T-014.2
+dan T-014.3 dalam satu sesi, delegasi multi-subagent + review arsitektur.
+
+**T-014.2 — `disconnectAccount` Application Service + RBAC gate (Prabowo
+Feature Engineer).** `WorkspaceService.disconnectAccount(workspaceId,
+actorUserId, connectedAccountId)` — gate `assertActorCanManageConnectedAccounts`
+(Owner/Admin aktif saja, reuse pola persis `assertActorCanManageWorkspaceSettings`/
+`assertActorCanManageMembers`, tidak ada RBAC baru sesuai ADR-048 poin 4).
+Repository Prisma (`workspaceRepository.disconnectAccount`) meng-update
+`WorkspaceConnectedAccount.status` jadi `"disconnected"`. Server Action tipis
+baru `disconnectAccountAction` di
+`apps/web/src/app/(app)/settings/connected-accounts/actions.ts`. 5 test baru
+di `workspace.service.test.ts`, semua PASS; typecheck bersih.
+
+Dua keputusan non-trivial dari implementasi awal diajukan ke King Rezi via
+`AskUserQuestion`, keduanya diputuskan:
+1. **Reset `reconnectRequired` ke `false` saat disconnect** — disetujui apa
+   adanya (tanpa reset, akun yang sebelumnya "perlu reconnect" lalu
+   di-disconnect akan tetap tampil "Perlu Reconnect" alih-alih
+   "Disconnected", karena `resolveConnectionDisplayStatus` cek
+   `reconnectRequired` lebih dulu).
+2. **Disconnect akun yang sudah `disconnected`** — awalnya diimplementasi
+   idempotent (no-op tanpa error). King Rezi bertanya balik: bukankah akun
+   yang sudah disconnected memang tidak akan punya tombol Disconnect di UI
+   (sesuai rancangan Claude Design, T-014.1 — akun disconnected menampilkan
+   tombol Reconnect, bukan Disconnect)? Setelah dikonfirmasi itu benar,
+   King Rezi tetap memilih **defense-in-depth**: repository ditolak eksplisit
+   dengan `ConflictError("Akun ini sudah terputus.")` (pakai `updateMany`
+   dengan filter `status: { not: "disconnected" }` + `findFirst` fallback
+   untuk membedakan not-found vs already-disconnected), bukan idempotent.
+   1 test baru ditambahkan untuk propagasi `ConflictError` ini.
+
+**T-014.3 — UI dialog konfirmasi (Mark UI Engineer).** Satu file diubah:
+`ConnectedAccountsList.tsx` jadi Client Component, tombol "Disconnect" (state
+`active`) yang sebelumnya disabled+tooltip sekarang aktif dan membuka
+`AlertDialog` shadcn (judul "Putuskan koneksi {platform} {handle}?", sub-teks
+sesuai rancangan Claude Design, tombol Batal/Putuskan Koneksi). State dialog
+reuse hook `useConfirmAction` (pola identik `QueueScreen.tsx` Cancel Schedule
+dan `MembersTable.tsx` Remove member) — bukan pola baru. Error ditampilkan
+lewat `Alert variant="destructive"`, sukses lewat `toast()` sonner. Tidak ada
+komponen shadcn baru yang perlu diinstall (`alert-dialog`/`alert`/`spinner`
+sudah ada di `components/ui/`). Diverifikasi end-to-end browser: klik
+Disconnect pada akun Facebook `active` → dialog muncul → konfirmasi → badge
+jadi "Disconnected", tombol Disconnect hilang, toast sukses muncul.
+
+**Review arsitektur (Ridwan Architecture Reviewer):** 0 temuan — entry point
+(`disconnectAccountAction`) tetap tipis, tidak ada business logic di
+komponen React, tidak ada import Prisma/Supabase langsung, cross-domain
+hanya lewat barrel `@/domains/workspace`, pola konsisten dengan komponen
+sejenis.
+
+Task **T-014** ditutup `✅ Done` (3/3 subtask). Update dokumentasi:
+`tasks/v01-foundation.md` § T-014 (checkbox + status), `TASKS.md` (breakdown
+v0.1: 6 🟡 → 5 🟡, 14 ✅ → **15 ✅**; catatan rilis diringkas jadi satu entri
+T-014 tunggal, menggantikan entri T-014.1 terpisah sebelumnya).
+
 ## 2026-09-09 — T-014.1 (Dialog konfirmasi disconnect di Claude Design) diverifikasi & ditandai `✅ Done`
 
 King Rezi menanyakan status T-014.1, lalu menyampaikan dialog konfirmasi
