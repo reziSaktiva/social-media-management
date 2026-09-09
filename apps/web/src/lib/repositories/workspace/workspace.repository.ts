@@ -673,6 +673,22 @@ export const workspaceRepository: IWorkspaceRepository = {
 
     return { workspaceId, connectedAccountId, ownerUserId };
   },
+
+  async disconnectAccount(workspaceId, connectedAccountId, actingUserId) {
+    try {
+      await withCurrentUser(actingUserId, (tx) =>
+        tx.workspaceConnectedAccount.update({
+          where: { id: connectedAccountId, workspaceId },
+          data: { status: "disconnected", reconnectRequired: false },
+        }),
+      );
+    } catch (error) {
+      if (isRecordNotFound(error)) {
+        throw new NotFoundError("Akun terhubung tidak ditemukan.");
+      }
+      throw error;
+    }
+  },
 };
 
 /** Row shape returned by the raw SQL call above — snake_case, mirrors the SQL function's RETURNS TABLE. */

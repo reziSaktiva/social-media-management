@@ -10,7 +10,7 @@ import {
   SocialPlatform,
 } from "@social/shared";
 import type { MemberId, UserId } from "@social/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   AuthorizationError,
   ConflictError,
@@ -55,6 +55,7 @@ function createFakeRepository(
     clearPendingOwnerTransfer: async () => undefined,
     acceptOwnershipTransfer: async () => undefined,
     markAccountReconnectRequired: async () => null,
+    disconnectAccount: async () => undefined,
     renameWorkspace: async (workspaceId, name) => ({
       id: workspaceId,
       name,
@@ -562,6 +563,112 @@ describe("WorkspaceService.removeMember", () => {
         CREATOR_MEMBER_ID,
       ),
     ).rejects.toThrow(AuthorizationError);
+  });
+});
+
+describe("WorkspaceService.disconnectAccount", () => {
+  const OWNER_USER = asUserId("da-owner-user");
+  const ADMIN_USER = asUserId("da-admin-user");
+  const CREATOR_USER = asUserId("da-creator-user");
+
+  const OWNER_MEMBER_ID = asMemberId("da-member-owner");
+  const ADMIN_MEMBER_ID = asMemberId("da-member-admin");
+  const CREATOR_MEMBER_ID = asMemberId("da-member-creator");
+
+  const CONNECTED_ACCOUNT_ID = asConnectedAccountId("conn-1");
+
+  function baseSeed(): WorkspaceMemberRecord[] {
+    return [
+      member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
+      member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
+      member(CREATOR_USER, CREATOR_MEMBER_ID, MemberRole.Creator),
+    ];
+  }
+
+  it("allows Owner to disconnect an account", async () => {
+    const disconnectAccount = vi.fn(async () => undefined);
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        disconnectAccount,
+      }),
+    );
+
+    await expect(
+      service.disconnectAccount(WORKSPACE_ID, OWNER_USER, CONNECTED_ACCOUNT_ID),
+    ).resolves.toBeUndefined();
+    expect(disconnectAccount).toHaveBeenCalledWith(
+      WORKSPACE_ID,
+      CONNECTED_ACCOUNT_ID,
+      OWNER_USER,
+    );
+  });
+
+  it("allows Admin to disconnect an account", async () => {
+    const disconnectAccount = vi.fn(async () => undefined);
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        disconnectAccount,
+      }),
+    );
+
+    await expect(
+      service.disconnectAccount(WORKSPACE_ID, ADMIN_USER, CONNECTED_ACCOUNT_ID),
+    ).resolves.toBeUndefined();
+    expect(disconnectAccount).toHaveBeenCalledOnce();
+  });
+
+  it("rejects Creator as actor", async () => {
+    const disconnectAccount = vi.fn(async () => undefined);
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        disconnectAccount,
+      }),
+    );
+
+    await expect(
+      service.disconnectAccount(
+        WORKSPACE_ID,
+        CREATOR_USER,
+        CONNECTED_ACCOUNT_ID,
+      ),
+    ).rejects.toThrow(AuthorizationError);
+    expect(disconnectAccount).not.toHaveBeenCalled();
+  });
+
+  it("throws AuthorizationError when the actor is not an active member", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.disconnectAccount(
+        WORKSPACE_ID,
+        asUserId("da-stranger-user"),
+        CONNECTED_ACCOUNT_ID,
+      ),
+    ).rejects.toThrow(AuthorizationError);
+  });
+
+  it("propagates NotFoundError from the repository when the account doesn't exist", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        disconnectAccount: async () => {
+          throw new NotFoundError("Akun terhubung tidak ditemukan.");
+        },
+      }),
+    );
+
+    await expect(
+      service.disconnectAccount(
+        WORKSPACE_ID,
+        OWNER_USER,
+        asConnectedAccountId("missing"),
+      ),
+    ).rejects.toThrow(NotFoundError);
   });
 });
 

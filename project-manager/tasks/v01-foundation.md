@@ -251,7 +251,7 @@ OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Saat i
 
 | Field         | Value                                            |
 | ------------- | ------------------------------------------------ |
-| **Status**    | 🟡 In Progress                                    |
+| **Status**    | 🟡 In Progress — T-014.2 selesai (backend service + RBAC gate); T-014.3 (UI) tersisa |
 | **Domain**    | workspace                                        |
 | **ADR**       | ADR-048, ADR-049                                 |
 | **Depends**   | T-013                                            |
@@ -260,7 +260,7 @@ OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Saat i
 RBAC Owner/Admin — tidak ada perubahan RBAC, tinggal tambah gate konfirmasi sebelum memanggil service.
 
 - [x] **T-014.1** Dialog konfirmasi di `settings-connected-accounts.html` (App Prototype Claude Design)
-- [ ] **T-014.2** `disconnectAccount` di kode nyata + RBAC gate
+- [x] **T-014.2** `disconnectAccount` di kode nyata + RBAC gate
 - [ ] **T-014.3** UI dialog konfirmasi (KSP-08-F07)
 
 ### T-015 · Reconnect flow saat token expired
