@@ -44,6 +44,8 @@ import { Text } from "@/components/ui/text";
 
 import {
   MEMBER_ROLE_LABEL,
+  type MemberListRow,
+  type WorkspaceInvitationRecord,
   type WorkspaceMemberWithUser,
 } from "@/domains/workspace";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
@@ -53,7 +55,11 @@ import {
   SETTINGS_BREADCRUMB_GROUP,
   SettingsPageHead,
 } from "../../components/SettingsPageHead";
-import { removeMemberAction, updateMemberRoleAction } from "../actions";
+import {
+  cancelInvitationAction,
+  removeMemberAction,
+  updateMemberRoleAction,
+} from "../actions";
 
 const STATUS_LABEL: Record<MemberStatus, string> = {
   [MemberStatus.Active]: "Active",
@@ -162,6 +168,101 @@ function MemberActions({
 }
 
 /**
+ * Aksi untuk baris virtual Pending (T-007.8, ADR-101 poin 5) — HANYA
+ * "Cancel Invitation", TIDAK ada "Change Role" (belum ada member sungguhan
+ * untuk diubah rolenya, beda sengaja dari mockup lama Claude Design yang
+ * belum sinkron, KI-047). `fullWidth` mengikuti pola `MemberActions` di
+ * atas (kartu mobile).
+ */
+function InvitationActions({
+  invitation,
+  onRequestCancel,
+  fullWidth,
+}: {
+  invitation: WorkspaceInvitationRecord;
+  onRequestCancel: (invitation: WorkspaceInvitationRecord) => void;
+  fullWidth?: boolean;
+}) {
+  return (
+    /* eslint-disable-next-line no-restricted-syntax -- T-099.2: file ini
+       sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097), bukan lagi
+       HStack Astryx. */
+    <div
+      className={
+        fullWidth
+          ? "flex items-center gap-2 border-t border-border pt-3"
+          : "flex items-center justify-end gap-2"
+      }
+    >
+      <Button
+        type="button"
+        variant="destructive"
+        size="sm"
+        className={fullWidth ? "flex-1" : undefined}
+        onClick={() => onRequestCancel(invitation)}
+      >
+        Cancel Invitation
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Scaffold AlertDialog konfirmasi bersama (dulu diduplikasi 3x identik
+ * hanya beda title/description/label/variant — code review PR #108):
+ * Remove member, Change role, Cancel invitation semua memakainya.
+ */
+function ConfirmActionDialog({
+  isOpen,
+  onClose,
+  title,
+  description,
+  confirmLabel,
+  isLoading,
+  onConfirm,
+  variant,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  isLoading: boolean;
+  onConfirm: () => void;
+  variant?: "destructive";
+}) {
+  return (
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogAction
+            variant={variant}
+            disabled={isLoading}
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
+          >
+            {isLoading ? <Spinner /> : null}
+            {confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/**
  * `MembersTable` (T-099.2, migrasi shadcn/ui). shadcn `Table` — beda dari
  * `@astryxdesign/core/Table` — cuma primitive semantik `<table>` tanpa
  * sistem kolom data-driven (tidak ada `TableColumn[]`/helper
@@ -174,11 +275,11 @@ function MemberActions({
  * MCP `get_item_examples_from_registries`).
  */
 export function MembersTable({
-  members,
+  rows,
   currentUserId,
   headerAction,
 }: {
-  members: WorkspaceMemberWithUser[];
+  rows: MemberListRow[];
   currentUserId: string;
   headerAction?: ReactNode;
 }) {
@@ -190,6 +291,10 @@ export function MembersTable({
     member: WorkspaceMemberWithUser;
     newRole: MemberRole;
   }>((change) => updateMemberRoleAction(change.member.id, change.newRole));
+
+  const cancelInvitationConfirm = useConfirmAction<WorkspaceInvitationRecord>(
+    (invitation) => cancelInvitationAction(invitation.id),
+  );
 
   return (
     // eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas
@@ -210,10 +315,15 @@ export function MembersTable({
           <AlertTitle>{roleConfirm.error}</AlertTitle>
         </Alert>
       ) : null}
+      {cancelInvitationConfirm.error ? (
+        <Alert variant="destructive">
+          <AlertTitle>{cancelInvitationConfirm.error}</AlertTitle>
+        </Alert>
+      ) : null}
 
       <Card>
         <CardContent>
-          {members.length === 0 ? (
+          {rows.length === 0 ? (
             <Empty>
               <EmptyHeader>
                 <EmptyTitle>Belum ada anggota</EmptyTitle>
@@ -242,171 +352,228 @@ export function MembersTable({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {members.map((member) => (
-                      <TableRow key={member.id}>
-                        <TableCell>
-                          {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarFallback>
-                                {getInitials(member.name)}
-                              </AvatarFallback>
-                            </Avatar>
+                    {rows.map((row) =>
+                      row.kind === "member" ? (
+                        <TableRow key={row.member.id}>
+                          <TableCell>
                             {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
-                            <div className="flex flex-col">
-                              <Text variant="small">{member.name}</Text>
-                              <Text variant="muted">{member.email}</Text>
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarFallback>
+                                  {getInitials(row.member.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
+                              <div className="flex flex-col">
+                                <Text variant="small">{row.member.name}</Text>
+                                <Text variant="muted">{row.member.email}</Text>
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {MEMBER_ROLE_LABEL[member.role]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={STATUS_BADGE_VARIANT[member.status]}>
-                            {STATUS_LABEL[member.status]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <MemberActions
-                            member={member}
-                            currentUserId={currentUserId}
-                            onRequestRemove={(target) =>
-                              removeConfirm.open(target)
-                            }
-                            onRequestRoleChange={(target, newRole) =>
-                              roleConfirm.open({ member: target, newRole })
-                            }
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {MEMBER_ROLE_LABEL[row.member.role]}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={STATUS_BADGE_VARIANT[row.member.status]}
+                            >
+                              {STATUS_LABEL[row.member.status]}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <MemberActions
+                              member={row.member}
+                              currentUserId={currentUserId}
+                              onRequestRemove={(target) =>
+                                removeConfirm.open(target)
+                              }
+                              onRequestRoleChange={(target, newRole) =>
+                                roleConfirm.open({ member: target, newRole })
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        <TableRow key={row.invitation.id}>
+                          <TableCell>
+                            {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarFallback>
+                                  {getInitials(row.invitation.email)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <Text variant="small">
+                                {row.invitation.email}
+                              </Text>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {MEMBER_ROLE_LABEL[row.invitation.role]}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="warning">Pending</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <InvitationActions
+                              invitation={row.invitation}
+                              onRequestCancel={(target) =>
+                                cancelInvitationConfirm.open(target)
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ),
+                    )}
                   </TableBody>
                 </Table>
               </div>
 
               {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
               <div className="flex flex-col gap-3 md:hidden">
-                {members.map((member) => (
-                  // eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas
-                  <div
-                    key={member.id}
-                    className="flex flex-col gap-3 rounded-xl border border-border p-3"
-                  >
-                    {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                    <div className="flex items-center justify-between gap-2">
+                {rows.map((row) =>
+                  row.kind === "member" ? (
+                    // eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas
+                    <div
+                      key={row.member.id}
+                      className="flex flex-col gap-3 rounded-xl border border-border p-3"
+                    >
                       {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback>
-                            {getInitials(member.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                      <div className="flex items-center justify-between gap-2">
                         {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                        <div className="flex min-w-0 flex-col">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <Avatar>
+                            <AvatarFallback>
+                              {getInitials(row.member.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                          <div className="flex min-w-0 flex-col">
+                            <Text variant="small" className="truncate">
+                              {row.member.name}
+                            </Text>
+                            <Text variant="muted" className="truncate">
+                              {row.member.email}
+                            </Text>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={STATUS_BADGE_VARIANT[row.member.status]}
+                          className="shrink-0"
+                        >
+                          {STATUS_LABEL[row.member.status]}
+                        </Badge>
+                      </div>
+                      {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                      <div className="flex items-center justify-between text-sm">
+                        <Text variant="muted">Role</Text>
+                        <Badge variant="secondary">
+                          {MEMBER_ROLE_LABEL[row.member.role]}
+                        </Badge>
+                      </div>
+                      <MemberActions
+                        member={row.member}
+                        currentUserId={currentUserId}
+                        onRequestRemove={(target) => removeConfirm.open(target)}
+                        onRequestRoleChange={(target, newRole) =>
+                          roleConfirm.open({ member: target, newRole })
+                        }
+                        fullWidth
+                      />
+                    </div>
+                  ) : (
+                    // eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas
+                    <div
+                      key={row.invitation.id}
+                      className="flex flex-col gap-3 rounded-xl border border-border p-3"
+                    >
+                      {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                      <div className="flex items-center justify-between gap-2">
+                        {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                        <div className="flex min-w-0 items-center gap-3">
+                          <Avatar>
+                            <AvatarFallback>
+                              {getInitials(row.invitation.email)}
+                            </AvatarFallback>
+                          </Avatar>
                           <Text variant="small" className="truncate">
-                            {member.name}
-                          </Text>
-                          <Text variant="muted" className="truncate">
-                            {member.email}
+                            {row.invitation.email}
                           </Text>
                         </div>
+                        <Badge variant="warning" className="shrink-0">
+                          Pending
+                        </Badge>
                       </div>
-                      <Badge
-                        variant={STATUS_BADGE_VARIANT[member.status]}
-                        className="shrink-0"
-                      >
-                        {STATUS_LABEL[member.status]}
-                      </Badge>
+                      {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                      <div className="flex items-center justify-between text-sm">
+                        <Text variant="muted">Role</Text>
+                        <Badge variant="secondary">
+                          {MEMBER_ROLE_LABEL[row.invitation.role]}
+                        </Badge>
+                      </div>
+                      <InvitationActions
+                        invitation={row.invitation}
+                        onRequestCancel={(target) =>
+                          cancelInvitationConfirm.open(target)
+                        }
+                        fullWidth
+                      />
                     </div>
-                    {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                    <div className="flex items-center justify-between text-sm">
-                      <Text variant="muted">Role</Text>
-                      <Badge variant="secondary">
-                        {MEMBER_ROLE_LABEL[member.role]}
-                      </Badge>
-                    </div>
-                    <MemberActions
-                      member={member}
-                      currentUserId={currentUserId}
-                      onRequestRemove={(target) => removeConfirm.open(target)}
-                      onRequestRoleChange={(target, newRole) =>
-                        roleConfirm.open({ member: target, newRole })
-                      }
-                      fullWidth
-                    />
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             </>
           )}
         </CardContent>
       </Card>
 
-      <AlertDialog
-        open={removeConfirm.isOpen}
-        onOpenChange={(open) => {
-          if (!open) removeConfirm.close();
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Keluarkan anggota ini?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {removeConfirm.target
-                ? `Keluarkan ${removeConfirm.target.name} dari workspace ini? Mereka akan kehilangan akses (ADR-049, Tier 2).`
-                : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={removeConfirm.isLoading}
-              onClick={(e) => {
-                e.preventDefault();
-                void removeConfirm.confirm();
-              }}
-            >
-              {removeConfirm.isLoading ? <Spinner /> : null}
-              Keluarkan
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmActionDialog
+        isOpen={removeConfirm.isOpen}
+        onClose={removeConfirm.close}
+        title="Keluarkan anggota ini?"
+        description={
+          removeConfirm.target
+            ? `Keluarkan ${removeConfirm.target.name} dari workspace ini? Mereka akan kehilangan akses (ADR-049, Tier 2).`
+            : ""
+        }
+        confirmLabel="Keluarkan"
+        isLoading={removeConfirm.isLoading}
+        onConfirm={() => void removeConfirm.confirm()}
+        variant="destructive"
+      />
 
-      <AlertDialog
-        open={roleConfirm.isOpen}
-        onOpenChange={(open) => {
-          if (!open) roleConfirm.close();
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Ubah role anggota ini?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {roleConfirm.target
-                ? `Ubah role ${roleConfirm.target.member.name} dari ${MEMBER_ROLE_LABEL[roleConfirm.target.member.role]} ke ${MEMBER_ROLE_LABEL[roleConfirm.target.newRole]}?`
-                : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={roleConfirm.isLoading}
-              onClick={(e) => {
-                e.preventDefault();
-                void roleConfirm.confirm();
-              }}
-            >
-              {roleConfirm.isLoading ? <Spinner /> : null}
-              Ubah Role
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmActionDialog
+        isOpen={roleConfirm.isOpen}
+        onClose={roleConfirm.close}
+        title="Ubah role anggota ini?"
+        description={
+          roleConfirm.target
+            ? `Ubah role ${roleConfirm.target.member.name} dari ${MEMBER_ROLE_LABEL[roleConfirm.target.member.role]} ke ${MEMBER_ROLE_LABEL[roleConfirm.target.newRole]}?`
+            : ""
+        }
+        confirmLabel="Ubah Role"
+        isLoading={roleConfirm.isLoading}
+        onConfirm={() => void roleConfirm.confirm()}
+      />
+
+      <ConfirmActionDialog
+        isOpen={cancelInvitationConfirm.isOpen}
+        onClose={cancelInvitationConfirm.close}
+        title="Batalkan undangan ini?"
+        description={
+          cancelInvitationConfirm.target
+            ? `Batalkan undangan untuk ${cancelInvitationConfirm.target.email}? Link undangan yang sudah dibagikan tidak akan bisa dipakai lagi.`
+            : ""
+        }
+        confirmLabel="Batalkan Undangan"
+        isLoading={cancelInvitationConfirm.isLoading}
+        onConfirm={() => void cancelInvitationConfirm.confirm()}
+        variant="destructive"
+      />
     </div>
   );
 }

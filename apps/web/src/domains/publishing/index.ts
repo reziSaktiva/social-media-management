@@ -10,6 +10,7 @@ export * from "./services/schedule-posts.use-case";
 export * from "./services/publish-now.use-case";
 export * from "./services/cancel-schedule.use-case";
 export * from "./services/retry-failed-target.use-case";
+export * from "./services/outstand-webhook-processor";
 export * from "./services/resolve-schedule-targets";
 export * from "./services/group-queue-items";
 export * from "./services/group-history-items";

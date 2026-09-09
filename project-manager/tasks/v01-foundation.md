@@ -91,7 +91,7 @@ Aktifkan verifikasi email + password reset yang benar-benar mengirim email. Saat
 
 | Field         | Value                                                              |
 | ------------- | ------------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress — T-007.1/.5/.6 (pembuatan invitation + safety dialog) selesai & lolos review+QA; halaman accept-invite belum ada (lihat catatan) sehingga Copy Link belum end-to-end; T-007.7 (jalur Kirim via Email) blocked T-005 |
+| **Status**    | 🟡 In Progress — jalur **Copy Link** sudah tuntas end-to-end (T-007.1–.6 ✅ + T-093 Accept Invite page ✅, 2026-08-31, verifikasi RBAC 3 akun real PASS); **T-007.8** (Members list gabungan Pending, ADR-101) juga ✅ Done 2026-09-07; satu-satunya sisa scope adalah **T-007.7** (jalur Kirim via Email), blocked T-005 |
 | **Domain**    | workspace                                                          |
 | **ADR**       | ADR-012 (roles), ADR-049 (konfirmasi Remove Member & Update Role), ADR-072 (tabel `workspace_invitations`), ADR-080 (dua metode invite — Email + Copy Link, amandemen ADR-072) |
 | **Depends**   | T-006 ✅, T-005 (soft dependency — hanya memblokir opsi "Kirim via Email", bukan T-007.1 jalur "Copy Link", lihat ADR-080) |
@@ -105,13 +105,14 @@ Screen Workspace Settings → Members. Disepakati **desain minimal dulu**: cukup
 
 **Status implementasi T-007.1/.5/.6 (2026-08-14):** Ketiganya lolos review arsitektur Ridwan (bersih, tanpa temuan) serta QA Najwa (typecheck/lint/test: 126 passed + 3 skip pre-existing). Verifikasi browser yang **benar-benar berhasil**: gating tombol submit (disabled sampai email valid), radio group Copy Link/Kirim via Email tampil sesuai desain, dialog konfirmasi Remove Member/Update Role termount dengan copy yang benar. Verifikasi yang **tidak** berhasil dibuktikan hidup: submit "Buat Link Undangan" gagal karena env `JOB_SECRET` belum diisi (known gap, KI-015) — jadi generate-link-lalu-salin belum pernah dibuktikan visual sukses; Remove Member/Update Role end-to-end juga tidak bisa diuji karena dev DB cuma 1 member. Heading duplikat "Members" yang sempat muncul saat implementasi (akibat `MembersTable` merender heading section-nya sendiri berdampingan dengan heading halaman) sudah diperbaiki lewat slot `headerAction` baru di `MembersTable`.
 
-- [x] **T-007.1** `WorkspaceService.inviteMember` — jalur **Copy Link**: generate invitation email-bound + token (unit test lolos, review arsitektur bersih) — `removeMember`/`updateMemberRole` selesai. **Cakupan hanya pembuatan invitation**, bukan penerimaannya (lihat catatan di atas) — jangan anggap invite-to-membership sudah utuh.
+- [x] **T-007.1** `WorkspaceService.inviteMember` — jalur **Copy Link**: generate invitation email-bound + token (unit test lolos, review arsitektur bersih) — `removeMember`/`updateMemberRole` selesai. **Cakupan hanya pembuatan invitation**, bukan penerimaannya (lihat catatan di atas) — jangan anggap invite-to-membership sudah utuh. **Terkait KI-053** (Security/Bug, Open, 2026-09-07) — kalau email A ditarget tapi link terbuka email B dan A belum punya akun, B bisa membajak identitas A saat submit di `/invite/[token]` (akar masalah KI-001, `requireEmailVerification: false`); belum ada mitigasi.
 - [x] **T-007.2** Repository method + migrasi tabel invitation (jika perlu)
 - [x] **T-007.3** Server Actions + validasi RBAC di application layer
 - [x] **T-007.4** UI daftar anggota di `/settings/members` (Astryx Table)
 - [x] **T-007.5** Dialog konfirmasi Remove Member + Update Member Role (ADR-049 Tier 2) — selesai, UI-nya terverifikasi browser; alur end-to-end penuh belum teruji (lihat catatan di atas)
 - [x] **T-007.6** UI dialog invite member dengan 2 opsi (Copy Link aktif, Kirim via Email disabled) + field email-bound wajib (ADR-080 poin 6) — UI sesuai desain Claude Design terverifikasi; submit sukses (generate+copy link) belum terbukti hidup karena gap `JOB_SECRET`
-- [ ] **T-007.7** `WorkspaceService.inviteMember` — jalur **Kirim via Email** (kirim email berisi link undangan yang sama, dipicu setelah invitation dibuat) — **blocked oleh T-005** (provider email belum ditetapkan), dipisah dari T-007.1 supaya jalur Copy Link tidak ikut tertahan (ADR-080)
+- [ ] **T-007.7** `WorkspaceService.inviteMember` — jalur **Kirim via Email** (kirim email berisi link undangan yang sama, dipicu setelah invitation dibuat) — **blocked oleh T-005** (provider email belum ditetapkan), dipisah dari T-007.1 supaya jalur Copy Link tidak ikut tertahan (ADR-080). **Catatan (2026-09-07, ADR-101 mengamandemen ADR-100):** rencana awal ADR-100 (pre-create baris `workspace_members` berstatus `Pending`) **digantikan** — lihat T-007.8, yang menyelesaikan visibilitas Pending untuk kedua metode lewat gabungan data, tanpa perlu skema baru. T-007.7 di sini murni tinggal mekanisme kirim email itu sendiri, tetap blocked T-005.
+- [x] **T-007.8** ✅ Done (2026-09-07) — Members list (`/settings/members`) menampilkan undangan pending sebagai baris status **Pending** — **berlaku kedua metode invite** (Copy Link + Kirim via Email), lewat gabungan data `workspace_members` + `WorkspaceInvitation` (`status=pending`, belum expired), pola dikunci **ADR-101** (2026-09-07, mengamandemen ADR-100/menutup KI-046 sisi teknis). Identitas baris virtual pakai `invitation.email`. Aksi hanya **Cancel Invitation** (revoke), bukan Change Role. **Tidak bergantung T-005** — datanya sudah tersedia dari Copy Link (T-007.1 ✅). Depends: T-007.1 ✅. **Implementasi (Prabowo Feature Engineer):** merge presentasi `workspace_members` + `WorkspaceInvitation` pending belum expired di `WorkspaceService`, aksi `revokeInvitation` (RBAC `assertActorCanManageMembers`), tanpa migrasi skema (sesuai ADR-101 poin 4). **Review arsitektur (Ridwan Architecture Reviewer):** 1 temuan race condition di `revokeInvitation` — sudah diperbaiki Prabowo, re-verifikasi bersih (typecheck/lint/test: 269 passed, 5 skipped, 0 error). **QA end-to-end (Najwa QA Engineer, browser real):** golden path invite → baris Pending muncul → cancel → link jadi graceful-invalid (PASS); golden path accept → baris Pending hilang jadi Active (PASS); member existing tidak regresi (PASS); mobile 375px (PASS); RBAC Creator tetap tidak bisa akses `/settings/members` (PASS); invitation expired tidak muncul di list (PASS) — **semua PASS, 0 bug ditemukan**.
 
 ### T-093 · Accept Invite page — invite-to-membership utuh + verifikasi RBAC 2-akun
 
@@ -124,6 +125,8 @@ Screen Workspace Settings → Members. Disepakati **desain minimal dulu**: cukup
 | **Baca dulu** | `02-product/roles-permissions.md` · `05-architecture/application-layer.md` · `decisions/ADR-080-invite-member-dua-metode-email-copy-link-amandemen-adr-072.md` · `decisions/ADR-096-*.md` |
 
 Ditemukan CodeRabbit saat review PR #73 (2026-08-14): halaman `/invite/[token]` (accept-invite) **belum pernah dibuat sama sekali** — link Copy Link yang dihasilkan T-007.1/.6 hari ini 404 kalau dibuka. Dicatat sebagai "future work terpisah, belum ada nomor T-XXX" di `COMPLETE_TASK.md`/ADR-080 sejak saat itu, baru dikonversi jadi task resmi di sini (2026-08-28, saat menyusun rantai dependency ADR-094 Realtime — Realtime butuh ≥2 akun nyata di satu workspace untuk bisa diuji maupun bermakna dipakai).
+
+**Terkait KI-053** (Security/Bug, Open, 2026-09-07): halaman `/invite/[token]` (`AcceptInviteForm.tsx`) mengunci field email jadi read-only ke email undangan, tapi tidak memverifikasi kepemilikan inbox — kalau email A belum punya akun dan link terbuka email B, B bisa membajak identitas A saat sign-up. Akar masalah KI-001 (`requireEmailVerification: false`). Belum ada mitigasi.
 
 **Update 2026-08-31 — implementasi selesai, lolos review Ridwan (2 temuan security sudah diperbaiki):** UI auto-detect email baru vs sudah terdaftar (bukan pilihan manual, desain final Claude Design `templates/accept-invite.html`), method baru langsung di `WorkspaceService` (bukan use-case terpisah, konsisten pola existing), redirect sukses `router.push("/")` + cookie `active-workspace-id` (bukan `/[slug]`, ADR-076 sudah menghapus dynamic segment). 3 migrasi RLS baru diterapkan ke DB dev (`20260831035427_t093_accept_invite_rls`, `20260831042017_t093_invitation_select_visibility_fix`, `20260831044328_t093_code_review_rls_hardening`) — pola dan rasionalnya dicatat di **ADR-096**. 17 unit test baru (fake repository) + 1 integration test terhadap DB real (`workspace.repository.accept-invitation.test.ts`).
 
@@ -306,7 +309,7 @@ Semua route `/account/*` dan `/settings/*` sebelumnya masih placeholder "Scaffol
 
 | Field         | Value                                                                  |
 | ------------- | ----------------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress — T-039.1/.2/.3/.5 selesai (review Ridwan + QA Najwa lolos); T-039.4 desain sudah selesai di Claude Design (2026-08-24), implementasi kode belum dikerjakan — menunggu approval King Rezi (rule 17 AGENTS.md) |
+| **Status**    | ✅ Done — seluruh subtask T-039.1–.5 selesai (2026-09-08): T-039.4 (onboarding picker workspace) sudah diimplementasikan, lolos review arsitektur Ridwan (tidak ada temuan) dan QA Najwa end-to-end browser (6/6 skenario PASS) — kode sudah di-commit & push, dibuka sebagai PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) dari branch `feature/t-039-4-onboarding-workspace-picker` (checkout dari `staging`) ke `staging`, **belum di-merge**, menunggu King Rezi |
 | **Domain**    | workspace · platform                                                    |
 | **ADR**       | ADR-076                                                                  |
 | **Terkait**   | KI-023, KI-024 (`PROJECT_STATE.md`) — KI-024 ditemukan saat T-039.5, belum ada task formal |
@@ -326,9 +329,19 @@ task ini dieksekusi sudah akurat/up-to-date.
 - [x] **T-039.1** Hapus dynamic segment `apps/web/src/app/[slug]/...`, pindahkan seluruh route workspace-scoped (Home, Publish, Engage, Analyze, Start Page, Settings) ke route group baru `apps/web/src/app/(app)/...`
 - [x] **T-039.2** Gabungkan `apps/web/src/app/account/...` (saat ini terpisah) ke dalam `settings/account/*`, konsisten dengan konsolidasi Settings jadi dua grup "Organization" + "Account" (satu entry point avatar/user menu)
 - [x] **T-039.3** Ganti resolusi workspace di Middleware/`src/proxy.ts` dari parsing URL `[slug]` menjadi baca cookie `active-workspace-id` (HTTP-only), tetap divalidasi ulang terhadap `workspace_members` di setiap request
-- [ ] **T-039.4** Bangun halaman `/onboarding` dengan picker workspace — re-entry point untuk dua skenario: user baru tanpa workspace (buat workspace pertama) dan user existing yang kehilangan cookie workspace aktif (pilih dari daftar workspace)
+- [x] **T-039.4** Bangun halaman `/onboarding` dengan picker workspace — re-entry point untuk dua skenario: user baru tanpa workspace (buat workspace pertama) dan user existing yang kehilangan cookie workspace aktif (pilih dari daftar workspace)
 
 **Catatan T-039.4 (2026-08-24) — desain selesai, implementasi kode belum dimulai:** Rancangan sudah dibuat di Claude Design (project "Social Media Management") mengikuti gate rule 17 `AGENTS.md` — file baru `templates/onboarding.html` (2 state referensi: "Belum Punya Workspace" — form buat workspace baru; "Pilih Workspace (>1, cookie hilang)" — list `.ws-pick-item` yang bisa diklik, masing-masing langsung set active workspace + redirect ke Home) dan class baru di `styles.css` (`.ws-pick-list`, `.ws-pick-item`, `.ws-pick-avatar`, `.ws-pick-body`, `.ws-pick-name`, `.ws-pick-role`, `.ws-pick-chevron`, mereplikasi pola Astryx `List`+`ListItem`/`Item`). Implementasi kode di `apps/web` **belum dikerjakan sama sekali** — menunggu approval King Rezi atas desain ini sebelum dilanjutkan. Branch `feature/t039-4-onboarding-workspace-picker` sudah dibuat (checkout dari `staging`), belum ada commit. Detail lengkap proses & keputusan: `COMPLETE_TASK.md`.
+
+**Catatan eksekusi T-039.4 (2026-09-08) — implementasi selesai, lolos review + QA:** Setelah desain disetujui, diimplementasikan di `apps/web/src/app/onboarding/page.tsx` — diubah dari "cek 1 default workspace, kalau tidak ada tampilkan form" menjadi memanggil `WorkspaceService.listWorkspacesForUser(userId)` dan branching 3 skenario: 0 workspace → render `CreateWorkspaceForm` (state lama, tidak berubah); 1 workspace → tetap `redirect("/onboarding/resume")` (Route Handler existing dari T-039.3, tidak berubah); >1 workspace → render `WorkspacePicker` (baru) — menutup gap lama di mana `onboarding/resume` auto-pick diam-diam workspace tertua tanpa menanyakan user. File baru: `apps/web/src/app/onboarding/components/WorkspacePicker.tsx` (Client Component, list workspace pakai `Item`/`ItemGroup` shadcn — pola sama `WorkspacesSettingsView.tsx` T-089 — tanpa `AlertDialog` konfirmasi karena belum ada "workspace aktif" untuk ditinggalkan di titik re-entry ini, klik baris langsung memanggil Server Action). `apps/web/src/app/onboarding/components/actions.ts` ditambah `selectWorkspaceAction(workspaceId)` — validasi membership aktif lewat reuse `WorkspaceService.switchWorkspace`, set cookie `active-workspace-id`, redirect Home; error (bukan anggota aktif) → `{error}` lewat `toActionError`, tanpa redirect. Test baru `apps/web/src/app/onboarding/components/actions.test.ts` menutup gap coverage untuk `selectWorkspaceAction` (3 skenario: unauthenticated → redirect login; sukses → set cookie + redirect home; gagal membership → return `{error}` tanpa redirect/cookie).
+
+Review arsitektur Ridwan: **LOLOS, tidak ada temuan** (entry point tanpa business logic, domain tidak import Prisma langsung, reuse `switchWorkspace` untuk skenario "belum ada workspace aktif" dinilai semantically tepat, bukan penyalahgunaan API).
+
+QA Najwa end-to-end browser (localhost): **PASS 6/6 skenario** — (1) 1 workspace + cookie hilang auto-redirect Home tanpa picker; (2) >1 workspace + cookie hilang tampil picker, klik pilih → redirect Home + cookie ter-set benar (dites akun Raka, 4 workspace); (3) 0 workspace → form create workspace lama tidak regresi; (4) error membership invalid → alert error muncul tanpa crash/redirect; (5) visual "Pilih Workspace" cocok Claude Design (title, subtitle, avatar+nama+role+chevron, klik langsung tanpa dialog); (6) regresi Settings → Account → Workspaces tetap normal. Data test QA (`qa-onboarding-t0394@kopiselasar.com` + workspace-nya) sudah dibersihkan sendiri oleh Najwa via Danger Zone.
+
+Verifikasi: `bun run typecheck`/`lint` bersih, `bun run test` (root) 272 pass (naik dari 269, dari `actions.test.ts` baru)/5 skip.
+
+**Sudah di-commit & push, belum di-merge** — kode dibuka sebagai PR [#109](https://github.com/reziSaktiva/social-media-management/pull/109) dari branch `feature/t-039-4-onboarding-workspace-picker` (checkout dari `staging`) ke `staging`, menunggu King Rezi me-review/merge (rule 13 AGENTS.md). Dengan ini seluruh subtask T-039.1–.5 selesai, menutup sisa scope KI-023 (lihat catatan update KI-023 di `PROJECT_STATE.md`).
 
 - [x] **T-039.5** (ADR-077) Migrasi kode pola sidebar Settings dari secondary nav ke sidebar tunggal pola Buffer: (a) `sideNav` di `AppShell` (`apps/web/src/app/(app)/layout.tsx`) jadi kondisional per-route — `WorkspaceSideNav` di luar `/settings`, `SettingsSideNav` di dalam `/settings`; (b) hapus `Layout`+`LayoutPanel role="navigation"` secondary nav di `apps/web/src/app/(app)/settings/layout.tsx`, content jadi full-width; (c) tambah header back-navigation ("← Settings" → Home) di `SettingsSideNav.tsx`; referensi visual sudah ada di readme.md Claude Design (`.settings-sidebar`)
 
@@ -374,11 +387,12 @@ verifikasi hijau (typecheck bersih, lint bersih, 80 test pass termasuk
   Organization/Account, urutan & label item) — tidak ada perubahan di
   Claude Design, cuma jadi referensi.
 
-**T-039.4 tetap terbuka** sebagai next step terpisah — halaman `/onboarding`
-dengan picker workspace untuk user yang punya >1 workspace saat cookie
-hilang. Saat ini `onboarding/resume/route.ts` otomatis memilih salah satu
-lewat `getDefaultWorkspaceForUser` — bukan bug, itu batasan scope saat ini,
-menunggu T-039.4.
+**Update (2026-09-08) — T-039.4 sudah diimplementasikan, lihat catatan
+eksekusi T-039.4 di atas.** Sebelumnya `onboarding/resume/route.ts` otomatis
+memilih salah satu workspace lewat `getDefaultWorkspaceForUser` untuk kasus
+>1 workspace (bukan bug, batasan scope sementara) — sekarang skenario itu
+sudah ditangani `WorkspacePicker` yang menanyakan pilihan user secara
+eksplisit.
 
 **Catatan eksekusi T-039.5 (2026-08-11, ADR-077):** Dikerjakan Mark UI
 Engineer → review arsitektur Ridwan (lolos, tidak ada temuan) → QA Najwa
@@ -400,8 +414,9 @@ langsung juga benar).
   sekarang full-width dengan sidebar tunggal).
 
 T-039.5 menutup sisa gap render sidebar Settings di KI-023 (bersama ADR-077).
-Sisa scope terbuka KI-023/T-039 sekarang hanya **T-039.4** (onboarding
-picker workspace).
+**Update (2026-09-08):** T-039.4 (onboarding picker workspace) juga sudah
+selesai diimplementasikan (lihat catatan eksekusi T-039.4 di atas) — seluruh
+scope KI-023/T-039 sekarang tuntas, tidak ada sisa subtask terbuka.
 
 **Catatan spin-off (2026-08-24):** Setelah T-039.4 didesain, King Rezi
 menemukan gap terpisah — tidak ada cara *sengaja* pindah workspace setelah

@@ -57,6 +57,7 @@ function createFakeRepository(
     resetTargetForRetry: async () => undefined,
     setRetryOutstandPostId: async () => undefined,
     reconcilePostStatusAfterRetry: async () => undefined,
+    findPostTargetsByOutstandPostId: async () => null,
     ...overrides,
   };
 }

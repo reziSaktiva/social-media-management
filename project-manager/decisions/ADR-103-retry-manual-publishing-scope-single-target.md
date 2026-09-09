@@ -1,4 +1,4 @@
-## Decision ADR-102
+## Decision ADR-103
 
 ### Title
 
@@ -78,7 +78,7 @@ ke King Rezi lewat `AskUserQuestion` sesuai `.claude/skills/proactive-clarificat
 ### Impact / Baseline yang diamandemen
 
 * Melengkapi (bukan membatalkan) **ADR-092** — ADR-092 menetapkan pola
-  delete-lalu-create-ulang secara umum untuk retry Outstand; ADR-102
+  delete-lalu-create-ulang secara umum untuk retry Outstand; ADR-103
   mengunci **scope**-nya jadi single-target saat pola itu diterapkan ke
   T-034.4.
 * `product-discovery/06-engineering/integration-layer.md` — ditambah

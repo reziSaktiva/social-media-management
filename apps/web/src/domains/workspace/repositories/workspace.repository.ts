@@ -230,6 +230,39 @@ export interface IWorkspaceRepository {
   }): Promise<WorkspaceMemberRecord>;
 
   /**
+   * Undangan `pending` yang belum melewati `expiresAt` (T-007.8, ADR-101) —
+   * sumber baris virtual "Pending" di `/settings/members`, berlaku untuk
+   * invitation yang dibuat lewat metode manapun (Copy Link maupun Kirim via
+   * Email — keduanya sama-sama tabel `WorkspaceInvitation`, ADR-101 poin 3).
+   * Sengaja TIDAK menyertakan invitation yang sudah `accepted`/`revoked`
+   * atau sudah lewat `expiresAt` — baris itu tidak lagi relevan ditampilkan
+   * sebagai "menunggu respons". `actingUserId` (RLS, KI-026 follow-up) —
+   * member aktif workspace ini yang memicu query (bukan filter hasil).
+   */
+  listPendingInvitations(
+    workspaceId: WorkspaceId,
+    actingUserId: UserId,
+  ): Promise<WorkspaceInvitationRecord[]>;
+
+  /**
+   * Batalkan undangan pending (Cancel Invitation, T-007.8, ADR-101 poin 5) —
+   * set `WorkspaceInvitation.status` jadi `revoked`. Compare-and-swap
+   * (`updateMany` dengan guard `status: pending` DAN `expiresAt` belum lewat)
+   * — kalau tidak ada baris yang match (tidak ditemukan di workspace ini,
+   * statusnya sudah bukan `pending` lagi, atau sudah lewat `expiresAt`),
+   * melempar `ConflictError` generik (satu error, tanpa query kedua untuk
+   * membedakan alasannya — race guard, pola sama seperti `acceptInvitation`).
+   * `actingUserId` (RLS, KI-026 follow-up) — RBAC (Owner/Admin,
+   * `assertActorCanManageMembers`) sudah diverifikasi di
+   * `WorkspaceService.cancelInvitation` sebelum method ini dipanggil.
+   */
+  revokeInvitation(
+    workspaceId: WorkspaceId,
+    invitationId: InvitationId,
+    actingUserId: UserId,
+  ): Promise<void>;
+
+  /**
    * Persist urutan channel sidebar personal user (T-012.1). Full rewrite
    * (delete+createMany) — caller (`WorkspaceService.saveChannelOrder`)
    * sudah memfilter `orderedConnectedAccountIds` supaya hanya berisi id
@@ -310,4 +343,30 @@ export interface IWorkspaceRepository {
     name: string,
     actingUserId: UserId,
   ): Promise<WorkspaceRecord>;
+
+  /**
+   * Webhook Outstand `account.token_expired` (T-026.5, T-015) — tandai
+   * `WorkspaceConnectedAccount.reconnectRequired = true` by external
+   * `outstandAccountId` (payload webhook membawa id Outstand, bukan id
+   * internal kita). Returns `null` kalau tidak ada akun dengan
+   * `outstandAccountId` itu.
+   *
+   * **TIDAK menerima `actingUserId`** — sama alasan dengan
+   * `IPublishingRepository.findPostTargetsByOutstandPostId` (T-026): webhook
+   * route tidak punya session, jadi tidak ada acting user sebelum akun ini
+   * ditemukan. Implementasi Prisma resolve `workspace.ownerId` (kolom tanpa
+   * RLS di tabel `workspaces`) lewat SECURITY DEFINER SQL function (migration
+   * `20260907120000_t026_outstand_webhook_system_lookups`) untuk BACA lintas
+   * akun, lalu memakai Owner itu sendiri sebagai `actingUserId` untuk
+   * MENULIS `reconnectRequired` lewat `withCurrentUser` yang sudah ada
+   * (Owner workspace dijamin member aktif di workspace-nya sendiri, jadi RLS
+   * tetap terpenuhi untuk langkah tulis). `ownerUserId` dikembalikan supaya
+   * `WebhookProcessor` bisa langsung memakainya untuk trigger notifikasi
+   * (T-026.5) tanpa query terpisah.
+   */
+  markAccountReconnectRequired(outstandAccountId: string): Promise<{
+    workspaceId: WorkspaceId;
+    connectedAccountId: ConnectedAccountId;
+    ownerUserId: UserId;
+  } | null>;
 }

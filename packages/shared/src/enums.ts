@@ -74,4 +74,8 @@ export enum EngagementType {
 export enum NotificationType {
   OwnershipTransferRequested = "ownership_transfer_requested",
   OwnershipTransferResolved = "ownership_transfer_resolved",
+  /** Webhook Outstand `post.error` (T-026.4/T-036.5) — semua target post gagal publish. */
+  PostPublishFailed = "post_publish_failed",
+  /** Webhook Outstand `account.token_expired` (T-026.5) — akun butuh reconnect. */
+  AccountReconnectRequired = "account_reconnect_required",
 }

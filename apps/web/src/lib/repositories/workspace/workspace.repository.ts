@@ -430,6 +430,53 @@ export const workspaceRepository: IWorkspaceRepository = {
     });
   },
 
+  /** Ordered by `createdAt` ascending — sama urutan invitation dibuat, konsisten dengan `listMembers` (`joinedAt` ascending). */
+  async listPendingInvitations(workspaceId, actingUserId) {
+    const invitations = await withCurrentUser(actingUserId, (tx) =>
+      tx.workspaceInvitation.findMany({
+        where: {
+          workspaceId,
+          status: InvitationStatus.Pending,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+    );
+
+    return invitations.map(toInvitationRecord);
+  },
+
+  async revokeInvitation(workspaceId, invitationId, actingUserId) {
+    await withCurrentUser(actingUserId, async (tx) => {
+      // Flip status atomik `pending` -> `revoked` dalam satu statement —
+      // sama pola race guard seperti `acceptInvitation` (compare-and-swap
+      // lewat `updateMany` + cek `count`, bukan SELECT-lalu-UPDATE terpisah).
+      // Ini mencegah race dengan `acceptInvitation`: kalau invitee accept
+      // duluan (status sudah `accepted`), `updateMany` di sini tidak akan
+      // match apa pun, jadi tidak menimpa status yang sudah benar. `expiresAt`
+      // juga di-guard di where-clause supaya invitation yang sudah lewat
+      // masa berlaku (tapi status-nya masih `pending`, tidak ada proses yang
+      // secara aktif menandainya expired) tidak ikut ke-flip jadi `revoked`.
+      const revoked = await tx.workspaceInvitation.updateMany({
+        where: {
+          id: invitationId,
+          workspaceId,
+          status: InvitationStatus.Pending,
+          expiresAt: { gt: new Date() },
+        },
+        data: { status: InvitationStatus.Revoked },
+      });
+      if (revoked.count === 0) {
+        // Update tidak kena — tidak dibedakan lagi NotFound vs Conflict
+        // vs expired lewat query kedua (round-trip tambahan untuk pesan
+        // yang lebih presisi tidak sepadan di jalur double-click ini).
+        throw new ConflictError(
+          "Undangan tidak ditemukan, sudah dipakai/dibatalkan, atau sudah kedaluwarsa.",
+        );
+      }
+    });
+  },
+
   async saveChannelOrder({ workspaceId, userId, orderedConnectedAccountIds }) {
     // `tx` di dalam `withCurrentUser` sudah berupa interactive transaction
     // client (Prisma.TransactionClient) — tidak mengekspos `$transaction`
@@ -579,4 +626,58 @@ export const workspaceRepository: IWorkspaceRepository = {
       throw error;
     }
   },
+
+  async markAccountReconnectRequired(outstandAccountId) {
+    // System-context read (T-026.5, webhook Outstand) — bypasses RLS via a
+    // narrow SECURITY DEFINER SQL function (migration
+    // `20260907120000_t026_outstand_webhook_system_lookups`), NOT
+    // `withCurrentUser` — sama alasan seperti
+    // `publishingRepository.findPostTargetsByOutstandPostId`, lihat catatan
+    // lengkap di interface method ini.
+    const rows = await prisma.$queryRaw<AccountOwnerLookupRow[]>`
+      SELECT * FROM "public"."webhook_find_account_owner_by_outstand_account_id"(${outstandAccountId})
+    `;
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    // `outstand_account_id` cuma unique PER WORKSPACE — kalau akun yang
+    // sama kebetulan ter-connect di lebih dari satu workspace (skenario
+    // agency), fungsi SQL di atas mengembalikan SEMUA baris (tidak lagi
+    // `LIMIT 1`). Jangan tebak salah satu secara diam-diam — refuse dan
+    // biarkan route.ts menandai receipt `failed` (defense-in-depth yang
+    // sama dengan guard di `publishingRepository.findPostTargetsByOutstandPostId`).
+    const distinctWorkspaceIds = new Set(rows.map((row) => row.workspace_id));
+    if (distinctWorkspaceIds.size > 1) {
+      throw new Error(
+        `markAccountReconnectRequired: outstandAccountId=${outstandAccountId} cocok dengan ${distinctWorkspaceIds.size} workspace berbeda — menolak menebak salah satu.`,
+      );
+    }
+
+    const [row] = rows;
+    const workspaceId = asWorkspaceId(row.workspace_id);
+    const connectedAccountId = asConnectedAccountId(row.connected_account_id);
+    const ownerUserId = asUserId(row.owner_user_id);
+
+    // Write path tetap RLS-safe seperti method lain di file ini —
+    // `ownerUserId` (Owner workspace ini, dibaca lewat bypass di atas)
+    // dijamin member aktif di workspace-nya sendiri, jadi `withCurrentUser`
+    // di sini tidak butuh bypass tambahan.
+    await withCurrentUser(ownerUserId, (tx) =>
+      tx.workspaceConnectedAccount.updateMany({
+        where: { id: connectedAccountId, workspaceId },
+        data: { reconnectRequired: true },
+      }),
+    );
+
+    return { workspaceId, connectedAccountId, ownerUserId };
+  },
 };
+
+/** Row shape returned by the raw SQL call above — snake_case, mirrors the SQL function's RETURNS TABLE. */
+interface AccountOwnerLookupRow {
+  workspace_id: string;
+  connected_account_id: string;
+  owner_user_id: string;
+}
