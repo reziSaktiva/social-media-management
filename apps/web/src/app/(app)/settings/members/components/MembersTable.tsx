@@ -4,16 +4,6 @@ import type { ReactNode } from "react";
 
 import { MemberRole, MemberStatus } from "@social/shared";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +21,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Spinner } from "@/components/ui/spinner";
+import { ConfirmActionDialog } from "@/components/shared/ConfirmActionDialog";
 import {
   Table,
   TableBody,
@@ -207,60 +197,9 @@ function InvitationActions({
   );
 }
 
-/**
- * Scaffold AlertDialog konfirmasi bersama (dulu diduplikasi 3x identik
- * hanya beda title/description/label/variant — code review PR #108):
- * Remove member, Change role, Cancel invitation semua memakainya.
- */
-function ConfirmActionDialog({
-  isOpen,
-  onClose,
-  title,
-  description,
-  confirmLabel,
-  isLoading,
-  onConfirm,
-  variant,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  description: string;
-  confirmLabel: string;
-  isLoading: boolean;
-  onConfirm: () => void;
-  variant?: "destructive";
-}) {
-  return (
-    <AlertDialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Batal</AlertDialogCancel>
-          <AlertDialogAction
-            variant={variant}
-            disabled={isLoading}
-            onClick={(e) => {
-              e.preventDefault();
-              onConfirm();
-            }}
-          >
-            {isLoading ? <Spinner /> : null}
-            {confirmLabel}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
+// `ConfirmActionDialog` dipindah ke `@/components/shared/ConfirmActionDialog`
+// (code review PR #113) — sebelumnya di-re-inline di sini, sekarang dipakai
+// bersama dengan `ConnectedAccountsList.tsx`.
 
 /**
  * `MembersTable` (T-099.2, migrasi shadcn/ui). shadcn `Table` — beda dari

@@ -461,8 +461,14 @@ export class WorkspaceService {
     );
   }
 
-  /** Owner/Admin only; dipakai renameWorkspace (Settings General, KI-045). */
-  private async assertActorCanManageWorkspaceSettings(
+  /**
+   * Owner/Admin only — gate bersama untuk `assertActorCanManageWorkspaceSettings`
+   * (renameWorkspace, Settings General, KI-045) dan
+   * `assertActorCanManageConnectedAccounts` (disconnectAccount, T-014.2).
+   * Kondisi role-nya identik di kedua area fitur; pesan error tetap
+   * spesifik per caller lewat `actionErrorMessage`.
+   */
+  private async assertActorHasOwnerOrAdminRole(
     workspaceId: WorkspaceId,
     actorUserId: UserId,
     actionErrorMessage: string,
@@ -471,6 +477,19 @@ export class WorkspaceService {
     if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
       throw new AuthorizationError(actionErrorMessage);
     }
+  }
+
+  /** Owner/Admin only; dipakai renameWorkspace (Settings General, KI-045). */
+  private async assertActorCanManageWorkspaceSettings(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    actionErrorMessage: string,
+  ): Promise<void> {
+    await this.assertActorHasOwnerOrAdminRole(
+      workspaceId,
+      actorUserId,
+      actionErrorMessage,
+    );
   }
 
   /** Owner tidak bisa jadi target; dipakai removeMember & updateMemberRole. */
@@ -898,6 +917,54 @@ export class WorkspaceService {
       relatedEntityType: "member",
       relatedEntityId: targetMember.id,
     });
+  }
+
+  /**
+   * Disconnect akun terhubung (T-014.2, ADR-048/ADR-049). RBAC: Owner/Admin
+   * aktif saja — `roles-permissions.md` § Connected Accounts ("Tambah,
+   * hapus, kelola semua akun media sosial" untuk Owner/Admin, "Baca saja"
+   * untuk Creator), TIDAK ada perubahan RBAC baru (ADR-048 poin 4), reuse
+   * gate Owner/Admin yang sama pola-nya dengan
+   * `assertActorCanManageWorkspaceSettings`/`assertActorCanManageMembers`.
+   * Dialog konfirmasi Tier 2 (ADR-049, KSP-08-F07) adalah tanggung jawab UI
+   * (T-014.3, subtask terpisah, belum dikerjakan sesi ini) — method ini
+   * HANYA gate RBAC + eksekusi, dipanggil setelah user mengonfirmasi di
+   * client. TIDAK memanggil `OutstandAdapter` — OAuth/access token dikelola
+   * Outstand di luar DB internal (catatan T-013), disconnect cukup update
+   * status `WorkspaceConnectedAccount` (lihat `IWorkspaceRepository.disconnectAccount`).
+   * Post yang sudah terjadwal untuk akun ini SENGAJA tidak disentuh
+   * (KSP-D09) — repository method yang dipanggil di sini hanya meng-update
+   * tabel `workspace_connected_accounts`, tidak ada cascade ke publishing.
+   */
+  async disconnectAccount(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    connectedAccountId: ConnectedAccountId,
+  ): Promise<void> {
+    await this.assertActorCanManageConnectedAccounts(
+      workspaceId,
+      actorUserId,
+      "Hanya Owner atau Admin yang bisa memutuskan koneksi akun.",
+    );
+
+    await this.repository.disconnectAccount(
+      workspaceId,
+      connectedAccountId,
+      actorUserId,
+    );
+  }
+
+  /** Owner/Admin only; dipakai disconnectAccount. Reuse `assertActorHasOwnerOrAdminRole` (dedup, bukan gate RBAC baru). */
+  private async assertActorCanManageConnectedAccounts(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+    actionErrorMessage: string,
+  ): Promise<void> {
+    await this.assertActorHasOwnerOrAdminRole(
+      workspaceId,
+      actorUserId,
+      actionErrorMessage,
+    );
   }
 
   /**

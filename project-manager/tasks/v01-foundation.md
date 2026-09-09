@@ -251,7 +251,7 @@ OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Saat i
 
 | Field         | Value                                            |
 | ------------- | ------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                    |
+| **Status**    | ✅ Done — 3/3 subtask selesai, lolos review Ridwan (0 temuan)     |
 | **Domain**    | workspace                                        |
 | **ADR**       | ADR-048, ADR-049                                 |
 | **Depends**   | T-013                                            |
@@ -259,9 +259,9 @@ OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Saat i
 
 RBAC Owner/Admin — tidak ada perubahan RBAC, tinggal tambah gate konfirmasi sebelum memanggil service.
 
-- [ ] **T-014.1** Dialog konfirmasi di `settings-connected-accounts.html` (App Prototype Claude Design)
-- [ ] **T-014.2** `disconnectAccount` di kode nyata + RBAC gate
-- [ ] **T-014.3** UI dialog konfirmasi (KSP-08-F07)
+- [x] **T-014.1** Dialog konfirmasi di `settings-connected-accounts.html` (App Prototype Claude Design)
+- [x] **T-014.2** `disconnectAccount` di kode nyata + RBAC gate. 2 keputusan non-trivial dikonfirmasi King Rezi: (a) disconnect ikut me-reset `reconnectRequired` ke `false` supaya tampilan tidak nyangkut "Perlu Reconnect"; (b) disconnect akun yang sudah `disconnected` ditolak eksplisit dengan `ConflictError` (bukan idempotent) sebagai defense-in-depth — UI real (T-014.3) tetap wajib guard tombol Disconnect hanya untuk akun `active`, sesuai desain (akun disconnected menampilkan tombol Reconnect, bukan Disconnect).
+- [x] **T-014.3** UI dialog konfirmasi (KSP-08-F07) — `AlertDialog` shadcn di `ConnectedAccountsList.tsx`, reuse hook `useConfirmAction` (pola sama `QueueScreen.tsx`/`MembersTable.tsx`). Diverifikasi end-to-end browser (Mark UI Engineer) + lolos review arsitektur Ridwan (0 temuan).
 
 ### T-015 · Reconnect flow saat token expired
 

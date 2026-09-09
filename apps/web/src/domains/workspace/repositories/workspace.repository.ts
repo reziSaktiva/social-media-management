@@ -369,4 +369,32 @@ export interface IWorkspaceRepository {
     connectedAccountId: ConnectedAccountId;
     ownerUserId: UserId;
   } | null>;
+
+  /**
+   * Disconnect akun (T-014.2, ADR-048/ADR-049) — set
+   * `WorkspaceConnectedAccount.status` jadi `"disconnected"` DAN
+   * `reconnectRequired` jadi `false` (state "perlu reconnect" tidak relevan
+   * lagi setelah disconnect manual — supaya `resolveConnectionDisplayStatus`
+   * langsung menampilkan "Disconnected", bukan "Perlu Reconnect" yang stale).
+   * TIDAK menghapus baris, TIDAK memanggil Outstand API — OAuth/token
+   * dikelola Outstand di luar DB internal (catatan T-013), cukup update
+   * status DB. TIDAK menyentuh `PublishingPostTarget` mana pun — post yang
+   * sudah terjadwal untuk akun ini SENGAJA tetap di antrean (KSP-D09), tidak
+   * otomatis dibatalkan. `actingUserId` (RLS, KI-026 follow-up) — RBAC
+   * (Owner/Admin) sudah diverifikasi di `WorkspaceService.disconnectAccount`
+   * sebelum method ini dipanggil. Melempar `ConflictError` generik bila
+   * `updateMany` tidak match — baik karena `connectedAccountId` tidak
+   * ditemukan di `workspaceId` ini maupun karena akun sudah berstatus
+   * `"disconnected"` (defense-in-depth — UI real tidak menampilkan tombol
+   * Disconnect untuk akun yang sudah disconnected, tapi backend tetap
+   * menolak eksplisit). Tidak dibedakan lagi NotFound vs Conflict lewat
+   * query kedua — sama pola seperti `revokeInvitation`, round-trip
+   * tambahan untuk pesan yang lebih presisi tidak sepadan di jalur
+   * double-click ini.
+   */
+  disconnectAccount(
+    workspaceId: WorkspaceId,
+    connectedAccountId: ConnectedAccountId,
+    actingUserId: UserId,
+  ): Promise<void>;
 }
