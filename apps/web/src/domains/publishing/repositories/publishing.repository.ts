@@ -171,6 +171,31 @@ export interface HistoryItemRecord {
   targets: HistoryItemTargetRecord[];
 }
 
+/**
+ * Satu target + data post induk yang dibutuhkan untuk validasi & recreate
+ * retry manual (T-034.4, ADR-092). `postOutstandPostId` adalah
+ * `PublishingPost.outstandPostId` post-level (dari create ORIGINAL yang
+ * mencakup semua target awal, termasuk target yang gagal ini) — dipakai
+ * use-case untuk memutuskan apakah `outstandAdapter.deletePost` perlu
+ * dipanggil (skip kalau `null`, tidak ada apa pun untuk dihapus di sisi
+ * Outstand). `outstandAccountId` dari `WorkspaceConnectedAccount` (bukan
+ * `connectedAccountId` Prisma) — dibutuhkan untuk memanggil
+ * `outstandAdapter.deletePost`/`publishNow`.
+ */
+export interface RetryTargetRecord {
+  postId: PostId;
+  workspaceId: WorkspaceId;
+  postOutstandPostId: string | null;
+  caption: string;
+  targetId: PostTargetId;
+  targetStatus: PublishingPostTargetStatus;
+  connectedAccountId: ConnectedAccountId;
+  outstandAccountId: string;
+  platform: SocialPlatform;
+  contentFormat: ContentFormat;
+  platformOptions: Record<string, unknown> | null;
+}
+
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/publishing. */
 export interface IPublishingRepository {
   createDraft(input: {
@@ -474,6 +499,80 @@ export interface IPublishingRepository {
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   markPostFailed(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Retry manual (T-034.4, ADR-092) — ambil satu `PublishingPostTarget` +
+   * data post induk yang dibutuhkan `RetryFailedTargetUseCase` untuk
+   * validasi (post ditemukan, target milik post & workspace ini) dan
+   * recreate (`caption`, `outstandAccountId`, `contentFormat`,
+   * `platformOptions`, `postOutstandPostId` untuk delete best-effort).
+   * Returns `null` kalau post tidak ditemukan di `workspaceId` ini, ATAU
+   * target tidak ditemukan/bukan milik `postId` ini — use-case
+   * memperlakukan `null` sebagai `NotFoundError` generik, tidak
+   * membedakan penyebab (pola sama seperti guard gabungan
+   * `schedulePost`/`publishNow`). Validasi `targetStatus === "failed"`
+   * SENGAJA tidak ditegakkan di sini (repository murni proyeksi data) —
+   * itu domain rule yang ditegakkan use-case, supaya pesan error yang
+   * dilempar bisa spesifik ("retry hanya untuk target gagal") alih-alih
+   * disamakan dengan not-found generik.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  getRetryTarget(
+    input: { workspaceId: WorkspaceId; postId: PostId; targetId: PostTargetId },
+    userId: UserId,
+  ): Promise<RetryTargetRecord | null>;
+
+  /**
+   * Retry manual (T-034.4) — reset SATU target sebelum recreate: status
+   * kembali ke `pending`, outcome percobaan gagal sebelumnya
+   * (`platformPostId`/`platformPostUrl`/`error`) dibersihkan supaya tidak
+   * ada jejak kegagalan lama nyangkut kalau retry ini sukses. Murni state
+   * DB lokal (tidak ada network call) — dipanggil SEBELUM
+   * `outstandAdapter.deletePost`/`publishNow` di use-case, konsisten pola
+   * "persist dulu, network call sesudah" yang sudah dipakai
+   * `schedulePost`/`publishNow`/`cancelSchedule`.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  resetTargetForRetry(
+    input: { targetId: PostTargetId },
+    userId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Retry manual (T-034.4) — persist `PublishingPostTarget.retryOutstandPostId`
+   * (kolom baru, migration `20260909024403_t034_4_retry_outstand_post_id`)
+   * SETELAH `outstandAdapter.publishNow` resolve dengan SATU id post-level
+   * BARU khusus target ini — BEDA dari `PublishingPost.outstandPostId`
+   * (tetap merepresentasikan create original untuk semua target awal,
+   * tidak disentuh retry single-target). Dipakai sebagai argumen
+   * `fetchPostOutcome` berikutnya untuk target yang di-retry ini.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  setRetryOutstandPostId(
+    input: { targetId: PostTargetId; retryOutstandPostId: string },
+    userId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Retry manual (T-034.4) — recompute status `PublishingPost` level-post
+   * SETELAH outcome retry satu target diketahui: kalau TIDAK ADA lagi
+   * target berstatus `failed` di post ini, post naik dari `Failed` ke
+   * `Published` (invariant `HISTORY_TERMINAL_STATUSES`, konsisten semantik
+   * `markPostFailed`/`PublishNowUseCase` — "post = published kalau minimal
+   * 1 target sukses"). Kalau retry masih gagal lagi (minimal satu target
+   * `failed` tersisa), post TETAP `Failed` — tidak diubah. Idempoten
+   * (`updateMany` hanya menyentuh baris yang masih `Failed`), aman
+   * dipanggil berkali-kali.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  reconcilePostStatusAfterRetry(
     input: { workspaceId: WorkspaceId; postId: PostId },
     userId: UserId,
   ): Promise<void>;

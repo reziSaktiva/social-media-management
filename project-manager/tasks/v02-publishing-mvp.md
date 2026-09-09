@@ -295,11 +295,11 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing                                                   |
-| **ADR**       | ADR-046                                                      |
+| **ADR**       | ADR-046, ADR-092, ADR-099                                    |
 | **Depends**   | T-026 (status akhir *real* datang dari webhook — tidak memblokir T-034.1, lihat catatan 2026-09-08) |
-| **Terkait**   | KI-048 (Resolved 2026-09-08 — App Prototype diwire + desain dikonfirmasi King Rezi), KI-049 (gap `failedAt`/`failureReason`), KI-050 (gap meta author di halaman detail post), KI-051 (Badge shadcn belum ada varian success) |
+| **Terkait**   | KI-048 (Resolved 2026-09-08 — App Prototype diwire + desain dikonfirmasi King Rezi), KI-049 (gap `failedAt`/`failureReason`), KI-050 (gap meta author di halaman detail post), KI-051 (Badge shadcn belum ada varian success), KI-052 (hydration warning `formatRelativeTime` di `HistoryList.tsx`) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                                |
 
 Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai placeholder.
@@ -307,7 +307,7 @@ Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai place
 - [x] **T-034.1** Query riwayat + status per target (published / error)
 - [x] **T-034.2** UI daftar riwayat + filter
 - [x] **T-034.3** Halaman detail post: hasil per akun, pesan error, link ke post asli
-- [ ] **T-034.4** Aksi retry manual untuk target yang gagal
+- [x] **T-034.4** Aksi retry manual untuk target yang gagal
 
 **Catatan (ADR-092, 2026-08-26):** Outstand API tidak punya endpoint retry
 resmi — dokumentasi resminya merekomendasikan hapus post yang gagal
@@ -408,9 +408,38 @@ benar.
 siapa" di halaman detail post sengaja dihilangkan dari desain awal —
 `HistoryItemRecord` tidak membawa data `authorId`, di luar scope T-034.2/
 .3 untuk menambahkannya — dicatat **KI-050**, menunggu keputusan King
-Rezi apakah field ini wajib. Task ini tetap `🟡 In Progress` — sisa
-**T-034.4** (retry manual, ADR-092: pola delete-lalu-create-ulang, bukan
-re-trigger job).
+Rezi apakah field ini wajib.
+
+**Selesai T-034.4 (2026-09-09) — T-034 tuntas 4/4 subtask, `✅ Done`.**
+Sebelum implementasi, muncul pertanyaan scope yang belum dijawab ADR-092
+(delete-lalu-create-ulang, tapi `outstandPostId` bersifat post-level untuk
+SEMUA target) — diajukan ke King Rezi lewat `AskUserQuestion`, dijawab:
+retry **hanya me-recreate target yang gagal (single-target)**, target lain
+yang sudah `published` di post yang sama tidak disentuh. Keputusan ini
+dicatat **ADR-099** (melengkapi ADR-092, tidak membatalkannya).
+
+Elon Backend Engineer menulis kontrak adapter: `IOutstandAdapter.deletePost(outstandPostId,
+accountIds?)` (best-effort) di `packages/shared/src/contracts/outstand-adapter.ts`
++ implementasi `FakeOutstandAdapter`. Prabowo Feature Engineer mengerjakan
+use-case baru `retry-failed-target.use-case.ts` (recreate lewat
+`outstandAdapter.publishNow` langsung dengan 1 target, bukan lewat
+`PublishNowUseCase`/`repository.publishNow` yang me-replace seluruh target
+post), kolom Prisma baru `PublishingPostTarget.retryOutstandPostId`
+(migration `20260909024403_t034_4_retry_outstand_post_id`), fungsi
+rekonsiliasi status post `reconcilePostStatusAfterRetry` (idempoten,
+`Failed → Published` kalau tidak ada lagi target `failed` tersisa), Server
+Action baru `apps/web/src/app/(app)/publish/history/[postId]/actions.ts`,
+komponen `RetryTargetButton.tsx` (baru), wiring di `HistoryDetail.tsx`
+(tombol "Coba Lagi" per-baris akun, sebelumnya visual-only sejak
+T-034.2/.3).
+
+Review arsitektur Ridwan Architecture Reviewer **lolos tanpa temuan
+blocking**. QA Najwa QA Engineer: 259 test pass + verifikasi browser
+end-to-end golden path dan edge case (termasuk skenario mixed-target
+retry) semua **PASS**. 1 temuan non-blocking, di luar scope T-034.4:
+hydration warning pada `formatRelativeTime` di `HistoryList.tsx`
+(kemungkinan mismatch SSR/client saat format waktu relatif) — dicatat
+**KI-052** di `PROJECT_STATE.md`.
 
 ### T-035 · Delete Post + dialog konfirmasi
 

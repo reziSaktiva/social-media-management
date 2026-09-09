@@ -25,6 +25,7 @@ import {
   TARGET_STATUS_BADGE_VARIANT,
   TARGET_STATUS_LABEL,
 } from "../../history-status";
+import { RetryTargetButton } from "./RetryTargetButton";
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -49,29 +50,6 @@ function formatWhenLabel(item: HistoryItemRecord): string {
     return `Dijadwalkan ${DATE_TIME_FORMATTER.format(item.scheduledAt)}`;
   }
   return `Percobaan publish ${DATE_TIME_FORMATTER.format(item.updatedAt)}`;
-}
-
-/**
- * Tombol "Coba Lagi" (T-034.4, ADR-092 delete-lalu-create-ulang) — WAJIB
- * disabled di sini. T-034.4 (retry manual) belum dikerjakan (subtask
- * terpisah, masih Not Started di `tasks/v02-publishing-mvp.md`), jadi
- * tombol ini murni visual (bagian dari desain T-034.3 yang sudah
- * dikonfirmasi King Rezi) tanpa handler apa pun — jangan wire ke Server
- * Action apa pun sampai T-034.4 benar-benar diimplementasikan.
- */
-function RetryButton() {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0} className="inline-flex">
-          <Button type="button" variant="secondary" size="sm" disabled>
-            Coba Lagi
-          </Button>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>Retry manual belum tersedia (T-034.4)</TooltipContent>
-    </Tooltip>
-  );
 }
 
 /**
@@ -213,7 +191,10 @@ export function HistoryDetail({ item }: HistoryDetailProps) {
                         >
                           {target.error ?? "Gagal dipublikasikan."}
                         </Text>
-                        <RetryButton />
+                        <RetryTargetButton
+                          postId={item.id}
+                          targetId={target.id}
+                        />
                       </div>
                     )}
                   </div>

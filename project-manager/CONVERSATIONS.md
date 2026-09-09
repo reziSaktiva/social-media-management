@@ -30,6 +30,18 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-09-09 — Scope retry manual publishing: single-target, bukan whole-post
+
+**Phase:** M8 Development (v0.2 Publishing MVP, T-034.4)
+
+**Summary:** Saat mengerjakan T-034.4 (aksi retry manual untuk target publishing yang gagal), muncul pertanyaan yang belum dijawab ADR-092: karena `outstandPostId` bersifat post-level (satu ID untuk SEMUA target/akun dalam satu post, hasil redesain kontrak 1-call-semua-target), retry untuk satu target yang gagal secara teknis bisa berarti recreate seluruh post (delete+create ulang, sesuai rekomendasi resmi Outstand) atau hanya recreate target yang gagal saja. Pertanyaan ini diajukan langsung ke King Rezi lewat `AskUserQuestion`, bukan diasumsikan.
+
+**Key Insight / Decision:** King Rezi memilih **single-target** — retry hanya me-recreate akun yang gagal, target lain di post yang sama yang sudah `published` tidak disentuh sama sekali. Alasannya: whole-post-recreate berisiko me-re-publish ulang konten yang sudah sukses tayang di akun lain (duplikat konten, UX buruk), sementara desain UI Claude Design yang sudah dikonfirmasi sebelumnya (KI-048) memang menempatkan tombol "Coba Lagi" per-baris akun, bukan per-post — jadi single-target juga konsisten dengan desain yang sudah ada.
+
+**Impact:** Dicatat sebagai **ADR-099** (melengkapi ADR-092, tidak membatalkan) di `project-manager/DECISIONS.md`. Implementasi: kolom Prisma baru `PublishingPostTarget.retryOutstandPostId`, method adapter baru `IOutstandAdapter.deletePost`, use-case `retry-failed-target.use-case.ts`. Dengan T-034.4 selesai mengikuti keputusan ini, **T-034 tuntas 4/4 subtask, `✅ Done`** — detail di `project-manager/tasks/v02-publishing-mvp.md` § T-034.
+
+---
+
 ## 2026-08-31 — Pola bug: backend RBAC benar, tapi UI-level gate lupa dicek (T-093.4)
 
 **Phase:** M8 Development

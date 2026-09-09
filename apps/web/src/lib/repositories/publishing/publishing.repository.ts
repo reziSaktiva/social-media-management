@@ -21,6 +21,7 @@ import {
   type PublishingPostTargetStatus,
   type PublishingScheduleRecord,
   type QueueItemRecord,
+  type RetryTargetRecord,
 } from "@/domains/publishing";
 import {
   Prisma,
@@ -651,5 +652,86 @@ export const publishingRepository: IPublishingRepository = {
     }
 
     return post ? mapHistoryItem(post) : null;
+  },
+
+  async getRetryTarget({ workspaceId, postId, targetId }, userId) {
+    const target = await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.findFirst({
+        where: {
+          id: targetId,
+          postId,
+          post: { workspaceId, deletedAt: null },
+        },
+        include: { post: true, connectedAccount: true },
+      }),
+    );
+
+    if (!target) {
+      return null;
+    }
+
+    const record: RetryTargetRecord = {
+      postId: asPostId(target.post.id),
+      workspaceId: asWorkspaceId(target.post.workspaceId),
+      postOutstandPostId: target.post.outstandPostId,
+      caption: target.post.caption,
+      targetId: asPostTargetId(target.id),
+      targetStatus: target.status as PublishingPostTargetStatus,
+      connectedAccountId: asConnectedAccountId(target.connectedAccountId),
+      outstandAccountId: target.connectedAccount.outstandAccountId,
+      platform: target.platform as SocialPlatform,
+      contentFormat: target.contentFormat as ContentFormat,
+      platformOptions: target.platformOptions as Record<string, unknown> | null,
+    };
+
+    return record;
+  },
+
+  async resetTargetForRetry({ targetId }, userId) {
+    await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.update({
+        where: { id: targetId },
+        data: {
+          status: "pending",
+          platformPostId: null,
+          platformPostUrl: null,
+          error: null,
+        },
+      }),
+    );
+  },
+
+  async setRetryOutstandPostId({ targetId, retryOutstandPostId }, userId) {
+    await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.update({
+        where: { id: targetId },
+        data: { retryOutstandPostId },
+      }),
+    );
+  },
+
+  async reconcilePostStatusAfterRetry({ workspaceId, postId }, userId) {
+    await withCurrentUser(userId, async (tx) => {
+      // Idempoten by design: kalau masih ada target `failed` (retry gagal
+      // lagi, atau target lain di post ini yang belum di-retry), post
+      // TETAP `Failed` — tidak ada updateMany yang dieksekusi.
+      const remainingFailedCount = await tx.publishingPostTarget.count({
+        where: { postId, status: "failed" },
+      });
+
+      if (remainingFailedCount > 0) {
+        return;
+      }
+
+      await tx.publishingPost.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          status: ContentStatus.Failed,
+          deletedAt: null,
+        },
+        data: { status: ContentStatus.Published },
+      });
+    });
   },
 };

@@ -57,6 +57,7 @@ function createFakeOutstandAdapter(
     publishNow: async () => ({ outstandPostId: "fake-post" }),
     fetchPostOutcome: async () => [],
     cancelScheduledPost: async () => undefined,
+    deletePost: async () => undefined,
     fetchPostMetrics: async () => ({
       impressions: 1000,
       reach: 700,

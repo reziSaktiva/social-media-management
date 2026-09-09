@@ -53,7 +53,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 🟡 13 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · 2 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
-| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 🟡 9 ✅ · 3 🟡 · 10 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
+| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 🟡 10 ✅ · 2 🟡 · 10 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
@@ -61,7 +61,16 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 8 ✅          | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 85 task · 33 selesai · 211 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 85 task · 34 selesai · 211 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-09, ADR-099):** **T-034.4** (Aksi retry manual untuk
+> target publishing yang gagal) selesai — scope retry single-target
+> diputuskan King Rezi lewat `AskUserQuestion` untuk melengkapi ADR-092.
+> **T-034** naik `🟡 In Progress` → `✅ Done` (4/4 subtask tuntas). Task
+> selesai naik 33 → **34** (v0.2: 9 ✅ · 3 🟡 · 10 ⏳ → **10 ✅ · 2 🟡 · 10
+> ⏳**). Jumlah subtask total tidak berubah (T-034.4 sudah terdefinisi
+> sebelumnya, tetap 211) — dihitung ulang langsung dari
+> `tasks/v02-publishing-mvp.md`, sesuai aturan maintenance.
 
 > **Update (2026-09-08, T-034.2/T-034.3 selesai — KI-048 Resolved):**
 > **T-034** (Publishing History + detail post, `tasks/v02-publishing-mvp.md`)
@@ -443,7 +452,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | **T-097** | Migrasi Auth Flows & Onboarding                  | ✅      | **Selesai (2026-09-02)** — 5/5 subtask (Login/Register, Forgot/Reset password, Accept Invite, `(auth)/layout.tsx`, Onboarding), lolos review Ridwan (0 temuan) + QA Najwa (semua PASS). Gap desain token `--success`/`--warning` Stone theme dicatat **KI-041** — **Resolved 2026-09-04** (ADR-098, King Rezi memutuskan menambah 4 token baru ke Stone theme). Lihat `tasks/v07-astryx-shadcn-migration.md` § T-097 |
 | **T-096** | Migrasi Core Infra & Shared Primitives           | ✅      | **Selesai (2026-09-01)** — `globals.css`, `Providers.tsx`, root `app/(app)/layout.tsx`, primitive `Button`/`Card`/`Dialog`/`Input`/`Text`. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-096 untuk detail & 2 keputusan penting (CSS/Theme Astryx dipertahankan sementara) |
 | **T-095** | Setup Fondasi shadcn/ui & Tooling Migrasi        | ✅      | **Selesai (2026-09-01)** — task pertama rilis v0.7 (migrasi Astryx→shadcn/ui, ADR-097), seluruh 7 subtask tuntas: T-095.1 (init shadcn/ui, base Radix + preset Maia), T-095.2 (MCP server shadcn di `.mcp.json`+`.cursor/mcp.json`), T-095.3 (tulis ulang `apps/web/.claude/CLAUDE.md` ke workflow shadcn CLI/MCP), T-095.4 (rule 14/15 `AGENTS.md`, sudah selesai lebih dulu di commit `07a3aa2`), T-095.5 (pemetaan Stone→shadcn di `design-tokens.md`), T-095.6 (update subagent Mark UI Engineer ke shadcn, izin eksplisit King Rezi), T-095.7 (sinkronisasi docs baseline) |
-| **T-034** | Publishing History + detail post                | 🟡      | T-034.1–.3 selesai (2026-09-08) — desain dikonfirmasi King Rezi, App Prototype diwire, **KI-048 Resolved**. Tersisa **T-034.4** (retry manual, ADR-092). Lihat `tasks/v02-publishing-mvp.md` § T-034 |
+| **T-034** | Publishing History + detail post                | ✅      | **Done (2026-09-09)** — seluruh 4/4 subtask tuntas: query riwayat, UI daftar+filter, halaman detail post, dan T-034.4 (retry manual per-target, **ADR-099** melengkapi ADR-092 — scope single-target, hindari duplikat konten). Lolos review Ridwan + QA Najwa (259 test pass, verifikasi browser PASS). Lihat `tasks/v02-publishing-mvp.md` § T-034 |
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
 | **T-036** | In-app notification + Supabase Realtime         | 🟡      | T-036.1/.2/.3 selesai. T-036.4 dibuka kembali (2026-09-01) — gap visual vs Claude Design belum terverifikasi di browser (lihat KI-040). Tersisa T-036.4 (verifikasi visual) dan T-036.5 (trigger dari webhook) |
 

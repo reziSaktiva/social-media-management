@@ -8,6 +8,58 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-09 — T-034.4 (Retry manual publishing) selesai, T-034 tuntas 4/4 subtask `✅ Done`, ADR-099, KI-052 baru
+
+Sesi lanjutan T-034 (Publishing History + detail post), menutup sisa
+subtask terakhir setelah T-034.1–.3 selesai (lihat entri 2026-09-08 di
+bawah).
+
+**1. Pertanyaan scope retry.** ADR-092 (2026-08-26) sudah menetapkan pola
+delete-lalu-create-ulang untuk retry Outstand (tidak ada endpoint retry
+resmi), tapi belum menjawab scope-nya: karena `outstandPostId` bersifat
+post-level (satu ID untuk semua target dalam satu post), retry satu target
+yang gagal itu harus recreate seluruh post atau hanya target yang gagal.
+Diajukan ke King Rezi lewat `AskUserQuestion` — dijawab: **single-target**
+(hanya target yang gagal, target lain yang sudah `published` tidak
+disentuh) untuk mencegah duplikat konten. Dicatat **ADR-099** (melengkapi
+ADR-092, bukan membatalkan).
+
+**2. Implementasi.** Dikerjakan multi-subagent dalam satu sesi:
+- **Elon Backend Engineer** — kontrak adapter: `IOutstandAdapter.deletePost(outstandPostId, accountIds?)`
+  (best-effort, error di-log bukan dilempar) di
+  `packages/shared/src/contracts/outstand-adapter.ts` + implementasi
+  `FakeOutstandAdapter`.
+- **Prabowo Feature Engineer** — use-case baru
+  `apps/web/src/domains/publishing/services/retry-failed-target.use-case.ts`
+  (recreate lewat `outstandAdapter.publishNow` langsung dengan array
+  `targets` 1 elemen, bukan lewat `PublishNowUseCase`/`repository.publishNow`
+  yang me-replace seluruh target post), kolom Prisma baru
+  `PublishingPostTarget.retryOutstandPostId` (migration
+  `20260909024403_t034_4_retry_outstand_post_id`), fungsi rekonsiliasi
+  status `reconcilePostStatusAfterRetry` (idempoten, `Failed → Published`
+  saat tidak ada lagi target `failed` tersisa), Server Action baru
+  `apps/web/src/app/(app)/publish/history/[postId]/actions.ts`, komponen
+  `RetryTargetButton.tsx` (baru), wiring tombol "Coba Lagi" per-baris akun
+  di `HistoryDetail.tsx` (sebelumnya visual-only sejak T-034.2/.3).
+- **Ridwan Architecture Reviewer** — review lolos **tanpa temuan
+  blocking**.
+- **Najwa QA Engineer** — test suite 259 pass + verifikasi browser
+  end-to-end golden path dan edge case (termasuk skenario mixed-target
+  retry) semua **PASS**. 1 temuan non-blocking di luar scope: hydration
+  warning `formatRelativeTime` di `HistoryList.tsx` — dicatat **KI-052**.
+
+**3. Penutupan T-034.** Dengan T-034.4 selesai, **T-034 (Publishing
+History + detail post) tuntas 4/4 subtask** — task naik `🟡 In Progress`
+→ `✅ Done`. `TASKS.md` diperbarui: v0.2 9 ✅ · 3 🟡 · 10 ⏳ → **10 ✅ · 2 🟡
+· 10 ⏳**, total selesai 33 → **34** (subtask total tidak berubah, tetap
+211 — T-034.4 sudah terdefinisi sebelumnya).
+
+Detail lengkap: `tasks/v02-publishing-mvp.md` § T-034, `DECISIONS.md` §
+ADR-099 (`decisions/ADR-099-retry-manual-publishing-scope-single-target.md`),
+`PROJECT_STATE.md` § KI-052.
+
+---
+
 ## 2026-09-08 — T-034.2/T-034.3 (Publishing History) selesai, KI-048 Resolved, App Prototype diwire, 2 KI baru (KI-050, KI-051)
 
 Sesi lanjutan T-034 (Publishing History + detail post), setelah T-034.1

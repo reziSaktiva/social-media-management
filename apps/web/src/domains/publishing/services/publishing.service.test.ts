@@ -56,6 +56,10 @@ function createFakeRepository(
     getHistoryById: async () => null,
     cancelSchedule: async () => null,
     markPostFailed: async () => undefined,
+    getRetryTarget: async () => null,
+    resetTargetForRetry: async () => undefined,
+    setRetryOutstandPostId: async () => undefined,
+    reconcilePostStatusAfterRetry: async () => undefined,
     ...overrides,
   };
 }
