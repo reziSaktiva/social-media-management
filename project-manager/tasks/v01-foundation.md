@@ -260,7 +260,7 @@ OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Saat i
 RBAC Owner/Admin — tidak ada perubahan RBAC, tinggal tambah gate konfirmasi sebelum memanggil service.
 
 - [x] **T-014.1** Dialog konfirmasi di `settings-connected-accounts.html` (App Prototype Claude Design)
-- [x] **T-014.2** `disconnectAccount` di kode nyata + RBAC gate
+- [x] **T-014.2** `disconnectAccount` di kode nyata + RBAC gate. 2 keputusan non-trivial dikonfirmasi King Rezi: (a) disconnect ikut me-reset `reconnectRequired` ke `false` supaya tampilan tidak nyangkut "Perlu Reconnect"; (b) disconnect akun yang sudah `disconnected` ditolak eksplisit dengan `ConflictError` (bukan idempotent) sebagai defense-in-depth — UI real (T-014.3) tetap wajib guard tombol Disconnect hanya untuk akun `active`, sesuai desain (akun disconnected menampilkan tombol Reconnect, bukan Disconnect).
 - [ ] **T-014.3** UI dialog konfirmasi (KSP-08-F07)
 
 ### T-015 · Reconnect flow saat token expired

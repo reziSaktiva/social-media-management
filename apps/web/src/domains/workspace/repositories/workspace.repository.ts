@@ -383,7 +383,10 @@ export interface IWorkspaceRepository {
    * otomatis dibatalkan. `actingUserId` (RLS, KI-026 follow-up) — RBAC
    * (Owner/Admin) sudah diverifikasi di `WorkspaceService.disconnectAccount`
    * sebelum method ini dipanggil. Melempar `NotFoundError` bila
-   * `connectedAccountId` tidak ditemukan di `workspaceId` ini.
+   * `connectedAccountId` tidak ditemukan di `workspaceId` ini, atau
+   * `ConflictError` bila akun sudah berstatus `"disconnected"` (defense-in-
+   * depth — UI real tidak menampilkan tombol Disconnect untuk akun yang
+   * sudah disconnected, tapi backend tetap menolak eksplisit).
    */
   disconnectAccount(
     workspaceId: WorkspaceId,

@@ -670,6 +670,21 @@ describe("WorkspaceService.disconnectAccount", () => {
       ),
     ).rejects.toThrow(NotFoundError);
   });
+
+  it("propagates ConflictError from the repository when the account is already disconnected", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        disconnectAccount: async () => {
+          throw new ConflictError("Akun ini sudah terputus.");
+        },
+      }),
+    );
+
+    await expect(
+      service.disconnectAccount(WORKSPACE_ID, OWNER_USER, CONNECTED_ACCOUNT_ID),
+    ).rejects.toThrow(ConflictError);
+  });
 });
 
 describe("WorkspaceService.canManageMembers", () => {

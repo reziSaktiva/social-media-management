@@ -675,19 +675,26 @@ export const workspaceRepository: IWorkspaceRepository = {
   },
 
   async disconnectAccount(workspaceId, connectedAccountId, actingUserId) {
-    try {
-      await withCurrentUser(actingUserId, (tx) =>
-        tx.workspaceConnectedAccount.update({
-          where: { id: connectedAccountId, workspaceId },
-          data: { status: "disconnected", reconnectRequired: false },
-        }),
-      );
-    } catch (error) {
-      if (isRecordNotFound(error)) {
+    await withCurrentUser(actingUserId, async (tx) => {
+      const result = await tx.workspaceConnectedAccount.updateMany({
+        where: {
+          id: connectedAccountId,
+          workspaceId,
+          status: { not: "disconnected" },
+        },
+        data: { status: "disconnected", reconnectRequired: false },
+      });
+      if (result.count > 0) return;
+
+      const existing = await tx.workspaceConnectedAccount.findFirst({
+        where: { id: connectedAccountId, workspaceId },
+        select: { id: true },
+      });
+      if (!existing) {
         throw new NotFoundError("Akun terhubung tidak ditemukan.");
       }
-      throw error;
-    }
+      throw new ConflictError("Akun ini sudah terputus.");
+    });
   },
 };
 
