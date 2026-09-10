@@ -242,7 +242,19 @@ export interface IPublishingRepository {
     userId: UserId,
   ): Promise<PublishingPostRecord[]>;
 
-  /** `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`. */
+  /**
+   * PERHATIAN: nama method ini menyiratkan hasilnya selalu berstatus
+   * `Draft`, TAPI query-nya TIDAK memfilter `status` sama sekali — post
+   * dengan status apa pun (`Draft`/`Scheduled`/`Published`/dst.) yang
+   * belum di-soft-delete tetap dikembalikan. Ditemukan saat code review
+   * `deletePost` (T-035): method ini sengaja dipakai di sana untuk
+   * fetch-lalu-cek-status sendiri (butuh post apa pun statusnya untuk
+   * bisa membedakan `NotFoundError` vs `ConflictError`) — jangan reuse
+   * method ini untuk kebutuhan lain yang mengasumsikan hasilnya sudah
+   * pasti `Draft` tanpa memvalidasi `.status` sendiri.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
   findDraftById(
     input: { workspaceId: WorkspaceId; postId: PostId },
     userId: UserId,

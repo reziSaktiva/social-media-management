@@ -182,6 +182,19 @@ export class PublishingService {
       userId,
     );
     if (!post) {
+      // Race condition (lihat catatan guard di atas): status bisa berubah
+      // tepat di antara pengecekan di atas dan `updateMany` guarded ini.
+      // Cek ulang supaya pesan error tidak salah menuduh "tidak ditemukan"
+      // padahal post-nya masih ada, cuma sudah tidak lagi Draft.
+      const recheck = await this.repository.findDraftById(
+        { workspaceId: input.workspaceId, postId: input.postId },
+        userId,
+      );
+      if (recheck && recheck.status !== ContentStatus.Draft) {
+        throw new ConflictError(
+          "Hanya post berstatus Draft yang bisa dihapus. Batalkan jadwal (Cancel Schedule) dulu untuk post yang sudah dijadwalkan, baru bisa dihapus dari Drafts.",
+        );
+      }
       throw new NotFoundError(
         "Post tidak ditemukan atau sudah dihapus sebelumnya.",
       );

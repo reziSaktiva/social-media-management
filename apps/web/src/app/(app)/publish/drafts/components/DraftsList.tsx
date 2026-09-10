@@ -8,7 +8,6 @@ import type { PublishingPostRecord } from "@/domains/publishing";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 
-import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,12 +72,6 @@ export function DraftsList({ drafts }: { drafts: PublishingPostRecord[] }) {
   return (
     // eslint-disable-next-line no-restricted-syntax -- T-101.3: layout-only, file sudah dimigrasi shadcn
     <div className="flex flex-col gap-4">
-      {deleteConfirm.error ? (
-        <Alert variant="destructive">
-          <AlertTitle>{deleteConfirm.error}</AlertTitle>
-        </Alert>
-      ) : null}
-
       {/* eslint-disable-next-line no-restricted-syntax -- T-101.3: layout-only */}
       <div
         className={cn(
@@ -165,6 +158,7 @@ export function DraftsList({ drafts }: { drafts: PublishingPostRecord[] }) {
         description="Tindakan ini tidak bisa dibatalkan — draft akan hilang permanen dari daftar."
         confirmLabel="Hapus Draft"
         isLoading={deleteConfirm.isLoading}
+        error={deleteConfirm.error}
         onConfirm={() => void deleteConfirm.confirm()}
         variant="destructive"
       />
