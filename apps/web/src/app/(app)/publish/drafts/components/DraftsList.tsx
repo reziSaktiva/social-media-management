@@ -66,7 +66,15 @@ export function DraftsList({ drafts }: { drafts: PublishingPostRecord[] }) {
                 <TableRow
                   key={draft.id}
                   className="cursor-pointer"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => openEditDraft(draft.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openEditDraft(draft.id);
+                    }
+                  }}
                 >
                   <TableCell className="whitespace-normal">
                     {/* eslint-disable-next-line no-restricted-syntax -- T-101.3: layout-only */}

@@ -130,7 +130,16 @@ function WorkspaceRow({
         "cursor-pointer",
         isSwitchPending && "pointer-events-none opacity-50",
       )}
+      role="button"
+      tabIndex={isSwitchPending ? -1 : 0}
       onClick={() => onRequestSwitch(workspace)}
+      onKeyDown={(event) => {
+        if (isSwitchPending) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onRequestSwitch(workspace);
+        }
+      }}
     >
       <TableCell className="whitespace-normal">{rowBody}</TableCell>
       <TableCell className="text-right">
