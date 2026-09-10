@@ -8,6 +8,52 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-10 — T-103.1 Done — Kunci pola shadcn di Claude Design (mencegah drift lanjutan KI-054/KI-055)
+
+Branch `docs/t-103-lock-shadcn-pattern`. Audit seluruh `components/*.html` dan
+`templates/*.html` di project Claude Design "Social Media Management" (lewat
+`DesignSync`), mencari list/komposisi dengan >1 pola shadcn valid yang belum
+dikunci eksplisit — akar masalah KI-054/KI-055.
+
+Ditemukan 3 file dengan drift konkret: mockup masih menampilkan pola lama
+(`.queue-list`/`.queue-row` di `templates/publish-drafts.html`,
+`.ws-pick-list`/`.ws-pick-item` di `templates/settings-workspaces.html`,
+`.settings-row` div-list di `templates/settings-connected-accounts.html`),
+padahal kode nyata `apps/web` sudah diperbaiki King Rezi ke pola `Table`
+final lewat KI-055 (poin 1, 3, 5) — Claude Design tidak ikut disinkronkan
+saat itu. Dikunci lewat komentar `<!-- LOCKED PATTERN -->` inline di masing-
+masing file (deskripsi wrapper: border-div manual bukan `Card`, tanpa
+`TableHeader`, baris klik-penuh atau tidak per file) — **tanpa mengubah
+markup visual mockup itu sendiri**, sesuai
+`.claude/skills/claude-design-scope-discipline/SKILL.md` (tidak mengubah
+default/state yang sudah disetujui sebagai efek samping).
+
+Juga ditambahkan komentar penguncian eksplisit (tanpa perubahan pola, karena
+sudah benar) di `templates/settings-members.html` (Table + `TableHeader`,
+satu-satunya list yang tetap pakai `Card`) dan `templates/settings-profile.html`
+(avatar 88px via override `size-22`, bukan preset `lg` bawaan yang cuma
+40px).
+
+Tabel **Components** dan daftar **Files** di `readme.md` Claude Design
+diupdate (baris `.ws-pick-list`, `.table`, + 3 bullet file) untuk
+mencerminkan status terkunci ini, supaya AI berikutnya yang membaca `readme.md`
+tidak lagi menebak pola yang sama.
+
+**Scope yang belum dicakup:** sisa ~28 file (`components/buttons.html`,
+`forms.html`, `navigation*.html`, `notifications-panel.html`, `popover.html`,
+`status-chips.html`, dan ~20 `templates/*.html` lain) dibaca sepintas via
+`readme.md` — sudah punya dokumentasi pola cukup spesifik, tidak ditemukan
+ambiguitas setara KI-054/055. Audit baris-per-baris yang lebih dalam untuk
+seluruh file itu tidak dilakukan exhaustif di pass ini — dicatat sebagai
+follow-up potensial di **T-103.4** (retroactive pass) kalau King Rezi mau
+kepastian lebih tinggi.
+
+T-103.2 (update `AGENTS.md` rule 17 + gate baru), T-103.3 (checklist Mark
+UI Engineer/Najwa QA Engineer), dan T-103.4 masih `⏳`, di luar scope
+subtask ini. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-103.
+
+---
+
 ## 2026-09-09 — Temuan susulan KI-054 — `DraftsList.tsx` kotak-kotak terpisah, bukan list rata
 
 Branch `fix/ki-054-draft-history-design-sync` (sesi lanjutan, setelah KI-054

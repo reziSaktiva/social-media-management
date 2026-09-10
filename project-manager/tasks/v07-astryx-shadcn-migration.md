@@ -1163,7 +1163,7 @@ nama primitive, tapi struktur wrapper-nya: pakai `Card` atau bukan, ada
 tambahkan gate proses supaya kalau suatu saat masih ada elemen yang
 belum dikunci, AI **berhenti dan tanya**, bukan menebak lagi.
 
-- [ ] **T-103.1** Audit seluruh file `components/*.html` dan
+- [x] **T-103.1** `✅ Done` (2026-09-10) Audit seluruh file `components/*.html` dan
       `templates/*.html` di project Claude Design "Social Media
       Management" (lewat `DesignSync`) — untuk tiap list/komposisi yang
       punya lebih dari satu kemungkinan pola shadcn valid (list, dialog
@@ -1174,6 +1174,31 @@ belum dikunci, AI **berhenti dan tanya**, bukan menebak lagi.
       untuk KI-055 poin 1/3/5 di `PROJECT_STATE.md`). Update juga tabel
       **Components** di `readme.md` Claude Design supaya baris yang
       ambigu ditandai jelas polanya, bukan cuma "shadcn X" generik.
+      **Hasil:** ditemukan 3 file dengan drift konkret — mockup masih
+      pola lama (`.queue-list`, `.ws-pick-item`, `.settings-row`)
+      padahal kode nyata `apps/web` sudah dikunci ke pola `Table` final
+      lewat KI-055 (poin 1/3/5). Dikunci lewat komentar "LOCKED
+      PATTERN" inline (tanpa mengubah markup visual mockup, sesuai
+      `claude-design-scope-discipline`) di `templates/publish-drafts.html`,
+      `templates/settings-workspaces.html`,
+      `templates/settings-connected-accounts.html`; ditambah komentar
+      penguncian eksplisit (tanpa perubahan pola, sudah benar) di
+      `templates/settings-members.html` (Table + TableHeader, satu-satunya
+      yang tetap pakai `Card`) dan `templates/settings-profile.html`
+      (ukuran avatar 88px via override, bukan preset). Tabel
+      **Components** dan daftar **Files** di `readme.md` diupdate
+      untuk mencerminkan status terkunci ini (baris `.ws-pick-list`,
+      `.table`, dan 3 bullet file terkait). Sisa ~28 file
+      (`components/buttons.html`, `forms.html`, `navigation*.html`,
+      `notifications-panel.html`, `popover.html`, `status-chips.html`,
+      dan 20 `templates/*.html` lain) dibaca sepintas via `readme.md` —
+      sudah punya dokumentasi pola yang cukup spesifik (nama
+      komponen + variant + rationale), tidak ditemukan ambiguitas
+      >1-pola-valid setara KI-054/055 di dalamnya. Audit baris-per-baris
+      yang lebih dalam untuk seluruh file itu **tidak** dilakukan
+      exhaustif di pass ini (dibatasi scope/waktu) — kalau King Rezi mau
+      kepastian lebih tinggi, jadikan follow-up terpisah (bisa gabung ke
+      **T-103.4**, retroactive pass).
 - [ ] **T-103.2** Update `AGENTS.md` rule 17 (atau tambah rule baru) —
       perluas gate yang sudah ada ("cek Claude Design sebelum nulis
       kode UI") supaya juga mencakup: kalau Claude Design **belum
