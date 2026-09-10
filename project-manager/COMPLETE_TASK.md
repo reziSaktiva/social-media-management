@@ -8,6 +8,36 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-10 — T-103.1 follow-up — Posisi tombol "+ New Post" diperbaiki + markup 3 file disamakan penuh dengan kode nyata
+
+King Rezi mengoreksi hasil T-103.1 (entri di bawah): (1) posisi tombol
+"+ New Post" di `templates/publish-drafts.html` salah — tampil sebagai baris
+terpisah di bawah tabbar, seharusnya sejajar judul "Publish" dalam satu
+`page-head`. Dicek ke kode nyata (`apps/web/src/app/(app)/publish/layout.tsx`
++ `components/PublishPageHeader.tsx`) — tombol dirender di `SettingsPageHead`-
+setara level layout, satu baris `flex justify-between` dengan judul+subtitle,
+berlaku sama untuk Calendar/Queue/Drafts/History. Mockup dipindah ke posisi
+yang benar.
+
+(2) King Rezi minta pendekatan T-103.1 sebelumnya (mengunci pola lewat
+komentar HTML tanpa mengubah markup visual) diganti — markup 3 file
+(`publish-drafts.html`, `settings-workspaces.html`,
+`settings-connected-accounts.html`) sekarang benar-benar diubah strukturnya
+supaya identik dengan kode nyata, dicek langsung ke
+`WorkspacesSettingsView.tsx` dan `ConnectedAccountsList.tsx`: `Table` tanpa
+`TableHeader`/`Card`, `settings-workspaces.html` pakai caption di dalam table
+("Workspace Anda", bukan `CardTitle`) + baris workspace aktif non-interactive
+dengan `Badge` sementara baris lain klik-penuh dengan chevron `›`,
+`settings-connected-accounts.html` baris TIDAK klik-penuh (hanya Badge+tombol
+Disconnect/Reconnect interaktif). Script switch-workspace di
+`settings-workspaces.html` disesuaikan ke struktur `<tr>`/`<td>` baru. Tabel
+Components di `readme.md` diupdate dari penanda "LOCKED" menjadi "SYNCED".
+
+Detail: `tasks/v07-astryx-shadcn-migration.md` § T-103 (update di bawah
+checklist T-103.1).
+
+---
+
 ## 2026-09-10 — T-103.1 Done — Kunci pola shadcn di Claude Design (mencegah drift lanjutan KI-054/KI-055)
 
 Branch `docs/t-103-lock-shadcn-pattern`. Audit seluruh `components/*.html` dan

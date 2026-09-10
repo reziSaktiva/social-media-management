@@ -1199,6 +1199,22 @@ belum dikunci, AI **berhenti dan tanya**, bukan menebak lagi.
       exhaustif di pass ini (dibatasi scope/waktu) — kalau King Rezi mau
       kepastian lebih tinggi, jadikan follow-up terpisah (bisa gabung ke
       **T-103.4**, retroactive pass).
+      **Update (2026-09-10, follow-up koreksi King Rezi):** 2 perbaikan
+      tambahan. (1) Posisi tombol "+ New Post" di
+      `templates/publish-drafts.html` salah — dulu tampil sebagai baris
+      terpisah di bawah tabbar, seharusnya sejajar judul "Publish" di
+      `page-head` (mengikuti `PublishPageHeader.tsx`, dirender sekali di
+      level `apps/web/src/app/(app)/publish/layout.tsx`, berlaku sama untuk
+      Calendar/Queue/Drafts/History). Sudah dipindah ke posisi yang benar.
+      (2) King Rezi minta markup 3 file yang sebelumnya hanya "dikunci
+      lewat komentar" (`publish-drafts.html`, `settings-workspaces.html`,
+      `settings-connected-accounts.html`) benar-benar diubah strukturnya
+      supaya identik dengan kode nyata — bukan cuma didokumentasikan. Sudah
+      diganti: `Table` tanpa `TableHeader`/`Card` di ketiganya,
+      `settings-workspaces.html` pakai caption di dalam table (bukan
+      `CardTitle`) + baris aktif Badge vs baris lain chevron, script
+      switch-workspace disesuaikan ke struktur baru. `readme.md` diupdate
+      dari penanda "LOCKED" menjadi "SYNCED" untuk mencerminkan ini.
 - [ ] **T-103.2** Update `AGENTS.md` rule 17 (atau tambah rule baru) —
       perluas gate yang sudah ada ("cek Claude Design sebelum nulis
       kode UI") supaya juga mencakup: kalau Claude Design **belum
