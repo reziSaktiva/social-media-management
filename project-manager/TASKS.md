@@ -53,7 +53,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 🟡 15 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 1 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
-| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 12 ✅ · 2 🟡 · 8 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
+| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 13 ✅ · 2 🟡 · 7 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
@@ -61,7 +61,21 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 86 task · 37 selesai · 216 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 86 task · 38 selesai · 216 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-10, T-038 ditemukan sudah selesai):** **T-038** (Toggle
+> Fullscreen/Standard resmi di Draft Editor, ADR-065) naik status
+> `⏳ Not Started` → `✅ Done` — bukan pekerjaan baru, seluruh 4/4 subtask
+> ternyata sudah terimplementasi penuh sejak **T-100** (migrasi Draft Editor
+> Modal ke shadcn/ui, selesai 2026-09-03) tapi status task ini tidak pernah
+> diperbarui saat itu. Ditemukan & diverifikasi ulang lewat browser real
+> (New Post & Edit Draft) di branch
+> `feature/t-038-draft-editor-fullscreen-standard-toggle` — cocok 100%
+> dengan ADR-065 dan mockup Claude Design (`templates/draft-editor.html`),
+> 0 gap. Tidak ada perubahan kode. Breakdown v0.2 berubah dari "12 ✅ · 2 🟡
+> · 8 ⏳" menjadi **13 ✅ · 2 🟡 · 7 ⏳**. Task selesai naik 37 → **38** dari
+> 86 total, subtask total tidak berubah (216 — hanya status checklist
+> T-038 yang berubah). Detail: `tasks/v02-publishing-mvp.md` § T-038.
 
 > **Update (2026-09-10):** **T-103** (Kunci Pola Implementasi shadcn per
 > Komponen di Claude Design, cegah drift KI-054/KI-055) ditambahkan ke

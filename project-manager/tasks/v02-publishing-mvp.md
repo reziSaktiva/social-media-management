@@ -59,18 +59,29 @@ Kontrol lampiran media di Draft Editor sudah ada tapi **disabled** dengan ketera
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing (UI)                                              |
 | **ADR**       | ADR-065 (amandemen ADR-052)                                  |
 | **Depends**   | T-020 (modal Draft Editor sudah ada — Done)                  |
 | **Baca dulu** | `decisions/ADR-065-draft-editor-toggle-fullscreen-standard-jadi-fitur-resmi-default-standard.md` · `04-ux/key-screen-patterns.md` (KSP-05) · `04-ux/navigation-patterns.md` (NP-D11) |
 
-T-020 hanya mengimplementasikan Draft Editor sebagai modal `Dialog variant="fullscreen"` — tidak ada variant Standard maupun toggle. ADR-065 mengangkat toggle Fullscreen/Standard (sebelumnya alat banding di Claude Design saja) jadi fitur resmi produk, dengan default berubah ke **Standard**. Referensi visual sudah ada di Claude Design (`templates/draft-editor.html`, `templates/app-prototype/AppPrototype.dc.html`).
+**Ditemukan sudah selesai (2026-09-10):** seluruh 4/4 subtask ternyata sudah
+terimplementasi penuh sebagai bagian tak tercatat dari **T-100** (migrasi
+Draft Editor Modal ke shadcn/ui, selesai 2026-09-03) — status task ini
+sempat tidak diperbarui saat itu. Diverifikasi ulang lewat browser real
+(New Post & Edit Draft, branch `feature/t-038-draft-editor-fullscreen-standard-toggle`):
+default Standard, toggle di header (label berganti sesuai variant aktif),
+klik → Fullscreen (full viewport tanpa backdrop terlihat), reset ke
+Standard tiap sesi baru dibuka, berlaku sama untuk New Post & Edit Draft.
+Kode: `apps/web/src/app/(app)/components/draft-editor/Modal.tsx` (state
+`dialogVariant` baris ~958-976, toggle di header baris ~549-563). Tidak ada
+gap terhadap mockup Claude Design (`templates/draft-editor.html`) atau
+ADR-065. Tidak ada perubahan kode di sesi ini — murni koreksi status.
 
-- [ ] **T-038.1** Tambah variant Standard (`Dialog` non-fullscreen, floating card + backdrop) berdampingan dengan variant Fullscreen yang sudah ada
-- [ ] **T-038.2** Toggle di header modal (sebaris status chip, kiri tombol Close) untuk berpindah Fullscreen ↔ Standard
-- [ ] **T-038.3** Default state Standard setiap modal dibuka — tidak dipersist (localStorage/preference) sesuai ADR-065
-- [ ] **T-038.4** Berlaku untuk New Post dan Edit Draft, keduanya
+- [x] **T-038.1** Tambah variant Standard (`Dialog` non-fullscreen, floating card + backdrop) berdampingan dengan variant Fullscreen yang sudah ada
+- [x] **T-038.2** Toggle di header modal (sebaris status chip, kiri tombol Close) untuk berpindah Fullscreen ↔ Standard
+- [x] **T-038.3** Default state Standard setiap modal dibuka — tidak dipersist (localStorage/preference) sesuai ADR-065
+- [x] **T-038.4** Berlaku untuk New Post dan Edit Draft, keduanya
 
 ---
 

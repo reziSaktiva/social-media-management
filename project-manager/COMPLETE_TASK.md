@@ -8,6 +8,48 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-10 — T-038 ditemukan sudah selesai — Toggle Fullscreen/Standard Draft Editor (ADR-065)
+
+King Rezi meminta lanjut kerjakan implementasi T-038 (Toggle Fullscreen/
+Standard resmi di Draft Editor) di branch
+`feature/t-038-draft-editor-fullscreen-standard-toggle` (dibuat dari
+`staging`). Sebelum menulis kode, dibaca dulu task file
+(`tasks/v02-publishing-mvp.md` § T-038), ADR-065, dan markup Claude Design
+(`templates/draft-editor.html`, projectId
+`84aded99-bb23-49b1-be9f-dd8f21c6873e`) — pola sudah jelas terkunci (bukan
+ambigu), tidak perlu stop-and-ask (AGENTS.md rule 17).
+
+Saat membaca kode `Modal.tsx` untuk mulai implementasi, ternyata **seluruh
+4 subtask sudah terimplementasi penuh**: state `dialogVariant`
+("standard"/"fullscreen"), reset ke Standard tiap `sessionKey` baru (baris
+~958-976), toggle button di header sebaris status chip + kiri tombol Close
+(baris ~549-563), dan dipakai sama oleh mode "create" (New Post) maupun
+"edit" (Edit Draft) lewat komponen `DraftEditorForm` yang sama. `git log`
+menunjukkan logic ini masuk lewat commit `8e2e7ce` (T-100, migrasi Draft
+Editor Modal ke shadcn/ui, 2026-09-03) — kemungkinan besar dikerjakan
+sebagai bagian scope T-100 tanpa disadari juga menutup T-038, dan status
+T-038 tidak pernah diperbarui saat itu.
+
+Diverifikasi ulang lewat browser real (dev server `localhost:3000`, akun
+Owner "Insvire"), bukan cuma baca kode:
+- New Post: modal dibuka default **Standard** (floating card + backdrop),
+  toggle bertuliskan "Fullscreen".
+- Klik toggle → beralih ke **Fullscreen** (full viewport, tanpa backdrop
+  terlihat), label toggle berubah jadi "Standard".
+- Tutup modal, buka New Post lagi → kembali ke Standard (tidak dipersist,
+  sesuai ADR-065).
+- Edit Draft (dari salah satu draft existing) → default Standard juga,
+  perilaku sama persis dengan New Post.
+
+0 gap ditemukan terhadap ADR-065 maupun mockup Claude Design. Tidak ada
+perubahan kode yang dibuat di sesi ini — murni koreksi status dokumentasi:
+`tasks/v02-publishing-mvp.md` § T-038 (`⏳ Not Started` → `✅ Done`, 4/4
+checklist dicentang) dan `TASKS.md` (indeks v0.2: "12 ✅ · 2 🟡 · 8 ⏳" →
+"13 ✅ · 2 🟡 · 7 ⏳", total selesai 37 → 38). Branch masih ada
+(`feature/t-038-draft-editor-fullscreen-standard-toggle`), belum
+di-commit/push — menunggu instruksi eksplisit King Rezi (AGENTS.md rule
+13).
+
 ## 2026-09-10 — T-103.4 Done — Audit retroaktif menemukan & menutup KI-056 (History drift). T-103 tuntas 4/4.
 
 Retroactive pass (T-103.4): audit lewat `DesignSync` untuk 5 screen di luar
