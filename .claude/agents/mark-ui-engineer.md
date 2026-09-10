@@ -51,3 +51,14 @@ Cek `components/ui/` dulu → MCP `search_items_in_registries` (atau `shadcn sea
 ## Verifikasi
 
 Setelah perubahan, jalankan dev server lewat preview tool dan cek visual (termasuk light/dark mode bila relevan) sebelum lapor selesai.
+
+**Wajib (T-103.3, gate setelah implementasi, melengkapi gate T-103.2 di atas
+yang berlaku sebelum implementasi):** sebelum task UI ditandai selesai,
+`DesignSync get_file` pada template/component Claude Design yang relevan
+dan bandingkan eksplisit strukturnya dengan kode yang baru kamu tulis —
+wrapper (`Card` atau bukan), ada `TableHeader`/caption atau tidak, baris
+klik-penuh atau tidak, posisi tombol/action relatif ke judul, dst. Bukan
+cuma golden path fungsional. Kalau ada perbedaan struktural yang tidak
+disengaja, perbaiki sebelum lapor selesai; kalau perbedaan itu memang
+keputusan sadar (mis. deviasi yang sudah dikonfirmasi King Rezi), laporkan
+eksplisit ke user, jangan diam-diam dibiarkan berbeda tanpa catatan.

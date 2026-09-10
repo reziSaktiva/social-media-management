@@ -20,7 +20,7 @@ langsung dengan user. Perubahan struktural wajib dicatat di
 | `neymar-product-designer.md`      | Neymar Product Designer      | Claude Design via `DesignSync`                                                          | Tidak                                              |
 | `elon-backend-engineer.md`        | Elon Backend Engineer        | Outstand ACL, webhook, background jobs, schema Prisma                                   | Tidak                                              |
 | `ridwan-architecture-reviewer.md` | Ridwan Architecture Reviewer | Review kepatuhan boundary DDD, read-only                                                | Ya — `Read, Bash, Grep, Glob, ReportFindings`      |
-| `najwa-qa-engineer.md`            | Najwa QA Engineer            | Vitest + verifikasi browser end-to-end                                                  | Ya — `Read, Bash, Grep, Glob, mcp__Claude_Browser` |
+| `najwa-qa-engineer.md`            | Najwa QA Engineer            | Vitest + verifikasi browser end-to-end                                                  | Ya — `Read, Bash, Grep, Glob, mcp__Claude_Browser, DesignSync` |
 | `gibran-project-manager.md`       | Gibran Project Manager       | Update `PROJECT_STATE.md` / `TASKS.md` / `tasks/` / `DECISIONS.md` / `COMPLETE_TASK.md` | Ya — `Read, Edit, Write, Bash, Grep, Glob`         |
 
 ---
@@ -140,6 +140,21 @@ yang sedang dipertimbangkan. Ini mencegah pengulangan drift KI-054/KI-055
 (AI menebak pola "masuk akal" yang ternyata bukan yang King Rezi mau) — detail
 lengkap di `AGENTS.md` rule 17 dan `tasks/v07-astryx-shadcn-migration.md`
 § T-103.
+
+## Gate verifikasi struktur setelah implementasi (T-103.3)
+
+Melengkapi gate di atas (yang berlaku **sebelum** implementasi): setelah
+task UI selesai ditulis, **Mark UI Engineer** dan **Najwa QA Engineer**
+wajib `DesignSync get_file` pada template/component Claude Design yang
+relevan dan membandingkan eksplisit strukturnya dengan kode yang baru
+ditulis (wrapper, header/caption, klik-penuh atau tidak, posisi
+tombol/action, dst.) — bukan cuma golden path fungsional. Kalau ditemukan
+perbedaan struktural yang tidak disengaja, perbaiki/laporkan sebelum task
+ditandai selesai. Najwa QA Engineer diberi akses tool `DesignSync` khusus
+untuk gate ini (lihat kolom "Tools dibatasi?" di tabel atas). Detail:
+`.claude/agents/mark-ui-engineer.md` § Verifikasi,
+`.claude/agents/najwa-qa-engineer.md` § Langkah kerja poin 5, dan
+`tasks/v07-astryx-shadcn-migration.md` § T-103.
 
 ---
 

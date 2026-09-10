@@ -8,6 +8,39 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-10 — T-103.3 Done — Gate verifikasi struktur setelah implementasi (Mark UI Engineer & Najwa QA Engineer)
+
+Melengkapi T-103.2 (gate sebelum implementasi di `AGENTS.md` rule 17):
+King Rezi sempat mengusulkan pendekatan alternatif ("kerjakan di kode dulu,
+baru Neymar cek beda Design vs Code") — didiskusikan bahwa itu berisiko
+mengulang mekanisme yang menyebabkan KI-054/KI-055 kalau dipakai sebagai
+**pengganti** gate sebelum-implementasi, tapi valid sebagai **tambahan**
+setelah implementasi. King Rezi setuju, dan T-103.3 (yang sudah scoped
+sebelumnya untuk hal ini) dikerjakan sebagai realisasinya.
+
+Ditambahkan langkah verifikasi wajib ke checklist:
+- `.claude/agents/mark-ui-engineer.md` § Verifikasi — sebelum lapor
+  selesai, `DesignSync get_file` pada template/component Claude Design
+  relevan, bandingkan eksplisit struktur (wrapper, header/caption,
+  klik-penuh, posisi tombol) dengan kode yang baru ditulis.
+- `.claude/agents/najwa-qa-engineer.md` § Langkah kerja poin 5 — kewajiban
+  sama untuk QA. **Tool `DesignSync` ditambahkan ke frontmatter `tools:`
+  Najwa** (sebelumnya hanya `Read, Bash, Grep, Glob, mcp__Claude_Browser`)
+  supaya gate ini bisa benar-benar dieksekusi, bukan cuma tertulis di
+  checklist tanpa akses tool-nya.
+- `.claude/agents/README.md` — section baru "Gate verifikasi struktur
+  setelah implementasi (T-103.3)" + kolom Tools Najwa di tabel diupdate.
+
+King Rezi memberi izin eksplisit (lewat `AskUserQuestion`) untuk mengedit
+kedua file read-only (Static Reference, chmod 444) — prosedur
+`chmod 644 → edit → chmod 444` dijalankan untuk keduanya.
+
+Status: T-103 sekarang **3/4** subtask selesai (T-103.1, T-103.2, T-103.3).
+T-103.4 (retroactive pass, opsional) masih `⏳`. Detail:
+`tasks/v07-astryx-shadcn-migration.md` § T-103.
+
+---
+
 ## 2026-09-10 — T-103.2 Done — Gate proses: AI wajib berhenti & tanya kalau pola shadcn masih ambigu
 
 Menambahkan gate baru ke `AGENTS.md` rule 17 (sub-poin baru, di antara "belum
