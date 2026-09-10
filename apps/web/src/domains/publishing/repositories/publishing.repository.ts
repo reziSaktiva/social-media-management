@@ -633,4 +633,39 @@ export interface IPublishingRepository {
   findPostTargetsByOutstandPostId(
     outstandPostId: string,
   ): Promise<WebhookPostLookupRecord | null>;
+
+  /**
+   * Delete Post (T-035.1, ADR-049 Tier 2, DB-D03) — soft delete: hanya
+   * men-set `deletedAt`, TIDAK PERNAH memanggil API Outstand apa pun untuk
+   * menghapus post dari platform sosial. Berbeda dari `cancelSchedule`,
+   * method ini TIDAK punya use-case class terpisah karena tidak ada
+   * dependency adapter eksternal sama sekali untuk T-035.1 — tidak ada
+   * urutan "persist dulu → panggil adapter" yang perlu dijaga.
+   *
+   * **Guard status (koreksi 2026-09-10, sesi lanjutan T-035.2/.3):** entry
+   * point Delete Post HANYA ada di Drafts — TIDAK di Queue, TIDAK di
+   * History (koreksi atas asumsi awal T-035.1 yang mengira ketiganya
+   * berlaku, dikonfirmasi King Rezi via `AskUserQuestion`). Post
+   * `Scheduled` tidak bisa dihapus langsung — harus di-Cancel Schedule dulu
+   * (T-030, kembali ke `Draft`) baru bisa dihapus dari Drafts. Karena itu
+   * query di bawah memfilter `status: ContentStatus.Draft` — `updateMany`
+   * hanya menyentuh baris yang statusnya masih Draft, sama pola dengan
+   * `updateDraftCaption`. Ini adalah lapis kedua guard (defense-in-depth) —
+   * `PublishingService.deletePost` sudah melakukan pengecekan status yang
+   * sama lebih dulu (fetch via `findDraftById`) supaya pesan error
+   * informatif; filter di sini murni safety net race condition (mis. status
+   * berubah tepat di antara fetch dan delete).
+   *
+   * Returns `null` kalau post tidak ditemukan di `workspaceId` ini, sudah
+   * soft-deleted sebelumnya (`deletedAt` sudah terisi), ATAU statusnya
+   * bukan `Draft` — caller (`PublishingService.deletePost`) sudah
+   * membedakan kasus ini lebih awal lewat fetch eksplisit, jadi null di
+   * sini praktis hanya kena di jalur race condition.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  softDeletePost(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<PublishingPostRecord | null>;
 }

@@ -460,15 +460,55 @@ hydration warning pada `formatRelativeTime` di `HistoryList.tsx`
 
 | Field         | Value                          |
 | ------------- | ------------------------------ |
-| **Status**    | ⏳ Not Started                  |
+| **Status**    | ✅ Done (2026-09-10)            |
 | **Domain**    | publishing                     |
 | **ADR**       | ADR-049 (Tier 2)               |
 | **Depends**   | T-022 ✅                        |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`  |
 
-- [ ] **T-035.1** `PublishingService.deletePost` + aturan: post yang sudah published tidak dihapus dari platform
-- [ ] **T-035.2** Dialog konfirmasi Tier 2
-- [ ] **T-035.3** Aksi tersedia dari Drafts + Queue + History
+**Scope T-035.3 dipersempit eksplisit oleh King Rezi (2026-09-10, lewat
+`AskUserQuestion`)** — bukan asumsi AI: entry point Delete Post **hanya di
+Drafts**. Queue dan History sengaja TIDAK diberi tombol delete: post
+`Scheduled` di Queue harus di-**Cancel Schedule** dulu (balik ke status
+`Draft`) baru bisa dihapus dari Drafts; post `Published`/`Failed` di
+History tidak boleh dihapus sama sekali. Selaras dengan pengecekan Claude
+Design sebelum implementasi (rule 17, AGENTS.md) — `publish-drafts.html`,
+`publish-queue.html`, `publish-history.html` ternyata tidak satu pun
+punya rancangan tombol delete, jadi King Rezi menentukan langsung
+scope + polanya di chat (bukan lewat draft Claude Design), dicatat sebagai
+deviasi eksplisit sama seperti pola KI-048.
+
+Implementasi (Prabowo Feature Engineer, 2 sesi): `PublishingService.deletePost`
+soft-delete (`deletedAt`) dengan guard status dua lapis (service:
+`findDraftById` + cek eksplisit; repository: `updateMany` where
+`status: Draft` sebagai safety net race condition) — **hanya post
+berstatus `Draft` yang bisa dihapus**, status lain ditolak `ConflictError`.
+RBAC `assertActorCanDeletePost` (Owner/Admin/Creator, konsisten
+Publish Now/Cancel Schedule). Server Action `deletePostAction`
+(`apps/web/src/app/(app)/publish/drafts/actions.ts`) murni wiring, tanpa
+business logic (rule 5). UI: icon trash merah per baris `DraftsList.tsx`
++ `ConfirmActionDialog`/`useConfirmAction` (reuse pola Disconnect Account,
+Tier 2), `stopPropagation` di `onClick` dan `onKeyDown` supaya tidak ikut
+membuka Edit Draft.
+
+Lolos review arsitektur Ridwan (0 temuan blocking — guard status dua
+lapis solid, RBAC konsisten, tidak ada business logic bocor ke Server
+Action; 1 catatan non-blocking soal nuansa ARIA "interactive-in-interactive"
+tombol di dalam row, bukan bug fungsional). QA Najwa: 311 test pass/5
+skip, browser end-to-end PASS seluruh golden path + regresi (Queue/History
+dipastikan tidak berubah, RBAC Creator diverifikasi bisa hapus, draft
+caption kosong tidak crash). Satu item **inconclusive** (bukan bug) —
+verifikasi keyboard Enter/Space via tool Browser pane tidak konklusif
+karena keterbatasan tooling otomasi itu sendiri (dibuktikan lewat kontrol:
+tombol native "New Post" yang jelas berfungsi via klik mouse juga tidak
+merespons Enter/Space lewat tool yang sama) — kode `onKeyDown` hanya
+`stopPropagation` (bukan `preventDefault`), jadi behavior native
+`<button>` seharusnya tetap jalan; direkomendasikan verifikasi manual
+King Rezi di browser asli kalau ingin memastikan 100%.
+
+- [x] **T-035.1** `PublishingService.deletePost` + aturan: post yang sudah published tidak dihapus dari platform (diperluas: hanya status `Draft` yang bisa dihapus sama sekali, lihat catatan scope di atas)
+- [x] **T-035.2** Dialog konfirmasi Tier 2
+- [x] **T-035.3** Aksi tersedia dari Drafts — scope dipersempit dari draft awal ("Drafts + Queue + History") oleh keputusan eksplisit King Rezi (lihat catatan di atas)
 
 ---
 

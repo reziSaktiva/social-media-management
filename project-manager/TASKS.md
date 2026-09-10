@@ -53,7 +53,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 🟡 15 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 1 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
-| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 13 ✅ · 2 🟡 · 7 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
+| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 14 ✅ · 2 🟡 · 6 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
@@ -61,7 +61,31 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 86 task · 38 selesai · 216 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 86 task · 39 selesai · 216 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-10, T-035 Done):** **T-035** (Delete Post + dialog
+> konfirmasi, ADR-049 Tier 2) naik status `⏳ Not Started` → `✅ Done` —
+> seluruh 3/3 subtask tuntas. Scope **T-035.3 dipersempit eksplisit oleh
+> King Rezi** lewat `AskUserQuestion` di sesi ini (bukan asumsi AI): entry
+> point Delete Post hanya di **Drafts** — Queue dan History sengaja tidak
+> diberi tombol delete (post `Scheduled` harus di-Cancel Schedule dulu,
+> post `Published`/`Failed` di History tidak boleh dihapus sama sekali).
+> Sebelum implementasi, dicek dulu ke Claude Design (rule 17) — ternyata
+> tidak satu pun dari 3 mockup (`publish-drafts.html`, `publish-queue.html`,
+> `publish-history.html`) punya rancangan tombol delete, jadi King Rezi
+> menentukan scope+pola langsung di chat, dicatat sebagai deviasi eksplisit
+> (pola sama KI-048). Implementasi: `PublishingService.deletePost`
+> soft-delete dengan guard status dua lapis (hanya `Draft` yang bisa
+> dihapus), RBAC `assertActorCanDeletePost` (Owner/Admin/Creator), Server
+> Action wiring murni, UI icon delete + `ConfirmActionDialog` reuse di
+> `DraftsList.tsx`. Lolos review arsitektur Ridwan (0 temuan blocking) dan
+> QA Najwa (311 test pass/5 skip, browser end-to-end PASS seluruh golden
+> path + regresi Queue/History + RBAC Creator; 1 item keyboard
+> accessibility inconclusive karena keterbatasan tooling Browser pane,
+> bukan bug kode). Breakdown v0.2 berubah dari "13 ✅ · 2 🟡 · 7 ⏳" menjadi
+> **14 ✅ · 2 🟡 · 6 ⏳**. Task selesai naik 38 → **39** dari 86 total,
+> subtask total tidak berubah (216 — hanya status checklist T-035 yang
+> berubah). Detail: `tasks/v02-publishing-mvp.md` § T-035.
 
 > **Update (2026-09-10, T-038 ditemukan sudah selesai):** **T-038** (Toggle
 > Fullscreen/Standard resmi di Draft Editor, ADR-065) naik status

@@ -7,12 +7,17 @@ import {
   asWorkspaceId,
   ContentFormat,
   ContentStatus,
+  MemberRole,
   type PostId,
   SocialPlatform,
 } from "@social/shared";
 import { describe, expect, it } from "vitest";
 import type { PostMetricsRecord } from "@/domains/analytics";
-import { NotFoundError } from "@/lib/utils/errors";
+import {
+  AuthorizationError,
+  ConflictError,
+  NotFoundError,
+} from "@/lib/utils/errors";
 import type {
   CalendarItemRecord,
   HistoryItemRecord,
@@ -61,6 +66,7 @@ function createFakeRepository(
     setRetryOutstandPostId: async () => undefined,
     reconcilePostStatusAfterRetry: async () => undefined,
     findPostTargetsByOutstandPostId: async () => null,
+    softDeletePost: async () => null,
     ...overrides,
   };
 }
@@ -729,5 +735,154 @@ describe("PublishingService.getHistoryById", () => {
     await expect(
       service.getHistoryById(WORKSPACE_ID, asPostId("post-1"), AUTHOR_ID),
     ).resolves.toBe(item);
+  });
+});
+
+describe("PublishingService.deletePost", () => {
+  function draftRecord(
+    overrides: Partial<PublishingPostRecord> = {},
+  ): PublishingPostRecord {
+    return {
+      id: asPostId("post-1"),
+      workspaceId: WORKSPACE_ID,
+      authorId: AUTHOR_ID,
+      caption: "Hello",
+      status: ContentStatus.Draft,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+      ...overrides,
+    };
+  }
+
+  it("soft delete post Draft — happy path, delegates ke repository lalu mengembalikan post yang sudah dihapus", async () => {
+    const existing = draftRecord();
+    const deleted: PublishingPostRecord = { ...existing };
+    let received:
+      Parameters<IPublishingRepository["softDeletePost"]>[0] | null = null;
+    const service = new PublishingService(
+      createFakeRepository({
+        findDraftById: async () => existing,
+        softDeletePost: async (input) => {
+          received = input;
+          return deleted;
+        },
+      }),
+    );
+
+    await expect(
+      service.deletePost(
+        {
+          workspaceId: WORKSPACE_ID,
+          postId: asPostId("post-1"),
+          actorRole: MemberRole.Creator,
+        },
+        AUTHOR_ID,
+      ),
+    ).resolves.toBe(deleted);
+    expect(received).toEqual({
+      workspaceId: WORKSPACE_ID,
+      postId: asPostId("post-1"),
+    });
+  });
+
+  it.each([
+    ContentStatus.InReview,
+    ContentStatus.ReadyToSchedule,
+    ContentStatus.Scheduled,
+    ContentStatus.Published,
+    ContentStatus.Failed,
+  ])(
+    // Koreksi 2026-09-10: entry point Delete Post HANYA ada di Drafts —
+    // King Rezi mengonfirmasi post Scheduled harus di-Cancel Schedule dulu
+    // (kembali ke Draft) sebelum bisa dihapus, TIDAK bisa dihapus langsung
+    // dari status manapun selain Draft.
+    "guard: post berstatus %s DITOLAK ConflictError, TANPA memanggil softDeletePost",
+    async (status) => {
+      let softDeleteCalls = 0;
+      const service = new PublishingService(
+        createFakeRepository({
+          findDraftById: async () => draftRecord({ status }),
+          softDeletePost: async () => {
+            softDeleteCalls += 1;
+            return null;
+          },
+        }),
+      );
+
+      await expect(
+        service.deletePost(
+          {
+            workspaceId: WORKSPACE_ID,
+            postId: asPostId("post-1"),
+            actorRole: MemberRole.Owner,
+          },
+          AUTHOR_ID,
+        ),
+      ).rejects.toThrow(ConflictError);
+      expect(softDeleteCalls).toBe(0);
+    },
+  );
+
+  it("throws NotFoundError kalau post tidak ditemukan sama sekali (findDraftById null)", async () => {
+    const service = new PublishingService(
+      createFakeRepository({ findDraftById: async () => null }),
+    );
+
+    await expect(
+      service.deletePost(
+        {
+          workspaceId: WORKSPACE_ID,
+          postId: asPostId("post-1"),
+          actorRole: MemberRole.Admin,
+        },
+        AUTHOR_ID,
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws NotFoundError kalau softDeletePost mengembalikan null walau status sudah dicek Draft (race condition safety net)", async () => {
+    const service = new PublishingService(
+      createFakeRepository({
+        findDraftById: async () => draftRecord(),
+        softDeletePost: async () => null,
+      }),
+    );
+
+    await expect(
+      service.deletePost(
+        {
+          workspaceId: WORKSPACE_ID,
+          postId: asPostId("post-1"),
+          actorRole: MemberRole.Admin,
+        },
+        AUTHOR_ID,
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws AuthorizationError untuk role di luar Owner/Admin/Creator, TANPA memanggil repository", async () => {
+    let calls = 0;
+    const service = new PublishingService(
+      createFakeRepository({
+        findDraftById: async () => {
+          calls += 1;
+          return draftRecord();
+        },
+      }),
+    );
+
+    await expect(
+      service.deletePost(
+        {
+          workspaceId: WORKSPACE_ID,
+          postId: asPostId("post-1"),
+          // Cast sengaja — menyimulasikan role tidak valid/di luar 3 role
+          // kanonikal, sama pola pengujian dengan RBAC lain di domain ini.
+          actorRole: "viewer" as MemberRole,
+        },
+        AUTHOR_ID,
+      ),
+    ).rejects.toThrow(AuthorizationError);
+    expect(calls).toBe(0);
   });
 });

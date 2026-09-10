@@ -1,12 +1,14 @@
 import { ContentStatus } from "@social/shared";
 import type {
   ConnectedAccountId,
+  MemberRole,
   PostId,
   UserId,
   WorkspaceId,
 } from "@social/shared";
 import type { PostMetricsRecord } from "@/domains/analytics";
-import { NotFoundError } from "@/lib/utils/errors";
+import { ConflictError, NotFoundError } from "@/lib/utils/errors";
+import { assertActorCanDeletePost } from "../rbac";
 import type {
   CalendarItemRecord,
   HistoryItemRecord,
@@ -116,6 +118,73 @@ export class PublishingService {
     );
     if (!post) {
       throw new NotFoundError("Draft tidak ditemukan.");
+    }
+    return post;
+  }
+
+  /**
+   * Delete Post (T-035.1, ADR-049 Tier 2) — soft delete, TIDAK PERNAH
+   * memanggil API Outstand untuk menghapus post dari platform sosial (lihat
+   * `IPublishingRepository.softDeletePost`). Tidak ada use-case class
+   * terpisah (beda dari `CancelScheduleUseCase`/`PublishNowUseCase`) —
+   * T-035.1 tidak butuh `IOutstandAdapter` sama sekali, jadi tidak ada
+   * dependency wajib atau urutan operasi kritis yang perlu dijaga TypeScript
+   * di call site.
+   *
+   * RBAC: sama dengan Cancel Schedule/Publish Now — Account Owner, Admin,
+   * dan Creator (ADR-074), lihat `assertActorCanDeletePost`.
+   *
+   * **Guard status (koreksi 2026-09-10, sesi lanjutan T-035.2/.3):** entry
+   * point Delete Post HANYA ada di Drafts (bukan Queue/History seperti
+   * asumsi awal sesi T-035.1) — King Rezi mengonfirmasi eksplisit lewat
+   * `AskUserQuestion`: post `Scheduled` tidak boleh dihapus langsung, harus
+   * di-Cancel Schedule dulu (T-030, kembali ke `Draft`) baru bisa dihapus
+   * dari Drafts. Karena itu HANYA post berstatus `ContentStatus.Draft` yang
+   * boleh dihapus — status lain (`InReview`/`ReadyToSchedule`/`Scheduled`/
+   * `Published`/`Failed`) ditolak `ConflictError`. Dua lapis guard (defense-
+   * in-depth, pola sama `updateDraft`/`cancelSchedule`): (1) di sini, fetch
+   * dulu via `findDraftById` supaya pesan error informatif tanpa menunggu
+   * round-trip write; (2) di repository, `softDeletePost` query Prisma-nya
+   * SENDIRI juga memfilter `status: Draft` (safety net race condition kalau
+   * status berubah di antara fetch dan delete, mis. keburu di-schedule user
+   * lain).
+   *
+   * `NotFoundError` kalau post tidak ditemukan di `workspaceId` ini atau
+   * sudah di-soft-delete sebelumnya. `userId` (RLS, KI-026 follow-up) —
+   * acting user untuk `withCurrentUser`.
+   */
+  async deletePost(
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      /** RBAC (T-035.1, ADR-049 Tier 2) — role actor yang sudah tervalidasi. */
+      actorRole: MemberRole;
+    },
+    userId: UserId,
+  ): Promise<PublishingPostRecord> {
+    assertActorCanDeletePost(input.actorRole);
+
+    const existing = await this.repository.findDraftById(
+      { workspaceId: input.workspaceId, postId: input.postId },
+      userId,
+    );
+    if (!existing) {
+      throw new NotFoundError("Post tidak ditemukan.");
+    }
+    if (existing.status !== ContentStatus.Draft) {
+      throw new ConflictError(
+        "Hanya post berstatus Draft yang bisa dihapus. Batalkan jadwal (Cancel Schedule) dulu untuk post yang sudah dijadwalkan, baru bisa dihapus dari Drafts.",
+      );
+    }
+
+    const post = await this.repository.softDeletePost(
+      { workspaceId: input.workspaceId, postId: input.postId },
+      userId,
+    );
+    if (!post) {
+      throw new NotFoundError(
+        "Post tidak ditemukan atau sudah dihapus sebelumnya.",
+      );
     }
     return post;
   }

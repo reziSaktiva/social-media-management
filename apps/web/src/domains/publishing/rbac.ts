@@ -54,3 +54,30 @@ export function assertActorCanCancelSchedule(actorRole: MemberRole): void {
     );
   }
 }
+
+/**
+ * RBAC untuk Delete Post (T-035.1, ADR-049 Tier 2).
+ * `roles-permissions.md` tidak punya baris eksplisit untuk "Delete Post" —
+ * beda dari `deleteWorkspace`/transfer ownership (Tier 1, dibatasi Account
+ * Owner) atau remove member/connected account (dibatasi Owner+Admin), delete
+ * post adalah bagian dari siklus hidup konten ("Buat/edit konten" di tabel
+ * Ringkasan Hak Akses, ✅ untuk ketiga role), sama seperti Schedule/Publish
+ * Now/Cancel Schedule yang semuanya ✅ untuk Account Owner, Admin, DAN
+ * Creator (ADR-074, struktur 3-role). Assertion tetap eksplisit untuk alasan
+ * yang sama seperti `assertActorCanPublishNow`/`assertActorCanCancelSchedule`
+ * di atas — bukan pola RBAC baru, mengikuti preseden yang sudah ada untuk
+ * aksi Tier 2 pada konten.
+ */
+const ROLES_ALLOWED_TO_DELETE_POST: ReadonlySet<MemberRole> = new Set([
+  MemberRole.Owner,
+  MemberRole.Admin,
+  MemberRole.Creator,
+]);
+
+export function assertActorCanDeletePost(actorRole: MemberRole): void {
+  if (!ROLES_ALLOWED_TO_DELETE_POST.has(actorRole)) {
+    throw new AuthorizationError(
+      "Anda tidak memiliki izin untuk menghapus post ini (Delete Post).",
+    );
+  }
+}
