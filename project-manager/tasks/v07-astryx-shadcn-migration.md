@@ -1133,3 +1133,78 @@ dimigrasikan, memastikan tidak ada sisa Astryx di codebase.
 > `apps/web/src/app/(app)/settings/billing/page.tsx`. Detail:
 > `PROJECT_STATE.md` § KI-045 (dipindah ke `COMPLETE_TASK.md` setelah
 > Resolved, ID tidak didaur ulang).
+
+---
+
+### T-103 · Kunci Pola Implementasi shadcn per Komponen di Claude Design (cegah drift KI-054/KI-055)
+
+`⏳ Not Started` (2026-09-10) · **Domain** Design System / Governance — lintas Claude Design + `AGENTS.md`/agent docs, bukan domain kode produk biasa (lihat catatan Domain di bawah) · **ADR** — · **Depends** —
+**Baca dulu:** `PROJECT_STATE.md` § KI-054, KI-055 · `readme.md` (Claude Design project "Social Media Management") § Components · `AGENTS.md` rule 15–17 · `.claude/agents/README.md`
+
+**Prioritas: dikerjakan LEBIH DULU dari task lain di backlog** (permintaan
+eksplisit King Rezi, 2026-09-10) — sampai T-103 selesai, task implementasi
+UI baru berisiko mengulang pola drift yang sama.
+
+**Latar belakang.** KI-054 (Design Drift Drafts/History) dan KI-055 (5
+komponen menyimpang dari Claude Design) sama-sama disebabkan hal yang
+sama: Claude Design mendokumentasikan pemetaan shadcn di level
+**primitive** (mis. "list pakai `Item`/`ItemGroup` ATAU `Table`", keduanya
+sama-sama valid shadcn), tapi tidak mengunci **pola konkret** yang harus
+dipakai untuk instance tertentu. Saat lebih dari satu pola shadcn
+sama-sama valid untuk maksud desain yang sama, AI menebak pola yang
+"masuk akal" (mis. `Item`/`ItemGroup` untuk Drafts/Workspaces/Connected
+Accounts) — tebakan itu ternyata bukan yang King Rezi mau, dan baru
+ketahuan lewat audit manual King Rezi, bukan sebelum kode ditulis.
+
+**Tujuan:** hilangkan ruang tebak-tebakan itu — setiap komponen/list
+ambigu di Claude Design dikunci eksplisit ke satu pola shadcn (bukan cuma
+nama primitive, tapi struktur wrapper-nya: pakai `Card` atau bukan, ada
+`TableHeader` atau tidak, baris bisa diklik penuh atau tidak, dst.) — dan
+tambahkan gate proses supaya kalau suatu saat masih ada elemen yang
+belum dikunci, AI **berhenti dan tanya**, bukan menebak lagi.
+
+- [ ] **T-103.1** Audit seluruh file `components/*.html` dan
+      `templates/*.html` di project Claude Design "Social Media
+      Management" (lewat `DesignSync`) — untuk tiap list/komposisi yang
+      punya lebih dari satu kemungkinan pola shadcn valid (list, dialog
+      variant, table vs item, dst.), kunci pola eksplisit langsung di
+      intro paragraph/inline comment file itu sendiri (bukan cuma nama
+      komponen, tapi struktur: wrapper apa, ada header atau tidak, klik
+      row atau tidak, dst. — persis level detail yang sudah ditulis
+      untuk KI-055 poin 1/3/5 di `PROJECT_STATE.md`). Update juga tabel
+      **Components** di `readme.md` Claude Design supaya baris yang
+      ambigu ditandai jelas polanya, bukan cuma "shadcn X" generik.
+- [ ] **T-103.2** Update `AGENTS.md` rule 17 (atau tambah rule baru) —
+      perluas gate yang sudah ada ("cek Claude Design sebelum nulis
+      kode UI") supaya juga mencakup: kalau Claude Design **belum
+      mengunci pola konkret** untuk elemen yang mau diimplementasikan
+      (ambigu, >1 opsi shadcn valid), AI **wajib berhenti dan tanya
+      King Rezi** (`AskUserQuestion`, pola sama
+      `.claude/skills/proactive-clarification/SKILL.md`) sebelum
+      menulis kode — bukan memilih salah satu opsi sendiri.
+      Refleksikan perubahan ini juga ke `.claude/agents/README.md` dan
+      definisi Mark UI Engineer (file `.claude/agents/*.md` bersifat
+      Static Reference/read-only, minta izin eksplisit King Rezi
+      sebelum mengedit, sesuai `PROJECT_RULES.md`).
+- [ ] **T-103.3** Tambah langkah verifikasi ke checklist Mark UI
+      Engineer & Najwa QA Engineer: sebelum task UI ditandai selesai,
+      **wajib** `DesignSync get_file` pada template/component Claude
+      Design yang relevan dan bandingkan eksplisit strukturnya dengan
+      kode yang baru ditulis (bukan cuma golden path fungsional) — gate
+      setelah implementasi, melengkapi gate T-103.2 yang di sebelum
+      implementasi.
+- [ ] **T-103.4** (opsional, follow-up jangka lebih panjang) Retroactive
+      pass: screen/komponen yang sudah diimplementasi sebelum T-103 (di
+      luar KI-054/KI-055 yang baru selesai) dicek ulang terhadap pola
+      yang baru dikunci di T-103.1, untuk menemukan drift serupa yang
+      belum ketahuan. Bisa dijadikan task/KI terpisah kalau ditemukan
+      gap besar — dicatat di sini dulu supaya tidak lupa, eksekusi
+      menyusul.
+
+**Catatan Domain:** task ini bukan implementasi fitur produk biasa —
+T-103.1 kerjanya di Claude Design (Neymar Product Designer), T-103.2
+kerjanya di dokumen governance (`AGENTS.md`, hard rule, perlu approval
+King Rezi karena ini perubahan aturan kerja, bukan kode), T-103.3 kerjanya
+di dua definisi subagent (read-only, hard rule `PROJECT_RULES.md`, wajib
+izin eksplisit sebelum diedit). Tidak dipetakan ke satu Domain → Subagent
+tunggal di `.claude/agents/README.md` — evaluasi manual per subtask.

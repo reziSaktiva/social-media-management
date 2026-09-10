@@ -59,9 +59,15 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
-| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-102 | 8    | 8 ✅          | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
+| **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 85 task · 37 selesai · 212 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 86 task · 37 selesai · 216 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-10):** **T-103** (Kunci Pola Implementasi shadcn per
+> Komponen di Claude Design, cegah drift KI-054/KI-055) ditambahkan ke
+> v0.7 atas permintaan eksplisit King Rezi, ditandai **prioritas
+> tertinggi** — dikerjakan sebelum task lain di backlog. Detail:
+> `tasks/v07-astryx-shadcn-migration.md` § T-103.
 
 > **Update (2026-09-09, merge `staging` — resolve konflik PR #112 vs T-026
 > webhook):** Cabang `feature/t-034-publishing-history` (T-034, ADR-103)
@@ -512,6 +518,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
+| **T-103** | Kunci Pola Implementasi shadcn per Komponen di Claude Design | ⏳ | **Prioritas tertinggi saat ini** (permintaan eksplisit King Rezi, 2026-09-10) — dikerjakan sebelum task lain. Mencegah pengulangan drift seperti **KI-054**/**KI-055**: audit Claude Design supaya tiap list/komposisi ambigu (>1 pola shadcn valid) dikunci eksplisit ke satu pola konkret, plus gate baru di `AGENTS.md` — kalau pola belum dikunci, AI wajib tanya King Rezi dulu, bukan menebak. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-103 |
 | **T-102** | Cleanup & Verifikasi Akhir                      | ✅      | **Done** — seluruh 6 subtask tuntas: T-102.1 (hapus dependency Astryx), T-102.2 (grep 0 import aktif), T-102.3 (update `ctx-design.md`/`ctx-implementation.md`), T-102.4 (QA visual menyeluruh Najwa QA Engineer, PASS 0 regresi), T-102.5 (re-evaluasi & tutup KI-005 moot, KI-030 & KI-035 poin 1 dikonfirmasi closed sebelumnya, KI-035 poin 2 baru ditutup Resolved), T-102.6 (migrasi `useToast` → `sonner`, verifikasi visual toast dikonfirmasi manual King Rezi "toast oke" 2026-09-04). Dengan ini rilis **v0.7 tuntas 100%**. **KI-045** (regresi RBAC Creator, ditemukan T-102.4) — **Resolved 2026-09-04**, root cause `settings`/`billing` page tidak pernah punya guard sejak awal, sudah diperbaiki. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-102 |
 | **T-101** | Migrasi Publish — Calendar, Queue, Drafts, Dashboard | ✅      | **Selesai (2026-09-03)** — seluruh 5/5 subtask tuntas: T-101.1 (Calendar), T-101.2 (Queue), T-101.3 (Drafts), T-101.4 (header/tabbar/layout), T-101.5 (Dashboard). Lolos review Ridwan (0 temuan) tiap subtask. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-101 |
 | **T-100** | Migrasi Publish — Draft Editor Modal             | ✅      | **Selesai (2026-09-03)** — seluruh 4/4 subtask tuntas (struktur modal + layout, form controls shadcn, `TimeInput` → native `<input type="time">` (**KI-030 Closed**), verifikasi behavior penuh end-to-end). Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh). Temuan minor: **KI-043**, **KI-044**. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-100 |

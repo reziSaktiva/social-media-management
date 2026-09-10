@@ -4,9 +4,9 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-034 Publishing History + detail post** (rilis v0.2) sekarang **✅ Done** (2026-09-09) — seluruh 4/4 subtask tuntas: query riwayat, UI daftar riwayat + filter, halaman detail post, dan **T-034.4** (retry manual per-target, **ADR-103** melengkapi ADR-092 — scope single-target, bukan whole-post, untuk hindari duplikat konten). Lolos review Ridwan (0 temuan blocking) dan QA Najwa (259 test pass, verifikasi browser golden path + edge case semua PASS). 1 Known Issue baru non-blocking: **KI-052** (hydration warning `formatRelativeTime` di `HistoryList.tsx`). 2 Known Issue lama masih **Open**, belum berubah statusnya oleh penutupan T-034.4: **KI-049** (gap `failedAt`/`failureReason`), **KI-050** (gap meta author di halaman detail). **KI-051** (`Badge` shadcn belum ada varian success) sudah **Resolved** (2026-09-09, Mark UI Engineer) — sekaligus menutup penuh **KI-054** (Design Drift Drafts/History, poin 5 terakhir). Digabung (merge `staging`) dengan pekerjaan paralel: **T-039 Migrasi Routing & Settings (ADR-076) — ✅ Done** (2026-09-08) — subtask terakhir **T-039.4** (onboarding picker workspace) diimplementasikan, lolos review arsitektur Ridwan (0 temuan) + QA Najwa end-to-end browser (6/6 skenario PASS); **KI-023 Resolved**. Sebelumnya: **T-007.8 Members list gabungan Pending (ADR-101) — ✅ Done** (2026-09-07, side-quest di luar rantai utama) — lolos implementasi Prabowo Feature Engineer, review arsitektur Ridwan (1 temuan race condition di `revokeInvitation`, sudah diperbaiki), QA end-to-end Najwa (browser real, semua PASS, 0 bug). **T-026 Webhook handler Outstand — ✅ Done** (2026-09-07) dan **T-036 In-app notification + Supabase Realtime — ✅ Done** (2026-09-07) — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply, Najwa QA Engineer retest 5 skenario webhook end-to-end nyata, semua PASS. **KI-048 Resolved**. ADR-099 (SECURITY DEFINER system-context lookup untuk webhook) dicatat sebagai preseden untuk T-027. Fokus berikutnya: **T-025 Real OutstandAdapter** (terhenti menunggu kredensial), **T-027 Job runner + Railway Cron**, dan **T-037** (Perkaya aturan coding, kontinu by design, `🟡 In Progress`) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus. Sebelumnya: **T-102 Cleanup & Verifikasi Akhir — ✅ Done** (rilis v0.7, ADR-097) menuntaskan migrasi Astryx→shadcn/ui 100%; **KI-045**, **KI-041** (ADR-098), **KI-035** sudah Resolved (2026-09-04); **KI-046** Resolved (Promoted to T-007.7, ADR-100, 2026-09-07); **KI-047**, **KI-053** (2026-09-07 — invite Copy Link rawan identity takeover kalau email penerima bukan target undangan & belum punya akun, akar masalah KI-001; direnumber dari KI-049 semula saat merge `staging` — nomor itu sudah dipakai lebih dulu oleh Known Issue lain, gap `failedAt`/`failureReason`, di cabang ini) dicatat sebagai gap baru/Open — **KI-053 tidak terkait/tidak berubah statusnya** oleh selesainya T-007.8, masih genuinely Open.
+* **Top Next Tasks:** **T-034 Publishing History + detail post** (rilis v0.2) sekarang **✅ Done** (2026-09-09) — seluruh 4/4 subtask tuntas: query riwayat, UI daftar riwayat + filter, halaman detail post, dan **T-034.4** (retry manual per-target, **ADR-103** melengkapi ADR-092 — scope single-target, bukan whole-post, untuk hindari duplikat konten). Lolos review Ridwan (0 temuan blocking) dan QA Najwa (259 test pass, verifikasi browser golden path + edge case semua PASS). 1 Known Issue baru non-blocking: **KI-052** (hydration warning `formatRelativeTime` di `HistoryList.tsx`). 2 Known Issue lama masih **Open**, belum berubah statusnya oleh penutupan T-034.4: **KI-049** (gap `failedAt`/`failureReason`), **KI-050** (gap meta author di halaman detail). **KI-051** (`Badge` shadcn belum ada varian success) sudah **Resolved** (2026-09-09, Mark UI Engineer) — sekaligus menutup penuh **KI-054** (Design Drift Drafts/History, poin 5 terakhir). Digabung (merge `staging`) dengan pekerjaan paralel: **T-039 Migrasi Routing & Settings (ADR-076) — ✅ Done** (2026-09-08) — subtask terakhir **T-039.4** (onboarding picker workspace) diimplementasikan, lolos review arsitektur Ridwan (0 temuan) + QA Najwa end-to-end browser (6/6 skenario PASS); **KI-023 Resolved**. Sebelumnya: **T-007.8 Members list gabungan Pending (ADR-101) — ✅ Done** (2026-09-07, side-quest di luar rantai utama) — lolos implementasi Prabowo Feature Engineer, review arsitektur Ridwan (1 temuan race condition di `revokeInvitation`, sudah diperbaiki), QA end-to-end Najwa (browser real, semua PASS, 0 bug). **T-026 Webhook handler Outstand — ✅ Done** (2026-09-07) dan **T-036 In-app notification + Supabase Realtime — ✅ Done** (2026-09-07) — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply, Najwa QA Engineer retest 5 skenario webhook end-to-end nyata, semua PASS. **KI-048 Resolved**. ADR-099 (SECURITY DEFINER system-context lookup untuk webhook) dicatat sebagai preseden untuk T-027. **Prioritas tertinggi sekarang (2026-09-10, di atas semua fokus lain di bawah): T-103 Kunci Pola Implementasi shadcn per Komponen di Claude Design** — task baru, permintaan eksplisit King Rezi setelah KI-054/KI-055, dikerjakan lebih dulu sebelum task lain manapun. Fokus berikutnya setelah T-103: **T-025 Real OutstandAdapter** (terhenti menunggu kredensial), **T-027 Job runner + Railway Cron**, dan **T-037** (Perkaya aturan coding, kontinu by design, `🟡 In Progress`) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus. Sebelumnya: **T-102 Cleanup & Verifikasi Akhir — ✅ Done** (rilis v0.7, ADR-097) menuntaskan migrasi Astryx→shadcn/ui 100%; **KI-045**, **KI-041** (ADR-098), **KI-035** sudah Resolved (2026-09-04); **KI-046** Resolved (Promoted to T-007.7, ADR-100, 2026-09-07); **KI-047**, **KI-053** (2026-09-07 — invite Copy Link rawan identity takeover kalau email penerima bukan target undangan & belum punya akun, akar masalah KI-001; direnumber dari KI-049 semula saat merge `staging` — nomor itu sudah dipakai lebih dulu oleh Known Issue lain, gap `failedAt`/`failureReason`, di cabang ini) dicatat sebagai gap baru/Open — **KI-053 tidak terkait/tidak berubah statusnya** oleh selesainya T-007.8, masih genuinely Open.
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal, tapi memblokir T-025→T-026→T-027.
-* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 85 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
+* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 86 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
 ---
@@ -612,6 +612,161 @@ className, sehingga tiap baris rata tanpa border/rounded individual, hanya
 mengandalkan garis pemisah `divide-y` di `ItemGroup` (sama seperti
 `QueueList.tsx`). Diverifikasi `tsc --noEmit`, eslint, dan browser preview
 (computed style `borderRadius: 0px`, `borderColor: transparent`).
+
+### KI-055 · 5 komponen menyimpang dari Claude Design (Drafts, Profile, Workspaces, Members, Connected Accounts) — Resolved
+
+| Field | Value |
+|-------|-------|
+| Status | Resolved (2026-09-10) — seluruh 5/5 poin fixed |
+| Kategori | Design Gap |
+| Terkait | Claude Design `templates/publish-drafts.html`, `settings-profile.html`, `settings-workspaces.html`, `settings-members.html`, `settings-connected-accounts.html`, `components/table.html` |
+
+Ditemukan King Rezi (2026-09-09) lewat audit manual perbandingan
+Claude Design ↔ `apps/web`, 5 poin:
+
+1. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] List draft
+   posts (`/publish/drafts`)** — seharusnya `Table` shadcn tanpa
+   header/judul per kolom (`TableHeader`/`TableHead` dihilangkan). Awalnya
+   dipasangkan dengan `Card` (fix pertama), lalu direvisi King Rezi
+   (mengikuti pola final poin 3 di bawah — dibandingkan langsung, versi
+   tanpa `Card` dinilai lebih baik) menjadi **TANPA** `Card`. **Fixed
+   (final, 2 kali revisi padding 2026-09-10):** `DraftsList.tsx` —
+   `Table`/`TableBody`/`TableRow`/`TableCell` (tanpa `TableHeader`)
+   dibungkus `<div className="rounded-xl border border-border">`, `py-2`
+   saat ada data (riwayat: `py-3` → dihapus total → dikembalikan jadi
+   `py-2` — tanpa padding sama sekali membuat hover baris paling
+   atas/bawah menembus sudut membulat `rounded-xl` container, ditemukan
+   King Rezi; `py-2` cukup kecil untuk tetap terlihat rapat tapi cukup
+   untuk menahan hover di dalam sudut), `p-6` saat kosong (state `Empty`,
+   supaya pesan tidak mepet). Baris
+   klik penuh lewat `onClick` di `TableRow` (native `<tr>`) + `cursor-
+   pointer`, `hover:bg-muted/50` bawaan `table.tsx`. Fungsi buka Draft
+   Editor per baris (`openEditDraft`) tidak berubah. Diverifikasi
+   `tsc --noEmit` pass, eslint pass, browser preview PASS (klik baris
+   membuka modal Edit Draft dengan benar).
+2. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] Ukuran
+   avatar (`/settings/account` → Profile)** — avatar render terlalu
+   kecil dibanding `templates/settings-profile.html` (`.avatar-lg`,
+   88px). `Avatar` shadcn hanya punya 3 preset size (`sm`/`default`/
+   `lg`), dan `lg` cuma 40px (`size-10`) — masih jauh dari 88px.
+   **Fixed:** `ProfileForm.tsx` — `Avatar` di-override langsung via
+   `className="size-22"` (22 × 4px = 88px, token spacing default
+   Tailwind v4, match persis mockup, bukan preset `size` prop bawaan
+   komponen), `AvatarFallback` (inisial) diperbesar ke `text-2xl
+   font-bold` (24px, token terdekat dari target mockup 28px — tidak ada
+   token teks persis 28px). Perubahan lokal ke instance ini saja, tidak
+   mengubah komponen `avatar.tsx` global. Diverifikasi `tsc --noEmit`
+   pass, eslint pass, browser preview PASS (avatar terlihat proporsional
+   lebih besar, upload foto asli maupun fallback initials sama-sama
+   ter-scale).
+3. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] List
+   workspace (`/settings/account/workspaces`)** — alasan sama seperti
+   poin 1: seharusnya `Card` + `Table` shadcn tanpa header kolom (bukan
+   pola `.ws-pick-item` list yang didokumentasikan di Claude Design —
+   King Rezi memutuskan pola `Card`+`Table` sebagai standar baru untuk
+   list ini, menyimpang sengaja dari dokumentasi Claude Design saat
+   ini). **Fixed (revisi 2026-09-10):** `WorkspacesSettingsView.tsx`
+   diubah dari `Item`+`ItemGroup` (via `WorkspacePickableRow`) menjadi
+   `Table`/`TableBody`/`TableRow`/`TableCell` — versi final **TANPA**
+   `Card` (King Rezi minta lihat dulu hasilnya tanpa `Card`, dikonfirmasi
+   dipakai). Judul "Workspace Anda" (sebelumnya `CardTitle`) dipindah
+   jadi `TableCaption` shadcn dengan `className="caption-top"` di
+   `<Table>` (default shadcn `caption-bottom`) supaya tetap tampil di
+   atas tabel sebagai judul section, bukan footnote di bawah — restyle
+   manual (`font-heading text-base font-medium text-foreground`,
+   `TableCaption` defaultnya kecil+muted, didesain untuk catatan kaki).
+   Tabel dibungkus `<div className="rounded-xl border border-border
+   py-2">` manual (riwayat sama seperti poin 1: sempat `py-3` → dihapus
+   total → dikembalikan `py-2` karena hover baris pertama/terakhir
+   menembus sudut membulat `rounded-xl` tanpa padding sama sekali,
+   ditemukan King Rezi) — `Table` (`table.tsx`) tidak meneruskan
+   `className` ke div pembungkus `data-slot="table-container"`-nya
+   sendiri, jadi border/rounded "milik tabel" tidak bisa ditaruh di prop
+   `className` komponen `Table`. `TableCaption` diberi `className="mx-3
+   mt-0 mb-3"` (bukan `m-3` lagi — `mt-0` perlu eksplisit karena
+   `TableCaption` defaultnya `mt-4`, dan sekarang wrapper sudah
+   menyumbang `py-2` sendiri di atas caption, jadi margin-top caption
+   di-nolkan supaya tidak dobel jarak; `mb-3` tetap untuk jarak ke baris
+   pertama). Baris workspace aktif
+   non-interactive dengan `Badge` "Aktif"; baris lain klik penuh lewat
+   `onClick` di `TableRow` → membuka `AlertDialog` konfirmasi switch
+   (tidak berubah) → `switchWorkspaceAction`. **Sengaja tidak
+   memodifikasi `WorkspacePickableRow`** (komponen bersama dengan
+   `WorkspacePicker` onboarding, di luar scope KI-055) — baris di-inline
+   langsung di file ini supaya onboarding tidak ikut terdampak.
+   Diverifikasi `tsc --noEmit` pass, eslint pass, browser preview PASS
+   (judul "Workspace Anda" tampil di atas tabel edge-to-edge, dialog
+   konfirmasi switch workspace tetap berfungsi normal). **Pola final ini
+   (tanpa `Card`, border+rounded manual, `py-3`, `TableCaption` untuk
+   judul bila ada) jadi acuan poin 1 & 5.**
+4. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] Garis
+   bawah header table (`/settings/.../members`, dan berlaku untuk SEMUA
+   komponen `Table` di project ini)** — seharusnya ada **2 garis** di
+   bawah `TableHeader`/`thead`, bukan 1. Dicek dulu lewat MCP shadcn
+   (`view_items_in_registries @shadcn/table`) — komponen `Table` resmi
+   tidak punya varian border ganda, murni styling Tailwind custom.
+   **Fixed:** `apps/web/src/components/ui/table.tsx` — `TableHeader`
+   diubah dari `[&_tr]:border-b` menjadi `[&_tr]:border-b-4
+   [&_tr]:border-double` (border-style `double` butuh width minimal 3px
+   untuk merender 2 garis, bukan 1 tebal; `border-b-4` dipilih supaya
+   jarak antar garis cukup terlihat). Diubah di komponen bersama
+   (`table.tsx`), bukan per pemanggil, jadi otomatis berlaku untuk
+   instance `Table` manapun yang memakai `TableHeader` — saat ini hanya
+   `MembersTable.tsx` (satu-satunya pemakai nyata `<TableHeader>` di
+   project, dicek via grep); Drafts/Workspaces/Connected Accounts (poin
+   1/3/5) tidak memakai `TableHeader` sama sekali jadi tidak terdampak.
+   Diverifikasi `tsc --noEmit` pass, eslint pass, dan computed style
+   browser (`getComputedStyle`): `border-bottom-style: double`,
+   `border-bottom-width: 4px`, warna token `--border` — 2 garis
+   ter-render dengan benar.
+5. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] Connected
+   Accounts (`/settings/connected-accounts`)** — alasan sama seperti
+   poin 1 & 3: seharusnya `Table` shadcn tanpa header kolom. **Fixed:**
+   `ConnectedAccountsList.tsx` — `Card`+`Item`/`ItemGroup` diganti
+   `Table`/`TableBody`/`TableRow`/`TableCell`, dibungkus `<div
+   className="rounded-xl border border-border py-2">` saat ada data
+   (riwayat sama seperti poin 1/3: sempat `py-3` → dihapus total →
+   dikembalikan `py-2` karena hover baris pertama/terakhir menembus
+   sudut membulat tanpa padding), `p-6` saat `Empty`, pola persis final
+   poin 1 & 3. Beda dari
+   Drafts/Workspaces: baris di sini **tidak** diklik penuh (tidak ada
+   `onClick` di `TableRow`) — badge status dan tombol Disconnect/
+   Reconnect tetap elemen interaktif tersendiri di dalam baris (2
+   `TableCell`: identitas akun, lalu badge+tombol aksi rata kanan).
+   Diverifikasi `tsc --noEmit` pass, eslint pass, browser preview PASS
+   (badge "Perlu Reconnect"/"Disconnected" dan tombol aksi tetap utuh).
+
+**Catatan penting:** poin 1, 3, 5 memutuskan pola `Table` tanpa `Card`
+(border+rounded+padding manual) dan tanpa header kolom sebagai standar
+baru untuk ketiga list ini — ini **mengubah pola yang saat ini
+terdokumentasi di Claude Design** (mis. `.ws-pick-item` untuk workspace
+picker, `.queue-row` untuk Drafts). Sesuai rule 16 (`AGENTS.md`)
+dan `.claude/skills/claude-design-scope-discipline/SKILL.md`, perubahan
+pola di Claude Design harus dilakukan dulu (lewat `DesignSync`/Neymar
+Product Designer) sebelum implementasi kode menyimpang permanen dari
+dokumentasi — bukan diam-diam dibiarkan divergen. Poin 4 (2 garis
+header table, sudah Fixed) murni styling shadcn di komponen bersama
+`table.tsx` (bukan perubahan pola Claude Design), jadi tidak kena
+catatan sinkronisasi dokumentasi yang sama seperti poin 1/3/5 di atas.
+Tidak memblokir M8. **KI-055 sekarang Resolved penuh (5/5 poin).**
+
+**Temuan susulan (2026-09-10, setelah status Resolved di atas) — sudah
+diperbaiki, tidak membuka ulang status Resolved:** King Rezi minta `Card`
+juga dihapus dari `MembersTable.tsx` (tabel desktop di `/settings/members`),
+mengikuti pola final poin 1/3/5 meski Members sendiri bukan salah satu dari
+5 poin asli KI-055 (Members cuma disinggung di poin 4 soal border header).
+**Fixed:** `Card`+`CardContent` dihapus, tabel desktop (`hidden md:block`)
+dibungkus `<div className="rounded-xl border border-border py-2">` —
+`py-2` (bukan tanpa padding sama sekali) langsung dipakai dari awal,
+menghindari isu hover-menembus-sudut yang sudah ditemukan di poin 1/3/5.
+Kartu mobile (`flex flex-col gap-3 md:hidden`, di bawah breakpoint `md`)
+**sengaja tidak** dibungkus wrapper border tambahan — tiap kartu per-anggota
+di situ sudah punya `rounded-xl border border-border p-3` sendiri sejak
+T-098.4/KI-042, wrapper luar akan jadi border ganda yang redundan. State
+kosong (`Empty`, belum ada anggota) dibungkus wrapper serupa dengan `p-6`,
+konsisten dengan pola poin 1/3/5. Diverifikasi `tsc --noEmit` pass, eslint
+pass, browser preview PASS di desktop (border+rounded+2-garis-header
+poin 4 masih utuh) dan mobile 375px (kartu per-anggota tidak dobel border).
 
 ---
 
