@@ -125,6 +125,24 @@ orkestrasi" di atas untuk kapan perlu `isolation: "worktree"`).
 
 ---
 
+## Gate pola ambigu shadcn (T-103.2, AGENTS.md rule 17)
+
+Sebelum subagent implementasi (terutama **Mark UI Engineer**) menulis kode
+untuk list/komposisi yang punya **lebih dari satu pola shadcn valid** secara
+teknis (mis. `Item`/`ItemGroup` vs `Table`, variant dialog, baris
+klik-penuh atau tidak): cek dulu apakah Claude Design sudah mengunci pola
+konkret-nya (komentar "SYNCED"/"LOCKED PATTERN" di file
+`components/*.html`/`templates/*.html` terkait, atau baris relevan di tabel
+Components `readme.md` sudah spesifik, bukan generik "shadcn X"). Kalau
+**belum dikunci** — subagent wajib **STOP dan tanya King Rezi** lewat
+`AskUserQuestion` (bukan menebak salah satu opsi), sertakan opsi konkret
+yang sedang dipertimbangkan. Ini mencegah pengulangan drift KI-054/KI-055
+(AI menebak pola "masuk akal" yang ternyata bukan yang King Rezi mau) — detail
+lengkap di `AGENTS.md` rule 17 dan `tasks/v07-astryx-shadcn-migration.md`
+§ T-103.
+
+---
+
 ## Mengubah subagent ini
 
 File peran (`*.md` selain dokumen ini) di-chmod read-only (444) sebagai

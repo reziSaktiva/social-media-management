@@ -1215,7 +1215,7 @@ belum dikunci, AI **berhenti dan tanya**, bukan menebak lagi.
       `CardTitle`) + baris aktif Badge vs baris lain chevron, script
       switch-workspace disesuaikan ke struktur baru. `readme.md` diupdate
       dari penanda "LOCKED" menjadi "SYNCED" untuk mencerminkan ini.
-- [ ] **T-103.2** Update `AGENTS.md` rule 17 (atau tambah rule baru) —
+- [x] **T-103.2** `✅ Done` (2026-09-10) Update `AGENTS.md` rule 17 (atau tambah rule baru) —
       perluas gate yang sudah ada ("cek Claude Design sebelum nulis
       kode UI") supaya juga mencakup: kalau Claude Design **belum
       mengunci pola konkret** untuk elemen yang mau diimplementasikan
@@ -1227,6 +1227,15 @@ belum dikunci, AI **berhenti dan tanya**, bukan menebak lagi.
       definisi Mark UI Engineer (file `.claude/agents/*.md` bersifat
       Static Reference/read-only, minta izin eksplisit King Rezi
       sebelum mengedit, sesuai `PROJECT_RULES.md`).
+      **Hasil:** sub-poin baru ditambahkan ke `AGENTS.md` rule 17 (di
+      antara poin "belum ada di Claude Design" dan "bukan UI/UX-related")
+      — gate berhenti-dan-tanya kalau pola shadcn ambigu (belum ada
+      penanda "SYNCED"/"LOCKED PATTERN" di file Claude Design terkait).
+      King Rezi memberi izin eksplisit lewat `AskUserQuestion` untuk
+      mengedit file read-only — ditambahkan bagian baru "Gate pola ambigu
+      shadcn" di `.claude/agents/README.md` dan bullet aturan keras baru
+      di `.claude/agents/mark-ui-engineer.md` (chmod 644 → edit → chmod
+      444 lagi sesuai prosedur "Mengubah subagent ini").
 - [ ] **T-103.3** Tambah langkah verifikasi ke checklist Mark UI
       Engineer & Najwa QA Engineer: sebelum task UI ditandai selesai,
       **wajib** `DesignSync get_file` pada template/component Claude

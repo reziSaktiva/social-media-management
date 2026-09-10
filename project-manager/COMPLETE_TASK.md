@@ -8,6 +8,34 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-10 — T-103.2 Done — Gate proses: AI wajib berhenti & tanya kalau pola shadcn masih ambigu
+
+Menambahkan gate baru ke `AGENTS.md` rule 17 (sub-poin baru, di antara "belum
+ada di Claude Design → STOP" dan "bukan UI/UX-related"): kalau elemen yang
+mau diimplementasikan punya lebih dari satu pola shadcn valid secara teknis
+(`Item`/`ItemGroup` vs `Table`, variant dialog, baris klik-penuh atau tidak)
+dan Claude Design belum mengunci pola konkretnya (tidak ada penanda
+"SYNCED"/"LOCKED PATTERN" di file terkait atau baris tabel Components
+`readme.md` masih generik) — AI wajib **STOP** dan tanya King Rezi lewat
+`AskUserQuestion` dengan opsi konkret, bukan menebak salah satu sendiri. Ini
+menutup gap proses yang menyebabkan KI-054/KI-055 (AI menebak pola yang
+ternyata salah, baru ketahuan lewat audit manual King Rezi).
+
+King Rezi memberi izin eksplisit (lewat `AskUserQuestion`) untuk mengedit 2
+file read-only (Static Reference, chmod 444, `PROJECT_RULES.md`) —
+`.claude/agents/README.md` (section baru "Gate pola ambigu shadcn") dan
+`.claude/agents/mark-ui-engineer.md` (bullet aturan keras baru), diikuti
+prosedur `chmod 644 → edit → chmod 444` sesuai instruksi "Mengubah subagent
+ini" di README tersebut.
+
+Status task T-103.2 diupdate `✅ Done` di `TASKS.md`/`PROJECT_STATE.md`/
+`tasks/v07-astryx-shadcn-migration.md`. T-103 sekarang 2/4 subtask selesai
+(T-103.1, T-103.2); T-103.3 (checklist verifikasi Mark UI Engineer & Najwa
+QA Engineer) dan T-103.4 (retroactive pass, opsional) masih `⏳`. Detail:
+`tasks/v07-astryx-shadcn-migration.md` § T-103.
+
+---
+
 ## 2026-09-10 — T-103.1 follow-up — Posisi tombol "+ New Post" diperbaiki + markup 3 file disamakan penuh dengan kode nyata
 
 King Rezi mengoreksi hasil T-103.1 (entri di bawah): (1) posisi tombol

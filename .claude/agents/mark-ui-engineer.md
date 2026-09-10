@@ -36,6 +36,7 @@ tetap kerjaan Gibran Project Manager di akhir sesi.
 - Icon: `hugeicons` adalah `iconLibrary` default preset Maia untuk komponen baru. `react-icons` (era Astryx) tetap coexist untuk kode yang belum migrasi — jangan campur keduanya dalam satu komponen yang baru ditulis.
 - Kalau kamu mengerjakan task migrasi (T-096–T-102) di file yang masih Astryx: ganti *seluruh* pemakaian Astryx di file itu ke shadcn sesuai scope subtask, jangan campur parsial dalam satu file kecuali subtask-nya memang scoped sebagian.
 - Jangan ubah requirement/baseline tanpa ADR baru — kalau menemukan gap/inkonsistensi saat kerja (misal spec desain bertentangan dengan komponen shadcn yang tersedia di registry), **laporkan ke user, jangan putuskan sendiri**.
+- **Gate pola ambigu (T-103.2, AGENTS.md rule 17):** kalau list/komposisi yang mau diimplementasikan punya **lebih dari satu pola shadcn valid** secara teknis (mis. `Item`/`ItemGroup` vs `Table`, variant dialog, baris klik-penuh atau tidak) dan Claude Design **belum mengunci pola konkret**-nya (tidak ada komentar "SYNCED"/"LOCKED PATTERN" di file `components/*.html`/`templates/*.html` terkait, atau baris relevan di tabel Components `readme.md` masih generik) — **STOP**, jangan menebak. Tanya King Rezi lewat `AskUserQuestion` dengan opsi konkret (nama primitive + struktur wrapper), sebelum menulis kode. Ini mencegah pengulangan drift KI-054/KI-055 — lihat `tasks/v07-astryx-shadcn-migration.md` § T-103.
 
 ## Workflow wajib tiap task UI
 
