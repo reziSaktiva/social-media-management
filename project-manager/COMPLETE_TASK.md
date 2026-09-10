@@ -8,6 +8,189 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-10 — T-103.4 Done — Audit retroaktif menemukan & menutup KI-056 (History drift). T-103 tuntas 4/4.
+
+Retroactive pass (T-103.4): audit lewat `DesignSync` untuk 5 screen di luar
+5 komponen KI-054/055 — Publish → Queue, Publish → History, Engage → Inbox,
+Notifications Drawer, Settings → General (Danger Zone). Percobaan pertama
+lewat subagent gagal lagi karena `DesignSync` tidak termuat di sesi subagent
+(pola sama yang berulang sepanjang T-103) — dikerjakan langsung di sesi
+utama.
+
+**Hasil:**
+- **Queue** (`templates/publish-queue.html` vs `QueueList.tsx`) — ✅ sudah
+  sama, keduanya pakai `Card`.
+- **History** (`templates/publish-history.html` vs `HistoryList.tsx`) — ⚠️
+  **KI-056 ditemukan**: mockup masih pola `Card` (`.card card-pad
+  history-card` per entri), padahal kode sudah diubah ke `Item
+  variant="outline"` dalam `ItemGroup` sejak KI-054 (2026-09-09) — Claude
+  Design tidak ikut disinkronkan saat itu. Persis pola drift yang sama
+  dengan KI-055.
+- **Notifications Drawer** (`components/notifications-panel.html` vs
+  `NotificationBell.tsx`) — gap dokumentasi kecil (intro paragraph
+  mengklaim `Item`/`ItemGroup`, tapi markup demo dan kode nyata sama-sama
+  plain `div`) — bukan drift fungsional (keduanya konsisten), dicatat di
+  KI-056 tapi tidak diperbaiki (di luar scope yang diminta King Rezi kali
+  ini).
+- **Engage → Inbox** — belum diimplementasikan (`ScaffoldPlaceholder`,
+  T-050), tidak relevan untuk audit ini.
+- **Settings → General (Danger Zone)** — single `Card`, bukan list, tidak
+  ada ambiguitas Table/Item.
+
+**KI-056 diperbaiki atas persetujuan eksplisit King Rezi:**
+`templates/publish-history.html` diganti ke pola `Item`/`ItemGroup` — kelas
+baru `.history-item` (menggantikan `.card card-pad history-card`) di dalam
+`.history-date-group`, klik-penuh via `<a>` (merepresentasikan `Item asChild`
++ `Link`), urutan konten: waktu → ikon+handle akun → judul truncate + meta
+→ `Badge` status kanan. Radius `16px` (`rounded-2xl`, Tailwind langsung)
+dipakai apa adanya, bukan disamakan ke token `--radius-container` (12px)
+Card, karena kode nyata memang tidak memakai token itu untuk komponen ini.
+`readme.md` § Files ditambah bullet baru untuk `templates/publish-history.html`
+(sebelumnya file ini tidak disebut sama sekali di daftar Files) dan section
+KI-056 baru dicatat di `PROJECT_STATE.md` (status Resolved).
+
+**T-103 sekarang tuntas 4/4 subtask** (T-103.1, T-103.2, T-103.3, T-103.4).
+Detail lengkap tiap subtask: `tasks/v07-astryx-shadcn-migration.md` § T-103.
+
+---
+
+## 2026-09-10 — T-103.3 Done — Gate verifikasi struktur setelah implementasi (Mark UI Engineer & Najwa QA Engineer)
+
+Melengkapi T-103.2 (gate sebelum implementasi di `AGENTS.md` rule 17):
+King Rezi sempat mengusulkan pendekatan alternatif ("kerjakan di kode dulu,
+baru Neymar cek beda Design vs Code") — didiskusikan bahwa itu berisiko
+mengulang mekanisme yang menyebabkan KI-054/KI-055 kalau dipakai sebagai
+**pengganti** gate sebelum-implementasi, tapi valid sebagai **tambahan**
+setelah implementasi. King Rezi setuju, dan T-103.3 (yang sudah scoped
+sebelumnya untuk hal ini) dikerjakan sebagai realisasinya.
+
+Ditambahkan langkah verifikasi wajib ke checklist:
+- `.claude/agents/mark-ui-engineer.md` § Verifikasi — sebelum lapor
+  selesai, `DesignSync get_file` pada template/component Claude Design
+  relevan, bandingkan eksplisit struktur (wrapper, header/caption,
+  klik-penuh, posisi tombol) dengan kode yang baru ditulis.
+- `.claude/agents/najwa-qa-engineer.md` § Langkah kerja poin 5 — kewajiban
+  sama untuk QA. **Tool `DesignSync` ditambahkan ke frontmatter `tools:`
+  Najwa** (sebelumnya hanya `Read, Bash, Grep, Glob, mcp__Claude_Browser`)
+  supaya gate ini bisa benar-benar dieksekusi, bukan cuma tertulis di
+  checklist tanpa akses tool-nya.
+- `.claude/agents/README.md` — section baru "Gate verifikasi struktur
+  setelah implementasi (T-103.3)" + kolom Tools Najwa di tabel diupdate.
+
+King Rezi memberi izin eksplisit (lewat `AskUserQuestion`) untuk mengedit
+kedua file read-only (Static Reference, chmod 444) — prosedur
+`chmod 644 → edit → chmod 444` dijalankan untuk keduanya.
+
+Status: T-103 sekarang **3/4** subtask selesai (T-103.1, T-103.2, T-103.3).
+T-103.4 (retroactive pass, opsional) masih `⏳`. Detail:
+`tasks/v07-astryx-shadcn-migration.md` § T-103.
+
+---
+
+## 2026-09-10 — T-103.2 Done — Gate proses: AI wajib berhenti & tanya kalau pola shadcn masih ambigu
+
+Menambahkan gate baru ke `AGENTS.md` rule 17 (sub-poin baru, di antara "belum
+ada di Claude Design → STOP" dan "bukan UI/UX-related"): kalau elemen yang
+mau diimplementasikan punya lebih dari satu pola shadcn valid secara teknis
+(`Item`/`ItemGroup` vs `Table`, variant dialog, baris klik-penuh atau tidak)
+dan Claude Design belum mengunci pola konkretnya (tidak ada penanda
+"SYNCED"/"LOCKED PATTERN" di file terkait atau baris tabel Components
+`readme.md` masih generik) — AI wajib **STOP** dan tanya King Rezi lewat
+`AskUserQuestion` dengan opsi konkret, bukan menebak salah satu sendiri. Ini
+menutup gap proses yang menyebabkan KI-054/KI-055 (AI menebak pola yang
+ternyata salah, baru ketahuan lewat audit manual King Rezi).
+
+King Rezi memberi izin eksplisit (lewat `AskUserQuestion`) untuk mengedit 2
+file read-only (Static Reference, chmod 444, `PROJECT_RULES.md`) —
+`.claude/agents/README.md` (section baru "Gate pola ambigu shadcn") dan
+`.claude/agents/mark-ui-engineer.md` (bullet aturan keras baru), diikuti
+prosedur `chmod 644 → edit → chmod 444` sesuai instruksi "Mengubah subagent
+ini" di README tersebut.
+
+Status task T-103.2 diupdate `✅ Done` di `TASKS.md`/`PROJECT_STATE.md`/
+`tasks/v07-astryx-shadcn-migration.md`. T-103 sekarang 2/4 subtask selesai
+(T-103.1, T-103.2); T-103.3 (checklist verifikasi Mark UI Engineer & Najwa
+QA Engineer) dan T-103.4 (retroactive pass, opsional) masih `⏳`. Detail:
+`tasks/v07-astryx-shadcn-migration.md` § T-103.
+
+---
+
+## 2026-09-10 — T-103.1 follow-up — Posisi tombol "+ New Post" diperbaiki + markup 3 file disamakan penuh dengan kode nyata
+
+King Rezi mengoreksi hasil T-103.1 (entri di bawah): (1) posisi tombol
+"+ New Post" di `templates/publish-drafts.html` salah — tampil sebagai baris
+terpisah di bawah tabbar, seharusnya sejajar judul "Publish" dalam satu
+`page-head`. Dicek ke kode nyata (`apps/web/src/app/(app)/publish/layout.tsx`
++ `components/PublishPageHeader.tsx`) — tombol dirender di `SettingsPageHead`-
+setara level layout, satu baris `flex justify-between` dengan judul+subtitle,
+berlaku sama untuk Calendar/Queue/Drafts/History. Mockup dipindah ke posisi
+yang benar.
+
+(2) King Rezi minta pendekatan T-103.1 sebelumnya (mengunci pola lewat
+komentar HTML tanpa mengubah markup visual) diganti — markup 3 file
+(`publish-drafts.html`, `settings-workspaces.html`,
+`settings-connected-accounts.html`) sekarang benar-benar diubah strukturnya
+supaya identik dengan kode nyata, dicek langsung ke
+`WorkspacesSettingsView.tsx` dan `ConnectedAccountsList.tsx`: `Table` tanpa
+`TableHeader`/`Card`, `settings-workspaces.html` pakai caption di dalam table
+("Workspace Anda", bukan `CardTitle`) + baris workspace aktif non-interactive
+dengan `Badge` sementara baris lain klik-penuh dengan chevron `›`,
+`settings-connected-accounts.html` baris TIDAK klik-penuh (hanya Badge+tombol
+Disconnect/Reconnect interaktif). Script switch-workspace di
+`settings-workspaces.html` disesuaikan ke struktur `<tr>`/`<td>` baru. Tabel
+Components di `readme.md` diupdate dari penanda "LOCKED" menjadi "SYNCED".
+
+Detail: `tasks/v07-astryx-shadcn-migration.md` § T-103 (update di bawah
+checklist T-103.1).
+
+---
+
+## 2026-09-10 — T-103.1 Done — Kunci pola shadcn di Claude Design (mencegah drift lanjutan KI-054/KI-055)
+
+Branch `docs/t-103-lock-shadcn-pattern`. Audit seluruh `components/*.html` dan
+`templates/*.html` di project Claude Design "Social Media Management" (lewat
+`DesignSync`), mencari list/komposisi dengan >1 pola shadcn valid yang belum
+dikunci eksplisit — akar masalah KI-054/KI-055.
+
+Ditemukan 3 file dengan drift konkret: mockup masih menampilkan pola lama
+(`.queue-list`/`.queue-row` di `templates/publish-drafts.html`,
+`.ws-pick-list`/`.ws-pick-item` di `templates/settings-workspaces.html`,
+`.settings-row` div-list di `templates/settings-connected-accounts.html`),
+padahal kode nyata `apps/web` sudah diperbaiki King Rezi ke pola `Table`
+final lewat KI-055 (poin 1, 3, 5) — Claude Design tidak ikut disinkronkan
+saat itu. Dikunci lewat komentar `<!-- LOCKED PATTERN -->` inline di masing-
+masing file (deskripsi wrapper: border-div manual bukan `Card`, tanpa
+`TableHeader`, baris klik-penuh atau tidak per file) — **tanpa mengubah
+markup visual mockup itu sendiri**, sesuai
+`.claude/skills/claude-design-scope-discipline/SKILL.md` (tidak mengubah
+default/state yang sudah disetujui sebagai efek samping).
+
+Juga ditambahkan komentar penguncian eksplisit (tanpa perubahan pola, karena
+sudah benar) di `templates/settings-members.html` (Table + `TableHeader`,
+satu-satunya list yang tetap pakai `Card`) dan `templates/settings-profile.html`
+(avatar 88px via override `size-22`, bukan preset `lg` bawaan yang cuma
+40px).
+
+Tabel **Components** dan daftar **Files** di `readme.md` Claude Design
+diupdate (baris `.ws-pick-list`, `.table`, + 3 bullet file) untuk
+mencerminkan status terkunci ini, supaya AI berikutnya yang membaca `readme.md`
+tidak lagi menebak pola yang sama.
+
+**Scope yang belum dicakup:** sisa ~28 file (`components/buttons.html`,
+`forms.html`, `navigation*.html`, `notifications-panel.html`, `popover.html`,
+`status-chips.html`, dan ~20 `templates/*.html` lain) dibaca sepintas via
+`readme.md` — sudah punya dokumentasi pola cukup spesifik, tidak ditemukan
+ambiguitas setara KI-054/055. Audit baris-per-baris yang lebih dalam untuk
+seluruh file itu tidak dilakukan exhaustif di pass ini — dicatat sebagai
+follow-up potensial di **T-103.4** (retroactive pass) kalau King Rezi mau
+kepastian lebih tinggi.
+
+T-103.2 (update `AGENTS.md` rule 17 + gate baru), T-103.3 (checklist Mark
+UI Engineer/Najwa QA Engineer), dan T-103.4 masih `⏳`, di luar scope
+subtask ini. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-103.
+
+---
+
 ## 2026-09-09 — Temuan susulan KI-054 — `DraftsList.tsx` kotak-kotak terpisah, bukan list rata
 
 Branch `fix/ki-054-draft-history-design-sync` (sesi lanjutan, setelah KI-054
