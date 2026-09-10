@@ -8,7 +8,6 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -260,215 +259,218 @@ export function MembersTable({
         </Alert>
       ) : null}
 
-      <Card>
-        <CardContent>
-          {rows.length === 0 ? (
-            <Empty>
-              <EmptyHeader>
-                <EmptyTitle>Belum ada anggota</EmptyTitle>
-                <EmptyDescription>
-                  Workspace ini belum memiliki anggota.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <>
-              {/* T-098.4 (KI-042): kolom Actions (~800px) butuh scroll
-                  horizontal untuk dijangkau (temuan QA Najwa T-099, severity
-                  Moderate) — tabel desktop disembunyikan di bawah `md` (768px,
-                  sama seperti Mobile Shell), diganti kartu per anggota di
-                  bawah. Rancangan: Claude Design components/table.html
-                  § "Mobile — card layout". */}
-              {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Member</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-60 text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) =>
-                      row.kind === "member" ? (
-                        <TableRow key={row.member.id}>
-                          <TableCell>
-                            {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarFallback>
-                                  {getInitials(row.member.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
-                              <div className="flex flex-col">
-                                <Text variant="small">{row.member.name}</Text>
-                                <Text variant="muted">{row.member.email}</Text>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">
-                              {MEMBER_ROLE_LABEL[row.member.role]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={STATUS_BADGE_VARIANT[row.member.status]}
-                            >
-                              {STATUS_LABEL[row.member.status]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <MemberActions
-                              member={row.member}
-                              currentUserId={currentUserId}
-                              onRequestRemove={(target) =>
-                                removeConfirm.open(target)
-                              }
-                              onRequestRoleChange={(target, newRole) =>
-                                roleConfirm.open({ member: target, newRole })
-                              }
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        <TableRow key={row.invitation.id}>
-                          <TableCell>
-                            {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarFallback>
-                                  {getInitials(row.invitation.email)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <Text variant="small">
-                                {row.invitation.email}
-                              </Text>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">
-                              {MEMBER_ROLE_LABEL[row.invitation.role]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="warning">Pending</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <InvitationActions
-                              invitation={row.invitation}
-                              onRequestCancel={(target) =>
-                                cancelInvitationConfirm.open(target)
-                              }
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ),
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-              <div className="flex flex-col gap-3 md:hidden">
+      {rows.length === 0 ? (
+        // eslint-disable-next-line no-restricted-syntax -- KI-055 (Members mengikuti pola final poin 1/3/5, tanpa Card)
+        <div className="rounded-xl border border-border p-6">
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>Belum ada anggota</EmptyTitle>
+              <EmptyDescription>
+                Workspace ini belum memiliki anggota.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </div>
+      ) : (
+        <>
+          {/* T-098.4 (KI-042): kolom Actions (~800px) butuh scroll
+              horizontal untuk dijangkau (temuan QA Najwa T-099, severity
+              Moderate) — tabel desktop disembunyikan di bawah `md` (768px,
+              sama seperti Mobile Shell), diganti kartu per anggota di
+              bawah. Rancangan: Claude Design components/table.html
+              § "Mobile — card layout". KI-055 (2026-09-10): `Card` dihapus
+              — pola final poin 1/3/5 (border+rounded manual, `py-2` supaya
+              hover baris pertama/terakhir tidak menembus sudut membulat).
+              Kartu mobile di bawah TIDAK dibungkus wrapper border lagi di
+              sini — tiap kartu per-anggota sudah punya border/rounded
+              sendiri (`rounded-xl border border-border p-3`), jadi wrapper
+              tambahan hanya akan jadi border ganda yang redundan. */}
+          {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+          <div className="hidden rounded-xl border border-border py-2 md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Member</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-60 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {rows.map((row) =>
                   row.kind === "member" ? (
-                    // eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas
-                    <div
-                      key={row.member.id}
-                      className="flex flex-col gap-3 rounded-xl border border-border p-3"
-                    >
-                      {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                      <div className="flex items-center justify-between gap-2">
-                        {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                        <div className="flex min-w-0 items-center gap-3">
+                    <TableRow key={row.member.id}>
+                      <TableCell>
+                        {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
+                        <div className="flex items-center gap-3">
                           <Avatar>
                             <AvatarFallback>
                               {getInitials(row.member.name)}
                             </AvatarFallback>
                           </Avatar>
-                          {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                          <div className="flex min-w-0 flex-col">
-                            <Text variant="small" className="truncate">
-                              {row.member.name}
-                            </Text>
-                            <Text variant="muted" className="truncate">
-                              {row.member.email}
-                            </Text>
+                          {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
+                          <div className="flex flex-col">
+                            <Text variant="small">{row.member.name}</Text>
+                            <Text variant="muted">{row.member.email}</Text>
                           </div>
                         </div>
-                        <Badge
-                          variant={STATUS_BADGE_VARIANT[row.member.status]}
-                          className="shrink-0"
-                        >
-                          {STATUS_LABEL[row.member.status]}
-                        </Badge>
-                      </div>
-                      {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                      <div className="flex items-center justify-between text-sm">
-                        <Text variant="muted">Role</Text>
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="secondary">
                           {MEMBER_ROLE_LABEL[row.member.role]}
                         </Badge>
-                      </div>
-                      <MemberActions
-                        member={row.member}
-                        currentUserId={currentUserId}
-                        onRequestRemove={(target) => removeConfirm.open(target)}
-                        onRequestRoleChange={(target, newRole) =>
-                          roleConfirm.open({ member: target, newRole })
-                        }
-                        fullWidth
-                      />
-                    </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={STATUS_BADGE_VARIANT[row.member.status]}
+                        >
+                          {STATUS_LABEL[row.member.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <MemberActions
+                          member={row.member}
+                          currentUserId={currentUserId}
+                          onRequestRemove={(target) =>
+                            removeConfirm.open(target)
+                          }
+                          onRequestRoleChange={(target, newRole) =>
+                            roleConfirm.open({ member: target, newRole })
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
                   ) : (
-                    // eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas
-                    <div
-                      key={row.invitation.id}
-                      className="flex flex-col gap-3 rounded-xl border border-border p-3"
-                    >
-                      {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                      <div className="flex items-center justify-between gap-2">
-                        {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                        <div className="flex min-w-0 items-center gap-3">
+                    <TableRow key={row.invitation.id}>
+                      <TableCell>
+                        {/* eslint-disable-next-line no-restricted-syntax -- T-099.2, sama seperti di atas */}
+                        <div className="flex items-center gap-3">
                           <Avatar>
                             <AvatarFallback>
                               {getInitials(row.invitation.email)}
                             </AvatarFallback>
                           </Avatar>
-                          <Text variant="small" className="truncate">
-                            {row.invitation.email}
-                          </Text>
+                          <Text variant="small">{row.invitation.email}</Text>
                         </div>
-                        <Badge variant="warning" className="shrink-0">
-                          Pending
-                        </Badge>
-                      </div>
-                      {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
-                      <div className="flex items-center justify-between text-sm">
-                        <Text variant="muted">Role</Text>
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="secondary">
                           {MEMBER_ROLE_LABEL[row.invitation.role]}
                         </Badge>
-                      </div>
-                      <InvitationActions
-                        invitation={row.invitation}
-                        onRequestCancel={(target) =>
-                          cancelInvitationConfirm.open(target)
-                        }
-                        fullWidth
-                      />
-                    </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="warning">Pending</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <InvitationActions
+                          invitation={row.invitation}
+                          onRequestCancel={(target) =>
+                            cancelInvitationConfirm.open(target)
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
                   ),
                 )}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {rows.map((row) =>
+              row.kind === "member" ? (
+                // eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas
+                <div
+                  key={row.member.id}
+                  className="flex flex-col gap-3 rounded-xl border border-border p-3"
+                >
+                  {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                  <div className="flex items-center justify-between gap-2">
+                    {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar>
+                        <AvatarFallback>
+                          {getInitials(row.member.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                      <div className="flex min-w-0 flex-col">
+                        <Text variant="small" className="truncate">
+                          {row.member.name}
+                        </Text>
+                        <Text variant="muted" className="truncate">
+                          {row.member.email}
+                        </Text>
+                      </div>
+                    </div>
+                    <Badge
+                      variant={STATUS_BADGE_VARIANT[row.member.status]}
+                      className="shrink-0"
+                    >
+                      {STATUS_LABEL[row.member.status]}
+                    </Badge>
+                  </div>
+                  {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                  <div className="flex items-center justify-between text-sm">
+                    <Text variant="muted">Role</Text>
+                    <Badge variant="secondary">
+                      {MEMBER_ROLE_LABEL[row.member.role]}
+                    </Badge>
+                  </div>
+                  <MemberActions
+                    member={row.member}
+                    currentUserId={currentUserId}
+                    onRequestRemove={(target) => removeConfirm.open(target)}
+                    onRequestRoleChange={(target, newRole) =>
+                      roleConfirm.open({ member: target, newRole })
+                    }
+                    fullWidth
+                  />
+                </div>
+              ) : (
+                // eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas
+                <div
+                  key={row.invitation.id}
+                  className="flex flex-col gap-3 rounded-xl border border-border p-3"
+                >
+                  {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                  <div className="flex items-center justify-between gap-2">
+                    {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar>
+                        <AvatarFallback>
+                          {getInitials(row.invitation.email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <Text variant="small" className="truncate">
+                        {row.invitation.email}
+                      </Text>
+                    </div>
+                    <Badge variant="warning" className="shrink-0">
+                      Pending
+                    </Badge>
+                  </div>
+                  {/* eslint-disable-next-line no-restricted-syntax -- T-098.4, sama seperti di atas */}
+                  <div className="flex items-center justify-between text-sm">
+                    <Text variant="muted">Role</Text>
+                    <Badge variant="secondary">
+                      {MEMBER_ROLE_LABEL[row.invitation.role]}
+                    </Badge>
+                  </div>
+                  <InvitationActions
+                    invitation={row.invitation}
+                    onRequestCancel={(target) =>
+                      cancelInvitationConfirm.open(target)
+                    }
+                    fullWidth
+                  />
+                </div>
+              ),
+            )}
+          </div>
+        </>
+      )}
 
       <ConfirmActionDialog
         isOpen={removeConfirm.isOpen}

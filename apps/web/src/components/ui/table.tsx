@@ -23,7 +23,15 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      // KI-055 (poin 4): 2 garis di bawah header table, bukan 1 — dicek
+      // dulu lewat MCP shadcn (view_items_in_registries), Table resmi
+      // tidak punya varian border ganda, jadi ini styling Tailwind murni
+      // di atas primitive `<thead>`. `border-double` butuh border-width
+      // minimal 3px untuk merender 2 garis (bukan 1 tebal) — `border-b-4`
+      // dipilih supaya jarak antar garis cukup terlihat tanpa berlebihan.
+      // Berlaku untuk SEMUA instance `Table` di project karena diubah di
+      // komponen bersama ini, bukan per pemanggil.
+      className={cn("[&_tr]:border-b-4 [&_tr]:border-double", className)}
       {...props}
     />
   );

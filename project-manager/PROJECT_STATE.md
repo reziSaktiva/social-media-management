@@ -613,51 +613,160 @@ mengandalkan garis pemisah `divide-y` di `ItemGroup` (sama seperti
 `QueueList.tsx`). Diverifikasi `tsc --noEmit`, eslint, dan browser preview
 (computed style `borderRadius: 0px`, `borderColor: transparent`).
 
-### KI-055 · 5 komponen menyimpang dari Claude Design (Drafts, Profile, Workspaces, Members, Connected Accounts)
+### KI-055 · 5 komponen menyimpang dari Claude Design (Drafts, Profile, Workspaces, Members, Connected Accounts) — Resolved
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | Resolved (2026-09-10) — seluruh 5/5 poin fixed |
 | Kategori | Design Gap |
 | Terkait | Claude Design `templates/publish-drafts.html`, `settings-profile.html`, `settings-workspaces.html`, `settings-members.html`, `settings-connected-accounts.html`, `components/table.html` |
 
 Ditemukan King Rezi (2026-09-09) lewat audit manual perbandingan
 Claude Design ↔ `apps/web`, 5 poin:
 
-1. **List draft posts (`/publish/drafts`)** — seharusnya memakai `Card`
-   yang di dalamnya berisi `Table` shadcn, **tanpa** header/judul per
-   kolom (`TableHeader`/`TableHead` dihilangkan). Saat ini belum
-   memakai pola ini.
-2. **Ukuran avatar (`/settings/account` → Profile)** — avatar render
-   terlalu kecil dibanding `templates/settings-profile.html`.
-3. **List workspace (`/settings/account/workspaces`)** — alasan sama
-   seperti poin 1: seharusnya `Card` + `Table` shadcn tanpa header
-   kolom (bukan pola `.ws-pick-item` list yang didokumentasikan di
-   Claude Design — King Rezi memutuskan pola `Card`+`Table` sebagai
-   standar baru untuk list ini, menyimpang sengaja dari dokumentasi
-   Claude Design saat ini).
-4. **Garis bawah header table (`/settings/.../members`, dan berlaku
-   untuk SEMUA komponen `Table` di project ini)** — seharusnya ada
-   **2 garis** di bawah `TableHeader`/`thead`, bukan 1. Perlu dicek
-   lewat MCP shadcn (`view_items_in_registries`/`shadcn view
-   @shadcn/table`) untuk cara implementasi yang tepat sebelum
-   diterapkan ke seluruh instance `Table`.
-5. **Connected Accounts (`/settings/connected-accounts`)** — alasan
-   sama seperti poin 1 & 3: seharusnya `Card` + `Table` shadcn tanpa
-   header kolom.
+1. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] List draft
+   posts (`/publish/drafts`)** — seharusnya `Table` shadcn tanpa
+   header/judul per kolom (`TableHeader`/`TableHead` dihilangkan). Awalnya
+   dipasangkan dengan `Card` (fix pertama), lalu direvisi King Rezi
+   (mengikuti pola final poin 3 di bawah — dibandingkan langsung, versi
+   tanpa `Card` dinilai lebih baik) menjadi **TANPA** `Card`. **Fixed
+   (final, 2 kali revisi padding 2026-09-10):** `DraftsList.tsx` —
+   `Table`/`TableBody`/`TableRow`/`TableCell` (tanpa `TableHeader`)
+   dibungkus `<div className="rounded-xl border border-border">`, `py-2`
+   saat ada data (riwayat: `py-3` → dihapus total → dikembalikan jadi
+   `py-2` — tanpa padding sama sekali membuat hover baris paling
+   atas/bawah menembus sudut membulat `rounded-xl` container, ditemukan
+   King Rezi; `py-2` cukup kecil untuk tetap terlihat rapat tapi cukup
+   untuk menahan hover di dalam sudut), `p-6` saat kosong (state `Empty`,
+   supaya pesan tidak mepet). Baris
+   klik penuh lewat `onClick` di `TableRow` (native `<tr>`) + `cursor-
+   pointer`, `hover:bg-muted/50` bawaan `table.tsx`. Fungsi buka Draft
+   Editor per baris (`openEditDraft`) tidak berubah. Diverifikasi
+   `tsc --noEmit` pass, eslint pass, browser preview PASS (klik baris
+   membuka modal Edit Draft dengan benar).
+2. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] Ukuran
+   avatar (`/settings/account` → Profile)** — avatar render terlalu
+   kecil dibanding `templates/settings-profile.html` (`.avatar-lg`,
+   88px). `Avatar` shadcn hanya punya 3 preset size (`sm`/`default`/
+   `lg`), dan `lg` cuma 40px (`size-10`) — masih jauh dari 88px.
+   **Fixed:** `ProfileForm.tsx` — `Avatar` di-override langsung via
+   `className="size-22"` (22 × 4px = 88px, token spacing default
+   Tailwind v4, match persis mockup, bukan preset `size` prop bawaan
+   komponen), `AvatarFallback` (inisial) diperbesar ke `text-2xl
+   font-bold` (24px, token terdekat dari target mockup 28px — tidak ada
+   token teks persis 28px). Perubahan lokal ke instance ini saja, tidak
+   mengubah komponen `avatar.tsx` global. Diverifikasi `tsc --noEmit`
+   pass, eslint pass, browser preview PASS (avatar terlihat proporsional
+   lebih besar, upload foto asli maupun fallback initials sama-sama
+   ter-scale).
+3. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] List
+   workspace (`/settings/account/workspaces`)** — alasan sama seperti
+   poin 1: seharusnya `Card` + `Table` shadcn tanpa header kolom (bukan
+   pola `.ws-pick-item` list yang didokumentasikan di Claude Design —
+   King Rezi memutuskan pola `Card`+`Table` sebagai standar baru untuk
+   list ini, menyimpang sengaja dari dokumentasi Claude Design saat
+   ini). **Fixed (revisi 2026-09-10):** `WorkspacesSettingsView.tsx`
+   diubah dari `Item`+`ItemGroup` (via `WorkspacePickableRow`) menjadi
+   `Table`/`TableBody`/`TableRow`/`TableCell` — versi final **TANPA**
+   `Card` (King Rezi minta lihat dulu hasilnya tanpa `Card`, dikonfirmasi
+   dipakai). Judul "Workspace Anda" (sebelumnya `CardTitle`) dipindah
+   jadi `TableCaption` shadcn dengan `className="caption-top"` di
+   `<Table>` (default shadcn `caption-bottom`) supaya tetap tampil di
+   atas tabel sebagai judul section, bukan footnote di bawah — restyle
+   manual (`font-heading text-base font-medium text-foreground`,
+   `TableCaption` defaultnya kecil+muted, didesain untuk catatan kaki).
+   Tabel dibungkus `<div className="rounded-xl border border-border
+   py-2">` manual (riwayat sama seperti poin 1: sempat `py-3` → dihapus
+   total → dikembalikan `py-2` karena hover baris pertama/terakhir
+   menembus sudut membulat `rounded-xl` tanpa padding sama sekali,
+   ditemukan King Rezi) — `Table` (`table.tsx`) tidak meneruskan
+   `className` ke div pembungkus `data-slot="table-container"`-nya
+   sendiri, jadi border/rounded "milik tabel" tidak bisa ditaruh di prop
+   `className` komponen `Table`. `TableCaption` diberi `className="mx-3
+   mt-0 mb-3"` (bukan `m-3` lagi — `mt-0` perlu eksplisit karena
+   `TableCaption` defaultnya `mt-4`, dan sekarang wrapper sudah
+   menyumbang `py-2` sendiri di atas caption, jadi margin-top caption
+   di-nolkan supaya tidak dobel jarak; `mb-3` tetap untuk jarak ke baris
+   pertama). Baris workspace aktif
+   non-interactive dengan `Badge` "Aktif"; baris lain klik penuh lewat
+   `onClick` di `TableRow` → membuka `AlertDialog` konfirmasi switch
+   (tidak berubah) → `switchWorkspaceAction`. **Sengaja tidak
+   memodifikasi `WorkspacePickableRow`** (komponen bersama dengan
+   `WorkspacePicker` onboarding, di luar scope KI-055) — baris di-inline
+   langsung di file ini supaya onboarding tidak ikut terdampak.
+   Diverifikasi `tsc --noEmit` pass, eslint pass, browser preview PASS
+   (judul "Workspace Anda" tampil di atas tabel edge-to-edge, dialog
+   konfirmasi switch workspace tetap berfungsi normal). **Pola final ini
+   (tanpa `Card`, border+rounded manual, `py-3`, `TableCaption` untuk
+   judul bila ada) jadi acuan poin 1 & 5.**
+4. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] Garis
+   bawah header table (`/settings/.../members`, dan berlaku untuk SEMUA
+   komponen `Table` di project ini)** — seharusnya ada **2 garis** di
+   bawah `TableHeader`/`thead`, bukan 1. Dicek dulu lewat MCP shadcn
+   (`view_items_in_registries @shadcn/table`) — komponen `Table` resmi
+   tidak punya varian border ganda, murni styling Tailwind custom.
+   **Fixed:** `apps/web/src/components/ui/table.tsx` — `TableHeader`
+   diubah dari `[&_tr]:border-b` menjadi `[&_tr]:border-b-4
+   [&_tr]:border-double` (border-style `double` butuh width minimal 3px
+   untuk merender 2 garis, bukan 1 tebal; `border-b-4` dipilih supaya
+   jarak antar garis cukup terlihat). Diubah di komponen bersama
+   (`table.tsx`), bukan per pemanggil, jadi otomatis berlaku untuk
+   instance `Table` manapun yang memakai `TableHeader` — saat ini hanya
+   `MembersTable.tsx` (satu-satunya pemakai nyata `<TableHeader>` di
+   project, dicek via grep); Drafts/Workspaces/Connected Accounts (poin
+   1/3/5) tidak memakai `TableHeader` sama sekali jadi tidak terdampak.
+   Diverifikasi `tsc --noEmit` pass, eslint pass, dan computed style
+   browser (`getComputedStyle`): `border-bottom-style: double`,
+   `border-bottom-width: 4px`, warna token `--border` — 2 garis
+   ter-render dengan benar.
+5. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] Connected
+   Accounts (`/settings/connected-accounts`)** — alasan sama seperti
+   poin 1 & 3: seharusnya `Table` shadcn tanpa header kolom. **Fixed:**
+   `ConnectedAccountsList.tsx` — `Card`+`Item`/`ItemGroup` diganti
+   `Table`/`TableBody`/`TableRow`/`TableCell`, dibungkus `<div
+   className="rounded-xl border border-border py-2">` saat ada data
+   (riwayat sama seperti poin 1/3: sempat `py-3` → dihapus total →
+   dikembalikan `py-2` karena hover baris pertama/terakhir menembus
+   sudut membulat tanpa padding), `p-6` saat `Empty`, pola persis final
+   poin 1 & 3. Beda dari
+   Drafts/Workspaces: baris di sini **tidak** diklik penuh (tidak ada
+   `onClick` di `TableRow`) — badge status dan tombol Disconnect/
+   Reconnect tetap elemen interaktif tersendiri di dalam baris (2
+   `TableCell`: identitas akun, lalu badge+tombol aksi rata kanan).
+   Diverifikasi `tsc --noEmit` pass, eslint pass, browser preview PASS
+   (badge "Perlu Reconnect"/"Disconnected" dan tombol aksi tetap utuh).
 
-**Catatan penting:** poin 1, 3, 5 memutuskan pola `Card`+`Table` tanpa
-header kolom sebagai standar baru untuk ketiga list ini — ini
-**mengubah pola yang saat ini terdokumentasi di Claude Design** (mis.
-`.ws-pick-item` untuk workspace picker). Sesuai rule 16 (`AGENTS.md`)
+**Catatan penting:** poin 1, 3, 5 memutuskan pola `Table` tanpa `Card`
+(border+rounded+padding manual) dan tanpa header kolom sebagai standar
+baru untuk ketiga list ini — ini **mengubah pola yang saat ini
+terdokumentasi di Claude Design** (mis. `.ws-pick-item` untuk workspace
+picker, `.queue-row` untuk Drafts). Sesuai rule 16 (`AGENTS.md`)
 dan `.claude/skills/claude-design-scope-discipline/SKILL.md`, perubahan
 pola di Claude Design harus dilakukan dulu (lewat `DesignSync`/Neymar
 Product Designer) sebelum implementasi kode menyimpang permanen dari
 dokumentasi — bukan diam-diam dibiarkan divergen. Poin 4 (2 garis
-header table) juga scope-nya lintas komponen (semua `Table`), bukan
-cuma Members — perlu dicek dulu apakah ini juga perubahan pola Claude
-Design atau murni bug implementasi shadcn yang belum sesuai token asli.
-Tidak memblokir M8.
+header table, sudah Fixed) murni styling shadcn di komponen bersama
+`table.tsx` (bukan perubahan pola Claude Design), jadi tidak kena
+catatan sinkronisasi dokumentasi yang sama seperti poin 1/3/5 di atas.
+Tidak memblokir M8. **KI-055 sekarang Resolved penuh (5/5 poin).**
+
+**Temuan susulan (2026-09-10, setelah status Resolved di atas) — sudah
+diperbaiki, tidak membuka ulang status Resolved:** King Rezi minta `Card`
+juga dihapus dari `MembersTable.tsx` (tabel desktop di `/settings/members`),
+mengikuti pola final poin 1/3/5 meski Members sendiri bukan salah satu dari
+5 poin asli KI-055 (Members cuma disinggung di poin 4 soal border header).
+**Fixed:** `Card`+`CardContent` dihapus, tabel desktop (`hidden md:block`)
+dibungkus `<div className="rounded-xl border border-border py-2">` —
+`py-2` (bukan tanpa padding sama sekali) langsung dipakai dari awal,
+menghindari isu hover-menembus-sudut yang sudah ditemukan di poin 1/3/5.
+Kartu mobile (`flex flex-col gap-3 md:hidden`, di bawah breakpoint `md`)
+**sengaja tidak** dibungkus wrapper border tambahan — tiap kartu per-anggota
+di situ sudah punya `rounded-xl border border-border p-3` sendiri sejak
+T-098.4/KI-042, wrapper luar akan jadi border ganda yang redundan. State
+kosong (`Empty`, belum ada anggota) dibungkus wrapper serupa dengan `p-6`,
+konsisten dengan pola poin 1/3/5. Diverifikasi `tsc --noEmit` pass, eslint
+pass, browser preview PASS di desktop (border+rounded+2-garis-header
+poin 4 masih utuh) dan mobile 375px (kartu per-anggota tidak dobel border).
 
 ---
 

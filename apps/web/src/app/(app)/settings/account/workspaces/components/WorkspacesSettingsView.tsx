@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { PlusSignIcon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import {
@@ -19,7 +19,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -30,19 +29,17 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemTitle,
-} from "@/components/ui/item";
 import { Spinner } from "@/components/ui/spinner";
-import { WorkspacePickableRow } from "@/components/workspace/WorkspacePickableRow";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableRow,
+} from "@/components/ui/table";
+import { Text } from "@/components/ui/text";
 
-import { formatRoleLabel, getInitials } from "@/lib/utils";
+import { cn, formatRoleLabel, getInitials } from "@/lib/utils";
 
 import {
   SETTINGS_BREADCRUMB_GROUP,
@@ -79,6 +76,16 @@ function ActiveBadge() {
   );
 }
 
+/**
+ * KI-055 (poin 3): sama alasan seperti `DraftsList` (poin 1) — pola
+ * `Card` + `Table` shadcn tanpa header kolom, keputusan King Rezi yang
+ * menyimpang sengaja dari `.ws-pick-item` yang masih terdokumentasi di
+ * Claude Design (`templates/settings-workspaces.html`, belum diresync).
+ * `WorkspacePickableRow` (dipakai bareng `WorkspacePicker` onboarding)
+ * sengaja TIDAK diubah/dipakai lagi di sini — baris di-inline langsung
+ * pakai `TableRow`/`TableCell` supaya `WorkspacePicker` onboarding, yang
+ * di luar scope KI-055, tidak ikut berubah.
+ */
 function WorkspaceRow({
   workspace,
   isSwitchPending,
@@ -88,33 +95,52 @@ function WorkspaceRow({
   isSwitchPending: boolean;
   onRequestSwitch: (workspace: WorkspaceSummary) => void;
 }) {
+  const rowBody = (
+    // eslint-disable-next-line no-restricted-syntax -- T-099.3: file ini sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097)
+    <div className="flex items-center gap-3">
+      <Avatar>
+        <AvatarFallback>{getInitials(workspace.name)}</AvatarFallback>
+      </Avatar>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-099.3, sama seperti di atas */}
+      <div className="flex flex-col">
+        <Text variant="small">{workspace.name}</Text>
+        <Text variant="muted">
+          {isSwitchPending
+            ? "Memindahkan ke workspace ini..."
+            : formatRoleLabel(workspace.role)}
+        </Text>
+      </div>
+    </div>
+  );
+
   if (workspace.isActive) {
     return (
-      <Item>
-        <ItemMedia>
-          <Avatar>
-            <AvatarFallback>{getInitials(workspace.name)}</AvatarFallback>
-          </Avatar>
-        </ItemMedia>
-        <ItemContent>
-          <ItemTitle>{workspace.name}</ItemTitle>
-          <ItemDescription>{formatRoleLabel(workspace.role)}</ItemDescription>
-        </ItemContent>
-        <ItemActions>
+      <TableRow>
+        <TableCell className="whitespace-normal">{rowBody}</TableCell>
+        <TableCell className="text-right">
           <ActiveBadge />
-        </ItemActions>
-      </Item>
+        </TableCell>
+      </TableRow>
     );
   }
 
   return (
-    <WorkspacePickableRow
-      name={workspace.name}
-      role={workspace.role}
-      pendingLabel={isSwitchPending ? "Memindahkan ke workspace ini..." : null}
-      disabled={isSwitchPending}
+    <TableRow
+      className={cn(
+        "cursor-pointer",
+        isSwitchPending && "pointer-events-none opacity-50",
+      )}
       onClick={() => onRequestSwitch(workspace)}
-    />
+    >
+      <TableCell className="whitespace-normal">{rowBody}</TableCell>
+      <TableCell className="text-right">
+        <HugeiconsIcon
+          icon={ArrowRight01Icon}
+          strokeWidth={2}
+          className="inline-block size-4 text-muted-foreground"
+        />
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -125,10 +151,11 @@ function WorkspaceRow({
  * `WorkspaceService` (dipanggil lewat `switchWorkspaceAction`/
  * `createWorkspaceAction` di `../actions`).
  *
- * Baris workspace non-aktif direuse dari `WorkspacePickableRow` (dibagi
- * dengan `WorkspacePicker` di onboarding, code review PR #109) — seluruh
- * baris jadi target klik (pola `Item asChild` + `<button>`, sama seperti
- * contoh resmi shadcn `item-demo`), bukan cuma ikon chevron-nya.
+ * List di-render sebagai `Card` + `Table` shadcn tanpa header kolom
+ * (KI-055 poin 3, 2026-09-10) — lihat docstring `WorkspaceRow` di atas
+ * untuk kenapa `WorkspacePickableRow` (masih dipakai `WorkspacePicker`
+ * onboarding) sengaja tidak dipakai lagi di sini. Seluruh baris tetap
+ * jadi target klik penuh lewat `onClick` di `TableRow`.
  */
 export function WorkspacesSettingsView({ workspaces }: Props) {
   const [isSwitchPending, startSwitchTransition] = useTransition();
@@ -210,12 +237,21 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
         </Alert>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Workspace Anda</CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          <ItemGroup className="gap-0 divide-y divide-border">
+      {/* KI-055 (poin 3, revisi): King Rezi minta versi tanpa `Card` —
+          judul "Workspace Anda" (sebelumnya `CardTitle`) dipindah jadi
+          `TableCaption` shadcn, diposisikan di atas (`caption-top`,
+          default shadcn `caption-bottom`) supaya tetap berfungsi sebagai
+          judul section, bukan footnote di bawah tabel. `Table` (table.tsx)
+          tidak meneruskan className ke div pembungkus `data-slot="table-
+          container"`, jadi border/rounded/padding "milik tabel" ditaruh di
+          div pembungkus manual ini, bukan di prop `className` Table. */}
+      {/* eslint-disable-next-line no-restricted-syntax -- T-099.3: file ini sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097) */}
+      <div className="rounded-xl border border-border py-2">
+        <Table className="caption-top">
+          <TableCaption className="mx-3 mt-0 mb-3 text-left font-heading text-base font-medium text-foreground">
+            Workspace Anda
+          </TableCaption>
+          <TableBody>
             {workspaces.map((workspace) => (
               <WorkspaceRow
                 key={workspace.id}
@@ -226,9 +262,9 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
                 onRequestSwitch={handleRequestSwitch}
               />
             ))}
-          </ItemGroup>
-        </CardContent>
-      </Card>
+          </TableBody>
+        </Table>
+      </div>
 
       <AlertDialog
         open={pendingSwitchWorkspace !== null}

@@ -6,22 +6,14 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemTitle,
-} from "@/components/ui/item";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Text } from "@/components/ui/text";
 import {
   Tooltip,
   TooltipContent,
@@ -37,7 +29,7 @@ import {
 } from "@/domains/workspace";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 import { formatConnectedDate } from "@/lib/utils/format-date";
-import { getInitials } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 
 import { PLATFORM_ICON } from "../../../components/platform-icons";
 import {
@@ -149,6 +141,14 @@ function ConnectedAccountAction({
   }
 }
 
+/**
+ * KI-055 (poin 5, mengikuti pola final poin 1 & 3 — Drafts/Workspaces):
+ * `Card`+`Item`/`ItemGroup` diganti `Table` shadcn tanpa header kolom,
+ * dibungkus `<div>` border+rounded manual (bukan `Card`). Baris di sini
+ * TIDAK diklik penuh (beda dari Drafts/Workspaces) — badge status dan
+ * tombol aksi (Disconnect/Reconnect) tetap elemen interaktif tersendiri
+ * di dalam baris, bukan trigger navigasi baris.
+ */
 function ConnectedAccountRow({
   account,
   onRequestDisconnect,
@@ -161,42 +161,44 @@ function ConnectedAccountRow({
   const platformLabel = entry?.label ?? account.platform;
 
   return (
-    <Item>
-      <ItemMedia>
-        <Avatar>
-          <AvatarFallback>{getInitials(account.handle)}</AvatarFallback>
-          <PlatformStatusDot platform={account.platform} />
-        </Avatar>
-      </ItemMedia>
-      <ItemContent>
-        <ItemTitle>{account.handle}</ItemTitle>
-        <ItemDescription>
-          {platformLabel} · Terhubung sejak{" "}
-          {formatConnectedDate(account.connectedAt)}
-        </ItemDescription>
-      </ItemContent>
-      <ItemActions>
-        <Badge variant={STATUS_BADGE_VARIANT[displayStatus]}>
-          {getConnectionStatusLabel(account)}
-        </Badge>
-        <ConnectedAccountAction
-          displayStatus={displayStatus}
-          onRequestDisconnect={() => onRequestDisconnect(account)}
-        />
-      </ItemActions>
-    </Item>
+    <TableRow>
+      <TableCell className="whitespace-normal">
+        {/* eslint-disable-next-line no-restricted-syntax -- T-099.3: file ini sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097) */}
+        <div className="flex items-center gap-3">
+          <Avatar>
+            <AvatarFallback>{getInitials(account.handle)}</AvatarFallback>
+            <PlatformStatusDot platform={account.platform} />
+          </Avatar>
+          {/* eslint-disable-next-line no-restricted-syntax -- T-099.3, sama seperti di atas */}
+          <div className="flex flex-col">
+            <Text variant="small">{account.handle}</Text>
+            <Text variant="muted">
+              {platformLabel} · Terhubung sejak{" "}
+              {formatConnectedDate(account.connectedAt)}
+            </Text>
+          </div>
+        </div>
+      </TableCell>
+      <TableCell className="text-right">
+        {/* eslint-disable-next-line no-restricted-syntax -- T-099.3, sama seperti di atas */}
+        <div className="flex items-center justify-end gap-2">
+          <Badge variant={STATUS_BADGE_VARIANT[displayStatus]}>
+            {getConnectionStatusLabel(account)}
+          </Badge>
+          <ConnectedAccountAction
+            displayStatus={displayStatus}
+            onRequestDisconnect={() => onRequestDisconnect(account)}
+          />
+        </div>
+      </TableCell>
+    </TableRow>
   );
 }
 
 /**
- * `ConnectedAccountsList` (T-099.3, migrasi shadcn/ui). `List`/`ListItem`
- * Astryx diganti `Item`/`ItemGroup` (registry:ui `item`) — primitive resmi
- * shadcn untuk baris "media + content + actions", padanan paling dekat
- * dengan pola `startContent`/`label`/`description`/`endContent` Astryx
- * (ditemukan lewat MCP `search_items_in_registries`, dicek contoh pakai
- * `item-avatar`/`item-demo`). Divider antar baris cukup `divide-y` pada
- * `ItemGroup` (bukan `ItemSeparator` manual per baris, supaya tidak perlu
- * `.map` dengan index khusus untuk baris terakhir).
+ * `ConnectedAccountsList` (T-099.3, migrasi shadcn/ui; KI-055 poin 5,
+ * 2026-09-10: `Card`+`Item`/`ItemGroup` diganti `Table` tanpa header
+ * kolom — lihat docstring `ConnectedAccountRow` di atas).
  */
 export function ConnectedAccountsList({
   accounts,
@@ -230,20 +232,26 @@ export function ConnectedAccountsList({
         </Alert>
       ) : null}
 
-      <Card>
-        <CardContent className={accounts.length === 0 ? undefined : "px-0"}>
-          {accounts.length === 0 ? (
-            <Empty>
-              <EmptyHeader>
-                <EmptyTitle>Belum ada akun terhubung</EmptyTitle>
-                <EmptyDescription>
-                  Hubungkan akun media sosial pertama lewat tombol Connect
-                  Account di atas.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <ItemGroup className="gap-0 divide-y divide-border">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-099.3: file ini sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097) */}
+      <div
+        className={cn(
+          "rounded-xl border border-border",
+          accounts.length === 0 ? "p-6" : "py-2",
+        )}
+      >
+        {accounts.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>Belum ada akun terhubung</EmptyTitle>
+              <EmptyDescription>
+                Hubungkan akun media sosial pertama lewat tombol Connect Account
+                di atas.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <Table>
+            <TableBody>
               {accounts.map((account) => (
                 <ConnectedAccountRow
                   key={account.id}
@@ -253,10 +261,10 @@ export function ConnectedAccountsList({
                   }
                 />
               ))}
-            </ItemGroup>
-          )}
-        </CardContent>
-      </Card>
+            </TableBody>
+          </Table>
+        )}
+      </div>
 
       <ConfirmActionDialog
         isOpen={disconnectConfirm.isOpen}

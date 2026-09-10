@@ -150,9 +150,19 @@ export function ProfileForm({ profile }: { profile: UserProfileRecord }) {
             <FieldGroup>
               {/* eslint-disable-next-line no-restricted-syntax -- T-099.1, sama seperti di atas */}
               <div className="flex items-center gap-5">
-                <Avatar size="lg">
+                {/* KI-055 (poin 2): `size="lg"` (40px, ukuran terbesar
+                    yang tersedia di `avatar.tsx`) masih jauh lebih kecil
+                    dari mockup `templates/settings-profile.html`
+                    (`.avatar-lg`, 88px). Di-override langsung ke
+                    `size-22` (22 * 4px = 88px, token spacing default
+                    Tailwind v4, match persis) + font initial diperbesar
+                    mengikuti proporsi mockup (28px, dibulatkan ke
+                    `text-2xl` 24px — token terdekat yang tersedia). */}
+                <Avatar className="size-22">
                   <AvatarImage src={avatarPreviewUrl} alt={name} />
-                  <AvatarFallback>{getInitials(name)}</AvatarFallback>
+                  <AvatarFallback className="text-2xl font-bold">
+                    {getInitials(name)}
+                  </AvatarFallback>
                 </Avatar>
                 <Field>
                   <FieldLabel htmlFor="profile-avatar">Foto Profil</FieldLabel>
