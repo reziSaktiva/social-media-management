@@ -8,6 +8,52 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-10 — T-103.4 Done — Audit retroaktif menemukan & menutup KI-056 (History drift). T-103 tuntas 4/4.
+
+Retroactive pass (T-103.4): audit lewat `DesignSync` untuk 5 screen di luar
+5 komponen KI-054/055 — Publish → Queue, Publish → History, Engage → Inbox,
+Notifications Drawer, Settings → General (Danger Zone). Percobaan pertama
+lewat subagent gagal lagi karena `DesignSync` tidak termuat di sesi subagent
+(pola sama yang berulang sepanjang T-103) — dikerjakan langsung di sesi
+utama.
+
+**Hasil:**
+- **Queue** (`templates/publish-queue.html` vs `QueueList.tsx`) — ✅ sudah
+  sama, keduanya pakai `Card`.
+- **History** (`templates/publish-history.html` vs `HistoryList.tsx`) — ⚠️
+  **KI-056 ditemukan**: mockup masih pola `Card` (`.card card-pad
+  history-card` per entri), padahal kode sudah diubah ke `Item
+  variant="outline"` dalam `ItemGroup` sejak KI-054 (2026-09-09) — Claude
+  Design tidak ikut disinkronkan saat itu. Persis pola drift yang sama
+  dengan KI-055.
+- **Notifications Drawer** (`components/notifications-panel.html` vs
+  `NotificationBell.tsx`) — gap dokumentasi kecil (intro paragraph
+  mengklaim `Item`/`ItemGroup`, tapi markup demo dan kode nyata sama-sama
+  plain `div`) — bukan drift fungsional (keduanya konsisten), dicatat di
+  KI-056 tapi tidak diperbaiki (di luar scope yang diminta King Rezi kali
+  ini).
+- **Engage → Inbox** — belum diimplementasikan (`ScaffoldPlaceholder`,
+  T-050), tidak relevan untuk audit ini.
+- **Settings → General (Danger Zone)** — single `Card`, bukan list, tidak
+  ada ambiguitas Table/Item.
+
+**KI-056 diperbaiki atas persetujuan eksplisit King Rezi:**
+`templates/publish-history.html` diganti ke pola `Item`/`ItemGroup` — kelas
+baru `.history-item` (menggantikan `.card card-pad history-card`) di dalam
+`.history-date-group`, klik-penuh via `<a>` (merepresentasikan `Item asChild`
++ `Link`), urutan konten: waktu → ikon+handle akun → judul truncate + meta
+→ `Badge` status kanan. Radius `16px` (`rounded-2xl`, Tailwind langsung)
+dipakai apa adanya, bukan disamakan ke token `--radius-container` (12px)
+Card, karena kode nyata memang tidak memakai token itu untuk komponen ini.
+`readme.md` § Files ditambah bullet baru untuk `templates/publish-history.html`
+(sebelumnya file ini tidak disebut sama sekali di daftar Files) dan section
+KI-056 baru dicatat di `PROJECT_STATE.md` (status Resolved).
+
+**T-103 sekarang tuntas 4/4 subtask** (T-103.1, T-103.2, T-103.3, T-103.4).
+Detail lengkap tiap subtask: `tasks/v07-astryx-shadcn-migration.md` § T-103.
+
+---
+
 ## 2026-09-10 — T-103.3 Done — Gate verifikasi struktur setelah implementasi (Mark UI Engineer & Najwa QA Engineer)
 
 Melengkapi T-103.2 (gate sebelum implementasi di `AGENTS.md` rule 17):

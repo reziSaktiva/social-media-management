@@ -1255,13 +1255,36 @@ belum dikunci, AI **berhenti dan tanya**, bukan menebak lagi.
       `.claude/agents/README.md` — section baru "Gate verifikasi struktur
       setelah implementasi (T-103.3)" + kolom Tools Najwa di tabel
       diupdate. Kedua file agent dikembalikan ke `chmod 444` setelah edit.
-- [ ] **T-103.4** (opsional, follow-up jangka lebih panjang) Retroactive
+- [x] **T-103.4** `✅ Done` (2026-09-10) (opsional, follow-up jangka lebih panjang) Retroactive
       pass: screen/komponen yang sudah diimplementasi sebelum T-103 (di
       luar KI-054/KI-055 yang baru selesai) dicek ulang terhadap pola
       yang baru dikunci di T-103.1, untuk menemukan drift serupa yang
       belum ketahuan. Bisa dijadikan task/KI terpisah kalau ditemukan
       gap besar — dicatat di sini dulu supaya tidak lupa, eksekusi
       menyusul.
+      **Hasil:** audit lewat `DesignSync` untuk 5 screen di luar
+      KI-054/055 — Queue (`templates/publish-queue.html` vs
+      `QueueList.tsx`, `Card size="sm"` di kedua sisi, ✅ sudah sama),
+      **History** (`templates/publish-history.html` vs `HistoryList.tsx`
+      — ⚠️ **drift ditemukan**: mockup masih pola `Card`
+      (`.card card-pad history-card`), padahal kode sudah diubah ke
+      `Item variant="outline"` dalam `ItemGroup` sejak KI-054
+      (2026-09-09) — persis pola drift yang sama dengan Drafts/
+      Workspaces/Connected Accounts), Notifications Drawer
+      (`components/notifications-panel.html` — gap dokumentasi kecil,
+      intro paragraph mengklaim `Item`/`ItemGroup` tapi markup demo *dan*
+      kode nyata `NotificationBell.tsx` sama-sama plain `div` — bukan
+      drift fungsional karena keduanya konsisten, tapi klaimnya
+      menyesatkan; **tidak diperbaiki di pass ini**, King Rezi hanya
+      minta fix untuk History), Engage → Inbox (belum diimplementasikan,
+      `ScaffoldPlaceholder`, tidak relevan), dan Settings → General
+      Danger Zone (single `Card`, bukan list, tidak ada ambiguitas).
+      **Drift History diperbaiki atas persetujuan eksplisit King Rezi:**
+      `templates/publish-history.html` diubah ke pola `Item`/`ItemGroup`
+      (kelas baru `.history-item` di dalam `.history-date-group`, klik
+      penuh via `<a>`, `Badge` status kanan), `readme.md` § Files
+      ditambah bullet baru untuk file ini (sebelumnya tidak ada sama
+      sekali) dengan catatan SYNCED.
 
 **Catatan Domain:** task ini bukan implementasi fitur produk biasa —
 T-103.1 kerjanya di Claude Design (Neymar Product Designer), T-103.2
