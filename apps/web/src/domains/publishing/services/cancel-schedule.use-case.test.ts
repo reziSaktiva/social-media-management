@@ -46,6 +46,7 @@ function createFakeRepository(
     countScheduledByAccount: async () => new Map(),
     listQueue: async () => [],
     listCalendarPosts: async () => [],
+    getCalendarPostById: async () => null,
     listHistory: async () => [],
     getHistoryById: async () => null,
     cancelSchedule: async () => null,

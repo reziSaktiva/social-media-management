@@ -151,6 +151,15 @@ export interface CalendarItemRecord {
   scheduledAt: Date | null;
   publishedAt: Date | null;
   createdAt: Date;
+  /**
+   * T-092.5 (ADR-094 poin 5, 6): ditambahkan supaya `getCalendarPostById`
+   * bisa direuse untuk granular patch Realtime Drafts — `DraftsList`
+   * menampilkan label "Diedit X lalu" (`PublishingPostRecord.updatedAt`,
+   * sama seperti sebelum Realtime dipasang), yang sebelum ini tidak
+   * tersedia di proyeksi Calendar/Queue (keduanya tidak butuh field ini).
+   * Additive-only — tidak mengubah bentuk data yang dipakai Calendar/Queue.
+   */
+  updatedAt: Date;
   targets: CalendarItemTargetRecord[];
 }
 
@@ -236,7 +245,18 @@ export interface IPublishingRepository {
     caption: string;
   }): Promise<PublishingPostRecord>;
 
-  /** `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`. */
+  /**
+   * Drafts (T-092.5/ADR-094 poin 5, koreksi gap T-104) — mencakup 3
+   * status: `Draft`, `InReview`, `ReadyToSchedule` (bukan hanya `Draft`).
+   * Harus konsisten dengan `DRAFT_VIEW_STATUSES` (client-side filter
+   * granular patch Realtime) di
+   * `apps/web/src/app/(app)/publish/drafts/components/DraftsList.tsx`
+   * (`toDraftListItem`) — keduanya menentukan kriteria tampilan Drafts yang
+   * sama, hanya beda titik penerapan (initial SSR load vs. patch Realtime
+   * granular per event).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
   listDrafts(
     input: { workspaceId: WorkspaceId },
     userId: UserId,
@@ -429,6 +449,30 @@ export interface IPublishingRepository {
     },
     userId: UserId,
   ): Promise<CalendarItemRecord[]>;
+
+  /**
+   * Granular patch Realtime Calendar (T-092.3, ADR-094 poin 5) — fetch SATU
+   * `PublishingPost` termapping (bentuk sama `listCalendarPosts`) untuk
+   * `postId` yang datang dari event Supabase Realtime
+   * (`subscribeToPublishingPostChanges`). Tidak menerima `from`/`to` — event
+   * granular tidak tahu rentang tanggal yang sedang dilihat screen; kriteria
+   * "apakah post ini masih cocok tampil di view saat ini" (rentang tanggal,
+   * filter status/akun) diterapkan CLIENT-SIDE oleh pemanggil
+   * (`CalendarScreen`), bukan di sini — method ini murni proyeksi data 1
+   * baris, sama pola dengan `getHistoryById`.
+   *
+   * Returns `null` kalau post tidak ditemukan di `workspaceId` ini atau
+   * sudah di-soft-delete (`deletedAt` terisi) — caller
+   * (`PublishingService.getCalendarPostById`) memperlakukan `null` sebagai
+   * sinyal "remove dari local state", BUKAN error (event Realtime granular
+   * sengaja tidak dibedakan echo/race, ADR-094 poin 5).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  getCalendarPostById(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<CalendarItemRecord | null>;
 
   /**
    * History (T-034.1, KSP-D10) — post berstatus `Published`/`Failed`

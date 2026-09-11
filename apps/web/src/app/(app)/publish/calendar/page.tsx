@@ -83,7 +83,9 @@ export default async function Page({
       date={date}
       items={items}
       accounts={accounts}
+      statuses={statuses}
       connectedAccountIds={connectedAccountIds}
+      workspaceId={workspaceId}
     />
   );
 }

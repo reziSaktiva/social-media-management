@@ -78,6 +78,17 @@ export class PublishingService {
     });
   }
 
+  /**
+   * Drafts (T-092.5/ADR-094 poin 5, koreksi gap T-104) — initial SSR load
+   * `/publish/drafts` (`page.tsx`). Delegasi murni ke
+   * `IPublishingRepository.listDrafts`, yang memfilter 3 status (`Draft`,
+   * `InReview`, `ReadyToSchedule`) supaya konsisten dengan kriteria
+   * tampilan Drafts yang dipakai `DraftsList.tsx` (`toDraftListItem`) untuk
+   * patch granular Realtime — sebelum fix ini, method ini hanya
+   * mengembalikan status `Draft` sehingga post `InReview`/
+   * `ReadyToSchedule` tidak muncul di initial load, hanya muncul setelah
+   * event Realtime.
+   */
   async listDrafts(
     workspaceId: WorkspaceId,
     userId: UserId,
@@ -282,6 +293,50 @@ export class PublishingService {
           ? (metricsByPost.get(item.id) ?? [])
           : null,
     }));
+  }
+
+  /**
+   * Granular patch Realtime Calendar (T-092.3, ADR-094 poin 5) — fetch SATU
+   * record termapping untuk `postId` dari event Realtime
+   * (`{postId, eventType}`, `usePublishingPostsRealtime`). Reuse post-
+   * processing metrik yang sama dengan `listCalendarPosts` (batch via
+   * `PostMetricsPort` kalau item Published) supaya bentuk hasil identik
+   * dengan item lain di local state Calendar — screen pemanggil tidak perlu
+   * tahu bedanya item dari initial load vs. hasil patch granular.
+   *
+   * Returns `null` kalau post tidak ditemukan di `workspaceId` ini atau
+   * sudah di-soft-delete — CalendarScreen menafsirkan ini sebagai "remove
+   * dari local state" (post ini sudah tidak valid lagi untuk workspace ini),
+   * BUKAN error — beda dari `getDraftById`/`getHistoryById` yang throw
+   * `NotFoundError` untuk kasus serupa (method-method itu dipanggil dari
+   * route/aksi yang punya alur error eksplisit; method ini dipanggil dari
+   * handler event Realtime yang butuh sinyal graceful, bukan exception).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  async getCalendarPostById(
+    workspaceId: WorkspaceId,
+    postId: PostId,
+    userId: UserId,
+  ): Promise<CalendarPostItem | null> {
+    const item = await this.repository.getCalendarPostById(
+      { workspaceId, postId },
+      userId,
+    );
+    if (!item) {
+      return null;
+    }
+
+    const metrics =
+      item.status === ContentStatus.Published && this.postMetrics
+        ? ((await this.postMetrics.getPostMetricsByPosts([item.id])).get(
+            item.id,
+          ) ?? [])
+        : item.status === ContentStatus.Published
+          ? []
+          : null;
+
+    return { ...item, metrics };
   }
 
   /**

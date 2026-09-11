@@ -806,6 +806,51 @@ lain (sama-sama div polos), ini bukan drift Design-vs-Code seperti KI-054/
 055/056 — hanya deskripsi tekstualnya yang tidak akurat. Dicatat di sini
 supaya tidak hilang, belum dijadwalkan perbaikannya.
 
+### KI-057 · Gap metodologi verifikasi Realtime — kriteria lolos review tidak cukup membuktikan event benar-benar terkirim
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Process / Tech-Debt |
+| Terkait | T-092.1, T-092.2, T-092.3, T-092.4, T-092.5, T-092.6 |
+
+Ditemukan Ridwan Architecture Reviewer saat review **T-092.4** (2026-09-11,
+`tasks/v02-publishing-mvp.md` § T-092) — rekomendasi disetujui King Rezi.
+Bukan soal bug RLS spesifik di T-092.4 (bug itu sudah tuntas diperbaiki,
+lihat migration `20260911100000_t092_4_fix_workspace_members_realtime_visibility`),
+melainkan gap **metodologi verifikasi** yang menyebabkan bug itu tidak
+ketahuan lebih awal:
+
+Kriteria yang selama ini dipakai untuk menandai subtask Realtime
+lolos/Done — "typecheck bersih, lint bersih, tidak ada console error,
+channel Realtime `SUBSCRIBED`" — ternyata **tidak cukup** untuk membuktikan
+event Realtime benar-benar terkirim sampai ke subscriber. Akibatnya
+**T-092.1, T-092.2, T-092.3** sempat ditandai lolos/`✅ Done` padahal seluruh
+fitur Realtime publishing saat itu **nonfungsional total** (channel
+`SUBSCRIBED` tanpa error, tapi zero event pernah sampai ke subscriber
+manapun, akar masalah: RLS `workspace_members` tidak mengenali koneksi
+Realtime) — baru ketahuan tidak sengaja saat verifikasi manual cross-tab di
+**T-092.4**.
+
+**Action item (wajib, bukan opsional):** Definition of Done untuk sisa
+subtask Realtime publishing yang belum dikerjakan — **T-092.5** (Drafts) dan
+**T-092.6** (History) — wajib menyertakan **verifikasi cross-tab browser
+nyata** (2 tab browser berbeda, aksi di 1 tab terlihat otomatis di tab lain
+tanpa refresh manual) sebagai syarat Done. Kriteria lama (tanpa console
+error + channel `SUBSCRIBED`) **tidak lagi cukup** untuk menutup subtask ini
+— lihat catatan Definition of Done tambahan di `tasks/v02-publishing-mvp.md`
+§ T-092 (T-092.5/T-092.6). Tidak memblokir M8, tapi wajib diikuti sebelum
+kedua subtask itu ditandai `✅ Done`.
+
+**Progres (2026-09-11):** **T-092.5** (Drafts) sudah menjalankan action
+item di atas — verifikasi cross-tab browser nyata (2 tab, tanpa refresh)
+**PASS** untuk edit caption dan hapus draft, dikonfirmasi masuk akal
+secara teknis oleh Ridwan Architecture Reviewer. Definition of Done baru
+di KI ini terbukti bisa dijalankan, bukan sekadar teori. Status **tetap
+Open** — **T-092.6** (History) masih tersisa dan belum menjalankan
+verifikasi yang sama; KI ini baru ditutup setelah T-092.6 juga PASS.
+Detail: `tasks/v02-publishing-mvp.md` § T-092.5.
+
 ---
 
 ## Blockers

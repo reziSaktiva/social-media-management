@@ -13,6 +13,7 @@ function createCalendarItem(
     scheduledAt: new Date("2026-07-14T10:00:00Z"),
     publishedAt: null,
     createdAt: new Date("2026-07-13T00:00:00Z"),
+    updatedAt: new Date("2026-07-13T00:00:00Z"),
     targets: [],
     ...overrides,
   };

@@ -21,5 +21,9 @@ export default async function Page() {
     asUserId(session.user.id),
   );
 
-  return <DraftsList drafts={drafts} />;
+  // `DraftsList` (client) subscribe `usePublishingPostsRealtime` (T-092.5,
+  // ADR-094 poin 5, 6) — `workspaceId` dipakai untuk subscribe channel
+  // `publishing_posts:{workspaceId}`, bukan untuk fetch data apa pun
+  // langsung di komponen itu (AGENTS.md #5).
+  return <DraftsList drafts={drafts} workspaceId={workspaceId} />;
 }

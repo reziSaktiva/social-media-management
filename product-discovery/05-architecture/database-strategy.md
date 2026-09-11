@@ -129,6 +129,20 @@ Detail SQL RLS per tabel didefinisikan di Engineering Planning (M6), dan
 sudah diimplementasikan sebagai migration Prisma (T-017) —
 `apps/web/prisma/migrations/20260813045625_t017_add_rls_policies/migration.sql`.
 
+> **Catatan (2026-09-11, T-092.1) — instance berikutnya dari preseden
+> DO-D06/T-017 (cuid vs uuid):** varian RLS Policy Pattern untuk koneksi
+> Supabase Realtime (anon key, ADR-094 poin 3) juga tidak bisa memakai
+> fungsi `auth.uid()` Supabase apa adanya, karena fungsi itu melakukan cast
+> paksa `::uuid` terhadap klaim `sub` JWT — sementara kolom `user_id`
+> bertipe cuid string di seluruh sistem (sama akar masalah dengan koreksi
+> `app.current_user_id` di atas). Policy
+> `publishing_posts_realtime_workspace_members`
+> (`20260911090000_t092_1_publishing_posts_realtime_rls`) memakai
+> `current_setting('request.jwt.claim.sub', true)` (fallback parse
+> `request.jwt.claims`) untuk membaca `sub` sebagai `text`, alih-alih
+> memanggil `auth.uid()` langsung. Detail lengkap: ADR-094 poin 3 (catatan
+> implementasi 2026-09-11).
+
 > **Catatan status runtime (2026-08-13, T-017 — lihat KI terkait di
 > `PROJECT_STATE.md`):** Policy di atas sudah applied ke database, tapi
 > koneksi `DATABASE_URL`/`DIRECT_URL` saat ini memakai role Postgres
