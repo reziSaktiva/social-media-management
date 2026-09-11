@@ -8,8 +8,10 @@ import {
 } from "@social/shared";
 import type {
   ConnectedAccountId,
+  IOutstandAdapter,
   InvitationId,
   MemberId,
+  SocialPlatform,
   UserId,
   WorkspaceId,
 } from "@social/shared";
@@ -89,6 +91,20 @@ export class WorkspaceService {
     private readonly repository: IWorkspaceRepository,
     private readonly scheduledCounts?: ScheduledCountsPort,
     private readonly notifications?: NotificationPort,
+    /**
+     * Connect/Reconnect Account (T-013.1/T-013.2, T-015.3, ADR-105) —
+     * `IOutstandAdapter` sudah jadi kontrak publik `@social/shared` (T-041),
+     * jadi diimpor langsung sebagai TIPE di sini (bukan pelanggaran
+     * AGENTS.md #6 — itu larangan mengimpor implementasi/HTTP client
+     * konkret, bukan interface ACL-nya sendiri; pola sama seperti
+     * `IOutstandAdapter` di constructor use-case domain `publishing`).
+     * Opsional (bisa `undefined`, mis. di caller lama yang tidak butuh
+     * Connect Account) — composition root (Server Action/Route Handler)
+     * WAJIB menyuplai `getOutstandAdapter()` untuk
+     * `initiateConnectAccount`/`completeAccountConnection`, lihat
+     * `requireOutstandAdapter()`.
+     */
+    private readonly outstandAdapter?: IOutstandAdapter,
   ) {}
 
   async createWorkspace(input: {
@@ -965,6 +981,153 @@ export class WorkspaceService {
       actorUserId,
       actionErrorMessage,
     );
+  }
+
+  /** Dipakai `initiateConnectAccount`/`completeAccountConnection` — throw jelas kalau composition root lupa menyuplai adapter (pola sama seperti `getOutstandAdapter()` throw-loud ADR-059, bukan silent no-op). */
+  private requireOutstandAdapter(): IOutstandAdapter {
+    if (!this.outstandAdapter) {
+      throw new Error(
+        "WorkspaceService: IOutstandAdapter tidak disuplai ke constructor — " +
+          "wajib untuk initiateConnectAccount/completeAccountConnection " +
+          "(composition root harus memanggil getOutstandAdapter()).",
+      );
+    }
+    return this.outstandAdapter;
+  }
+
+  /**
+   * Connect Account (T-013.1/T-013.2) / Reconnect (T-015.3) — langkah 1
+   * (ADR-105): minta `redirectUrl` OAuth dari `OutstandAdapter.connectAccount`.
+   * Dipanggil Server Action saat user klik "Connect Account" (`platform`
+   * baru, `redirectAccountId` kosong) atau "Reconnect" (`redirectAccountId`
+   * diisi — akun `reconnect-required`/`disconnected` existing). RBAC
+   * Owner/Admin, reuse gate yang sama dengan `disconnectAccount`
+   * (`roles-permissions.md` § Connected Accounts, bukan RBAC baru).
+   *
+   * Kalau `redirectAccountId` diisi: validasi akun itu memang milik
+   * `workspaceId` ini SEBELUM redirect diminta — mencegah user meng-inisiasi
+   * "reconnect" untuk id akun workspace LAIN lewat id yang ditebak/ditamper
+   * di client (IDOR). Tidak membuat/mengubah `ConnectedAccount` apa pun di
+   * sini — itu baru terjadi di `completeAccountConnection` setelah callback.
+   */
+  async initiateConnectAccount(input: {
+    workspaceId: WorkspaceId;
+    actorId: UserId;
+    platform: SocialPlatform;
+    redirectAccountId?: ConnectedAccountId;
+  }): Promise<{ redirectUrl: string }> {
+    await this.assertActorCanManageConnectedAccounts(
+      input.workspaceId,
+      input.actorId,
+      "Hanya Owner atau Admin yang bisa menghubungkan akun.",
+    );
+
+    if (input.redirectAccountId) {
+      const existing = await this.repository.findConnectedAccountById(
+        input.workspaceId,
+        input.redirectAccountId,
+        input.actorId,
+      );
+      if (!existing) {
+        throw new NotFoundError("Akun terhubung tidak ditemukan.");
+      }
+      if (existing.platform !== input.platform) {
+        throw new ValidationError(
+          "Platform akun tidak cocok dengan akun yang direconnect.",
+        );
+      }
+    }
+
+    return this.requireOutstandAdapter().connectAccount({
+      workspaceId: input.workspaceId,
+      platform: input.platform,
+      redirectAccountId: input.redirectAccountId,
+    });
+  }
+
+  /**
+   * Connect Account (T-013.1/T-013.2) / Reconnect (T-015.3) — langkah 2
+   * (ADR-105), dipanggil Route Handler `/api/integrations/outstand/callback`
+   * setelah user diarahkan balik dengan `code`+`state`.
+   *
+   * **Keputusan desain CREATE vs UPDATE (Prabowo, T-015.3/T-013.1/2):**
+   * `ConnectedAccountData` hasil `exchangeConnectCode` (kontrak ADR-105
+   * final, TIDAK diubah) tidak membawa `redirectAccountId` — Route Handler
+   * yang men-decode `state` (`lib/adapters/outstand/connect-state.ts`,
+   * detail wire-format adapter) dan meneruskan `redirectAccountId` di sini
+   * sebagai parameter EKSPLISIT, supaya method ini sendiri tetap tidak
+   * bergantung pada bentuk `state` (ACL boundary, AGENTS.md #6 — lihat
+   * docstring lengkap di `connect-state.ts`).
+   *
+   * RBAC Owner/Admin ditegakkan LAGI di sini (bukan cuma di
+   * `initiateConnectAccount`) — `code`/`state`/`redirectAccountId`
+   * round-trip lewat browser (query param publik, bisa ditamper) sebelum
+   * callback ini dipanggil, jadi tidak cukup dipercaya dari validasi
+   * inisiasi saja. `redirectAccountId` diverifikasi ulang kepemilikannya ke
+   * `workspaceId` ini (defense-in-depth yang sama, IDOR).
+   *
+   * CREATE `WorkspaceConnectedAccount` baru kalau `redirectAccountId`
+   * kosong (connect baru, T-013). UPDATE akun existing kalau diisi
+   * (reconnect, T-015.3) — `connectedAt` asli DIPERTAHANKAN oleh
+   * `IWorkspaceRepository.reconnectAccount` (bukan re-create), sehingga
+   * riwayat post yang merujuk `connectedAccountId` yang sama tetap utuh.
+   */
+  async completeAccountConnection(input: {
+    workspaceId: WorkspaceId;
+    actorId: UserId;
+    code: string;
+    state: string;
+    redirectAccountId?: ConnectedAccountId;
+  }): Promise<ConnectedAccountRecord> {
+    await this.assertActorCanManageConnectedAccounts(
+      input.workspaceId,
+      input.actorId,
+      "Hanya Owner atau Admin yang bisa menghubungkan akun.",
+    );
+
+    let existingRedirectAccount: ConnectedAccountRecord | null = null;
+    if (input.redirectAccountId) {
+      existingRedirectAccount = await this.repository.findConnectedAccountById(
+        input.workspaceId,
+        input.redirectAccountId,
+        input.actorId,
+      );
+      if (!existingRedirectAccount) {
+        throw new NotFoundError("Akun terhubung tidak ditemukan.");
+      }
+    }
+
+    const exchanged = await this.requireOutstandAdapter().exchangeConnectCode({
+      code: input.code,
+      state: input.state,
+    });
+
+    if (
+      existingRedirectAccount &&
+      existingRedirectAccount.platform !== exchanged.platform
+    ) {
+      throw new ValidationError(
+        "Platform akun tidak cocok dengan akun yang direconnect.",
+      );
+    }
+
+    if (input.redirectAccountId) {
+      return this.repository.reconnectAccount({
+        workspaceId: input.workspaceId,
+        connectedAccountId: input.redirectAccountId,
+        outstandAccountId: exchanged.outstandAccountId,
+        handle: exchanged.handle,
+        actingUserId: input.actorId,
+      });
+    }
+
+    return this.repository.createConnectedAccount({
+      workspaceId: input.workspaceId,
+      platform: exchanged.platform,
+      outstandAccountId: exchanged.outstandAccountId,
+      handle: exchanged.handle,
+      actingUserId: input.actorId,
+    });
   }
 
   /**

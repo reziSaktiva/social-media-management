@@ -10,6 +10,7 @@ import {
   type SocialPlatform,
 } from "@social/shared";
 import type {
+  ConnectedAccountRecord,
   IWorkspaceRepository,
   WorkspaceInvitationRecord,
   WorkspaceMemberRecord,
@@ -17,6 +18,7 @@ import type {
 } from "@/domains/workspace";
 import {
   Prisma,
+  type WorkspaceConnectedAccount,
   type WorkspaceInvitation,
   type WorkspaceMember,
 } from "@/generated/prisma/client";
@@ -56,6 +58,31 @@ function isInvitationEmailConflict(error: unknown): boolean {
     error.code === "P2002" &&
     error.meta?.modelName === "WorkspaceInvitation"
   );
+}
+
+/** P2002 on `[workspaceId, outstandAccountId]` — dipakai `createConnectedAccount` (T-013.1/T-013.2, ADR-105). */
+function isConnectedAccountConflict(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002" &&
+    error.meta?.modelName === "WorkspaceConnectedAccount"
+  );
+}
+
+/** Shared mapper — dipakai `listConnectedAccounts`, `findConnectedAccountById`, `createConnectedAccount`, `reconnectAccount`. */
+function toConnectedAccountRecord(
+  account: WorkspaceConnectedAccount,
+): ConnectedAccountRecord {
+  return {
+    id: asConnectedAccountId(account.id),
+    workspaceId: asWorkspaceId(account.workspaceId),
+    platform: account.platform as SocialPlatform,
+    outstandAccountId: account.outstandAccountId,
+    handle: account.handle,
+    status: account.status,
+    reconnectRequired: account.reconnectRequired,
+    connectedAt: account.connectedAt,
+  };
 }
 
 function toMemberRecord(member: WorkspaceMember): WorkspaceMemberRecord {
@@ -214,16 +241,7 @@ export const workspaceRepository: IWorkspaceRepository = {
       }),
     );
 
-    return accounts.map((account) => ({
-      id: asConnectedAccountId(account.id),
-      workspaceId: asWorkspaceId(account.workspaceId),
-      platform: account.platform as SocialPlatform,
-      outstandAccountId: account.outstandAccountId,
-      handle: account.handle,
-      status: account.status,
-      reconnectRequired: account.reconnectRequired,
-      connectedAt: account.connectedAt,
-    }));
+    return accounts.map(toConnectedAccountRecord);
   },
 
   async countActiveConnectedAccounts(workspaceId, userId) {
@@ -700,6 +718,82 @@ export const workspaceRepository: IWorkspaceRepository = {
       throw new ConflictError(
         "Akun terhubung tidak ditemukan atau sudah terputus.",
       );
+    });
+  },
+
+  async findConnectedAccountById(
+    workspaceId,
+    connectedAccountId,
+    actingUserId,
+  ) {
+    const account = await withCurrentUser(actingUserId, (tx) =>
+      tx.workspaceConnectedAccount.findFirst({
+        where: { id: connectedAccountId, workspaceId },
+      }),
+    );
+    return account ? toConnectedAccountRecord(account) : null;
+  },
+
+  async createConnectedAccount({
+    workspaceId,
+    platform,
+    outstandAccountId,
+    handle,
+    actingUserId,
+  }) {
+    try {
+      const account = await withCurrentUser(actingUserId, (tx) =>
+        tx.workspaceConnectedAccount.create({
+          data: {
+            workspaceId,
+            platform,
+            outstandAccountId,
+            handle,
+            status: "active",
+          },
+        }),
+      );
+      return toConnectedAccountRecord(account);
+    } catch (error) {
+      if (isConnectedAccountConflict(error)) {
+        throw new ConflictError("Akun ini sudah terhubung di workspace ini.");
+      }
+      throw error;
+    }
+  },
+
+  async reconnectAccount({
+    workspaceId,
+    connectedAccountId,
+    outstandAccountId,
+    handle,
+    actingUserId,
+  }) {
+    return withCurrentUser(actingUserId, async (tx) => {
+      // Compare-and-swap (`updateMany` dengan guard `workspaceId`) — pola
+      // sama seperti `disconnectAccount`/`markAccountReconnectRequired` di
+      // atas, bukan `update` langsung by id (defense-in-depth terhadap
+      // `connectedAccountId` yang bukan milik `workspaceId` ini, walau
+      // `WorkspaceService` sudah memvalidasi lewat `findConnectedAccountById`
+      // sebelum memanggil method ini).
+      const result = await tx.workspaceConnectedAccount.updateMany({
+        where: { id: connectedAccountId, workspaceId },
+        data: {
+          outstandAccountId,
+          handle,
+          status: "active",
+          reconnectRequired: false,
+        },
+      });
+
+      if (result.count === 0) {
+        throw new NotFoundError("Akun terhubung tidak ditemukan.");
+      }
+
+      const updated = await tx.workspaceConnectedAccount.findUniqueOrThrow({
+        where: { id: connectedAccountId },
+      });
+      return toConnectedAccountRecord(updated);
     });
   },
 };
