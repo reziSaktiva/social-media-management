@@ -161,11 +161,27 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async listDrafts({ workspaceId }, userId) {
+    // Kriteria tampilan Drafts (T-104, koreksi gap T-092.5/ADR-094 poin 5):
+    // Draft, InReview, DAN ReadyToSchedule — bukan hanya Draft. Harus
+    // konsisten dengan `DRAFT_VIEW_STATUSES` (client-side filter granular
+    // patch Realtime) di
+    // `apps/web/src/app/(app)/publish/drafts/components/DraftsList.tsx`
+    // (`toDraftListItem`) — sebelum fix ini, initial SSR load (method ini)
+    // hanya mengembalikan status Draft sementara patch Realtime granular
+    // sudah menerima 3 status, jadi post InReview/ReadyToSchedule baru
+    // muncul di Drafts SETELAH ada event Realtime, tidak muncul di initial
+    // load.
     const posts = await withCurrentUser(userId, (tx) =>
       tx.publishingPost.findMany({
         where: {
           workspaceId,
-          status: ContentStatus.Draft,
+          status: {
+            in: [
+              ContentStatus.Draft,
+              ContentStatus.InReview,
+              ContentStatus.ReadyToSchedule,
+            ],
+          },
           deletedAt: null,
         },
         orderBy: { updatedAt: "desc" },

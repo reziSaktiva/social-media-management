@@ -245,7 +245,18 @@ export interface IPublishingRepository {
     caption: string;
   }): Promise<PublishingPostRecord>;
 
-  /** `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`. */
+  /**
+   * Drafts (T-092.5/ADR-094 poin 5, koreksi gap T-104) — mencakup 3
+   * status: `Draft`, `InReview`, `ReadyToSchedule` (bukan hanya `Draft`).
+   * Harus konsisten dengan `DRAFT_VIEW_STATUSES` (client-side filter
+   * granular patch Realtime) di
+   * `apps/web/src/app/(app)/publish/drafts/components/DraftsList.tsx`
+   * (`toDraftListItem`) — keduanya menentukan kriteria tampilan Drafts yang
+   * sama, hanya beda titik penerapan (initial SSR load vs. patch Realtime
+   * granular per event).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
   listDrafts(
     input: { workspaceId: WorkspaceId },
     userId: UserId,

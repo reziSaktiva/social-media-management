@@ -78,6 +78,17 @@ export class PublishingService {
     });
   }
 
+  /**
+   * Drafts (T-092.5/ADR-094 poin 5, koreksi gap T-104) — initial SSR load
+   * `/publish/drafts` (`page.tsx`). Delegasi murni ke
+   * `IPublishingRepository.listDrafts`, yang memfilter 3 status (`Draft`,
+   * `InReview`, `ReadyToSchedule`) supaya konsisten dengan kriteria
+   * tampilan Drafts yang dipakai `DraftsList.tsx` (`toDraftListItem`) untuk
+   * patch granular Realtime — sebelum fix ini, method ini hanya
+   * mengembalikan status `Draft` sehingga post `InReview`/
+   * `ReadyToSchedule` tidak muncul di initial load, hanya muncul setelah
+   * event Realtime.
+   */
   async listDrafts(
     workspaceId: WorkspaceId,
     userId: UserId,
