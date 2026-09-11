@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback, useState } from "react";
+
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -15,12 +17,39 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { toast } from "sonner";
 
-import type { PostId } from "@social/shared";
-import type { QueueGroup } from "@/domains/publishing";
+import { ContentStatus, type PostId } from "@social/shared";
+import {
+  groupQueueItemsByDate,
+  type CalendarPostItem,
+  type QueueGroup,
+  type QueueItemRecord,
+} from "@/domains/publishing";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
+import { usePublishingPostsRealtime } from "@/lib/hooks/use-publishing-posts-realtime";
 
-import { cancelScheduleAction } from "../actions";
+import { cancelScheduleAction, getQueuePostAction } from "../actions";
 import { QueueList } from "./QueueList";
+
+/**
+ * Post hasil `getQueuePostAction` (bentuk `CalendarPostItem`) hanya
+ * dianggap cocok tampil di Queue kalau statusnya `Scheduled` DAN
+ * `scheduledAt` terisi (T-092.4, ADR-094 poin 5 — kriteria Queue: cuma
+ * status Scheduled). `CalendarItemTargetRecord` adalah superset
+ * `QueueItemTargetRecord` (field ekstra `platformPostUrl` diabaikan di
+ * sini, structural typing) jadi tidak perlu mapping manual per-target.
+ */
+function toQueueItemRecord(item: CalendarPostItem): QueueItemRecord | null {
+  if (item.status !== ContentStatus.Scheduled || !item.scheduledAt) {
+    return null;
+  }
+  return {
+    id: item.id,
+    caption: item.caption,
+    scheduledAt: item.scheduledAt,
+    createdAt: item.createdAt,
+    targets: item.targets,
+  };
+}
 
 /**
  * Client wrapper untuk halaman Queue (T-032.4) — memisahkan state dialog
@@ -40,11 +69,86 @@ import { QueueList } from "./QueueList";
  * T-102.6: `useToast` Astryx diganti `toast()` sonner (shadcn `Toaster`
  * dipasang sekali di `Providers.tsx`) — menuntaskan migrasi toast terakhir
  * di codebase.
+ *
+ * **T-092.4 (ADR-094 poin 5, 6) — client state + granular Realtime patch:**
+ * `groups` (hasil `PublishingService.listQueue` dari `page.tsx`) disalin ke
+ * `useState` lokal (pola sama `CalendarScreen`, T-092.3) — disinkronkan
+ * ulang SAAT RENDER setiap kali prop `groups` berubah (`page.tsx` re-render
+ * server-side lewat `revalidatePath("/publish/queue")`, mis. sesudah Cancel
+ * Schedule), bukan `useEffect` + `setState` supaya tidak ada render
+ * tambahan/cascading.
+ *
+ * `usePublishingPostsRealtime(workspaceId, {...})` subscribe selama screen
+ * ini mount (lifecycle per-mount, ADR-094 poin 6). Event `INSERT`/`UPDATE`
+ * memicu fetch SATU record via `getQueuePostAction` (Server Action → reuse
+ * `PublishingService.getCalendarPostById`, bukan refetch seluruh Queue)
+ * lalu di-upsert/remove ke state lokal berdasar kriteria tampilan Queue
+ * (`toQueueItemRecord` — hanya status `Scheduled`; status lain, termasuk
+ * `null` hasil post tidak ditemukan/soft-deleted, berarti item dihapus dari
+ * local state) — echo dari aksi milik user sendiri diproses sama seperti
+ * event orang lain, tanpa deteksi/skip apa pun (idempoten by design,
+ * ADR-094 poin 5). Regroup per-tanggal reuse `groupQueueItemsByDate` (pure
+ * function yang sama dipakai `PublishingService.listQueue`), dijalankan
+ * di atas daftar `QueueItemRecord` flat supaya urutan group/tanggal selalu
+ * konsisten meski patch terjadi lintas-grup (mis. reschedule ke tanggal
+ * lain).
  */
-export function QueueScreen({ groups }: { groups: QueueGroup[] }) {
+export function QueueScreen({
+  groups,
+  workspaceId,
+}: {
+  groups: QueueGroup[];
+  /** Workspace aktif — dipakai `usePublishingPostsRealtime` (T-092.4) untuk
+   * subscribe channel `publishing_posts:{workspaceId}`, bukan dipakai
+   * untuk fetch data apa pun langsung di komponen ini (AGENTS.md #5). */
+  workspaceId: string;
+}) {
   const cancelConfirm = useConfirmAction<PostId>(cancelScheduleAction, () =>
     toast("Jadwal dibatalkan — post kembali ke Drafts"),
   );
+
+  const [prevGroups, setPrevGroups] = useState(groups);
+  const [localGroups, setLocalGroups] = useState(groups);
+
+  if (groups !== prevGroups) {
+    setPrevGroups(groups);
+    setLocalGroups(groups);
+  }
+
+  const handlePublishingPostChange = useCallback(
+    (event: { postId: CalendarPostItem["id"] }) => {
+      void (async () => {
+        const fetched = await getQueuePostAction(event.postId);
+        const queueItem = fetched ? toQueueItemRecord(fetched) : null;
+
+        setLocalGroups((prev) => {
+          const withoutStale = prev
+            .map((group) => ({
+              ...group,
+              items: group.items.filter((item) => item.id !== event.postId),
+            }))
+            .filter((group) => group.items.length > 0);
+
+          if (!queueItem) {
+            return withoutStale;
+          }
+
+          const flatItems = withoutStale.flatMap((group) => group.items);
+          return groupQueueItemsByDate(
+            [...flatItems, queueItem].sort(
+              (a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime(),
+            ),
+          );
+        });
+      })();
+    },
+    [],
+  );
+
+  usePublishingPostsRealtime(workspaceId, {
+    onInsert: handlePublishingPostChange,
+    onUpdate: handlePublishingPostChange,
+  });
 
   return (
     // eslint-disable-next-line no-restricted-syntax -- T-101.2: layout-only, file sudah dimigrasi shadcn
@@ -56,7 +160,7 @@ export function QueueScreen({ groups }: { groups: QueueGroup[] }) {
       ) : null}
 
       <QueueList
-        groups={groups}
+        groups={localGroups}
         onCancelSchedule={(postId) => cancelConfirm.open(postId)}
       />
 
