@@ -618,20 +618,28 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async getCalendarPostById({ workspaceId, postId }, userId) {
-    const post = await withCurrentUser(userId, (tx) =>
-      tx.publishingPost.findFirst({
-        where: {
-          id: postId,
-          workspaceId,
-          deletedAt: null,
-        },
-        include: {
-          targets: {
-            include: { connectedAccount: true },
+    let post;
+    try {
+      post = await withCurrentUser(userId, (tx) =>
+        tx.publishingPost.findFirst({
+          where: {
+            id: postId,
+            workspaceId,
+            deletedAt: null,
           },
-        },
-      }),
-    );
+          include: {
+            targets: {
+              include: { connectedAccount: true },
+            },
+          },
+        }),
+      );
+    } catch (error) {
+      if (isInvalidIdFormat(error)) {
+        return null;
+      }
+      throw error;
+    }
 
     return post ? mapCalendarItem(post) : null;
   },

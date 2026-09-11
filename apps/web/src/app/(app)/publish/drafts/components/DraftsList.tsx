@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef } from "react";
 
 import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -14,6 +14,7 @@ import type {
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 import { usePublishingPostsRealtime } from "@/lib/hooks/use-publishing-posts-realtime";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -96,9 +97,11 @@ function toDraftListItem(item: CalendarPostItem): DraftListItem | null {
  * membuka Edit Draft) — baris tetap klik-penuh untuk buka editor seperti
  * sebelumnya. Entry point ini HANYA ada di Drafts (bukan Queue/History,
  * dikonfirmasi King Rezi) — `PublishingService.deletePost` menolak post
- * yang statusnya bukan Draft, tapi baris di sini memang selalu Draft
- * (query `listDrafts` sudah filter `status: Draft`), jadi guard itu murni
- * safety net server-side.
+ * yang statusnya bukan Draft. Sejak T-104 (`listDrafts` diperluas ke
+ * Draft/InReview/ReadyToSchedule), baris di sini TIDAK LAGI selalu Draft
+ * — tombol Hapus di bawah karena itu di-render HANYA untuk baris
+ * berstatus Draft, supaya klik Hapus pada baris InReview/ReadyToSchedule
+ * tidak menabrak `ConflictError` dari service.
  *
  * **T-092.5 (ADR-094 poin 5, 6) — client state + granular Realtime patch:**
  * `drafts` (hasil `PublishingService.listDrafts` dari `page.tsx`) disalin ke
@@ -136,18 +139,24 @@ export function DraftsList({
     () => toast("Draft berhasil dihapus"),
   );
 
-  const [prevDrafts, setPrevDrafts] = useState(drafts);
-  const [localDrafts, setLocalDrafts] = useState(drafts);
-
-  if (drafts !== prevDrafts) {
-    setPrevDrafts(drafts);
-    setLocalDrafts(drafts);
-  }
+  const [localDrafts, setLocalDrafts] = useSyncedState(drafts);
+  const requestSeqRef = useRef<Map<string, number>>(new Map());
 
   const handlePublishingPostChange = useCallback(
     (event: { postId: CalendarPostItem["id"] }) => {
+      const seq = (requestSeqRef.current.get(event.postId) ?? 0) + 1;
+      requestSeqRef.current.set(event.postId, seq);
+
       void (async () => {
         const fetched = await getDraftPostAction(event.postId);
+
+        // Buang hasil kalau sudah disusul event lain untuk postId yang sama
+        // (out-of-order response) — jangan biarkan fetch yang lebih lama
+        // menimpa state yang sudah diperbarui oleh event yang lebih baru.
+        if (requestSeqRef.current.get(event.postId) !== seq) {
+          return;
+        }
+
         const draftItem = fetched ? toDraftListItem(fetched) : null;
 
         setLocalDrafts((prev) => {
@@ -165,7 +174,7 @@ export function DraftsList({
         });
       })();
     },
-    [],
+    [setLocalDrafts],
   );
 
   usePublishingPostsRealtime(workspaceId, {
@@ -228,24 +237,26 @@ export function DraftsList({
                       >
                         {CONTENT_STATUS_LABEL[draft.status]}
                       </Badge>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon-sm"
-                            aria-label="Hapus draft"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              deleteConfirm.open(draft);
-                            }}
-                            onKeyDown={(event) => event.stopPropagation()}
-                          >
-                            <HugeiconsIcon icon={Delete02Icon} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Hapus draft</TooltipContent>
-                      </Tooltip>
+                      {draft.status === ContentStatus.Draft ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon-sm"
+                              aria-label="Hapus draft"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                deleteConfirm.open(draft);
+                              }}
+                              onKeyDown={(event) => event.stopPropagation()}
+                            >
+                              <HugeiconsIcon icon={Delete02Icon} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Hapus draft</TooltipContent>
+                        </Tooltip>
+                      ) : null}
                     </div>
                   </TableCell>
                 </TableRow>

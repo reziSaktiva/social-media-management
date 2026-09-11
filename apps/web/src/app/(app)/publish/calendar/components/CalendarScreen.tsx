@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef } from "react";
 
 import type { ConnectedAccountId, ContentStatus } from "@social/shared";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/domains/publishing";
 import type { ConnectedAccountRecord } from "@/domains/workspace";
 import { usePublishingPostsRealtime } from "@/lib/hooks/use-publishing-posts-realtime";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 
 import { getCalendarPostAction } from "../actions";
 import { CalendarAgendaList } from "./CalendarAgendaList";
@@ -109,13 +110,11 @@ export function CalendarScreen({
   connectedAccountIds,
   workspaceId,
 }: CalendarScreenProps) {
-  const [prevItems, setPrevItems] = useState(items);
-  const [localItems, setLocalItems] = useState(items);
-
-  if (items !== prevItems) {
-    setPrevItems(items);
-    setLocalItems(items);
-  }
+  const resetGenerationRef = useRef(0);
+  const [localItems, setLocalItems] = useSyncedState(items, () => {
+    resetGenerationRef.current += 1;
+  });
+  const requestSeqRef = useRef<Map<string, number>>(new Map());
 
   const matchesCurrentView = useCallback(
     (item: CalendarPostItem): boolean => {
@@ -141,19 +140,39 @@ export function CalendarScreen({
 
   const handlePublishingPostChange = useCallback(
     (event: { postId: CalendarPostItem["id"] }) => {
+      const seq = (requestSeqRef.current.get(event.postId) ?? 0) + 1;
+      requestSeqRef.current.set(event.postId, seq);
+      const generationAtRequestTime = resetGenerationRef.current;
+
       void (async () => {
         const fetched = await getCalendarPostAction(event.postId);
+
+        // Buang hasil kalau sudah disusul event lain untuk postId yang sama
+        // (out-of-order response), atau kalau user sudah pindah
+        // periode/filter (`items` prop di-reset) sebelum fetch ini selesai —
+        // closure `matchesCurrentView` di bawah bisa saja masih merujuk
+        // kriteria periode yang sudah tidak aktif.
+        if (
+          requestSeqRef.current.get(event.postId) !== seq ||
+          resetGenerationRef.current !== generationAtRequestTime
+        ) {
+          return;
+        }
 
         setLocalItems((prev) => {
           const withoutStale = prev.filter((item) => item.id !== event.postId);
           if (fetched && matchesCurrentView(fetched)) {
-            return [...withoutStale, fetched];
+            return [...withoutStale, fetched].sort(
+              (a, b) =>
+                effectiveCalendarDate(a).getTime() -
+                effectiveCalendarDate(b).getTime(),
+            );
           }
           return withoutStale;
         });
       })();
     },
-    [matchesCurrentView],
+    [matchesCurrentView, setLocalItems],
   );
 
   usePublishingPostsRealtime(workspaceId, {

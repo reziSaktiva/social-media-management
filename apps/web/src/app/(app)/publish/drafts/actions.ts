@@ -4,10 +4,12 @@ import { asPostId, asUserId } from "@social/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { AnalyticsService } from "@/domains/analytics";
 import { PublishingService, type CalendarPostItem } from "@/domains/publishing";
 import { toActionError } from "@/lib/utils/errors";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
+import { analyticsRepository } from "@/lib/repositories/analytics";
 import { publishingRepository } from "@/lib/repositories/publishing";
 
 /**
@@ -66,6 +68,10 @@ export async function deletePostAction(
  * ini — `DraftsList` menafsirkannya sebagai sinyal remove dari local state,
  * sama seperti kalau record ditemukan tapi statusnya sudah bukan salah satu
  * dari 3 status kriteria Drafts lagi (mis. sudah Scheduled/Published/Failed).
+ *
+ * Sesi expired dipetakan ke `null` (BUKAN `redirect("/login")`) — action ini
+ * dipanggil dari handler event Realtime di background, bukan dari klik user,
+ * jadi tab yang idle tidak boleh tiba-tiba di-navigate ke halaman lain.
  */
 export async function getDraftPostAction(
   postId: string,
@@ -73,10 +79,13 @@ export async function getDraftPostAction(
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
-    redirect("/login");
+    return null;
   }
 
-  const publishingService = new PublishingService(publishingRepository);
+  const publishingService = new PublishingService(
+    publishingRepository,
+    new AnalyticsService(analyticsRepository),
+  );
 
   return publishingService.getCalendarPostById(
     workspaceId,
