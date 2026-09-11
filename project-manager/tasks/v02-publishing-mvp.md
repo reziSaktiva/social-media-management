@@ -792,7 +792,7 @@ Ditemukan saat diskusi ADR-093 (2026-08-28): post berstatus `Published`/`Failed`
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing                                                   |
 | **ADR**       | ADR-094 (amandemen RT-D01/RT-D02)                            |
 | **Depends**   | **T-036** (hard dependency — wiring generic Supabase Realtime + Better Auth↔Supabase JWT bridge dibangun di sana dulu, task ini reuse) · T-034 (khusus T-092.6, History belum dibangun) |
@@ -805,7 +805,7 @@ Lahir dari diskusi King Rezi soal kolaborasi tim ala Buffer (user A ubah draft/s
 - [x] **T-092.3** ✅ Done — Granular patch — Calendar: client state list per screen, fetch 1 record termapping saat event masuk, upsert/remove ke local state, subscription lifecycle per-mount screen (ADR-094 poin 5, 6)
 - [x] **T-092.4** ✅ Done — Granular patch — Queue (pola sama T-092.3, kriteria tampilan Queue: cuma status `Scheduled`)
 - [x] **T-092.5** ✅ Done — Granular patch — Drafts (pola sama T-092.3, kriteria tampilan Drafts: `Draft`/`InReview`/`ReadyToSchedule`) — **Definition of Done wajib menyertakan verifikasi cross-tab browser nyata (2 tab, tanpa refresh manual) — lihat KI-057**, kriteria lama (typecheck/lint bersih + tanpa console error + channel `SUBSCRIBED`) tidak lagi cukup untuk menutup subtask ini. **Catatan (2026-09-11):** saat implementasi ditemukan `PublishingService.listDrafts` (initial SSR load) hanya query status `Draft`, tidak konsisten dengan kriteria 3 status di atas — gap ini ditrack terpisah sebagai **T-104**, dikerjakan paralel (sudah selesai, lihat § T-104 di bawah).
-- [ ] **T-092.6** Granular patch — History (pola sama T-092.3) — **depends T-034**, wajib disertakan sejak desain awal History, bukan ditambah belakangan (ADR-094 poin 7) — **Definition of Done wajib menyertakan verifikasi cross-tab browser nyata (2 tab, tanpa refresh manual) — lihat KI-057**, kriteria lama (typecheck/lint bersih + tanpa console error + channel `SUBSCRIBED`) tidak lagi cukup untuk menutup subtask ini
+- [x] **T-092.6** ✅ Done — Granular patch — History (pola sama T-092.3) — **depends T-034**, wajib disertakan sejak desain awal History, bukan ditambah belakangan (ADR-094 poin 7) — **Definition of Done wajib menyertakan verifikasi cross-tab browser nyata (2 tab, tanpa refresh manual) — lihat KI-057**, kriteria lama (typecheck/lint bersih + tanpa console error + channel `SUBSCRIBED`) tidak lagi cukup untuk menutup subtask ini
 
 **Catatan (2026-09-11) — T-092.1 selesai:** migration
 `apps/web/prisma/migrations/20260911090000_t092_1_publishing_posts_realtime_rls/migration.sql`
@@ -988,6 +988,39 @@ masuk akal secara teknis dari membaca alur kode, didukung fix RLS
 Typecheck/lint bersih, 315 test passed/5 skipped, tidak ada regresi.
 T-092 tetap `🟡 In Progress` — 1 subtask tersisa (**T-092.6**, History,
 depends T-034).
+
+**Catatan (2026-09-11) — T-092.6 selesai (History) — T-092 TUNTAS 6/6
+subtask:** Prabowo Feature Engineer menambahkan method baru
+`getHistoryPostById` (interface `IPublishingRepository` + implementasi
+Prisma + `PublishingService`) — **dibuat baru, bukan reuse
+`getCalendarPostById`**, karena History butuh field `status`/`error`
+per-target yang tidak ada di proyeksi Calendar. Server Action
+`getHistoryPostAction`, `HistoryList.tsx` diubah jadi stateful dengan
+`usePublishingPostsRealtime` (dari T-092.2), grouping
+(`groupHistoryItemsByDate`) dipindah ke client. **Verifikasi cross-tab
+browser nyata wajib (KI-057) — PASS:** Publish Now di tab 1 (Drafts) → tab
+2 (History) otomatis menampilkan post baru dengan badge "Published" tanpa
+refresh. Review Ridwan Architecture Reviewer: **0 pelanggaran
+arsitektur** — keputusan membuat method baru (bukan reuse) diverifikasi
+benar dan berdasar bukti kode konkret; klaim verifikasi cross-tab
+dikonfirmasi masuk akal secara teknis dari alur kode. Typecheck/lint
+bersih, 315 test passed/5 skipped, tidak ada regresi. Catatan minor
+Ridwan (bukan blocker): tidak ada unit test spesifik untuk
+`getHistoryPostById` (cuma stub fake repository) — observasi coverage,
+bukan gap fungsional.
+
+**Temuan terpisah di luar scope T-092.6 (tidak dibuatkan task baru):**
+bug pre-existing "Publish Now di Queue selalu gagal untuk post Scheduled"
+ditemukan saat sesi ini — sudah dicatat sebagai chip task terpisah
+menunggu King Rezi pick up, bukan bagian T-092/ADR-094.
+
+**T-092 dinyatakan `✅ Done` (2026-09-11) — seluruh 6/6 subtask tuntas**
+(T-092.1 RLS policy, T-092.2 wiring subscription, T-092.3 Calendar,
+T-092.4 Queue + fix RLS `workspace_members`, T-092.5 Drafts, T-092.6
+History). Definition of Done tambahan dari **KI-057** (verifikasi
+cross-tab browser nyata) sudah terpenuhi untuk seluruh subtask yang
+menjadi syaratnya (T-092.3–T-092.6) — **KI-057 Resolved**, lihat
+`PROJECT_STATE.md`.
 
 ### T-104 · Konsistensi kriteria status Drafts — `listDrafts` vs granular patch Realtime
 

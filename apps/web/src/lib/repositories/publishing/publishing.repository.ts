@@ -709,6 +709,36 @@ export const publishingRepository: IPublishingRepository = {
     return post ? mapHistoryItem(post) : null;
   },
 
+  async getHistoryPostById({ workspaceId, postId }, userId) {
+    let post;
+    try {
+      post = await withCurrentUser(userId, (tx) =>
+        tx.publishingPost.findFirst({
+          where: {
+            id: postId,
+            workspaceId,
+            deletedAt: null,
+            // Sengaja TIDAK menyaring `status` di sini (beda dari
+            // `getHistoryById`) — lihat catatan
+            // `IPublishingRepository.getHistoryPostById`.
+          },
+          include: {
+            targets: {
+              include: { connectedAccount: true },
+            },
+          },
+        }),
+      );
+    } catch (error) {
+      if (isInvalidIdFormat(error)) {
+        return null;
+      }
+      throw error;
+    }
+
+    return post ? mapHistoryItem(post) : null;
+  },
+
   async getRetryTarget({ workspaceId, postId, targetId }, userId) {
     const target = await withCurrentUser(userId, (tx) =>
       tx.publishingPostTarget.findFirst({

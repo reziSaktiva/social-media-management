@@ -8,6 +8,63 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-11 — T-092.6 (Granular patch Realtime — History) selesai — T-092 TUNTAS 6/6 subtask, KI-057 Resolved
+
+Diimplementasikan Prabowo Feature Engineer, lolos review Ridwan
+Architecture Reviewer (0 pelanggaran arsitektur).
+
+**T-092.6 (subtask ke-6/terakhir dari T-092):** method baru
+`getHistoryPostById` (interface `IPublishingRepository` + implementasi
+Prisma + `PublishingService`) — dibuat baru, **bukan** reuse
+`getCalendarPostById`, karena History butuh field `status`/`error`
+per-target yang tidak ada di proyeksi Calendar. Ridwan memverifikasi
+keputusan ini benar dan berdasar bukti kode konkret. Server Action baru
+`getHistoryPostAction`, `HistoryList.tsx` diubah jadi stateful dengan
+`usePublishingPostsRealtime` (dari T-092.2), grouping
+(`groupHistoryItemsByDate`) dipindah ke client. **Verifikasi cross-tab
+browser nyata wajib (KI-057) — PASS:** Publish Now di tab 1 (Drafts) →
+tab 2 (History) otomatis menampilkan post baru dengan badge "Published"
+tanpa refresh — Ridwan mengonfirmasi klaim ini didukung alur kode.
+Typecheck/lint bersih, 315 test passed/5 skipped, tidak ada regresi.
+Catatan minor Ridwan (bukan blocker): tidak ada unit test spesifik untuk
+`getHistoryPostById` (cuma stub fake repository) — observasi coverage.
+
+**Temuan terpisah di luar scope (tidak dibuatkan task baru):** bug
+pre-existing "Publish Now di Queue selalu gagal untuk post Scheduled"
+ditemukan saat sesi ini — sudah dicatat sebagai chip task terpisah
+menunggu King Rezi pick up.
+
+**T-092 (Realtime Calendar/Queue/Drafts/History via Supabase Realtime,
+ADR-094) dinyatakan `✅ Done` — seluruh 6/6 subtask tuntas** (T-092.1 RLS
+policy, T-092.2 wiring subscription, T-092.3 Calendar, T-092.4 Queue + fix
+RLS `workspace_members`, T-092.5 Drafts, T-092.6 History). **KI-057**
+(gap metodologi verifikasi Realtime, ditemukan Ridwan saat T-092.4) —
+**Resolved**: Definition of Done tambahan (verifikasi cross-tab browser
+nyata) sudah terbukti berhasil dijalankan sampai akhir untuk seluruh
+subtask yang menjadi syaratnya (T-092.3–T-092.6).
+
+**Perubahan dokumentasi (Gibran Project Manager):**
+
+- `tasks/v02-publishing-mvp.md` — § T-092: T-092.6 dicentang `[x]` ✅ Done
+  + catatan implementasi lengkap; status task T-092 diubah `🟡 In Progress`
+  → `✅ Done` dengan catatan penutupan 6/6 subtask.
+- `TASKS.md` — indeks v0.2 breakdown "15 ✅ · 3 🟡 · 5 ⏳" → **16 ✅ · 2 🟡
+  · 5 ⏳** (T-092 pindah 🟡 → ✅), **Total** selesai naik 40 → **41**
+  (task/subtask total tidak berubah: 87 task, 217 subtask), blockquote log
+  baru "Update (2026-09-11, T-092 SELESAI 6/6 subtask)", baris T-092 baru
+  ditambahkan ke tabel **Fokus sekarang**.
+- `PROJECT_STATE.md` — Snapshot **Top Next Tasks** diperbarui dengan
+  ringkasan T-092.6 + penutupan T-092; **KI-057** dihapus dari section
+  Known Issues (Resolved, riwayat lengkap ada di sini); section
+  **Completed (Ringkasan)** — bullet baru T-092 ditambahkan di atas, bullet
+  terlama (T-034.4) dihapus supaya tetap 5 item; `Metadata` (Version
+  1.0.79 → 1.0.80, Last Updated 2026-09-11).
+
+Tidak ada perubahan phase/milestone (tetap Phase 6/M8 In Progress) — T-092
+adalah fitur besar dalam M8, bukan penanda milestone baru.
+
+---
+
 ## 2026-09-11 — T-092.5 (Granular patch Realtime — Drafts) dan T-104 (fix konsistensi status `listDrafts`) selesai
 
 Kedua task diimplementasikan Prabowo Feature Engineer dan lolos review

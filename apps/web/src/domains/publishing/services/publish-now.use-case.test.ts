@@ -56,6 +56,7 @@ function createFakeRepository(
     getCalendarPostById: async () => null,
     listHistory: async () => [],
     getHistoryById: async () => null,
+    getHistoryPostById: async () => null,
     cancelSchedule: async () => null,
     markPostFailed: async () => undefined,
     getRetryTarget: async () => null,

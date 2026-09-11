@@ -531,6 +531,41 @@ export interface IPublishingRepository {
   ): Promise<HistoryItemRecord | null>;
 
   /**
+   * Granular patch Realtime History (T-092.6, ADR-094 poin 5, 7) — fetch
+   * SATU `PublishingPost` termapping ke bentuk `HistoryItemRecord` (targets
+   * membawa `status`/`error` per akun, dibutuhkan `HistoryList` untuk
+   * `getPrimaryErrorMessage`) untuk `postId` dari event Supabase Realtime.
+   *
+   * **Beda sengaja dari `getHistoryById`:** method itu menyaring status di
+   * level query (`status: { in: HISTORY_TERMINAL_STATUSES }`, cocok untuk
+   * route detail `[postId]` yang memang HARUS 404 kalau post belum/tidak
+   * pernah masuk History) — method ini TIDAK menyaring status di query,
+   * supaya event granular untuk post yang statusnya BARU SAJA berubah
+   * (mis. `Scheduled` → `Failed`, atau sebaliknya post pindah lagi ke
+   * status lain) tetap mengembalikan record dengan status terkini apa
+   * adanya. Kriteria tampilan History (`HISTORY_TERMINAL_STATUSES`) tetap
+   * ditegakkan CLIENT-SIDE oleh pemanggil (`HistoryList`, sama pola
+   * `DraftsList`/`toDraftListItem`) — bukan di sini, supaya perubahan
+   * status yang membuat post TIDAK LAGI cocok tampil di History (jarang
+   * terjadi tapi mungkin, mis. hasil test/manual DB fix) bisa dideteksi
+   * sebagai "remove dari local state", bukan salah dianggap "tidak
+   * ditemukan".
+   *
+   * Returns `null` kalau post tidak ditemukan di `workspaceId` ini, sudah
+   * di-soft-delete, atau `postId` bukan format UUID valid (sama guard
+   * `isInvalidIdFormat` dengan `getHistoryById`) — caller
+   * (`PublishingService.getHistoryPostById`) memperlakukan ini sebagai
+   * sinyal "remove dari local state", BUKAN error (sama semangat
+   * `getCalendarPostById`).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  getHistoryPostById(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<HistoryItemRecord | null>;
+
+  /**
    * Cancel Schedule (T-030.1, ADR-049 Tier 2) — kebalikan dari
    * `schedulePost`: post kembali ke status Draft (`scheduledAt` di-null-kan)
    * dan seluruh `PublishingPostTarget` milik post itu dihapus (post Draft
