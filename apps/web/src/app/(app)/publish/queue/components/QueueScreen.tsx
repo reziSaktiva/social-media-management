@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef } from "react";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import {
@@ -26,6 +26,7 @@ import {
 } from "@/domains/publishing";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 import { usePublishingPostsRealtime } from "@/lib/hooks/use-publishing-posts-realtime";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 
 import { cancelScheduleAction, getQueuePostAction } from "../actions";
 import { QueueList } from "./QueueList";
@@ -107,18 +108,24 @@ export function QueueScreen({
     toast("Jadwal dibatalkan — post kembali ke Drafts"),
   );
 
-  const [prevGroups, setPrevGroups] = useState(groups);
-  const [localGroups, setLocalGroups] = useState(groups);
-
-  if (groups !== prevGroups) {
-    setPrevGroups(groups);
-    setLocalGroups(groups);
-  }
+  const [localGroups, setLocalGroups] = useSyncedState(groups);
+  const requestSeqRef = useRef<Map<string, number>>(new Map());
 
   const handlePublishingPostChange = useCallback(
     (event: { postId: CalendarPostItem["id"] }) => {
+      const seq = (requestSeqRef.current.get(event.postId) ?? 0) + 1;
+      requestSeqRef.current.set(event.postId, seq);
+
       void (async () => {
         const fetched = await getQueuePostAction(event.postId);
+
+        // Buang hasil kalau sudah disusul event lain untuk postId yang sama
+        // (out-of-order response) — jangan biarkan fetch yang lebih lama
+        // menimpa state yang sudah diperbarui oleh event yang lebih baru.
+        if (requestSeqRef.current.get(event.postId) !== seq) {
+          return;
+        }
+
         const queueItem = fetched ? toQueueItemRecord(fetched) : null;
 
         setLocalGroups((prev) => {
@@ -142,7 +149,7 @@ export function QueueScreen({
         });
       })();
     },
-    [],
+    [setLocalGroups],
   );
 
   usePublishingPostsRealtime(workspaceId, {

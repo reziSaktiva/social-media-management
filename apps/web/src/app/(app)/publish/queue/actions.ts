@@ -4,6 +4,7 @@ import { asPostId, asUserId } from "@social/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { AnalyticsService } from "@/domains/analytics";
 import {
   CancelScheduleUseCase,
   PublishingService,
@@ -13,6 +14,7 @@ import { toActionError } from "@/lib/utils/errors";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
+import { analyticsRepository } from "@/lib/repositories/analytics";
 import { publishingRepository } from "@/lib/repositories/publishing";
 
 /**
@@ -72,6 +74,10 @@ export async function cancelScheduleAction(
  * state, sama seperti kalau record ditemukan tapi statusnya sudah bukan
  * `Scheduled` lagi (mis. sudah Published/Failed, atau kembali ke Draft
  * lewat Cancel Schedule).
+ *
+ * Sesi expired dipetakan ke `null` (BUKAN `redirect("/login")`) — action ini
+ * dipanggil dari handler event Realtime di background, bukan dari klik user,
+ * jadi tab yang idle tidak boleh tiba-tiba di-navigate ke halaman lain.
  */
 export async function getQueuePostAction(
   postId: string,
@@ -79,10 +85,13 @@ export async function getQueuePostAction(
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
-    redirect("/login");
+    return null;
   }
 
-  const publishingService = new PublishingService(publishingRepository);
+  const publishingService = new PublishingService(
+    publishingRepository,
+    new AnalyticsService(analyticsRepository),
+  );
 
   return publishingService.getCalendarPostById(
     workspaceId,
