@@ -57,6 +57,7 @@ function createFakeRepository(
     countScheduledByAccount: async () => new Map(),
     listQueue: async () => [],
     listCalendarPosts: async () => [],
+    getCalendarPostById: async () => null,
     listHistory: async () => [],
     getHistoryById: async () => null,
     cancelSchedule: async () => null,
@@ -371,6 +372,7 @@ function createCalendarItem(
     scheduledAt: new Date("2026-07-14T10:00:00Z"),
     publishedAt: null,
     createdAt: new Date("2026-07-13T00:00:00Z"),
+    updatedAt: new Date("2026-07-13T00:00:00Z"),
     targets: [
       {
         id: asPostTargetId("target-1"),
@@ -566,6 +568,98 @@ describe("PublishingService.listCalendarPosts", () => {
     expect(byId.get(publishedA.id)?.metrics).toEqual([metricA]);
     expect(byId.get(publishedB.id)?.metrics).toEqual([]);
     expect(byId.get(scheduled.id)?.metrics).toBeNull();
+  });
+});
+
+describe("PublishingService.getCalendarPostById", () => {
+  it("mengembalikan null kalau repository tidak menemukan post (T-092.3, ADR-094 poin 5)", async () => {
+    const service = new PublishingService(
+      createFakeRepository({ getCalendarPostById: async () => null }),
+    );
+
+    await expect(
+      service.getCalendarPostById(WORKSPACE_ID, asPostId("post-x"), AUTHOR_ID),
+    ).resolves.toBeNull();
+  });
+
+  it("metrics null untuk post non-Published", async () => {
+    const draft = createCalendarItem({
+      id: asPostId("post-draft"),
+      status: ContentStatus.Draft,
+    });
+    const service = new PublishingService(
+      createFakeRepository({ getCalendarPostById: async () => draft }),
+    );
+
+    const result = await service.getCalendarPostById(
+      WORKSPACE_ID,
+      draft.id,
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual({ ...draft, metrics: null });
+  });
+
+  it("metrics diisi dari PostMetricsPort untuk post Published — satu panggilan, bukan batch semua post workspace", async () => {
+    const published = createCalendarItem({
+      id: asPostId("post-published"),
+      status: ContentStatus.Published,
+      scheduledAt: null,
+      publishedAt: new Date("2026-07-14T00:00:00Z"),
+    });
+    const metric: PostMetricsRecord = {
+      id: asPostMetricsId("metric-a"),
+      postId: published.id,
+      connectedAccountId: asConnectedAccountId("conn-1"),
+      platform: SocialPlatform.Instagram,
+      impressions: 100,
+      reach: 80,
+      likes: 10,
+      comments: 2,
+      shares: 1,
+      clicks: null,
+      engagementRate: 0.1625,
+      fetchedAt: new Date(0),
+    };
+    let receivedPostIds: PostId[] | null = null;
+    const service = new PublishingService(
+      createFakeRepository({ getCalendarPostById: async () => published }),
+      {
+        getPostMetricsByPosts: async (postIds) => {
+          receivedPostIds = postIds;
+          return new Map([[published.id, [metric]]]);
+        },
+      },
+    );
+
+    const result = await service.getCalendarPostById(
+      WORKSPACE_ID,
+      published.id,
+      AUTHOR_ID,
+    );
+
+    expect(receivedPostIds).toEqual([published.id]);
+    expect(result).toEqual({ ...published, metrics: [metric] });
+  });
+
+  it("metrics [] untuk post Published tanpa PostMetricsPort disuplai", async () => {
+    const published = createCalendarItem({
+      id: asPostId("post-published"),
+      status: ContentStatus.Published,
+      scheduledAt: null,
+      publishedAt: new Date("2026-07-14T00:00:00Z"),
+    });
+    const service = new PublishingService(
+      createFakeRepository({ getCalendarPostById: async () => published }),
+    );
+
+    const result = await service.getCalendarPostById(
+      WORKSPACE_ID,
+      published.id,
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual({ ...published, metrics: [] });
   });
 });
 

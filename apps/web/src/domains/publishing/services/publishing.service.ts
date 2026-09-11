@@ -285,6 +285,50 @@ export class PublishingService {
   }
 
   /**
+   * Granular patch Realtime Calendar (T-092.3, ADR-094 poin 5) — fetch SATU
+   * record termapping untuk `postId` dari event Realtime
+   * (`{postId, eventType}`, `usePublishingPostsRealtime`). Reuse post-
+   * processing metrik yang sama dengan `listCalendarPosts` (batch via
+   * `PostMetricsPort` kalau item Published) supaya bentuk hasil identik
+   * dengan item lain di local state Calendar — screen pemanggil tidak perlu
+   * tahu bedanya item dari initial load vs. hasil patch granular.
+   *
+   * Returns `null` kalau post tidak ditemukan di `workspaceId` ini atau
+   * sudah di-soft-delete — CalendarScreen menafsirkan ini sebagai "remove
+   * dari local state" (post ini sudah tidak valid lagi untuk workspace ini),
+   * BUKAN error — beda dari `getDraftById`/`getHistoryById` yang throw
+   * `NotFoundError` untuk kasus serupa (method-method itu dipanggil dari
+   * route/aksi yang punya alur error eksplisit; method ini dipanggil dari
+   * handler event Realtime yang butuh sinyal graceful, bukan exception).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  async getCalendarPostById(
+    workspaceId: WorkspaceId,
+    postId: PostId,
+    userId: UserId,
+  ): Promise<CalendarPostItem | null> {
+    const item = await this.repository.getCalendarPostById(
+      { workspaceId, postId },
+      userId,
+    );
+    if (!item) {
+      return null;
+    }
+
+    const metrics =
+      item.status === ContentStatus.Published && this.postMetrics
+        ? ((await this.postMetrics.getPostMetricsByPosts([item.id])).get(
+            item.id,
+          ) ?? [])
+        : item.status === ContentStatus.Published
+          ? []
+          : null;
+
+    return { ...item, metrics };
+  }
+
+  /**
    * History (T-034.1, KSP-D10) — post yang percobaan publish-nya sudah
    * selesai (`Published`/`Failed`), beserta status/error per target,
    * diurutkan repository descending oleh `updatedAt` (proksi waktu

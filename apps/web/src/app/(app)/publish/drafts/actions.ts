@@ -4,7 +4,7 @@ import { asPostId, asUserId } from "@social/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { PublishingService } from "@/domains/publishing";
+import { PublishingService, type CalendarPostItem } from "@/domains/publishing";
 import { toActionError } from "@/lib/utils/errors";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
@@ -47,4 +47,40 @@ export async function deletePostAction(
 
   revalidatePath("/publish/drafts");
   return {};
+}
+
+/**
+ * Granular patch Realtime Drafts (T-092.5, ADR-094 poin 5) — dipanggil
+ * `DraftsList` (client) saat event `usePublishingPostsRealtime`
+ * (`INSERT`/`UPDATE`) masuk, untuk fetch SATU record termapping. Reuse
+ * `PublishingService.getCalendarPostById` (bukan method baru) — sama pola
+ * `getQueuePostAction` (T-092.4): shape data `CalendarPostItem` sudah
+ * membawa `caption`/`status`/`updatedAt` yang dibutuhkan tampilan Drafts,
+ * kriteria tampilan (`Draft`/`InReview`/`ReadyToSchedule`) murni soal
+ * filtering di client, bukan proyeksi data berbeda — jadi tidak perlu
+ * method `IPublishingRepository` baru khusus Drafts. Entry point ini murni
+ * wiring: resolve workspace/session, delegasikan ke Application Service —
+ * tidak ada business logic (AGENTS.md #5).
+ *
+ * `null` berarti post sudah tidak ada/di-soft-delete/keluar dari workspace
+ * ini — `DraftsList` menafsirkannya sebagai sinyal remove dari local state,
+ * sama seperti kalau record ditemukan tapi statusnya sudah bukan salah satu
+ * dari 3 status kriteria Drafts lagi (mis. sudah Scheduled/Published/Failed).
+ */
+export async function getDraftPostAction(
+  postId: string,
+): Promise<CalendarPostItem | null> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const publishingService = new PublishingService(publishingRepository);
+
+  return publishingService.getCalendarPostById(
+    workspaceId,
+    asPostId(postId),
+    asUserId(session.user.id),
+  );
 }

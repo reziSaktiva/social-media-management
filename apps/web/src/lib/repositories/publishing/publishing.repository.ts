@@ -111,6 +111,7 @@ function mapCalendarItem(post: QueuePostWithTargets): CalendarItemRecord {
     scheduledAt: post.scheduledAt,
     publishedAt: post.publishedAt,
     createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
     targets: post.targets.map((target): CalendarItemTargetRecord => ({
       id: asPostTargetId(target.id),
       connectedAccountId: asConnectedAccountId(target.connectedAccountId),
@@ -598,6 +599,25 @@ export const publishingRepository: IPublishingRepository = {
     );
 
     return posts.map(mapCalendarItem);
+  },
+
+  async getCalendarPostById({ workspaceId, postId }, userId) {
+    const post = await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.findFirst({
+        where: {
+          id: postId,
+          workspaceId,
+          deletedAt: null,
+        },
+        include: {
+          targets: {
+            include: { connectedAccount: true },
+          },
+        },
+      }),
+    );
+
+    return post ? mapCalendarItem(post) : null;
   },
 
   async listHistory({ workspaceId, statuses, connectedAccountIds }, userId) {

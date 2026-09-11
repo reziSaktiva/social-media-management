@@ -1,7 +1,19 @@
-import type { ConnectedAccountId } from "@social/shared";
-import type { CalendarPostItem, CalendarViewMode } from "@/domains/publishing";
-import type { ConnectedAccountRecord } from "@/domains/workspace";
+"use client";
 
+import { useCallback, useState } from "react";
+
+import type { ConnectedAccountId, ContentStatus } from "@social/shared";
+import {
+  effectiveCalendarDate,
+  getMonthRange,
+  getWeekRange,
+  type CalendarPostItem,
+  type CalendarViewMode,
+} from "@/domains/publishing";
+import type { ConnectedAccountRecord } from "@/domains/workspace";
+import { usePublishingPostsRealtime } from "@/lib/hooks/use-publishing-posts-realtime";
+
+import { getCalendarPostAction } from "../actions";
 import { CalendarAgendaList } from "./CalendarAgendaList";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
 import { CalendarToolbar } from "./CalendarToolbar";
@@ -17,13 +29,27 @@ type CalendarScreenProps = {
   /** Hasil nyata `PublishingService.listCalendarPosts` (T-033.3/.4, sudah
    * terfilter `statuses`/`connectedAccountIds` T-033.6) untuk rentang
    * Week/Month yang memuat `date` (`getWeekRange`/`getMonthRange`) — sudah
-   * data asli dari database, bukan lagi placeholder. */
+   * data asli dari database, bukan lagi placeholder. Diinisialisasi ke
+   * client state di sini (T-092.3, ADR-094 poin 5) — sumber awal SETIAP
+   * kali `page.tsx` di-render ulang server-side (navigasi periode/filter),
+   * dipatch granular sesudahnya oleh event Realtime. */
   items: CalendarPostItem[];
   /** Daftar akun terkoneksi workspace (T-033.6) — opsi filter Channels di `CalendarToolbar`. */
   accounts: ConnectedAccountRecord[];
+  /** Filter Status aktif dari `?status=` (T-033.6, dipakai `page.tsx` untuk
+   * fetch `items` awal) — array kosong = tanpa filter (semua status). Dibawa
+   * ke sini SEKARANG (T-092.3) supaya granular patch bisa menilai "apakah
+   * record hasil fetch by-id masih cocok kriteria tampilan saat ini",
+   * bukan cuma dipakai server-side seperti sebelumnya. */
+  statuses: ContentStatus[];
   /** Filter Channels aktif dari `?accounts=` (T-033.6) — diteruskan ke grid supaya
    * target yang tidak dipilih tidak ikut tampil (post multi-platform). */
   connectedAccountIds: ConnectedAccountId[];
+  /** Workspace aktif — dipakai `usePublishingPostsRealtime` (T-092.3) untuk
+   * subscribe channel `publishing_posts:{workspaceId}`, bukan dipakai untuk
+   * fetch data apa pun langsung di komponen ini (itu tetap tugas
+   * `getCalendarPostAction`/Application Service, AGENTS.md #5). */
+  workspaceId: string;
 };
 
 /**
@@ -43,14 +69,98 @@ type CalendarScreenProps = {
  * `CalendarToolbar` tetap mengontrol RANGE tanggal yang di-fetch
  * (`page.tsx`), bukan mode render — Agenda dipakai untuk kedua pilihan itu
  * saat mobile.
+ *
+ * **T-092.3 (ADR-094 poin 5, 6) — client state + granular Realtime patch:**
+ * `items` sekarang disalin ke `useState` lokal (bukan lagi dirender
+ * langsung dari props, pola "RSC-pure tanpa state" berubah sesuai ADR-094
+ * poin 5). `useEffect` men-sinkronkan ulang state ini SETIAP kali `items`
+ * prop berubah (navigasi periode/filter lewat `router.replace` di
+ * `useCalendarPeriodState`, yang me-refetch `page.tsx` server-side dengan
+ * `from`/`to`/`statuses`/`connectedAccountIds` baru) — supaya state lokal
+ * tidak pernah "nyangkut" dari periode/filter sebelumnya.
+ *
+ * `usePublishingPostsRealtime(workspaceId, {...})` subscribe selama screen
+ * ini mount (lifecycle per-mount, ADR-094 poin 6 — dilepas otomatis oleh
+ * hook itu sendiri saat unmount/`workspaceId` berubah). Event `INSERT`/
+ * `UPDATE` memicu fetch SATU record via `getCalendarPostAction` (Server
+ * Action → `PublishingService.getCalendarPostById`, bukan refetch seluruh
+ * list) lalu di-upsert/remove ke state lokal berdasar
+ * `matchesCurrentView` (rentang tanggal `getWeekRange`/`getMonthRange` dari
+ * `view`+`date` saat ini, plus filter `statuses`/`connectedAccountIds` yang
+ * sama dipakai `page.tsx`) — echo dari aksi milik user sendiri diproses
+ * sama seperti event orang lain, tanpa deteksi/skip apa pun (idempoten by
+ * design, ADR-094 poin 5).
+ *
+ * Sinkronisasi `items` prop → state lokal dilakukan SAAT RENDER (pola
+ * "Adjusting state when a prop changes" React, bukan `useEffect` +
+ * `setState` yang memicu render tambahan/cascading) — `prevItems` menyimpan
+ * referensi `items` terakhir yang sudah disinkronkan; begitu `page.tsx`
+ * re-render dengan `items` baru (navigasi periode/filter lewat
+ * `useCalendarPeriodState`), perbedaan referensi terdeteksi di render
+ * berikutnya dan `localItems` di-reset SEBELUM commit, jadi state lokal
+ * tidak pernah "nyangkut" dari periode/filter sebelumnya.
  */
 export function CalendarScreen({
   view,
   date,
   items,
   accounts,
+  statuses,
   connectedAccountIds,
+  workspaceId,
 }: CalendarScreenProps) {
+  const [prevItems, setPrevItems] = useState(items);
+  const [localItems, setLocalItems] = useState(items);
+
+  if (items !== prevItems) {
+    setPrevItems(items);
+    setLocalItems(items);
+  }
+
+  const matchesCurrentView = useCallback(
+    (item: CalendarPostItem): boolean => {
+      if (statuses.length > 0 && !statuses.includes(item.status)) {
+        return false;
+      }
+      if (
+        connectedAccountIds.length > 0 &&
+        !item.targets.some((target) =>
+          connectedAccountIds.includes(target.connectedAccountId),
+        )
+      ) {
+        return false;
+      }
+
+      const { from, to } =
+        view === "month" ? getMonthRange(date) : getWeekRange(date);
+      const effectiveDate = effectiveCalendarDate(item);
+      return effectiveDate >= from && effectiveDate <= to;
+    },
+    [statuses, connectedAccountIds, view, date],
+  );
+
+  const handlePublishingPostChange = useCallback(
+    (event: { postId: CalendarPostItem["id"] }) => {
+      void (async () => {
+        const fetched = await getCalendarPostAction(event.postId);
+
+        setLocalItems((prev) => {
+          const withoutStale = prev.filter((item) => item.id !== event.postId);
+          if (fetched && matchesCurrentView(fetched)) {
+            return [...withoutStale, fetched];
+          }
+          return withoutStale;
+        });
+      })();
+    },
+    [matchesCurrentView],
+  );
+
+  usePublishingPostsRealtime(workspaceId, {
+    onInsert: handlePublishingPostChange,
+    onUpdate: handlePublishingPostChange,
+  });
+
   return (
     // T-101.1: `VStack` Astryx -> Tailwind flex (layout-only, ADR-097).
     // eslint-disable-next-line no-restricted-syntax
@@ -62,13 +172,13 @@ export function CalendarScreen({
         {view === "month" ? (
           <CalendarMonthGrid
             date={date}
-            items={items}
+            items={localItems}
             connectedAccountIds={connectedAccountIds}
           />
         ) : (
           <CalendarWeekGrid
             date={date}
-            items={items}
+            items={localItems}
             connectedAccountIds={connectedAccountIds}
           />
         )}
@@ -77,7 +187,7 @@ export function CalendarScreen({
       {/* eslint-disable-next-line no-restricted-syntax -- KI-035 poin 3: layout-only */}
       <div className="block md:hidden">
         <CalendarAgendaList
-          items={items}
+          items={localItems}
           connectedAccountIds={connectedAccountIds}
         />
       </div>
