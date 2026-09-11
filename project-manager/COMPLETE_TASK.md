@@ -8,6 +8,129 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-10 — T-035 Done — Delete Post + dialog konfirmasi, scope dipersempit ke Drafts
+
+King Rezi meminta lanjut kerjakan T-035 di branch
+`feature/t-035-delete-post-dialog-konfirmasi`. Sebelum menulis kode UI,
+dicek dulu ke Claude Design (AGENTS.md rule 17) untuk entry point Delete
+Post di 3 screen yang disebut task file (Drafts + Queue + History) —
+ternyata **tidak satu pun** dari `publish-drafts.html`, `publish-queue.html`,
+`publish-history.html` punya rancangan tombol delete sama sekali (Drafts:
+baris klik-penuh tanpa icon aksi; Queue: 3 icon existing — Publish Now/
+Edit/Cancel Schedule — tanpa Delete; History: baris klik-penuh murni link
+ke detail). Sesuai rule 17, implementasi UI di-**STOP** dulu, ditanyakan ke
+King Rezi lewat `AskUserQuestion`.
+
+**Keputusan King Rezi (bukan asumsi AI):**
+1. Entry point Delete **hanya di Drafts** — Queue TIDAK boleh delete
+   langsung ("harus di-cancel lalu pindah ke draft baru bisa di hapus"),
+   History TIDAK boleh delete sama sekali (post sudah diproses/published).
+2. Pola visual Drafts: tidak ada preferensi spesifik → dipakai rekomendasi
+   (icon trash merah selalu terlihat, konsisten `icon-btn-danger` yang
+   sudah dipakai Cancel Schedule di Queue).
+
+Implementasi dikerjakan 2 sesi Prabowo Feature Engineer berurutan (sesi
+kedua mengoreksi keputusan sesi pertama setelah scope dipersempit):
+
+**Sesi 1 (T-035.1 backend, sebelum scope dipersempit):** `PublishingService.deletePost`
++ `IPublishingRepository.softDeletePost` (soft delete via `deletedAt`,
+konsisten DB-D03 — `publishing_posts` satu-satunya tabel soft-delete),
+`assertActorCanDeletePost` RBAC baru. Awalnya TANPA guard status (asumsi
+salah bahwa History butuh delete untuk Published/Failed).
+
+**Sesi 2 (koreksi + T-035.2/T-035.3):**
+- Guard status ditambahkan dua lapis: service (`findDraftById` + cek
+  eksplisit `status !== Draft` → `ConflictError`) dan repository
+  (`updateMany` where `status: Draft` sebagai safety net race condition,
+  pola sama `updateDraftCaption`). Hanya post `Draft` yang bisa dihapus.
+- Server Action baru `apps/web/src/app/(app)/publish/drafts/actions.ts`
+  (`deletePostAction`) — murni wiring, tanpa business logic (rule 5).
+- `DraftsList.tsx` — icon trash merah per baris (hugeicons `Delete02Icon`),
+  `stopPropagation` di `onClick` DAN `onKeyDown` (perlu keduanya karena
+  Enter pada `<button>` fokus memicu `keydown` yang bubble ke `TableRow`).
+  Dialog konfirmasi reuse `ConfirmActionDialog`/`useConfirmAction` (pola
+  sama Disconnect Account di `ConnectedAccountsList.tsx`), bukan `AlertDialog`
+  inline seperti `QueueScreen.tsx` — dua pola itu coexist di codebase,
+  dipilih yang eksplisit reusable.
+- Queue dan History **tidak disentuh sama sekali** — diverifikasi
+  `git status` + browser.
+
+**Review & QA:**
+- Ridwan Architecture Reviewer: **0 temuan blocking**. Guard status dua
+  lapis solid tanpa celah race condition, RBAC konsisten Publish Now/
+  Cancel Schedule, Server Action murni wiring, `stopPropagation` efektif
+  mencegah klik icon delete ikut trigger navigasi baris. 1 catatan
+  non-blocking: nuansa ARIA "interactive-in-interactive" (button di dalam
+  row yang juga `role="button"`) — bukan bug fungsional, sekadar observasi
+  a11y untuk follow-up.
+- Najwa QA Engineer: `bun run typecheck`/`lint`/`test` PASS (311 pass, 5
+  skip, 0 fail). Browser end-to-end PASS seluruh golden path (icon tampil,
+  dialog konfirmasi, batal aman, konfirmasi hapus + verifikasi ulang
+  setelah reload bukan cuma optimistic client-side, klik baris lain tetap
+  buka Edit Draft, draft caption kosong tidak crash) dan regresi (Queue
+  3 icon lama tidak berubah, History tetap klik-penuh tanpa tombol delete,
+  console bersih). RBAC diverifikasi nyata: login sebagai Sinta Wijaya
+  (role Creator) berhasil hapus draft juga, sesuai ADR-074. Satu item
+  **inconclusive** (bukan bug): verifikasi keyboard Enter/Space via tool
+  Browser pane tidak konklusif — dibuktikan lewat kontrol (tombol native
+  "New Post" yang jelas berfungsi via klik mouse juga tidak merespons
+  Enter/Space lewat tool yang sama), jadi keterbatasan tooling otomasi,
+  bukan kode aplikasi (`onKeyDown` hanya `stopPropagation`, bukan
+  `preventDefault`, jadi behavior native `<button>` seharusnya tetap
+  jalan) — direkomendasikan verifikasi manual King Rezi di browser asli.
+
+Dokumentasi diupdate (main agent): `tasks/v02-publishing-mvp.md` § T-035
+(→ `✅ Done`, 3/3 checklist, catatan scope lengkap), `TASKS.md` (indeks
+v0.2: "13 ✅ · 2 🟡 · 7 ⏳" → "14 ✅ · 2 🟡 · 6 ⏳", total selesai 38 → 39),
+`PROJECT_STATE.md` (Top Next Tasks + Completed Ringkasan, bullet terlama
+digeser sesuai batas 5 item). Branch `feature/t-035-delete-post-dialog-konfirmasi`
+masih ada, belum di-commit/push — menunggu instruksi eksplisit King Rezi
+(AGENTS.md rule 13).
+
+---
+
+## 2026-09-10 — T-038 ditemukan sudah selesai — Toggle Fullscreen/Standard Draft Editor (ADR-065)
+
+King Rezi meminta lanjut kerjakan implementasi T-038 (Toggle Fullscreen/
+Standard resmi di Draft Editor) di branch
+`feature/t-038-draft-editor-fullscreen-standard-toggle` (dibuat dari
+`staging`). Sebelum menulis kode, dibaca dulu task file
+(`tasks/v02-publishing-mvp.md` § T-038), ADR-065, dan markup Claude Design
+(`templates/draft-editor.html`, projectId
+`84aded99-bb23-49b1-be9f-dd8f21c6873e`) — pola sudah jelas terkunci (bukan
+ambigu), tidak perlu stop-and-ask (AGENTS.md rule 17).
+
+Saat membaca kode `Modal.tsx` untuk mulai implementasi, ternyata **seluruh
+4 subtask sudah terimplementasi penuh**: state `dialogVariant`
+("standard"/"fullscreen"), reset ke Standard tiap `sessionKey` baru (baris
+~958-976), toggle button di header sebaris status chip + kiri tombol Close
+(baris ~549-563), dan dipakai sama oleh mode "create" (New Post) maupun
+"edit" (Edit Draft) lewat komponen `DraftEditorForm` yang sama. `git log`
+menunjukkan logic ini masuk lewat commit `8e2e7ce` (T-100, migrasi Draft
+Editor Modal ke shadcn/ui, 2026-09-03) — kemungkinan besar dikerjakan
+sebagai bagian scope T-100 tanpa disadari juga menutup T-038, dan status
+T-038 tidak pernah diperbarui saat itu.
+
+Diverifikasi ulang lewat browser real (dev server `localhost:3000`, akun
+Owner "Insvire"), bukan cuma baca kode:
+- New Post: modal dibuka default **Standard** (floating card + backdrop),
+  toggle bertuliskan "Fullscreen".
+- Klik toggle → beralih ke **Fullscreen** (full viewport, tanpa backdrop
+  terlihat), label toggle berubah jadi "Standard".
+- Tutup modal, buka New Post lagi → kembali ke Standard (tidak dipersist,
+  sesuai ADR-065).
+- Edit Draft (dari salah satu draft existing) → default Standard juga,
+  perilaku sama persis dengan New Post.
+
+0 gap ditemukan terhadap ADR-065 maupun mockup Claude Design. Tidak ada
+perubahan kode yang dibuat di sesi ini — murni koreksi status dokumentasi:
+`tasks/v02-publishing-mvp.md` § T-038 (`⏳ Not Started` → `✅ Done`, 4/4
+checklist dicentang) dan `TASKS.md` (indeks v0.2: "12 ✅ · 2 🟡 · 8 ⏳" →
+"13 ✅ · 2 🟡 · 7 ⏳", total selesai 37 → 38). Branch masih ada
+(`feature/t-038-draft-editor-fullscreen-standard-toggle`), belum
+di-commit/push — menunggu instruksi eksplisit King Rezi (AGENTS.md rule
+13).
+
 ## 2026-09-10 — T-103.4 Done — Audit retroaktif menemukan & menutup KI-056 (History drift). T-103 tuntas 4/4.
 
 Retroactive pass (T-103.4): audit lewat `DesignSync` untuk 5 screen di luar

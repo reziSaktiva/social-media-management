@@ -808,6 +808,34 @@ export const publishingRepository: IPublishingRepository = {
 
     return record;
   },
+
+  async softDeletePost({ workspaceId, postId }, userId) {
+    const post = await withCurrentUser(userId, async (tx) => {
+      // Guard ganda (koreksi 2026-09-10, lihat `IPublishingRepository.softDeletePost`):
+      // hanya post Draft yang belum di-soft-delete yang bisa jadi target —
+      // entry point Delete Post hanya ada di Drafts, post Scheduled harus
+      // di-Cancel Schedule dulu. `status: Draft` di sini murni safety net
+      // race condition; guard utama (pesan error informatif) sudah
+      // dilakukan `PublishingService.deletePost` lebih dulu.
+      const { count } = await tx.publishingPost.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          status: ContentStatus.Draft,
+          deletedAt: null,
+        },
+        data: { deletedAt: new Date() },
+      });
+
+      if (count === 0) {
+        return null;
+      }
+
+      return tx.publishingPost.findUniqueOrThrow({ where: { id: postId } });
+    });
+
+    return post ? mapPost(post) : null;
+  },
 };
 
 /** Row shape returned by the raw SQL call above — snake_case, mirrors the SQL function's RETURNS TABLE. */

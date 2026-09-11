@@ -55,6 +55,7 @@ function createFakeRepository(
     setRetryOutstandPostId: async () => undefined,
     reconcilePostStatusAfterRetry: async () => undefined,
     findPostTargetsByOutstandPostId: async () => null,
+    softDeletePost: async () => null,
     ...overrides,
   };
 }

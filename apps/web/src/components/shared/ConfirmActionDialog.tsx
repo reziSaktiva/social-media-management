@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 
 /**
@@ -20,6 +21,14 @@ import { Spinner } from "@/components/ui/spinner";
  * `ConnectedAccountsList.tsx` (Disconnect account, T-014.3). Dipindah ke
  * sini supaya perubahan pada scaffold-nya (padding, a11y, penempatan
  * spinner) hanya perlu dilakukan satu tempat.
+ *
+ * `error` (code review PR #117): kalau `action()` di `useConfirmAction`
+ * gagal, dialog TETAP terbuka (`target` tidak di-clear) supaya user tidak
+ * kehilangan konteks apa yang gagal dihapus/diubah — tapi sebelumnya tidak
+ * ada slot untuk menampilkan pesan error di dalam dialog itu sendiri,
+ * jadi error hanya terlihat lewat elemen terpisah di halaman yang
+ * tertutup overlay modal ini. Ditampilkan di sini sekarang supaya selalu
+ * terlihat persis di tempat kegagalannya terjadi.
  */
 export function ConfirmActionDialog({
   isOpen,
@@ -28,6 +37,7 @@ export function ConfirmActionDialog({
   description,
   confirmLabel,
   isLoading,
+  error,
   onConfirm,
   variant,
 }: {
@@ -37,6 +47,7 @@ export function ConfirmActionDialog({
   description: string;
   confirmLabel: string;
   isLoading: boolean;
+  error?: string | null;
   onConfirm: () => void;
   variant?: "destructive";
 }) {
@@ -52,6 +63,11 @@ export function ConfirmActionDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {error ? (
+          <Alert variant="destructive">
+            <AlertTitle>{error}</AlertTitle>
+          </Alert>
+        ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isLoading}>Batal</AlertDialogCancel>
           <AlertDialogAction
