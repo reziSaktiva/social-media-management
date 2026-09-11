@@ -8,6 +8,374 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-11 — T-092.5 (Granular patch Realtime — Drafts) dan T-104 (fix konsistensi status `listDrafts`) selesai
+
+Kedua task diimplementasikan Prabowo Feature Engineer dan lolos review
+Ridwan Architecture Reviewer (0 pelanggaran arsitektur untuk keduanya).
+
+**T-092.5 (subtask ke-5 dari 6, T-092):** Server Action
+`getDraftPostAction` (reuse `PublishingService.getCalendarPostById` dari
+T-092.3, tanpa duplikasi method baru), `DraftsList.tsx` diubah jadi client
+state yang subscribe `usePublishingPostsRealtime` (dari T-092.2), filter
+kriteria tampilan Drafts (3 status: `Draft`/`InReview`/`ReadyToSchedule`)
+via fungsi `toDraftListItem`. Field `updatedAt` ditambahkan ke
+`CalendarItemRecord` (perubahan additive). **Verifikasi cross-tab browser
+nyata wajib (KI-057) — PASS untuk kedua skenario:** edit caption draft di
+tab 1 ter-update otomatis di tab 2 tanpa refresh; hapus draft di tab 1
+membuat baris hilang otomatis di tab 2. Ridwan mengonfirmasi klaim PASS
+ini masuk akal secara teknis dari alur kode, didukung fix RLS
+`workspace_members` yang sudah diterapkan lebih dulu di T-092.4.
+Typecheck/lint bersih, 315 test passed/5 skipped, tidak ada regresi.
+T-092 tetap `🟡 In Progress` — 1 subtask tersisa (**T-092.6**, History,
+depends T-034).
+
+**T-104 (Konsistensi kriteria status Drafts):** `PublishingService.listDrafts`
+diubah dari filter status tunggal (`Draft`) jadi 3 status (`Draft`/
+`InReview`/`ReadyToSchedule`), sekarang konsisten dengan
+`DRAFT_VIEW_STATUSES` di client (`DraftsList.tsx`, T-092.5). Ridwan
+mengonfirmasi filter backend dan client sekarang identik.
+
+**Gap baru ditemukan selama implementasi T-104 (dicatat, bukan subtask
+baru):** tombol Hapus di layar Drafts tetap tampil tanpa syarat untuk
+status `InReview`/`ReadyToSchedule`, padahal `deletePost` hanya
+mengizinkan status `Draft` — berpotensi menghasilkan pesan error
+menyesatkan ("Cancel Schedule dulu") padahal kedua status itu tidak
+pernah melalui alur schedule. Ridwan mengonfirmasi ini technical debt
+valid. Termasuk di gap ini: komentar `DraftsList.tsx:94-98` ("baris di
+sini selalu Draft") sudah tidak akurat pasca T-104, perlu diperbaiki
+bersamaan nanti. Sudah dicatat sebagai chip task terpisah oleh Prabowo
+Feature Engineer (`task_6b93cfb5`), menunggu King Rezi pick up — tidak
+dibuatkan task/subtask formal baru.
+
+**Perubahan dokumentasi (Gibran Project Manager):**
+
+- `tasks/v02-publishing-mvp.md` — § T-092: T-092.5 dicentang `[x]` ✅ Done
+  + catatan implementasi lengkap; § T-104: T-104.1 dicentang `[x]` ✅ Done,
+  status task T-104 diubah 🟡 → ✅ Done, catatan implementasi + gap tombol
+  Hapus ditambahkan.
+- `TASKS.md` — indeks v0.2 breakdown "14 ✅ · 4 🟡 · 5 ⏳" → **15 ✅ · 3 🟡
+  · 5 ⏳** (T-104 pindah 🟡 → ✅, T-092 tetap 🟡), **Total** selesai naik
+  39 → **40** (task/subtask total tidak berubah: 87 task, 217 subtask),
+  blockquote log baru "Update (2026-09-11, T-092.5 + T-104 selesai)".
+- `PROJECT_STATE.md` — **KI-057** ditambah catatan progres: T-092.5 sudah
+  membuktikan Definition of Done verifikasi cross-tab bisa PASS nyata;
+  Status **tetap Open** (T-092.6 masih tersisa, belum jalankan verifikasi
+  yang sama).
+
+---
+
+## 2026-09-11 — T-104 baru ditambahkan (Konsistensi kriteria status Drafts — `listDrafts` vs granular patch Realtime)
+
+Task baru **T-104** ditambahkan ke `tasks/v02-publishing-mvp.md` (domain
+publishing, ID global berikutnya setelah T-103, pola sama T-090/T-091/
+T-092/T-093/T-094), status `🟡 In Progress` — dikerjakan paralel oleh
+Prabowo Feature Engineer.
+
+**Latar belakang:** ditemukan saat implementasi **T-092.5** (Granular
+patch Realtime — Drafts): `PublishingService.listDrafts` (initial SSR
+load halaman `/publish/drafts`) hanya query post berstatus `Draft`,
+padahal kriteria tampilan Drafts sesuai **ADR-094** (dan yang sudah
+diterapkan di granular patch Realtime T-092.5) mencakup 3 status —
+`Draft`, `InReview`, `ReadyToSchedule`. Belum berdampak nyata (belum ada
+fitur yang mentransisi post ke `InReview`/`ReadyToSchedule` — review-
+workflow belum dibangun), tapi initial load dan hasil patch Realtime
+punya kriteria yang tidak konsisten, berpotensi jadi bug nyata begitu
+review-workflow dibangun. King Rezi memutuskan diperbaiki sekarang juga,
+bukan sekadar dicatat sebagai known gap.
+
+**Perubahan dokumentasi (Gibran Project Manager):**
+
+- `tasks/v02-publishing-mvp.md` — entri baru **T-104** (1 subtask:
+  perbaiki `PublishingService.listDrafts` supaya query mencakup ketiga
+  status, konsisten dengan kriteria granular patch Realtime di
+  `DraftsList.tsx` T-092.5); catatan referensi balik ditambahkan di
+  § T-092.5; entri Catatan Rilis baru untuk pola ID T-104.
+- `TASKS.md` — indeks v0.2 (22→23 task, breakdown "14 ✅ · 3 🟡 · 5 ⏳" →
+  "14 ✅ · 4 🟡 · 5 ⏳"), **Total** (86→87 task, 216→217 subtask), footnote
+  ID global diperluas, blockquote log baru untuk T-104.
+
+Implementasi kode (fix `listDrafts`) dikerjakan terpisah oleh Prabowo
+Feature Engineer di sesi paralel — akan dicatat sebagai entri
+`COMPLETE_TASK.md` tersendiri setelah selesai.
+
+---
+
+## 2026-09-11 — T-092.4 migration follow-up (defense-in-depth) + KI-057 baru (gap metodologi verifikasi Realtime)
+
+Tindak lanjut dari review Ridwan Architecture Reviewer atas **T-092.4**,
+dikonfirmasi King Rezi. Dua bagian:
+
+**1. Migration follow-up defense-in-depth (Elon Backend Engineer):** file
+`apps/web/prisma/migrations/20260911110000_t092_5_workspace_members_realtime_own_row_active_filter/migration.sql`
+menambah filter `AND status = 'active'` ke policy
+`workspace_members_realtime_own_row` (dibuat di T-092.4 sebelumnya) — bukan
+menutup celah eksploitasi (member non-`active` sudah tertahan policy
+`publishing_posts` di layer atasnya), murni defense-in-depth, konsisten
+dengan filter serupa yang sudah dipakai
+`publishing_posts_realtime_workspace_members`. Tidak ada regresi ke
+consumer manapun. Sudah di-apply ke database (`bunx prisma migrate deploy`)
+dan diverifikasi.
+
+**Catatan penamaan (koreksi, bukan bug):** nama file migration ini salah
+ketik jadi `t092_5` — migration ini adalah lanjutan **T-092.4**, **bukan**
+bagian **T-092.5** (Drafts, yang belum dikerjakan). File tidak diganti nama
+(mengubah nama file migration yang sudah `migrate deploy` berisiko mismatch
+checksum) — dicatat eksplisit di `tasks/v02-publishing-mvp.md` § T-092 dan
+di sini supaya tidak membingungkan siapa pun yang cek folder migration ke
+depan.
+
+**2. KI-057 baru (rekomendasi Ridwan, disetujui King Rezi):** gap
+metodologi verifikasi Realtime — kriteria "typecheck bersih + lint bersih +
+tidak ada console error + channel Realtime `SUBSCRIBED`" ternyata **tidak
+cukup** membuktikan event Realtime benar-benar terkirim ke subscriber.
+Akibatnya **T-092.1, T-092.2, T-092.3** sempat ditandai lolos/`✅ Done`
+padahal seluruh fitur Realtime publishing nonfungsional total (zero event
+delivered) — baru ketahuan tidak sengaja saat verifikasi manual cross-tab
+di **T-092.4**. **Action item:** Definition of Done untuk sisa subtask
+Realtime publishing yang belum dikerjakan — **T-092.5** (Drafts) dan
+**T-092.6** (History) — sekarang wajib menyertakan verifikasi cross-tab
+browser nyata (2 tab, aksi di 1 tab terlihat otomatis di tab lain tanpa
+refresh) sebagai syarat Done, bukan cukup "tanpa console error + channel
+`SUBSCRIBED`" saja.
+
+**File diubah (dokumentasi):**
+- `project-manager/PROJECT_STATE.md` — KI-057 baru ditambahkan di section
+  Known Issues
+- `project-manager/tasks/v02-publishing-mvp.md` § T-092 — catatan
+  Definition of Done tambahan di checklist T-092.5/T-092.6, catatan lanjutan
+  migration follow-up + koreksi penamaan file di bagian catatan T-092.4
+- `project-manager/TASKS.md` — blockquote log baru di section Fokus
+  sekarang
+
+Tidak ada perubahan kode selain migration di atas (sudah di-apply
+sebelumnya oleh Elon Backend Engineer, dicatat di sini sebagai bagian
+tindak lanjut dokumentasi).
+
+---
+
+## 2026-09-11 — T-092.4 Done — Granular patch Realtime Queue + insiden & fix RLS `workspace_members`
+
+**T-092.4** (subtask keempat T-092, Realtime Calendar/Queue/Drafts/History)
+selesai — rangkaiannya lebih panjang dari subtask sebelumnya karena
+ditemukan bug infra kritis di tengah jalan (gap RLS lintas-tabel), bukan
+sekadar implementasi linier.
+
+**1. Implementasi (Prabowo Feature Engineer):** Server Action
+`getQueuePostAction` (reuse `PublishingService.getCalendarPostById` dari
+T-092.3, tidak duplikasi method), wiring `usePublishingPostsRealtime` di
+`QueueScreen.tsx` dengan kriteria tampilan Queue (hanya status
+`Scheduled`), fungsi `toQueueItemRecord` untuk filter, regroup via
+`groupQueueItemsByDate`.
+
+**File dibuat/diubah (implementasi):**
+- `apps/web/src/app/(app)/publish/queue/actions.ts` — Server Action baru
+  `getQueuePostAction`
+- `apps/web/src/app/(app)/publish/queue/components/QueueScreen.tsx` —
+  wiring `usePublishingPostsRealtime`, `toQueueItemRecord`,
+  `groupQueueItemsByDate`
+- `apps/web/src/app/(app)/publish/queue/page.tsx` — prop tambahan
+
+**2. Bug ditemukan saat verifikasi manual (Prabowo):** propagasi Realtime
+lintas-tab **tidak bekerja** — channel `SUBSCRIBED` tanpa error, tapi
+event tidak pernah sampai ke subscriber manapun. Gejala ini kemungkinan
+sudah ada sejak T-092.2/T-092.3 (keduanya cuma diverifikasi "token sukses
++ tanpa console error", belum pernah dites cross-tab nyata sampai titik
+ini).
+
+**3. Root cause (Elon Backend Engineer):** RLS policy
+`publishing_posts_realtime_workspace_members` (dibuat T-092.1) melakukan
+subquery ke tabel `workspace_members` untuk cek membership. RLS
+`workspace_members` yang sudah ada sebelumnya
+(`workspace_members_workspace_isolation`, pra-T-092) hanya mengenali GUC
+session server-side `current_setting('app.current_user_id')` — koneksi
+Realtime tidak pernah lewat jalur itu (cuma bawa JWT), jadi
+`app.current_user_id` selalu kosong untuk koneksi Realtime,
+`workspace_members` jadi tidak terlihat sama sekali oleh subquery
+tersebut, dan policy `publishing_posts` selalu mengembalikan `false`. Gap
+arsitektur RLS lintas-tabel ini tidak tersentuh preseden T-036 (policy
+`notifications` cek `user_id` langsung di baris `notifications` itu
+sendiri, tanpa subquery ke tabel lain).
+
+**4. Fix:** migration baru
+`apps/web/prisma/migrations/20260911100000_t092_4_fix_workspace_members_realtime_visibility/migration.sql`
+— menambah policy PERMISSIVE tambahan `workspace_members_realtime_own_row`
+di tabel `workspace_members` (user hanya bisa lihat baris membership-nya
+sendiri lewat JWT, additive, tidak mengganti policy lama). Migration sudah
+di-apply ke database (`bunx prisma migrate deploy`, sukses, dijalankan
+langsung oleh AI utama atas izin eksplisit King Rezi).
+
+**5. Verifikasi database (Elon):** simulasi query dengan role
+`authenticated` (bukan role bypass-RLS) di dalam transaksi ROLLBACK — user
+member workspace dapat 27 baris `publishing_posts` (cocok total post
+workspace itu), negative control dengan user id palsu dapat 0 baris. Root
+cause teratasi di level database.
+
+**6. Verifikasi end-to-end nyata di browser (Najwa QA Engineer):** 2 tab
+(Calendar + Queue), Cancel Schedule dilakukan di tab Queue, tanpa refresh
+tab Calendar langsung update (item hilang dari slot terjadwal) — **PASS**.
+Data dikonfirmasi benar-benar berubah ke status Draft. Typecheck/lint
+bersih, 315 test passed/5 skipped, tidak ada regresi. Arah sebaliknya
+(Calendar → Queue) belum sempat dites tuntas karena kendala teknis
+otomasi test (bukan bug fitur) — dicatat sebagai item follow-up opsional,
+bukan blocker.
+
+**Tidak ada ADR baru dibuat** — fix dicatat sebagai catatan implementasi
+tambahan di **ADR-094** poin 3, mengikuti pola persis yang sama seperti
+catatan fix `auth.uid()`/cuid T-092.1 di ADR yang sama (keduanya gap
+implementasi RLS ditemukan mid-development untuk fitur yang sama, bukan
+keputusan arsitektur baru).
+
+**Tidak ada Known Issue baru dibuka** — gap ditemukan & diperbaiki tuntas
+dalam sesi yang sama, sebelum berdampak ke user nyata (masih development).
+
+**Dokumen diupdate:**
+1. `project-manager/tasks/v02-publishing-mvp.md` § T-092 — T-092.4
+   dicentang `[x]` Done + catatan implementasi lengkap (poin 1-6 di atas);
+   catatan retroaktif ditambahkan ke T-092.2 dan T-092.3 yang menyebutkan
+   verifikasi cross-tab nyata untuk keduanya baru dikonfirmasi PASS
+   sekarang, setelah fix ini.
+2. `project-manager/decisions/ADR-094-perluasan-supabase-realtime-publishing-posts-granular-patch.md` —
+   catatan implementasi tambahan di poin 3 (Decision).
+3. `project-manager/TASKS.md` — blockquote log baru "Update (2026-09-11,
+   T-092.4 selesai + fix RLS `workspace_members`)". T-092 tetap `🟡 In
+   Progress` (4/6 subtask), breakdown task-level v0.2 tidak berubah.
+
+Task **T-092** tetap `🟡 In Progress` — 2 subtask (T-092.5–T-092.6) masih
+`⏳ Not Started`.
+
+---
+
+## 2026-09-11 — T-092.3 Done — Granular patch Realtime Calendar
+
+**T-092.3** (subtask ketiga T-092, Realtime Calendar/Queue/Drafts/History)
+selesai dikerjakan Prabowo Feature Engineer di branch
+`feature/t-092-1-realtime-rls-policy`. Calendar sekarang menerapkan
+granular client-side patch (upsert/remove state lokal per event Realtime)
+menggantikan full refresh, sesuai ADR-094 poin 5-6.
+
+**File dibuat/diubah:**
+- `apps/web/src/app/(app)/publish/calendar/actions.ts` — Server Action
+  baru `getCalendarPostAction`
+- `apps/web/src/domains/publishing/services/publishing.service.ts` —
+  method baru `getCalendarPostById`
+- `apps/web/src/domains/publishing/repositories/publishing.repository.ts` —
+  interface `IPublishingRepository.getCalendarPostById` baru
+- `apps/web/src/lib/repositories/publishing/` — implementasi Prisma
+  `getCalendarPostById`
+- `apps/web/src/app/(app)/publish/calendar/components/CalendarScreen.tsx` —
+  jadi Client Component, subscribe `usePublishingPostsRealtime` (T-092.2),
+  granular patch (upsert/remove) berdasarkan kecocokan dengan view/filter
+  aktif (`matchesCurrentView`, reuse fungsi domain murni
+  `getWeekRange`/`getMonthRange`)
+- `apps/web/src/app/(app)/publish/calendar/page.tsx` — tambah prop
+  `statuses`, `workspaceId`
+- `publishing.service.test.ts` — 4 test baru; 6 file test use-case lain
+  disesuaikan (tambah default `getCalendarPostById` di fake repository,
+  murni type-fix, tanpa perubahan behavior)
+
+**Verifikasi:** typecheck bersih, lint bersih, 315 test passed (naik dari
+311), browser preview manual OK (Calendar render normal, endpoint token
+Realtime sukses, tanpa console error).
+
+**Review Ridwan Architecture Reviewer:** tidak ada temuan pelanggaran —
+server action tetap tipis, domain tidak mengimpor Prisma/Supabase,
+cross-domain lewat public API, error/null handling konsisten dan
+graceful, tidak ada regresi behavior use-case lain.
+
+**Dokumen diupdate:**
+1. `project-manager/tasks/v02-publishing-mvp.md` § T-092 — T-092.3
+   dicentang `[x]` Done + catatan implementasi.
+2. `project-manager/TASKS.md` — blockquote log baru "Update (2026-09-11,
+   T-092.3 selesai)". T-092 tetap `🟡 In Progress` (3/6 subtask),
+   breakdown task-level v0.2 tidak berubah.
+
+Task **T-092** tetap `🟡 In Progress` — 3 subtask (T-092.4–T-092.6) masih
+`⏳ Not Started`.
+
+---
+
+## 2026-09-11 — T-092.2 Done — Wiring subscription channel Realtime `publishing_posts`
+
+**T-092.2** (subtask kedua T-092, Realtime Calendar/Queue/Drafts/History)
+selesai dikerjakan Prabowo Feature Engineer di branch
+`feature/t-092-1-realtime-rls-policy`. Wiring subscription channel
+per-workspace `publishing_posts:{workspaceId}` untuk event
+`INSERT`/`UPDATE` (filter `workspace_id`), reuse Supabase Realtime client
+generic + Better Auth↔Supabase JWT bridge yang sudah dibangun di T-036
+(ADR-094 poin 2, 4) — tidak dibangun ulang.
+
+**File dibuat:**
+- `apps/web/src/lib/supabase/realtime/publishing-posts.ts` —
+  `subscribeToPublishingPostChanges(client, workspaceId, handlers)`
+- `apps/web/src/lib/hooks/use-publishing-posts-realtime.ts` — hook
+  `usePublishingPostsRealtime(workspaceId, { onInsert, onUpdate })`
+
+**Verifikasi:** typecheck bersih, lint bersih, 311 test passed/5 skipped.
+
+**Review Ridwan Architecture Reviewer:** tidak ada temuan pelanggaran
+(5/5 checklist arsitektur patuh). Satu catatan DRY minor bukan blocker:
+dua tipe handler shape identik didefinisikan dua kali —
+`PublishingPostRealtimeHandlers` (file pertama) dan
+`UsePublishingPostsRealtimeHandlers` (file kedua) — tidak wajib
+diperbaiki sekarang.
+
+**Dokumen diupdate:**
+1. `project-manager/tasks/v02-publishing-mvp.md` § T-092 — T-092.2
+   dicentang `[x]` Done + catatan implementasi; blok "Catatan
+   (2026-09-11)" T-092.1 disesuaikan dari "5 subtask (T-092.2–T-092.6)
+   belum dikerjakan" menjadi "4 subtask (T-092.3–T-092.6) belum
+   dikerjakan".
+2. `project-manager/TASKS.md` — blockquote log baru "Update (2026-09-11,
+   T-092.2 selesai)". T-092 tetap `🟡 In Progress` (2/6 subtask), breakdown
+   task-level v0.2 tidak berubah.
+
+Task **T-092** tetap `🟡 In Progress` — 4 subtask (T-092.3–T-092.6) masih
+`⏳ Not Started`.
+
+---
+
+## 2026-09-11 — T-092.1 Done — RLS policy Realtime `publishing_posts`, amandemen kecil ADR-094 poin 3
+
+King Rezi mengonfirmasi amandemen dokumentasi setelah **T-092.1** (subtask
+pertama T-092, Realtime Calendar/Queue/Drafts/History) selesai dikerjakan
+Elon Backend Engineer di branch `feature/t-092-1-realtime-rls-policy`.
+Migration baru `apps/web/prisma/migrations/20260911090000_t092_1_publishing_posts_realtime_rls/migration.sql`
+membuat policy `publishing_posts_realtime_workspace_members`.
+
+**Gap ditemukan:** ADR-094 poin 3 dan `database-strategy.md` § RLS Policy
+Pattern menulis pola ini sebagai "berbasis `auth.uid()`" murni. Implementasi
+nyata memakai `current_setting('request.jwt.claim.sub', true)` (fallback
+parse `request.jwt.claims`), **bukan** memanggil `auth.uid()` Supabase
+langsung.
+
+**Root cause (diverifikasi Elon):** `auth.uid()` Supabase melakukan cast
+paksa `::uuid` terhadap klaim JWT `sub`. Seluruh `user_id` di sistem ini
+(termasuk `workspace_members.user_id`) bertipe `cuid()` string, bukan UUID
+valid — persis bug yang sudah ditemukan dan diperbaiki di T-036
+(`20260901120000_t036_fix_realtime_rls_cuid_cast`), preseden lebih lama di
+DO-D06/T-017 (`database-strategy.md`). T-092.1 menerapkan versi yang sudah
+diperbaiki sejak awal — **tidak perlu migration fix susulan**.
+
+**Dokumen diamandemen (catatan kecil, bukan tulis ulang, bukan ADR baru):**
+1. `project-manager/decisions/ADR-094-perluasan-supabase-realtime-publishing-posts-granular-patch.md`
+   — poin 3 mendapat blockquote "Catatan implementasi (2026-09-11, T-092.1)"
+   menjelaskan detail cast ini.
+2. `product-discovery/05-architecture/database-strategy.md` § RLS Policy
+   Pattern — catatan baru merujuk balik ke preseden DO-D06/T-017,
+   menyebutkan T-092.1 sebagai instance konkret berikutnya.
+3. `project-manager/tasks/v02-publishing-mvp.md` § T-092 — status task naik
+   `⏳ Not Started` → `🟡 In Progress`; T-092.1 checklist `[x]` (Done),
+   catatan implementasi ditambahkan.
+4. `project-manager/TASKS.md` — breakdown v0.2 diperbarui "14 ✅ · 2 🟡 · 6
+   ⏳" → **14 ✅ · 3 🟡 · 5 ⏳** (dihitung ulang dari `tasks/v02-publishing-mvp.md`),
+   update log blockquote baru ditambahkan.
+
+Tidak ada perubahan pada `PROJECT_STATE.md` — tidak ada phase/milestone/
+Known Issues baru, T-092 tetap task individual di milestone v0.2 yang
+sudah berjalan.
+
+---
+
 ## 2026-09-10 — T-035 Done — Delete Post + dialog konfirmasi, scope dipersempit ke Drafts
 
 King Rezi meminta lanjut kerjakan T-035 di branch

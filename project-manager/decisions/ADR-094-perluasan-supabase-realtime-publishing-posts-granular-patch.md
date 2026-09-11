@@ -57,6 +57,58 @@ T-036 **wajib selesai lebih dulu** sebagai hard dependency, bukan
    tsb (pola sama semangat dengan RLS Policy Pattern di
    `database-strategy.md`, tapi varian `auth.uid()` bukan
    `current_setting`).
+
+   > **Catatan implementasi (2026-09-11, T-092.1):** implementasi nyata di
+   > migration `20260911090000_t092_1_publishing_posts_realtime_rls`
+   > **tidak** memanggil fungsi `auth.uid()` Supabase secara langsung —
+   > memakai `current_setting('request.jwt.claim.sub', true)` (dengan
+   > fallback parse `request.jwt.claims`) untuk membaca klaim `sub` JWT
+   > sebagai `text`. Root cause: `auth.uid()` bawaan Supabase melakukan cast
+   > paksa `::uuid` terhadap klaim `sub`, sementara seluruh `user_id` di
+   > sistem ini (termasuk `workspace_members.user_id`) adalah `cuid()`
+   > string, bukan UUID valid — persis bug yang sudah ditemukan dan
+   > diperbaiki di T-036 (`20260901120000_t036_fix_realtime_rls_cuid_cast`,
+   > lihat juga preseden DO-D06/T-017 di `database-strategy.md`). T-092.1
+   > menerapkan versi yang sudah diperbaiki sejak awal, tidak perlu migration
+   > fix susulan. Poin keputusan di atas ("berbasis `auth.uid()`") tetap benar
+   > secara *maksud* (cek membership `active` untuk Realtime, bukan
+   > `current_setting('app.current_user_id')` server-side) — catatan ini
+   > murni koreksi detail cara membaca identitas user dari JWT, bukan
+   > perubahan keputusan arsitektur.
+   >
+   > **Catatan implementasi (2026-09-11, T-092.4):** ditemukan gap
+   > arsitektur RLS lintas-tabel yang belum tersentuh poin di atas —
+   > policy `publishing_posts_realtime_workspace_members` (T-092.1)
+   > melakukan subquery ke tabel `workspace_members` untuk cek membership,
+   > tapi RLS `workspace_members` yang sudah ada sebelumnya
+   > (`workspace_members_workspace_isolation`, pra-T-092) hanya mengenali
+   > `current_setting('app.current_user_id')` (GUC session server-side) —
+   > koneksi Realtime (anon key + JWT, tanpa GUC session) membuat
+   > `workspace_members` tidak terlihat sama sekali oleh subquery tsb,
+   > sehingga policy `publishing_posts` selalu mengembalikan `false`.
+   > Gejalanya: channel `SUBSCRIBED` tanpa error, tapi event Realtime tidak
+   > pernah sampai ke subscriber manapun — baru ketahuan saat verifikasi
+   > cross-tab nyata di T-092.4 (Queue), setelah T-092.2/T-092.3 sempat
+   > lolos verifikasi "token sukses + tanpa console error" yang ternyata
+   > tidak cukup untuk menangkap bug ini.
+   >
+   > **Fix:** migration
+   > `20260911100000_t092_4_fix_workspace_members_realtime_visibility`
+   > menambah 1 policy PERMISSIVE tambahan di tabel `workspace_members`
+   > (`workspace_members_realtime_own_row`, user hanya bisa lihat baris
+   > membership-nya sendiri lewat klaim JWT) — **additive**, tidak
+   > mengganti/menghapus policy `workspace_members_workspace_isolation`
+   > yang sudah ada. Diverifikasi lewat simulasi query role
+   > `authenticated` (transaksi ROLLBACK): user member workspace dapat
+   > seluruh baris `publishing_posts` workspace-nya, negative control
+   > (user id palsu) dapat 0 baris; dikonfirmasi ulang end-to-end nyata di
+   > browser (2 tab, tanpa refresh) oleh Najwa QA Engineer — PASS untuk
+   > Queue dan Calendar. Ini bukan perubahan keputusan arsitektur di poin
+   > 3 (tetap RLS berbasis JWT untuk Realtime) — murni menutup gap yang
+   > belum kepikiran saat poin 3 pertama ditulis (RLS antar-tabel yang
+   > saling subquery butuh visibility yang konsisten di kedua tabel,
+   > bukan cuma tabel utamanya). Dicatat di sini (bukan ADR baru) mengikuti
+   > pola yang sama seperti catatan `auth.uid()`/cuid di atas.
 4. **Depends on T-036 (hard dependency, bukan shared-whichever-first):**
    T-036 (notification bell) **wajib selesai lebih dulu** — wiring generic
    Supabase Realtime client + Better Auth↔Supabase JWT bridge dibangun di

@@ -53,7 +53,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 🟡 15 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 1 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
-| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹ | 22   | 14 ✅ · 2 🟡 · 6 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
+| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 15 ✅ · 3 🟡 · 5 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
@@ -61,7 +61,129 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 86 task · 39 selesai · 216 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 87 task · 40 selesai · 217 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-11, T-092.5 + T-104 selesai):** **T-092.5** (Granular
+> patch Realtime — Drafts) selesai — Server Action `getDraftPostAction`
+> (reuse `getCalendarPostById`), `DraftsList.tsx` jadi client state dengan
+> `usePublishingPostsRealtime`, filter 3 status via `toDraftListItem`.
+> Verifikasi cross-tab browser nyata wajib (KI-057) — **PASS** untuk edit
+> caption dan hapus draft, keduanya ter-propagasi otomatis ke tab lain
+> tanpa refresh. Review Ridwan Architecture Reviewer: 0 pelanggaran. T-092
+> tetap `🟡 In Progress` (5/6 subtask selesai, hanya **T-092.6** History
+> tersisa, depends T-034). **T-104** (Konsistensi kriteria status
+> `listDrafts`) selesai — `listDrafts` diubah dari filter status tunggal
+> jadi 3 status (`Draft`/`InReview`/`ReadyToSchedule`), konsisten dengan
+> client. Review Ridwan: 0 pelanggaran, filter backend & client sekarang
+> identik. Gap baru ditemukan (tombol Hapus Drafts tidak membedakan status
+> yang boleh dihapus, dan komentar `DraftsList.tsx:94-98` jadi tidak
+> akurat) — dicatat sebagai catatan di task, **bukan** subtask baru, sudah
+> jadi chip task terpisah milik Prabowo Feature Engineer (`task_6b93cfb5`)
+> menunggu King Rezi pick up. v0.2 breakdown "14 ✅ · 4 🟡 · 5 ⏳" →
+> **15 ✅ · 3 🟡 · 5 ⏳** (T-104 pindah 🟡 → ✅, T-092 tetap 🟡). Task
+> selesai naik 39 → **40**. Jumlah task/subtask total tidak berubah (87
+> task, 217 subtask) — hanya status yang berubah, dihitung ulang langsung
+> dari `tasks/v02-publishing-mvp.md`. Detail: `tasks/v02-publishing-mvp.md`
+> § T-092.5, § T-104.
+
+> **Update (2026-09-11, T-104 baru ditambahkan — gap ditemukan saat
+> implementasi T-092.5):** **T-104** (Konsistensi kriteria status Drafts —
+> `listDrafts` vs granular patch Realtime, domain publishing) ditambahkan
+> ke `tasks/v02-publishing-mvp.md`, status `🟡 In Progress` (dikerjakan
+> paralel oleh Prabowo Feature Engineer). Ditemukan saat implementasi
+> **T-092.5** (Granular patch Realtime — Drafts): `PublishingService.listDrafts`
+> (initial SSR load `/publish/drafts`) hanya query status `Draft`, padahal
+> kriteria tampilan Drafts sesuai **ADR-094** mencakup 3 status
+> (`Draft`/`InReview`/`ReadyToSchedule`) — sama seperti yang sudah
+> diterapkan di granular patch Realtime T-092.5. Belum berdampak nyata
+> (review-workflow belum ada, tidak ada post yang pernah bertransisi ke
+> `InReview`/`ReadyToSchedule`), tapi King Rezi memutuskan diperbaiki
+> sekarang juga, bukan sekadar dicatat sebagai known gap. ID global
+> berikutnya yang belum pernah dipakai (terakhir T-103) — pola sama
+> T-090/T-091/T-092/T-093/T-094. Task naik 86 → **87**, subtask naik
+> 216 → **217** (v0.2: 22 → 23 task, breakdown "14 ✅ · 3 🟡 · 5 ⏳" →
+> **14 ✅ · 4 🟡 · 5 ⏳**), dihitung ulang langsung dari
+> `tasks/v02-publishing-mvp.md`. Task selesai (39) tidak berubah. Detail:
+> `tasks/v02-publishing-mvp.md` § T-104, § T-092.5.
+
+> **Update (2026-09-11, T-092.4 selesai + fix RLS `workspace_members`):**
+> **T-092.4** (Granular patch Realtime — Queue) selesai — Server Action
+> `getQueuePostAction` (reuse `PublishingService.getCalendarPostById` dari
+> T-092.3, tanpa duplikasi), wiring `usePublishingPostsRealtime` di
+> `QueueScreen.tsx` dengan kriteria tampilan Queue (hanya status
+> `Scheduled`) via `toQueueItemRecord` + `groupQueueItemsByDate` (Prabowo
+> Feature Engineer). **Rangkaian lebih panjang dari subtask lain** karena
+> ditemukan bug infra kritis saat verifikasi manual cross-tab: channel
+> Realtime `SUBSCRIBED` tanpa error, tapi event tidak pernah sampai ke
+> subscriber manapun — root cause (Elon Backend Engineer): RLS policy
+> `publishing_posts_realtime_workspace_members` (T-092.1) subquery ke
+> tabel `workspace_members`, tapi RLS `workspace_members` yang sudah ada
+> sebelumnya hanya mengenali GUC session server-side
+> (`current_setting('app.current_user_id')`) — koneksi Realtime (JWT saja,
+> tanpa GUC session) membuat `workspace_members` tidak terlihat sama
+> sekali, sehingga policy `publishing_posts` selalu `false`. Gap ini
+> ternyata sudah ada sejak T-092.2/T-092.3 (keduanya cuma diverifikasi
+> "token sukses + tanpa console error", belum pernah dites cross-tab
+> nyata). **Fix:** migration
+> `20260911100000_t092_4_fix_workspace_members_realtime_visibility`
+> menambah 1 policy PERMISSIVE tambahan (`workspace_members_realtime_own_row`,
+> additive, tidak mengganti policy lama) — sudah di-apply
+> (`bunx prisma migrate deploy`, izin eksplisit King Rezi). Diverifikasi
+> Elon lewat simulasi query role `authenticated` (ROLLBACK transaction,
+> hasil sesuai ekspektasi) dan Najwa QA Engineer end-to-end nyata 2 tab
+> browser (Cancel Schedule di Queue → Calendar update tanpa refresh) —
+> **PASS**, 315 test passed/5 skipped, tidak ada regresi. Dicatat sebagai
+> catatan implementasi tambahan di **ADR-094** poin 3 (bukan ADR baru,
+> mengikuti pola catatan `auth.uid()`/cuid T-092.1 di ADR yang sama). Tidak
+> ada Known Issue baru dibuka — gap ditemukan & diperbaiki tuntas dalam
+> sesi yang sama, sebelum berdampak ke user nyata (masih development).
+> **T-092** tetap `🟡 In Progress` (4/6 subtask selesai, T-092.5–T-092.6
+> belum dikerjakan) — breakdown task-level v0.2 tidak berubah ("14 ✅ · 3
+> 🟡 · 5 ⏳"). Jumlah task/subtask total tidak berubah. Detail:
+> `tasks/v02-publishing-mvp.md` § T-092,
+> `decisions/ADR-094-perluasan-supabase-realtime-publishing-posts-granular-patch.md`.
+
+> **Update (2026-09-11, T-092.3 selesai):** **T-092.3** (Granular patch
+> Realtime — Calendar) selesai — Server Action `getCalendarPostAction`,
+> `PublishingService.getCalendarPostById` + repository Prisma baru,
+> `CalendarScreen.tsx` jadi Client Component yang subscribe
+> `usePublishingPostsRealtime` (dari T-092.2) dan melakukan granular patch
+> (upsert/remove) ke state lokal berdasarkan kecocokan dengan view/filter
+> aktif (Prabowo Feature Engineer). Verifikasi: typecheck bersih, lint
+> bersih, 315 test passed (naik dari 311), browser preview manual OK.
+> Review Ridwan Architecture Reviewer: tidak ada temuan pelanggaran. **T-092**
+> tetap `🟡 In Progress` (3/6 subtask selesai, T-092.4–T-092.6 belum
+> dikerjakan) — breakdown task-level v0.2 tidak berubah ("14 ✅ · 3 🟡 ·
+> 5 ⏳"). Jumlah task/subtask total tidak berubah. Detail:
+> `tasks/v02-publishing-mvp.md` § T-092.
+
+> **Update (2026-09-11, T-092.2 selesai):** **T-092.2** (Wiring
+> subscription channel `publishing_posts:{workspaceId}`, reuse Supabase
+> Realtime client + JWT bridge dari T-036) selesai — file
+> `apps/web/src/lib/supabase/realtime/publishing-posts.ts` dan
+> `apps/web/src/lib/hooks/use-publishing-posts-realtime.ts` (Prabowo
+> Feature Engineer). Verifikasi: typecheck bersih, lint bersih, 311 test
+> passed/5 skipped. Review Ridwan Architecture Reviewer: tidak ada temuan
+> pelanggaran (5/5 checklist arsitektur patuh), 1 catatan DRY minor bukan
+> blocker. **T-092** tetap `🟡 In Progress` (2/6 subtask selesai,
+> T-092.3–T-092.6 belum dikerjakan) — breakdown task-level v0.2 tidak
+> berubah ("14 ✅ · 3 🟡 · 5 ⏳"). Jumlah task/subtask total tidak berubah.
+> Detail: `tasks/v02-publishing-mvp.md` § T-092.
+
+> **Update (2026-09-11, T-092.1 selesai):** **T-092** (Realtime
+> Calendar/Queue/Drafts/History) naik status `⏳ Not Started` → `🟡 In
+> Progress` — subtask pertama, **T-092.1** (RLS policy Realtime
+> `publishing_posts_realtime_workspace_members`, Elon Backend Engineer),
+> selesai. Implementasi memakai `current_setting('request.jwt.claim.sub',
+> true)`, bukan `auth.uid()` Supabase langsung, karena `user_id` di sistem
+> ini bertipe `cuid()` string (preseden DO-D06/T-017, juga sudah pernah
+> jadi bug di T-036.2) — dicatat sebagai amandemen kecil di ADR-094 poin 3
+> dan `database-strategy.md` § RLS Policy Pattern, bukan ADR baru. 5
+> subtask lain (T-092.2–T-092.6) belum dikerjakan. Breakdown v0.2 berubah
+> dari "14 ✅ · 2 🟡 · 6 ⏳" menjadi **14 ✅ · 3 🟡 · 5 ⏳**, dihitung ulang
+> langsung dari `tasks/v02-publishing-mvp.md`. Jumlah task/subtask total
+> tidak berubah — hanya status yang berubah. Detail:
+> `tasks/v02-publishing-mvp.md` § T-092.
 
 > **Update (2026-09-10, T-035 Done):** **T-035** (Delete Post + dialog
 > konfirmasi, ADR-049 Tier 2) naik status `⏳ Not Started` → `✅ Done` —
@@ -531,7 +653,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 >
 > **Koreksi hitungan (2026-08-24):** breakdown status v0.1 di atas sebelumnya "11 ✅ · 5 🟡" — sudah tidak cocok dengan `tasks/v01-foundation.md` aktual (10 ✅ · 6 🟡, sebelum T-089 ditambah) sejak entah kapan drift terjadi. Dihitung ulang langsung dari file saat menambah T-089 (bukan increment manual di atas angka lama yang sudah salah), sesuai aturan maintenance di bawah. **Update sesi ini (2026-08-24):** T-089 (T-089.2/.3/.4 diimplementasikan, lolos review Ridwan + QA Najwa) ditutup `✅ Done` → v0.1 jadi 11 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · 2 ⏳, total keseluruhan jadi 22 selesai. Dihitung ulang langsung dari `tasks/v01-foundation.md` (bukan increment manual), sesuai aturan yang sama. **Update lanjutan sesi ini (2026-08-24, ADR-089):** T-089 mendapat subtask baru **T-089.6** (dialog konfirmasi Tier 2 sebelum switch workspace) — hitungan subtask dihitung ulang langsung dari `tasks/v01-foundation.md` (bukan increment manual): total naik dari 147 jadi **148** (v0.1: 58 → 59 subtask). Task-level tetap 22 selesai (T-089 sudah `✅ Done` sebelumnya, subtask baru ini tidak mengubah status task). **Update (2026-08-26, ADR-090):** T-033 (Calendar view, belum dikerjakan) dipecah dari 4 jadi 8 subtask setelah sesi perencanaan UX Buffer (Popover, query param view/date, filter status+channel, grid week/month terpisah) — total naik dari 148 jadi **152** (v0.2: subtask T-033 4 → 8). Dihitung ulang langsung dari `tasks/v02-publishing-mvp.md`, bukan increment manual. Task-level v0.2 tidak berubah (T-033 tetap ⏳ Not Started). **Koreksi (2026-08-26, ADR-091):** komponen semula ditulis "HoverCard", diperbaiki jadi **Popover** setelah verifikasi `astryx component --dense` (HoverCard trigger-nya hover/focus, bukan klik, dan tidak boleh berisi critical action) — tidak mengubah jumlah subtask (tetap 8, tetap 152 total). **Update (2026-08-31, ADR-096):** **T-093** (Accept Invite page) — T-093.1–.3 diimplementasikan dan lolos review arsitektur Ridwan (2 temuan security RLS sudah diperbaiki). T-093.4 sebagian: 17 unit test service-level + 1 integration test DB real sudah ditulis, tapi verifikasi RBAC end-to-end 2-akun browser nyata **belum dilakukan** (dicatat **KI-038** untuk Najwa QA Engineer) — task tetap `🟡 In Progress`, belum ditutup `✅ Done`. 3 migrasi RLS baru (pola SECURITY DEFINER + session-variable GUC untuk operasi pra-membership) dicatat sebagai **ADR-096**. Breakdown v0.1 berubah dari "12 ✅ · 1 🚫 · 6 🟡 · 1 ⏸️ · 3 ⏳" menjadi **12 ✅ · 1 🚫 · 7 🟡 · 1 ⏸️ · 2 ⏳** (T-093 pindah dari ⏳ ke 🟡). Jumlah task/subtask total tidak berubah (77 task, 173 subtask) — hanya status yang berubah. Dihitung ulang langsung dari `tasks/v01-foundation.md`, sesuai aturan maintenance.
 
-¹ **T-039** ID-nya dipinjam dari rentang v0.2 (bukan urutan lanjutan v0.1) — nomor kosong v0.1 sudah habis, jadi diambil ID global berikutnya yang belum pernah dipakai. Lihat Catatan Rilis di `tasks/v01-foundation.md` dan `tasks/v02-publishing-mvp.md` untuk detailnya. **T-089** (Workspace Switcher, ADR-088) memakai pola serupa — ID global berikutnya yang belum pernah dipakai sama sekali (rentang v1.0 T-080–T-088 sudah habis terisi), ditempatkan di file v0.1 karena lahir sebagai amandemen ADR-076/T-039. Detail: Catatan Rilis `tasks/v01-foundation.md`. **T-090**/**T-091** (Import Posts + read-only enforcement, ADR-093) memakai pola yang sama lagi — nomor kosong v0.2 (T-020–T-038) sudah habis, jadi keduanya memakai ID global berikutnya yang belum pernah dipakai. **T-092** (Realtime Calendar/Queue/Drafts/History, ADR-094) memakai pola yang sama sekali lagi, ID global berikutnya setelah T-091. **T-093** (Accept Invite page) memakai pola yang sama untuk v0.1 — nomor kosong v0.1 sudah habis sejak T-039/T-089, jadi memakai ID global berikutnya setelah T-092, ditempatkan di `tasks/v01-foundation.md` karena domain `workspace`/invite. **T-094** (Baseline Rendering Strategy, Code Conventions, Spacing Scale + ESLint Enforcement, ADR-095) memakai pola yang sama sekali lagi — ID global berikutnya setelah T-093, ditempatkan di `tasks/v01-foundation.md` sibling T-001/T-002 karena domain `platform/tooling`. Detail: Catatan Rilis di masing-masing file release.
+¹ **T-039** ID-nya dipinjam dari rentang v0.2 (bukan urutan lanjutan v0.1) — nomor kosong v0.1 sudah habis, jadi diambil ID global berikutnya yang belum pernah dipakai. Lihat Catatan Rilis di `tasks/v01-foundation.md` dan `tasks/v02-publishing-mvp.md` untuk detailnya. **T-089** (Workspace Switcher, ADR-088) memakai pola serupa — ID global berikutnya yang belum pernah dipakai sama sekali (rentang v1.0 T-080–T-088 sudah habis terisi), ditempatkan di file v0.1 karena lahir sebagai amandemen ADR-076/T-039. Detail: Catatan Rilis `tasks/v01-foundation.md`. **T-090**/**T-091** (Import Posts + read-only enforcement, ADR-093) memakai pola yang sama lagi — nomor kosong v0.2 (T-020–T-038) sudah habis, jadi keduanya memakai ID global berikutnya yang belum pernah dipakai. **T-092** (Realtime Calendar/Queue/Drafts/History, ADR-094) memakai pola yang sama sekali lagi, ID global berikutnya setelah T-091. **T-093** (Accept Invite page) memakai pola yang sama untuk v0.1 — nomor kosong v0.1 sudah habis sejak T-039/T-089, jadi memakai ID global berikutnya setelah T-092, ditempatkan di `tasks/v01-foundation.md` karena domain `workspace`/invite. **T-094** (Baseline Rendering Strategy, Code Conventions, Spacing Scale + ESLint Enforcement, ADR-095) memakai pola yang sama sekali lagi — ID global berikutnya setelah T-093, ditempatkan di `tasks/v01-foundation.md` sibling T-001/T-002 karena domain `platform/tooling`. **T-104** (Konsistensi kriteria status Drafts, gap ditemukan saat T-092.5) memakai pola yang sama sekali lagi — nomor kosong v0.2 sudah habis, ID global berikutnya setelah T-103 (rentang v0.7), ditempatkan di `tasks/v02-publishing-mvp.md` karena domain `publishing`, terkait langsung T-092. Detail: Catatan Rilis di masing-masing file release.
 
 Urutan release mengikuti [`release-roadmap.md`](../product-discovery/02-product/release-roadmap.md). Perubahan urutan atau ruang lingkup release wajib lewat ADR.
 
@@ -601,6 +723,23 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 > **T-093** (Accept Invite page) sudah ✅ **Done** (2026-08-31) — 4/4 subtask selesai, verifikasi RBAC end-to-end (Najwa QA Engineer, 3 akun real Owner/Admin/Creator) tuntas, 1 bug ditemukan & diperbaiki selama verifikasi (KI-038 Resolved). Detail: `tasks/v01-foundation.md` § T-093.
 
 > **T-014** (Disconnect account + dialog konfirmasi) sudah ✅ **Done** (2026-09-09) — 3/3 subtask selesai dalam satu sesi lanjutan: **T-014.1** diverifikasi lewat `DesignSync` (rancangan sudah ada di Claude Design), **T-014.2** implementasi `WorkspaceService.disconnectAccount` (Owner/Admin gate, reuse pola RBAC existing) dengan 2 keputusan non-trivial dikonfirmasi King Rezi — reset `reconnectRequired` saat disconnect, dan tolak eksplisit (`ConflictError`) disconnect akun yang sudah `disconnected` (bukan idempotent), **T-014.3** UI `AlertDialog` shadcn di `ConnectedAccountsList.tsx` (reuse hook `useConfirmAction`, pola sama `QueueScreen.tsx`/`MembersTable.tsx`), lolos review arsitektur Ridwan (0 temuan) + verifikasi end-to-end browser. Detail: `tasks/v01-foundation.md` § T-014.
+
+> **Update (2026-09-11) — T-092.4 migration follow-up + KI-057 baru:** Elon
+> Backend Engineer menambahkan migration follow-up defense-in-depth (filter
+> `AND status = 'active'` ke policy `workspace_members_realtime_own_row`,
+> file
+> `apps/web/prisma/migrations/20260911110000_t092_5_workspace_members_realtime_own_row_active_filter/migration.sql`
+> — **nama file salah ketik "t092_5", ini sebenarnya masih bagian T-092.4,
+> bukan T-092.5**), sudah di-apply & diverifikasi, tidak ada regresi. King
+> Rezi juga menyetujui **KI-057 baru** (rekomendasi Ridwan Architecture
+> Reviewer): gap metodologi verifikasi Realtime — kriteria "typecheck/lint
+> bersih + tanpa console error + channel `SUBSCRIBED`" ternyata tidak cukup
+> membuktikan event Realtime benar-benar terkirim (T-092.1–T-092.3 sempat
+> Done padahal Realtime nonfungsional total, baru ketahuan di T-092.4).
+> **T-092.5**/**T-092.6** sekarang wajib verifikasi cross-tab browser nyata
+> sebagai bagian Definition of Done. Task/subtask total tidak berubah, hanya
+> catatan tambahan. Detail: `tasks/v02-publishing-mvp.md` § T-092, KI-057 di
+> `PROJECT_STATE.md`.
 
 **Rantai blocker terbesar:** T-025 (Real OutstandAdapter) → T-027 (job runner). **T-026 (webhook) sudah ✅ Done (2026-09-07)** — inbound webhook processing tidak butuh Real OutstandAdapter untuk berjalan (`FakeOutstandAdapter` tetap dipakai jalur produksi, ADR-059), jadi rantai sekarang lebih pendek. Sisa T-025 dan T-027 tetap mengunci sebagian besar v0.2 (T-024, T-034), seluruh v0.3, dan seluruh v0.4. Menyelesaikan T-025 membuka lebih banyak pekerjaan daripada task lain manapun.
 
