@@ -1,7 +1,6 @@
 "use server";
 
 import { asPostId, asUserId } from "@social/shared";
-import { redirect } from "next/navigation";
 
 import {
   PublishingService,
@@ -26,6 +25,10 @@ import { publishingRepository } from "@/lib/repositories/publishing";
  * ini — `HistoryList` menafsirkannya sebagai sinyal remove dari local
  * state, sama seperti kalau record ditemukan tapi statusnya sudah bukan
  * `Published`/`Failed` lagi (`HISTORY_TERMINAL_STATUSES`).
+ *
+ * Sesi expired dipetakan ke `null` (BUKAN `redirect("/login")`) — action ini
+ * dipanggil dari handler event Realtime di background, bukan dari klik user,
+ * jadi tab yang idle tidak boleh tiba-tiba di-navigate ke halaman lain.
  */
 export async function getHistoryPostAction(
   postId: string,
@@ -33,7 +36,7 @@ export async function getHistoryPostAction(
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
-    redirect("/login");
+    return null;
   }
 
   const publishingService = new PublishingService(publishingRepository);

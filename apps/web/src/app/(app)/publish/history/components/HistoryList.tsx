@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { ContentStatus } from "@social/shared";
@@ -14,6 +14,7 @@ import type { ConnectedAccountRecord } from "@/domains/workspace";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 import { formatUtcDateKeyHeading } from "@/lib/utils";
 import { usePublishingPostsRealtime } from "@/lib/hooks/use-publishing-posts-realtime";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 
 import { getHistoryPostAction } from "../actions";
 
@@ -151,18 +152,24 @@ export function HistoryList({
     ALL_ACCOUNTS_FILTER_VALUE,
   );
 
-  const [prevItems, setPrevItems] = useState(items);
-  const [localItems, setLocalItems] = useState(items);
-
-  if (items !== prevItems) {
-    setPrevItems(items);
-    setLocalItems(items);
-  }
+  const [localItems, setLocalItems] = useSyncedState(items);
+  const requestSeqRef = useRef<Map<string, number>>(new Map());
 
   const handlePublishingPostChange = useCallback(
     (event: { postId: HistoryItemRecord["id"] }) => {
+      const seq = (requestSeqRef.current.get(event.postId) ?? 0) + 1;
+      requestSeqRef.current.set(event.postId, seq);
+
       void (async () => {
         const fetched = await getHistoryPostAction(event.postId);
+
+        // Buang hasil kalau sudah disusul event lain untuk postId yang sama
+        // (out-of-order response) — jangan biarkan fetch yang lebih lama
+        // menimpa state yang sudah diperbarui oleh event yang lebih baru.
+        if (requestSeqRef.current.get(event.postId) !== seq) {
+          return;
+        }
+
         const historyItem =
           fetched && HISTORY_VIEW_STATUSES.has(fetched.status) ? fetched : null;
 
@@ -179,7 +186,7 @@ export function HistoryList({
         });
       })();
     },
-    [],
+    [setLocalItems],
   );
 
   usePublishingPostsRealtime(workspaceId, {
