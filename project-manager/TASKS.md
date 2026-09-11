@@ -53,7 +53,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 🟡 15 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 1 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
-| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 15 ✅ · 3 🟡 · 5 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
+| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 16 ✅ · 2 🟡 · 5 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
@@ -61,7 +61,28 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 87 task · 40 selesai · 217 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 87 task · 41 selesai · 217 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-11, T-092 SELESAI 6/6 subtask):** **T-092.6** (Granular
+> patch Realtime — History), subtask terakhir T-092, selesai — method baru
+> `getHistoryPostById` (repository + `PublishingService`, bukan reuse
+> `getCalendarPostById`, karena History butuh field `status`/`error`
+> per-target), Server Action `getHistoryPostAction`, `HistoryList.tsx` jadi
+> stateful dengan `usePublishingPostsRealtime`, grouping dipindah ke client.
+> Verifikasi cross-tab browser nyata wajib (KI-057) — **PASS**: Publish Now
+> di tab 1 (Drafts) → tab 2 (History) otomatis menampilkan post baru
+> tanpa refresh. Review Ridwan Architecture Reviewer: 0 pelanggaran.
+> Dengan ini **T-092 (Realtime Calendar/Queue/Drafts/History, ADR-094)
+> tuntas 6/6 subtask** → status task naik `🟡 In Progress` → **✅ Done**.
+> **KI-057 Resolved** (seluruh subtask yang jadi syaratnya — T-092.3–T-092.6
+> — sudah terverifikasi cross-tab). Temuan terpisah di luar scope (bug
+> pre-existing "Publish Now di Queue selalu gagal untuk post Scheduled")
+> dicatat sebagai chip task terpisah, bukan subtask/task baru. v0.2
+> breakdown "15 ✅ · 3 🟡 · 5 ⏳" → **16 ✅ · 2 🟡 · 5 ⏳** (T-092 pindah
+> 🟡 → ✅). Task selesai naik 40 → **41**. Jumlah task/subtask total tidak
+> berubah (87 task, 217 subtask) — hanya status yang berubah, dihitung
+> ulang langsung dari `tasks/v02-publishing-mvp.md`. Detail:
+> `tasks/v02-publishing-mvp.md` § T-092, § T-092.6.
 
 > **Update (2026-09-11, T-092.5 + T-104 selesai):** **T-092.5** (Granular
 > patch Realtime — Drafts) selesai — Server Action `getDraftPostAction`
@@ -691,6 +712,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 | **T-025** | Real OutstandAdapter                            | ⏳      | Rantai blocker terbesar — lihat di bawah. **Terhenti**: butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli (KI-003, `PROJECT_STATE.md` § Blockers), belum bisa dikerjakan sampai kredensial tersedia |
 | **T-026** | Webhook handler Outstand                        | ✅      | **Done (2026-09-07)** — seluruh 6 subtask (HMAC verify, durable-before-ACK, `post.published`/`post.error`/`account.token_expired`, idempotensi), lolos `typecheck`/`lint`/`test` (261 pass/4 skip) + retest end-to-end nyata 5 skenario (Najwa QA Engineer), semua PASS. **KI-048 Resolved**. ADR-099 (SECURITY DEFINER system-context lookup) dicatat sebagai preseden untuk T-027 |
 | **T-036** | In-app notification + Supabase Realtime         | ✅      | **Done (2026-09-07)** — seluruh 5 subtask tuntas (T-036.5 diverifikasi end-to-end nyata sebagai bagian retest T-026: `account.token_expired` → notifikasi Owner PASS) |
+| **T-092** | Realtime Calendar/Queue/Drafts/History (Supabase Realtime, ADR-094) | ✅ 6/6 | **Done (2026-09-11)** — seluruh 6/6 subtask tuntas (RLS policy, wiring subscription, granular patch Calendar/Queue/Drafts/History). Rangkaian sempat menemukan bug infra kritis (RLS `workspace_members` tidak mengenali koneksi Realtime, ditemukan+diperbaiki di T-092.4) yang memunculkan **KI-057** (gap metodologi verifikasi) — sekarang **Resolved** setelah T-092.5/T-092.6 lolos verifikasi cross-tab browser nyata. Lihat `tasks/v02-publishing-mvp.md` § T-092 |
 
 > **T-033** (Calendar view) sudah ✅ **Done** (2026-08-28), branch
 > `feature/calendar-design-system`. Sesi 2026-08-26 menuntaskan
