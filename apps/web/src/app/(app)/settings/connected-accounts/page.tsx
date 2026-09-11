@@ -14,12 +14,25 @@ import { ConnectedAccountsList } from "./components/ConnectedAccountsList";
 // ulang di sini secara defensif, tapi `getCachedSession()` (React.cache,
 // tidak ada round-trip tambahan) tetap dipanggil untuk resolve `userId`
 // yang dibutuhkan `withCurrentUser` (RLS, KI-026 follow-up).
-export default async function Page() {
+//
+// `searchParams.connect` (T-013.1/T-013.2, T-015.3, ADR-105) — diset
+// Route Handler `/api/integrations/outstand/callback` sebelum redirect
+// balik ke halaman ini (`?connect=success|error`), dibaca di sini murni
+// untuk diteruskan ke `ConnectedAccountsList` (Client Component) yang
+// menampilkannya sebagai toast sekali saat mount — Server Component ini
+// sendiri tidak punya business logic apa pun untuk query param ini.
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ connect?: string }>;
+}) {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
     redirect("/login");
   }
+
+  const { connect } = await searchParams;
 
   const workspaceService = new WorkspaceService(workspaceRepository);
   const accounts = await workspaceService.listConnectedAccounts(
@@ -27,5 +40,12 @@ export default async function Page() {
     asUserId(session.user.id),
   );
 
-  return <ConnectedAccountsList accounts={accounts} />;
+  return (
+    <ConnectedAccountsList
+      accounts={accounts}
+      connectResult={
+        connect === "success" || connect === "error" ? connect : null
+      }
+    />
+  );
 }

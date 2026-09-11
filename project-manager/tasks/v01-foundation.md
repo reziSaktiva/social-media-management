@@ -234,7 +234,7 @@ Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand o
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress — T-013.3 selesai (UI Connected Accounts); T-013.1/2 masih diblokir T-025 (v0.2, belum dikerjakan); T-013.4 murni operasional, belum ada tindakan |
+| **Status**    | 🟡 In Progress — T-013.1/2/3 selesai (2026-09-11): T-013.1/2 diselesaikan lewat Fake adapter (ADR-105, ADR-059 pattern) tanpa menunggu T-025 (Real OutstandAdapter, kredensial Outstand belum ada), sekaligus menyelesaikan rangkaian T-015 (reconnect flow); T-013.3 (UI Connected Accounts) sudah selesai sebelumnya. Satu-satunya sisa scope: **T-013.4** (operasional BYOK X), murni operasional, belum ada tindakan |
 | **Domain**    | workspace · integration                                      |
 | **ADR**       | ADR-021, ADR-037 (platform), ADR-040                         |
 | **Depends**   | T-006 ✅                                                      |
@@ -242,8 +242,8 @@ Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand o
 
 OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Saat ini connected account **hanya bisa didapat lewat seed manual** (`apps/web/prisma/seed-connected-accounts.ts`) — ini blocker rantai untuk banyak fitur lain.
 
-- [ ] **T-013.1** `OutstandAdapter.connectAccount` — inisiasi redirect flow (butuh **T-025**, v0.2 ⏳)
-- [ ] **T-013.2** Route Handler callback + persist `WorkspaceConnectedAccount`
+- [x] **T-013.1** `OutstandAdapter.connectAccount` — inisiasi redirect flow. Diselesaikan lewat Fake adapter (ADR-105, ADR-059 pattern) tanpa menunggu T-025 (Real OutstandAdapter, kredensial Outstand belum ada) — `WorkspaceService.initiateConnectAccount` memanggil `IOutstandAdapter.connectAccount`, Fake loopback redirect ke callback route kita sendiri.
+- [x] **T-013.2** Route Handler callback + persist `WorkspaceConnectedAccount` — `/api/integrations/outstand/callback` (entry point tanpa business logic) memanggil `WorkspaceService.completeAccountConnection`.
 - [x] **T-013.3** UI `/settings/connected-accounts` — daftar + tombol Connect per platform
 - [ ] **T-013.4** Operasional X: kredensial BYOK dikonfigurasi manual Project Owner di dashboard Outstand — **aplikasi tidak membuat form atau secret store X**
 
@@ -254,6 +254,7 @@ OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Saat i
 | **Status**    | ✅ Done — 3/3 subtask selesai, lolos review Ridwan (0 temuan)     |
 | **Domain**    | workspace                                        |
 | **ADR**       | ADR-048, ADR-049                                 |
+| **Terkait**   | KI-058 (`PROJECT_STATE.md`, 2026-09-11 — UI tidak menyembunyikan aksi Connect/Disconnect/Reconnect untuk role Creator, gap sudah ada sejak task ini) |
 | **Depends**   | T-013                                            |
 | **Baca dulu** | `04-ux/key-screen-patterns.md` (KSP-08-F07)      |
 
@@ -267,15 +268,18 @@ RBAC Owner/Admin — tidak ada perubahan RBAC, tinggal tambah gate konfirmasi se
 
 | Field         | Value                                                |
 | ------------- | ---------------------------------------------------- |
-| **Status**    | ⏳ Not Started                                        |
+| **Status**    | ✅ Done — 3/3 subtask selesai, review Ridwan lolos, 1 bug fungsional temuan QA Najwa (toast error dobel di callback route, prefetch/soft-navigation Next.js tanpa `code`/`state`) sudah diperbaiki dan diverifikasi ulang browser (golden path Connect + Reconnect PASS, hanya 1 toast sukses) |
 | **Domain**    | workspace · integration                              |
-| **ADR**       | ADR-040                                              |
+| **ADR**       | ADR-040, ADR-105                                     |
+| **Terkait**   | KI-058 (`PROJECT_STATE.md`, 2026-09-11 — UI tidak menyembunyikan aksi Connect/Disconnect/Reconnect untuk role Creator, ditemukan Najwa QA Engineer saat verifikasi task ini) |
 | **Depends**   | T-013 · **T-026 (v0.2, ⏳)** webhook `account.token_expired` |
 | **Baca dulu** | `05-architecture/integration-layer.md`                |
 
-- [ ] **T-015.1** Tandai status akun expired saat webhook `account.token_expired` masuk
-- [ ] **T-015.2** State visual "perlu reconnect" di Channels (T-012) + Connected Accounts
-- [ ] **T-015.3** Aksi reconnect (ulangi redirect flow tanpa kehilangan riwayat post)
+- [x] **T-015.1** Tandai status akun expired saat webhook `account.token_expired` masuk
+- [x] **T-015.2** State visual "perlu reconnect" di Channels (T-012) + Connected Accounts
+- [x] **T-015.3** Aksi reconnect (ulangi redirect flow tanpa kehilangan riwayat post) — Fake adapter (ADR-105), `WorkspaceService.initiateConnectAccount`/`completeAccountConnection` dengan `redirectAccountId` terisi → UPDATE `WorkspaceConnectedAccount` existing (`connectedAt` asli dipertahankan, riwayat post tidak hilang), tombol "Reconnect" aktif di `ConnectedAccountsList.tsx`.
+
+**Catatan implementasi (deviasi styling tombol, accepted, bukan bug/KI):** tombol "Reconnect" (`variant=secondary`) dan "Disconnect" (`variant=destructive`) di `ConnectedAccountsList.tsx` berbeda dari mockup Claude Design (`templates/settings-connected-accounts.html`: Reconnect=`btn-primary` filled, Disconnect=`btn` netral). King Rezi eksplisit memutuskan (`AskUserQuestion`) membiarkan kode seperti sekarang — dinilai lebih aman secara UX (Disconnect memang aksi merusak, Reconnect sudah cukup jelas dari badge status di sebelahnya) — bukan mengikuti mockup. Bukan gap yang perlu diperbaiki, tidak dicatat sebagai Known Issue.
 
 ---
 
@@ -635,8 +639,7 @@ Alasan urgensinya: kalau jalur Bearer token baru dipasang setelah kode web matan
 * Nomor kosong v0.1 sudah terpakai semua (T-019 diisi task API mobile). Task v0.1 baru berikutnya memakai nomor global berikutnya yang belum pernah dipakai — jangan menggeser ID yang sudah ada. **T-039** (Migrasi Routing & Settings, ADR-076) memakai nomor ini: ID global berikutnya yang belum pernah dipakai, dipinjam dari ruang kosong yang sebelumnya dicadangkan untuk pertumbuhan v0.2 (lihat Catatan Rilis `tasks/v02-publishing-mvp.md`) — task tetap ditempatkan di file v0.1 karena scope-nya (Workspace/Settings routing) sejalan dengan T-009/T-016, bukan v0.2 Publishing. **T-089** (Workspace Switcher, ADR-088, 2026-08-24) juga memakai pola yang sama: ID global berikutnya yang belum pernah dipakai sama sekali (bukan dipinjam dari cadangan release manapun, karena seluruh rentang T-080–T-088 v1.0 sudah terisi) — ditempatkan di file v0.1 karena lahir sebagai amandemen ADR-076/T-039 (Workspace context & Settings), bukan task baru terpisah dari rumpun ini. **T-093** (Accept Invite page, 2026-08-28) memakai pola yang sama lagi — ID global berikutnya setelah T-092 (v0.2, ADR-094) — menutup gap yang sudah dicatat sejak ADR-080 (2026-08-14, halaman `/invite/[token]` belum pernah dibuat) tapi baru diberi nomor sekarang, saat King Rezi mengoreksi rantai dependency Realtime Calendar (invite-to-membership harus utuh dulu sebelum T-036/T-092 bisa diverifikasi dengan ≥2 akun nyata).
 * **Definisi "Foundation selesai":** semua task di rilis ini `✅ Done` **kecuali** yang secara sadar ditunda dengan alasan tercatat — dan **kecuali tiga task yang menunggu v0.2** (lihat di bawah). **T-012** (Sidebar Channels) sebelumnya termasuk daftar ini tapi sudah ✅ Done (2026-08-12) — T-012.2 (scheduled count) ternyata tidak perlu menunggu real Outstand adapter, cukup data `PublishingPost`/`PublishingPostTarget` yang sudah ada sejak T-028.
 * **Task v0.1 yang tidak bisa ditutup sebelum v0.2 berjalan** (dependency lintas rilis, disengaja dan diketahui):
-  * **T-013** Connect account — subtask T-013.1 butuh T-025 (Real OutstandAdapter, v0.2).
-  * **T-015** Reconnect flow — butuh T-026 (webhook `account.token_expired`, v0.2).
+  * **T-013** Connect account — sisa T-013.4 (operasional BYOK X) murni operasional, bukan dependency v0.2. T-013.1/2/3 sudah selesai (2026-09-11), diselesaikan lewat Fake adapter (ADR-105, ADR-059 pattern) tanpa menunggu T-025 (Real OutstandAdapter, v0.2, kredensial belum ada).
   * **T-016** Account settings — subtask T-016.4 butuh T-036 (notification, v0.2).
 
-  Konsekuensinya: v0.1 dan v0.2 **tidak sepenuhnya sekuensial** — sisa v0.1 di atas selesai berbarengan atau setelah v0.2. Kalau di kemudian hari pemisahan ini terasa menyesatkan, pilihan yang lebih bersih adalah memindahkan Connect Account + Channels/CTA ke v0.2 lewat ADR baru (indeks release di `TASKS.md` adalah turunan `release-roadmap.md`, jadi perubahan ruang lingkup rilis wajib lewat ADR).
+  **Update (2026-09-11):** **T-015** (Reconnect flow) sudah ✅ Done — daftar di atas sebelumnya menganggapnya butuh T-026 (webhook, v0.2), ternyata bisa diselesaikan lewat Fake adapter (ADR-105) tanpa menunggu jalur real, sama seperti T-013.1/2. Konsekuensinya: v0.1 dan v0.2 **tidak sepenuhnya sekuensial** — sisa v0.1 di atas selesai berbarengan atau setelah v0.2. Kalau di kemudian hari pemisahan ini terasa menyesatkan, pilihan yang lebih bersih adalah memindahkan Connect Account + Channels/CTA ke v0.2 lewat ADR baru (indeks release di `TASKS.md` adalah turunan `release-roadmap.md`, jadi perubahan ruang lingkup rilis wajib lewat ADR).

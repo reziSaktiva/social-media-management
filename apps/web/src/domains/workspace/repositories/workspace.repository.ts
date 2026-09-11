@@ -397,4 +397,59 @@ export interface IWorkspaceRepository {
     connectedAccountId: ConnectedAccountId,
     actingUserId: UserId,
   ): Promise<void>;
+
+  /**
+   * Lookup satu akun by id (T-013.1/T-015.3, ADR-105) — dipakai
+   * `WorkspaceService.initiateConnectAccount`/`completeAccountConnection`
+   * untuk memvalidasi `redirectAccountId` (reconnect) benar-benar milik
+   * `workspaceId` ini SEBELUM redirect diminta maupun SEBELUM update
+   * dieksekusi — defense-in-depth terhadap `redirectAccountId` yang
+   * ditamper di client/query-param `state` (round-trip lewat browser,
+   * public). `actingUserId` (RLS, KI-026 follow-up). Returns `null` kalau
+   * tidak ditemukan di workspace ini.
+   */
+  findConnectedAccountById(
+    workspaceId: WorkspaceId,
+    connectedAccountId: ConnectedAccountId,
+    actingUserId: UserId,
+  ): Promise<ConnectedAccountRecord | null>;
+
+  /**
+   * CREATE `WorkspaceConnectedAccount` baru (T-013.1/T-013.2, Connect
+   * Account, ADR-105) — dipanggil `WorkspaceService.completeAccountConnection`
+   * saat `redirectAccountId` kosong (bukan reconnect). `connectedAt`
+   * default `now()` (koneksi baru). Melempar `ConflictError` kalau
+   * `outstandAccountId` ini sudah terhubung di `workspaceId` ini (unique
+   * constraint `[workspaceId, outstandAccountId]`). `actingUserId` (RLS,
+   * KI-026 follow-up) — RBAC (Owner/Admin) sudah diverifikasi
+   * `WorkspaceService` sebelum method ini dipanggil.
+   */
+  createConnectedAccount(input: {
+    workspaceId: WorkspaceId;
+    platform: SocialPlatform;
+    outstandAccountId: string;
+    handle: string;
+    actingUserId: UserId;
+  }): Promise<ConnectedAccountRecord>;
+
+  /**
+   * UPDATE akun existing (T-015.3, Reconnect, ADR-105) — refresh
+   * `outstandAccountId`/`handle` dari hasil `exchangeConnectCode` terbaru,
+   * set `status: "active"` dan `reconnectRequired: false`. `connectedAt`
+   * TIDAK direset — reconnect bukan re-create, riwayat
+   * `PublishingPostTarget`/`EngagementInboxItem` yang merujuk row
+   * `connectedAccountId` yang sama tetap utuh (requirement T-015.3 "tanpa
+   * kehilangan riwayat post"). Melempar `NotFoundError` kalau
+   * `connectedAccountId` tidak ditemukan di `workspaceId` ini.
+   * `actingUserId` (RLS, KI-026 follow-up) — RBAC + ownership
+   * (`findConnectedAccountById`) sudah diverifikasi `WorkspaceService`
+   * sebelum method ini dipanggil.
+   */
+  reconnectAccount(input: {
+    workspaceId: WorkspaceId;
+    connectedAccountId: ConnectedAccountId;
+    outstandAccountId: string;
+    handle: string;
+    actingUserId: UserId;
+  }): Promise<ConnectedAccountRecord>;
 }

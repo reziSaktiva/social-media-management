@@ -1,8 +1,13 @@
 import type {
+  ConnectAccountInput,
+  ConnectAccountResult,
+  ConnectedAccountData,
+  ExchangeConnectCodeInput,
   IOutstandAdapter,
   OutstandPostTargetInput,
   PostTargetOutcome,
 } from "@social/shared";
+import { SocialPlatform } from "@social/shared";
 
 /**
  * Hash string sederhana (FNV-1a 32-bit) — dipakai untuk menurunkan angka
@@ -25,6 +30,59 @@ function hashToUint(seed: string): number {
 /** Turunan angka deterministik 0..max-1 dari `seed` + `salt` (variasi field). */
 function deterministicInt(seed: string, salt: string, max: number): number {
   return hashToUint(`${seed}:${salt}`) % max;
+}
+
+/**
+ * Payload yang dibawa lewat `state` sepanjang loopback OAuth (ADR-105) —
+ * cukup untuk CSRF-check sederhana (`nonce`, dicocokkan sisi Route Handler
+ * lewat cookie/session, di luar scope adapter ini) + informasi yang
+ * dibutuhkan callback untuk tahu workspace/platform/mode (connect baru vs
+ * reconnect) tanpa perlu state server-side tambahan di Fake ini.
+ */
+interface FakeConnectState {
+  workspaceId: string;
+  platform: SocialPlatform;
+  redirectAccountId?: string;
+  nonce: string;
+}
+
+/**
+ * Encode/decode `state` sebagai base64url JSON — bukan JWT bertanda tangan
+ * sungguhan (Fake tidak butuh keamanan produksi, ADR-059: fidelitas
+ * instan tanpa simulasi), murni supaya `state` tetap satu string opaque
+ * sesuai bentuk kontrak `ExchangeConnectCodeInput`, konsisten dengan cara
+ * Outstand asli membawa `state` bolak-balik lewat redirect browser.
+ */
+function encodeFakeState(state: FakeConnectState): string {
+  return Buffer.from(JSON.stringify(state), "utf8").toString("base64url");
+}
+
+function decodeFakeState(state: string): FakeConnectState {
+  try {
+    return JSON.parse(
+      Buffer.from(state, "base64url").toString("utf8"),
+    ) as FakeConnectState;
+  } catch {
+    throw new Error(
+      "Fake OutstandAdapter: state tidak valid/rusak (exchangeConnectCode).",
+    );
+  }
+}
+
+/** Handle dummy realistis per platform (T-013/T-015.3) — deterministik dari seed supaya stabil dipanggil ulang di test. */
+function buildFakeHandle(platform: SocialPlatform, seed: string): string {
+  const suffix = deterministicInt(seed, "handle", 10_000);
+  const handlesByPlatform: Record<SocialPlatform, string> = {
+    [SocialPlatform.Instagram]: `@fake.ig.${suffix}`,
+    [SocialPlatform.Facebook]: `Fake Page ${suffix}`,
+    [SocialPlatform.Twitter]: `@fake_x_${suffix}`,
+    [SocialPlatform.LinkedIn]: `Fake Company ${suffix}`,
+    [SocialPlatform.TikTok]: `@fake.tiktok.${suffix}`,
+    [SocialPlatform.YouTube]: `Fake Channel ${suffix}`,
+    [SocialPlatform.Threads]: `@fake.threads.${suffix}`,
+    [SocialPlatform.Pinterest]: `Fake Pinterest ${suffix}`,
+  };
+  return handlesByPlatform[platform];
 }
 
 /**
@@ -98,6 +156,65 @@ function buildOutcome(
  * tidak ada pending yang benar-benar disimulasikan).
  */
 export const fakeOutstandAdapter: IOutstandAdapter = {
+  /**
+   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105) — Fake
+   * TIDAK pernah redirect ke domain eksternal manapun. `redirectUrl` yang
+   * dikembalikan adalah path RELATIF ke callback route kita sendiri
+   * (`/api/integrations/outstand/callback`) supaya browser cukup
+   * navigasi ke origin app yang sedang berjalan (tidak butuh env
+   * `APP_URL`/base URL apa pun) — loopback ini sengaja (bukan skip
+   * langsung ke sukses instan) supaya Route Handler callback tetap
+   * teruji end-to-end sebelum real adapter (T-025) masuk, lihat ADR-105.
+   */
+  async connectAccount({
+    workspaceId,
+    platform,
+    redirectAccountId,
+  }: ConnectAccountInput): Promise<ConnectAccountResult> {
+    const state = encodeFakeState({
+      workspaceId,
+      platform,
+      redirectAccountId,
+      nonce: crypto.randomUUID(),
+    });
+    const code = `fake-code-${crypto.randomUUID()}`;
+
+    const redirectUrl = `/api/integrations/outstand/callback?code=${encodeURIComponent(
+      code,
+    )}&state=${encodeURIComponent(state)}`;
+
+    return { redirectUrl };
+  },
+
+  /**
+   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105) — Fake
+   * always-success instan: `code` diterima apa adanya (dibuat sendiri
+   * oleh `connectAccount` di atas, tidak diverifikasi lebih lanjut —
+   * Fake tidak menyimpan daftar code yang pernah diterbitkan), `state`
+   * di-decode untuk menentukan `platform` hasil koneksi. `outstandAccountId`
+   * deterministik dari `state` supaya reconnect akun yang sama (state
+   * membawa `redirectAccountId` yang sama) menghasilkan handle yang
+   * konsisten dipanggil ulang — bukan acak setiap kali.
+   */
+  async exchangeConnectCode({
+    code,
+    state,
+  }: ExchangeConnectCodeInput): Promise<ConnectedAccountData> {
+    const decoded = decodeFakeState(state);
+    const seed = decoded.redirectAccountId ?? `${decoded.workspaceId}:${code}`;
+
+    return {
+      outstandAccountId: `fake-account-${deterministicInt(
+        seed,
+        "outstandAccountId",
+        1_000_000,
+      )}`,
+      platform: decoded.platform,
+      handle: buildFakeHandle(decoded.platform, seed),
+      status: "active",
+    };
+  },
+
   async schedulePost({ targets }) {
     const outstandPostId = `fake-post-${crypto.randomUUID()}`;
     rememberTargets(outstandPostId, targets);

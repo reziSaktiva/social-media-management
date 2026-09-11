@@ -1,5 +1,8 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
 
@@ -12,33 +15,50 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 import { PLATFORM_ICON } from "../../../components/platform-icons";
+import { initiateConnectAccountAction } from "../actions";
 
 const ALL_PLATFORMS = Object.values(SocialPlatform);
 
 /**
- * CTA "Connect Account" (T-013.3, migrasi shadcn/ui T-099.3) — dropdown 8
- * platform, SEMUA item disabled + tooltip "Segera hadir". Tidak ada
- * handler OAuth nyata di sini: inisiasi redirect (T-013.1/T-013.2)
- * diblokir T-025 (Real OutstandAdapter, v0.2), jadi setiap platform —
- * termasuk Twitter/X — belum punya endpoint untuk disambungkan.
+ * CTA "Connect Account" (T-013.3 UI, T-013.1/T-013.2 wiring, ADR-105) —
+ * dropdown 8 platform, tiap item memicu `initiateConnectAccountAction`
+ * (Server Action → `WorkspaceService.initiateConnectAccount` →
+ * `OutstandAdapter.connectAccount`, Fake loopback ke callback route kita
+ * sendiri sampai real adapter T-025 tersedia). Sukses berarti Server Action
+ * `redirect()` ke `redirectUrl` OAuth — komponen ini unmount, tidak perlu
+ * reset state manual (pola sama `WorkspacesSettingsView.handleSwitch`).
+ * Gagal (RBAC/validasi) mengembalikan `{ error }` tanpa redirect —
+ * ditampilkan lewat `toast.error` (pola sama `RetryTargetButton`).
  *
- * Ikon trigger "+" diganti `PlusSignIcon` (hugeicons, default preset Maia
- * untuk komponen baru, ganti `FaPlus` react-icons) — ikon brand per
- * platform (`PLATFORM_ICON`) tetap `react-icons` (ADR-058, pengecualian
- * logo bermerek dagang yang sudah berlaku sejak sebelum migrasi ini).
- * `DropdownMenuItem` disabled dibungkus `<span tabIndex={0}>` supaya
- * `Tooltip` tetap bisa menerima hover (item disabled otomatis
- * `pointer-events-none` lewat class bawaan `DropdownMenuItem`, sama
- * seperti pola di `ConnectedAccountsList`).
+ * Ikon trigger "+" `PlusSignIcon` (hugeicons, default preset Maia) — ikon
+ * brand per platform (`PLATFORM_ICON`) tetap `react-icons` (ADR-058,
+ * pengecualian logo bermerek dagang). Item dinonaktifkan HANYA selagi
+ * request untuk platform itu sendiri pending (`pendingPlatform`), platform
+ * lain tetap bisa diklik — konsisten "satu aksi async per klik", bukan
+ * mengunci seluruh menu.
  */
 export function ConnectPlatformMenu() {
+  const [isPending, startTransition] = useTransition();
+  const [pendingPlatform, setPendingPlatform] = useState<SocialPlatform | null>(
+    null,
+  );
+
+  function handleConnect(platform: SocialPlatform) {
+    setPendingPlatform(platform);
+    startTransition(async () => {
+      const result = await initiateConnectAccountAction(platform);
+      if (result?.error) {
+        toast.error(result.error);
+        setPendingPlatform(null);
+      }
+      // Sukses: Server Action redirect() di server, komponen ini unmount —
+      // tidak perlu reset `pendingPlatform` manual (pola sama
+      // `WorkspacesSettingsView.handleSwitch`).
+    });
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -52,17 +72,17 @@ export function ConnectPlatformMenu() {
           const entry = PLATFORM_ICON[platform];
           const PlatformGlyph = entry.Icon;
           return (
-            <Tooltip key={platform}>
-              <TooltipTrigger asChild>
-                <span tabIndex={0} className="block">
-                  <DropdownMenuItem disabled>
-                    <PlatformGlyph size={16} color={entry.color} />
-                    {entry.label}
-                  </DropdownMenuItem>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="left">Segera hadir</TooltipContent>
-            </Tooltip>
+            <DropdownMenuItem
+              key={platform}
+              disabled={isPending && pendingPlatform === platform}
+              onSelect={(event) => {
+                event.preventDefault();
+                handleConnect(platform);
+              }}
+            >
+              <PlatformGlyph size={16} color={entry.color} />
+              {entry.label}
+            </DropdownMenuItem>
           );
         })}
       </DropdownMenuContent>
