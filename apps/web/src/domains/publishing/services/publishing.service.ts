@@ -407,4 +407,36 @@ export class PublishingService {
     }
     return post;
   }
+
+  /**
+   * Granular patch Realtime History (T-092.6, ADR-094 poin 5, 7) — fetch
+   * SATU record termapping untuk `postId` dari event Realtime
+   * (`{postId, eventType}`, `usePublishingPostsRealtime`). Reuse
+   * `HistoryItemRecord` (targets membawa `status`/`error` per akun) —
+   * **bukan** `getCalendarPostById`/`CalendarPostItem`, karena `HistoryList`
+   * (`getPrimaryErrorMessage`) butuh detail per-target yang tidak ada di
+   * proyeksi Calendar (`CalendarItemTargetRecord` tidak punya
+   * `status`/`error`). Delegasi murni ke
+   * `IPublishingRepository.getHistoryPostById` — tidak ada clamp status di
+   * sini (beda dari `listHistory`), karena kriteria tampilan History
+   * (`HISTORY_TERMINAL_STATUSES`) ditegakkan client-side oleh pemanggil
+   * (`HistoryList`, sama pola `DraftsList`), bukan di service ini — post
+   * yang statusnya berubah jadi bukan `Published`/`Failed` lagi tetap perlu
+   * dikembalikan APA ADANYA supaya pemanggil bisa menafsirkannya sebagai
+   * "remove dari local state", bukan salah dianggap NotFoundError.
+   *
+   * Returns `null` kalau post tidak ditemukan di `workspaceId` ini atau
+   * sudah di-soft-delete — sama semangat `getCalendarPostById`, BUKAN
+   * error (beda dari `getHistoryById` yang throw `NotFoundError`, dipakai
+   * route detail yang punya alur error eksplisit).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`.
+   */
+  async getHistoryPostById(
+    workspaceId: WorkspaceId,
+    postId: PostId,
+    userId: UserId,
+  ): Promise<HistoryItemRecord | null> {
+    return this.repository.getHistoryPostById({ workspaceId, postId }, userId);
+  }
 }

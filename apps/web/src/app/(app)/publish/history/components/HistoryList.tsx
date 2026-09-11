@@ -1,13 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { ContentStatus } from "@social/shared";
-import type { HistoryGroup, HistoryItemRecord } from "@/domains/publishing";
+import {
+  groupHistoryItemsByDate,
+  HISTORY_TERMINAL_STATUSES,
+  type HistoryGroup,
+  type HistoryItemRecord,
+} from "@/domains/publishing";
 import type { ConnectedAccountRecord } from "@/domains/workspace";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 import { formatUtcDateKeyHeading } from "@/lib/utils";
+import { usePublishingPostsRealtime } from "@/lib/hooks/use-publishing-posts-realtime";
+
+import { getHistoryPostAction } from "../actions";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -77,10 +85,29 @@ const STATUS_OPTIONS = [
   { value: ContentStatus.Failed, label: "Error" },
 ];
 
+/**
+ * Kriteria tampilan History (T-092.6, ADR-094 poin 5, 7): status
+ * `Published` atau `Failed` — sama persis `HISTORY_TERMINAL_STATUSES`
+ * (`PublishingService`), disalin ke `Set` di sini murni untuk lookup O(1)
+ * saat granular patch (pola sama `DRAFT_VIEW_STATUSES` di `DraftsList`).
+ */
+const HISTORY_VIEW_STATUSES: ReadonlySet<ContentStatus> = new Set(
+  HISTORY_TERMINAL_STATUSES,
+);
+
 export interface HistoryListProps {
-  groups: HistoryGroup[];
-  /** Daftar akun terkoneksi workspace (opsi filter Akun) — dari `WorkspaceService.listConnectedAccounts`, bukan derive dari `groups` supaya opsi tidak hilang saat filter lain aktif (sama alasan `CalendarToolbar`). */
+  /**
+   * Hasil `PublishingService.listHistory` (flat, sudah terurut `updatedAt`
+   * descending oleh repository) — T-092.6: pengelompokan per tanggal
+   * dipindah ke DALAM komponen ini (`groupHistoryItemsByDate` dipanggil di
+   * bawah, atas hasil gabungan `items` + granular patch Realtime), bukan
+   * lagi di composition root `page.tsx`.
+   */
+  items: HistoryItemRecord[];
+  /** Daftar akun terkoneksi workspace (opsi filter Akun) — dari `WorkspaceService.listConnectedAccounts`, bukan derive dari `items` yang sudah terfilter, sama alasan `CalendarToolbar`. */
   accounts: ConnectedAccountRecord[];
+  /** Workspace aktif — dipakai `usePublishingPostsRealtime` (T-092.6) untuk subscribe channel `publishing_posts:{workspaceId}`, bukan dipakai untuk fetch data apa pun langsung di komponen ini (AGENTS.md #5). */
+  workspaceId: string;
 }
 
 /**
@@ -91,13 +118,78 @@ export interface HistoryListProps {
  * server per filter seperti Calendar). Tiap card bisa diklik penuh menuju
  * `/publish/history/[postId]` (T-034.3) via `Item asChild` + `Link`, sama
  * pola `DraftsList`.
+ *
+ * **T-092.6 (ADR-094 poin 5, 6, 7) — client state + granular Realtime
+ * patch:** `items` (prop dari `page.tsx`) disalin ke `useState` lokal (pola
+ * sama `DraftsList`/`QueueScreen`) — disinkronkan ulang SAAT RENDER setiap
+ * kali prop `items` berubah, bukan `useEffect` + `setState` supaya tidak
+ * ada render tambahan/cascading.
+ *
+ * `usePublishingPostsRealtime(workspaceId, {...})` subscribe selama
+ * komponen ini mount (lifecycle per-mount, ADR-094 poin 6). Event
+ * `INSERT`/`UPDATE` memicu fetch SATU record via `getHistoryPostAction`
+ * (Server Action → `PublishingService.getHistoryPostById`, method baru —
+ * bukan refetch seluruh History) lalu di-upsert/remove ke state lokal
+ * berdasar kriteria tampilan History (`HISTORY_VIEW_STATUSES` —
+ * `Published`/`Failed`; status lain, termasuk `null` hasil post tidak
+ * ditemukan/soft-deleted, berarti item dihapus dari local state) — echo
+ * dari aksi milik user sendiri diproses sama seperti event orang lain,
+ * tanpa deteksi/skip apa pun (idempoten by design, ADR-094 poin 5). Urutan
+ * dipertahankan `updatedAt` descending (sama `orderBy` `listHistory`),
+ * lalu dikelompokkan ulang via `groupHistoryItemsByDate` sebelum difilter
+ * Status/Akun.
  */
-export function HistoryList({ groups, accounts }: HistoryListProps) {
+export function HistoryList({
+  items,
+  accounts,
+  workspaceId,
+}: HistoryListProps) {
   const [statusFilter, setStatusFilter] = useState<string>(
     ALL_STATUS_FILTER_VALUE,
   );
   const [accountFilter, setAccountFilter] = useState<string>(
     ALL_ACCOUNTS_FILTER_VALUE,
+  );
+
+  const [prevItems, setPrevItems] = useState(items);
+  const [localItems, setLocalItems] = useState(items);
+
+  if (items !== prevItems) {
+    setPrevItems(items);
+    setLocalItems(items);
+  }
+
+  const handlePublishingPostChange = useCallback(
+    (event: { postId: HistoryItemRecord["id"] }) => {
+      void (async () => {
+        const fetched = await getHistoryPostAction(event.postId);
+        const historyItem =
+          fetched && HISTORY_VIEW_STATUSES.has(fetched.status) ? fetched : null;
+
+        setLocalItems((prev) => {
+          const withoutStale = prev.filter((item) => item.id !== event.postId);
+
+          if (!historyItem) {
+            return withoutStale;
+          }
+
+          return [...withoutStale, historyItem].sort(
+            (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
+          );
+        });
+      })();
+    },
+    [],
+  );
+
+  usePublishingPostsRealtime(workspaceId, {
+    onInsert: handlePublishingPostChange,
+    onUpdate: handlePublishingPostChange,
+  });
+
+  const groups = useMemo<HistoryGroup[]>(
+    () => groupHistoryItemsByDate(localItems),
+    [localItems],
   );
 
   const accountOptions = useMemo(
