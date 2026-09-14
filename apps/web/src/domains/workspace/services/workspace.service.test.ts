@@ -732,6 +732,11 @@ function fakeOutstandAdapter(
       handle: "@fake",
       status: "active",
     }),
+    uploadMediaWorkingCopy: async () => ({
+      outstandMediaId: "unused",
+      outstandMediaUrl: "https://fake.outstand.local/media/unused",
+      expiresAt: new Date(),
+    }),
     schedulePost: async () => ({ outstandPostId: "unused" }),
     publishNow: async () => ({ outstandPostId: "unused" }),
     fetchPostOutcome: async () => [],

@@ -6,7 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import NextLink from "next/link";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
+import { Cancel01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
+import { toast } from "sonner";
 
 import { ContentFormat, ContentStatus, SocialPlatform } from "@social/shared";
 
@@ -14,6 +15,7 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmActionDialog } from "@/components/shared/ConfirmActionDialog";
 import {
   Dialog,
   DialogContent,
@@ -30,17 +32,26 @@ import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
+import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
+import { maxMediaCountForFormats } from "@/domains/publishing";
 
-import type { ConnectedAccountDto } from "./actions";
+import type { ConnectedAccountDto, DraftMediaDto } from "./actions";
 import {
+  deleteMediaAction,
   getConnectedAccountsAction,
   getDraftAction,
   publishNowAction,
   saveDraftAction,
   scheduleDraftAction,
   updateDraftAction,
+  uploadMediaAction,
 } from "./actions";
 import type { UnsavedNewPost } from "./Context";
 import { useDraftEditor } from "./Context";
@@ -239,6 +250,18 @@ function DraftEditorForm({
   const [formatByAccount, setFormatByAccount] = useState<
     Record<string, ContentFormat>
   >({});
+  // Media (T-024.4) — setiap file diupload segera saat dipilih/didrop
+  // (`uploadMediaAction`, bukan disimpan sebagai `File` mentah di state),
+  // supaya preview + validasi mime/ukuran terjadi langsung, bukan ditunda
+  // sampai Save/Schedule. `mediaItems` adalah SATU set untuk seluruh post
+  // (bukan per-akun/per-target, ADR-107) — "hapus" di grid preview (T-024.5)
+  // menghapus PERMANEN (file Storage + record `MediaItem` DB, lewat dialog
+  // konfirmasi Tier 2/ADR-049), bukan sekadar unlink dari state lokal.
+  const [mediaItems, setMediaItems] = useState<DraftMediaDto[]>([]);
+  const [uploadingMediaCount, setUploadingMediaCount] = useState(0);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const mediaFileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingMedia, setIsDraggingMedia] = useState(false);
   const [pinTitle, setPinTitle] = useState("");
   const [pinLink, setPinLink] = useState("");
   const [scheduleDate, setScheduleDate] = useState<string | undefined>();
@@ -276,6 +299,7 @@ function DraftEditorForm({
         if (cancelled) return;
         setCaption(draft.caption);
         setStatus(draft.status as ContentStatus);
+        setMediaItems(draft.media);
       })
       .catch(() => {
         if (!cancelled) close();
@@ -421,13 +445,105 @@ function DraftEditorForm({
     }
   }
 
+  /**
+   * Format yang sedang aktif dipilih di antara akun target yang dicentang
+   * — dipakai untuk menghitung batas media efektif (ADR-107,
+   * `maxMediaCountFor`) DAN dikirim ke Server Action (`activeFormats`)
+   * supaya server bisa menegakkan batas yang sama (defense-in-depth, sama
+   * pola guard lain di repo ini).
+   */
+  function getActiveFormats(): ContentFormat[] {
+    return selectedAccounts.map(
+      (account) =>
+        formatByAccount[account.id] ?? getDefaultFormat(account.platform),
+    );
+  }
+
+  const mediaIds = mediaItems.map((item) => item.id);
+  const effectiveMaxMedia = maxMediaCountForFormats(getActiveFormats());
+  const isMediaLimitReached =
+    mediaItems.length + uploadingMediaCount >= effectiveMaxMedia;
+
+  async function handleFilesSelected(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) {
+      return;
+    }
+    const files = Array.from(fileList);
+    const max = maxMediaCountForFormats(getActiveFormats());
+    const availableSlots = Math.max(
+      0,
+      max - mediaItems.length - uploadingMediaCount,
+    );
+
+    if (availableSlots === 0) {
+      setMediaError(
+        `Batas maksimum ${max} media untuk format yang sedang dipilih sudah tercapai.`,
+      );
+      return;
+    }
+
+    const toUpload = files.slice(0, availableSlots);
+    if (files.length > toUpload.length) {
+      setMediaError(
+        `Hanya ${toUpload.length} dari ${files.length} file diunggah — batas maksimum media untuk format ini adalah ${max}.`,
+      );
+    } else {
+      setMediaError(null);
+    }
+
+    setUploadingMediaCount((count) => count + toUpload.length);
+    await Promise.all(
+      toUpload.map(async (file) => {
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          const result = await uploadMediaAction(formData);
+          if ("error" in result) {
+            setMediaError(result.error);
+          } else {
+            setMediaItems((prev) => [...prev, result.media]);
+          }
+        } catch {
+          setMediaError("Gagal mengunggah salah satu file. Coba lagi.");
+        } finally {
+          setUploadingMediaCount((count) => count - 1);
+        }
+      }),
+    );
+  }
+
+  // T-024.5 (ADR-049 Tier 2): hapus media dari grid preview sekarang berarti
+  // hapus PERMANEN (file Storage + record `MediaItem` DB), bukan lagi
+  // unlink diam-diam — pola sama `deleteConfirm` di `DraftsList.tsx`
+  // (`useConfirmAction` + `ConfirmActionDialog`). Karena `ConfirmActionDialog`
+  // adalah `AlertDialog` modal (memblokir interaksi lain di belakangnya
+  // selagi terbuka), tombol hapus item lain di grid otomatis tidak bisa
+  // diklik selama satu proses berjalan — tidak perlu state disable
+  // tambahan per-tile, konsisten pola `DraftsList`.
+  const deleteMediaConfirm = useConfirmAction<DraftMediaDto>(
+    (item) => deleteMediaAction(item.id),
+    (item) => {
+      setMediaItems((prev) => prev.filter((m) => m.id !== item.id));
+      toast("Media berhasil dihapus");
+    },
+  );
+
   async function handleSaveDraft() {
     setIsSavingDraft(true);
     try {
+      const activeFormats = getActiveFormats();
       if (savedPostId) {
-        await updateDraftAction(savedPostId, caption);
+        await updateDraftAction(savedPostId, {
+          caption,
+          mediaIds,
+          activeFormats,
+        });
       } else {
-        const result = await saveDraftAction(caption);
+        const result = await saveDraftAction({
+          caption,
+          mediaIds,
+          activeFormats,
+        });
         setSavedPostId(result.postId);
       }
       if (mode === "create") {
@@ -438,6 +554,14 @@ function DraftEditorForm({
       // di daftar itulah umpan baliknya, menggantikan banner sukses yang tidak
       // akan sempat terbaca karena editor ditutup.
       finishTerminalAction("save-draft");
+    } catch (error) {
+      setNotice({
+        status: "error",
+        title:
+          error instanceof Error
+            ? error.message
+            : "Gagal menyimpan draft. Coba lagi.",
+      });
     } finally {
       setIsSavingDraft(false);
     }
@@ -473,6 +597,7 @@ function DraftEditorForm({
         caption,
         scheduledAt,
         targets: buildTargetsPayload(),
+        mediaIds,
       });
 
       setSavedPostId(result.postId);
@@ -503,6 +628,7 @@ function DraftEditorForm({
         postId: savedPostId,
         caption,
         targets: buildTargetsPayload(),
+        mediaIds,
       });
 
       setSavedPostId(result.postId);
@@ -651,11 +777,135 @@ function DraftEditorForm({
                     <Label htmlFor="draft-media" className="sr-only">
                       Media
                     </Label>
-                    <Input id="draft-media" type="file" disabled />
-                    <FieldDescription>
-                      Lampiran media akan tersedia setelah OutstandAdapter Media
-                      API siap.
-                    </FieldDescription>
+                    <input
+                      ref={mediaFileInputRef}
+                      id="draft-media"
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime"
+                      className="hidden"
+                      disabled={isMediaLimitReached}
+                      onChange={(event) => {
+                        void handleFilesSelected(event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                    {/* eslint-disable-next-line no-restricted-syntax -- T-024.4: custom drag-drop zone (dikonfirmasi King Rezi via AskUserQuestion, bukan native file input polos) — tidak ada primitive shadcn setara, murni Tailwind. */}
+                    <div
+                      role="button"
+                      tabIndex={isMediaLimitReached ? -1 : 0}
+                      aria-disabled={isMediaLimitReached}
+                      onClick={() => {
+                        if (!isMediaLimitReached) {
+                          mediaFileInputRef.current?.click();
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          !isMediaLimitReached &&
+                          (event.key === "Enter" || event.key === " ")
+                        ) {
+                          event.preventDefault();
+                          mediaFileInputRef.current?.click();
+                        }
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        if (!isMediaLimitReached) setIsDraggingMedia(true);
+                      }}
+                      onDragLeave={() => setIsDraggingMedia(false)}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        setIsDraggingMedia(false);
+                        if (!isMediaLimitReached) {
+                          void handleFilesSelected(event.dataTransfer.files);
+                        }
+                      }}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-input p-6 text-center transition-colors",
+                        isMediaLimitReached
+                          ? "cursor-not-allowed opacity-50"
+                          : "cursor-pointer hover:border-primary",
+                        isDraggingMedia && "border-primary bg-accent",
+                      )}
+                    >
+                      <Text>Tarik file ke sini atau klik untuk memilih</Text>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            aria-disabled="true"
+                            className="cursor-not-allowed text-sm text-muted-foreground underline underline-offset-4"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            atau pilih dari Media Library
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Coming soon</TooltipContent>
+                      </Tooltip>
+                    </div>
+
+                    {mediaError ? (
+                      <Text variant="muted" className="text-destructive">
+                        {mediaError}
+                      </Text>
+                    ) : (
+                      <FieldDescription>
+                        Maks. {effectiveMaxMedia} media untuk format yang sedang
+                        dipilih (ADR-107) — 50MB per file.
+                      </FieldDescription>
+                    )}
+
+                    {mediaItems.length > 0 || uploadingMediaCount > 0 ? (
+                      // eslint-disable-next-line no-restricted-syntax -- T-024.4: grid preview thumbnail media (multi-media/carousel) — tidak ada primitive shadcn setara, murni Tailwind grid.
+                      <div className="grid grid-cols-3 gap-2">
+                        {mediaItems.map((item) => (
+                          // eslint-disable-next-line no-restricted-syntax -- T-024.4: tile thumbnail grid preview media (multi-media/carousel) — tidak ada primitive shadcn setara, murni Tailwind.
+                          <div
+                            key={item.id}
+                            className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted"
+                          >
+                            {item.type === "video" ? (
+                              <video
+                                src={item.url ?? undefined}
+                                className="size-full object-cover"
+                                muted
+                              />
+                            ) : (
+                              // eslint-disable-next-line @next/next/no-img-element -- signed URL Supabase Storage sementara (T-024.2), tidak cocok untuk next/image remote pattern statis.
+                              <img
+                                src={item.url ?? undefined}
+                                alt={item.filename}
+                                className="size-full object-cover"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              aria-label={`Hapus ${item.filename} secara permanen`}
+                              onClick={() => deleteMediaConfirm.open(item)}
+                              disabled={deleteMediaConfirm.isLoading}
+                              className="absolute top-1 right-1 rounded-full bg-background/80 p-1 opacity-0 transition-opacity group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <HugeiconsIcon
+                                icon={Delete02Icon}
+                                strokeWidth={2}
+                                size={16}
+                              />
+                            </button>
+                          </div>
+                        ))}
+                        {Array.from({ length: uploadingMediaCount }).map(
+                          (_, index) => (
+                            // eslint-disable-next-line no-restricted-syntax -- T-024.4: placeholder loading tile tanpa identitas stabil (belum ada id sampai upload selesai); murni Tailwind, tidak ada primitive shadcn setara.
+                            <div
+                              key={`uploading-${index}`}
+                              className="flex aspect-square items-center justify-center rounded-md border border-dashed border-input bg-muted"
+                            >
+                              <Spinner />
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -895,6 +1145,18 @@ function DraftEditorForm({
           </Button>
         </DialogFooter>
       )}
+
+      <ConfirmActionDialog
+        isOpen={deleteMediaConfirm.isOpen}
+        onClose={deleteMediaConfirm.close}
+        title="Hapus media ini secara permanen?"
+        description="Tindakan ini tidak bisa dibatalkan — file akan hilang permanen dari Storage dan tidak lagi bisa dipakai di post manapun."
+        confirmLabel="Hapus Media"
+        isLoading={deleteMediaConfirm.isLoading}
+        error={deleteMediaConfirm.error}
+        onConfirm={() => void deleteMediaConfirm.confirm()}
+        variant="destructive"
+      />
     </div>
   );
 }

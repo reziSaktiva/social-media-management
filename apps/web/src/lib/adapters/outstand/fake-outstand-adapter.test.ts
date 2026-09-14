@@ -90,6 +90,31 @@ describe("fakeOutstandAdapter.exchangeConnectCode (T-013/T-015.3, ADR-105)", () 
   });
 });
 
+describe("fakeOutstandAdapter.uploadMediaWorkingCopy (T-024.3, ADR-106)", () => {
+  it("resolves instantly with outstandMediaId/outstandMediaUrl/expiresAt (no delay/failure simulation, ADR-059)", async () => {
+    const result = await fakeOutstandAdapter.uploadMediaWorkingCopy({
+      fileBuffer: Buffer.from("fake-image-bytes"),
+      mimeType: "image/jpeg",
+    });
+
+    expect(result.outstandMediaId).toMatch(/^fake-media-/);
+    expect(result.outstandMediaUrl).toContain(result.outstandMediaId);
+    expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it("returns a different outstandMediaId on every call, even for identical input", async () => {
+    const input = {
+      fileBuffer: Buffer.from("same-bytes"),
+      mimeType: "video/mp4",
+    };
+
+    const first = await fakeOutstandAdapter.uploadMediaWorkingCopy(input);
+    const second = await fakeOutstandAdapter.uploadMediaWorkingCopy(input);
+
+    expect(first.outstandMediaId).not.toEqual(second.outstandMediaId);
+  });
+});
+
 describe("fakeOutstandAdapter.fetchPostMetrics", () => {
   it("is deterministic — same outstandPostId returns identical numbers every call (T-041.5)", async () => {
     const first = await fakeOutstandAdapter.fetchPostMetrics("post-1");

@@ -62,3 +62,7 @@ export function asWorkspaceSnapshotId(value: string): WorkspaceSnapshotId {
 export function asNotificationId(value: string): NotificationId {
   return value as NotificationId;
 }
+
+export function asMediaId(value: string): MediaId {
+  return value as MediaId;
+}

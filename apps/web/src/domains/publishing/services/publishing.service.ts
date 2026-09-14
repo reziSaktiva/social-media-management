@@ -1,6 +1,7 @@
 import { ContentStatus } from "@social/shared";
 import type {
   ConnectedAccountId,
+  MediaId,
   MemberRole,
   PostId,
   UserId,
@@ -70,11 +71,14 @@ export class PublishingService {
     workspaceId: WorkspaceId;
     authorId: UserId;
     caption: string;
+    /** T-024.4 — sudah divalidasi ownership+batas format oleh caller (`resolveDraftMediaIds`/`assertMediaCountWithinLimit`, dipanggil dari Server Action). */
+    mediaIds?: MediaId[];
   }): Promise<PublishingPostRecord> {
     return this.repository.createDraft({
       workspaceId: input.workspaceId,
       authorId: input.authorId,
       caption: input.caption.trim(),
+      ...(input.mediaIds !== undefined ? { mediaIds: input.mediaIds } : {}),
     });
   }
 
@@ -116,6 +120,13 @@ export class PublishingService {
       workspaceId: WorkspaceId;
       postId: PostId;
       caption: string;
+      /**
+       * T-024.4 — sudah divalidasi ownership+batas format oleh caller
+       * (`resolveDraftMediaIds`/`assertMediaCountWithinLimit`). `undefined`
+       * = kolom `mediaIds` tidak disentuh (lihat catatan
+       * `IPublishingRepository.updateDraftCaption`).
+       */
+      mediaIds?: MediaId[];
     },
     userId: UserId,
   ): Promise<PublishingPostRecord> {
@@ -124,6 +135,7 @@ export class PublishingService {
         workspaceId: input.workspaceId,
         postId: input.postId,
         caption: input.caption.trim(),
+        ...(input.mediaIds !== undefined ? { mediaIds: input.mediaIds } : {}),
       },
       userId,
     );

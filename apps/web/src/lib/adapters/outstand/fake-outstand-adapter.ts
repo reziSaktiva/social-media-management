@@ -6,6 +6,7 @@ import type {
   IOutstandAdapter,
   OutstandPostTargetInput,
   PostTargetOutcome,
+  UploadMediaWorkingCopyResult,
 } from "@social/shared";
 import { SocialPlatform } from "@social/shared";
 import { parseBase64UrlJson } from "./connect-state";
@@ -100,6 +101,14 @@ function buildFakeHandle(platform: SocialPlatform, seed: string): string {
  * tidak menumpuk memory tanpa batas seiring bertambahnya post.
  */
 const MAX_REMEMBERED_POSTS = 10_000;
+
+/**
+ * TTL mock untuk `uploadMediaWorkingCopy` (T-024.3, ADR-106) — nilai
+ * arbitrer 24 jam, murni supaya `expiresAt` yang dikembalikan Fake masuk
+ * akal (bukan langsung expired/`0`) untuk UI yang menampilkannya; Outstand
+ * asli menentukan TTL sesungguhnya (di luar kendali Fake).
+ */
+const FAKE_MEDIA_WORKING_COPY_TTL_MS = 24 * 60 * 60 * 1000;
 
 const targetsByOutstandPostId = new Map<string, OutstandPostTargetInput[]>();
 
@@ -209,6 +218,28 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
       platform: decoded.platform,
       handle: buildFakeHandle(decoded.platform, seed),
       status: "active",
+    };
+  },
+
+  /**
+   * Media upload working copy (T-024.3, ADR-040 poin 4, ADR-106) — Fake
+   * membungkus 3 langkah narasi Outstand Media API (request upload URL →
+   * PUT bytes → confirm) menjadi SATU langkah instant always-success
+   * (ADR-059): tidak ada network call/PUT sungguhan, `fileBuffer`/
+   * `mimeType` diterima apa adanya tanpa validasi ulang (validasi
+   * mime/size sudah terjadi sebelumnya di `UploadMediaUseCase`/
+   * `validation.ts`, T-024.2). `outstandMediaId` acak per panggilan (bukan
+   * deterministik) mengikuti pola `schedulePost`/`publishNow` — setiap
+   * upload working copy adalah upload baru, bukan sesuatu yang perlu
+   * direproduksi identik untuk input yang sama.
+   */
+  async uploadMediaWorkingCopy(): Promise<UploadMediaWorkingCopyResult> {
+    const outstandMediaId = `fake-media-${crypto.randomUUID()}`;
+
+    return {
+      outstandMediaId,
+      outstandMediaUrl: `https://fake.outstand.local/media/${outstandMediaId}`,
+      expiresAt: new Date(Date.now() + FAKE_MEDIA_WORKING_COPY_TTL_MS),
     };
   },
 

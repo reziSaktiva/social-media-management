@@ -1,5 +1,6 @@
 import {
   asConnectedAccountId,
+  asMediaId,
   asPostId,
   asPostTargetId,
   asUserId,
@@ -74,6 +75,7 @@ function mapPost(post: PublishingPost): PublishingPostRecord {
     authorId: asUserId(post.authorId),
     caption: post.caption,
     status: post.status as ContentStatus,
+    mediaIds: post.mediaIds.map((id) => asMediaId(id)),
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
   };
@@ -146,13 +148,14 @@ function mapHistoryItem(post: QueuePostWithTargets): HistoryItemRecord {
 }
 
 export const publishingRepository: IPublishingRepository = {
-  async createDraft({ workspaceId, authorId, caption }) {
+  async createDraft({ workspaceId, authorId, caption, mediaIds }) {
     const post = await withCurrentUser(authorId, (tx) =>
       tx.publishingPost.create({
         data: {
           workspaceId,
           authorId,
           caption,
+          ...(mediaIds !== undefined ? { mediaIds } : {}),
         },
       }),
     );
@@ -205,7 +208,7 @@ export const publishingRepository: IPublishingRepository = {
     return post ? mapPost(post) : null;
   },
 
-  async updateDraftCaption({ workspaceId, postId, caption }, userId) {
+  async updateDraftCaption({ workspaceId, postId, caption, mediaIds }, userId) {
     const post = await withCurrentUser(userId, async (tx) => {
       const { count } = await tx.publishingPost.updateMany({
         where: {
@@ -214,7 +217,14 @@ export const publishingRepository: IPublishingRepository = {
           status: ContentStatus.Draft,
           deletedAt: null,
         },
-        data: { caption },
+        data: {
+          caption,
+          // `undefined` (bukan dipass sama sekali) = kolom `mediaIds` TIDAK
+          // disentuh (mempertahankan nilai lama) — beda dari `[]` yang
+          // secara eksplisit mengosongkan lampiran media post ini. Lihat
+          // catatan di `IPublishingRepository.updateDraftCaption`.
+          ...(mediaIds !== undefined ? { mediaIds } : {}),
+        },
       });
 
       if (count === 0) {

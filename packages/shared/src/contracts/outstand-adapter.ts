@@ -34,6 +34,14 @@
  * mendefinisikan method-nya eksplisit di tabel kontrak — ADR-105
  * mendesain split 2-method ini (bukan menebak liar) dan menjadi kontrak
  * resmi untuk keduanya.
+ *
+ * **`uploadMediaWorkingCopy` (ADR-106, 2026-09-14)** — ditambahkan untuk
+ * T-024.3 (media upload working copy Draft Editor). BEDA dari
+ * `connectAccount`/`exchangeConnectCode`: ketiga langkah narasi Outstand
+ * Media API (request upload URL → PUT bytes → confirm) murni
+ * server-to-server tanpa redirect browser, jadi digabung menjadi SATU
+ * method alih-alih split 2 method — lihat ADR-106 untuk perbandingan
+ * eksplisit dengan alasan split ADR-105.
  */
 import type { ContentFormat, SocialPlatform } from "../enums";
 
@@ -177,6 +185,39 @@ export interface ConnectedAccountData {
 }
 
 /**
+ * Media upload working copy (T-024.3, ADR-040 poin 4, ADR-106) — dipanggil
+ * SEBELUM `schedulePost`/`publishNow` untuk setiap media original (Supabase
+ * Storage, T-024.2) yang akan disertakan pada sebuah post. Original media
+ * TETAP menjadi milik aplikasi di bucket private Supabase Storage
+ * (`integration-layer.md` IL-D07) — method ini murni membungkus 3 langkah
+ * narasi Outstand Media API (request upload URL → `PUT` bytes → confirm
+ * upload) menjadi SATU panggilan ACL, karena ketiga langkah itu murni
+ * server-to-server (tidak ada redirect browser yang perlu diuji terpisah
+ * seperti `connectAccount`/`exchangeConnectCode`, ADR-105) — lihat ADR-106
+ * untuk perbandingan eksplisit split-2-method vs gabungan ini.
+ *
+ * `fileBuffer` adalah bytes media original yang sudah diambil caller dari
+ * Supabase Storage (mis. lewat signed URL `MediaItem.url`) — adapter tidak
+ * mengenal Supabase sama sekali, konsisten dengan batasan ACL.
+ */
+export interface UploadMediaWorkingCopyInput {
+  fileBuffer: Buffer;
+  mimeType: string;
+}
+
+/**
+ * Hasil dipetakan langsung ke field `MediaItem.outstandMediaId`/
+ * `outstandMediaUrl`/`outstandExpiresAt` (skema sudah mengantisipasi field
+ * ini sejak T-024.1) — persistensinya sendiri di luar scope method ini
+ * (tanggung jawab use-case pemanggil, T-024.4/T-025.5).
+ */
+export interface UploadMediaWorkingCopyResult {
+  outstandMediaId: string;
+  outstandMediaUrl: string;
+  expiresAt: Date;
+}
+
+/**
  * NOTE (2026-08-26, dicatat sebagai gap diketahui, bukan diimplementasikan
  * penuh di sini — di luar scope redesain ini, lihat draft ADR): dokumentasi
  * resmi Outstand `get-post-analytics` sebenarnya mengembalikan metrics
@@ -240,6 +281,19 @@ export interface IOutstandAdapter {
   exchangeConnectCode(
     input: ExchangeConnectCodeInput,
   ): Promise<ConnectedAccountData>;
+
+  /**
+   * Media upload working copy (T-024.3, ADR-040 poin 4, ADR-106) — minta
+   * Outstand meng-host working copy satu media original, dipanggil sebelum
+   * `schedulePost`/`publishNow` untuk post yang menyertakan media.
+   * `PublishingService` yang bertanggung jawab mengambil `fileBuffer` dari
+   * Supabase Storage dan mengisi `PostTarget`/caption dengan
+   * `outstandMediaUrl` hasil method ini — adapter tidak menyimpan apa pun,
+   * hanya membentuk working copy sekali panggil.
+   */
+  uploadMediaWorkingCopy(
+    input: UploadMediaWorkingCopyInput,
+  ): Promise<UploadMediaWorkingCopyResult>;
 
   /**
    * Publishing (ADR-059, redesain 2026-08-26) — SATU call untuk SEMUA

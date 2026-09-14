@@ -1,82 +1,324 @@
 "use server";
 
-import type { SocialPlatform } from "@social/shared";
-import { asPostId, asUserId } from "@social/shared";
+import type {
+  ContentFormat,
+  MediaId,
+  SocialPlatform,
+  UserId,
+  WorkspaceId,
+} from "@social/shared";
+import { asMediaId, asPostId, asUserId } from "@social/shared";
 import { redirect } from "next/navigation";
 import type { ScheduleTargetRequest } from "@/domains/publishing";
 import {
   assertActorCanPublishNow,
+  assertMediaCountWithinLimit,
   PublishingService,
   PublishNowUseCase,
+  resolveDraftMediaIds,
   resolveScheduleTargets,
   SchedulePostsUseCase,
 } from "@/domains/publishing";
+import {
+  DeleteMediaUseCase,
+  MediaService,
+  UploadMediaUseCase,
+} from "@/domains/media";
 import { WorkspaceService } from "@/domains/workspace";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
+import { supabaseMediaStorageAdapter } from "@/lib/adapters/media-storage/supabase-media-storage-adapter";
 import { publishingRepository } from "@/lib/repositories/publishing";
+import { mediaRepository } from "@/lib/repositories/media";
 import { workspaceRepository } from "@/lib/repositories/workspace";
+import { ApplicationError } from "@/lib/utils/errors";
+
+/**
+ * Bagian "resolve + assert" bersama untuk `resolveAndValidateMediaIds` di
+ * bawah maupun `scheduleDraftAction`/`publishNowAction` (yang butuh fetch
+ * `foundMedia` paralel dengan `listConnectedAccounts`, jadi tidak bisa
+ * memanggil `resolveAndValidateMediaIds` apa adanya) — supaya ketiganya
+ * memakai SATU implementasi validasi ownership (`resolveDraftMediaIds`) +
+ * batas ADR-107 (`assertMediaCountWithinLimit`) yang sama, bukan menyalin
+ * ulang kombinasi keduanya di masing-masing action.
+ */
+function resolveMediaIdsAgainstFormats(
+  found: Parameters<typeof resolveDraftMediaIds>[0],
+  requestedMediaIds: MediaId[],
+  activeFormats: ContentFormat[],
+): MediaId[] {
+  const resolved = resolveDraftMediaIds(found, requestedMediaIds);
+  assertMediaCountWithinLimit(resolved.length, activeFormats);
+  return resolved;
+}
+
+/**
+ * Wiring bersama untuk `saveDraftAction`/`updateDraftAction`/
+ * `scheduleDraftAction`/`publishNowAction` (T-024.4): validasi ownership
+ * (setiap `mediaId` yang dikirim client benar-benar milik `workspaceId` ini
+ * — anti-IDOR, `resolveDraftMediaIds`) dan batas jumlah media efektif untuk
+ * format yang sedang dipilih (`assertMediaCountWithinLimit`, ADR-107).
+ * Business rule sesungguhnya hidup di dua domain function itu (publishing
+ * domain) — helper ini murni komposisi fetch (`MediaService.listByIds`) +
+ * panggilan domain function, konsisten pola `resolveScheduleTargets` yang
+ * juga dipanggil langsung dari Server Action ini.
+ *
+ * **Perbedaan `undefined` vs `[]` (koreksi review Ridwan, temuan MEDIUM):**
+ * `requestedMediaIds` HARUS dibedakan dari "field `mediaIds` tidak dikirim
+ * client sama sekali" (`undefined` — kolom `media_ids` di DB tidak boleh
+ * disentuh, lihat catatan partial-update di
+ * `IPublishingRepository.updateDraftCaption`) vs "client eksplisit mengirim
+ * array kosong" (`[]` — user menghapus semua media, kolom harus benar-benar
+ * dikosongkan). Return value function ini meneruskan perbedaan itu
+ * (`undefined` masuk, `undefined` keluar — tidak pernah di-collapse jadi
+ * `[]` lewat `?? []`) sampai ke `SaveDraftInput`/`UpdateDraftInput` yang
+ * dikonsumsi `PublishingService.saveDraft`/`updateDraft`.
+ */
+async function resolveAndValidateMediaIds(
+  workspaceId: WorkspaceId,
+  requestedMediaIds: string[] | undefined,
+  activeFormats: ContentFormat[],
+  actingUserId: UserId,
+): Promise<MediaId[] | undefined> {
+  if (requestedMediaIds === undefined) {
+    return undefined;
+  }
+  if (requestedMediaIds.length === 0) {
+    return [];
+  }
+
+  const mediaIds = requestedMediaIds.map((id) => asMediaId(id));
+  const mediaService = new MediaService(mediaRepository);
+  const found = await mediaService.listByIds(
+    { workspaceId, mediaIds },
+    actingUserId,
+  );
+  return resolveMediaIdsAgainstFormats(found, mediaIds, activeFormats);
+}
+
+export interface SaveDraftInput {
+  caption: string;
+  /** T-024.4 — id `MediaItem` yang sudah diupload lewat `uploadMediaAction`. */
+  mediaIds?: string[];
+  /** T-024.4 — format yang sedang dipilih per akun target, untuk batas ADR-107 (`assertMediaCountWithinLimit`). */
+  activeFormats?: ContentFormat[];
+}
 
 export async function saveDraftAction(
-  caption: string,
+  input: SaveDraftInput,
 ): Promise<{ postId: string }> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
     redirect("/login");
   }
+  const actingUserId = asUserId(session.user.id);
+
+  const mediaIds = await resolveAndValidateMediaIds(
+    workspaceId,
+    input.mediaIds,
+    input.activeFormats ?? [],
+    actingUserId,
+  );
 
   const publishingService = new PublishingService(publishingRepository);
   const post = await publishingService.saveDraft({
     workspaceId,
-    authorId: asUserId(session.user.id),
-    caption,
+    authorId: actingUserId,
+    caption: input.caption,
+    mediaIds,
   });
 
   return { postId: post.id };
 }
 
+export interface UpdateDraftInput {
+  caption: string;
+  mediaIds?: string[];
+  activeFormats?: ContentFormat[];
+}
+
 export async function updateDraftAction(
   postId: string,
-  caption: string,
+  input: UpdateDraftInput,
 ): Promise<{ postId: string }> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
     redirect("/login");
   }
+  const actingUserId = asUserId(session.user.id);
+
+  const mediaIds = await resolveAndValidateMediaIds(
+    workspaceId,
+    input.mediaIds,
+    input.activeFormats ?? [],
+    actingUserId,
+  );
 
   const publishingService = new PublishingService(publishingRepository);
   const post = await publishingService.updateDraft(
     {
       workspaceId,
       postId: asPostId(postId),
-      caption,
+      caption: input.caption,
+      mediaIds,
     },
-    asUserId(session.user.id),
+    actingUserId,
   );
 
   return { postId: post.id };
 }
 
-export async function getDraftAction(
-  postId: string,
-): Promise<{ postId: string; caption: string; status: string }> {
+export interface DraftMediaDto {
+  id: string;
+  url: string | null;
+  type: string;
+  filename: string;
+}
+
+export async function getDraftAction(postId: string): Promise<{
+  postId: string;
+  caption: string;
+  status: string;
+  media: DraftMediaDto[];
+}> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
     redirect("/login");
   }
+  const actingUserId = asUserId(session.user.id);
 
   const publishingService = new PublishingService(publishingRepository);
   const post = await publishingService.getDraftById(
     workspaceId,
     asPostId(postId),
-    asUserId(session.user.id),
+    actingUserId,
   );
 
-  return { postId: post.id, caption: post.caption, status: post.status };
+  const mediaService = new MediaService(mediaRepository);
+  const mediaItems =
+    post.mediaIds && post.mediaIds.length > 0
+      ? await mediaService.listByIds(
+          { workspaceId, mediaIds: post.mediaIds },
+          actingUserId,
+        )
+      : [];
+
+  return {
+    postId: post.id,
+    caption: post.caption,
+    status: post.status,
+    media: mediaItems.map((item) => ({
+      id: item.id,
+      url: item.url,
+      type: item.type,
+      filename: item.filename,
+    })),
+  };
+}
+
+/** Sama bentuk dengan `DraftMediaDto` — item media tunggal hasil upload dikonsumsi client sebagai item `DraftMediaDto` biasa (`Modal.tsx`: `setMediaItems((prev) => [...prev, result.media])`). */
+export type UploadMediaDto = DraftMediaDto;
+
+/**
+ * Upload satu file media (T-024.4) — dipanggil per file dari dropzone
+ * custom di `Modal.tsx`. Business logic (validasi mime/ukuran, upload ke
+ * Supabase Storage, create record `MediaItem`, cleanup-on-failure) hidup di
+ * `UploadMediaUseCase` (T-024.2) — action ini hanya wiring: resolve
+ * workspace/session, ekstrak file dari `FormData`, panggil use-case,
+ * petakan hasil/`ValidationError` jadi bentuk yang aman dikonsumsi client
+ * (`{ error }` alih-alih exception mentah — upload per-file harus bisa
+ * gagal individual tanpa membatalkan file lain yang sedang diunggah
+ * bersamaan di client).
+ */
+export async function uploadMediaAction(
+  formData: FormData,
+): Promise<{ media: UploadMediaDto } | { error: string }> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+  const actingUserId = asUserId(session.user.id);
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { error: "File tidak valid." };
+  }
+
+  const fileBuffer = Buffer.from(await file.arrayBuffer());
+  const useCase = new UploadMediaUseCase(
+    mediaRepository,
+    supabaseMediaStorageAdapter,
+  );
+
+  try {
+    const item = await useCase.execute({
+      workspaceId,
+      uploaderId: actingUserId,
+      filename: file.name,
+      mimeType: file.type,
+      fileBuffer,
+      actingUserId,
+    });
+
+    return {
+      media: {
+        id: item.id,
+        url: item.url,
+        type: item.type,
+        filename: item.filename,
+      },
+    };
+  } catch (error) {
+    if (error instanceof ApplicationError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Hapus satu `MediaItem` secara PERMANEN (T-024.5, ADR-049 Tier 2) —
+ * dipanggil dari dialog konfirmasi di grid preview `Modal.tsx` setelah
+ * user mengonfirmasi. Business logic (urutan hapus record DB dulu, baru
+ * best-effort hapus file Storage) hidup di `DeleteMediaUseCase` — action
+ * ini hanya wiring: resolve workspace/session, validasi `mediaId`, panggil
+ * use-case, petakan `ApplicationError` (mis. `NotFoundError` kalau media
+ * sudah tidak ada/bukan milik workspace ini) jadi `{ error }` alih-alih
+ * exception mentah, konsisten pola `uploadMediaAction`.
+ */
+export async function deleteMediaAction(
+  mediaId: string,
+): Promise<{ error?: string }> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+  const actingUserId = asUserId(session.user.id);
+
+  const useCase = new DeleteMediaUseCase(
+    mediaRepository,
+    supabaseMediaStorageAdapter,
+  );
+
+  try {
+    await useCase.execute(
+      { workspaceId, mediaId: asMediaId(mediaId) },
+      actingUserId,
+    );
+  } catch (error) {
+    if (error instanceof ApplicationError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  return {};
 }
 
 export interface ConnectedAccountDto {
@@ -121,6 +363,8 @@ export interface ScheduleDraftInput {
   caption: string;
   scheduledAt: string;
   targets: ScheduleDraftTargetInput[];
+  /** T-024.4 — media yang di-attach ke post ini (SATU set untuk seluruh post, ADR-107). */
+  mediaIds?: string[];
 }
 
 /**
@@ -130,6 +374,17 @@ export interface ScheduleDraftInput {
  * hanya resolve workspace context/session, memastikan draft tersimpan,
  * resolve identitas akun yang otentik dari DB (bukan dari client), lalu
  * delegasikan ke use-case.
+ *
+ * T-024.4: `mediaIds` divalidasi (ownership + batas ADR-107) TERHADAP
+ * `targets` yang baru saja di-resolve dari DB (`resolveScheduleTargets`) —
+ * bukan dari format mentah yang dikirim client — supaya batas jumlah media
+ * yang ditegakkan selalu mencerminkan format target yang benar-benar valid.
+ * Ini mengubah urutan: `listConnectedAccounts`/`listByIds` (media) berjalan
+ * paralel dulu (keduanya independen dari caption), baru SETELAH itu
+ * `saveDraft`/`updateDraft` dipanggil dengan `mediaIds` yang sudah
+ * tervalidasi — beda dari versi sebelumnya yang menjalankan
+ * `saveDraft`/`updateDraft` berbarengan dengan `listConnectedAccounts`
+ * (waktu itu belum ada mediaIds untuk divalidasi lebih dulu).
  */
 export async function scheduleDraftAction(
   input: ScheduleDraftInput,
@@ -142,32 +397,68 @@ export async function scheduleDraftAction(
 
   const publishingService = new PublishingService(publishingRepository);
   const workspaceService = new WorkspaceService(workspaceRepository);
+  const mediaService = new MediaService(mediaRepository);
 
-  // Pastikan caption terbaru dari editor sudah persist sebelum dijadwalkan —
-  // baik untuk "New Post" yang belum pernah di-save (belum ada postId)
-  // maupun draft existing yang diedit tanpa klik "Save as Draft" dulu.
-  // Independen dari `listConnectedAccounts` di bawah — jalankan berbarengan
-  // lewat Promise.all daripada await berurutan.
   const actingUserId = asUserId(session.user.id);
+  // T-024.4 (koreksi review Ridwan, temuan MEDIUM): `undefined` (field
+  // `mediaIds` tidak dikirim client) HARUS dibedakan dari `[]` (client
+  // eksplisit mengosongkan media) — `?? []` di sini akan meng-collapse
+  // keduanya dan membuat kolom `media_ids` di DB ikut terhapus diam-diam
+  // untuk caller yang sengaja tidak mengirim field ini.
+  const requestedMediaIds = input.mediaIds?.map((id) => asMediaId(id));
 
-  const [post, connectedAccounts] = await Promise.all([
-    input.postId
-      ? publishingService.updateDraft(
-          {
-            workspaceId,
-            postId: asPostId(input.postId),
-            caption: input.caption,
-          },
+  const [connectedAccounts, foundMedia] = await Promise.all([
+    workspaceService.listConnectedAccounts(workspaceId, actingUserId),
+    requestedMediaIds && requestedMediaIds.length > 0
+      ? mediaService.listByIds(
+          { workspaceId, mediaIds: requestedMediaIds },
           actingUserId,
         )
-      : publishingService.saveDraft({
-          workspaceId,
-          authorId: actingUserId,
-          caption: input.caption,
-        }),
-    workspaceService.listConnectedAccounts(workspaceId, actingUserId),
+      : Promise.resolve([]),
   ]);
   const targets = resolveScheduleTargets(connectedAccounts, input.targets);
+  const activeFormats = targets.map((target) => target.contentFormat);
+  const mediaIds =
+    requestedMediaIds !== undefined
+      ? resolveMediaIdsAgainstFormats(
+          foundMedia,
+          requestedMediaIds,
+          activeFormats,
+        )
+      : undefined;
+
+  // `mediaIds` undefined berarti draft ini mempertahankan media yang SUDAH
+  // dipersist sebelumnya (lihat catatan `resolveAndValidateMediaIds`) — batas
+  // ADR-107 tetap wajib ditegakkan terhadap `activeFormats` yang baru saja
+  // di-resolve, bukan hanya saat client mengirim `mediaIds` eksplisit.
+  if (mediaIds === undefined && input.postId) {
+    const existingDraft = await publishingService.getDraftById(
+      workspaceId,
+      asPostId(input.postId),
+      actingUserId,
+    );
+    assertMediaCountWithinLimit(
+      existingDraft.mediaIds?.length ?? 0,
+      activeFormats,
+    );
+  }
+
+  const post = input.postId
+    ? await publishingService.updateDraft(
+        {
+          workspaceId,
+          postId: asPostId(input.postId),
+          caption: input.caption,
+          mediaIds,
+        },
+        actingUserId,
+      )
+    : await publishingService.saveDraft({
+        workspaceId,
+        authorId: actingUserId,
+        caption: input.caption,
+        mediaIds,
+      });
 
   const scheduled = await new SchedulePostsUseCase(
     publishingRepository,
@@ -187,6 +478,7 @@ export interface PublishNowInput {
   postId?: string;
   caption: string;
   targets: ScheduleDraftTargetInput[];
+  mediaIds?: string[];
 }
 
 /**
@@ -199,7 +491,7 @@ export interface PublishNowInput {
  * wiring: resolve workspace context/session (termasuk `role` yang sudah
  * tervalidasi oleh `proxy.ts` per request), memastikan draft tersimpan,
  * resolve identitas akun yang otentik dari DB (bukan dari client), lalu
- * delegasikan.
+ * delegasikan. `mediaIds` — lihat catatan `scheduleDraftAction`.
  */
 export async function publishNowAction(
   input: PublishNowInput,
@@ -217,27 +509,68 @@ export async function publishNowAction(
 
   const publishingService = new PublishingService(publishingRepository);
   const workspaceService = new WorkspaceService(workspaceRepository);
+  const mediaService = new MediaService(mediaRepository);
 
   const actingUserId = asUserId(session.user.id);
+  // T-024.4 (koreksi review Ridwan, temuan MEDIUM): `undefined` (field
+  // `mediaIds` tidak dikirim client) HARUS dibedakan dari `[]` (client
+  // eksplisit mengosongkan media) — `?? []` di sini akan meng-collapse
+  // keduanya dan membuat kolom `media_ids` di DB ikut terhapus diam-diam
+  // untuk caller yang sengaja tidak mengirim field ini.
+  const requestedMediaIds = input.mediaIds?.map((id) => asMediaId(id));
 
-  const [post, connectedAccounts] = await Promise.all([
-    input.postId
-      ? publishingService.updateDraft(
-          {
-            workspaceId,
-            postId: asPostId(input.postId),
-            caption: input.caption,
-          },
+  const [connectedAccounts, foundMedia] = await Promise.all([
+    workspaceService.listConnectedAccounts(workspaceId, actingUserId),
+    requestedMediaIds && requestedMediaIds.length > 0
+      ? mediaService.listByIds(
+          { workspaceId, mediaIds: requestedMediaIds },
           actingUserId,
         )
-      : publishingService.saveDraft({
-          workspaceId,
-          authorId: actingUserId,
-          caption: input.caption,
-        }),
-    workspaceService.listConnectedAccounts(workspaceId, actingUserId),
+      : Promise.resolve([]),
   ]);
   const targets = resolveScheduleTargets(connectedAccounts, input.targets);
+  const activeFormats = targets.map((target) => target.contentFormat);
+  const mediaIds =
+    requestedMediaIds !== undefined
+      ? resolveMediaIdsAgainstFormats(
+          foundMedia,
+          requestedMediaIds,
+          activeFormats,
+        )
+      : undefined;
+
+  // `mediaIds` undefined berarti draft ini mempertahankan media yang SUDAH
+  // dipersist sebelumnya (lihat catatan `resolveAndValidateMediaIds`) — batas
+  // ADR-107 tetap wajib ditegakkan terhadap `activeFormats` yang baru saja
+  // di-resolve, bukan hanya saat client mengirim `mediaIds` eksplisit.
+  if (mediaIds === undefined && input.postId) {
+    const existingDraft = await publishingService.getDraftById(
+      workspaceId,
+      asPostId(input.postId),
+      actingUserId,
+    );
+    assertMediaCountWithinLimit(
+      existingDraft.mediaIds?.length ?? 0,
+      activeFormats,
+    );
+  }
+
+  const post = input.postId
+    ? await publishingService.updateDraft(
+        {
+          workspaceId,
+          postId: asPostId(input.postId),
+          caption: input.caption,
+          mediaIds,
+        },
+        actingUserId,
+      )
+    : await publishingService.saveDraft({
+        workspaceId,
+        authorId: actingUserId,
+        caption: input.caption,
+        mediaIds,
+      });
 
   const published = await new PublishNowUseCase(
     publishingRepository,

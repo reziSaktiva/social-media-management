@@ -41,19 +41,225 @@ Matriks format per platform (IG/FB: Post/Reel/Story · TikTok: video feed tanpa 
 
 | Field         | Value                                                          |
 | ------------- | -------------------------------------------------------------- |
-| **Status**    | ⏳ Not Started                                                  |
+| **Status**    | ✅ Done (5/5 subtask)                                            |
 | **Domain**    | media · publishing                                             |
-| **ADR**       | ADR-040 (media upload working copy)                            |
-| **Depends**   | T-025 (Media API adapter)                                      |
+| **ADR**       | ADR-040 (media upload working copy) · ADR-107 (batas maksimum jumlah media per `ContentFormat`, T-024.4) |
+| **Depends**   | T-025 (Media API adapter) — **di-bypass sebagian** lewat pola Fake (rule 19 AGENTS.md, lihat catatan di bawah) |
+| **Terkait**   | KI-059 (verifikasi manual browser T-024.4 & T-024.5 belum bisa dilakukan, `DATABASE_URL` tidak tersedia) |
 | **Baca dulu** | `05-architecture/integration-layer.md` · `06-engineering/environment-management.md` |
 
 Kontrol lampiran media di Draft Editor sudah ada tapi **disabled** dengan keterangan "Lampiran media akan tersedia setelah OutstandAdapter Media API siap".
 
-- [ ] **T-024.1** Domain `media` skeleton (service + repository, model `MediaItem` sudah ada di schema)
-- [ ] **T-024.2** Upload ke Supabase Storage (Supabase JS client **hanya** untuk Storage/Realtime — CRUD tetap Prisma)
-- [ ] **T-024.3** `OutstandAdapter` media upload working copy (ADR-040)
-- [ ] **T-024.4** Aktifkan kontrol lampiran di Draft Editor + preview
-- [ ] **T-024.5** Delete Media + dialog konfirmasi (ADR-049 Tier 2)
+**Feasibility check (2026-09-14):** T-024 sebelumnya tercatat depends penuh
+pada T-025.5 (Real OutstandAdapter Media API) yang terhenti karena
+`OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli belum ada. Diputuskan T-024
+**tetap bisa dikerjakan sekarang** mengikuti rule 19 AGENTS.md (pola
+ADR-059/ADR-105) — subtask yang tidak butuh kredensial asli (T-024.1 domain
+skeleton, T-024.2 Supabase Storage, T-024.4 UI, T-024.5 delete) jalan duluan;
+hanya T-024.3 (`OutstandAdapter` media upload working copy) yang tetap
+menunggu real adapter, dan akan dibangun via `FakeOutstandAdapter` dulu
+mengikuti pola yang sama saat waktunya tiba — bukan ADR baru, murni
+penerapan pola yang sudah ada.
+
+Sebelum implementasi, dicek ke Claude Design (rule 17) — rancangan Draft
+Editor (`templates/draft-editor.html`) sudah punya section Media
+(`.media-drop` dropzone + `.media-thumb` preview), tapi pola ini **belum
+dikunci** ke primitive shadcn konkret (readme.md Claude Design: "no
+dedicated FileInput primitives installed yet"; dikonfirmasi juga tidak ada
+komponen file-upload/dropzone di registry shadcn resmi via MCP). King Rezi
+dikonfirmasi 2 keputusan lewat `AskUserQuestion`:
+
+1. Dropzone media di Draft Editor (T-024.4) akan dibangun sebagai **custom
+   drag-drop zone** (bukan native file input polos).
+2. Scope T-024 dipersempit: hanya **upload file baru + preview + delete**.
+   **"Pilih dari Media Library" (browse existing media) ditunda**, tidak
+   masuk scope T-024 manapun untuk saat ini.
+
+**T-024.1 selesai (2026-09-14, Elon Backend Engineer):** skeleton domain
+`media` — `apps/web/src/domains/media/types.ts` (`MediaItemRecord`),
+`repositories/media.repository.ts` (interface `IMediaRepository`,
+`create`/`findById`/`findByWorkspace`/`delete`, di-scope `workspaceId`+
+`userId`), `services/media.service.ts` (`MediaService`, murni orchestrate
+repository — **tanpa** upload fisik Storage/T-024.2 dan **tanpa**
+OutstandAdapter/T-024.3) + 6 unit test baru. Implementasi Prisma di
+`apps/web/src/lib/repositories/media/media.repository.ts` (pola sama
+`notificationRepository`, guard `workspaceId` di level repository, RLS via
+`withCurrentUser`). Shared types baru: `MediaType` enum
+(`packages/shared/src/enums.ts`, sesuai `domain-model.md` § BC-08 yang sudah
+lama mendefinisikan field ini) + helper `asMediaId()`
+(`packages/shared/src/ids.ts`). Entity domain sengaja diletakkan di
+`types.ts` (bukan file class terpisah di `entities/`) mengikuti pola anemic
+model yang konsisten di seluruh 8 domain lain di repo ini. Error handling
+pakai `NotFoundError`/`ConflictError` dari `@/lib/utils/errors` (bukan
+`MediaDomainError` scaffold domain ini yang memang tidak pernah dipakai
+domain manapun). Verifikasi: `bun run typecheck` 0 error, `bunx vitest run`
+338 pass/5 skip, tanpa regresi. Review arsitektur Ridwan Architecture
+Reviewer: **0 temuan** — domain tidak import Prisma/Supabase langsung, guard
+ownership `workspaceId` di level repository (anti-IDOR), shared types murni
+value object, tidak ada over-scoping ke T-024.2/T-024.3/T-024.4/T-024.5.
+
+**T-024.2 selesai (2026-09-14, Elon Backend Engineer):** upload ke Supabase
+Storage — port `IMediaStorageAdapter`
+(`apps/web/src/domains/media/adapters/media-storage-adapter.ts`, mirror pola
+`IAvatarStorageAdapter`), `ALLOWED_MEDIA_MIME_TYPES`/`MAX_MEDIA_FILE_SIZE_BYTES`
+(`apps/web/src/domains/media/validation.ts`), `UploadMediaUseCase`
+(`apps/web/src/domains/media/services/upload-media.use-case.ts`) sebagai use
+case terpisah (pola ADR-059/`SchedulePostsUseCase`, constructor
+`IMediaRepository` + `IMediaStorageAdapter`) — validasi mime type + ukuran
+file sebelum upload, upload ke storage, create record DB, cleanup best-effort
+(hapus file storage) kalau create DB gagal setelah upload sukses (rethrow
+error asli, bukan error cleanup). Implementasi Supabase:
+`SupabaseMediaStorageAdapter`
+(`apps/web/src/lib/adapters/media-storage/supabase-media-storage-adapter.ts`)
+— bucket `media` **Private** (beda dari `avatars` yang public), pakai
+**signed URL**, path `{workspaceId}/{year}/{month}/{uuid}.{ext}`. Migration
+`apps/web/prisma/migrations/20260914090000_t024_2_create_media_bucket/migration.sql`
+membuat bucket `media` (idempotent, pola sama bucket `avatars`) — **sudah
+dibuat tapi belum dijalankan**, perlu `bun run db:deploy` oleh King Rezi
+sebelum fitur ini bisa diuji end-to-end. Review Ridwan Architecture Reviewer:
+**0 temuan pelanggaran arsitektur** (verifikasi independen: `typecheck` 0
+error, 343 test pass/5 skip saat itu); satu catatan non-blocking: bucket
+awalnya dibuat tanpa `file_size_limit` (gap baseline dibanding `avatars` yang
+eksplisit 2MB), diteruskan sebagai rekomendasi butuh keputusan King Rezi.
+King Rezi dikonfirmasi via `AskUserQuestion`: **batas ukuran file maksimum
+media MVP = 50 MB (52.428.800 bytes)** — bukan keputusan arsitektural,
+murni parameter konfigurasi operasional (sama seperti batas 2MB avatar yang
+juga tidak punya ADR khusus), sehingga cukup dicatat di sini, tanpa ADR baru.
+Elon menerapkan keputusan itu sebagai follow-up: `file_size_limit` migration
+diisi 50MB, `MAX_MEDIA_FILE_SIZE_BYTES` di `validation.ts`, validasi ukuran
+file di `UploadMediaUseCase.execute` (menolak sebelum panggil storage
+adapter), 1 unit test baru. Verifikasi akhir: `bun run typecheck` 0 error,
+`bunx vitest run` **344 pass/5 skip**, tidak ada regresi.
+
+**T-024.3 selesai (2026-09-14, Elon Backend Engineer):** `OutstandAdapter`
+media upload working copy via `FakeOutstandAdapter` — kontrak
+`UploadMediaWorkingCopyInput`/`UploadMediaWorkingCopyResult` + method
+`uploadMediaWorkingCopy` ditambahkan ke `IOutstandAdapter`
+(`packages/shared/src/contracts/outstand-adapter.ts`). Implementasi Fake di
+`apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts` — instant
+always-success (pola ADR-059), `outstandMediaId` unik per panggilan
+(`crypto.randomUUID()`), `expiresAt` mock +24 jam, 2 unit test baru. 7 file
+test lain (mock `IOutstandAdapter`) ditambah stub field baru supaya tetap
+type-safe, tanpa mengubah behavior test yang sudah ada. **ADR-106 baru**
+dibuat: keputusan menggabungkan 3 langkah Outstand Media API (request upload
+URL → PUT → confirm) jadi **1 method ACL gabungan** (bukan split 2-method
+seperti `connectAccount`/`exchangeConnectCode` di ADR-105) — karena tidak
+ada redirect browser yang perlu diuji terpisah di sini, murni server-to-server
+berurutan. Detail lengkap:
+[`decisions/ADR-106-fake-media-upload-working-copy-1-method-gabungan.md`](../decisions/ADR-106-fake-media-upload-working-copy-1-method-gabungan.md).
+Scope SENGAJA tidak menyentuh `UploadMediaUseCase`/`MediaService`/UI —
+method baru murni kontrak+Fake, belum di-wire ke manapun. Review Ridwan
+Architecture Reviewer: **0 temuan pelanggaran** (verifikasi independen
+`typecheck` 0 error, **346 test pass/5 skip**, naik dari baseline 344/5).
+Ridwan mencatat 1 risiko forward-looking (non-blocking, dicatat di ADR-106
+sendiri): kalau Real adapter (T-025.5) nanti butuh retry granular per-langkah
+(mis. PUT gagal terpisah dari request URL), kontrak 1-method gabungan ini
+mungkin perlu di-split lagi lewat ADR baru.
+
+**T-024.4 selesai (2026-09-14, Prabowo Feature Engineer):** kontrol lampiran
+media di Draft Editor diaktifkan penuh + preview — full-stack (Server
+Action → service → repository → UI). Sebelum implementasi, King Rezi
+mengonfirmasi 2 keputusan baru lewat `AskUserQuestion`: (1) Draft Editor
+mendukung **multi-media (carousel)**, batas jumlah TERGANTUNG
+`ContentFormat` (`Post` maks 10, `Reel`/`Story`/`Pin` maks 1; kalau draft
+menargetkan beberapa akun dengan format berbeda sekaligus, batas efektif =
+**MINIMUM** dari batas semua format yang dipilih) — mengamandemen ADR-039 →
+**ADR-107 baru**
+([`decisions/ADR-107-batas-maksimum-jumlah-media-per-content-format.md`](../decisions/ADR-107-batas-maksimum-jumlah-media-per-content-format.md)).
+(2) "Pilih dari Media Library" (browse existing) tetap ditunda sesuai
+keputusan sebelumnya — ditampilkan sebagai link **disabled dengan tooltip
+"Coming soon"**, bukan disembunyikan total. Implementasi:
+`content-format-matrix.ts` (`MAX_MEDIA_COUNT_BY_FORMAT`,
+`maxMediaCountForFormat(s)`, `assertMediaCountWithinLimit`, ADR-107);
+`resolve-draft-media-ids.ts` baru (validasi ownership `mediaIds`,
+workspace-scoped, anti-IDOR, pola sama `resolveScheduleTargets`);
+`PublishingService.saveDraft`/`updateDraft` + `IPublishingRepository` +
+implementasi Prisma — kolom `media_ids` (dead sejak schema dibuat) di-wire
+penuh dengan partial-update semantics (`mediaIds: undefined` = kolom tidak
+disentuh, `[]` = kolom dikosongkan); `MediaService`/`IMediaRepository`
+method baru `findByIds`/`listByIds` (batch fetch, workspace-scoped); Server
+Action baru `uploadMediaAction`
+(`apps/web/src/app/(app)/components/draft-editor/actions.ts`) — pertama
+kalinya domain `media` (T-024.1–.3) benar-benar disambungkan ke UI;
+`saveDraftAction`/`updateDraftAction`/`getDraftAction`/`scheduleDraftAction`/
+`publishNowAction` diperluas dengan `mediaIds`. UI (`Modal.tsx`): blok Media
+disabled diganti custom dropzone (drag-drop + click-browse), grid preview
+thumbnail multi-media, tombol hapus-per-item (unlink dari draft, **bukan**
+delete permanent — itu tetap T-024.5), enforce batas count di client
+(mirror server, ADR-107). Review Ridwan Architecture Reviewer (2 putaran):
+putaran 1 — **1 temuan MEDIUM**: `resolveAndValidateMediaIds` dkk selalu
+meng-collapse "field tidak dikirim" jadi `[]` (`?? []`), sehingga partial-
+update semantics (`undefined` = kolom tidak disentuh) tidak pernah benar-
+benar tereksekusi dari caller yang ada — bukan bug aktif hari ini (satu-
+satunya caller, `Modal.tsx`, selalu kirim array konkret), tapi berisiko
+silent data loss untuk entry point masa depan (mis. Route Handler `/api/v1`
+yang tidak kirim `mediaIds`). Diperbaiki: bedakan `undefined` vs `[]` dari
+titik paling awal (`resolveAndValidateMediaIds`, resolusi di
+`scheduleDraftAction`/`publishNowAction`) sampai ke `PublishingService`, 12
+unit test baru menguji 3 skenario di 4 Server Action. Putaran 2 (verifikasi
+ulang): **0 temuan**, fix dikonfirmasi benar di level kode, `Modal.tsx`
+tidak berubah/tidak regresi. Verifikasi akhir: `typecheck` 0 error, `lint`
+0 error/warning, `vitest` **374 pass/5 skip** (naik dari baseline 362,
+346 sebelum T-024.4 mulai).
+
+**Gap verifikasi (belum ditutup, lihat KI-059):** verifikasi manual browser
+end-to-end (upload → save draft → reopen edit → preview restore → validasi
+batas count per format) **belum bisa dilakukan** sesi ini — dev server
+gagal start di worktree ini karena `DATABASE_URL` tidak tersedia (perlu
+kredensial Supabase). T-024.4 ditandai selesai berdasarkan verifikasi kode
+(typecheck/lint/unit test + 2 putaran review arsitektur), tapi belum
+"teruji penuh" end-to-end sampai smoke test manual ini dilakukan di
+environment dengan akses DB.
+
+**T-024.5 selesai (2026-09-14, Prabowo Feature Engineer):** Delete Media +
+dialog konfirmasi Tier 2 (ADR-049) — subtask **terakhir** T-024, menutup
+task ini **5/5**. King Rezi mengonfirmasi lewat `AskUserQuestion`: tombol
+"hapus dari post ini" yang dibangun T-024.4 (unlink-only dari draft, tanpa
+dialog, tidak menghapus data) diganti **total** jadi aksi destruktif — klik
+→ dialog konfirmasi Tier 2 → kalau dikonfirmasi, hapus file Storage + record
+`MediaItem` DB secara **permanen**. Implementasi: `DeleteMediaUseCase` baru
+(`apps/web/src/domains/media/services/delete-media.use-case.ts`) — urutan
+operasi hapus record DB dulu (`MediaService.deleteMediaItem`, throws
+`NotFoundError` kalau tidak ada/bukan milik workspace, Storage tidak
+disentuh kalau ini gagal), baru best-effort hapus file Storage (swallow
+error — orphan file di Storage tanpa record dianggap harmless dibanding
+record menunjuk file hilang yang broken/user-visible); Server Action baru
+`deleteMediaAction` — wiring tipis ke use case, `workspaceId` dari session
+(anti-IDOR, bukan input client); UI `Modal.tsx` — `handleRemoveMedia` lama
+(unlink) dihapus total, diganti wiring **reuse komponen existing**
+`ConfirmActionDialog`/`useConfirmAction` (pola sama persis "Hapus Draft" di
+`DraftsList.tsx`, bukan dialog baru dari nol). Review Ridwan Architecture
+Reviewer: **0 temuan** — urutan operasi delete (DB dulu, Storage
+best-effort) diverifikasi benar di kode+test, anti-IDOR terjaga
+(workspace-scoped di level repository, konsisten pola T-024.1), reuse
+komponen Tier 2 genuine dikonfirmasi (bukan duplikat), tidak ada dead code
+path lama yang tersisa. Verifikasi akhir: `bun run typecheck` 0 error,
+`bun run --cwd apps/web lint` 0 error/warning, `bunx vitest run` **377
+pass/5 skip** (naik dari baseline 374, +3 test baru). Gap verifikasi manual
+browser (`DATABASE_URL` tidak tersedia di worktree ini) berlaku sama untuk
+T-024.5 — lihat **KI-059** (cakupannya sudah diperluas mencakup seluruh
+T-024, bukan cuma T-024.4).
+
+**Penutup T-024 (5/5 subtask, ✅ Done):** seluruh rangkaian ini dikerjakan
+lintas beberapa sesi — T-024.1 (domain `media` skeleton), T-024.2 (upload
+Supabase Storage), T-024.3 (`OutstandAdapter` media upload working copy via
+`FakeOutstandAdapter`, ADR-106), T-024.4 (aktifkan lampiran + preview di
+Draft Editor, ADR-107), dan T-024.5 (Delete Media Tier 2, di atas). Semua
+5 subtask lolos review Ridwan Architecture Reviewer; satu-satunya temuan
+sepanjang task ini adalah **1 temuan MEDIUM di T-024.4** (partial-update
+semantics `mediaIds`), sudah diperbaiki dan diverifikasi ulang (putaran 2:
+0 temuan). Verifikasi kode akhir keseluruhan: `typecheck`/`lint` bersih,
+`vitest` 377 pass/5 skip. Satu-satunya gap tersisa adalah verifikasi manual
+browser end-to-end (**KI-059**, masih Open) — belum bisa dilakukan di
+environment kerja manapun sesi-sesi ini karena `DATABASE_URL` tidak
+tersedia, perlu ditindaklanjuti King Rezi atau QA Najwa di environment
+dengan akses DB sebelum T-024 dianggap teruji penuh end-to-end.
+
+- [x] **T-024.1** Domain `media` skeleton (service + repository, model `MediaItem` sudah ada di schema)
+- [x] **T-024.2** Upload ke Supabase Storage (Supabase JS client **hanya** untuk Storage/Realtime — CRUD tetap Prisma)
+- [x] **T-024.3** `OutstandAdapter` media upload working copy (ADR-040) — via `FakeOutstandAdapter` (ADR-106), belum di-wire ke `UploadMediaUseCase`/UI
+- [x] **T-024.4** Aktifkan kontrol lampiran di Draft Editor + preview — dropzone **custom** (bukan native file input), sesuai keputusan `AskUserQuestion` di atas
+- [x] **T-024.5** Delete Media + dialog konfirmasi (ADR-049 Tier 2) — scope: upload file baru + preview + delete saja; "Pilih dari Media Library" (browse existing) ditunda
 
 ### T-038 · Toggle Fullscreen/Standard resmi di Draft Editor
 
