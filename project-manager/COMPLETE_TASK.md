@@ -8,6 +8,85 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-11 — T-015 TUNTAS 3/3 subtask (Reconnect flow, ADR-105) — T-013.1/T-013.2 ikut selesai, KI-058 baru
+
+Branch `feature/t-015-reconnect-flow` (checkout dari `staging`). Rangkaian:
+Elon Backend Engineer → Prabowo Feature Engineer → Ridwan Architecture
+Reviewer → Prabowo (fix) → Najwa QA Engineer → Prabowo (fix + verifikasi
+ulang).
+
+**Added — kontrak adapter + Fake (Elon Backend Engineer, ADR-105):**
+`IOutstandAdapter` (`packages/shared/src/contracts/outstand-adapter.ts`)
+dipecah jadi 2 method baru — `connectAccount(input) → { redirectUrl }`
+(`redirectAccountId?` diisi hanya untuk reconnect, kosong berarti connect
+baru) dan `exchangeConnectCode(input) → ConnectedAccountData`. Alasan split
+dan alasan Fake redirect **loopback ke callback route sendiri** (bukan
+auto-approve instan langsung) dicatat lengkap di
+`decisions/ADR-105-fake-connect-account-oauth-redirect-loopback.md` — inti:
+Route Handler callback (CSRF-check `state`, keputusan create/update
+`ConnectedAccount`) harus benar-benar teruji end-to-end sekarang lewat Fake,
+bukan pertama kali saat real adapter (T-025) ada. Disetujui King Rezi lewat
+`AskUserQuestion` (rule 19 AGENTS.md, kredensial `OUTSTAND_API_KEY` belum
+ada). File baru: `apps/web/src/lib/adapters/outstand/connect-state.ts`
+(encode/decode `state` base64url), `fake-outstand-adapter.ts` diperluas +
+test baru.
+
+**Added — Application/entry point (Prabowo Feature Engineer):**
+`WorkspaceService.initiateConnectAccount`/`completeAccountConnection`
+(`redirectAccountId` terisi → UPDATE `WorkspaceConnectedAccount` existing,
+`connectedAt` asli dipertahankan, riwayat post tidak hilang; kosong → CREATE
+baru). Route Handler baru `apps/web/src/app/api/integrations/outstand/
+callback/route.ts` (entry point tanpa business logic, murni memanggil
+service) + cookie nonce `apps/web/src/lib/workspace/
+outstand-connect-nonce-cookie.ts` untuk CSRF-check `state`. Server Action +
+wiring UI: tombol "Reconnect" aktif di `ConnectedAccountsList.tsx`,
+`ConnectPlatformMenu.tsx` untuk connect baru.
+
+**Fixed — review Ridwan Architecture Reviewer:** 1 temuan non-blocking,
+diperbaiki Prabowo sebelum lanjut ke QA.
+
+**Fixed — QA Najwa QA Engineer (browser end-to-end):** 1 bug ditemukan —
+toast error dobel muncul di callback route saat Next.js prefetch/
+soft-navigation memanggil route tanpa query param `code`/`state`. Sudah
+diperbaiki Prabowo, diverifikasi ulang: golden path Connect + Reconnect
+PASS, hanya 1 toast sukses (bukan dobel).
+
+**Changed — task status:** **T-015** (Reconnect flow saat token expired,
+`tasks/v01-foundation.md`) `🟡 In Progress` → `✅ Done` (3/3 subtask —
+T-015.1/T-015.2 ternyata sudah selesai sebelumnya, bagian tak tercatat dari
+T-026 webhook + UI existing; T-015.3 baru diimplementasikan sesi ini).
+**T-013** (Connect account, `tasks/v01-foundation.md`) — T-013.1/T-013.2
+ikut selesai karena berbagi flow OAuth yang sama, tapi task **tetap `🟡 In
+Progress`** karena T-013.4 (operasional BYOK X) belum ada tindakan apa pun.
+
+**Added — Known Issue baru:** **KI-058** (Design Gap/RBAC UI, Open,
+`PROJECT_STATE.md`) — `ConnectedAccountsList.tsx` tidak menyembunyikan/
+menonaktifkan tombol Connect/Disconnect/Reconnect untuk role Creator meski
+backend RBAC (`WorkspaceService`) sudah menolak dengan benar; gap sudah ada
+sejak T-014 (Disconnect), baru ketahuan sekarang saat QA Najwa menyentuh
+area ini lagi untuk T-015. King Rezi eksplisit memutuskan (`AskUserQuestion`)
+dicatat sebagai KI, **tidak diperbaiki sesi ini**. Back-reference KI-058
+ditambahkan ke field `Terkait` T-014 dan T-015 di `tasks/v01-foundation.md`.
+
+**Catatan implementasi (accepted deviation, bukan KI):** tombol "Reconnect"
+(`variant=secondary`) dan "Disconnect" (`variant=destructive`) berbeda dari
+mockup Claude Design (`templates/settings-connected-accounts.html`:
+Reconnect=`btn-primary` filled, Disconnect=`btn` netral). King Rezi eksplisit
+memutuskan (`AskUserQuestion`) membiarkan kode seperti sekarang — dinilai
+lebih aman secara UX (Disconnect aksi merusak, Reconnect sudah cukup jelas
+dari badge status di sebelahnya) — bukan mengikuti mockup. Dicatat sebagai
+catatan implementasi di `tasks/v01-foundation.md` § T-015, bukan KI baru.
+
+**Docs:** `tasks/v01-foundation.md` § T-013/§ T-015 diperbarui (status,
+checklist subtask, catatan deviasi styling, field `Terkait` KI-058),
+`TASKS.md` (indeks v0.1 15 ✅ → 16 ✅, Total 41 → 42 selesai, entri Update
+baru), `DECISIONS.md` (baris index ADR-105 ditambahkan — file ADR-nya
+sendiri sudah ditulis lengkap oleh Elon di sesi sebelumnya),
+`PROJECT_STATE.md` (Snapshot Top Next Tasks, KI-058 baru, Completed
+Ringkasan digeser — bullet T-014 lama dihapus untuk menjaga batas 5 item).
+
+---
+
 ## 2026-09-11 — T-092.6 (Granular patch Realtime — History) selesai — T-092 TUNTAS 6/6 subtask, KI-057 Resolved
 
 Diimplementasikan Prabowo Feature Engineer, lolos review Ridwan

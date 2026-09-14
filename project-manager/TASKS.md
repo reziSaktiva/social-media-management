@@ -52,7 +52,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
-| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 🟡 15 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 1 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
+| **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 16 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 16 ✅ · 2 🟡 · 5 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
@@ -61,7 +61,40 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 87 task · 41 selesai · 217 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 87 task · 42 selesai · 217 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-11, T-015 SELESAI 3/3 subtask — ADR-105):** **T-015**
+> (Reconnect flow saat token expired, `tasks/v01-foundation.md`) naik status
+> `🟡 In Progress` → `✅ Done` — subtask terakhir, **T-015.3** (aksi
+> reconnect), selesai lewat Fake `connectAccount`/`exchangeConnectCode`
+> (**ADR-105**, pola ADR-059, disetujui King Rezi via `AskUserQuestion`
+> karena kredensial Outstand asli belum ada, rule 19 AGENTS.md) — redirect
+> OAuth loopback ke callback route sendiri, `WorkspaceService.initiateConnectAccount`/
+> `completeAccountConnection` UPDATE `WorkspaceConnectedAccount` existing
+> tanpa kehilangan riwayat post. T-015.1/T-015.2 ternyata sudah selesai
+> sebelumnya (bagian tak tercatat dari T-026 webhook + UI existing).
+> **T-013.1/T-013.2** (Connect account) ikut selesai karena berbagi flow
+> OAuth yang sama — **T-013 tetap `🟡 In Progress`** (sisa T-013.4,
+> operasional BYOK X, murni operasional bukan blocker). Rangkaian: Elon
+> Backend Engineer (kontrak adapter + Fake + ADR-105) → Prabowo Feature
+> Engineer (`WorkspaceService`, Route Handler callback, Server Action, UI
+> wiring) → Ridwan Architecture Reviewer (1 temuan non-blocking,
+> diperbaiki) → Prabowo (fix) → Najwa QA Engineer (browser end-to-end, 1
+> bug ditemukan — toast error dobel di callback route saat prefetch/
+> soft-navigation Next.js tanpa `code`/`state`) → Prabowo (fix + verifikasi
+> ulang, golden path Connect + Reconnect PASS). **KI baru dibuka** (Design
+> Gap/RBAC UI, lihat `PROJECT_STATE.md`): UI `ConnectedAccountsList.tsx`
+> tidak menyembunyikan tombol Connect/Disconnect/Reconnect untuk role
+> Creator meski backend RBAC sudah benar — ditemukan Najwa, King Rezi
+> memutuskan dicatat sebagai KI, tidak diperbaiki sesi ini. Deviasi
+> styling tombol Reconnect/Disconnect dari mockup Claude Design diterima
+> eksplisit oleh King Rezi (bukan KI, catatan implementasi di task).
+> Breakdown v0.1 berubah dari "15 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️" menjadi
+> **16 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️** (T-015 pindah 🟡 → ✅). Task selesai naik
+> 41 → **42**. Jumlah task/subtask total tidak berubah (87 task, 217
+> subtask), dihitung ulang langsung dari `tasks/v01-foundation.md`. Detail:
+> `tasks/v01-foundation.md` § T-015, § T-013,
+> `decisions/ADR-105-fake-connect-account-oauth-redirect-loopback.md`.
 
 > **Update (2026-09-11, T-092 SELESAI 6/6 subtask):** **T-092.6** (Granular
 > patch Realtime — History), subtask terakhir T-092, selesai — method baru

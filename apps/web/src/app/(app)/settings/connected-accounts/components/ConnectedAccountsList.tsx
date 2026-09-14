@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -14,11 +16,6 @@ import {
 } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Text } from "@/components/ui/text";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { ConfirmActionDialog } from "@/components/shared/ConfirmActionDialog";
 
 import {
@@ -36,7 +33,10 @@ import {
   SETTINGS_BREADCRUMB_GROUP,
   SettingsPageHead,
 } from "../../components/SettingsPageHead";
-import { disconnectAccountAction } from "../actions";
+import {
+  disconnectAccountAction,
+  initiateReconnectAccountAction,
+} from "../actions";
 import { ConnectPlatformMenu } from "./ConnectPlatformMenu";
 
 // KI-041 (Stone theme shadcn belum punya token --success/--warning, dicatat
@@ -87,44 +87,68 @@ function PlatformStatusDot({
 }
 
 /**
+ * Tombol "Reconnect" (T-015.3, ADR-105) — memicu
+ * `initiateReconnectAccountAction` (Server Action → `WorkspaceService.
+ * initiateConnectAccount` dengan `redirectAccountId` terisi →
+ * `OutstandAdapter.connectAccount`, Fake loopback). Bukan aksi destruktif
+ * (tidak menghapus apa pun, sebaliknya MEMULIHKAN koneksi), jadi klik
+ * langsung memicu aksi tanpa dialog konfirmasi Tier 2 — beda dari
+ * Disconnect. Sukses: Server Action `redirect()` ke `redirectUrl` OAuth,
+ * komponen ini unmount. Gagal: `toast.error` (pola sama
+ * `RetryTargetButton`).
+ */
+function ReconnectButton({ account }: { account: ConnectedAccountRecord }) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleReconnect() {
+    startTransition(async () => {
+      const result = await initiateReconnectAccountAction(
+        account.id,
+        account.platform,
+      );
+      if (result?.error) {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      disabled={isPending}
+      onClick={handleReconnect}
+    >
+      Reconnect
+    </Button>
+  );
+}
+
+/**
  * Tombol aksi per baris ditentukan dari `displayStatus` penuh (3 state),
  * bukan cuma boolean `reconnectRequired` — akun yang sudah `disconnected`
  * (bukan `reconnect-required`) tidak punya aksi yang relevan untuk
  * ditampilkan di sini (bukan "Disconnect" lagi, karena sudah disconnected).
  *
- * Tooltip pada Button `disabled` dibungkus `<span tabIndex={0}>` — native
- * `disabled` (dan class `disabled:pointer-events-none` bawaan `Button`)
- * membuat elemen itu sendiri tidak menerima event hover, jadi `Tooltip`
- * radix butuh elemen pembungkus yang BISA menerima hover sebagai trigger.
- *
- * T-014.3: "Disconnect" (state `active`) sekarang aktif — membuka dialog
- * konfirmasi Tier 2 (ADR-049) lewat `onRequestDisconnect`, pola persis
- * `QueueScreen.tsx` (Cancel Schedule) / `MembersTable.tsx` (Remove member).
- * `reconnect-required` tetap disabled, di luar scope (T-015).
+ * T-014.3: "Disconnect" (state `active`) — membuka dialog konfirmasi Tier 2
+ * (ADR-049) lewat `onRequestDisconnect`, pola persis `QueueScreen.tsx`
+ * (Cancel Schedule) / `MembersTable.tsx` (Remove member).
+ * T-015.3: "Reconnect" (state `reconnect-required`) sekarang aktif —
+ * lihat `ReconnectButton` di atas.
  */
 function ConnectedAccountAction({
+  account,
   displayStatus,
   onRequestDisconnect,
 }: {
+  account: ConnectedAccountRecord;
   displayStatus: ConnectionDisplayStatus;
   onRequestDisconnect: () => void;
 }) {
   switch (displayStatus) {
     case "reconnect-required":
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span tabIndex={0} className="inline-flex">
-              <Button type="button" variant="secondary" size="sm" disabled>
-                Reconnect
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            Tersedia setelah T-015 (Reconnect akun) selesai
-          </TooltipContent>
-        </Tooltip>
-      );
+      return <ReconnectButton account={account} />;
     case "active":
       return (
         <Button
@@ -186,6 +210,7 @@ function ConnectedAccountRow({
             {getConnectionStatusLabel(account)}
           </Badge>
           <ConnectedAccountAction
+            account={account}
             displayStatus={displayStatus}
             onRequestDisconnect={() => onRequestDisconnect(account)}
           />
@@ -202,9 +227,33 @@ function ConnectedAccountRow({
  */
 export function ConnectedAccountsList({
   accounts,
+  connectResult = null,
 }: {
   accounts: ConnectedAccountRecord[];
+  /**
+   * Hasil Connect/Reconnect Account (T-013.1/T-013.2, T-015.3, ADR-105) —
+   * diteruskan dari `page.tsx` (dibaca dari `?connect=` yang diset Route
+   * Handler callback). Ditampilkan sekali sebagai toast saat mount, lalu
+   * query param dibersihkan dari URL (`router.replace`, tanpa menumpuk
+   * history) supaya refresh halaman tidak menampilkan toast yang sama
+   * berulang.
+   */
+  connectResult?: "success" | "error" | null;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!connectResult) return;
+    if (connectResult === "success") {
+      toast("Akun berhasil terhubung");
+    } else {
+      toast.error("Gagal menghubungkan akun. Coba lagi.");
+    }
+    router.replace(pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hanya perlu re-run saat `connectResult` (query param) berubah, bukan tiap render `router`/`pathname` (referensi baru tiap render Next.js).
+  }, [connectResult]);
+
   const disconnectConfirm = useConfirmAction<ConnectedAccountRecord>(
     (account) => disconnectAccountAction(account.id),
     () => toast("Akun berhasil diputus koneksinya"),

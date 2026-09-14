@@ -53,6 +53,13 @@ function createFakeOutstandAdapter(
   overrides: Partial<IOutstandAdapter> = {},
 ): IOutstandAdapter {
   return {
+    connectAccount: async () => ({ redirectUrl: "/unused" }),
+    exchangeConnectCode: async () => ({
+      outstandAccountId: "unused",
+      platform: "instagram" as never,
+      handle: "unused",
+      status: "active",
+    }),
     schedulePost: async () => ({ outstandPostId: "fake-post" }),
     publishNow: async () => ({ outstandPostId: "fake-post" }),
     fetchPostOutcome: async () => [],

@@ -115,6 +115,13 @@ function createFakeAdapter(
   fetchPostOutcome: IOutstandAdapter["fetchPostOutcome"],
 ): IOutstandAdapter {
   return {
+    connectAccount: async () => ({ redirectUrl: "/unused" }),
+    exchangeConnectCode: async () => ({
+      outstandAccountId: "unused",
+      platform: "instagram" as never,
+      handle: "unused",
+      status: "active",
+    }),
     schedulePost: async () => ({ outstandPostId: "unused" }),
     publishNow: async () => ({ outstandPostId: "unused" }),
     fetchPostOutcome,

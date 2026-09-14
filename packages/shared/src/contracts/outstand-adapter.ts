@@ -23,10 +23,19 @@
  * `product-discovery/05-architecture/integration-layer.md` (bagian
  * "OutstandAdapter"), tapi hanya method yang SUDAH dibutuhkan kode nyata
  * yang dideklarasikan di sini (YAGNI, sama seperti keputusan ADR-059) —
- * method lain (connectAccount, fetchComments, dst.) ditambahkan nanti saat
- * domain terkait benar-benar mengimplementasikannya.
+ * method lain (fetchComments, dst.) ditambahkan nanti saat domain terkait
+ * benar-benar mengimplementasikannya.
+ *
+ * **`connectAccount`/`exchangeConnectCode` (ADR-105, 2026-09-11)** —
+ * ditambahkan untuk T-015.3 (Reconnect flow) yang ternyata membutuhkan
+ * alur redirect OAuth yang sama dengan T-013.1/T-013.2 (Connect Account,
+ * belum diimplementasikan sama sekali sebelumnya). `integration-layer.md`
+ * menyebut "Request OAuth URL" sebagai langkah narasi terpisah tapi tidak
+ * mendefinisikan method-nya eksplisit di tabel kontrak — ADR-105
+ * mendesain split 2-method ini (bukan menebak liar) dan menjadi kontrak
+ * resmi untuk keduanya.
  */
-import type { ContentFormat } from "../enums";
+import type { ContentFormat, SocialPlatform } from "../enums";
 
 /**
  * Satu target akun dalam SATU call `schedulePost`/`publishNow`. Outstand
@@ -109,6 +118,65 @@ export interface PostTargetOutcome {
 export type OutstandMetricsPeriod = "last_7_days" | "last_30_days";
 
 /**
+ * Connect Account (T-013.1/T-013.2 Connect Account, T-015.3 Reconnect,
+ * ADR-105) — input untuk meminta OAuth URL. `integration-layer.md`
+ * ("Alur Connect Account", langkah 1-2) menyebut "Request OAuth URL"
+ * sebagai langkah terpisah dari "exchange code" tapi tidak mendefinisikan
+ * method-nya secara eksplisit di tabel kontrak — ADR-105 menutup gap ini
+ * dengan split 2-method, mengikuti pola yang sudah ada di kontrak ini
+ * (`schedulePost`/`publishNow` = inisiasi, `fetchPostOutcome` = resolve
+ * belakangan).
+ *
+ * `redirectAccountId` diisi HANYA untuk reconnect akun existing (T-015.3,
+ * akun `expired`/`disconnected` yang diulang OAuth-nya) — kosong berarti
+ * connect akun baru (T-013). Field ini murni diteruskan lewat `state` ke
+ * callback supaya `WorkspaceService` tahu harus UPDATE
+ * `ConnectedAccount` yang sudah ada, bukan CREATE baru — adapter sendiri
+ * tidak membuat keputusan domain itu.
+ */
+export interface ConnectAccountInput {
+  workspaceId: string;
+  platform: SocialPlatform;
+  redirectAccountId?: string;
+}
+
+export interface ConnectAccountResult {
+  /**
+   * URL tujuan redirect browser user. Pada Fake adapter (ADR-059/ADR-105),
+   * URL ini loopback ke callback route KITA SENDIRI
+   * (`/api/integrations/outstand/callback`) alih-alih domain eksternal
+   * Outstand — lihat ADR-105 untuk alasan (arsitektur Route Handler
+   * callback tetap teruji sebelum real adapter T-025 masuk).
+   */
+  redirectUrl: string;
+}
+
+/**
+ * Exchange Connect Code (T-013.1/T-013.2, T-015.3, ADR-105) — dipanggil
+ * Route Handler `/api/integrations/outstand/callback` (Prabowo Feature
+ * Engineer, di luar scope method ini) setelah Outstand (atau Fake,
+ * loopback) mengarahkan balik dengan `code`+`state`.
+ */
+export interface ExchangeConnectCodeInput {
+  code: string;
+  state: string;
+}
+
+/**
+ * Hasil exchange code — dipetakan langsung ke field `ConnectedAccount`
+ * yang disimpan `WorkspaceService` (`integration-layer.md`, "Data yang
+ * disimpan pada ConnectedAccount"). `status` selalu `"active"` di sini —
+ * value lain (`expired`/`disconnected`) hanya muncul belakangan lewat
+ * webhook/aksi disconnect, bukan hasil connect yang baru saja berhasil.
+ */
+export interface ConnectedAccountData {
+  outstandAccountId: string;
+  platform: SocialPlatform;
+  handle: string;
+  status: "active";
+}
+
+/**
  * NOTE (2026-08-26, dicatat sebagai gap diketahui, bukan diimplementasikan
  * penuh di sini — di luar scope redesain ini, lihat draft ADR): dokumentasi
  * resmi Outstand `get-post-analytics` sebenarnya mengembalikan metrics
@@ -149,6 +217,30 @@ export interface FetchWorkspaceMetricsResult {
  * `getOutstandAdapter`.
  */
 export interface IOutstandAdapter {
+  /**
+   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105) —
+   * langkah 1 dari alur 2-tahap OAuth (`integration-layer.md`, "Alur
+   * Connect Account"): minta URL redirect OAuth. Dipanggil
+   * `WorkspaceService` saat user klik "Connect Account" (T-013) atau
+   * "Reconnect" (T-015.3, dengan `redirectAccountId` diisi). Tidak
+   * membuat/mengubah `ConnectedAccount` apa pun — itu terjadi belakangan
+   * di `exchangeConnectCode` setelah callback.
+   */
+  connectAccount(input: ConnectAccountInput): Promise<ConnectAccountResult>;
+
+  /**
+   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105) —
+   * langkah 2 dari alur 2-tahap OAuth: tukar `code`+`state` (dari
+   * callback) dengan data akun final. Dipanggil Route Handler
+   * `/api/integrations/outstand/callback` (di luar scope kontrak ini).
+   * `WorkspaceService` yang memutuskan CREATE (connect baru) vs UPDATE
+   * (reconnect) `ConnectedAccount` berdasarkan `redirectAccountId` yang
+   * dibawa lewat `state` — bukan tanggung jawab adapter.
+   */
+  exchangeConnectCode(
+    input: ExchangeConnectCodeInput,
+  ): Promise<ConnectedAccountData>;
+
   /**
    * Publishing (ADR-059, redesain 2026-08-26) — SATU call untuk SEMUA
    * target/akun tujuan post ini, sesuai kontrak resmi Outstand
