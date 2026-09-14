@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { asConnectedAccountId, asUserId } from "@social/shared";
 import { decodeConnectAccountState } from "@/lib/adapters/outstand/connect-state";
 import { getCachedSession } from "@/lib/better-auth/session";
@@ -6,7 +7,7 @@ import { getServerEnv } from "@/lib/env";
 import { ApplicationError } from "@/lib/utils/errors";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
-import { OUTSTAND_CONNECT_NONCE_COOKIE } from "@/lib/workspace/outstand-connect-nonce-cookie";
+import { outstandConnectNonceCookieName } from "@/lib/workspace/outstand-connect-nonce-cookie";
 
 const CONNECTED_ACCOUNTS_PATH = "/settings/connected-accounts";
 
@@ -33,14 +34,6 @@ const CONNECTED_ACCOUNTS_PATH = "/settings/connected-accounts";
 export async function GET(request: NextRequest): Promise<Response> {
   const appOrigin = getServerEnv().BETTER_AUTH_URL;
 
-  function redirectWithStatus(status: "success" | "error"): NextResponse {
-    const response = NextResponse.redirect(
-      new URL(`${CONNECTED_ACCOUNTS_PATH}?connect=${status}`, appOrigin),
-    );
-    response.cookies.delete(OUTSTAND_CONNECT_NONCE_COOKIE);
-    return response;
-  }
-
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");
 
@@ -58,39 +51,55 @@ export async function GET(request: NextRequest): Promise<Response> {
   // palsu di atas toast sukses dari request asli. Kalau HANYA salah satu
   // yang kosong, itu tetap request bermasalah sungguhan → tetap error.
   if (!code && !state) {
-    const response = NextResponse.redirect(
-      new URL(CONNECTED_ACCOUNTS_PATH, appOrigin),
-    );
-    // Bersihkan nonce yang sama seperti redirectWithStatus — no-op ini juga
-    // menutup satu percobaan connect/reconnect, tidak ada alasan cookie-nya
-    // bertahan sampai TTL 10 menit habis sendiri.
-    response.cookies.delete(OUTSTAND_CONNECT_NONCE_COOKIE);
-    return response;
+    return NextResponse.redirect(new URL(CONNECTED_ACCOUNTS_PATH, appOrigin));
   }
   if (!code || !state) {
-    return redirectWithStatus("error");
+    return NextResponse.redirect(
+      new URL(`${CONNECTED_ACCOUNTS_PATH}?connect=error`, appOrigin),
+    );
   }
 
   let decoded: ReturnType<typeof decodeConnectAccountState>;
   try {
     decoded = decodeConnectAccountState(state);
   } catch {
-    return redirectWithStatus("error");
+    return NextResponse.redirect(
+      new URL(`${CONNECTED_ACCOUNTS_PATH}?connect=error`, appOrigin),
+    );
   }
 
-  // CSRF-check (ADR-105 poin 4) — `nonce` yang dibawa `state` HARUS cocok
-  // dengan cookie yang diset Server Action inisiasi (lihat
-  // `outstand-connect-nonce-cookie.ts`). Cookie hilang/tidak cocok berarti
-  // callback ini TIDAK berasal dari inisiasi yang baru saja dilakukan sesi
-  // browser ini — tolak, jangan diam-diam lanjut.
-  const nonceCookie = request.cookies.get(OUTSTAND_CONNECT_NONCE_COOKIE)?.value;
-  if (!nonceCookie || nonceCookie !== decoded.nonce) {
+  // Nama cookie di-scope per-nonce (`outstandConnectNonceCookieName`,
+  // bukan satu nama tetap) — dua percobaan connect/reconnect yang tumpang
+  // tindih (dua tab, double-invoke) masing-masing dapat cookie sendiri,
+  // tidak saling menimpa sebelum salah satunya sempat consume oleh
+  // callback-nya sendiri (lihat docstring di `outstand-connect-nonce-cookie.ts`).
+  const nonceCookieName = outstandConnectNonceCookieName(decoded.nonce);
+
+  function redirectWithStatus(status: "success" | "error"): NextResponse {
+    const response = NextResponse.redirect(
+      new URL(`${CONNECTED_ACCOUNTS_PATH}?connect=${status}`, appOrigin),
+    );
+    response.cookies.delete(nonceCookieName);
+    return response;
+  }
+
+  // CSRF-check (ADR-105 poin 4) — cookie bernama `nonceCookieName` HARUS
+  // ada (diset Server Action inisiasi, lihat `outstand-connect-nonce-cookie.ts`).
+  // Cookie hilang berarti callback ini TIDAK berasal dari inisiasi yang
+  // baru saja dilakukan sesi browser ini — tolak, jangan diam-diam lanjut.
+  if (!request.cookies.has(nonceCookieName)) {
     return redirectWithStatus("error");
   }
 
   const session = await getCachedSession();
   if (!session) {
-    return NextResponse.redirect(new URL("/login", appOrigin));
+    // Nonce sudah tervalidasi (percobaan ini genuinely valid) — tetap
+    // bersihkan cookie-nya sebelum redirect ke /login, sama seperti
+    // redirectWithStatus, supaya cookie yang sudah dikonsumsi tidak
+    // bertahan sampai TTL 10 menit habis sendiri.
+    const response = NextResponse.redirect(new URL("/login", appOrigin));
+    response.cookies.delete(nonceCookieName);
+    return response;
   }
 
   const { workspaceId } = await getWorkspaceContext();
@@ -110,6 +119,11 @@ export async function GET(request: NextRequest): Promise<Response> {
     if (error instanceof ApplicationError) {
       return redirectWithStatus("error");
     }
+    // Kegagalan tak terduga (bukan ApplicationError) — tetap dilempar apa
+    // adanya (bukan diam-diam disamarkan jadi redirect error), tapi nonce
+    // yang sudah tervalidasi ini tetap dibersihkan lebih dulu supaya tidak
+    // bertahan sampai TTL habis sendiri (pola sama redirectWithStatus).
+    (await cookies()).delete(nonceCookieName);
     throw error;
   }
 

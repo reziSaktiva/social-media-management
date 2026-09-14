@@ -15,7 +15,7 @@ import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
 import {
-  OUTSTAND_CONNECT_NONCE_COOKIE,
+  outstandConnectNonceCookieName,
   outstandConnectNonceCookieOptions,
 } from "@/lib/workspace/outstand-connect-nonce-cookie";
 import { toActionError } from "@/lib/utils/errors";
@@ -41,8 +41,8 @@ async function persistConnectNonceCookie(redirectUrl: string): Promise<void> {
   try {
     const decoded = decodeConnectAccountState(state);
     (await cookies()).set(
-      OUTSTAND_CONNECT_NONCE_COOKIE,
-      decoded.nonce,
+      outstandConnectNonceCookieName(decoded.nonce),
+      "1",
       outstandConnectNonceCookieOptions(),
     );
   } catch {

@@ -10,8 +10,19 @@ import { secureCookiesEnabled } from "@/lib/env";
  * yang bukan hasil inisiasi milik sesi browser ini sendiri (ADR-105 poin 4:
  * "CSRF-check nyata (nonce dicocokkan sisi cookie/session) adalah
  * tanggung jawab Route Handler, bukan adapter").
+ *
+ * Nama cookie di-scope PER-NONCE (bukan satu nama tetap) — nonce sendiri
+ * sudah berupa UUID acak (aman dipakai sebagai suffix nama cookie), jadi dua
+ * percobaan connect/reconnect yang tumpang tindih (dua tab, atau
+ * double-invoke) masing-masing dapat cookie sendiri, bukan saling menimpa
+ * satu cookie bersama sebelum salah satunya sempat di-consume oleh
+ * callback-nya.
  */
-export const OUTSTAND_CONNECT_NONCE_COOKIE = "outstand-connect-nonce";
+const OUTSTAND_CONNECT_NONCE_COOKIE_PREFIX = "outstand-connect-nonce-";
+
+export function outstandConnectNonceCookieName(nonce: string): string {
+  return `${OUTSTAND_CONNECT_NONCE_COOKIE_PREFIX}${nonce}`;
+}
 
 /** 10 menit — cukup untuk satu round-trip OAuth (Fake instan; real adapter T-025 nanti tetap dalam orde detik/menit), sengaja pendek karena cookie ini murni untuk SATU percobaan connect/reconnect. */
 const OUTSTAND_CONNECT_NONCE_COOKIE_MAX_AGE = 60 * 10;

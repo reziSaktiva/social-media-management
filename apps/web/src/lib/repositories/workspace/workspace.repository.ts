@@ -790,9 +790,21 @@ export const workspaceRepository: IWorkspaceRepository = {
         throw new NotFoundError("Akun terhubung tidak ditemukan.");
       }
 
-      const updated = await tx.workspaceConnectedAccount.findUniqueOrThrow({
-        where: { id: connectedAccountId },
-      });
+      let updated;
+      try {
+        updated = await tx.workspaceConnectedAccount.findUniqueOrThrow({
+          where: { id: connectedAccountId },
+        });
+      } catch (error) {
+        // Race sangat sempit (row terhapus di antara `updateMany` yang baru
+        // saja berhasil dan lookup ini, dalam transaksi yang sama) — map ke
+        // `NotFoundError` yang sama seperti guard `result.count === 0` di
+        // atas, bukan biarkan P2025 mentah lolos ke pemanggil.
+        if (isRecordNotFound(error)) {
+          throw new NotFoundError("Akun terhubung tidak ditemukan.");
+        }
+        throw error;
+      }
       return toConnectedAccountRecord(updated);
     });
   },
