@@ -35,6 +35,25 @@ import { workspaceRepository } from "@/lib/repositories/workspace";
 import { ApplicationError } from "@/lib/utils/errors";
 
 /**
+ * Bagian "resolve + assert" bersama untuk `resolveAndValidateMediaIds` di
+ * bawah maupun `scheduleDraftAction`/`publishNowAction` (yang butuh fetch
+ * `foundMedia` paralel dengan `listConnectedAccounts`, jadi tidak bisa
+ * memanggil `resolveAndValidateMediaIds` apa adanya) — supaya ketiganya
+ * memakai SATU implementasi validasi ownership (`resolveDraftMediaIds`) +
+ * batas ADR-107 (`assertMediaCountWithinLimit`) yang sama, bukan menyalin
+ * ulang kombinasi keduanya di masing-masing action.
+ */
+function resolveMediaIdsAgainstFormats(
+  found: Parameters<typeof resolveDraftMediaIds>[0],
+  requestedMediaIds: MediaId[],
+  activeFormats: ContentFormat[],
+): MediaId[] {
+  const resolved = resolveDraftMediaIds(found, requestedMediaIds);
+  assertMediaCountWithinLimit(resolved.length, activeFormats);
+  return resolved;
+}
+
+/**
  * Wiring bersama untuk `saveDraftAction`/`updateDraftAction`/
  * `scheduleDraftAction`/`publishNowAction` (T-024.4): validasi ownership
  * (setiap `mediaId` yang dikirim client benar-benar milik `workspaceId` ini
@@ -75,9 +94,7 @@ async function resolveAndValidateMediaIds(
     { workspaceId, mediaIds },
     actingUserId,
   );
-  const resolved = resolveDraftMediaIds(found, mediaIds);
-  assertMediaCountWithinLimit(resolved.length, activeFormats);
-  return resolved;
+  return resolveMediaIdsAgainstFormats(found, mediaIds, activeFormats);
 }
 
 export interface SaveDraftInput {
@@ -203,12 +220,8 @@ export async function getDraftAction(postId: string): Promise<{
   };
 }
 
-export interface UploadMediaDto {
-  id: string;
-  url: string | null;
-  type: string;
-  filename: string;
-}
+/** Sama bentuk dengan `DraftMediaDto` — item media tunggal hasil upload dikonsumsi client sebagai item `DraftMediaDto` biasa (`Modal.tsx`: `setMediaItems((prev) => [...prev, result.media])`). */
+export type UploadMediaDto = DraftMediaDto;
 
 /**
  * Upload satu file media (T-024.4) — dipanggil per file dari dropzone
@@ -404,14 +417,29 @@ export async function scheduleDraftAction(
       : Promise.resolve([]),
   ]);
   const targets = resolveScheduleTargets(connectedAccounts, input.targets);
+  const activeFormats = targets.map((target) => target.contentFormat);
   const mediaIds =
     requestedMediaIds !== undefined
-      ? resolveDraftMediaIds(foundMedia, requestedMediaIds)
+      ? resolveMediaIdsAgainstFormats(
+          foundMedia,
+          requestedMediaIds,
+          activeFormats,
+        )
       : undefined;
-  if (mediaIds !== undefined) {
+
+  // `mediaIds` undefined berarti draft ini mempertahankan media yang SUDAH
+  // dipersist sebelumnya (lihat catatan `resolveAndValidateMediaIds`) — batas
+  // ADR-107 tetap wajib ditegakkan terhadap `activeFormats` yang baru saja
+  // di-resolve, bukan hanya saat client mengirim `mediaIds` eksplisit.
+  if (mediaIds === undefined && input.postId) {
+    const existingDraft = await publishingService.getDraftById(
+      workspaceId,
+      asPostId(input.postId),
+      actingUserId,
+    );
     assertMediaCountWithinLimit(
-      mediaIds.length,
-      targets.map((target) => target.contentFormat),
+      existingDraft.mediaIds?.length ?? 0,
+      activeFormats,
     );
   }
 
@@ -501,14 +529,29 @@ export async function publishNowAction(
       : Promise.resolve([]),
   ]);
   const targets = resolveScheduleTargets(connectedAccounts, input.targets);
+  const activeFormats = targets.map((target) => target.contentFormat);
   const mediaIds =
     requestedMediaIds !== undefined
-      ? resolveDraftMediaIds(foundMedia, requestedMediaIds)
+      ? resolveMediaIdsAgainstFormats(
+          foundMedia,
+          requestedMediaIds,
+          activeFormats,
+        )
       : undefined;
-  if (mediaIds !== undefined) {
+
+  // `mediaIds` undefined berarti draft ini mempertahankan media yang SUDAH
+  // dipersist sebelumnya (lihat catatan `resolveAndValidateMediaIds`) — batas
+  // ADR-107 tetap wajib ditegakkan terhadap `activeFormats` yang baru saja
+  // di-resolve, bukan hanya saat client mengirim `mediaIds` eksplisit.
+  if (mediaIds === undefined && input.postId) {
+    const existingDraft = await publishingService.getDraftById(
+      workspaceId,
+      asPostId(input.postId),
+      actingUserId,
+    );
     assertMediaCountWithinLimit(
-      mediaIds.length,
-      targets.map((target) => target.contentFormat),
+      existingDraft.mediaIds?.length ?? 0,
+      activeFormats,
     );
   }
 

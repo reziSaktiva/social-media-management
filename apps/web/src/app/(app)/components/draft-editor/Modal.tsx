@@ -40,6 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
+import { maxMediaCountForFormats } from "@/domains/publishing";
 
 import type { ConnectedAccountDto, DraftMediaDto } from "./actions";
 import {
@@ -106,35 +107,6 @@ function getDefaultFormat(platform: SocialPlatform): ContentFormat {
   return platform === SocialPlatform.Pinterest
     ? ContentFormat.Pin
     : ContentFormat.Post;
-}
-
-/**
- * Mirror client-side dari `MAX_MEDIA_COUNT_BY_FORMAT`/`maxMediaCountForFormats`
- * (`apps/web/src/domains/publishing/content-format-matrix.ts`, ADR-107) —
- * batas native platform: IG/FB carousel (Post) maks 10 media, Reel/Story/
- * Pin selalu single media. JAGA SINKRON kalau matriks berubah, sama seperti
- * `getSelectableFormats`/`getDefaultFormat` di atas.
- */
-const MAX_MEDIA_COUNT_BY_FORMAT: Record<ContentFormat, number> = {
-  [ContentFormat.Post]: 10,
-  [ContentFormat.Reel]: 1,
-  [ContentFormat.Story]: 1,
-  [ContentFormat.Pin]: 1,
-};
-
-/**
- * Post bisa attach ke beberapa akun target dengan format berbeda sekaligus
- * — batas efektif untuk seluruh post adalah MINIMUM dari max-count semua
- * format yang sedang dipilih (ADR-107). Array kosong (belum ada akun
- * dipilih) → default paling longgar (Post, 10).
- */
-function maxMediaCountFor(formats: ContentFormat[]): number {
-  if (formats.length === 0) {
-    return MAX_MEDIA_COUNT_BY_FORMAT[ContentFormat.Post];
-  }
-  return Math.min(
-    ...formats.map((format) => MAX_MEDIA_COUNT_BY_FORMAT[format]),
-  );
 }
 
 /**
@@ -488,7 +460,7 @@ function DraftEditorForm({
   }
 
   const mediaIds = mediaItems.map((item) => item.id);
-  const effectiveMaxMedia = maxMediaCountFor(getActiveFormats());
+  const effectiveMaxMedia = maxMediaCountForFormats(getActiveFormats());
   const isMediaLimitReached =
     mediaItems.length + uploadingMediaCount >= effectiveMaxMedia;
 
@@ -497,7 +469,7 @@ function DraftEditorForm({
       return;
     }
     const files = Array.from(fileList);
-    const max = maxMediaCountFor(getActiveFormats());
+    const max = maxMediaCountForFormats(getActiveFormats());
     const availableSlots = Math.max(
       0,
       max - mediaItems.length - uploadingMediaCount,
