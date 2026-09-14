@@ -28,9 +28,17 @@ export async function GET(request: NextRequest) {
   }
 
   const workspaceService = new WorkspaceService(workspaceRepository);
-  const workspace = await workspaceService.getDefaultWorkspaceForUser(
+  const memberships = await workspaceService.listWorkspacesForUser(
     asUserId(session.user.id),
   );
+
+  // Hanya auto-pick kalau tepat 1 membership aktif — kalau >1, kembalikan ke
+  // `/onboarding` supaya `WorkspacePicker` (T-039.4) yang menanyakan user,
+  // bukan diam-diam pilih salah satu. Menutup gap: route ini bisa diakses
+  // langsung (proxy.ts mengecualikan `/onboarding/*` dari validasi
+  // workspace), jadi tidak boleh punya logic auto-pick sendiri yang beda
+  // dari `onboarding/page.tsx`.
+  const workspace = memberships.length === 1 ? memberships[0] : null;
 
   const response = NextResponse.redirect(
     new URL(workspace ? "/" : "/onboarding", appOrigin),
@@ -38,7 +46,7 @@ export async function GET(request: NextRequest) {
   if (workspace) {
     response.cookies.set(
       ACTIVE_WORKSPACE_ID_COOKIE,
-      workspace.id,
+      workspace.workspaceId,
       activeWorkspaceCookieOptions(),
     );
   }

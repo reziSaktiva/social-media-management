@@ -1133,3 +1133,163 @@ dimigrasikan, memastikan tidak ada sisa Astryx di codebase.
 > `apps/web/src/app/(app)/settings/billing/page.tsx`. Detail:
 > `PROJECT_STATE.md` § KI-045 (dipindah ke `COMPLETE_TASK.md` setelah
 > Resolved, ID tidak didaur ulang).
+
+---
+
+### T-103 · Kunci Pola Implementasi shadcn per Komponen di Claude Design (cegah drift KI-054/KI-055)
+
+`⏳ Not Started` (2026-09-10) · **Domain** Design System / Governance — lintas Claude Design + `AGENTS.md`/agent docs, bukan domain kode produk biasa (lihat catatan Domain di bawah) · **ADR** — · **Depends** —
+**Baca dulu:** `PROJECT_STATE.md` § KI-054, KI-055 · `readme.md` (Claude Design project "Social Media Management") § Components · `AGENTS.md` rule 15–17 · `.claude/agents/README.md`
+
+**Prioritas: dikerjakan LEBIH DULU dari task lain di backlog** (permintaan
+eksplisit King Rezi, 2026-09-10) — sampai T-103 selesai, task implementasi
+UI baru berisiko mengulang pola drift yang sama.
+
+**Latar belakang.** KI-054 (Design Drift Drafts/History) dan KI-055 (5
+komponen menyimpang dari Claude Design) sama-sama disebabkan hal yang
+sama: Claude Design mendokumentasikan pemetaan shadcn di level
+**primitive** (mis. "list pakai `Item`/`ItemGroup` ATAU `Table`", keduanya
+sama-sama valid shadcn), tapi tidak mengunci **pola konkret** yang harus
+dipakai untuk instance tertentu. Saat lebih dari satu pola shadcn
+sama-sama valid untuk maksud desain yang sama, AI menebak pola yang
+"masuk akal" (mis. `Item`/`ItemGroup` untuk Drafts/Workspaces/Connected
+Accounts) — tebakan itu ternyata bukan yang King Rezi mau, dan baru
+ketahuan lewat audit manual King Rezi, bukan sebelum kode ditulis.
+
+**Tujuan:** hilangkan ruang tebak-tebakan itu — setiap komponen/list
+ambigu di Claude Design dikunci eksplisit ke satu pola shadcn (bukan cuma
+nama primitive, tapi struktur wrapper-nya: pakai `Card` atau bukan, ada
+`TableHeader` atau tidak, baris bisa diklik penuh atau tidak, dst.) — dan
+tambahkan gate proses supaya kalau suatu saat masih ada elemen yang
+belum dikunci, AI **berhenti dan tanya**, bukan menebak lagi.
+
+- [x] **T-103.1** `✅ Done` (2026-09-10) Audit seluruh file `components/*.html` dan
+      `templates/*.html` di project Claude Design "Social Media
+      Management" (lewat `DesignSync`) — untuk tiap list/komposisi yang
+      punya lebih dari satu kemungkinan pola shadcn valid (list, dialog
+      variant, table vs item, dst.), kunci pola eksplisit langsung di
+      intro paragraph/inline comment file itu sendiri (bukan cuma nama
+      komponen, tapi struktur: wrapper apa, ada header atau tidak, klik
+      row atau tidak, dst. — persis level detail yang sudah ditulis
+      untuk KI-055 poin 1/3/5 di `PROJECT_STATE.md`). Update juga tabel
+      **Components** di `readme.md` Claude Design supaya baris yang
+      ambigu ditandai jelas polanya, bukan cuma "shadcn X" generik.
+      **Hasil:** ditemukan 3 file dengan drift konkret — mockup masih
+      pola lama (`.queue-list`, `.ws-pick-item`, `.settings-row`)
+      padahal kode nyata `apps/web` sudah dikunci ke pola `Table` final
+      lewat KI-055 (poin 1/3/5). Dikunci lewat komentar "LOCKED
+      PATTERN" inline (tanpa mengubah markup visual mockup, sesuai
+      `claude-design-scope-discipline`) di `templates/publish-drafts.html`,
+      `templates/settings-workspaces.html`,
+      `templates/settings-connected-accounts.html`; ditambah komentar
+      penguncian eksplisit (tanpa perubahan pola, sudah benar) di
+      `templates/settings-members.html` (Table + TableHeader, satu-satunya
+      yang tetap pakai `Card`) dan `templates/settings-profile.html`
+      (ukuran avatar 88px via override, bukan preset). Tabel
+      **Components** dan daftar **Files** di `readme.md` diupdate
+      untuk mencerminkan status terkunci ini (baris `.ws-pick-list`,
+      `.table`, dan 3 bullet file terkait). Sisa ~28 file
+      (`components/buttons.html`, `forms.html`, `navigation*.html`,
+      `notifications-panel.html`, `popover.html`, `status-chips.html`,
+      dan 20 `templates/*.html` lain) dibaca sepintas via `readme.md` —
+      sudah punya dokumentasi pola yang cukup spesifik (nama
+      komponen + variant + rationale), tidak ditemukan ambiguitas
+      >1-pola-valid setara KI-054/055 di dalamnya. Audit baris-per-baris
+      yang lebih dalam untuk seluruh file itu **tidak** dilakukan
+      exhaustif di pass ini (dibatasi scope/waktu) — kalau King Rezi mau
+      kepastian lebih tinggi, jadikan follow-up terpisah (bisa gabung ke
+      **T-103.4**, retroactive pass).
+      **Update (2026-09-10, follow-up koreksi King Rezi):** 2 perbaikan
+      tambahan. (1) Posisi tombol "+ New Post" di
+      `templates/publish-drafts.html` salah — dulu tampil sebagai baris
+      terpisah di bawah tabbar, seharusnya sejajar judul "Publish" di
+      `page-head` (mengikuti `PublishPageHeader.tsx`, dirender sekali di
+      level `apps/web/src/app/(app)/publish/layout.tsx`, berlaku sama untuk
+      Calendar/Queue/Drafts/History). Sudah dipindah ke posisi yang benar.
+      (2) King Rezi minta markup 3 file yang sebelumnya hanya "dikunci
+      lewat komentar" (`publish-drafts.html`, `settings-workspaces.html`,
+      `settings-connected-accounts.html`) benar-benar diubah strukturnya
+      supaya identik dengan kode nyata — bukan cuma didokumentasikan. Sudah
+      diganti: `Table` tanpa `TableHeader`/`Card` di ketiganya,
+      `settings-workspaces.html` pakai caption di dalam table (bukan
+      `CardTitle`) + baris aktif Badge vs baris lain chevron, script
+      switch-workspace disesuaikan ke struktur baru. `readme.md` diupdate
+      dari penanda "LOCKED" menjadi "SYNCED" untuk mencerminkan ini.
+- [x] **T-103.2** `✅ Done` (2026-09-10) Update `AGENTS.md` rule 17 (atau tambah rule baru) —
+      perluas gate yang sudah ada ("cek Claude Design sebelum nulis
+      kode UI") supaya juga mencakup: kalau Claude Design **belum
+      mengunci pola konkret** untuk elemen yang mau diimplementasikan
+      (ambigu, >1 opsi shadcn valid), AI **wajib berhenti dan tanya
+      King Rezi** (`AskUserQuestion`, pola sama
+      `.claude/skills/proactive-clarification/SKILL.md`) sebelum
+      menulis kode — bukan memilih salah satu opsi sendiri.
+      Refleksikan perubahan ini juga ke `.claude/agents/README.md` dan
+      definisi Mark UI Engineer (file `.claude/agents/*.md` bersifat
+      Static Reference/read-only, minta izin eksplisit King Rezi
+      sebelum mengedit, sesuai `PROJECT_RULES.md`).
+      **Hasil:** sub-poin baru ditambahkan ke `AGENTS.md` rule 17 (di
+      antara poin "belum ada di Claude Design" dan "bukan UI/UX-related")
+      — gate berhenti-dan-tanya kalau pola shadcn ambigu (belum ada
+      penanda "SYNCED"/"LOCKED PATTERN" di file Claude Design terkait).
+      King Rezi memberi izin eksplisit lewat `AskUserQuestion` untuk
+      mengedit file read-only — ditambahkan bagian baru "Gate pola ambigu
+      shadcn" di `.claude/agents/README.md` dan bullet aturan keras baru
+      di `.claude/agents/mark-ui-engineer.md` (chmod 644 → edit → chmod
+      444 lagi sesuai prosedur "Mengubah subagent ini").
+- [x] **T-103.3** `✅ Done` (2026-09-10) Tambah langkah verifikasi ke checklist Mark UI
+      Engineer & Najwa QA Engineer: sebelum task UI ditandai selesai,
+      **wajib** `DesignSync get_file` pada template/component Claude
+      Design yang relevan dan bandingkan eksplisit strukturnya dengan
+      kode yang baru ditulis (bukan cuma golden path fungsional) — gate
+      setelah implementasi, melengkapi gate T-103.2 yang di sebelum
+      implementasi.
+      **Hasil:** King Rezi memberi izin eksplisit untuk mengedit 2 file
+      read-only. `.claude/agents/mark-ui-engineer.md` § Verifikasi —
+      ditambah paragraf wajib `DesignSync get_file` + bandingkan struktur
+      (wrapper, header/caption, klik-penuh, posisi tombol) sebelum lapor
+      selesai. `.claude/agents/najwa-qa-engineer.md` § Langkah kerja —
+      ditambah poin 5 dengan kewajiban sama, **plus** tool `DesignSync`
+      ditambahkan ke frontmatter `tools:` Najwa (sebelumnya hanya `Read,
+      Bash, Grep, Glob, mcp__Claude_Browser`) supaya gate ini benar-benar
+      bisa dieksekusi Najwa sendiri, bukan cuma tertulis di checklist.
+      `.claude/agents/README.md` — section baru "Gate verifikasi struktur
+      setelah implementasi (T-103.3)" + kolom Tools Najwa di tabel
+      diupdate. Kedua file agent dikembalikan ke `chmod 444` setelah edit.
+- [x] **T-103.4** `✅ Done` (2026-09-10) (opsional, follow-up jangka lebih panjang) Retroactive
+      pass: screen/komponen yang sudah diimplementasi sebelum T-103 (di
+      luar KI-054/KI-055 yang baru selesai) dicek ulang terhadap pola
+      yang baru dikunci di T-103.1, untuk menemukan drift serupa yang
+      belum ketahuan. Bisa dijadikan task/KI terpisah kalau ditemukan
+      gap besar — dicatat di sini dulu supaya tidak lupa, eksekusi
+      menyusul.
+      **Hasil:** audit lewat `DesignSync` untuk 5 screen di luar
+      KI-054/055 — Queue (`templates/publish-queue.html` vs
+      `QueueList.tsx`, `Card size="sm"` di kedua sisi, ✅ sudah sama),
+      **History** (`templates/publish-history.html` vs `HistoryList.tsx`
+      — ⚠️ **drift ditemukan**: mockup masih pola `Card`
+      (`.card card-pad history-card`), padahal kode sudah diubah ke
+      `Item variant="outline"` dalam `ItemGroup` sejak KI-054
+      (2026-09-09) — persis pola drift yang sama dengan Drafts/
+      Workspaces/Connected Accounts), Notifications Drawer
+      (`components/notifications-panel.html` — gap dokumentasi kecil,
+      intro paragraph mengklaim `Item`/`ItemGroup` tapi markup demo *dan*
+      kode nyata `NotificationBell.tsx` sama-sama plain `div` — bukan
+      drift fungsional karena keduanya konsisten, tapi klaimnya
+      menyesatkan; **tidak diperbaiki di pass ini**, King Rezi hanya
+      minta fix untuk History), Engage → Inbox (belum diimplementasikan,
+      `ScaffoldPlaceholder`, tidak relevan), dan Settings → General
+      Danger Zone (single `Card`, bukan list, tidak ada ambiguitas).
+      **Drift History diperbaiki atas persetujuan eksplisit King Rezi:**
+      `templates/publish-history.html` diubah ke pola `Item`/`ItemGroup`
+      (kelas baru `.history-item` di dalam `.history-date-group`, klik
+      penuh via `<a>`, `Badge` status kanan), `readme.md` § Files
+      ditambah bullet baru untuk file ini (sebelumnya tidak ada sama
+      sekali) dengan catatan SYNCED.
+
+**Catatan Domain:** task ini bukan implementasi fitur produk biasa —
+T-103.1 kerjanya di Claude Design (Neymar Product Designer), T-103.2
+kerjanya di dokumen governance (`AGENTS.md`, hard rule, perlu approval
+King Rezi karena ini perubahan aturan kerja, bukan kode), T-103.3 kerjanya
+di dua definisi subagent (read-only, hard rule `PROJECT_RULES.md`, wajib
+izin eksplisit sebelum diedit). Tidak dipetakan ke satu Domain → Subagent
+tunggal di `.claude/agents/README.md` — evaluasi manual per subtask.

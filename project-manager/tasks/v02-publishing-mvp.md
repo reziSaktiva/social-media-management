@@ -5,7 +5,7 @@
 **Tujuan rilis:** Memungkinkan pengguna membuat dan menjadwalkan konten.
 **Baseline rilis:** `product-discovery/02-product/release-roadmap.md` → v0.2
 
-**Rantai blocker rilis ini:** Real OutstandAdapter (T-025) belum ada → schedule hanya jalan lewat Fake · Connect account (T-013) belum ada → connected account harus di-seed · webhook (T-026) + job runner (T-027) masih 501 → **tidak ada transisi status post pasca-schedule**. Tiga task itu membuka hampir semua sisa rilis ini.
+**Rantai blocker rilis ini:** Real OutstandAdapter (T-025) belum ada → schedule hanya jalan lewat Fake · Connect account (T-013) belum ada → connected account harus di-seed · job runner (T-027) masih 501 → **belum ada transisi status post otomatis saat waktunya tiba** (webhook T-026 sudah ✅ Done 2026-09-07 — menangani transisi status pasca-publish/error/token-expired, tapi trigger-nya masih inbound webhook Outstand, bukan job scheduler). Task-task ini membuka hampir semua sisa rilis ini.
 
 ---
 
@@ -59,18 +59,29 @@ Kontrol lampiran media di Draft Editor sudah ada tapi **disabled** dengan ketera
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing (UI)                                              |
 | **ADR**       | ADR-065 (amandemen ADR-052)                                  |
 | **Depends**   | T-020 (modal Draft Editor sudah ada — Done)                  |
 | **Baca dulu** | `decisions/ADR-065-draft-editor-toggle-fullscreen-standard-jadi-fitur-resmi-default-standard.md` · `04-ux/key-screen-patterns.md` (KSP-05) · `04-ux/navigation-patterns.md` (NP-D11) |
 
-T-020 hanya mengimplementasikan Draft Editor sebagai modal `Dialog variant="fullscreen"` — tidak ada variant Standard maupun toggle. ADR-065 mengangkat toggle Fullscreen/Standard (sebelumnya alat banding di Claude Design saja) jadi fitur resmi produk, dengan default berubah ke **Standard**. Referensi visual sudah ada di Claude Design (`templates/draft-editor.html`, `templates/app-prototype/AppPrototype.dc.html`).
+**Ditemukan sudah selesai (2026-09-10):** seluruh 4/4 subtask ternyata sudah
+terimplementasi penuh sebagai bagian tak tercatat dari **T-100** (migrasi
+Draft Editor Modal ke shadcn/ui, selesai 2026-09-03) — status task ini
+sempat tidak diperbarui saat itu. Diverifikasi ulang lewat browser real
+(New Post & Edit Draft, branch `feature/t-038-draft-editor-fullscreen-standard-toggle`):
+default Standard, toggle di header (label berganti sesuai variant aktif),
+klik → Fullscreen (full viewport tanpa backdrop terlihat), reset ke
+Standard tiap sesi baru dibuka, berlaku sama untuk New Post & Edit Draft.
+Kode: `apps/web/src/app/(app)/components/draft-editor/Modal.tsx` (state
+`dialogVariant` baris ~958-976, toggle di header baris ~549-563). Tidak ada
+gap terhadap mockup Claude Design (`templates/draft-editor.html`) atau
+ADR-065. Tidak ada perubahan kode di sesi ini — murni koreksi status.
 
-- [ ] **T-038.1** Tambah variant Standard (`Dialog` non-fullscreen, floating card + backdrop) berdampingan dengan variant Fullscreen yang sudah ada
-- [ ] **T-038.2** Toggle di header modal (sebaris status chip, kiri tombol Close) untuk berpindah Fullscreen ↔ Standard
-- [ ] **T-038.3** Default state Standard setiap modal dibuka — tidak dipersist (localStorage/preference) sesuai ADR-065
-- [ ] **T-038.4** Berlaku untuk New Post dan Edit Draft, keduanya
+- [x] **T-038.1** Tambah variant Standard (`Dialog` non-fullscreen, floating card + backdrop) berdampingan dengan variant Fullscreen yang sudah ada
+- [x] **T-038.2** Toggle di header modal (sebaris status chip, kiri tombol Close) untuk berpindah Fullscreen ↔ Standard
+- [x] **T-038.3** Default state Standard setiap modal dibuka — tidak dipersist (localStorage/preference) sesuai ADR-065
+- [x] **T-038.4** Berlaku untuk New Post dan Edit Draft, keduanya
 
 ---
 
@@ -103,21 +114,25 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 
 | Field         | Value                                                              |
 | ------------- | ------------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                      |
+| **Status**    | ✅ Done                                                            |
 | **Domain**    | integration                                                        |
-| **ADR**       | ADR-020, ADR-040                                                   |
-| **Terkait**   | KI-003 (via T-025), KI-015 (`PROJECT_STATE.md` § Blockers)                    |
+| **ADR**       | ADR-020, ADR-040, ADR-099                                          |
+| **Terkait**   | KI-003 (via T-025), KI-015                                         |
 | **Depends**   | T-025                                                              |
 | **Baca dulu** | `05-architecture/integration-layer.md`                              |
 
 `/api/webhooks/outstand` masih return 501. Model `OutstandWebhookEvent` sudah ada di schema, `OUTSTAND_WEBHOOK_SECRET` sudah didefinisikan di `src/lib/env.ts` tapi belum dipakai.
 
-- [ ] **T-026.1** Verifikasi HMAC-SHA256 signature sebelum setiap pemrosesan
-- [ ] **T-026.2** Durable-before-ACK — persist event dulu, baru ACK, baru proses
-- [ ] **T-026.3** Handler `post.published` → update `PublishingPostTarget` outcome
-- [ ] **T-026.4** Handler `post.error` → outcome gagal + trigger notifikasi (T-036)
-- [ ] **T-026.5** Handler `account.token_expired` → tandai akun perlu reconnect (T-015)
-- [ ] **T-026.6** Idempotensi: event duplikat tidak boleh menggandakan efek
+- [x] **T-026.1** Verifikasi HMAC-SHA256 signature sebelum setiap pemrosesan
+- [x] **T-026.2** Durable-before-ACK — persist event dulu, baru ACK, baru proses
+- [x] **T-026.3** Handler `post.published` → update `PublishingPostTarget` outcome
+- [x] **T-026.4** Handler `post.error` → outcome gagal + trigger notifikasi (T-036)
+- [x] **T-026.5** Handler `account.token_expired` → tandai akun perlu reconnect (T-015)
+- [x] **T-026.6** Idempotensi: event duplikat tidak boleh menggandakan efek
+
+**Selesai kode (2026-09-07):** seluruh 6 checklist di atas diimplementasikan penuh (Elon Backend Engineer → review Ridwan → QA Najwa, siklus fix di tiap tahap), lolos `typecheck`/`lint`/`test` (261 pass, 4 skip). Pemrosesan **inline sinkron** di Route Handler (bukan enqueue+async sesuai desain asli `integration-layer.md`) karena T-027 (job runner) belum dikerjakan sama sekali — saat T-027 dikerjakan, webhook processing ini semestinya dipindah ke enqueue+async. Keputusan arsitektur baru (2 fungsi Postgres `SECURITY DEFINER` untuk lookup system-context tanpa `userId`) dicatat sebagai **ADR-099**. Ini juga menutup **T-036.5**.
+
+**Ditutup `✅ Done` (2026-09-07):** 3 migration baru (`20260907120000_t026_outstand_webhook_system_lookups`, `20260907130000_t026_unique_outstand_post_id`, `20260907140000_t026_relax_webhook_event_type_check`) sudah dijalankan King Rezi (`bun run db:deploy`) dan **terverifikasi ter-apply** ke DB dev (Najwa QA Engineer cross-check langsung via Supabase MCP: fungsi `webhook_find_post_targets_by_outstand_post_id`/`webhook_find_account_owner_by_outstand_account_id` ada, unique index `publishing_posts_outstand_post_id_unique` ada, CHECK constraint `event_type` sudah dilonggarkan). Retest end-to-end nyata (HTTP request langsung ke `/api/webhooks/outstand`, dev server lokal, tanpa cookie session, mensimulasikan Outstand asli — `OUTSTAND_WEBHOOK_SECRET` diisi dummy sementara di `.env.local` khusus untuk memungkinkan verifikasi HMAC, `OUTSTAND_API_KEY` tetap kosong/Fake adapter tetap aktif, tidak ada perubahan ADR-059) untuk 5 skenario, **SEMUA PASS**: golden path `post.published` (kedua `PublishingPostTarget` jadi `published`, `platformPostId`/`platformPostUrl` terisi), `post.error` (diproses bersih, bug lama "function does not exist" tuntas), `account.token_expired` (`reconnectRequired` jadi `true` + notifikasi Owner, menutup **T-036.5**), event type tak dikenal (`200 OK`, tidak error), idempotensi + signature invalid (regresi aman). **KI-048 Resolved.** Detail lengkap: `COMPLETE_TASK.md` (2026-09-07).
 
 ### T-027 · Job runner + Railway Cron
 
@@ -295,18 +310,19 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing                                                   |
-| **ADR**       | ADR-046                                                      |
-| **Depends**   | T-026 (status akhir datang dari webhook)                     |
+| **ADR**       | ADR-046, ADR-092, ADR-103                                    |
+| **Depends**   | T-026 ✅ (status akhir datang dari webhook — sudah Done 2026-09-07, tidak lagi memblokir) |
+| **Terkait**   | KI-048 (Resolved 2026-09-08 — App Prototype diwire + desain dikonfirmasi King Rezi), KI-049 (gap `failedAt`/`failureReason`), KI-050 (gap meta author di halaman detail post), KI-051 (Badge shadcn belum ada varian success), KI-052 (hydration warning `formatRelativeTime` di `HistoryList.tsx`) |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                                |
 
 Route `/publish/history` dan `/publish/history/[postId]` sudah ada sebagai placeholder.
 
-- [ ] **T-034.1** Query riwayat + status per target (published / error)
-- [ ] **T-034.2** UI daftar riwayat + filter
-- [ ] **T-034.3** Halaman detail post: hasil per akun, pesan error, link ke post asli
-- [ ] **T-034.4** Aksi retry manual untuk target yang gagal
+- [x] **T-034.1** Query riwayat + status per target (published / error)
+- [x] **T-034.2** UI daftar riwayat + filter
+- [x] **T-034.3** Halaman detail post: hasil per akun, pesan error, link ke post asli
+- [x] **T-034.4** Aksi retry manual untuk target yang gagal
 
 **Catatan (ADR-092, 2026-08-26):** Outstand API tidak punya endpoint retry
 resmi — dokumentasi resminya merekomendasikan hapus post yang gagal
@@ -314,19 +330,185 @@ resmi — dokumentasi resminya merekomendasikan hapus post yang gagal
 bukan re-trigger job yang sama. T-034.4 wajib mengikuti pola
 delete-lalu-create-ulang ini saat dikerjakan.
 
+**Selesai T-034.1 (2026-09-08):** `IPublishingRepository.listHistory`/`getHistoryById`
++ tipe `PublishingPostTargetStatus`/`HistoryItemTargetRecord`/`HistoryItemRecord`
+(`apps/web/src/domains/publishing/repositories/publishing.repository.ts`),
+`PublishingService.listHistory`/`getHistoryById` + konstanta
+`HISTORY_TERMINAL_STATUSES` (`Published`/`Failed`, invariant "History = post
+selesai" di-clamp di service) (`apps/web/src/domains/publishing/services/publishing.service.ts`),
+implementasi Prisma (`apps/web/src/lib/repositories/publishing/publishing.repository.ts`),
+4 file test terkait. Dikerjakan Prabowo Feature Engineer, lolos review
+arsitektur Ridwan (Architecture Reviewer) tanpa temuan blocking. **Tidak
+diblokir T-026** walau field `Depends` menyebutnya — Fake adapter (ADR-059)
+sudah mengisi outcome per target secara sinkron lewat `updateTargetOutcome`
+saat `PublishNowUseCase`/`SchedulePostsUseCase` berjalan, jadi status
+`published`/`failed` untuk data yang lahir dari jalur Fake sudah tersedia
+tanpa menunggu webhook nyata; `Depends: T-026` tetap relevan khusus untuk
+status *real* pasca-integrasi Outstand asli (T-025), bukan blocker untuk
+query/listing itu sendiri. T-034.2/T-034.3 menunggu review desain (lihat
+KI-048), T-034.4 belum dikerjakan — task tetap `🟡 In Progress`.
+
+**Gap non-blocking ditemukan Ridwan (2026-09-08), dicatat KI-049:** kolom
+`PublishingPost.failedAt`/`.failureReason` di schema Prisma tidak pernah
+ditulis oleh jalur manapun (`markPostFailed` cuma meng-update `status`) —
+sudah didokumentasikan sebagai gap di komentar kode
+`IPublishingRepository.listHistory`, dan sengaja tidak dimasukkan ke
+`HistoryItemRecord` supaya tidak menyesatkan UI dengan field yang selalu
+`null`. Lihat `PROJECT_STATE.md` § KI-049 untuk follow-up ke depan.
+
+**Draft Claude Design (2026-09-08), lihat KI-048:** 2 screen baru sudah
+di-push ke project Claude Design "Social Media Management" —
+`templates/publish-history.html` (daftar riwayat + filter Status/Akun,
+untuk T-034.2) dan `templates/publish-history-detail.html` (ringkasan
+post + "Hasil per Akun": link post asli untuk `Published`, pesan error +
+tombol retry untuk `Error`, untuk T-034.3/T-034.4). **Draft awal, belum
+direview/dikonfirmasi King Rezi** — jangan anggap T-034.2/T-034.3 sudah
+"ada desainnya" untuk keperluan gate rule 17 `AGENTS.md` sampai
+dikonfirmasi eksplisit. Dikerjakan langsung oleh main agent (bukan
+didelegasikan ke Neymar Product Designer) atas instruksi eksplisit King
+Rezi di sesi ini — deviasi dari mandat wajib Neymar di
+`.claude/agents/neymar-product-designer.md`, bukan inisiatif AI.
+
+**Selesai T-034.2/T-034.3 (2026-09-08) — KI-048 Resolved.** Draft Claude
+Design di atas direview bareng King Rezi di chat (Artifact review dari
+`templates/publish-history.html`/`templates/publish-history-detail.html`
+memakai token desain asli). King Rezi mengonfirmasi 5 poin: (1) App
+Prototype wajib dipasang dulu — ditemukan saat itu juga bahwa tab History
+belum terdaftar di runner interaktif (`SCREENS`, tab handler, redirect
+Publish Now di `templates/app-prototype/AppPrototype.dc.html` masih toast
+"belum masuk scope MVP" + stand-in ke Calendar); (2) filter cukup 2
+dropdown (Status/Akun), tanpa date range/search; (3) grouping per tanggal
+di list sudah sesuai pola Queue; (4) tombol "Coba Lagi" (retry) posisi/
+label sudah final tapi murni visual — belum diwire karena T-034.4 belum
+dikerjakan; (5) link "Lihat post asli" disabled (bukan hilang) kalau
+`platformPostUrl` kosong. Main agent (bukan Neymar — deviasi eksplisit
+yang sama seperti draft awal) langsung menutup gap App Prototype: entry
+`publish-history`/`publish-history-detail` ditambahkan ke `SCREENS`, tab
+click handler `route()` diarahkan ke `publish-history` (bukan toast lagi),
+redirect `publishnow-confirm` diarahkan ke `publish-history` (bukan
+stand-in `publish-calendar`) — sudah di-push ke Claude Design dan
+diverifikasi remote match persis. **KI-048 Resolved** — draft sudah
+terkonfirmasi King Rezi dan App Prototype sudah bisa diklik penuh.
+
+Implementasi kode dikerjakan Prabowo Feature Engineer: file baru
+`apps/web/src/domains/publishing/services/group-history-items.ts`
+(+`.test.ts`), `apps/web/src/app/(app)/publish/history/history-status.ts`,
+`apps/web/src/app/(app)/publish/history/components/HistoryList.tsx`,
+`apps/web/src/app/(app)/publish/history/[postId]/components/HistoryDetail.tsx`;
+file diubah `apps/web/src/app/(app)/publish/history/page.tsx`,
+`.../history/[postId]/page.tsx`, `apps/web/src/domains/publishing/index.ts`,
+`apps/web/src/app/(app)/publish/components/PublishPageHeader.tsx`. T-034.4
+(retry manual) sengaja tidak diimplementasikan — tombol retry di UI murni
+visual + disabled. Tidak ada field baru ditambahkan ke
+`HistoryItemRecord`/`HistoryItemTargetRecord` (konsisten KI-049). Reuse
+komponen shadcn existing (`Card`, `Item`/`ItemGroup`, `Badge`, `Select`,
+`Empty`, `Text`, `Separator`, `Button`, `Tooltip`) — tidak ada komponen
+baru. Review arsitektur Ridwan **lolos tanpa temuan blocking** — satu
+catatan non-blocking: `Badge` shadcn belum punya varian "success" (dipakai
+`default` sebagai pengganti untuk status "Published"), dicatat **KI-051**.
+
+QA Najwa QA Engineer: test suite 248 pass/4 skipped/0 fail + verifikasi
+browser end-to-end, golden path dan hampir semua edge case PASS. 1 bug
+ditemukan: `/publish/history/[postId]` dengan `postId` format bukan UUID
+crash HTTP 500 (seharusnya `notFound()`). Diperbaiki Prabowo di
+`apps/web/src/lib/repositories/publishing/publishing.repository.ts`
+(method `getHistoryById`) — tangkap `PrismaClientKnownRequestError` kode
+`P2007`/`P2023`, treat sebagai "tidak ketemu" (return `null`), pola sama
+`isRecordNotFound` di `workspace.repository.ts`. Diverifikasi ulang:
+typecheck/lint/test tetap hijau (248 pass), 3 skenario manual (postId
+invalid → 404, UUID valid tak ada → 404, UUID valid & ada → 200) semua
+benar.
+
+**Gap didokumentasikan (bukan diputuskan sendiri):** meta "dibuat oleh
+siapa" di halaman detail post sengaja dihilangkan dari desain awal —
+`HistoryItemRecord` tidak membawa data `authorId`, di luar scope T-034.2/
+.3 untuk menambahkannya — dicatat **KI-050**, menunggu keputusan King
+Rezi apakah field ini wajib.
+
+**Selesai T-034.4 (2026-09-09) — T-034 tuntas 4/4 subtask, `✅ Done`.**
+Sebelum implementasi, muncul pertanyaan scope yang belum dijawab ADR-092
+(delete-lalu-create-ulang, tapi `outstandPostId` bersifat post-level untuk
+SEMUA target) — diajukan ke King Rezi lewat `AskUserQuestion`, dijawab:
+retry **hanya me-recreate target yang gagal (single-target)**, target lain
+yang sudah `published` di post yang sama tidak disentuh. Keputusan ini
+dicatat **ADR-103** (melengkapi ADR-092, tidak membatalkannya).
+
+Elon Backend Engineer menulis kontrak adapter: `IOutstandAdapter.deletePost(outstandPostId,
+accountIds?)` (best-effort) di `packages/shared/src/contracts/outstand-adapter.ts`
++ implementasi `FakeOutstandAdapter`. Prabowo Feature Engineer mengerjakan
+use-case baru `retry-failed-target.use-case.ts` (recreate lewat
+`outstandAdapter.publishNow` langsung dengan 1 target, bukan lewat
+`PublishNowUseCase`/`repository.publishNow` yang me-replace seluruh target
+post), kolom Prisma baru `PublishingPostTarget.retryOutstandPostId`
+(migration `20260909024403_t034_4_retry_outstand_post_id`), fungsi
+rekonsiliasi status post `reconcilePostStatusAfterRetry` (idempoten,
+`Failed → Published` kalau tidak ada lagi target `failed` tersisa), Server
+Action baru `apps/web/src/app/(app)/publish/history/[postId]/actions.ts`,
+komponen `RetryTargetButton.tsx` (baru), wiring di `HistoryDetail.tsx`
+(tombol "Coba Lagi" per-baris akun, sebelumnya visual-only sejak
+T-034.2/.3).
+
+Review arsitektur Ridwan Architecture Reviewer **lolos tanpa temuan
+blocking**. QA Najwa QA Engineer: 259 test pass + verifikasi browser
+end-to-end golden path dan edge case (termasuk skenario mixed-target
+retry) semua **PASS**. 1 temuan non-blocking, di luar scope T-034.4:
+hydration warning pada `formatRelativeTime` di `HistoryList.tsx`
+(kemungkinan mismatch SSR/client saat format waktu relatif) — dicatat
+**KI-052** di `PROJECT_STATE.md`.
+
 ### T-035 · Delete Post + dialog konfirmasi
 
 | Field         | Value                          |
 | ------------- | ------------------------------ |
-| **Status**    | ⏳ Not Started                  |
+| **Status**    | ✅ Done (2026-09-10)            |
 | **Domain**    | publishing                     |
 | **ADR**       | ADR-049 (Tier 2)               |
 | **Depends**   | T-022 ✅                        |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`  |
 
-- [ ] **T-035.1** `PublishingService.deletePost` + aturan: post yang sudah published tidak dihapus dari platform
-- [ ] **T-035.2** Dialog konfirmasi Tier 2
-- [ ] **T-035.3** Aksi tersedia dari Drafts + Queue + History
+**Scope T-035.3 dipersempit eksplisit oleh King Rezi (2026-09-10, lewat
+`AskUserQuestion`)** — bukan asumsi AI: entry point Delete Post **hanya di
+Drafts**. Queue dan History sengaja TIDAK diberi tombol delete: post
+`Scheduled` di Queue harus di-**Cancel Schedule** dulu (balik ke status
+`Draft`) baru bisa dihapus dari Drafts; post `Published`/`Failed` di
+History tidak boleh dihapus sama sekali. Selaras dengan pengecekan Claude
+Design sebelum implementasi (rule 17, AGENTS.md) — `publish-drafts.html`,
+`publish-queue.html`, `publish-history.html` ternyata tidak satu pun
+punya rancangan tombol delete, jadi King Rezi menentukan langsung
+scope + polanya di chat (bukan lewat draft Claude Design), dicatat sebagai
+deviasi eksplisit sama seperti pola KI-048.
+
+Implementasi (Prabowo Feature Engineer, 2 sesi): `PublishingService.deletePost`
+soft-delete (`deletedAt`) dengan guard status dua lapis (service:
+`findDraftById` + cek eksplisit; repository: `updateMany` where
+`status: Draft` sebagai safety net race condition) — **hanya post
+berstatus `Draft` yang bisa dihapus**, status lain ditolak `ConflictError`.
+RBAC `assertActorCanDeletePost` (Owner/Admin/Creator, konsisten
+Publish Now/Cancel Schedule). Server Action `deletePostAction`
+(`apps/web/src/app/(app)/publish/drafts/actions.ts`) murni wiring, tanpa
+business logic (rule 5). UI: icon trash merah per baris `DraftsList.tsx`
++ `ConfirmActionDialog`/`useConfirmAction` (reuse pola Disconnect Account,
+Tier 2), `stopPropagation` di `onClick` dan `onKeyDown` supaya tidak ikut
+membuka Edit Draft.
+
+Lolos review arsitektur Ridwan (0 temuan blocking — guard status dua
+lapis solid, RBAC konsisten, tidak ada business logic bocor ke Server
+Action; 1 catatan non-blocking soal nuansa ARIA "interactive-in-interactive"
+tombol di dalam row, bukan bug fungsional). QA Najwa: 311 test pass/5
+skip, browser end-to-end PASS seluruh golden path + regresi (Queue/History
+dipastikan tidak berubah, RBAC Creator diverifikasi bisa hapus, draft
+caption kosong tidak crash). Satu item **inconclusive** (bukan bug) —
+verifikasi keyboard Enter/Space via tool Browser pane tidak konklusif
+karena keterbatasan tooling otomasi itu sendiri (dibuktikan lewat kontrol:
+tombol native "New Post" yang jelas berfungsi via klik mouse juga tidak
+merespons Enter/Space lewat tool yang sama) — kode `onKeyDown` hanya
+`stopPropagation` (bukan `preventDefault`), jadi behavior native
+`<button>` seharusnya tetap jalan; direkomendasikan verifikasi manual
+King Rezi di browser asli kalau ingin memastikan 100%.
+
+- [x] **T-035.1** `PublishingService.deletePost` + aturan: post yang sudah published tidak dihapus dari platform (diperluas: hanya status `Draft` yang bisa dihapus sama sekali, lihat catatan scope di atas)
+- [x] **T-035.2** Dialog konfirmasi Tier 2
+- [x] **T-035.3** Aksi tersedia dari Drafts — scope dipersempit dari draft awal ("Drafts + Queue + History") oleh keputusan eksplisit King Rezi (lihat catatan di atas)
 
 ---
 
@@ -336,10 +518,10 @@ delete-lalu-create-ulang ini saat dikerjakan.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | notification                                                 |
 | **ADR**       | ADR-023, ADR-030 (Supabase JWT)                              |
-| **Depends**   | T-026 (sumber event notifikasi) · T-093 ✅ (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094; T-093 sudah Done 2026-08-31, tidak lagi memblokir) |
+| **Depends**   | T-026 ✅ (sumber event notifikasi) · T-093 ✅ (accept-invite — butuh ≥2 akun nyata di satu workspace untuk verifikasi notifikasi antar-user, rantai ditetapkan 2026-08-28 saat merencanakan ADR-094; T-093 sudah Done 2026-08-31, tidak lagi memblokir) |
 | **Baca dulu** | `05-architecture/realtime-strategy.md` · `apps/web/src/lib/better-auth/supabase-jwt.ts` |
 
 `Basic Notifications` berstatus **Should Have** di `mvp-definition.md` — ditempatkan di rilis ini karena hasil publish (`post.published` / `post.error`) tidak berguna tanpa cara memberi tahu pengguna. Domain `notification/` masih stub kosong; model `Notification` sudah ada di schema.
@@ -347,8 +529,10 @@ delete-lalu-create-ulang ini saat dikerjakan.
 - [x] **T-036.1** Domain skeleton: service + repository
 - [x] **T-036.2** Subscribe Supabase Realtime pada tabel `notifications`, event `INSERT`, filter per `user_id` — **hanya** tabel ini (ADR-023)
 - [x] **T-036.3** Sambungkan Supabase JWT dari session Better Auth (helper sudah ada, belum dipakai di route manapun)
-- [ ] **T-036.4** UI notification bell di sidebar footer + panel daftar — rancangan sudah ada di Claude Design (**KI-039 Resolved**); dibuka kembali 2026-09-01, lihat catatan di bawah (5 gap visual, verifikasi browser belum dilakukan)
-- [ ] **T-036.5** Trigger notifikasi dari webhook publish result
+- [x] **T-036.4** UI notification bell di sidebar footer + panel daftar — rancangan sudah ada di Claude Design (**KI-039 Resolved**); ditutup 2026-09-07, lihat catatan di bawah
+- [x] **T-036.5** Trigger notifikasi dari webhook publish result — diimplementasikan sebagai bagian **T-026** (`OutstandWebhookProcessor`, 2026-09-07): `post.error` → notifikasi ke `authorId` post, `account.token_expired` → notifikasi ke Owner workspace
+
+**Catatan (2026-09-07) — T-036 ditutup `✅ Done`:** kode T-036.5 sudah lengkap dan lolos `typecheck`/`lint`/`test` di sesi yang sama dengan T-026. Blocker sebelumnya (3 migration T-026 belum di-deploy, **KI-048**) sudah resolved — King Rezi menjalankan `bun run db:deploy`, migration terverifikasi ter-apply, dan Najwa QA Engineer retest end-to-end nyata skenario `account.token_expired` (HTTP request langsung ke `/api/webhooks/outstand`): `WorkspaceConnectedAccount.reconnectRequired` jadi `true` **dan** notifikasi baru untuk Owner workspace, PASS. Dengan ini seluruh 5/5 subtask T-036 terverifikasi tuntas — task ditutup `✅ Done`. Detail retest lengkap: `tasks/v02-publishing-mvp.md` § T-026, `COMPLETE_TASK.md` (2026-09-07).
 
 **Catatan (2026-08-31):** T-036.1 — skeleton `NotificationService.notify()` +
 `notificationRepository.create()` ternyata sudah ada sebelumnya (dibangun
@@ -465,6 +649,78 @@ QA Engineer lewat browser nyata (light & dark mode) — root cause lama
 sesuai aturan (Resolved yang sudah tercatat `COMPLETE_TASK.md` tidak
 dibiarkan dengan status Resolved di daftar itu).
 
+**Penutupan (2026-09-07) — T-036.4 Done:** dicek dulu ke Claude Design
+(project "Social Media Management", `components/notifications-panel.html`
++ `styles.css` § "Notifications Drawer") sesuai gate AGENTS.md rule 17,
+lalu dibandingkan baris demi baris ke `NotificationBell.tsx`. 4 dari 5 gap
+yang dicatat 2026-09-01 sudah benar sejak sesi T-098.3 (bg tint unread,
+dot indikator, weight/warna title read vs unread, deskripsi truncate
+ellipsis) — hanya 1 gap tersisa yang ditemukan: **icon circle status**
+masih dipetakan ke workaround netral `bg-muted text-foreground` untuk
+kasus "success", padahal **KI-041 sudah Resolved** (ADR-098, 2026-09-04)
+menambah token asli `--success`/`--warning` ke Stone theme shadcn — gap
+ini murni kode yang belum di-update mengikuti token baru itu, bukan temuan
+desain baru. Diperbaiki: `bg-muted text-foreground` → `bg-success/10
+text-success` (pola identik `bg-destructive/10 text-destructive` yang
+sudah ada untuk "error"), komentar kode yang menyebut KI-041 belum
+resolved juga diperbarui.
+
+Verifikasi visual: dev server sesi ini sudah berjalan dengan sesi login
+nyata (workspace "Insvire", akun Maya Anggraini) — tabel `notifications`
+kosong (0 baris di seluruh database, dicek via Supabase MCP), jadi
+item unread/read tidak bisa dipicu dari data nyata tanpa T-036.5 (trigger
+webhook, belum dikerjakan). Diverifikasi dengan menyisipkan data
+sementara langsung di state React (bukan menulis ke database — akses
+Supabase MCP sesi ini read-only) untuk 3 skenario (unread-success,
+unread-error, read), dibaca lewat DOM computed style (bukan hanya
+screenshot, karena overlay Next.js dev-tools indicator menutupi sudut
+kiri-bawah sidebar footer di Browser pane preview): warna icon success
+resolve ke `rgb(195,209,197)` (persis token `--success` dark mode
+`#c3d1c5`) dan error ke token `--destructive` — sesuai spec. Dot unread,
+`font-semibold` vs `font-normal text-muted-foreground` pada title, dan
+`truncate` pada deskripsi juga dikonfirmasi hadir di markup. Data
+sementara ini **tidak disimpan** — hanya di state komponen sesi browser,
+direvert dari kode sebelum sesi selesai (`git diff` bersih). `bun run
+typecheck` PASS. T-036.5 (trigger webhook) tetap task terpisah, belum
+dikerjakan — T-036 tetap `🟡 In Progress`.
+
+**Follow-up (2026-09-07) — regresi alignment header ditemukan King Rezi
+langsung di browser:** setelah penutupan di atas, King Rezi mereview
+tampilan asli di localhost:3000 dan melaporkan 3 hal: (1) title
+"Notifications", "Mark all as read", dan tombol close tidak sejajar, (2)
+padding/margin header tidak sesuai spec, (3) minta dipastikan ulang kode
+sama persis dengan Claude Design. Root cause: tombol close **bawaan**
+`SheetContent` (shadcn) diposisikan `absolute top-4 right-4` — independen
+dari baris flex header manapun — sedangkan `SheetHeader` sebelumnya masih
+memakai padding default `p-6` (24px, bukan `p-4`/16px sesuai spec
+`.notif-header { padding: var(--spacing-4) }`). Kombinasi keduanya
+membuat title+"Mark all as read" (flex row, pusat vertikal mengikuti
+padding 24px) dan tombol close (pusat vertikal mengikuti posisi absolute
+16px) tidak pernah sejajar secara matematis, berapa pun classname
+di-tweak di baris flex-nya saja.
+
+**Perbaikan:** `SheetContent showCloseButton={false}` (menonaktifkan
+tombol close bawaan yang absolute), tombol close dirender manual sebagai
+flex-sibling di dalam grup aksi kanan bersama "Mark all as read" — pola
+identik dengan `DialogHeader` di `draft-editor/Modal.tsx` (baris ~530-573)
+yang sudah lebih dulu memecahkan masalah yang sama untuk `Dialog`. Header
+diubah ke `p-4` (16px, token `--spacing-4`) + `gap-3` (12px, token
+`--spacing-3`) — match persis `.notif-header` spec Claude Design. Grup
+kanan (`.notif-header-actions` spec) dibungkus `<div className="flex
+items-center gap-3">` supaya title vs grup-aksi diatur `justify-between`,
+dan di dalam grup, markall vs close diatur `gap-3` juga (sesuai
+`.notif-header-actions { gap: var(--spacing-3) }`).
+
+**Verifikasi:** dicek lewat `getBoundingClientRect()` tiap elemen header —
+kedua button (`top: 16, bottom: 48`, height 32px identik) dan title
+(`top: 20, bottom: 44`, center di 32px — persis sama dengan center kedua
+button) sekarang benar-benar sejajar secara matematis, bukan cuma terlihat
+sejajar. `getComputedStyle` header: `padding: 16px`, `gap: 12px`,
+`alignItems: center`, `justifyContent: space-between` — match spec.
+Diverifikasi juga klik tombol close manual (`setIsOpen(false)`, sheet
+controlled) benar-benar menutup panel (`sheet-content` hilang dari DOM).
+`bun run typecheck` PASS.
+
 ---
 
 ## Developer Experience
@@ -473,7 +729,7 @@ dibiarkan dengan status Resolved di daftar itu).
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress — kontinu by design, snapshot pertama (T-037.1–.3) sudah dicatat |
 | **Domain**    | DX                                                           |
 | **ADR**       | ADR-034                                                      |
 | **Depends**   | —                                                            |
@@ -481,9 +737,11 @@ dibiarkan dengan status Resolved di daftar itu).
 
 Berjalan **kontinu** selama rilis ini, bukan sekali selesai: setiap kali konvensi baru muncul dari praktik nyata (bukan teori), catat ke `ctx-development.md` supaya lapisan konteks yang dibaca setiap agent tidak menjadi basi. Prioritas rendah — tidak memblokir rilis.
 
-- [ ] **T-037.1** Catat konvensi struktur repository: interface di `src/domains/*/repositories/`, implementasi Prisma di `src/lib/repositories/*/` — sudah konsisten di `workspace` + `publishing`, tapi belum tertulis sebagai aturan sehingga domain baru bisa menyimpang
-- [ ] **T-037.2** Catat konvensi penempatan use-case terpisah dari service (preseden: `schedule-posts.use-case.ts`)
-- [ ] **T-037.3** Catat konvensi test: service diuji dengan repository fake (preseden yang sudah ada di `publishing`/`workspace`)
+- [x] **T-037.1** Catat konvensi struktur repository: interface di `src/domains/*/repositories/`, implementasi Prisma di `src/lib/repositories/*/` — sudah konsisten di `workspace` + `publishing`, tapi belum tertulis sebagai aturan sehingga domain baru bisa menyimpang
+- [x] **T-037.2** Catat konvensi penempatan use-case terpisah dari service (preseden: `schedule-posts.use-case.ts`)
+- [x] **T-037.3** Catat konvensi test: service diuji dengan repository fake (preseden yang sudah ada di `publishing`/`workspace`)
+
+**Selesai (2026-09-08):** ketiga subtask dicatat sebagai aturan #14–#18 baru di `context/ctx-development.md` (section "Struktur repository & use-case" + tambahan poin #18 di section "Testing"), dengan preseden nyata yang diverifikasi di kode: repository dua-lapis (`domains/publishing/repositories/` ↔ `lib/repositories/publishing/`), use-case terpisah (`SchedulePostsUseCase`, `PublishNowUseCase`, `CancelScheduleUseCase`, `AnalyticsIngestionUseCase`), dan pola `createFakeRepository()` di `publishing.service.test.ts`. Task tetap berjalan kontinu (prioritas rendah, tidak memblokir rilis) — subtask ini ditutup sebagai snapshot pertama, bukan penutupan total scope task.
 
 ---
 
@@ -534,7 +792,7 @@ Ditemukan saat diskusi ADR-093 (2026-08-28): post berstatus `Published`/`Failed`
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done                                                       |
 | **Domain**    | publishing                                                   |
 | **ADR**       | ADR-094 (amandemen RT-D01/RT-D02)                            |
 | **Depends**   | **T-036** (hard dependency — wiring generic Supabase Realtime + Better Auth↔Supabase JWT bridge dibangun di sana dulu, task ini reuse) · T-034 (khusus T-092.6, History belum dibangun) |
@@ -542,12 +800,275 @@ Ditemukan saat diskusi ADR-093 (2026-08-28): post berstatus `Published`/`Failed`
 
 Lahir dari diskusi King Rezi soal kolaborasi tim ala Buffer (user A ubah draft/schedule, user B lihat langsung tanpa refresh manual) — dirancang terpisah dari fitur Import Posts (T-090/T-091, ADR-093). Channel per-workspace (`publishing_posts:{workspaceId}`, event `INSERT`/`UPDATE`, filter `workspace_id`), strategi update **granular client-side patch** (bukan full `router.refresh()`) — lihat ADR-094 untuk detail lengkap tiap keputusan.
 
-- [ ] **T-092.1** RLS policy baru `publishing_posts_realtime_workspace_members` berbasis `auth.uid()` (migration Prisma) — terpisah dari policy server-side `current_setting` yang sudah ada (ADR-094 poin 3)
-- [ ] **T-092.2** Wiring subscription channel per-workspace (`publishing_posts:{workspaceId}`, `INSERT`/`UPDATE`, filter `workspace_id`) — reuse Supabase Realtime client generic + JWT bridge dari T-036, jangan dibangun ulang (ADR-094 poin 2, 4)
-- [ ] **T-092.3** Granular patch — Calendar: client state list per screen, fetch 1 record termapping saat event masuk, upsert/remove ke local state, subscription lifecycle per-mount screen (ADR-094 poin 5, 6)
-- [ ] **T-092.4** Granular patch — Queue (pola sama T-092.3, kriteria tampilan Queue: cuma status `Scheduled`)
-- [ ] **T-092.5** Granular patch — Drafts (pola sama T-092.3, kriteria tampilan Drafts: `Draft`/`InReview`/`ReadyToSchedule`)
-- [ ] **T-092.6** Granular patch — History (pola sama T-092.3) — **depends T-034**, wajib disertakan sejak desain awal History, bukan ditambah belakangan (ADR-094 poin 7)
+- [x] **T-092.1** ✅ Done — RLS policy baru `publishing_posts_realtime_workspace_members` (migration Prisma) — terpisah dari policy server-side `current_setting` yang sudah ada (ADR-094 poin 3)
+- [x] **T-092.2** ✅ Done — Wiring subscription channel per-workspace (`publishing_posts:{workspaceId}`, `INSERT`/`UPDATE`, filter `workspace_id`) — reuse Supabase Realtime client generic + JWT bridge dari T-036, jangan dibangun ulang (ADR-094 poin 2, 4)
+- [x] **T-092.3** ✅ Done — Granular patch — Calendar: client state list per screen, fetch 1 record termapping saat event masuk, upsert/remove ke local state, subscription lifecycle per-mount screen (ADR-094 poin 5, 6)
+- [x] **T-092.4** ✅ Done — Granular patch — Queue (pola sama T-092.3, kriteria tampilan Queue: cuma status `Scheduled`)
+- [x] **T-092.5** ✅ Done — Granular patch — Drafts (pola sama T-092.3, kriteria tampilan Drafts: `Draft`/`InReview`/`ReadyToSchedule`) — **Definition of Done wajib menyertakan verifikasi cross-tab browser nyata (2 tab, tanpa refresh manual) — lihat KI-057**, kriteria lama (typecheck/lint bersih + tanpa console error + channel `SUBSCRIBED`) tidak lagi cukup untuk menutup subtask ini. **Catatan (2026-09-11):** saat implementasi ditemukan `PublishingService.listDrafts` (initial SSR load) hanya query status `Draft`, tidak konsisten dengan kriteria 3 status di atas — gap ini ditrack terpisah sebagai **T-104**, dikerjakan paralel (sudah selesai, lihat § T-104 di bawah).
+- [x] **T-092.6** ✅ Done — Granular patch — History (pola sama T-092.3) — **depends T-034**, wajib disertakan sejak desain awal History, bukan ditambah belakangan (ADR-094 poin 7) — **Definition of Done wajib menyertakan verifikasi cross-tab browser nyata (2 tab, tanpa refresh manual) — lihat KI-057**, kriteria lama (typecheck/lint bersih + tanpa console error + channel `SUBSCRIBED`) tidak lagi cukup untuk menutup subtask ini
+
+**Catatan (2026-09-11) — T-092.1 selesai:** migration
+`apps/web/prisma/migrations/20260911090000_t092_1_publishing_posts_realtime_rls/migration.sql`
+membuat policy `publishing_posts_realtime_workspace_members` (Elon Backend
+Engineer). Implementasi memakai `current_setting('request.jwt.claim.sub',
+true)` (dengan fallback parse `request.jwt.claims`), **bukan** `auth.uid()`
+Supabase langsung — `auth.uid()` cast paksa `::uuid` terhadap klaim `sub`,
+sementara `user_id` di sistem ini bertipe `cuid()` string (persis bug yang
+sudah diperbaiki di T-036.2, lihat catatan di atas). T-092.1 menerapkan
+versi yang sudah diperbaiki sejak awal, tidak perlu migration fix susulan.
+Detail: ADR-094 poin 3 (catatan implementasi 2026-09-11),
+`database-strategy.md` § RLS Policy Pattern. T-092 tetap `🟡 In Progress` —
+4 subtask (T-092.3–T-092.6) belum dikerjakan.
+
+**Catatan (2026-09-11) — T-092.2 selesai:** Prabowo Feature Engineer
+membuat `apps/web/src/lib/supabase/realtime/publishing-posts.ts`
+(`subscribeToPublishingPostChanges(client, workspaceId, handlers)`) dan
+`apps/web/src/lib/hooks/use-publishing-posts-realtime.ts` (hook
+`usePublishingPostsRealtime(workspaceId, { onInsert, onUpdate })`) —
+wiring subscription channel per-workspace `publishing_posts:{workspaceId}`
+untuk event `INSERT`/`UPDATE`, reuse Supabase Realtime client generic +
+JWT bridge dari T-036 (tidak dibangun ulang). Verifikasi: typecheck
+bersih, lint bersih, 311 test passed/5 skipped. Review arsitektur oleh
+Ridwan Architecture Reviewer: **tidak ada temuan pelanggaran** (5/5
+checklist arsitektur patuh) — hanya 1 catatan DRY minor (dua tipe handler
+shape identik didefinisikan dua kali: `PublishingPostRealtimeHandlers` di
+file pertama dan `UsePublishingPostsRealtimeHandlers` di file kedua),
+bukan blocker, tidak wajib diperbaiki sekarang. T-092 tetap `🟡 In
+Progress` — 4 subtask (T-092.3–T-092.6) belum dikerjakan.
+
+**Catatan retroaktif (2026-09-11, ditulis saat T-092.4 selesai):**
+verifikasi "typecheck bersih, lint bersih, tidak ada console error" di atas
+**bukan** verifikasi propagasi Realtime cross-tab nyata (2 tab browser
+berbeda) — waktu itu belum pernah dites end-to-end sampai T-092.4. Wiring
+subscription di sini ternyata terpengaruh bug RLS `workspace_members` yang
+baru ditemukan & diperbaiki di T-092.4 (lihat catatan T-092.4 di bawah) —
+channel `SUBSCRIBED` tanpa error, tapi event tidak pernah sampai ke
+subscriber manapun. Fix-nya di level RLS database, bukan di kode wiring
+T-092.2 ini, jadi tidak ada perubahan file di sini.
+
+**Catatan (2026-09-11) — T-092.3 selesai:** Prabowo Feature Engineer
+menambahkan Server Action `getCalendarPostAction`
+(`apps/web/src/app/(app)/publish/calendar/actions.ts`),
+`PublishingService.getCalendarPostById` baru (domain/services) +
+`IPublishingRepository.getCalendarPostById` beserta implementasi Prisma-nya
+(`apps/web/src/lib/repositories/publishing/`). `CalendarScreen.tsx` jadi
+Client Component: subscribe `usePublishingPostsRealtime` (dari T-092.2),
+lalu melakukan granular patch (upsert/remove) ke state lokal berdasarkan
+kecocokan dengan view/filter aktif (`matchesCurrentView`, reuse fungsi
+domain murni `getWeekRange`/`getMonthRange`). `page.tsx` menambah prop
+`statuses`/`workspaceId`. Test baru di `publishing.service.test.ts` (4
+test) + 6 file test use-case lain disesuaikan (tambah default
+`getCalendarPostById` di fake repository, murni type-fix, tanpa perubahan
+behavior). Diverifikasi: typecheck bersih, lint bersih, 315 test passed
+(naik dari 311), browser preview manual (Calendar render normal, endpoint
+token Realtime sukses, tanpa console error). Review arsitektur Ridwan
+Architecture Reviewer: **tidak ada temuan pelanggaran** (server action
+tetap tipis, domain tidak mengimpor Prisma/Supabase, cross-domain lewat
+public API, error/null handling konsisten dan graceful, tidak ada regresi
+behavior use-case lain). T-092 tetap `🟡 In Progress` — 3 subtask
+(T-092.4–T-092.6) belum dikerjakan.
+
+**Catatan retroaktif (2026-09-11, ditulis saat T-092.4 selesai):** sama
+seperti T-092.2 di atas — "browser preview manual" di sini juga belum
+mencakup pengujian cross-tab nyata (2 tab berbeda, tanpa refresh). Calendar
+(bagian ini) terkena bug RLS `workspace_members` yang sama seperti Queue
+(lihat catatan T-092.4 di bawah); propagasi Realtime untuk Calendar baru
+**dikonfirmasi PASS** setelah fix RLS diterapkan — belum ada bug tersisa di
+kode granular patch Calendar sendiri, murni terhalang gap infra di
+database yang baru ketahuan belakangan.
+
+**Catatan (2026-09-11) — T-092.4 selesai (Queue) + insiden & fix RLS
+`workspace_members`:** rangkaian ini lebih panjang dari subtask lain
+karena ditemukan bug infra kritis di tengah jalan, bukan sekadar
+implementasi linier.
+
+1. **Implementasi (Prabowo Feature Engineer):** Server Action
+   `getQueuePostAction` (`apps/web/src/app/(app)/publish/queue/actions.ts`,
+   reuse `PublishingService.getCalendarPostById` dari T-092.3 — **tidak**
+   duplikasi method baru), wiring `usePublishingPostsRealtime` di
+   `QueueScreen.tsx` (`apps/web/src/app/(app)/publish/queue/components/QueueScreen.tsx`)
+   dengan kriteria tampilan Queue (hanya status `Scheduled`) via fungsi
+   `toQueueItemRecord`, regroup lewat `groupQueueItemsByDate`. `page.tsx`
+   disesuaikan untuk prop tambahan.
+2. **Bug ditemukan saat verifikasi manual cross-tab (Prabowo):**
+   propagasi Realtime lintas-tab **tidak bekerja** — channel `SUBSCRIBED`
+   tanpa error di console, tapi event tidak pernah sampai ke subscriber
+   manapun. Gejala ini kemungkinan sudah ada sejak T-092.2/T-092.3 (lihat
+   catatan retroaktif masing-masing di atas) — keduanya cuma pernah
+   diverifikasi "token sukses + tanpa console error", belum pernah dites
+   cross-tab nyata sampai titik ini.
+3. **Root cause (Elon Backend Engineer):** RLS policy
+   `publishing_posts_realtime_workspace_members` (dibuat T-092.1) melakukan
+   subquery ke tabel `workspace_members` untuk cek membership. Tapi RLS
+   `workspace_members` yang sudah ada sebelumnya
+   (`workspace_members_workspace_isolation`, dari sebelum T-092) hanya
+   mengenali GUC session server-side `current_setting('app.current_user_id')`
+   — koneksi Realtime tidak pernah lewat jalur itu (cuma bawa JWT), jadi
+   `app.current_user_id` selalu kosong untuk koneksi Realtime,
+   `workspace_members` jadi tidak terlihat sama sekali oleh subquery
+   tersebut, dan policy `publishing_posts` selalu mengembalikan `false`.
+   Ini gap arsitektur RLS lintas-tabel yang tidak tersentuh preseden T-036
+   (policy `notifications` cek `user_id` langsung di baris `notifications`
+   itu sendiri, tanpa subquery ke tabel lain).
+4. **Fix:** migration baru
+   `apps/web/prisma/migrations/20260911100000_t092_4_fix_workspace_members_realtime_visibility/migration.sql`
+   — menambah policy PERMISSIVE tambahan `workspace_members_realtime_own_row`
+   di tabel `workspace_members` (user hanya bisa lihat baris membership-nya
+   sendiri lewat JWT, **additive**, tidak mengganti/menghapus policy lama).
+   Sudah di-apply ke database (`bunx prisma migrate deploy`, sukses,
+   dijalankan langsung oleh AI utama atas izin eksplisit King Rezi).
+   Detail keputusan dicatat sebagai catatan implementasi tambahan di
+   **ADR-094** poin 3 (bukan ADR baru — pola sama persis dengan catatan
+   fix `auth.uid()`/cuid T-092.1 di ADR yang sama).
+5. **Verifikasi database (Elon):** simulasi query dengan role `authenticated`
+   (bukan role bypass-RLS) di dalam transaksi ROLLBACK — user member
+   workspace dapat 27 baris `publishing_posts` (cocok total post workspace
+   itu), negative control dengan user id palsu dapat 0 baris. Root cause
+   teratasi di level database.
+6. **Verifikasi end-to-end nyata di browser (Najwa QA Engineer):** 2 tab
+   (Calendar + Queue), Cancel Schedule dilakukan di tab Queue, tanpa
+   refresh tab Calendar langsung update (item hilang dari slot terjadwal)
+   — **PASS**, data dikonfirmasi benar-benar berubah ke status `Draft`.
+   Typecheck/lint bersih, 315 test passed/5 skipped, tidak ada regresi.
+   Arah sebaliknya (Calendar → Queue) belum sempat dites tuntas karena
+   kendala teknis otomasi test (bukan bug fitur) — dicatat sebagai item
+   follow-up opsional, bukan blocker.
+
+T-092 tetap `🟡 In Progress` — 2 subtask (T-092.5–T-092.6) belum
+dikerjakan.
+
+**Catatan lanjutan (2026-09-11) — migration follow-up defense-in-depth
+(masih bagian T-092.4, BUKAN T-092.5):** Elon Backend Engineer menambahkan
+migration
+`apps/web/prisma/migrations/20260911110000_t092_5_workspace_members_realtime_own_row_active_filter/migration.sql`
+— menambah filter `AND status = 'active'` ke policy
+`workspace_members_realtime_own_row` (dibuat poin 4 di atas), mengikuti pola
+filter serupa yang sudah dipakai konsumer lain
+(`publishing_posts_realtime_workspace_members`). Sifatnya defense-in-depth
+(tidak ada gap yang bisa dieksploitasi sebelumnya — member non-`active`
+tetap tidak lolos policy `publishing_posts` di layer atasnya), tidak ada
+regresi. Sudah di-apply ke database (`bunx prisma migrate deploy`) dan
+diverifikasi.
+
+**Catatan penamaan (koreksi, jangan bingung dengan T-092.5):** nama file
+migration di atas salah ketik jadi `t092_5` — migration ini adalah
+**follow-up dari T-092.4** (Queue + fix RLS `workspace_members`), **bukan**
+bagian dari **T-092.5** (Drafts, yang belum dikerjakan sama sekali). Nama
+file sengaja tidak diganti (mengubah nama file migration yang sudah
+`prisma migrate deploy` berisiko mismatch checksum) — dicatat di sini
+sebagai penanda eksplisit untuk siapa pun yang cek folder migration ke depan
+supaya tidak salah asumsi ada kaitan dengan Drafts.
+
+**Gap metodologi verifikasi Realtime (KI-057, direkomendasikan Ridwan
+Architecture Reviewer, disetujui King Rezi):** rangkaian insiden T-092.1–
+T-092.4 di atas mengungkap bahwa kriteria "typecheck bersih + lint bersih +
+tanpa console error + channel `SUBSCRIBED`" **tidak cukup** membuktikan
+event Realtime benar-benar terkirim ke subscriber — lihat **KI-057** di
+`PROJECT_STATE.md` § Known Issues untuk kronologi lengkap. **T-092.5** dan
+**T-092.6** di atas sudah diberi catatan Definition of Done tambahan
+(verifikasi cross-tab browser nyata wajib) sebagai tindak lanjut langsung
+dari KI-057.
+
+**Catatan (2026-09-11) — T-092.5 selesai (Drafts):** Prabowo Feature
+Engineer menambahkan Server Action `getDraftPostAction` (reuse
+`PublishingService.getCalendarPostById` dari T-092.3, **tidak** duplikasi
+method baru), `DraftsList.tsx` diubah jadi client state yang subscribe
+`usePublishingPostsRealtime` (dari T-092.2), filter kriteria tampilan
+Drafts (3 status: `Draft`/`InReview`/`ReadyToSchedule`) via fungsi
+`toDraftListItem`. Field `updatedAt` ditambahkan ke `CalendarItemRecord`
+(perubahan additive, tidak mengubah kontrak existing). **Verifikasi
+cross-tab browser nyata wajib (KI-057) — PASS untuk kedua skenario:**
+edit caption draft di tab 1 → tab 2 ter-update otomatis tanpa refresh;
+hapus draft di tab 1 → baris hilang otomatis di tab 2. Review Ridwan
+Architecture Reviewer: **tidak ada temuan pelanggaran arsitektur**
+(domain tetap tidak mengimpor Prisma/Supabase, server action tipis,
+cross-domain lewat public API) — Ridwan mengonfirmasi klaim PASS di atas
+masuk akal secara teknis dari membaca alur kode, didukung fix RLS
+`workspace_members` yang sudah diterapkan lebih dulu di T-092.4.
+Typecheck/lint bersih, 315 test passed/5 skipped, tidak ada regresi.
+T-092 tetap `🟡 In Progress` — 1 subtask tersisa (**T-092.6**, History,
+depends T-034).
+
+**Catatan (2026-09-11) — T-092.6 selesai (History) — T-092 TUNTAS 6/6
+subtask:** Prabowo Feature Engineer menambahkan method baru
+`getHistoryPostById` (interface `IPublishingRepository` + implementasi
+Prisma + `PublishingService`) — **dibuat baru, bukan reuse
+`getCalendarPostById`**, karena History butuh field `status`/`error`
+per-target yang tidak ada di proyeksi Calendar. Server Action
+`getHistoryPostAction`, `HistoryList.tsx` diubah jadi stateful dengan
+`usePublishingPostsRealtime` (dari T-092.2), grouping
+(`groupHistoryItemsByDate`) dipindah ke client. **Verifikasi cross-tab
+browser nyata wajib (KI-057) — PASS:** Publish Now di tab 1 (Drafts) → tab
+2 (History) otomatis menampilkan post baru dengan badge "Published" tanpa
+refresh. Review Ridwan Architecture Reviewer: **0 pelanggaran
+arsitektur** — keputusan membuat method baru (bukan reuse) diverifikasi
+benar dan berdasar bukti kode konkret; klaim verifikasi cross-tab
+dikonfirmasi masuk akal secara teknis dari alur kode. Typecheck/lint
+bersih, 315 test passed/5 skipped, tidak ada regresi. Catatan minor
+Ridwan (bukan blocker): tidak ada unit test spesifik untuk
+`getHistoryPostById` (cuma stub fake repository) — observasi coverage,
+bukan gap fungsional.
+
+**Temuan terpisah di luar scope T-092.6 (tidak dibuatkan task baru):**
+bug pre-existing "Publish Now di Queue selalu gagal untuk post Scheduled"
+ditemukan saat sesi ini — sudah dicatat sebagai chip task terpisah
+menunggu King Rezi pick up, bukan bagian T-092/ADR-094.
+
+**T-092 dinyatakan `✅ Done` (2026-09-11) — seluruh 6/6 subtask tuntas**
+(T-092.1 RLS policy, T-092.2 wiring subscription, T-092.3 Calendar,
+T-092.4 Queue + fix RLS `workspace_members`, T-092.5 Drafts, T-092.6
+History). Definition of Done tambahan dari **KI-057** (verifikasi
+cross-tab browser nyata) sudah terpenuhi untuk seluruh subtask yang
+menjadi syaratnya (T-092.3–T-092.6) — **KI-057 Resolved**, lihat
+`PROJECT_STATE.md`.
+
+### T-104 · Konsistensi kriteria status Drafts — `listDrafts` vs granular patch Realtime
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ✅ Done                                                       |
+| **Domain**    | publishing                                                   |
+| **ADR**       | ADR-094 (kriteria tampilan Drafts)                           |
+| **Terkait**   | T-092.5 (granular patch Realtime — Drafts, tempat gap ini ditemukan) |
+| **Depends**   | —                                                             |
+| **Baca dulu** | `decisions/ADR-094-perluasan-supabase-realtime-publishing-posts-granular-patch.md` · `tasks/v02-publishing-mvp.md` § T-092 |
+
+Ditemukan saat implementasi **T-092.5** (granular patch Realtime — Drafts)
+oleh Prabowo Feature Engineer: `PublishingService.listDrafts` (dipakai
+untuk initial SSR load halaman `/publish/drafts`) hanya query post
+berstatus `Draft`. Padahal kriteria tampilan Drafts sesuai **ADR-094**
+(dan yang sudah diterapkan di granular patch Realtime T-092.5) mencakup
+**3 status**: `Draft`, `InReview`, `ReadyToSchedule`.
+
+Saat ini tidak berdampak nyata karena belum ada fitur yang mentransisi
+post ke status `InReview`/`ReadyToSchedule` (review-workflow belum
+dibangun) — tapi initial load dan hasil patch Realtime punya kriteria
+yang tidak konsisten, berpotensi jadi bug nyata begitu review-workflow
+dibangun. King Rezi memutuskan diperbaiki sekarang juga, bukan sekadar
+dicatat sebagai known gap.
+
+- [x] **T-104.1** ✅ Done — Perbaiki `PublishingService.listDrafts` supaya query mencakup ketiga status (`Draft`/`InReview`/`ReadyToSchedule`), pastikan konsisten dengan kriteria granular patch Realtime yang sudah ada di `DraftsList.tsx` (T-092.5)
+
+**Catatan (2026-09-11) — T-104 selesai:** Prabowo Feature Engineer
+mengubah `PublishingService.listDrafts` dari filter status tunggal
+(`Draft`) jadi 3 status (`Draft`/`InReview`/`ReadyToSchedule`), sekarang
+konsisten dengan `DRAFT_VIEW_STATUSES` di client (`DraftsList.tsx`,
+T-092.5). Review Ridwan Architecture Reviewer: **tidak ada temuan
+pelanggaran** — Ridwan mengonfirmasi filter backend dan client sekarang
+identik (bukan cuma mirip).
+
+**Gap baru ditemukan selama implementasi (bukan subtask baru, dicatat di
+sini):** tombol Hapus di layar Drafts tetap muncul tanpa syarat untuk
+status `InReview`/`ReadyToSchedule`, padahal `deletePost` hanya
+mengizinkan status `Draft` — berpotensi menghasilkan pesan error
+menyesatkan ("Cancel Schedule dulu"), padahal kedua status itu tidak
+pernah melalui alur schedule. Ridwan mengonfirmasi ini technical debt
+valid, bukan false alarm. Termasuk di gap ini: komentar di
+`DraftsList.tsx:94-98` yang menyatakan "baris di sini selalu Draft" sudah
+tidak akurat pasca perubahan T-104 ini, perlu diperbaiki bersamaan nanti.
+Sudah dicatat sebagai chip task terpisah oleh Prabowo Feature Engineer
+(`task_6b93cfb5`) — menunggu King Rezi memilihnya sendiri, tidak dibuatkan
+task/subtask formal baru di sini.
 
 ---
 
@@ -556,4 +1077,5 @@ Lahir dari diskusi King Rezi soal kolaborasi tim ala Buffer (user A ubah draft/s
 * Ruang kosong v0.2 sebelumnya mencakup T-039, tapi nomor itu sudah dipakai untuk **T-039** (Migrasi Routing & Settings, ADR-076) di `tasks/v01-foundation.md`, bukan task v0.2 — lihat Catatan Rilis file tersebut. Tidak ada lagi ruang kosong tersisa untuk task v0.2 baru; task v0.2 berikutnya memakai nomor global berikutnya yang belum pernah dipakai (cek Indeks release di `TASKS.md`).
 * **T-090** dan **T-091** (ditambah 2026-08-28, sesi diskusi ADR-093) memakai pola yang sama seperti footnote di atas — nomor kosong v0.2 (T-020–T-038) sudah habis, jadi keduanya memakai nomor global berikutnya yang belum pernah dipakai (090, 091), sama seperti presedan **T-039**/**T-089** di `tasks/v01-foundation.md`. Ditempatkan di file ini (bukan file release lain) karena keduanya domain `publishing`, lahir dari diskusi Calendar/T-033.
 * **T-092** (ditambah 2026-08-28, sesi diskusi ADR-094) memakai pola nomor global yang sama lagi — berikutnya setelah T-091.
+* **T-104** (ditambah 2026-09-11, gap ditemukan saat implementasi T-092.5) memakai ID global berikutnya yang belum pernah dipakai (terakhir T-103, di `tasks/v07-astryx-shadcn-migration.md`) — ditempatkan di file ini karena domain `publishing`, terkait langsung T-092.
 * **Definition of Done rilis ini** (dari `release-roadmap.md`): pengguna dapat mengelola proses publikasi dari awal hingga selesai — draft → format per akun → schedule/publish → lihat queue/calendar → lihat hasil di history.

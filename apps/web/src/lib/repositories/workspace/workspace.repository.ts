@@ -10,6 +10,7 @@ import {
   type SocialPlatform,
 } from "@social/shared";
 import type {
+  ConnectedAccountRecord,
   IWorkspaceRepository,
   WorkspaceInvitationRecord,
   WorkspaceMemberRecord,
@@ -17,6 +18,7 @@ import type {
 } from "@/domains/workspace";
 import {
   Prisma,
+  type WorkspaceConnectedAccount,
   type WorkspaceInvitation,
   type WorkspaceMember,
 } from "@/generated/prisma/client";
@@ -56,6 +58,31 @@ function isInvitationEmailConflict(error: unknown): boolean {
     error.code === "P2002" &&
     error.meta?.modelName === "WorkspaceInvitation"
   );
+}
+
+/** P2002 on `[workspaceId, outstandAccountId]` — dipakai `createConnectedAccount` (T-013.1/T-013.2, ADR-105). */
+function isConnectedAccountConflict(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002" &&
+    error.meta?.modelName === "WorkspaceConnectedAccount"
+  );
+}
+
+/** Shared mapper — dipakai `listConnectedAccounts`, `findConnectedAccountById`, `createConnectedAccount`, `reconnectAccount`. */
+function toConnectedAccountRecord(
+  account: WorkspaceConnectedAccount,
+): ConnectedAccountRecord {
+  return {
+    id: asConnectedAccountId(account.id),
+    workspaceId: asWorkspaceId(account.workspaceId),
+    platform: account.platform as SocialPlatform,
+    outstandAccountId: account.outstandAccountId,
+    handle: account.handle,
+    status: account.status,
+    reconnectRequired: account.reconnectRequired,
+    connectedAt: account.connectedAt,
+  };
 }
 
 function toMemberRecord(member: WorkspaceMember): WorkspaceMemberRecord {
@@ -214,16 +241,7 @@ export const workspaceRepository: IWorkspaceRepository = {
       }),
     );
 
-    return accounts.map((account) => ({
-      id: asConnectedAccountId(account.id),
-      workspaceId: asWorkspaceId(account.workspaceId),
-      platform: account.platform as SocialPlatform,
-      outstandAccountId: account.outstandAccountId,
-      handle: account.handle,
-      status: account.status,
-      reconnectRequired: account.reconnectRequired,
-      connectedAt: account.connectedAt,
-    }));
+    return accounts.map(toConnectedAccountRecord);
   },
 
   async countActiveConnectedAccounts(workspaceId, userId) {
@@ -430,6 +448,53 @@ export const workspaceRepository: IWorkspaceRepository = {
     });
   },
 
+  /** Ordered by `createdAt` ascending — sama urutan invitation dibuat, konsisten dengan `listMembers` (`joinedAt` ascending). */
+  async listPendingInvitations(workspaceId, actingUserId) {
+    const invitations = await withCurrentUser(actingUserId, (tx) =>
+      tx.workspaceInvitation.findMany({
+        where: {
+          workspaceId,
+          status: InvitationStatus.Pending,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+    );
+
+    return invitations.map(toInvitationRecord);
+  },
+
+  async revokeInvitation(workspaceId, invitationId, actingUserId) {
+    await withCurrentUser(actingUserId, async (tx) => {
+      // Flip status atomik `pending` -> `revoked` dalam satu statement —
+      // sama pola race guard seperti `acceptInvitation` (compare-and-swap
+      // lewat `updateMany` + cek `count`, bukan SELECT-lalu-UPDATE terpisah).
+      // Ini mencegah race dengan `acceptInvitation`: kalau invitee accept
+      // duluan (status sudah `accepted`), `updateMany` di sini tidak akan
+      // match apa pun, jadi tidak menimpa status yang sudah benar. `expiresAt`
+      // juga di-guard di where-clause supaya invitation yang sudah lewat
+      // masa berlaku (tapi status-nya masih `pending`, tidak ada proses yang
+      // secara aktif menandainya expired) tidak ikut ke-flip jadi `revoked`.
+      const revoked = await tx.workspaceInvitation.updateMany({
+        where: {
+          id: invitationId,
+          workspaceId,
+          status: InvitationStatus.Pending,
+          expiresAt: { gt: new Date() },
+        },
+        data: { status: InvitationStatus.Revoked },
+      });
+      if (revoked.count === 0) {
+        // Update tidak kena — tidak dibedakan lagi NotFound vs Conflict
+        // vs expired lewat query kedua (round-trip tambahan untuk pesan
+        // yang lebih presisi tidak sepadan di jalur double-click ini).
+        throw new ConflictError(
+          "Undangan tidak ditemukan, sudah dipakai/dibatalkan, atau sudah kedaluwarsa.",
+        );
+      }
+    });
+  },
+
   async saveChannelOrder({ workspaceId, userId, orderedConnectedAccountIds }) {
     // `tx` di dalam `withCurrentUser` sudah berupa interactive transaction
     // client (Prisma.TransactionClient) — tidak mengekspos `$transaction`
@@ -579,4 +644,175 @@ export const workspaceRepository: IWorkspaceRepository = {
       throw error;
     }
   },
+
+  async markAccountReconnectRequired(outstandAccountId) {
+    // System-context read (T-026.5, webhook Outstand) — bypasses RLS via a
+    // narrow SECURITY DEFINER SQL function (migration
+    // `20260907120000_t026_outstand_webhook_system_lookups`), NOT
+    // `withCurrentUser` — sama alasan seperti
+    // `publishingRepository.findPostTargetsByOutstandPostId`, lihat catatan
+    // lengkap di interface method ini.
+    const rows = await prisma.$queryRaw<AccountOwnerLookupRow[]>`
+      SELECT * FROM "public"."webhook_find_account_owner_by_outstand_account_id"(${outstandAccountId})
+    `;
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    // `outstand_account_id` cuma unique PER WORKSPACE — kalau akun yang
+    // sama kebetulan ter-connect di lebih dari satu workspace (skenario
+    // agency), fungsi SQL di atas mengembalikan SEMUA baris (tidak lagi
+    // `LIMIT 1`). Jangan tebak salah satu secara diam-diam — refuse dan
+    // biarkan route.ts menandai receipt `failed` (defense-in-depth yang
+    // sama dengan guard di `publishingRepository.findPostTargetsByOutstandPostId`).
+    const distinctWorkspaceIds = new Set(rows.map((row) => row.workspace_id));
+    if (distinctWorkspaceIds.size > 1) {
+      throw new Error(
+        `markAccountReconnectRequired: outstandAccountId=${outstandAccountId} cocok dengan ${distinctWorkspaceIds.size} workspace berbeda — menolak menebak salah satu.`,
+      );
+    }
+
+    const [row] = rows;
+    const workspaceId = asWorkspaceId(row.workspace_id);
+    const connectedAccountId = asConnectedAccountId(row.connected_account_id);
+    const ownerUserId = asUserId(row.owner_user_id);
+
+    // Write path tetap RLS-safe seperti method lain di file ini —
+    // `ownerUserId` (Owner workspace ini, dibaca lewat bypass di atas)
+    // dijamin member aktif di workspace-nya sendiri, jadi `withCurrentUser`
+    // di sini tidak butuh bypass tambahan.
+    // `status: { not: "disconnected" }` — akun yang sudah di-disconnect
+    // manual (T-014) tidak boleh dihidupkan lagi jadi "Perlu Reconnect"
+    // hanya karena webhook Outstand telat/independen dari disconnect lokal.
+    await withCurrentUser(ownerUserId, (tx) =>
+      tx.workspaceConnectedAccount.updateMany({
+        where: {
+          id: connectedAccountId,
+          workspaceId,
+          status: { not: "disconnected" },
+        },
+        data: { reconnectRequired: true },
+      }),
+    );
+
+    return { workspaceId, connectedAccountId, ownerUserId };
+  },
+
+  async disconnectAccount(workspaceId, connectedAccountId, actingUserId) {
+    await withCurrentUser(actingUserId, async (tx) => {
+      const result = await tx.workspaceConnectedAccount.updateMany({
+        where: {
+          id: connectedAccountId,
+          workspaceId,
+          status: { not: "disconnected" },
+        },
+        data: { status: "disconnected", reconnectRequired: false },
+      });
+      if (result.count > 0) return;
+
+      // Update tidak kena — tidak dibedakan lagi NotFound vs Conflict lewat
+      // query kedua (round-trip tambahan untuk pesan yang lebih presisi
+      // tidak sepadan di jalur double-click ini), sama pola seperti
+      // `revokeInvitation`.
+      throw new ConflictError(
+        "Akun terhubung tidak ditemukan atau sudah terputus.",
+      );
+    });
+  },
+
+  async findConnectedAccountById(
+    workspaceId,
+    connectedAccountId,
+    actingUserId,
+  ) {
+    const account = await withCurrentUser(actingUserId, (tx) =>
+      tx.workspaceConnectedAccount.findFirst({
+        where: { id: connectedAccountId, workspaceId },
+      }),
+    );
+    return account ? toConnectedAccountRecord(account) : null;
+  },
+
+  async createConnectedAccount({
+    workspaceId,
+    platform,
+    outstandAccountId,
+    handle,
+    actingUserId,
+  }) {
+    try {
+      const account = await withCurrentUser(actingUserId, (tx) =>
+        tx.workspaceConnectedAccount.create({
+          data: {
+            workspaceId,
+            platform,
+            outstandAccountId,
+            handle,
+            status: "active",
+          },
+        }),
+      );
+      return toConnectedAccountRecord(account);
+    } catch (error) {
+      if (isConnectedAccountConflict(error)) {
+        throw new ConflictError("Akun ini sudah terhubung di workspace ini.");
+      }
+      throw error;
+    }
+  },
+
+  async reconnectAccount({
+    workspaceId,
+    connectedAccountId,
+    outstandAccountId,
+    handle,
+    actingUserId,
+  }) {
+    return withCurrentUser(actingUserId, async (tx) => {
+      // Compare-and-swap (`updateMany` dengan guard `workspaceId`) — pola
+      // sama seperti `disconnectAccount`/`markAccountReconnectRequired` di
+      // atas, bukan `update` langsung by id (defense-in-depth terhadap
+      // `connectedAccountId` yang bukan milik `workspaceId` ini, walau
+      // `WorkspaceService` sudah memvalidasi lewat `findConnectedAccountById`
+      // sebelum memanggil method ini).
+      const result = await tx.workspaceConnectedAccount.updateMany({
+        where: { id: connectedAccountId, workspaceId },
+        data: {
+          outstandAccountId,
+          handle,
+          status: "active",
+          reconnectRequired: false,
+        },
+      });
+
+      if (result.count === 0) {
+        throw new NotFoundError("Akun terhubung tidak ditemukan.");
+      }
+
+      let updated;
+      try {
+        updated = await tx.workspaceConnectedAccount.findUniqueOrThrow({
+          where: { id: connectedAccountId },
+        });
+      } catch (error) {
+        // Race sangat sempit (row terhapus di antara `updateMany` yang baru
+        // saja berhasil dan lookup ini, dalam transaksi yang sama) — map ke
+        // `NotFoundError` yang sama seperti guard `result.count === 0` di
+        // atas, bukan biarkan P2025 mentah lolos ke pemanggil.
+        if (isRecordNotFound(error)) {
+          throw new NotFoundError("Akun terhubung tidak ditemukan.");
+        }
+        throw error;
+      }
+      return toConnectedAccountRecord(updated);
+    });
+  },
 };
+
+/** Row shape returned by the raw SQL call above — snake_case, mirrors the SQL function's RETURNS TABLE. */
+interface AccountOwnerLookupRow {
+  workspace_id: string;
+  connected_account_id: string;
+  owner_user_id: string;
+}

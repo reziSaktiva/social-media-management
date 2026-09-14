@@ -19,7 +19,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -30,18 +29,17 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemTitle,
-} from "@/components/ui/item";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableRow,
+} from "@/components/ui/table";
+import { Text } from "@/components/ui/text";
 
-import { getInitials } from "@/lib/utils";
+import { cn, formatRoleLabel, getInitials } from "@/lib/utils";
 
 import {
   SETTINGS_BREADCRUMB_GROUP,
@@ -61,16 +59,6 @@ interface Props {
   workspaces: WorkspaceSummary[];
 }
 
-// Label role ditampilkan title-case terlepas dari casing mentah yang
-// dikirim page.tsx (MemberRole enum di packages/shared bernilai lowercase
-// "owner"/"admin"/"creator") — kontrak prop di sini sengaja `role: string`
-// polos (bukan import MemberRole) supaya komponen ini tidak terikat ke
-// shared enum, cukup format tampilan.
-function formatRoleLabel(role: string): string {
-  if (!role) return role;
-  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
-}
-
 /**
  * Baris "Aktif" — non-interactive, Badge status dengan dot indikator
  * (spek: "Chip/Badge Aktif dengan dot indicator"). `Badge` shadcn tidak
@@ -88,6 +76,16 @@ function ActiveBadge() {
   );
 }
 
+/**
+ * KI-055 (poin 3): sama alasan seperti `DraftsList` (poin 1) — pola
+ * `Card` + `Table` shadcn tanpa header kolom, keputusan King Rezi yang
+ * menyimpang sengaja dari `.ws-pick-item` yang masih terdokumentasi di
+ * Claude Design (`templates/settings-workspaces.html`, belum diresync).
+ * `WorkspacePickableRow` (dipakai bareng `WorkspacePicker` onboarding)
+ * sengaja TIDAK diubah/dipakai lagi di sini — baris di-inline langsung
+ * pakai `TableRow`/`TableCell` supaya `WorkspacePicker` onboarding, yang
+ * di luar scope KI-055, tidak ikut berubah.
+ */
 function WorkspaceRow({
   workspace,
   isSwitchPending,
@@ -97,58 +95,61 @@ function WorkspaceRow({
   isSwitchPending: boolean;
   onRequestSwitch: (workspace: WorkspaceSummary) => void;
 }) {
+  const rowBody = (
+    // eslint-disable-next-line no-restricted-syntax -- T-099.3: file ini sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097)
+    <div className="flex items-center gap-3">
+      <Avatar>
+        <AvatarFallback>{getInitials(workspace.name)}</AvatarFallback>
+      </Avatar>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-099.3, sama seperti di atas */}
+      <div className="flex flex-col">
+        <Text variant="small">{workspace.name}</Text>
+        <Text variant="muted">
+          {isSwitchPending
+            ? "Memindahkan ke workspace ini..."
+            : formatRoleLabel(workspace.role)}
+        </Text>
+      </div>
+    </div>
+  );
+
   if (workspace.isActive) {
     return (
-      <Item>
-        <ItemMedia>
-          <Avatar>
-            <AvatarFallback>{getInitials(workspace.name)}</AvatarFallback>
-          </Avatar>
-        </ItemMedia>
-        <ItemContent>
-          <ItemTitle>{workspace.name}</ItemTitle>
-          <ItemDescription>{formatRoleLabel(workspace.role)}</ItemDescription>
-        </ItemContent>
-        <ItemActions>
+      <TableRow>
+        <TableCell className="whitespace-normal">{rowBody}</TableCell>
+        <TableCell className="text-right">
           <ActiveBadge />
-        </ItemActions>
-      </Item>
+        </TableCell>
+      </TableRow>
     );
   }
 
   return (
-    <Item
-      asChild
-      variant="outline"
-      className="cursor-pointer hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+    <TableRow
+      className={cn(
+        "cursor-pointer",
+        isSwitchPending && "pointer-events-none opacity-50",
+      )}
+      role="button"
+      tabIndex={isSwitchPending ? -1 : 0}
+      onClick={() => onRequestSwitch(workspace)}
+      onKeyDown={(event) => {
+        if (isSwitchPending) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onRequestSwitch(workspace);
+        }
+      }}
     >
-      <button
-        type="button"
-        onClick={() => onRequestSwitch(workspace)}
-        disabled={isSwitchPending}
-      >
-        <ItemMedia>
-          <Avatar>
-            <AvatarFallback>{getInitials(workspace.name)}</AvatarFallback>
-          </Avatar>
-        </ItemMedia>
-        <ItemContent>
-          <ItemTitle>{workspace.name}</ItemTitle>
-          <ItemDescription>
-            {isSwitchPending
-              ? "Memindahkan ke workspace ini..."
-              : formatRoleLabel(workspace.role)}
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            strokeWidth={2}
-            className="size-4 text-muted-foreground"
-          />
-        </ItemActions>
-      </button>
-    </Item>
+      <TableCell className="whitespace-normal">{rowBody}</TableCell>
+      <TableCell className="text-right">
+        <HugeiconsIcon
+          icon={ArrowRight01Icon}
+          strokeWidth={2}
+          className="inline-block size-4 text-muted-foreground"
+        />
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -159,10 +160,11 @@ function WorkspaceRow({
  * `WorkspaceService` (dipanggil lewat `switchWorkspaceAction`/
  * `createWorkspaceAction` di `../actions`).
  *
- * Baris workspace non-aktif dirender lewat `Item asChild` membungkus
- * `<button>` (pola sama seperti contoh resmi shadcn `item-demo`, varian
- * `asChild` + `<a>`) — seluruh baris jadi target klik, bukan cuma ikon
- * chevron-nya.
+ * List di-render sebagai `Card` + `Table` shadcn tanpa header kolom
+ * (KI-055 poin 3, 2026-09-10) — lihat docstring `WorkspaceRow` di atas
+ * untuk kenapa `WorkspacePickableRow` (masih dipakai `WorkspacePicker`
+ * onboarding) sengaja tidak dipakai lagi di sini. Seluruh baris tetap
+ * jadi target klik penuh lewat `onClick` di `TableRow`.
  */
 export function WorkspacesSettingsView({ workspaces }: Props) {
   const [isSwitchPending, startSwitchTransition] = useTransition();
@@ -244,12 +246,21 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
         </Alert>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Workspace Anda</CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          <ItemGroup className="gap-0 divide-y divide-border">
+      {/* KI-055 (poin 3, revisi): King Rezi minta versi tanpa `Card` —
+          judul "Workspace Anda" (sebelumnya `CardTitle`) dipindah jadi
+          `TableCaption` shadcn, diposisikan di atas (`caption-top`,
+          default shadcn `caption-bottom`) supaya tetap berfungsi sebagai
+          judul section, bukan footnote di bawah tabel. `Table` (table.tsx)
+          tidak meneruskan className ke div pembungkus `data-slot="table-
+          container"`, jadi border/rounded/padding "milik tabel" ditaruh di
+          div pembungkus manual ini, bukan di prop `className` Table. */}
+      {/* eslint-disable-next-line no-restricted-syntax -- T-099.3: file ini sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097) */}
+      <div className="rounded-xl border border-border py-2">
+        <Table className="caption-top">
+          <TableCaption className="mx-3 mt-0 mb-3 text-left font-heading text-base font-medium text-foreground">
+            Workspace Anda
+          </TableCaption>
+          <TableBody>
             {workspaces.map((workspace) => (
               <WorkspaceRow
                 key={workspace.id}
@@ -260,9 +271,9 @@ export function WorkspacesSettingsView({ workspaces }: Props) {
                 onRequestSwitch={handleRequestSwitch}
               />
             ))}
-          </ItemGroup>
-        </CardContent>
-      </Card>
+          </TableBody>
+        </Table>
+      </div>
 
       <AlertDialog
         open={pendingSwitchWorkspace !== null}

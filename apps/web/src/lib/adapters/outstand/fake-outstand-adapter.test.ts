@@ -1,5 +1,94 @@
+import { SocialPlatform } from "@social/shared";
 import { describe, expect, it } from "vitest";
 import { fakeOutstandAdapter } from "./fake-outstand-adapter";
+
+describe("fakeOutstandAdapter.connectAccount (T-013/T-015.3, ADR-105)", () => {
+  it("returns a redirectUrl that loops back to our own callback route, not an external domain", async () => {
+    const result = await fakeOutstandAdapter.connectAccount({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Instagram,
+    });
+
+    expect(result.redirectUrl).toMatch(
+      /^\/api\/integrations\/outstand\/callback\?code=.+&state=.+$/,
+    );
+  });
+
+  it("returns a different code/state on every call (no delay/failure simulation, ADR-059)", async () => {
+    const first = await fakeOutstandAdapter.connectAccount({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Instagram,
+    });
+    const second = await fakeOutstandAdapter.connectAccount({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Instagram,
+    });
+
+    expect(second.redirectUrl).not.toEqual(first.redirectUrl);
+  });
+});
+
+describe("fakeOutstandAdapter.exchangeConnectCode (T-013/T-015.3, ADR-105)", () => {
+  it("resolves instantly to ConnectedAccountData with status active, carrying the platform from state", async () => {
+    const { redirectUrl } = await fakeOutstandAdapter.connectAccount({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Facebook,
+    });
+    const url = new URL(redirectUrl, "https://example.local");
+    const code = url.searchParams.get("code")!;
+    const state = url.searchParams.get("state")!;
+
+    const result = await fakeOutstandAdapter.exchangeConnectCode({
+      code,
+      state,
+    });
+
+    expect(result.status).toBe("active");
+    expect(result.platform).toBe(SocialPlatform.Facebook);
+    expect(result.outstandAccountId).toMatch(/^fake-account-/);
+    expect(result.handle.length).toBeGreaterThan(0);
+  });
+
+  it("is deterministic for a reconnect (same redirectAccountId → same outstandAccountId/handle across calls, T-015.3)", async () => {
+    const connectAccountId = "connected-account-42";
+
+    const first = await fakeOutstandAdapter.connectAccount({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.TikTok,
+      redirectAccountId: connectAccountId,
+    });
+    const firstUrl = new URL(first.redirectUrl, "https://example.local");
+    const firstResult = await fakeOutstandAdapter.exchangeConnectCode({
+      code: firstUrl.searchParams.get("code")!,
+      state: firstUrl.searchParams.get("state")!,
+    });
+
+    const second = await fakeOutstandAdapter.connectAccount({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.TikTok,
+      redirectAccountId: connectAccountId,
+    });
+    const secondUrl = new URL(second.redirectUrl, "https://example.local");
+    const secondResult = await fakeOutstandAdapter.exchangeConnectCode({
+      code: secondUrl.searchParams.get("code")!,
+      state: secondUrl.searchParams.get("state")!,
+    });
+
+    expect(secondResult.outstandAccountId).toEqual(
+      firstResult.outstandAccountId,
+    );
+    expect(secondResult.handle).toEqual(firstResult.handle);
+  });
+
+  it("throws a clear error for a malformed/tampered state", async () => {
+    await expect(
+      fakeOutstandAdapter.exchangeConnectCode({
+        code: "fake-code-whatever",
+        state: "not-a-valid-base64url-json-state",
+      }),
+    ).rejects.toThrow(/state tidak valid/i);
+  });
+});
 
 describe("fakeOutstandAdapter.fetchPostMetrics", () => {
   it("is deterministic — same outstandPostId returns identical numbers every call (T-041.5)", async () => {

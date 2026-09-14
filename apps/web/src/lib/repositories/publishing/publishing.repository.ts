@@ -9,20 +9,26 @@ import {
   ContentStatus,
   type SocialPlatform,
 } from "@social/shared";
-import type {
-  CalendarItemRecord,
-  CalendarItemTargetRecord,
-  IPublishingRepository,
-  PublishingCancelScheduleRecord,
-  PublishingPostRecord,
-  PublishingScheduleRecord,
-  QueueItemRecord,
+import {
+  HISTORY_TERMINAL_STATUSES,
+  type CalendarItemRecord,
+  type CalendarItemTargetRecord,
+  type HistoryItemRecord,
+  type HistoryItemTargetRecord,
+  type IPublishingRepository,
+  type PublishingCancelScheduleRecord,
+  type PublishingPostRecord,
+  type PublishingPostTargetStatus,
+  type PublishingScheduleRecord,
+  type QueueItemRecord,
+  type RetryTargetRecord,
+  type WebhookPostLookupRecord,
 } from "@/domains/publishing";
-import type {
+import {
   Prisma,
-  PublishingPost,
-  PublishingPostTarget,
-  WorkspaceConnectedAccount,
+  type PublishingPost,
+  type PublishingPostTarget,
+  type WorkspaceConnectedAccount,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import {
@@ -40,6 +46,26 @@ import {
  * implementasi repository ini.
  */
 class ScheduleOwnershipGuardFailed extends Error {}
+
+/**
+ * Guard bug T-034.2/T-034.3 (laporan QA Najwa, 2026-09-08): kolom `id`
+ * bertipe `uuid` di Postgres — `postId` dari URL segment `[postId]` yang
+ * bukan format UUID valid (mis. "not-a-valid-uuid") membuat Postgres
+ * menolak query dengan "invalid input syntax for type uuid" sebelum
+ * sempat mengevaluasi kondisi `WHERE`, jadi Prisma melempar
+ * `PrismaClientKnownRequestError` (bukan return `null` seperti kasus
+ * "tidak ketemu" biasa). Konsisten pola `isRecordNotFound` di
+ * `workspace.repository.ts`: treat sebagai "tidak ketemu" di sini
+ * (repository), bukan dibiarkan bocor sebagai Prisma error mentah ke
+ * `PublishingService` (AGENTS.md #6) — caller (`getHistoryById`) tetap
+ * cukup menangani `null` seperti kasus not-found lainnya.
+ */
+function isInvalidIdFormat(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2007" || error.code === "P2023")
+  );
+}
 
 function mapPost(post: PublishingPost): PublishingPostRecord {
   return {
@@ -85,6 +111,7 @@ function mapCalendarItem(post: QueuePostWithTargets): CalendarItemRecord {
     scheduledAt: post.scheduledAt,
     publishedAt: post.publishedAt,
     createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
     targets: post.targets.map((target): CalendarItemTargetRecord => ({
       id: asPostTargetId(target.id),
       connectedAccountId: asConnectedAccountId(target.connectedAccountId),
@@ -92,6 +119,28 @@ function mapCalendarItem(post: QueuePostWithTargets): CalendarItemRecord {
       contentFormat: target.contentFormat as ContentFormat,
       accountHandle: target.connectedAccount.handle,
       platformPostUrl: target.platformPostUrl,
+    })),
+  };
+}
+
+function mapHistoryItem(post: QueuePostWithTargets): HistoryItemRecord {
+  return {
+    id: asPostId(post.id),
+    caption: post.caption,
+    status: post.status as ContentStatus,
+    scheduledAt: post.scheduledAt,
+    publishedAt: post.publishedAt,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+    targets: post.targets.map((target): HistoryItemTargetRecord => ({
+      id: asPostTargetId(target.id),
+      connectedAccountId: asConnectedAccountId(target.connectedAccountId),
+      platform: target.platform as SocialPlatform,
+      contentFormat: target.contentFormat as ContentFormat,
+      accountHandle: target.connectedAccount.handle,
+      status: target.status as PublishingPostTargetStatus,
+      platformPostUrl: target.platformPostUrl,
+      error: target.error,
     })),
   };
 }
@@ -112,11 +161,27 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async listDrafts({ workspaceId }, userId) {
+    // Kriteria tampilan Drafts (T-104, koreksi gap T-092.5/ADR-094 poin 5):
+    // Draft, InReview, DAN ReadyToSchedule — bukan hanya Draft. Harus
+    // konsisten dengan `DRAFT_VIEW_STATUSES` (client-side filter granular
+    // patch Realtime) di
+    // `apps/web/src/app/(app)/publish/drafts/components/DraftsList.tsx`
+    // (`toDraftListItem`) — sebelum fix ini, initial SSR load (method ini)
+    // hanya mengembalikan status Draft sementara patch Realtime granular
+    // sudah menerima 3 status, jadi post InReview/ReadyToSchedule baru
+    // muncul di Drafts SETELAH ada event Realtime, tidak muncul di initial
+    // load.
     const posts = await withCurrentUser(userId, (tx) =>
       tx.publishingPost.findMany({
         where: {
           workspaceId,
-          status: ContentStatus.Draft,
+          status: {
+            in: [
+              ContentStatus.Draft,
+              ContentStatus.InReview,
+              ContentStatus.ReadyToSchedule,
+            ],
+          },
           deletedAt: null,
         },
         orderBy: { updatedAt: "desc" },
@@ -466,7 +531,7 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async markPostFailed({ workspaceId, postId }, userId) {
-    await withCurrentUser(userId, (tx) =>
+    const { count } = await withCurrentUser(userId, (tx) =>
       tx.publishingPost.updateMany({
         where: {
           id: postId,
@@ -480,6 +545,16 @@ export const publishingRepository: IPublishingRepository = {
         data: { status: ContentStatus.Failed },
       }),
     );
+
+    if (count === 0) {
+      // `updateMany` tidak throw kalau 0 baris ter-update (mis. RLS
+      // default-deny karena actingUserId sudah bukan active member) —
+      // beda dari `update()` di atas yang throw P2025. Tanpa guard ini,
+      // webhook route akan ACK sukses padahal status post tidak berubah.
+      throw new Error(
+        `markPostFailed: tidak ada baris ter-update untuk postId=${postId}, workspaceId=${workspaceId}`,
+      );
+    }
   },
 
   async listQueue({ workspaceId }, userId) {
@@ -541,4 +616,308 @@ export const publishingRepository: IPublishingRepository = {
 
     return posts.map(mapCalendarItem);
   },
+
+  async getCalendarPostById({ workspaceId, postId }, userId) {
+    let post;
+    try {
+      post = await withCurrentUser(userId, (tx) =>
+        tx.publishingPost.findFirst({
+          where: {
+            id: postId,
+            workspaceId,
+            deletedAt: null,
+          },
+          include: {
+            targets: {
+              include: { connectedAccount: true },
+            },
+          },
+        }),
+      );
+    } catch (error) {
+      if (isInvalidIdFormat(error)) {
+        return null;
+      }
+      throw error;
+    }
+
+    return post ? mapCalendarItem(post) : null;
+  },
+
+  async listHistory({ workspaceId, statuses, connectedAccountIds }, userId) {
+    // `statuses` sudah di-clamp ke HISTORY_TERMINAL_STATUSES oleh
+    // `PublishingService.listHistory` — repository ini murni proyeksi,
+    // tidak menegakkan invariant sendiri (konsisten `listCalendarPosts`).
+    const effectiveStatuses =
+      statuses && statuses.length > 0 ? statuses : HISTORY_TERMINAL_STATUSES;
+    const posts = await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.findMany({
+        where: {
+          workspaceId,
+          deletedAt: null,
+          status: { in: [...effectiveStatuses] },
+          ...(connectedAccountIds && connectedAccountIds.length > 0
+            ? {
+                targets: {
+                  some: { connectedAccountId: { in: connectedAccountIds } },
+                },
+              }
+            : {}),
+        },
+        // Proksi "waktu selesai" — lihat catatan gap `failedAt` di
+        // `IPublishingRepository.listHistory`.
+        orderBy: { updatedAt: "desc" },
+        include: {
+          targets: {
+            include: { connectedAccount: true },
+          },
+        },
+      }),
+    );
+
+    return posts.map(mapHistoryItem);
+  },
+
+  async getHistoryById({ workspaceId, postId }, userId) {
+    let post;
+    try {
+      post = await withCurrentUser(userId, (tx) =>
+        tx.publishingPost.findFirst({
+          where: {
+            id: postId,
+            workspaceId,
+            deletedAt: null,
+            // Invariant "history = post selesai" ditegakkan langsung di
+            // sini (beda dari `listHistory`, tidak ada input `statuses`
+            // untuk method single-item ini).
+            status: { in: [...HISTORY_TERMINAL_STATUSES] },
+          },
+          include: {
+            targets: {
+              include: { connectedAccount: true },
+            },
+          },
+        }),
+      );
+    } catch (error) {
+      if (isInvalidIdFormat(error)) {
+        return null;
+      }
+      throw error;
+    }
+
+    return post ? mapHistoryItem(post) : null;
+  },
+
+  async getHistoryPostById({ workspaceId, postId }, userId) {
+    let post;
+    try {
+      post = await withCurrentUser(userId, (tx) =>
+        tx.publishingPost.findFirst({
+          where: {
+            id: postId,
+            workspaceId,
+            deletedAt: null,
+            // Sengaja TIDAK menyaring `status` di sini (beda dari
+            // `getHistoryById`) — lihat catatan
+            // `IPublishingRepository.getHistoryPostById`.
+          },
+          include: {
+            targets: {
+              include: { connectedAccount: true },
+            },
+          },
+        }),
+      );
+    } catch (error) {
+      if (isInvalidIdFormat(error)) {
+        return null;
+      }
+      throw error;
+    }
+
+    return post ? mapHistoryItem(post) : null;
+  },
+
+  async getRetryTarget({ workspaceId, postId, targetId }, userId) {
+    const target = await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.findFirst({
+        where: {
+          id: targetId,
+          postId,
+          post: { workspaceId, deletedAt: null },
+        },
+        include: { post: true, connectedAccount: true },
+      }),
+    );
+
+    if (!target) {
+      return null;
+    }
+
+    const record: RetryTargetRecord = {
+      postId: asPostId(target.post.id),
+      workspaceId: asWorkspaceId(target.post.workspaceId),
+      postOutstandPostId: target.post.outstandPostId,
+      caption: target.post.caption,
+      targetId: asPostTargetId(target.id),
+      targetStatus: target.status as PublishingPostTargetStatus,
+      connectedAccountId: asConnectedAccountId(target.connectedAccountId),
+      outstandAccountId: target.connectedAccount.outstandAccountId,
+      platform: target.platform as SocialPlatform,
+      contentFormat: target.contentFormat as ContentFormat,
+      platformOptions: target.platformOptions as Record<string, unknown> | null,
+    };
+
+    return record;
+  },
+
+  async resetTargetForRetry({ targetId }, userId) {
+    await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.update({
+        where: { id: targetId },
+        data: {
+          status: "pending",
+          platformPostId: null,
+          platformPostUrl: null,
+          error: null,
+          retryOutstandPostId: null,
+        },
+      }),
+    );
+  },
+
+  async setRetryOutstandPostId({ targetId, retryOutstandPostId }, userId) {
+    await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.update({
+        where: { id: targetId },
+        data: { retryOutstandPostId },
+      }),
+    );
+  },
+
+  async reconcilePostStatusAfterRetry({ workspaceId, postId }, userId) {
+    await withCurrentUser(userId, async (tx) => {
+      // Idempoten by design: kalau masih ada target `failed` (retry gagal
+      // lagi, atau target lain di post ini yang belum di-retry), post
+      // TETAP `Failed` — tidak ada updateMany yang dieksekusi.
+      const remainingFailedCount = await tx.publishingPostTarget.count({
+        where: { postId, status: "failed" },
+      });
+
+      if (remainingFailedCount > 0) {
+        return;
+      }
+
+      await tx.publishingPost.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          status: ContentStatus.Failed,
+          deletedAt: null,
+        },
+        data: { status: ContentStatus.Published },
+      });
+    });
+  },
+
+  async findPostTargetsByOutstandPostId(outstandPostId) {
+    // System-context read (T-026, webhook Outstand) — bypasses per-tenant
+    // RLS via a narrow SECURITY DEFINER SQL function (migration
+    // `20260907120000_t026_outstand_webhook_system_lookups`), NOT
+    // `withCurrentUser`, karena tidak ada acting `userId` sebelum lookup ini
+    // resolve. Lihat catatan panjang di interface method ini dan di
+    // migration itu sendiri untuk alasan lengkap — ini keputusan yang
+    // dilaporkan ke King Rezi, bukan diputuskan diam-diam.
+    const rows = await prisma.$queryRaw<WebhookPostTargetLookupRow[]>`
+      SELECT * FROM "public"."webhook_find_post_targets_by_outstand_post_id"(${outstandPostId})
+    `;
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const [first] = rows;
+
+    // Guard defensif (code review Ridwan Architecture Reviewer, T-026 —
+    // defense-in-depth lapis kedua di samping partial unique index pada
+    // `publishing_posts.outstand_post_id`, migration
+    // `20260907130000_t026_unique_outstand_post_id`): fungsi SQL di atas
+    // JOIN lintas `publishing_post_targets`, jadi kalau constraint unique
+    // itu ternyata tidak menjamin apa yang diasumsikan (mis. dijalankan di
+    // DB yang belum ter-migrate), baris yang di-return bisa berasal dari
+    // post/workspace BERBEDA — memakai baris pertama untuk
+    // `postId`/`workspaceId` tapi tetap memasukkan SEMUA baris sebagai
+    // `targets` akan menulis outcome publish ke post/tenant yang salah.
+    // Throw loud di sini (pola ADR-059), bukan diam-diam memakai baris
+    // pertama dan mencampur target lintas tenant.
+    const mismatched = rows.filter(
+      (row) =>
+        row.post_id !== first.post_id ||
+        row.workspace_id !== first.workspace_id,
+    );
+    if (mismatched.length > 0) {
+      throw new Error(
+        `findPostTargetsByOutstandPostId: data integrity violation — ` +
+          `outstand_post_id="${outstandPostId}" resolved to rows across ` +
+          `multiple posts/workspaces (expected exactly one post per ` +
+          `outstand_post_id, enforced by partial unique index ` +
+          `publishing_posts_outstand_post_id_unique). post_id/workspace_id ` +
+          `values found: ${JSON.stringify([
+            ...new Set(rows.map((row) => `${row.post_id}/${row.workspace_id}`)),
+          ])}`,
+      );
+    }
+
+    const record: WebhookPostLookupRecord = {
+      postId: asPostId(first.post_id),
+      workspaceId: asWorkspaceId(first.workspace_id),
+      authorId: asUserId(first.author_id),
+      targets: rows.map((row) => ({
+        postTargetId: asPostTargetId(row.post_target_id),
+        connectedAccountId: asConnectedAccountId(row.connected_account_id),
+        outstandAccountId: row.outstand_account_id,
+      })),
+    };
+
+    return record;
+  },
+
+  async softDeletePost({ workspaceId, postId }, userId) {
+    const post = await withCurrentUser(userId, async (tx) => {
+      // Guard ganda (koreksi 2026-09-10, lihat `IPublishingRepository.softDeletePost`):
+      // hanya post Draft yang belum di-soft-delete yang bisa jadi target —
+      // entry point Delete Post hanya ada di Drafts, post Scheduled harus
+      // di-Cancel Schedule dulu. `status: Draft` di sini murni safety net
+      // race condition; guard utama (pesan error informatif) sudah
+      // dilakukan `PublishingService.deletePost` lebih dulu.
+      const { count } = await tx.publishingPost.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          status: ContentStatus.Draft,
+          deletedAt: null,
+        },
+        data: { deletedAt: new Date() },
+      });
+
+      if (count === 0) {
+        return null;
+      }
+
+      return tx.publishingPost.findUniqueOrThrow({ where: { id: postId } });
+    });
+
+    return post ? mapPost(post) : null;
+  },
 };
+
+/** Row shape returned by the raw SQL call above — snake_case, mirrors the SQL function's RETURNS TABLE. */
+interface WebhookPostTargetLookupRow {
+  post_id: string;
+  workspace_id: string;
+  author_id: string;
+  post_target_id: string;
+  connected_account_id: string;
+  outstand_account_id: string;
+}

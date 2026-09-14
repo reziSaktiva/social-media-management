@@ -192,6 +192,21 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
       belum ada, dan tunggu King Rezi membuat/mengonfirmasi desainnya
       (langsung atau lewat Neymar Product Designer) sebelum implementasi
       dilanjutkan.
+    - Kalau **sudah ada** rancangannya tapi elemen yang mau diimplementasikan
+      **ambigu** — lebih dari satu pola shadcn/ui sama-sama valid secara
+      teknis (mis. list bisa `Item`/`ItemGroup` ATAU `Table`; dialog dengan
+      beberapa variant; row yang bisa diklik-penuh atau tidak) dan Claude
+      Design **belum mengunci pola konkret**-nya (tidak ada komentar
+      "SYNCED"/"LOCKED PATTERN" atau penjelasan struktur setara di file
+      `components/*.html`/`templates/*.html` yang relevan, atau di tabel
+      **Components** `readme.md`): **STOP** — jangan menebak salah satu
+      opsi sendiri. Wajib tanya King Rezi dulu lewat `AskUserQuestion`
+      (pola sama `.claude/skills/proactive-clarification/SKILL.md`),
+      sertakan opsi konkret (nama primitive + struktur wrapper) yang sedang
+      dipertimbangkan, sebelum menulis kode. Ini persis mekanisme yang
+      gagal di KI-054/KI-055 (AI menebak pola "masuk akal" yang ternyata
+      bukan yang King Rezi mau) — lihat `tasks/v07-astryx-shadcn-migration.md`
+      § T-103 untuk latar belakang penuh.
     - Kalau **bukan** UI/UX-related: lanjut seperti biasa, tidak perlu cek
       Claude Design.
     - Tujuan: King Rezi sering lupa memastikan desain sudah ada sebelum

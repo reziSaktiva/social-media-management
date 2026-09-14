@@ -230,6 +230,39 @@ export interface IWorkspaceRepository {
   }): Promise<WorkspaceMemberRecord>;
 
   /**
+   * Undangan `pending` yang belum melewati `expiresAt` (T-007.8, ADR-101) —
+   * sumber baris virtual "Pending" di `/settings/members`, berlaku untuk
+   * invitation yang dibuat lewat metode manapun (Copy Link maupun Kirim via
+   * Email — keduanya sama-sama tabel `WorkspaceInvitation`, ADR-101 poin 3).
+   * Sengaja TIDAK menyertakan invitation yang sudah `accepted`/`revoked`
+   * atau sudah lewat `expiresAt` — baris itu tidak lagi relevan ditampilkan
+   * sebagai "menunggu respons". `actingUserId` (RLS, KI-026 follow-up) —
+   * member aktif workspace ini yang memicu query (bukan filter hasil).
+   */
+  listPendingInvitations(
+    workspaceId: WorkspaceId,
+    actingUserId: UserId,
+  ): Promise<WorkspaceInvitationRecord[]>;
+
+  /**
+   * Batalkan undangan pending (Cancel Invitation, T-007.8, ADR-101 poin 5) —
+   * set `WorkspaceInvitation.status` jadi `revoked`. Compare-and-swap
+   * (`updateMany` dengan guard `status: pending` DAN `expiresAt` belum lewat)
+   * — kalau tidak ada baris yang match (tidak ditemukan di workspace ini,
+   * statusnya sudah bukan `pending` lagi, atau sudah lewat `expiresAt`),
+   * melempar `ConflictError` generik (satu error, tanpa query kedua untuk
+   * membedakan alasannya — race guard, pola sama seperti `acceptInvitation`).
+   * `actingUserId` (RLS, KI-026 follow-up) — RBAC (Owner/Admin,
+   * `assertActorCanManageMembers`) sudah diverifikasi di
+   * `WorkspaceService.cancelInvitation` sebelum method ini dipanggil.
+   */
+  revokeInvitation(
+    workspaceId: WorkspaceId,
+    invitationId: InvitationId,
+    actingUserId: UserId,
+  ): Promise<void>;
+
+  /**
    * Persist urutan channel sidebar personal user (T-012.1). Full rewrite
    * (delete+createMany) — caller (`WorkspaceService.saveChannelOrder`)
    * sudah memfilter `orderedConnectedAccountIds` supaya hanya berisi id
@@ -310,4 +343,113 @@ export interface IWorkspaceRepository {
     name: string,
     actingUserId: UserId,
   ): Promise<WorkspaceRecord>;
+
+  /**
+   * Webhook Outstand `account.token_expired` (T-026.5, T-015) — tandai
+   * `WorkspaceConnectedAccount.reconnectRequired = true` by external
+   * `outstandAccountId` (payload webhook membawa id Outstand, bukan id
+   * internal kita). Returns `null` kalau tidak ada akun dengan
+   * `outstandAccountId` itu.
+   *
+   * **TIDAK menerima `actingUserId`** — sama alasan dengan
+   * `IPublishingRepository.findPostTargetsByOutstandPostId` (T-026): webhook
+   * route tidak punya session, jadi tidak ada acting user sebelum akun ini
+   * ditemukan. Implementasi Prisma resolve `workspace.ownerId` (kolom tanpa
+   * RLS di tabel `workspaces`) lewat SECURITY DEFINER SQL function (migration
+   * `20260907120000_t026_outstand_webhook_system_lookups`) untuk BACA lintas
+   * akun, lalu memakai Owner itu sendiri sebagai `actingUserId` untuk
+   * MENULIS `reconnectRequired` lewat `withCurrentUser` yang sudah ada
+   * (Owner workspace dijamin member aktif di workspace-nya sendiri, jadi RLS
+   * tetap terpenuhi untuk langkah tulis). `ownerUserId` dikembalikan supaya
+   * `WebhookProcessor` bisa langsung memakainya untuk trigger notifikasi
+   * (T-026.5) tanpa query terpisah.
+   */
+  markAccountReconnectRequired(outstandAccountId: string): Promise<{
+    workspaceId: WorkspaceId;
+    connectedAccountId: ConnectedAccountId;
+    ownerUserId: UserId;
+  } | null>;
+
+  /**
+   * Disconnect akun (T-014.2, ADR-048/ADR-049) — set
+   * `WorkspaceConnectedAccount.status` jadi `"disconnected"` DAN
+   * `reconnectRequired` jadi `false` (state "perlu reconnect" tidak relevan
+   * lagi setelah disconnect manual — supaya `resolveConnectionDisplayStatus`
+   * langsung menampilkan "Disconnected", bukan "Perlu Reconnect" yang stale).
+   * TIDAK menghapus baris, TIDAK memanggil Outstand API — OAuth/token
+   * dikelola Outstand di luar DB internal (catatan T-013), cukup update
+   * status DB. TIDAK menyentuh `PublishingPostTarget` mana pun — post yang
+   * sudah terjadwal untuk akun ini SENGAJA tetap di antrean (KSP-D09), tidak
+   * otomatis dibatalkan. `actingUserId` (RLS, KI-026 follow-up) — RBAC
+   * (Owner/Admin) sudah diverifikasi di `WorkspaceService.disconnectAccount`
+   * sebelum method ini dipanggil. Melempar `ConflictError` generik bila
+   * `updateMany` tidak match — baik karena `connectedAccountId` tidak
+   * ditemukan di `workspaceId` ini maupun karena akun sudah berstatus
+   * `"disconnected"` (defense-in-depth — UI real tidak menampilkan tombol
+   * Disconnect untuk akun yang sudah disconnected, tapi backend tetap
+   * menolak eksplisit). Tidak dibedakan lagi NotFound vs Conflict lewat
+   * query kedua — sama pola seperti `revokeInvitation`, round-trip
+   * tambahan untuk pesan yang lebih presisi tidak sepadan di jalur
+   * double-click ini.
+   */
+  disconnectAccount(
+    workspaceId: WorkspaceId,
+    connectedAccountId: ConnectedAccountId,
+    actingUserId: UserId,
+  ): Promise<void>;
+
+  /**
+   * Lookup satu akun by id (T-013.1/T-015.3, ADR-105) — dipakai
+   * `WorkspaceService.initiateConnectAccount`/`completeAccountConnection`
+   * untuk memvalidasi `redirectAccountId` (reconnect) benar-benar milik
+   * `workspaceId` ini SEBELUM redirect diminta maupun SEBELUM update
+   * dieksekusi — defense-in-depth terhadap `redirectAccountId` yang
+   * ditamper di client/query-param `state` (round-trip lewat browser,
+   * public). `actingUserId` (RLS, KI-026 follow-up). Returns `null` kalau
+   * tidak ditemukan di workspace ini.
+   */
+  findConnectedAccountById(
+    workspaceId: WorkspaceId,
+    connectedAccountId: ConnectedAccountId,
+    actingUserId: UserId,
+  ): Promise<ConnectedAccountRecord | null>;
+
+  /**
+   * CREATE `WorkspaceConnectedAccount` baru (T-013.1/T-013.2, Connect
+   * Account, ADR-105) — dipanggil `WorkspaceService.completeAccountConnection`
+   * saat `redirectAccountId` kosong (bukan reconnect). `connectedAt`
+   * default `now()` (koneksi baru). Melempar `ConflictError` kalau
+   * `outstandAccountId` ini sudah terhubung di `workspaceId` ini (unique
+   * constraint `[workspaceId, outstandAccountId]`). `actingUserId` (RLS,
+   * KI-026 follow-up) — RBAC (Owner/Admin) sudah diverifikasi
+   * `WorkspaceService` sebelum method ini dipanggil.
+   */
+  createConnectedAccount(input: {
+    workspaceId: WorkspaceId;
+    platform: SocialPlatform;
+    outstandAccountId: string;
+    handle: string;
+    actingUserId: UserId;
+  }): Promise<ConnectedAccountRecord>;
+
+  /**
+   * UPDATE akun existing (T-015.3, Reconnect, ADR-105) — refresh
+   * `outstandAccountId`/`handle` dari hasil `exchangeConnectCode` terbaru,
+   * set `status: "active"` dan `reconnectRequired: false`. `connectedAt`
+   * TIDAK direset — reconnect bukan re-create, riwayat
+   * `PublishingPostTarget`/`EngagementInboxItem` yang merujuk row
+   * `connectedAccountId` yang sama tetap utuh (requirement T-015.3 "tanpa
+   * kehilangan riwayat post"). Melempar `NotFoundError` kalau
+   * `connectedAccountId` tidak ditemukan di `workspaceId` ini.
+   * `actingUserId` (RLS, KI-026 follow-up) — RBAC + ownership
+   * (`findConnectedAccountById`) sudah diverifikasi `WorkspaceService`
+   * sebelum method ini dipanggil.
+   */
+  reconnectAccount(input: {
+    workspaceId: WorkspaceId;
+    connectedAccountId: ConnectedAccountId;
+    outstandAccountId: string;
+    handle: string;
+    actingUserId: UserId;
+  }): Promise<ConnectedAccountRecord>;
 }

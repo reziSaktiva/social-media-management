@@ -7,7 +7,7 @@ Light/Dark Mode Toggle diangkat jadi fitur resmi produk, mengoverride
 
 ### Status
 
-Accepted — Amended by ADR-097 (2026-09-01)
+Accepted — Amended by ADR-097 (2026-09-01), Amended by ADR-102 (2026-09-08)
 
 ### Date
 

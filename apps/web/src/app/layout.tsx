@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Figtree, Montserrat } from "next/font/google";
 import { cookies } from "next/headers";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
-import { THEME_COOKIE_NAME, parseThemeMode } from "@/lib/theme/theme-cookie";
+import {
+  PREFERS_DARK_MEDIA_QUERY,
+  THEME_COOKIE_NAME,
+  isExplicitThemeCookieValue,
+  parseThemeMode,
+} from "@/lib/theme/theme-cookie";
 import { cn } from "@/lib/utils";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
@@ -47,6 +53,12 @@ export default async function RootLayout({
       // langsung dari cookie yang sama dengan `initialMode` Providers supaya
       // server & client render mode yang identik sejak first paint — tidak
       // ada flash tema salah (ADR-055, dipertahankan lewat ADR-097 poin 9).
+      // `suppressHydrationWarning` (T-039, amendemen ADR-055): kalau cookie
+      // `theme` belum ada, script di bawah menambah class `dark` secara
+      // langsung ke DOM sebelum hydration mengikuti `prefers-color-scheme`
+      // — beda dari class yang dihitung di sini (selalu default "light"
+      // saat cookie kosong, karena RSC tidak bisa baca preferensi OS).
+      suppressHydrationWarning
       className={cn(
         "h-full",
         "antialiased",
@@ -58,6 +70,21 @@ export default async function RootLayout({
         initialMode === "dark" && "dark",
       )}
     >
+      <head>
+        {isExplicitThemeCookieValue(
+          cookieStore.get(THEME_COOKIE_NAME)?.value,
+        ) ? null : (
+          // Cookie belum ada (user belum pernah pilih Light/Dark eksplisit)
+          // — default ikut sistem operasi (T-039, amendemen ADR-055).
+          // `beforeInteractive` menjalankan script ini sebelum hydration
+          // supaya tidak ada flash "light" sekilas untuk user ber-OS dark
+          // mode. Konsisten dengan `resolveInitialMode()` di
+          // `components/Providers.tsx` — ubah keduanya bersamaan.
+          <Script id="theme-system-default" strategy="beforeInteractive">
+            {`(function(){try{if(window.matchMedia(${JSON.stringify(PREFERS_DARK_MEDIA_QUERY)}).matches){document.documentElement.classList.add("dark");}}catch(e){}})();`}
+          </Script>
+        )}
+      </head>
       <body className="flex min-h-full flex-col">
         <Providers initialMode={initialMode}>{children}</Providers>
       </body>

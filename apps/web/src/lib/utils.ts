@@ -23,6 +23,20 @@ export function getInitials(name: string): string {
 }
 
 /**
+ * Label role title-case terlepas dari casing mentah yang dikirim page.tsx
+ * (`MemberRole` enum di `packages/shared` bernilai lowercase
+ * "owner"/"admin"/"creator") — dipusatkan di sini karena sebelumnya
+ * diduplikasi verbatim di `WorkspacesSettingsView.tsx` dan
+ * `WorkspacePicker.tsx` (code review PR #109). Sengaja menerima `role:
+ * string` polos (bukan import `MemberRole`) supaya pemanggilnya tidak
+ * terikat ke shared enum, cukup format tampilan.
+ */
+export function formatRoleLabel(role: string): string {
+  if (!role) return role;
+  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+}
+
+/**
  * Format kalender `dateKey` ("YYYY-MM-DD") via `formatter` — parse manual
  * dengan `Date.UTC` supaya tidak kena pergeseran timezone browser (code
  * review PR #105: dipusatkan di sini, sebelumnya diduplikasi verbatim di

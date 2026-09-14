@@ -46,8 +46,18 @@ function createFakeRepository(
     countScheduledByAccount: async () => new Map(),
     listQueue: async () => [],
     listCalendarPosts: async () => [],
+    getCalendarPostById: async () => null,
+    listHistory: async () => [],
+    getHistoryById: async () => null,
+    getHistoryPostById: async () => null,
     cancelSchedule: async () => null,
     markPostFailed: async () => undefined,
+    getRetryTarget: async () => null,
+    resetTargetForRetry: async () => undefined,
+    setRetryOutstandPostId: async () => undefined,
+    reconcilePostStatusAfterRetry: async () => undefined,
+    findPostTargetsByOutstandPostId: async () => null,
+    softDeletePost: async () => null,
     ...overrides,
   };
 }
@@ -56,10 +66,18 @@ function createFakeOutstandAdapter(
   overrides: Partial<IOutstandAdapter> = {},
 ): IOutstandAdapter {
   return {
+    connectAccount: async () => ({ redirectUrl: "/unused" }),
+    exchangeConnectCode: async () => ({
+      outstandAccountId: "unused",
+      platform: "instagram" as never,
+      handle: "unused",
+      status: "active",
+    }),
     schedulePost: async () => ({ outstandPostId: "fake-post" }),
     publishNow: async () => ({ outstandPostId: "fake-post" }),
     fetchPostOutcome: async () => [],
     cancelScheduledPost: async () => undefined,
+    deletePost: async () => undefined,
     fetchPostMetrics: async () => ({
       impressions: 0,
       reach: 0,

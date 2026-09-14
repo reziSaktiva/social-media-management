@@ -1,0 +1,42 @@
+-- T-026 code review follow-up (Ridwan Architecture Reviewer, temuan
+-- "plausible" pada migration `20260907120000_t026_outstand_webhook_system_lookups`):
+--
+-- `webhook_find_post_targets_by_outstand_post_id` mencocokkan
+-- `publishing_posts.outstand_post_id`, yang sebelumnya TIDAK punya unique
+-- constraint sama sekali (bahkan per-workspace) — beda dari fungsi
+-- saudaranya `webhook_find_account_owner_by_outstand_account_id` yang
+-- setidaknya dibatasi unique-per-workspace
+-- (`@@unique([workspaceId, outstandAccountId])` pada `WorkspaceConnectedAccount`)
+-- + `LIMIT 1` + dokumentasi known-limitation eksplisit.
+--
+-- Kalau dua post (apalagi di workspace berbeda) kebetulan punya
+-- `outstand_post_id` yang sama, JOIN pada fungsi lookup itu bisa
+-- mencampur baris dari post/tenant berbeda — dan repository
+-- (`findPostTargetsByOutstandPostId` di
+-- `apps/web/src/lib/repositories/publishing/publishing.repository.ts`)
+-- memakai baris PERTAMA untuk `postId`/`workspaceId`/`authorId` tapi tetap
+-- memasukkan SEMUA baris sebagai `targets` — berpotensi menulis outcome
+-- publish ke post/tenant yang salah lewat fungsi yang sengaja bypass RLS.
+--
+-- Fix ini adalah lapis PERTAMA dari defense-in-depth (lapis kedua: guard
+-- defensif runtime di repository, lihat commit yang sama) — partial unique
+-- index supaya constraint DB sendiri yang menjamin keunikan
+-- `outstand_post_id`, bukan cuma asumsi "Outstand pasti generate id unik
+-- secara global". Partial (bukan penuh) karena kolom ini nullable
+-- (post yang belum pernah di-publish/schedule belum punya
+-- `outstand_post_id`) dan soft-delete (`deleted_at`) tidak boleh ikut
+-- dihitung — post yang sudah dihapus tidak seharusnya memblokir id yang
+-- sama dipakai lagi.
+--
+-- Catatan: berbeda dari `WorkspaceConnectedAccount.outstandAccountId` yang
+-- unique PER WORKSPACE, index ini GLOBAL (tidak di-scope per
+-- `workspace_id`) karena kontrak ADR-040/redesain ACL (migration
+-- `20260826092111_redesign_outstand_acl_contract`) memodelkan
+-- `outstand_post_id` sebagai SATU id post-level dari Outstand
+-- `create-a-post` yang mencakup seluruh target dalam satu post — id ini
+-- diterbitkan Outstand secara global, bukan per-tenant, jadi keunikan
+-- global adalah constraint yang benar (dan lebih ketat, sesuai maksud
+-- reviewer) — bukan sekadar meniru pola per-workspace tetangganya.
+CREATE UNIQUE INDEX IF NOT EXISTS "publishing_posts_outstand_post_id_unique"
+  ON "publishing_posts" ("outstand_post_id")
+  WHERE "outstand_post_id" IS NOT NULL AND "deleted_at" IS NULL;

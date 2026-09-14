@@ -43,14 +43,16 @@ export default async function Page() {
     redirect("/settings");
   }
 
-  const members = await workspaceService.listMembersWithUser(
+  // T-007.8 (ADR-101): gabungan member asli + undangan pending, bukan cuma
+  // listMembersWithUser — supaya baris virtual "Pending" ikut tampil.
+  const rows = await workspaceService.listMembersAndPendingInvitations(
     workspaceId,
     actorUserId,
   );
 
   return (
     <MembersTable
-      members={members}
+      rows={rows}
       currentUserId={session.user.id}
       headerAction={<InviteMemberAction />}
     />

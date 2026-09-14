@@ -22,6 +22,9 @@ export default async function Page() {
   );
 
   // QueueScreen (client) owns Cancel Schedule dialog state (T-030, T-032.4)
-  // dan wires it into QueueList's onCancelSchedule prop.
-  return <QueueScreen groups={groups} />;
+  // dan wires it into QueueList's onCancelSchedule prop. `workspaceId`
+  // (T-092.4) dipakai QueueScreen untuk subscribe
+  // `usePublishingPostsRealtime`, bukan untuk fetch data apa pun langsung
+  // di komponen itu (AGENTS.md #5).
+  return <QueueScreen groups={groups} workspaceId={workspaceId} />;
 }
