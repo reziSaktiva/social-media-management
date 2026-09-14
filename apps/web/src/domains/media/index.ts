@@ -6,3 +6,4 @@ export * from "./adapters/media-storage-adapter";
 export * from "./repositories/media.repository";
 export * from "./services/media.service";
 export * from "./services/upload-media.use-case";
+export * from "./services/delete-media.use-case";

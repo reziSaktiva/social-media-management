@@ -7,6 +7,7 @@ import NextLink from "next/link";
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
+import { toast } from "sonner";
 
 import { ContentFormat, ContentStatus, SocialPlatform } from "@social/shared";
 
@@ -14,6 +15,7 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmActionDialog } from "@/components/shared/ConfirmActionDialog";
 import {
   Dialog,
   DialogContent,
@@ -37,9 +39,11 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
+import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 
 import type { ConnectedAccountDto, DraftMediaDto } from "./actions";
 import {
+  deleteMediaAction,
   getConnectedAccountsAction,
   getDraftAction,
   publishNowAction,
@@ -278,9 +282,9 @@ function DraftEditorForm({
   // (`uploadMediaAction`, bukan disimpan sebagai `File` mentah di state),
   // supaya preview + validasi mime/ukuran terjadi langsung, bukan ditunda
   // sampai Save/Schedule. `mediaItems` adalah SATU set untuk seluruh post
-  // (bukan per-akun/per-target, ADR-107) — "hapus" di grid preview hanya
-  // meng-unlink dari array ini (record `MediaItem` tetap ada di DB, T-024.5
-  // out of scope).
+  // (bukan per-akun/per-target, ADR-107) — "hapus" di grid preview (T-024.5)
+  // menghapus PERMANEN (file Storage + record `MediaItem` DB, lewat dialog
+  // konfirmasi Tier 2/ADR-049), bukan sekadar unlink dari state lokal.
   const [mediaItems, setMediaItems] = useState<DraftMediaDto[]>([]);
   const [uploadingMediaCount, setUploadingMediaCount] = useState(0);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -536,11 +540,21 @@ function DraftEditorForm({
     );
   }
 
-  function handleRemoveMedia(mediaId: string) {
-    // Unlink dari post ini saja (state lokal) — record `MediaItem` di DB
-    // TIDAK dihapus (penghapusan permanen adalah T-024.5, di luar scope).
-    setMediaItems((prev) => prev.filter((item) => item.id !== mediaId));
-  }
+  // T-024.5 (ADR-049 Tier 2): hapus media dari grid preview sekarang berarti
+  // hapus PERMANEN (file Storage + record `MediaItem` DB), bukan lagi
+  // unlink diam-diam — pola sama `deleteConfirm` di `DraftsList.tsx`
+  // (`useConfirmAction` + `ConfirmActionDialog`). Karena `ConfirmActionDialog`
+  // adalah `AlertDialog` modal (memblokir interaksi lain di belakangnya
+  // selagi terbuka), tombol hapus item lain di grid otomatis tidak bisa
+  // diklik selama satu proses berjalan — tidak perlu state disable
+  // tambahan per-tile, konsisten pola `DraftsList`.
+  const deleteMediaConfirm = useConfirmAction<DraftMediaDto>(
+    (item) => deleteMediaAction(item.id),
+    (item) => {
+      setMediaItems((prev) => prev.filter((m) => m.id !== item.id));
+      toast("Media berhasil dihapus");
+    },
+  );
 
   async function handleSaveDraft() {
     setIsSavingDraft(true);
@@ -894,9 +908,10 @@ function DraftEditorForm({
                             )}
                             <button
                               type="button"
-                              aria-label={`Hapus ${item.filename} dari post ini`}
-                              onClick={() => handleRemoveMedia(item.id)}
-                              className="absolute top-1 right-1 rounded-full bg-background/80 p-1 opacity-0 transition-opacity group-hover:opacity-100"
+                              aria-label={`Hapus ${item.filename} secara permanen`}
+                              onClick={() => deleteMediaConfirm.open(item)}
+                              disabled={deleteMediaConfirm.isLoading}
+                              className="absolute top-1 right-1 rounded-full bg-background/80 p-1 opacity-0 transition-opacity group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <HugeiconsIcon
                                 icon={Delete02Icon}
@@ -1158,6 +1173,18 @@ function DraftEditorForm({
           </Button>
         </DialogFooter>
       )}
+
+      <ConfirmActionDialog
+        isOpen={deleteMediaConfirm.isOpen}
+        onClose={deleteMediaConfirm.close}
+        title="Hapus media ini secara permanen?"
+        description="Tindakan ini tidak bisa dibatalkan — file akan hilang permanen dari Storage dan tidak lagi bisa dipakai di post manapun."
+        confirmLabel="Hapus Media"
+        isLoading={deleteMediaConfirm.isLoading}
+        error={deleteMediaConfirm.error}
+        onConfirm={() => void deleteMediaConfirm.confirm()}
+        variant="destructive"
+      />
     </div>
   );
 }

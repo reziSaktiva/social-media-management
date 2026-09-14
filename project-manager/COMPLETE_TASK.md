@@ -8,6 +8,84 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-14 — T-024 Done (5/5 subtask) — Delete Media + dialog konfirmasi Tier 2 (ADR-049), menutup seluruh rangkaian T-024
+
+Branch `claude/t-024-feasibility-e16b39` (worktree terpisah). Belum
+di-commit/push sesi ini. Ini adalah **T-024.5**, subtask **terakhir** dari
+task T-024 (Media upload di Draft Editor) — dengan tuntasnya subtask ini,
+T-024 naik status dari `🟡 In Progress (4/5)` ke **`✅ Done (5/5)`**.
+
+**Keputusan dikonfirmasi King Rezi via `AskUserQuestion`:** tombol "hapus
+dari post ini" yang dibangun di T-024.4 (unlink-only dari draft, tanpa
+dialog konfirmasi, tidak menghapus data apapun) diganti **total** jadi aksi
+destruktif mengikuti pola Tier 2 (ADR-049) — klik → dialog konfirmasi →
+kalau dikonfirmasi, hapus file di Supabase Storage + record `MediaItem` di
+DB secara **permanen** (bukan lagi sekadar unlink dari post).
+
+**Implementasi (Prabowo Feature Engineer):**
+
+- `DeleteMediaUseCase` baru
+  (`apps/web/src/domains/media/services/delete-media.use-case.ts`) — urutan
+  operasi: hapus record DB dulu lewat `MediaService.deleteMediaItem`
+  (throws `NotFoundError` kalau media tidak ada/bukan milik workspace,
+  Storage tidak disentuh kalau langkah ini gagal), baru best-effort hapus
+  file Storage (swallow error — orphan file tanpa record dianggap harmless
+  dibanding record menunjuk file yang hilang/broken).
+- Server Action baru `deleteMediaAction` — wiring tipis ke use case,
+  `workspaceId` diambil dari session (anti-IDOR, bukan input dari client).
+- UI `Modal.tsx` — `handleRemoveMedia` lama (unlink) dihapus total, diganti
+  reuse komponen existing `ConfirmActionDialog`/`useConfirmAction` (pola
+  sama persis "Hapus Draft" di `DraftsList.tsx`, bukan dialog baru dari nol).
+
+**Review Ridwan Architecture Reviewer: 0 temuan** — urutan operasi delete
+(DB dulu, Storage best-effort) diverifikasi benar di kode+test, anti-IDOR
+terjaga (workspace-scoped di level repository, konsisten pola T-024.1),
+reuse komponen Tier 2 genuine dikonfirmasi (bukan duplikat), tidak ada dead
+code path lama yang tersisa.
+
+**Verifikasi akhir T-024.5:** `bun run typecheck` 0 error, `bun run --cwd
+apps/web lint` 0 error/warning, `bunx vitest run` **377 pass/5 skip** (naik
+dari baseline 374, +3 test baru).
+
+**Gap tetap sama:** verifikasi manual browser end-to-end tidak bisa
+dilakukan di worktree ini (`DATABASE_URL` tidak tersedia) — sama seperti
+gap T-024.4 sebelumnya. **KI-059** cakupannya diperluas untuk mencakup
+seluruh T-024 (bukan cuma T-024.4), belum Resolved.
+
+**Ringkasan penutup T-024 (5/5 subtask, ✅ Done) — dikerjakan lintas
+beberapa sesi:**
+
+1. **T-024.1** — Domain `media` skeleton (`MediaService`/`IMediaRepository`,
+   implementasi Prisma, `MediaType`/`asMediaId` di `packages/shared`).
+2. **T-024.2** — Upload ke Supabase Storage (`IMediaStorageAdapter`,
+   `UploadMediaUseCase`, `SupabaseMediaStorageAdapter`, bucket `media`
+   Private + signed URL, batas ukuran 50MB dikonfirmasi King Rezi).
+3. **T-024.3** — `OutstandAdapter` media upload working copy via
+   `FakeOutstandAdapter` (kontrak `uploadMediaWorkingCopy` 1-method
+   gabungan, **ADR-106**).
+4. **T-024.4** — Aktifkan kontrol lampiran + preview di Draft Editor,
+   Draft Editor jadi mendukung multi-media (carousel), batas jumlah per
+   `ContentFormat` (**ADR-107**, amandemen ADR-039).
+5. **T-024.5** — Delete Media permanen + dialog konfirmasi Tier 2
+   (ADR-049), di atas.
+
+Seluruh 5 subtask lolos review Ridwan Architecture Reviewer; satu-satunya
+temuan sepanjang task ini adalah 1 temuan MEDIUM di T-024.4 (partial-update
+semantics `mediaIds`), sudah diperbaiki dan diverifikasi ulang (putaran 2:
+0 temuan). Verifikasi kode akhir keseluruhan task: `typecheck`/`lint`
+bersih, `vitest` 377 pass/5 skip (naik dari baseline 338 saat T-024.1
+selesai). Satu-satunya gap tersisa: verifikasi manual browser end-to-end
+(**KI-059**, masih Open) — belum bisa dilakukan di environment kerja
+manapun sesi-sesi ini karena `DATABASE_URL` tidak tersedia, perlu
+ditindaklanjuti King Rezi atau QA Najwa di environment dengan akses DB
+sebelum T-024 dianggap teruji penuh end-to-end.
+
+Referensi lengkap: `tasks/v02-publishing-mvp.md` § T-024,
+`decisions/ADR-106-fake-media-upload-working-copy-1-method-gabungan.md`,
+`decisions/ADR-107-batas-maksimum-jumlah-media-per-content-format.md`.
+
+---
+
 ## 2026-09-14 — T-024.4 Done (4/5 subtask) — Kontrol lampiran media di Draft Editor + preview, carousel multi-format, ADR-107
 
 Branch `claude/t-024-feasibility-e16b39` (worktree terpisah). Belum

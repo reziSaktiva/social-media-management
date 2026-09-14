@@ -41,11 +41,11 @@ Matriks format per platform (IG/FB: Post/Reel/Story · TikTok: video feed tanpa 
 
 | Field         | Value                                                          |
 | ------------- | -------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress (4/5 subtask)                                    |
+| **Status**    | ✅ Done (5/5 subtask)                                            |
 | **Domain**    | media · publishing                                             |
 | **ADR**       | ADR-040 (media upload working copy) · ADR-107 (batas maksimum jumlah media per `ContentFormat`, T-024.4) |
 | **Depends**   | T-025 (Media API adapter) — **di-bypass sebagian** lewat pola Fake (rule 19 AGENTS.md, lihat catatan di bawah) |
-| **Terkait**   | KI-059 (verifikasi manual browser T-024.4 belum bisa dilakukan, `DATABASE_URL` tidak tersedia) |
+| **Terkait**   | KI-059 (verifikasi manual browser T-024.4 & T-024.5 belum bisa dilakukan, `DATABASE_URL` tidak tersedia) |
 | **Baca dulu** | `05-architecture/integration-layer.md` · `06-engineering/environment-management.md` |
 
 Kontrol lampiran media di Draft Editor sudah ada tapi **disabled** dengan keterangan "Lampiran media akan tersedia setelah OutstandAdapter Media API siap".
@@ -211,11 +211,55 @@ kredensial Supabase). T-024.4 ditandai selesai berdasarkan verifikasi kode
 "teruji penuh" end-to-end sampai smoke test manual ini dilakukan di
 environment dengan akses DB.
 
+**T-024.5 selesai (2026-09-14, Prabowo Feature Engineer):** Delete Media +
+dialog konfirmasi Tier 2 (ADR-049) — subtask **terakhir** T-024, menutup
+task ini **5/5**. King Rezi mengonfirmasi lewat `AskUserQuestion`: tombol
+"hapus dari post ini" yang dibangun T-024.4 (unlink-only dari draft, tanpa
+dialog, tidak menghapus data) diganti **total** jadi aksi destruktif — klik
+→ dialog konfirmasi Tier 2 → kalau dikonfirmasi, hapus file Storage + record
+`MediaItem` DB secara **permanen**. Implementasi: `DeleteMediaUseCase` baru
+(`apps/web/src/domains/media/services/delete-media.use-case.ts`) — urutan
+operasi hapus record DB dulu (`MediaService.deleteMediaItem`, throws
+`NotFoundError` kalau tidak ada/bukan milik workspace, Storage tidak
+disentuh kalau ini gagal), baru best-effort hapus file Storage (swallow
+error — orphan file di Storage tanpa record dianggap harmless dibanding
+record menunjuk file hilang yang broken/user-visible); Server Action baru
+`deleteMediaAction` — wiring tipis ke use case, `workspaceId` dari session
+(anti-IDOR, bukan input client); UI `Modal.tsx` — `handleRemoveMedia` lama
+(unlink) dihapus total, diganti wiring **reuse komponen existing**
+`ConfirmActionDialog`/`useConfirmAction` (pola sama persis "Hapus Draft" di
+`DraftsList.tsx`, bukan dialog baru dari nol). Review Ridwan Architecture
+Reviewer: **0 temuan** — urutan operasi delete (DB dulu, Storage
+best-effort) diverifikasi benar di kode+test, anti-IDOR terjaga
+(workspace-scoped di level repository, konsisten pola T-024.1), reuse
+komponen Tier 2 genuine dikonfirmasi (bukan duplikat), tidak ada dead code
+path lama yang tersisa. Verifikasi akhir: `bun run typecheck` 0 error,
+`bun run --cwd apps/web lint` 0 error/warning, `bunx vitest run` **377
+pass/5 skip** (naik dari baseline 374, +3 test baru). Gap verifikasi manual
+browser (`DATABASE_URL` tidak tersedia di worktree ini) berlaku sama untuk
+T-024.5 — lihat **KI-059** (cakupannya sudah diperluas mencakup seluruh
+T-024, bukan cuma T-024.4).
+
+**Penutup T-024 (5/5 subtask, ✅ Done):** seluruh rangkaian ini dikerjakan
+lintas beberapa sesi — T-024.1 (domain `media` skeleton), T-024.2 (upload
+Supabase Storage), T-024.3 (`OutstandAdapter` media upload working copy via
+`FakeOutstandAdapter`, ADR-106), T-024.4 (aktifkan lampiran + preview di
+Draft Editor, ADR-107), dan T-024.5 (Delete Media Tier 2, di atas). Semua
+5 subtask lolos review Ridwan Architecture Reviewer; satu-satunya temuan
+sepanjang task ini adalah **1 temuan MEDIUM di T-024.4** (partial-update
+semantics `mediaIds`), sudah diperbaiki dan diverifikasi ulang (putaran 2:
+0 temuan). Verifikasi kode akhir keseluruhan: `typecheck`/`lint` bersih,
+`vitest` 377 pass/5 skip. Satu-satunya gap tersisa adalah verifikasi manual
+browser end-to-end (**KI-059**, masih Open) — belum bisa dilakukan di
+environment kerja manapun sesi-sesi ini karena `DATABASE_URL` tidak
+tersedia, perlu ditindaklanjuti King Rezi atau QA Najwa di environment
+dengan akses DB sebelum T-024 dianggap teruji penuh end-to-end.
+
 - [x] **T-024.1** Domain `media` skeleton (service + repository, model `MediaItem` sudah ada di schema)
 - [x] **T-024.2** Upload ke Supabase Storage (Supabase JS client **hanya** untuk Storage/Realtime — CRUD tetap Prisma)
 - [x] **T-024.3** `OutstandAdapter` media upload working copy (ADR-040) — via `FakeOutstandAdapter` (ADR-106), belum di-wire ke `UploadMediaUseCase`/UI
 - [x] **T-024.4** Aktifkan kontrol lampiran di Draft Editor + preview — dropzone **custom** (bukan native file input), sesuai keputusan `AskUserQuestion` di atas
-- [ ] **T-024.5** Delete Media + dialog konfirmasi (ADR-049 Tier 2) — scope: upload file baru + preview + delete saja; "Pilih dari Media Library" (browse existing) ditunda
+- [x] **T-024.5** Delete Media + dialog konfirmasi (ADR-049 Tier 2) — scope: upload file baru + preview + delete saja; "Pilih dari Media Library" (browse existing) ditunda
 
 ### T-038 · Toggle Fullscreen/Standard resmi di Draft Editor
 

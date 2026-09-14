@@ -19,7 +19,11 @@ import {
   resolveScheduleTargets,
   SchedulePostsUseCase,
 } from "@/domains/publishing";
-import { MediaService, UploadMediaUseCase } from "@/domains/media";
+import {
+  DeleteMediaUseCase,
+  MediaService,
+  UploadMediaUseCase,
+} from "@/domains/media";
 import { WorkspaceService } from "@/domains/workspace";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
@@ -262,6 +266,46 @@ export async function uploadMediaAction(
     }
     throw error;
   }
+}
+
+/**
+ * Hapus satu `MediaItem` secara PERMANEN (T-024.5, ADR-049 Tier 2) —
+ * dipanggil dari dialog konfirmasi di grid preview `Modal.tsx` setelah
+ * user mengonfirmasi. Business logic (urutan hapus record DB dulu, baru
+ * best-effort hapus file Storage) hidup di `DeleteMediaUseCase` — action
+ * ini hanya wiring: resolve workspace/session, validasi `mediaId`, panggil
+ * use-case, petakan `ApplicationError` (mis. `NotFoundError` kalau media
+ * sudah tidak ada/bukan milik workspace ini) jadi `{ error }` alih-alih
+ * exception mentah, konsisten pola `uploadMediaAction`.
+ */
+export async function deleteMediaAction(
+  mediaId: string,
+): Promise<{ error?: string }> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+  const actingUserId = asUserId(session.user.id);
+
+  const useCase = new DeleteMediaUseCase(
+    mediaRepository,
+    supabaseMediaStorageAdapter,
+  );
+
+  try {
+    await useCase.execute(
+      { workspaceId, mediaId: asMediaId(mediaId) },
+      actingUserId,
+    );
+  } catch (error) {
+    if (error instanceof ApplicationError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  return {};
 }
 
 export interface ConnectedAccountDto {
