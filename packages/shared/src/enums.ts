@@ -79,3 +79,15 @@ export enum NotificationType {
   /** Webhook Outstand `account.token_expired` (T-026.5) — akun butuh reconnect. */
   AccountReconnectRequired = "account_reconnect_required",
 }
+
+/**
+ * Jenis `MediaItem` (BC-08, `domain-model.md` § BC-08 — Media). Disimpan
+ * mentah sebagai `String` di kolom `media_items.type` (bukan Postgres enum
+ * — konsisten pola `PublishingPost.status`/`ContentStatus`), dipetakan ke
+ * union ini di boundary repository (`toRecord`).
+ */
+export enum MediaType {
+  Image = "image",
+  Video = "video",
+  Gif = "gif",
+}
