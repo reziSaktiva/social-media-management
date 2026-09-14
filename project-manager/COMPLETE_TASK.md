@@ -8,6 +8,49 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-14 — T-024.3 Done (3/5 subtask) — Fake OutstandAdapter media upload working copy, ADR-106
+
+Branch `claude/t-024-feasibility-e16b39` (worktree terpisah). Belum
+di-commit/push sesi ini. Lanjutan T-024.1/T-024.2 (skeleton domain `media` +
+upload Supabase Storage, sudah tercatat entri di bawah).
+
+**Implementasi (Elon Backend Engineer):**
+
+- Kontrak baru di `IOutstandAdapter`
+  (`packages/shared/src/contracts/outstand-adapter.ts`):
+  `UploadMediaWorkingCopyInput`/`UploadMediaWorkingCopyResult` + method
+  `uploadMediaWorkingCopy`.
+- Implementasi Fake di
+  `apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts` — instant
+  always-success (pola ADR-059), `outstandMediaId` unik per panggilan
+  (`crypto.randomUUID()`, bukan deterministik), `expiresAt` mock +24 jam. 2
+  unit test baru.
+- 7 file test lain (mock `IOutstandAdapter`) ditambah stub field baru supaya
+  tetap type-safe, tanpa mengubah behavior test yang sudah ada.
+- **ADR-106 baru**
+  (`decisions/ADR-106-fake-media-upload-working-copy-1-method-gabungan.md`,
+  baris sudah ditambahkan ke `DECISIONS.md`): keputusan menggabungkan 3
+  langkah Outstand Media API (request upload URL → PUT → confirm) jadi **1
+  method ACL gabungan** — berbeda dari ADR-105 (`connectAccount`/
+  `exchangeConnectCode`, di-split 2-method) karena tidak ada redirect browser
+  yang perlu diuji terpisah di sini; ketiga langkah murni server-to-server
+  berurutan.
+- Scope SENGAJA tidak menyentuh `UploadMediaUseCase`/`MediaService`/UI —
+  method baru murni kontrak+Fake, belum di-wire ke manapun.
+
+**Review (Ridwan Architecture Reviewer):** 0 temuan pelanggaran. Verifikasi
+independen: `bun run typecheck` 0 error, `bunx vitest run` **346 pass/5
+skip** (naik dari baseline 344/5). 1 risiko forward-looking dicatat
+(non-blocking, di ADR-106 sendiri): kalau Real adapter (T-025.5) nanti butuh
+retry granular per-langkah (mis. PUT gagal terpisah dari request URL),
+kontrak 1-method gabungan ini mungkin perlu di-split lagi lewat ADR baru.
+
+**Status:** T-024 `🟡 In Progress (3/5 subtask)` — sisa T-024.4 (UI dropzone
+custom + preview) dan T-024.5 (delete media). Detail:
+`tasks/v02-publishing-mvp.md` § T-024.
+
+---
+
 ## 2026-09-14 — T-024.2 Done (2/5 subtask) — Upload media ke Supabase Storage
 
 Branch `claude/t-024-feasibility-e16b39` (worktree terpisah). Belum

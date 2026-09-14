@@ -116,6 +116,11 @@ function createFakeAdapter(
 ): IOutstandAdapter {
   return {
     connectAccount: async () => ({ redirectUrl: "/unused" }),
+    uploadMediaWorkingCopy: async () => ({
+      outstandMediaId: "unused",
+      outstandMediaUrl: "https://fake.outstand.local/media/unused",
+      expiresAt: new Date(),
+    }),
     exchangeConnectCode: async () => ({
       outstandAccountId: "unused",
       platform: "instagram" as never,

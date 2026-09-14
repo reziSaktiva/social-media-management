@@ -41,7 +41,7 @@ Matriks format per platform (IG/FB: Post/Reel/Story · TikTok: video feed tanpa 
 
 | Field         | Value                                                          |
 | ------------- | -------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress (2/5 subtask)                                    |
+| **Status**    | 🟡 In Progress (3/5 subtask)                                    |
 | **Domain**    | media · publishing                                             |
 | **ADR**       | ADR-040 (media upload working copy)                            |
 | **Depends**   | T-025 (Media API adapter) — **di-bypass sebagian** lewat pola Fake (rule 19 AGENTS.md, lihat catatan di bawah) |
@@ -130,9 +130,34 @@ file di `UploadMediaUseCase.execute` (menolak sebelum panggil storage
 adapter), 1 unit test baru. Verifikasi akhir: `bun run typecheck` 0 error,
 `bunx vitest run` **344 pass/5 skip**, tidak ada regresi.
 
+**T-024.3 selesai (2026-09-14, Elon Backend Engineer):** `OutstandAdapter`
+media upload working copy via `FakeOutstandAdapter` — kontrak
+`UploadMediaWorkingCopyInput`/`UploadMediaWorkingCopyResult` + method
+`uploadMediaWorkingCopy` ditambahkan ke `IOutstandAdapter`
+(`packages/shared/src/contracts/outstand-adapter.ts`). Implementasi Fake di
+`apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts` — instant
+always-success (pola ADR-059), `outstandMediaId` unik per panggilan
+(`crypto.randomUUID()`), `expiresAt` mock +24 jam, 2 unit test baru. 7 file
+test lain (mock `IOutstandAdapter`) ditambah stub field baru supaya tetap
+type-safe, tanpa mengubah behavior test yang sudah ada. **ADR-106 baru**
+dibuat: keputusan menggabungkan 3 langkah Outstand Media API (request upload
+URL → PUT → confirm) jadi **1 method ACL gabungan** (bukan split 2-method
+seperti `connectAccount`/`exchangeConnectCode` di ADR-105) — karena tidak
+ada redirect browser yang perlu diuji terpisah di sini, murni server-to-server
+berurutan. Detail lengkap:
+[`decisions/ADR-106-fake-media-upload-working-copy-1-method-gabungan.md`](../decisions/ADR-106-fake-media-upload-working-copy-1-method-gabungan.md).
+Scope SENGAJA tidak menyentuh `UploadMediaUseCase`/`MediaService`/UI —
+method baru murni kontrak+Fake, belum di-wire ke manapun. Review Ridwan
+Architecture Reviewer: **0 temuan pelanggaran** (verifikasi independen
+`typecheck` 0 error, **346 test pass/5 skip**, naik dari baseline 344/5).
+Ridwan mencatat 1 risiko forward-looking (non-blocking, dicatat di ADR-106
+sendiri): kalau Real adapter (T-025.5) nanti butuh retry granular per-langkah
+(mis. PUT gagal terpisah dari request URL), kontrak 1-method gabungan ini
+mungkin perlu di-split lagi lewat ADR baru.
+
 - [x] **T-024.1** Domain `media` skeleton (service + repository, model `MediaItem` sudah ada di schema)
 - [x] **T-024.2** Upload ke Supabase Storage (Supabase JS client **hanya** untuk Storage/Realtime — CRUD tetap Prisma)
-- [ ] **T-024.3** `OutstandAdapter` media upload working copy (ADR-040) — tetap menunggu real adapter (T-025), akan dibangun via `FakeOutstandAdapter` dulu (pola ADR-059/ADR-105) bila didahulukan sebelum T-025 selesai
+- [x] **T-024.3** `OutstandAdapter` media upload working copy (ADR-040) — via `FakeOutstandAdapter` (ADR-106), belum di-wire ke `UploadMediaUseCase`/UI
 - [ ] **T-024.4** Aktifkan kontrol lampiran di Draft Editor + preview — dropzone **custom** (bukan native file input), sesuai keputusan `AskUserQuestion` di atas
 - [ ] **T-024.5** Delete Media + dialog konfirmasi (ADR-049 Tier 2) — scope: upload file baru + preview + delete saja; "Pilih dari Media Library" (browse existing) ditunda
 
