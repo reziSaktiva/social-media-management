@@ -40,6 +40,7 @@ function createFakeRepository(
     create: async () => fakeRecord(),
     findById: async () => null,
     findByWorkspace: async () => [],
+    findByIds: async () => [],
     delete: async () => null,
     ...overrides,
   };

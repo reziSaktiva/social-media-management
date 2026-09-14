@@ -60,6 +60,25 @@ export interface IMediaRepository {
   ): Promise<MediaItemRecord[]>;
 
   /**
+   * Batch fetch beberapa `MediaItem` by id sekaligus, di-scope ke
+   * `workspaceId` (anti-IDOR — sama pola `findById`, tapi `findMany` satu
+   * query untuk N id, bukan N round-trip). Dipakai T-024.4:
+   * `getDraftAction` (resolve `PublishingPost.mediaIds` jadi preview
+   * lengkap) dan validasi ownership sebelum mediaIds dipersist ke draft
+   * (`resolveDraftMediaIds` di domain `publishing`). `mediaId` yang tidak
+   * ditemukan atau bukan milik workspace ini TIDAK menyebabkan error di
+   * sini — cukup tidak ikut di hasil (caller yang membandingkan panjang
+   * hasil vs. input untuk menyimpulkan mana yang invalid/bukan milik
+   * workspace ini).
+   *
+   * `userId` (RLS) — acting user for `withCurrentUser`.
+   */
+  findByIds(
+    input: { workspaceId: WorkspaceId; mediaIds: MediaId[] },
+    userId: UserId,
+  ): Promise<MediaItemRecord[]>;
+
+  /**
    * Hapus satu `MediaItem` by id, di-scope ke `workspaceId` (anti-IDOR).
    * Hard delete (tidak ada soft-delete di schema `MediaItem` — beda dari
    * `PublishingPost.deletedAt`) — pembersihan file fisik di Supabase

@@ -95,6 +95,26 @@ export const mediaRepository: IMediaRepository = {
   },
 
   /**
+   * `findMany` batch (bukan loop `findFirst`) — satu query untuk N id,
+   * `workspaceId` tetap wajib di WHERE (anti-IDOR, konsisten `findById`).
+   * `mediaId` yang tidak ditemukan/bukan milik workspace ini otomatis tidak
+   * ikut hasil — tidak ada error di layer ini.
+   */
+  async findByIds({ workspaceId, mediaIds }, userId) {
+    if (mediaIds.length === 0) {
+      return [];
+    }
+    const items = await withCurrentUser(userId, (tx) =>
+      tx.mediaItem.findMany({
+        where: { id: { in: mediaIds }, workspaceId },
+        orderBy: { createdAt: "desc" },
+      }),
+    );
+
+    return items.map(toRecord);
+  },
+
+  /**
    * `deleteMany` + fetch-before-delete di dalam transaksi yang sama
    * (bukan `delete` langsung) — supaya WHERE mencakup `workspaceId`
    * (anti-IDOR) DAN caller tetap dapat record yang dihapus (dibutuhkan

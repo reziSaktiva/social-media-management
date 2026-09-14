@@ -41,6 +41,7 @@ function createFakeRepository(
     create: async () => createRecord(),
     findById: async () => null,
     findByWorkspace: async () => [],
+    findByIds: async () => [],
     delete: async () => null,
     ...overrides,
   };
@@ -155,5 +156,42 @@ describe("MediaService", () => {
         UPLOADER_ID,
       ),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it("listByIds() returns [] without calling the repository when mediaIds is empty", async () => {
+    let called = false;
+    const repository = createFakeRepository({
+      findByIds: async () => {
+        called = true;
+        return [createRecord()];
+      },
+    });
+    const service = new MediaService(repository);
+
+    const result = await service.listByIds(
+      { workspaceId: WORKSPACE_ID, mediaIds: [] },
+      UPLOADER_ID,
+    );
+
+    expect(result).toEqual([]);
+    expect(called).toBe(false);
+  });
+
+  it("listByIds() delegates to repository.findByIds() when mediaIds is non-empty", async () => {
+    const records = [
+      createRecord(),
+      createRecord({ id: asMediaId("media-2") }),
+    ];
+    const repository = createFakeRepository({
+      findByIds: async () => records,
+    });
+    const service = new MediaService(repository);
+
+    const result = await service.listByIds(
+      { workspaceId: WORKSPACE_ID, mediaIds: [MEDIA_ID, asMediaId("media-2")] },
+      UPLOADER_ID,
+    );
+
+    expect(result).toHaveLength(2);
   });
 });

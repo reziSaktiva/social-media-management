@@ -8,6 +8,92 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-14 — T-024.4 Done (4/5 subtask) — Kontrol lampiran media di Draft Editor + preview, carousel multi-format, ADR-107
+
+Branch `claude/t-024-feasibility-e16b39` (worktree terpisah). Belum
+di-commit/push sesi ini. Lanjutan T-024.1/.2/.3 (skeleton domain `media` +
+upload Supabase Storage + Fake OutstandAdapter working copy, sudah tercatat
+entri di bawah).
+
+**Keputusan baru dikonfirmasi King Rezi via `AskUserQuestion`:** Draft Editor
+mendukung **multi-media (carousel)**, batas jumlah TERGANTUNG `ContentFormat`
+(bukan flat number):
+
+- `Post` → maks **10** media (carousel)
+- `Reel`/`Story`/`Pin` → maks **1**
+- Kalau draft target beberapa akun dengan format berbeda sekaligus (mis. IG
+  Reel + FB Story), batas efektif = **MINIMUM** dari max-count semua format
+  yang dipilih.
+
+Ini mengamandemen ADR-039 (content format matrix) → **ADR-107 baru**
+(`decisions/ADR-107-batas-maksimum-jumlah-media-per-content-format.md`,
+status ADR-039 diberi tag `Accepted — Amended by ADR-107 (2026-09-14)`
+bersamaan, baris `DECISIONS.md` untuk keduanya sudah disinkronkan).
+
+**Implementasi (Prabowo Feature Engineer, full-stack Server Action → service
+→ repository → UI):**
+
+- `content-format-matrix.ts` — `MAX_MEDIA_COUNT_BY_FORMAT`,
+  `maxMediaCountForFormat(s)`, `assertMediaCountWithinLimit` (ADR-107).
+- `resolve-draft-media-ids.ts` (baru) — validasi ownership `mediaIds`
+  (workspace-scoped, anti-IDOR), pola sama `resolveScheduleTargets`.
+- `PublishingService.saveDraft`/`updateDraft` + `IPublishingRepository`/
+  implementasi Prisma — kolom `media_ids` (sebelumnya dead sejak schema
+  dibuat) sekarang di-wire penuh, dengan partial-update semantics
+  (`mediaIds: undefined` = kolom tidak disentuh, `[]` = kolom dikosongkan).
+- `MediaService`/`IMediaRepository` — method baru `findByIds`/`listByIds`
+  (batch fetch, workspace-scoped).
+- Server Action baru `uploadMediaAction`
+  (`apps/web/src/app/(app)/components/draft-editor/actions.ts`) — pertama
+  kalinya domain `media` (T-024.1–.3) benar-benar disambungkan ke UI.
+  `saveDraftAction`/`updateDraftAction`/`getDraftAction`/`scheduleDraftAction`/
+  `publishNowAction` diperluas dengan `mediaIds`.
+- UI (`Modal.tsx`) — blok Media disabled diganti custom dropzone (drag-drop +
+  click-browse), grid preview thumbnail multi-media, tombol hapus-per-item
+  (unlink dari draft, **bukan** delete permanent — itu tetap T-024.5, out of
+  scope). "Pilih dari Media Library" ditampilkan sebagai link **disabled
+  dengan tooltip "Coming soon"** (bukan disembunyikan total) — DITUNDA
+  sesuai keputusan sebelumnya, belum dibangun fiturnya.
+
+**Review (Ridwan Architecture Reviewer, 2 putaran):**
+
+- Putaran 1: **1 temuan MEDIUM** — `resolveAndValidateMediaIds` dkk selalu
+  meng-collapse "field tidak dikirim" jadi `[]` (`?? []`), sehingga
+  partial-update semantics yang didesain (`undefined` = kolom tidak
+  disentuh) tidak pernah benar-benar tereksekusi dari caller yang ada —
+  berisiko silent data loss untuk entry point masa depan (mis. Route
+  Handler `/api/v1` yang tidak kirim `mediaIds`). Bukan bug aktif hari ini
+  (satu-satunya caller, `Modal.tsx`, selalu kirim array konkret), tapi
+  berisiko kalau ada caller baru meniru pola ini.
+- Prabowo memperbaiki: bedakan `undefined` (field benar-benar tidak
+  dikirim) vs `[]` (eksplisit dikosongkan) dari titik paling awal
+  (`resolveAndValidateMediaIds` dan resolusi di `scheduleDraftAction`/
+  `publishNowAction`) sampai ke `PublishingService`. 12 unit test baru
+  menguji 3 skenario di 4 Server Action.
+- Putaran 2 (verifikasi ulang): **0 temuan**, fix dikonfirmasi benar di
+  level kode (bukan cuma percaya laporan), `Modal.tsx` tidak berubah/tidak
+  regresi.
+
+**Verifikasi akhir:** `bun run typecheck` 0 error, `bun run --cwd apps/web
+lint` 0 error/warning, `bunx vitest run` **374 pass/5 skip** (naik dari
+baseline 362, sebelumnya 346 sebelum T-024.4 mulai).
+
+**Gap verifikasi manual browser (belum ditutup, KI-059 baru):** verifikasi
+end-to-end nyata (upload → save draft → reopen edit → preview restore →
+validasi batas count per format) **tidak bisa dilakukan** sesi ini — dev
+server gagal start di worktree ini karena `DATABASE_URL` tidak tersedia
+(perlu kredensial Supabase). Dicatat sebagai Known Issue baru **KI-059**
+(`PROJECT_STATE.md`), menunggu King Rezi/environment dengan akses DB untuk
+smoke test sebelum T-024 dianggap teruji penuh end-to-end.
+
+**Status:** T-024 `🟡 In Progress (4/5 subtask)` — sisa T-024.5 (delete
+media + dialog konfirmasi). Belum ada commit/push sesi ini (T-024.1/.2
+sudah di-PR #122, T-024.3 sudah commit terpisah `2062d85` tapi belum PR
+baru). Detail: `tasks/v02-publishing-mvp.md` § T-024,
+`decisions/ADR-107-batas-maksimum-jumlah-media-per-content-format.md`.
+
+---
+
 ## 2026-09-14 — T-024.3 Done (3/5 subtask) — Fake OutstandAdapter media upload working copy, ADR-106
 
 Branch `claude/t-024-feasibility-e16b39` (worktree terpisah). Belum

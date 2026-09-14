@@ -41,10 +41,11 @@ Matriks format per platform (IG/FB: Post/Reel/Story · TikTok: video feed tanpa 
 
 | Field         | Value                                                          |
 | ------------- | -------------------------------------------------------------- |
-| **Status**    | 🟡 In Progress (3/5 subtask)                                    |
+| **Status**    | 🟡 In Progress (4/5 subtask)                                    |
 | **Domain**    | media · publishing                                             |
-| **ADR**       | ADR-040 (media upload working copy)                            |
+| **ADR**       | ADR-040 (media upload working copy) · ADR-107 (batas maksimum jumlah media per `ContentFormat`, T-024.4) |
 | **Depends**   | T-025 (Media API adapter) — **di-bypass sebagian** lewat pola Fake (rule 19 AGENTS.md, lihat catatan di bawah) |
+| **Terkait**   | KI-059 (verifikasi manual browser T-024.4 belum bisa dilakukan, `DATABASE_URL` tidak tersedia) |
 | **Baca dulu** | `05-architecture/integration-layer.md` · `06-engineering/environment-management.md` |
 
 Kontrol lampiran media di Draft Editor sudah ada tapi **disabled** dengan keterangan "Lampiran media akan tersedia setelah OutstandAdapter Media API siap".
@@ -155,10 +156,65 @@ sendiri): kalau Real adapter (T-025.5) nanti butuh retry granular per-langkah
 (mis. PUT gagal terpisah dari request URL), kontrak 1-method gabungan ini
 mungkin perlu di-split lagi lewat ADR baru.
 
+**T-024.4 selesai (2026-09-14, Prabowo Feature Engineer):** kontrol lampiran
+media di Draft Editor diaktifkan penuh + preview — full-stack (Server
+Action → service → repository → UI). Sebelum implementasi, King Rezi
+mengonfirmasi 2 keputusan baru lewat `AskUserQuestion`: (1) Draft Editor
+mendukung **multi-media (carousel)**, batas jumlah TERGANTUNG
+`ContentFormat` (`Post` maks 10, `Reel`/`Story`/`Pin` maks 1; kalau draft
+menargetkan beberapa akun dengan format berbeda sekaligus, batas efektif =
+**MINIMUM** dari batas semua format yang dipilih) — mengamandemen ADR-039 →
+**ADR-107 baru**
+([`decisions/ADR-107-batas-maksimum-jumlah-media-per-content-format.md`](../decisions/ADR-107-batas-maksimum-jumlah-media-per-content-format.md)).
+(2) "Pilih dari Media Library" (browse existing) tetap ditunda sesuai
+keputusan sebelumnya — ditampilkan sebagai link **disabled dengan tooltip
+"Coming soon"**, bukan disembunyikan total. Implementasi:
+`content-format-matrix.ts` (`MAX_MEDIA_COUNT_BY_FORMAT`,
+`maxMediaCountForFormat(s)`, `assertMediaCountWithinLimit`, ADR-107);
+`resolve-draft-media-ids.ts` baru (validasi ownership `mediaIds`,
+workspace-scoped, anti-IDOR, pola sama `resolveScheduleTargets`);
+`PublishingService.saveDraft`/`updateDraft` + `IPublishingRepository` +
+implementasi Prisma — kolom `media_ids` (dead sejak schema dibuat) di-wire
+penuh dengan partial-update semantics (`mediaIds: undefined` = kolom tidak
+disentuh, `[]` = kolom dikosongkan); `MediaService`/`IMediaRepository`
+method baru `findByIds`/`listByIds` (batch fetch, workspace-scoped); Server
+Action baru `uploadMediaAction`
+(`apps/web/src/app/(app)/components/draft-editor/actions.ts`) — pertama
+kalinya domain `media` (T-024.1–.3) benar-benar disambungkan ke UI;
+`saveDraftAction`/`updateDraftAction`/`getDraftAction`/`scheduleDraftAction`/
+`publishNowAction` diperluas dengan `mediaIds`. UI (`Modal.tsx`): blok Media
+disabled diganti custom dropzone (drag-drop + click-browse), grid preview
+thumbnail multi-media, tombol hapus-per-item (unlink dari draft, **bukan**
+delete permanent — itu tetap T-024.5), enforce batas count di client
+(mirror server, ADR-107). Review Ridwan Architecture Reviewer (2 putaran):
+putaran 1 — **1 temuan MEDIUM**: `resolveAndValidateMediaIds` dkk selalu
+meng-collapse "field tidak dikirim" jadi `[]` (`?? []`), sehingga partial-
+update semantics (`undefined` = kolom tidak disentuh) tidak pernah benar-
+benar tereksekusi dari caller yang ada — bukan bug aktif hari ini (satu-
+satunya caller, `Modal.tsx`, selalu kirim array konkret), tapi berisiko
+silent data loss untuk entry point masa depan (mis. Route Handler `/api/v1`
+yang tidak kirim `mediaIds`). Diperbaiki: bedakan `undefined` vs `[]` dari
+titik paling awal (`resolveAndValidateMediaIds`, resolusi di
+`scheduleDraftAction`/`publishNowAction`) sampai ke `PublishingService`, 12
+unit test baru menguji 3 skenario di 4 Server Action. Putaran 2 (verifikasi
+ulang): **0 temuan**, fix dikonfirmasi benar di level kode, `Modal.tsx`
+tidak berubah/tidak regresi. Verifikasi akhir: `typecheck` 0 error, `lint`
+0 error/warning, `vitest` **374 pass/5 skip** (naik dari baseline 362,
+346 sebelum T-024.4 mulai).
+
+**Gap verifikasi (belum ditutup, lihat KI-059):** verifikasi manual browser
+end-to-end (upload → save draft → reopen edit → preview restore → validasi
+batas count per format) **belum bisa dilakukan** sesi ini — dev server
+gagal start di worktree ini karena `DATABASE_URL` tidak tersedia (perlu
+kredensial Supabase). T-024.4 ditandai selesai berdasarkan verifikasi kode
+(typecheck/lint/unit test + 2 putaran review arsitektur), tapi belum
+"teruji penuh" end-to-end sampai smoke test manual ini dilakukan di
+environment dengan akses DB.
+
 - [x] **T-024.1** Domain `media` skeleton (service + repository, model `MediaItem` sudah ada di schema)
 - [x] **T-024.2** Upload ke Supabase Storage (Supabase JS client **hanya** untuk Storage/Realtime — CRUD tetap Prisma)
 - [x] **T-024.3** `OutstandAdapter` media upload working copy (ADR-040) — via `FakeOutstandAdapter` (ADR-106), belum di-wire ke `UploadMediaUseCase`/UI
-- [ ] **T-024.4** Aktifkan kontrol lampiran di Draft Editor + preview — dropzone **custom** (bukan native file input), sesuai keputusan `AskUserQuestion` di atas
+- [x] **T-024.4** Aktifkan kontrol lampiran di Draft Editor + preview — dropzone **custom** (bukan native file input), sesuai keputusan `AskUserQuestion` di atas
 - [ ] **T-024.5** Delete Media + dialog konfirmasi (ADR-049 Tier 2) — scope: upload file baru + preview + delete saja; "Pilih dari Media Library" (browse existing) ditunda
 
 ### T-038 · Toggle Fullscreen/Standard resmi di Draft Editor

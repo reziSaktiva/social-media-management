@@ -1,6 +1,7 @@
 import type {
   ConnectedAccountId,
   ContentFormat,
+  MediaId,
   PostId,
   PostTargetId,
   SocialPlatform,
@@ -15,6 +16,16 @@ export interface PublishingPostRecord {
   authorId: UserId;
   caption: string;
   status: ContentStatus;
+  /**
+   * Media (T-024.4) yang di-attach ke post ini — SATU set untuk seluruh
+   * post (bukan per-target/per-akun, ADR-107). Opsional di level tipe
+   * (bukan `MediaId[]` wajib) supaya banyak fake repository di test
+   * lain (schedule/publish/cancel/retry use-case, tidak menyentuh media
+   * sama sekali) tidak wajib ikut diubah — `undefined` diperlakukan sama
+   * dengan array kosong oleh seluruh caller (`getDraftAction`,
+   * `resolveDraftMediaIds`, dst.).
+   */
+  mediaIds?: MediaId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -243,6 +254,8 @@ export interface IPublishingRepository {
     workspaceId: WorkspaceId;
     authorId: UserId;
     caption: string;
+    /** T-024.4 — `undefined` sama dengan tidak melampirkan media sama sekali (kolom DB default `[]`). */
+    mediaIds?: MediaId[];
   }): Promise<PublishingPostRecord>;
 
   /**
@@ -285,7 +298,20 @@ export interface IPublishingRepository {
    * (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   updateDraftCaption(
-    input: { workspaceId: WorkspaceId; postId: PostId; caption: string },
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      caption: string;
+      /**
+       * T-024.4 — partial update semantics: `undefined` berarti kolom
+       * `mediaIds` TIDAK disentuh sama sekali (mempertahankan nilai yang
+       * sudah dipersist sebelumnya, mis. dari `saveDraftAction` sebelum
+       * `scheduleDraftAction`/`publishNowAction` dipanggil) — beda dari
+       * array kosong `[]` yang secara eksplisit mengosongkan lampiran
+       * media post ini.
+       */
+      mediaIds?: MediaId[];
+    },
     userId: UserId,
   ): Promise<PublishingPostRecord | null>;
 

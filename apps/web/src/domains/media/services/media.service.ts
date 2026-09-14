@@ -76,6 +76,29 @@ export class MediaService {
   }
 
   /**
+   * Batch fetch beberapa `MediaItem` by id sekaligus, di-scope ke
+   * `workspaceId` (T-024.4) — dipakai untuk resolve `PublishingPost.mediaIds`
+   * jadi preview lengkap (`getDraftAction`) dan validasi ownership sebelum
+   * mediaIds dipersist ke draft. Skip panggilan repository sama sekali
+   * kalau `mediaIds` kosong (pola sama `countScheduledByAccount`).
+   *
+   * **Keputusan (batch `findByIds`, bukan loop `getMediaItem` per id):**
+   * satu query `findMany` untuk N id lebih efisien daripada N round-trip
+   * DB terpisah, terutama untuk draft dengan carousel media (sampai 10
+   * item, ADR-107) — biaya implementasi tambahan minimal (satu method baru
+   * di `IMediaRepository`, mirror pola `findByWorkspace`).
+   */
+  async listByIds(
+    input: { workspaceId: WorkspaceId; mediaIds: MediaId[] },
+    userId: UserId,
+  ): Promise<MediaItemRecord[]> {
+    if (input.mediaIds.length === 0) {
+      return [];
+    }
+    return this.repository.findByIds(input, userId);
+  }
+
+  /**
    * Hapus satu `MediaItem`, di-scope ke `workspaceId` (anti-IDOR). Throws
    * `NotFoundError` kalau tidak ditemukan atau bukan milik workspace ini.
    *
