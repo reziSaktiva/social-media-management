@@ -8,6 +8,7 @@ import type {
   PostTargetOutcome,
 } from "@social/shared";
 import { SocialPlatform } from "@social/shared";
+import { parseBase64UrlJson } from "./connect-state";
 
 /**
  * Hash string sederhana (FNV-1a 32-bit) — dipakai untuk menurunkan angka
@@ -58,15 +59,11 @@ function encodeFakeState(state: FakeConnectState): string {
 }
 
 function decodeFakeState(state: string): FakeConnectState {
-  try {
-    return JSON.parse(
-      Buffer.from(state, "base64url").toString("utf8"),
-    ) as FakeConnectState;
-  } catch {
-    throw new Error(
-      "Fake OutstandAdapter: state tidak valid/rusak (exchangeConnectCode).",
-    );
-  }
+  // Parse mentah base64url→JSON di-reuse dari `connect-state.ts` (dipakai
+  // juga oleh Route Handler/Server Action) — hanya SATU implementasi
+  // encoding raw ini yang perlu tetap sinkron dengan `encodeFakeState` di
+  // atas, bukan dua decoder terpisah.
+  return parseBase64UrlJson(state) as FakeConnectState;
 }
 
 /** Handle dummy realistis per platform (T-013/T-015.3) — deterministik dari seed supaya stabil dipanggil ulang di test. */

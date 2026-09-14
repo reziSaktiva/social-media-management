@@ -36,17 +36,24 @@ export interface DecodedConnectAccountState {
   nonce: string;
 }
 
+/**
+ * Parse mentah base64url→JSON (dipakai `decodeConnectAccountState` di bawah
+ * dan `decodeFakeState` di `fake-outstand-adapter.ts`, supaya SATU-satunya
+ * implementasi encoding raw ini tidak diduplikasi lintas file — cuma
+ * validasi bentuk per-kebutuhan yang beda di masing-masing caller).
+ */
+export function parseBase64UrlJson(state: string): unknown {
+  try {
+    return JSON.parse(Buffer.from(state, "base64url").toString("utf8"));
+  } catch {
+    throw new Error("OutstandAdapter connect state tidak valid/rusak.");
+  }
+}
+
 export function decodeConnectAccountState(
   state: string,
 ): DecodedConnectAccountState {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(Buffer.from(state, "base64url").toString("utf8"));
-  } catch {
-    throw new Error(
-      "OutstandAdapter connect state tidak valid/rusak (loopback callback).",
-    );
-  }
+  const parsed = parseBase64UrlJson(state);
 
   if (
     typeof parsed !== "object" ||

@@ -27,10 +27,11 @@ const ALL_PLATFORMS = Object.values(SocialPlatform);
  * (Server Action → `WorkspaceService.initiateConnectAccount` →
  * `OutstandAdapter.connectAccount`, Fake loopback ke callback route kita
  * sendiri sampai real adapter T-025 tersedia). Sukses berarti Server Action
- * `redirect()` ke `redirectUrl` OAuth — komponen ini unmount, tidak perlu
- * reset state manual (pola sama `WorkspacesSettingsView.handleSwitch`).
- * Gagal (RBAC/validasi) mengembalikan `{ error }` tanpa redirect —
- * ditampilkan lewat `toast.error` (pola sama `RetryTargetButton`).
+ * `redirect()` ke `redirectUrl` OAuth — `pendingPlatform` tetap direset di
+ * `finally` (bukan diasumsikan unmount instan) supaya item dropdown tidak
+ * macet disabled kalau navigasinya tertunda/terinterupsi. Gagal
+ * (RBAC/validasi) mengembalikan `{ error }` tanpa redirect — ditampilkan
+ * lewat `toast.error` (pola sama `RetryTargetButton`).
  *
  * Ikon trigger "+" `PlusSignIcon` (hugeicons, default preset Maia) — ikon
  * brand per platform (`PLATFORM_ICON`) tetap `react-icons` (ADR-058,
@@ -48,14 +49,20 @@ export function ConnectPlatformMenu() {
   function handleConnect(platform: SocialPlatform) {
     setPendingPlatform(platform);
     startTransition(async () => {
-      const result = await initiateConnectAccountAction(platform);
-      if (result?.error) {
-        toast.error(result.error);
+      // `finally` (bukan reset manual di jalur sukses) — kalau redirect()
+      // sukses, promise-nya tetap throw (NEXT_REDIRECT) yang harus terus
+      // di-propagate supaya Next.js benar-benar menavigasi, tapi `finally`
+      // tetap jalan lebih dulu. Ini mencegah item dropdown macet disabled
+      // kalau unmount-nya tertunda/gagal (mis. navigasi diinterupsi) —
+      // sebelumnya cuma direset di jalur error.
+      try {
+        const result = await initiateConnectAccountAction(platform);
+        if (result?.error) {
+          toast.error(result.error);
+        }
+      } finally {
         setPendingPlatform(null);
       }
-      // Sukses: Server Action redirect() di server, komponen ini unmount —
-      // tidak perlu reset `pendingPlatform` manual (pola sama
-      // `WorkspacesSettingsView.handleSwitch`).
     });
   }
 

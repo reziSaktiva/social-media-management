@@ -9,25 +9,16 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { WorkspaceService } from "@/domains/workspace";
-import { getOutstandAdapter } from "@/lib/adapters/outstand";
 import { decodeConnectAccountState } from "@/lib/adapters/outstand/connect-state";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
+import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
 import {
   OUTSTAND_CONNECT_NONCE_COOKIE,
   outstandConnectNonceCookieOptions,
 } from "@/lib/workspace/outstand-connect-nonce-cookie";
 import { toActionError } from "@/lib/utils/errors";
-
-function createWorkspaceServiceWithOutstandAdapter(): WorkspaceService {
-  return new WorkspaceService(
-    workspaceRepository,
-    undefined,
-    undefined,
-    getOutstandAdapter(),
-  );
-}
 
 /**
  * Simpan nonce CSRF (dari `state` yang dibentuk `connectAccount`) sebagai

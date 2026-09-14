@@ -1,13 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { asConnectedAccountId, asUserId } from "@social/shared";
-import { WorkspaceService } from "@/domains/workspace";
-import { getOutstandAdapter } from "@/lib/adapters/outstand";
 import { decodeConnectAccountState } from "@/lib/adapters/outstand/connect-state";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getServerEnv } from "@/lib/env";
-import { workspaceRepository } from "@/lib/repositories/workspace";
 import { ApplicationError } from "@/lib/utils/errors";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
+import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
 import { OUTSTAND_CONNECT_NONCE_COOKIE } from "@/lib/workspace/outstand-connect-nonce-cookie";
 
 const CONNECTED_ACCOUNTS_PATH = "/settings/connected-accounts";
@@ -63,6 +61,10 @@ export async function GET(request: NextRequest): Promise<Response> {
     const response = NextResponse.redirect(
       new URL(CONNECTED_ACCOUNTS_PATH, appOrigin),
     );
+    // Bersihkan nonce yang sama seperti redirectWithStatus — no-op ini juga
+    // menutup satu percobaan connect/reconnect, tidak ada alasan cookie-nya
+    // bertahan sampai TTL 10 menit habis sendiri.
+    response.cookies.delete(OUTSTAND_CONNECT_NONCE_COOKIE);
     return response;
   }
   if (!code || !state) {
@@ -92,12 +94,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const { workspaceId } = await getWorkspaceContext();
-  const workspaceService = new WorkspaceService(
-    workspaceRepository,
-    undefined,
-    undefined,
-    getOutstandAdapter(),
-  );
+  const workspaceService = createWorkspaceServiceWithOutstandAdapter();
 
   try {
     await workspaceService.completeAccountConnection({
