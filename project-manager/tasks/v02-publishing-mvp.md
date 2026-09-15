@@ -45,7 +45,7 @@ Matriks format per platform (IG/FB: Post/Reel/Story · TikTok: video feed tanpa 
 | **Domain**    | media · publishing                                             |
 | **ADR**       | ADR-040 (media upload working copy) · ADR-107 (batas maksimum jumlah media per `ContentFormat`, T-024.4) |
 | **Depends**   | T-025 (Media API adapter) — **di-bypass sebagian** lewat pola Fake (rule 19 AGENTS.md, lihat catatan di bawah) |
-| **Terkait**   | KI-059 Resolved (verifikasi manual browser T-024.4 & T-024.5, 2026-09-15) · KI-060 baru (Account Selector tidak ter-restore saat edit, di luar scope T-024) |
+| **Terkait**   | KI-059 Resolved (verifikasi manual browser T-024.4 & T-024.5, 2026-09-15) · KI-060 baru (Account Selector tidak ter-restore saat edit, di luar scope T-024) · KI-061 baru (tidak ada warning UI saat media over-limit setelah ganti target akun/format, ADR-107) |
 | **Baca dulu** | `05-architecture/integration-layer.md` · `06-engineering/environment-management.md` |
 
 Kontrol lampiran media di Draft Editor sudah ada tapi **disabled** dengan keterangan "Lampiran media akan tersedia setelah OutstandAdapter Media API siap".
