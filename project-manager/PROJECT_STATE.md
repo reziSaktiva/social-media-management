@@ -828,6 +828,27 @@ dari sesi T-015 — baru ketahuan sekarang karena QA menyentuh area ini lagi
 saat verifikasi Reconnect. King Rezi eksplisit memutuskan (`AskUserQuestion`)
 ini dicatat sebagai Known Issue baru, **tidak diperbaiki di sesi T-015**.
 
+### KI-059 · Verifikasi manual browser T-024 belum bisa dilakukan (`DATABASE_URL` tidak tersedia) — Resolved
+
+| Field | Value |
+|-------|-------|
+| Status | Resolved (2026-09-15) |
+| Kategori | Gap Verifikasi / Environment |
+| Terkait | T-024 (T-024.4, T-024.5) |
+
+Verifikasi manual browser end-to-end T-024 (upload → save draft → reopen
+edit → preview restore → validasi batas count → hapus permanen) sempat
+tercatat belum bisa dilakukan karena `DATABASE_URL` tidak terbaca di
+worktree — root cause ternyata dev server sempat start dari `cwd` repo
+`main` yang salah, bukan env var yang benar-benar hilang. Setelah
+dijalankan manual dengan `cwd` worktree yang benar (`staging-checkout-tasks-976e14`,
+2026-09-15), env terbaca normal dan seluruh 6 kriteria verifikasi **PASS**.
+T-024 (5/5 subtask) sekarang teruji penuh end-to-end. Detail:
+`COMPLETE_TASK.md` (2026-09-15), `tasks/v02-publishing-mvp.md` § T-024.
+
+**KI-060 baru ditemukan** selama sesi verifikasi ini (di luar scope T-024,
+bukan regresi) — lihat entri di bawah.
+
 ### KI-060 · Account Selector tidak ter-restore saat reopen edit draft
 
 | Field | Value |
