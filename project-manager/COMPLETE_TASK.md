@@ -8,6 +8,39 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-15 — KI-061 baru — Tidak ada warning UI saat media over-limit setelah ganti target akun/format
+
+Ditemukan lewat diskusi dengan King Rezi (murni analisis kode/tanya-jawab,
+tidak ada perubahan kode sesi ini). Pertanyaan awal: berapa media yang bisa
+dipost kalau target ke banyak platform sekaligus (jawaban: batas efektif =
+MINIMUM dari `MAX_MEDIA_COUNT_BY_FORMAT` semua format yang dipilih, ADR-107
+— mis. Instagram Post + Pinterest Pin sekaligus → batas turun jadi 1 media).
+Pertanyaan lanjutan: apa yang terjadi kalau user sudah upload >1 media lalu
+BARU menambah akun dengan format lebih ketat (mis. Pinterest)?
+
+**Ditelusuri ke kode (`Modal.tsx`):**
+
+- `toggleAccount` (baris ~420-430) tidak melakukan validasi apa pun
+  terhadap `mediaItems` yang sudah ada saat akun/format berubah.
+- `effectiveMaxMedia` (`maxMediaCountForFormats(getActiveFormats())`)
+  otomatis turun, teks "Maks. X media" di bawah dropzone ikut berubah
+  (pasif), dan dropzone jadi disabled untuk upload baru
+  (`isMediaLimitReached`).
+- **Tidak ada highlight/badge/pesan apa pun** pada thumbnail media yang
+  sudah ada dan sekarang melebihi batas baru — user tidak tahu ada masalah
+  sampai mencoba Save as Draft/Schedule/Publish Now dan mendapat error dari
+  server (`assertMediaCountWithinLimit`, dilempar dari
+  `content-format-matrix.ts`, ditangkap di `catch` block Modal.tsx sebagai
+  `notice` status error): *"Jumlah media (N) melebihi batas maksimum X
+  untuk format yang sedang dipilih."*
+
+**Keputusan King Rezi:** dicatat sebagai Known Issue baru (**KI-061**),
+tidak diperbaiki sesi ini — perlu cek Claude Design dulu sebelum menulis
+kode UI perbaikan (rule 17 AGENTS.md), karena ini menyentuh
+screen/komponen visual Draft Editor. Detail: `PROJECT_STATE.md` § KI-061.
+
+---
+
 ## 2026-09-15 — KI-059 Resolved — Verifikasi manual browser end-to-end T-024 (Media upload)
 
 Sesi verifikasi murni (tidak ada perubahan kode produk), dijalankan di
