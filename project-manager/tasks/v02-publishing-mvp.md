@@ -45,7 +45,7 @@ Matriks format per platform (IG/FB: Post/Reel/Story · TikTok: video feed tanpa 
 | **Domain**    | media · publishing                                             |
 | **ADR**       | ADR-040 (media upload working copy) · ADR-107 (batas maksimum jumlah media per `ContentFormat`, T-024.4) |
 | **Depends**   | T-025 (Media API adapter) — **di-bypass sebagian** lewat pola Fake (rule 19 AGENTS.md, lihat catatan di bawah) |
-| **Terkait**   | KI-059 (verifikasi manual browser T-024.4 & T-024.5 belum bisa dilakukan, `DATABASE_URL` tidak tersedia) |
+| **Terkait**   | KI-059 Resolved (verifikasi manual browser T-024.4 & T-024.5, 2026-09-15) · KI-060 baru (Account Selector tidak ter-restore saat edit, di luar scope T-024) · KI-061 baru (tidak ada warning UI saat media over-limit setelah ganti target akun/format, ADR-107) |
 | **Baca dulu** | `05-architecture/integration-layer.md` · `06-engineering/environment-management.md` |
 
 Kontrol lampiran media di Draft Editor sudah ada tapi **disabled** dengan keterangan "Lampiran media akan tersedia setelah OutstandAdapter Media API siap".
@@ -202,14 +202,14 @@ tidak berubah/tidak regresi. Verifikasi akhir: `typecheck` 0 error, `lint`
 0 error/warning, `vitest` **374 pass/5 skip** (naik dari baseline 362,
 346 sebelum T-024.4 mulai).
 
-**Gap verifikasi (belum ditutup, lihat KI-059):** verifikasi manual browser
+**Gap verifikasi (KI-059, Resolved 2026-09-15):** verifikasi manual browser
 end-to-end (upload → save draft → reopen edit → preview restore → validasi
-batas count per format) **belum bisa dilakukan** sesi ini — dev server
-gagal start di worktree ini karena `DATABASE_URL` tidak tersedia (perlu
-kredensial Supabase). T-024.4 ditandai selesai berdasarkan verifikasi kode
-(typecheck/lint/unit test + 2 putaran review arsitektur), tapi belum
-"teruji penuh" end-to-end sampai smoke test manual ini dilakukan di
-environment dengan akses DB.
+batas count per format) sempat tercatat belum bisa dilakukan karena
+`DATABASE_URL` tidak terbaca di worktree — root cause ternyata dev server
+sempat start dari `cwd` repo `main` yang salah, bukan env var yang
+benar-benar hilang. Setelah dijalankan dengan `cwd` worktree yang benar,
+seluruh kriteria PASS (detail: `COMPLETE_TASK.md` 2026-09-15). T-024.4
+sekarang teruji penuh end-to-end, bukan hanya verifikasi kode.
 
 **T-024.5 selesai (2026-09-14, Prabowo Feature Engineer):** Delete Media +
 dialog konfirmasi Tier 2 (ADR-049) — subtask **terakhir** T-024, menutup
@@ -236,9 +236,9 @@ komponen Tier 2 genuine dikonfirmasi (bukan duplikat), tidak ada dead code
 path lama yang tersisa. Verifikasi akhir: `bun run typecheck` 0 error,
 `bun run --cwd apps/web lint` 0 error/warning, `bunx vitest run` **377
 pass/5 skip** (naik dari baseline 374, +3 test baru). Gap verifikasi manual
-browser (`DATABASE_URL` tidak tersedia di worktree ini) berlaku sama untuk
-T-024.5 — lihat **KI-059** (cakupannya sudah diperluas mencakup seluruh
-T-024, bukan cuma T-024.4).
+browser yang sempat berlaku sama untuk T-024.5 sudah ditutup — lihat
+**KI-059 Resolved** di atas (cakupannya meliputi seluruh T-024, bukan cuma
+T-024.4).
 
 **Penutup T-024 (5/5 subtask, ✅ Done):** seluruh rangkaian ini dikerjakan
 lintas beberapa sesi — T-024.1 (domain `media` skeleton), T-024.2 (upload
@@ -249,11 +249,11 @@ Draft Editor, ADR-107), dan T-024.5 (Delete Media Tier 2, di atas). Semua
 sepanjang task ini adalah **1 temuan MEDIUM di T-024.4** (partial-update
 semantics `mediaIds`), sudah diperbaiki dan diverifikasi ulang (putaran 2:
 0 temuan). Verifikasi kode akhir keseluruhan: `typecheck`/`lint` bersih,
-`vitest` 377 pass/5 skip. Satu-satunya gap tersisa adalah verifikasi manual
-browser end-to-end (**KI-059**, masih Open) — belum bisa dilakukan di
-environment kerja manapun sesi-sesi ini karena `DATABASE_URL` tidak
-tersedia, perlu ditindaklanjuti King Rezi atau QA Najwa di environment
-dengan akses DB sebelum T-024 dianggap teruji penuh end-to-end.
+`vitest` 377 pass/5 skip. Verifikasi manual browser end-to-end
+(**KI-059**) sudah **Resolved** (2026-09-15) — seluruh 6 kriteria PASS,
+T-024 sekarang teruji penuh end-to-end, bukan hanya verifikasi kode.
+Satu temuan baru di luar scope selama verifikasi ini: **KI-060** (Account
+Selector tidak ter-restore saat reopen edit draft, bukan regresi T-024).
 
 - [x] **T-024.1** Domain `media` skeleton (service + repository, model `MediaItem` sudah ada di schema)
 - [x] **T-024.2** Upload ke Supabase Storage (Supabase JS client **hanya** untuk Storage/Realtime — CRUD tetap Prisma)

@@ -8,6 +8,86 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-15 — KI-061 baru — Tidak ada warning UI saat media over-limit setelah ganti target akun/format
+
+Ditemukan lewat diskusi dengan King Rezi (murni analisis kode/tanya-jawab,
+tidak ada perubahan kode sesi ini). Pertanyaan awal: berapa media yang bisa
+dipost kalau target ke banyak platform sekaligus (jawaban: batas efektif =
+MINIMUM dari `MAX_MEDIA_COUNT_BY_FORMAT` semua format yang dipilih, ADR-107
+— mis. Instagram Post + Pinterest Pin sekaligus → batas turun jadi 1 media).
+Pertanyaan lanjutan: apa yang terjadi kalau user sudah upload >1 media lalu
+BARU menambah akun dengan format lebih ketat (mis. Pinterest)?
+
+**Ditelusuri ke kode (`Modal.tsx`):**
+
+- `toggleAccount` (baris ~420-430) tidak melakukan validasi apa pun
+  terhadap `mediaItems` yang sudah ada saat akun/format berubah.
+- `effectiveMaxMedia` (`maxMediaCountForFormats(getActiveFormats())`)
+  otomatis turun, teks "Maks. X media" di bawah dropzone ikut berubah
+  (pasif), dan dropzone jadi disabled untuk upload baru
+  (`isMediaLimitReached`).
+- **Tidak ada highlight/badge/pesan apa pun** pada thumbnail media yang
+  sudah ada dan sekarang melebihi batas baru — user tidak tahu ada masalah
+  sampai mencoba Save as Draft/Schedule/Publish Now dan mendapat error dari
+  server (`assertMediaCountWithinLimit`, dilempar dari
+  `content-format-matrix.ts`, ditangkap di `catch` block Modal.tsx sebagai
+  `notice` status error): *"Jumlah media (N) melebihi batas maksimum X
+  untuk format yang sedang dipilih."*
+
+**Keputusan King Rezi:** dicatat sebagai Known Issue baru (**KI-061**),
+tidak diperbaiki sesi ini — perlu cek Claude Design dulu sebelum menulis
+kode UI perbaikan (rule 17 AGENTS.md), karena ini menyentuh
+screen/komponen visual Draft Editor. Detail: `PROJECT_STATE.md` § KI-061.
+
+---
+
+## 2026-09-15 — KI-059 Resolved — Verifikasi manual browser end-to-end T-024 (Media upload)
+
+Sesi verifikasi murni (tidak ada perubahan kode produk), dijalankan di
+worktree `staging-checkout-tasks-976e14` setelah `DATABASE_URL` tersedia
+(env `.env.local` worktree ternyata sudah lengkap — root cause KI-059
+sebelumnya adalah dev server sempat start dari `cwd` repo `main` yang salah,
+bukan benar-benar env var hilang; setelah dev server dijalankan manual
+dengan `cwd` worktree yang tepat, `DATABASE_URL` terbaca normal).
+
+**Seluruh 6 kriteria verifikasi KI-059 PASS:**
+
+1. **Upload media** — drop 1 file PNG ke dropzone custom (T-024.4) →
+   `uploadMediaAction` sukses, response berisi signed URL Supabase Storage
+   asli (`.../storage/v1/object/sign/media/...`) dan `MediaItem.id` baru.
+2. **Save as Draft** — draft tersimpan, muncul di list Drafts.
+3. **Reopen edit** — draft dibuka ulang lewat `Modal.tsx` mode edit.
+4. **Preview restore** — thumbnail media ter-restore benar dari signed URL
+   (diverifikasi `naturalWidth` gambar cocok dengan file asli yang diupload,
+   bukan broken image).
+5. **Validasi batas count** — upload sampai 10 media (batas `Post` per
+   ADR-107) sukses, dropzone otomatis `aria-disabled=true` setelah limit
+   tercapai, file ke-11 ditolak (tetap 10 item, tidak bertambah).
+6. **Hapus permanen** — klik hapus salah satu media (`ki059-test-10.png`) →
+   dialog konfirmasi Tier 2 muncul ("Hapus media ini secara permanen?") →
+   konfirmasi → toast "Media berhasil dihapus". **Diverifikasi langsung di
+   level database** (query `mediaItem.findMany` lewat `withCurrentUser`
+   dengan `userId` persona Raka Pratama, untuk melewati RLS
+   `app.current_user_id`): 9 record tersisa (`ki059-test-1` s/d `9`),
+   `ki059-test-10` benar-benar hilang dari tabel `media_items` — bukan
+   sekadar dihapus dari state UI.
+
+**KI-059 → Resolved.** T-024 (5/5 subtask) sekarang **teruji penuh
+end-to-end**, bukan cuma verifikasi kode. Detail lengkap di
+`tasks/v02-publishing-mvp.md` § T-024.
+
+**KI-060 baru ditemukan (di luar scope T-024, bukan regresi T-024):**
+saat reopen edit draft, **Account Selector tidak ter-restore** — seluruh
+checkbox akun kembali unchecked meski draft punya target akun tersimpan
+(caption dan media ter-restore benar, akun tidak). Root cause: efek
+`getDraftAction` di `Modal.tsx` (baris ~296-314) hanya men-set
+`caption`/`status`/`mediaItems` dari draft yang dimuat, tidak pernah
+men-set `selectedAccountIds`/`formatByAccount` — gap ini sudah ada sejak
+awal implementasi Draft Editor (bukan diperkenalkan oleh perubahan T-024
+manapun, yang hanya menyentuh state `mediaItems`). Dicatat sebagai Known
+Issue baru, **tidak diperbaiki sesi ini** (di luar scope permintaan
+verifikasi KI-059).
+
 ## 2026-09-14 — T-024 Done (5/5 subtask) — Delete Media + dialog konfirmasi Tier 2 (ADR-049), menutup seluruh rangkaian T-024
 
 Branch `claude/t-024-feasibility-e16b39` (worktree terpisah). Belum
