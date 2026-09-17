@@ -76,6 +76,17 @@ King Rezi ("rapikan semua temuan mekanis sekarang").
   bawahnya tetap dipertahankan utuh (bukan duplikasi — itu detail klasifikasi
   dokumen, bukan aturan kolaborasi AI).
 
+### Fixed (lanjutan, 2026-09-17 — temuan minor dari self-review PR #124)
+
+- **`project-manager/PROJECT_RULES.md`** § "AI Collaboration Rules" — sitasi
+  "rule 17" yang longgar (rule 17 sebenarnya spesifik gate Claude Design,
+  bukan "jaga konsistensi struktur") diganti jadi pointer per-klausa yang
+  presisi: baca dokumentasi dulu → section "Wajib di awal sesi", ubah
+  baseline tanpa ADR → rule 4, konsistensi struktur → section "Aturan keras".
+  "Patuh klasifikasi dokumen" dikoreksi jadi pointer ke section **Document
+  Type Classification** di file yang sama (bukan ke AGENTS.md), karena aturan
+  itu memang didefinisikan di sini, bukan di AGENTS.md.
+
 ### Belum dieksekusi
 
 - Duplikasi persona kanonikal (Raka/Maya/Sinta/Dimas/Lara, 4 tempat) dan

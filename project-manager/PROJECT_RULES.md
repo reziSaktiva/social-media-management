@@ -150,13 +150,13 @@ Supaya `PROJECT_STATE.md` tidak kembali membengkak, dicek sebagai bagian **Defin
 
 # AI Collaboration Rules
 
-Teks lengkap aturan kolaborasi dengan AI (baca dokumentasi dulu, tidak boleh
-ubah arsitektur/business rules tanpa ADR, jaga konsistensi struktur, patuh
-ke klasifikasi dokumen) ada di **`../AGENTS.md`** (rule 4, rule 17, dan
-seluruh section "Aturan keras") — tidak disalin ulang di sini supaya tidak
-drift saat salah satu diupdate. Bagian **Documentation Governance** di bawah
-tetap di sini karena itu detail klasifikasi dokumen, bukan aturan kolaborasi
-AI itu sendiri.
+Teks lengkap aturan kolaborasi dengan AI ada di **`../AGENTS.md`**: baca
+dokumentasi dulu → section "Wajib di awal sesi"; tidak boleh ubah
+arsitektur/business rules tanpa ADR → rule 4; jaga konsistensi struktur →
+seluruh section "Aturan keras". Tidak disalin ulang di sini supaya tidak
+drift saat salah satu diupdate. Aturan "patuh klasifikasi dokumen" tidak
+perlu pointer keluar — itu section **Document Type Classification** di
+bawah, di dokumen ini sendiri.
 
 ---
 
