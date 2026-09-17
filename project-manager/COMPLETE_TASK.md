@@ -65,11 +65,19 @@ King Rezi ("rapikan semua temuan mekanis sekarang").
   melainkan keputusan sadar **ADR-058 poin 6/10** (ikon brand platform sosial,
   Lucide/hugeicons tidak menyediakan logo bermerek dagang).
 
-### Belum dieksekusi (menunggu keputusan eksplisit King Rezi)
+### Fixed (lanjutan, 2026-09-17 — keputusan eksplisit King Rezi)
 
-- `project-manager/PROJECT_RULES.md` section "AI Collaboration Rules" (generik,
-  superseded oleh `AGENTS.md`) — diklasifikasi Kelas B, perlu keputusan
-  King Rezi dipertahankan atau dipangkas.
+- **`project-manager/PROJECT_RULES.md`** section "AI Collaboration Rules" (5
+  bullet generik: baca dokumentasi dulu, tidak boleh ubah arsitektur/business
+  rules tanpa ADR, jaga konsistensi struktur, patuh klasifikasi dokumen) —
+  King Rezi memutuskan **dipangkas jadi pointer** ke `AGENTS.md` (rule 4,
+  rule 17, section "Aturan keras"), konsisten dengan pola yang sudah
+  dieksekusi di file lain sesi ini. Section "Documentation Governance" di
+  bawahnya tetap dipertahankan utuh (bukan duplikasi — itu detail klasifikasi
+  dokumen, bukan aturan kolaborasi AI).
+
+### Belum dieksekusi
+
 - Duplikasi persona kanonikal (Raka/Maya/Sinta/Dimas/Lara, 4 tempat) dan
   checklist "setelah mengubah sesuatu" di `ctx-development.md`/
   `project-os-navigator` SKILL.md — sengaja tidak disentuh, dampak token
