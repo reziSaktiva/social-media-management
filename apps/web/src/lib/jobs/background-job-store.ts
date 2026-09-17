@@ -32,6 +32,16 @@ interface ClaimedJobRow {
   max_attempts: number;
 }
 
+/**
+ * BG-D04 (`background-jobs.md`) — job timeout: kalau proses mati (restart
+ * Railway, OOM) setelah `claimPending` menandai job `running` tapi sebelum
+ * `runOne` sempat memanggil `markDone`/`scheduleRetry`/`markFailed`, job itu
+ * harus di-reclaim, bukan macet permanen di `running` (tidak ada jalur lain
+ * yang pernah membacanya lagi karena `claimPending` hanya menyeleksi
+ * `status = 'pending'`).
+ */
+const STALE_RUNNING_TIMEOUT_SECONDS = 30;
+
 export const backgroundJobStore = {
   /** T-027.5 — dipanggil `job-scheduler.ts` (implementasi `IJobScheduler`). */
   async enqueue(input: {
@@ -62,6 +72,18 @@ export const backgroundJobStore = {
    */
   async claimPending(limit: number): Promise<ClaimedBackgroundJob[]> {
     return prisma.$transaction(async (tx) => {
+      // BG-D04 — reclaim job yang macet di `running` melewati timeout
+      // (>30 detik): kembalikan ke `pending` dengan `attempts + 1` supaya
+      // bisa diambil lagi oleh SELECT di bawah pada run yang sama.
+      await tx.$executeRaw`
+        UPDATE "background_jobs"
+        SET status = 'pending',
+            attempts = attempts + 1,
+            scheduled_at = now()
+        WHERE status = 'running'
+          AND started_at <= now() - (${STALE_RUNNING_TIMEOUT_SECONDS} * interval '1 second')
+      `;
+
       const rows = await tx.$queryRaw<ClaimedJobRow[]>`
         SELECT id, type, payload, attempts, max_attempts
         FROM "background_jobs"

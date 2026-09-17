@@ -23,8 +23,11 @@ const RETRY_DELAY_MINUTES = [5, 15, 60] as const;
  * `attempts` — jumlah percobaan SETELAH kegagalan ini (1-based: 1 = baru
  * gagal pertama kali). Mengembalikan delay dalam milliseconds sebelum job
  * boleh dieksekusi ulang. `attempts` melebihi panjang tabel (seharusnya
- * tidak pernah terjadi selama `maxAttempts` default 3) memakai delay
- * terakhir sebagai fallback, bukan throw.
+ * tidak pernah terjadi selama `maxAttempts` default 4 — lihat
+ * `BackgroundJob.maxAttempts` di schema.prisma, harus tetap 1 lebih besar
+ * dari panjang tabel ini supaya tier delay terakhir benar-benar
+ * terpakai sebelum dead-letter) memakai delay terakhir sebagai fallback,
+ * bukan throw.
  */
 export function retryDelayMs(attempts: number): number {
   const index = Math.min(Math.max(attempts, 1), RETRY_DELAY_MINUTES.length) - 1;

@@ -281,7 +281,10 @@ export class OutstandWebhookProcessor {
           relatedEntityId: post.postId,
         });
       }
-    } else if (targetsToUpdate.length === post.targets.length) {
+    } else if (
+      post.targets.length > 0 &&
+      targetsToUpdate.length === post.targets.length
+    ) {
       // T-027 bug fix (koreksi gap, dikonfirmasi King Rezi sebagai scoped
       // bug-fix) — titik yang SAMA PERSIS dengan keputusan "semua target
       // sudah resolved, tidak ada yang pending lagi" (`targetsToUpdate`
@@ -291,7 +294,9 @@ export class OutstandWebhookProcessor {
       // `outcome: "done"`, bukan retry). TIDAK semua gagal (`allKnownFailed`
       // di atas sudah false) berarti minimal satu sukses/partial success —
       // integration-layer.md:269-270,305: "post tetap Published kalau
-      // minimal satu target sukses/partial success".
+      // minimal satu target sukses/partial success". `post.targets.length >
+      // 0` guard sama seperti `allKnownFailed` di atas — mencegah post
+      // tanpa target (0 === 0) ikut ditandai Published.
       await this.repository.markPostPublished(
         { workspaceId: post.workspaceId, postId: post.postId },
         post.authorId,

@@ -15,6 +15,17 @@ import type { OutstandWebhookProcessor } from "./outstand-webhook-processor";
 export const RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE =
   "publishing.scheduled_post.resolve_outcome";
 
+/**
+ * Prefix penanda `lastError` untuk kasus "masih pending, retry nanti" (BUKAN
+ * kegagalan sungguhan) — monitoring MVP untuk `background_jobs` murni query
+ * manual `status = 'failed'` (BG-D06), dan tanpa prefix ini dead-letter
+ * "masih pending" (outcome yang diharapkan/benign, lihat catatan panjang di
+ * bawah) tidak bisa dibedakan dari bug/error sungguhan hanya dari `status`.
+ * Query monitoring bisa `WHERE last_error NOT LIKE 'PENDING_TIMEOUT: %'`
+ * untuk menyaring dead-letter yang benar-benar butuh perhatian.
+ */
+export const PENDING_TIMEOUT_ERROR_PREFIX = "PENDING_TIMEOUT: ";
+
 export interface ResolveScheduledPostOutcomeJobPayload {
   outstandPostId: string;
 }
@@ -116,7 +127,7 @@ export class ResolveScheduledPostOutcomeJobHandler {
       // supaya job runner retry dengan backoff (T-027.3), bukan permanent
       // failure. Lihat catatan panjang di atas class ini.
       throw new Error(
-        `Outcome post (outstandPostId=${outstandPostId}) belum lengkap: ` +
+        `${PENDING_TIMEOUT_ERROR_PREFIX}Outcome post (outstandPostId=${outstandPostId}) belum lengkap: ` +
           `${targetsResolved}/${targetsTotal} target resolved — retry nanti.`,
       );
     }

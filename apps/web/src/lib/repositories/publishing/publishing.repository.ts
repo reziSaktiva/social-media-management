@@ -541,7 +541,13 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async markPostFailed({ workspaceId, postId }, userId) {
-    const { count } = await withCurrentUser(userId, (tx) =>
+    // T-027 bug fix — SENGAJA TIDAK throw kalau 0 baris ter-update, sama
+    // seperti `markPostPublished` di bawah: `resolvePostOutcome` bisa sah
+    // dipanggil lebih dari sekali untuk `outstandPostId` yang sama (job
+    // polling T-027 dan webhook T-026 bisa sama-sama menyimpulkan "semua
+    // target gagal" untuk post yang sama), dan panggilan kedua yang
+    // menemukan post SUDAH `Failed` harus diam-diam no-op, bukan throw.
+    await withCurrentUser(userId, (tx) =>
       tx.publishingPost.updateMany({
         where: {
           id: postId,
@@ -555,16 +561,6 @@ export const publishingRepository: IPublishingRepository = {
         data: { status: ContentStatus.Failed },
       }),
     );
-
-    if (count === 0) {
-      // `updateMany` tidak throw kalau 0 baris ter-update (mis. RLS
-      // default-deny karena actingUserId sudah bukan active member) —
-      // beda dari `update()` di atas yang throw P2025. Tanpa guard ini,
-      // webhook route akan ACK sukses padahal status post tidak berubah.
-      throw new Error(
-        `markPostFailed: tidak ada baris ter-update untuk postId=${postId}, workspaceId=${workspaceId}`,
-      );
-    }
   },
 
   async markPostPublished({ workspaceId, postId }, userId) {

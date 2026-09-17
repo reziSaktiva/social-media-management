@@ -645,6 +645,13 @@ export interface IPublishingRepository {
    * target sudah ditulis oleh `updateTargetOutcome` sebelum method ini
    * dipanggil.
    *
+   * **TIDAK throw kalau 0 baris ter-update** (bug fix T-027 — sama seperti
+   * `markPostPublished` di bawah): `resolvePostOutcome` (dipakai BERSAMA
+   * webhook T-026 dan job polling T-027) bisa sah dipanggil lebih dari
+   * sekali untuk `outstandPostId` yang sama, dan panggilan kedua yang
+   * menemukan post SUDAH `Failed` harus diam-diam no-op, bukan dianggap
+   * kegagalan internal.
+   *
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   markPostFailed(
@@ -685,7 +692,7 @@ export interface IPublishingRepository {
    * target gagal tetap lewat `markPostFailed` seperti sebelumnya, tidak
    * berubah.
    *
-   * **Beda desain dari `markPostFailed`: method ini TIDAK throw kalau 0
+   * **Sama seperti `markPostFailed`: method ini TIDAK throw kalau 0
    * baris ter-update** (implementasi Prisma harus no-op diam-diam, bukan
    * error) — `resolvePostOutcome` bisa dipanggil lebih dari sekali untuk
    * `outstandPostId` yang sama secara sah (mis. dua webhook event Outstand

@@ -11,6 +11,7 @@ import { backgroundJobStore } from "@/lib/jobs/background-job-store";
 import { runPendingJobs, type JobHandler } from "@/lib/jobs/job-runner";
 import { notificationRepository } from "@/lib/repositories/notification";
 import { publishingRepository } from "@/lib/repositories/publishing";
+import { timingSafeEqualString } from "@/lib/utils/timing-safe-equal-string";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 
 /**
@@ -37,7 +38,11 @@ export async function POST(request: Request): Promise<Response> {
   const { JOB_SECRET } = getServerEnv();
   const providedSecret = request.headers.get("x-job-secret");
 
-  if (!JOB_SECRET || !providedSecret || providedSecret !== JOB_SECRET) {
+  if (
+    !JOB_SECRET ||
+    !providedSecret ||
+    !timingSafeEqualString(providedSecret, JOB_SECRET)
+  ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
