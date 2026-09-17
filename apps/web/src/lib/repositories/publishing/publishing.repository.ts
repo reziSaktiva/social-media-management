@@ -567,6 +567,27 @@ export const publishingRepository: IPublishingRepository = {
     }
   },
 
+  async markPostPublished({ workspaceId, postId }, userId) {
+    // T-027 bug fix — SENGAJA TIDAK throw kalau count === 0 (beda dari
+    // `markPostFailed` di atas): lihat catatan panjang di
+    // `IPublishingRepository.markPostPublished` — `resolvePostOutcome`
+    // yang memanggil ini bisa sah dipanggil lebih dari sekali untuk
+    // `outstandPostId` yang sama (dua webhook event Outstand berbeda,
+    // bukan duplikat receipt), dan panggilan kedua yang menemukan post
+    // SUDAH `Published` harus diam-diam no-op.
+    await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          status: ContentStatus.Scheduled,
+          deletedAt: null,
+        },
+        data: { status: ContentStatus.Published },
+      }),
+    );
+  },
+
   async listQueue({ workspaceId }, userId) {
     const posts = await withCurrentUser(userId, (tx) =>
       tx.publishingPost.findMany({

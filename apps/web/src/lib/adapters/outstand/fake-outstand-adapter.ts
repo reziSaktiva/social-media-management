@@ -4,7 +4,6 @@ import type {
   ConnectedAccountData,
   ExchangeConnectCodeInput,
   IOutstandAdapter,
-  OutstandPostTargetInput,
   PostTargetOutcome,
   UploadMediaWorkingCopyResult,
 } from "@social/shared";
@@ -84,47 +83,12 @@ function buildFakeHandle(platform: SocialPlatform, seed: string): string {
 }
 
 /**
- * State in-memory murni untuk mengingat SET AKUN yang diminta lewat
- * `schedulePost`/`publishNow`, supaya `fetchPostOutcome` (dipanggil
- * belakangan oleh use-case yang sama, mis. `PublishNowUseCase`) bisa
- * menjawab per akun TANPA use-case perlu tahu apa pun soal Fake secara
- * spesifik — use-case hanya bergantung pada `IOutstandAdapter` (ACL tetap
- * utuh). Ini BUKAN simulasi delay/proses async sungguhan (tetap
- * always-success instan, ADR-059) — murni memori supaya kontrak dua-langkah
- * (create lalu resolve outcome) tetap benar secara interface, konsisten
- * dengan bagaimana Outstand asli benar-benar menyimpan `accounts` di post.
- * Module-level Map ini cukup untuk proses tunggal (dev/test) — tidak perlu
- * persist lintas restart karena Fake bukan pengganti database. Dibatasi
- * `MAX_REMEMBERED_POSTS` dengan eviction FIFO (entry tertua dibuang lebih
- * dulu — urutan insersi `Map` dijamin oleh spec) supaya proses staging yang
- * berjalan lama (ADR-059 — Fake otomatis aktif tanpa `OUTSTAND_API_KEY`)
- * tidak menumpuk memory tanpa batas seiring bertambahnya post.
- */
-const MAX_REMEMBERED_POSTS = 10_000;
-
-/**
  * TTL mock untuk `uploadMediaWorkingCopy` (T-024.3, ADR-106) — nilai
  * arbitrer 24 jam, murni supaya `expiresAt` yang dikembalikan Fake masuk
  * akal (bukan langsung expired/`0`) untuk UI yang menampilkannya; Outstand
  * asli menentukan TTL sesungguhnya (di luar kendali Fake).
  */
 const FAKE_MEDIA_WORKING_COPY_TTL_MS = 24 * 60 * 60 * 1000;
-
-const targetsByOutstandPostId = new Map<string, OutstandPostTargetInput[]>();
-
-function rememberTargets(
-  outstandPostId: string,
-  targets: OutstandPostTargetInput[],
-): void {
-  if (targetsByOutstandPostId.size >= MAX_REMEMBERED_POSTS) {
-    const oldestKey = targetsByOutstandPostId.keys().next().value;
-    if (oldestKey !== undefined) {
-      targetsByOutstandPostId.delete(oldestKey);
-    }
-  }
-
-  targetsByOutstandPostId.set(outstandPostId, targets);
-}
 
 function buildOutcome(
   outstandPostId: string,
@@ -156,10 +120,20 @@ function buildOutcome(
  * SEMUA target dalam satu call (kontrak baru `IOutstandAdapter`, lihat
  * `packages/shared/src/contracts/outstand-adapter.ts`) dan mengembalikan
  * SATU `outstandPostId`. `fetchPostOutcome` baru ditambahkan untuk resolve
- * status per akun belakangan — Fake mengingat set akun yang diminta
- * (lihat `targetsByOutstandPostId` di atas) supaya bisa menjawab per akun
- * dengan `status: "published"` instan (always-success, konsisten ADR-059 —
- * tidak ada pending yang benar-benar disimulasikan).
+ * status per akun belakangan.
+ *
+ * **Bug fix T-027 (root-cause, 2026-09-17)** — `fetchPostOutcome` SEMPAT
+ * "mengingat" set akun per `outstandPostId` lewat `Map` in-memory
+ * level-modul yang diisi `schedulePost`/`publishNow`. Ini SALAH untuk job
+ * runner Railway Cron (T-027): `schedulePost()` dipanggil dari Server
+ * Action, `fetchPostOutcome()` dipanggil belakangan (bisa berjam-jam) dari
+ * Route Handler TERPISAH (`/api/jobs/run`) yang, dibuktikan lewat inspeksi
+ * `.next/server` build production, mendapat SALINAN modul ini sendiri
+ * (chunk terpisah dari Server Action) — `Map` level-modul TIDAK dijamin
+ * sama antara keduanya. Sekarang seluruh module ini STATELESS — tidak ada
+ * lagi module-level mutable state sama sekali — `fetchPostOutcome`
+ * menerima `expectedOutstandAccountIds` eksplisit dari caller (yang sudah
+ * tahu daftar akun dari data durable), bukan menebak dari memori.
  */
 export const fakeOutstandAdapter: IOutstandAdapter = {
   /**
@@ -243,9 +217,8 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
     };
   },
 
-  async schedulePost({ targets }) {
+  async schedulePost() {
     const outstandPostId = `fake-post-${crypto.randomUUID()}`;
-    rememberTargets(outstandPostId, targets);
     return { outstandPostId };
   },
 
@@ -253,28 +226,40 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
    * Publish Now (T-029) — sama fidelitasnya: instant always-success, tanpa
    * simulasi delay/gagal, satu call untuk semua target.
    */
-  async publishNow({ targets }) {
+  async publishNow() {
     const outstandPostId = `fake-post-${crypto.randomUUID()}`;
-    rememberTargets(outstandPostId, targets);
     return { outstandPostId };
   },
 
   /**
-   * Resolve status per akun (redesain 2026-08-26) — Fake always-success:
-   * begitu `outstandPostId` dikenal (dari `schedulePost`/`publishNow`
-   * sebelumnya), SEMUA akun yang tercatat langsung `published`. Kalau id
-   * tidak dikenal (mis. test memanggil `fetchPostOutcome` langsung dengan
-   * id sembarang), mengembalikan array kosong — konsisten dengan idempotency
-   * yang menghindari klaim status untuk akun yang tidak diketahui.
+   * Resolve status per akun (redesain 2026-08-26; bug fix T-027 — root
+   * cause, dikonfirmasi King Rezi via `AskUserQuestion` setelah temuan QA
+   * Najwa) — Fake always-success: SEMUA akun di `expectedOutstandAccountIds`
+   * langsung `published`, PURE FUNCTION dari `(outstandPostId,
+   * expectedOutstandAccountIds)`, TIDAK bergantung pada memori/state
+   * apa pun yang diisi `schedulePost`/`publishNow` sebelumnya.
+   *
+   * **Kenapa desain lama (module-level `Map` yang "mengingat" set akun)
+   * SALAH:** aman untuk `PublishNowUseCase`/`RetryFailedTargetUseCase`
+   * (memanggil `schedulePost`/`publishNow` lalu `fetchPostOutcome` di
+   * request yang sama), tapi PECAH untuk T-027 — `schedulePost()` dipanggil
+   * dari Server Action, `fetchPostOutcome()` dipanggil BELAKANGAN (bisa
+   * berjam-jam) dari Route Handler `/api/jobs/run` yang TERPISAH. Terbukti
+   * lewat inspeksi `.next/server` build production: Next.js (Turbopack)
+   * membundle Route Handler dan Server Action/RSC page sebagai chunk
+   * TERPISAH, masing-masing dapat SALINAN modul ini sendiri — `Map`
+   * level-modul TIDAK dijamin sama antara keduanya, bahkan dalam SATU
+   * proses Node yang sama. Parameter eksplisit menghilangkan masalah ini
+   * total: caller (yang SUDAH tahu daftar akun dari data durable —
+   * `PublishingPostTarget`/`WorkspaceConnectedAccount`) yang menyuplai
+   * datanya, bukan Fake yang menebak dari memori.
    */
-  async fetchPostOutcome(outstandPostId): Promise<PostTargetOutcome[]> {
-    const targets = targetsByOutstandPostId.get(outstandPostId);
-    if (!targets) {
-      return [];
-    }
-
-    return targets.map((target) =>
-      buildOutcome(outstandPostId, target.outstandAccountId),
+  async fetchPostOutcome(
+    outstandPostId,
+    expectedOutstandAccountIds,
+  ): Promise<PostTargetOutcome[]> {
+    return expectedOutstandAccountIds.map((outstandAccountId) =>
+      buildOutcome(outstandPostId, outstandAccountId),
     );
   },
 
@@ -293,39 +278,22 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
   /**
    * Retry manual (T-034.4, ADR-092) — sama fidelitasnya dengan
    * `cancelScheduledPost`: instant no-op sukses, tanpa simulasi delay/gagal,
-   * tanpa network call. Fake tidak menyimpan state Outstand asli untuk
-   * benar-benar "dihapus" — cukup lupakan target yang dihapus dari memori
-   * `targetsByOutstandPostId` supaya `fetchPostOutcome` berikutnya untuk
-   * `outstandPostId` yang sama tidak lagi melaporkan akun yang sudah
-   * dihapus itu, konsisten dengan perilaku Outstand asli pasca-delete.
+   * tanpa network call.
    *
-   * `accountIds` kosong/undefined menghapus SELURUH target yang tercatat
-   * untuk `outstandPostId` ini (post-level delete) — kalau diisi, hanya
-   * target dengan `outstandAccountId` yang cocok yang dilupakan (selaras
-   * keputusan scope T-034.4: retry single-target, target lain tidak
-   * disentuh).
+   * **Disederhanakan jadi no-op murni (bug fix T-027, root-cause):**
+   * sebelumnya method ini menghapus entry dari `Map` in-memory
+   * `targetsByOutstandPostId` supaya `fetchPostOutcome` berikutnya untuk
+   * `outstandPostId` yang sama "melupakan" akun yang dihapus. Sekarang
+   * `fetchPostOutcome` sudah pure function dari `expectedOutstandAccountIds`
+   * yang disuplai caller (lihat catatan panjang di method itu) — tidak ada
+   * lagi memori untuk dibersihkan sama sekali. Efek "lupa" ini juga TIDAK
+   * pernah jadi load-bearing untuk caller manapun: satu-satunya pemanggil
+   * (`RetryFailedTargetUseCase`) memanggil `deletePost` untuk
+   * `outstandPostId` LAMA lalu `publishNow` untuk mendapat `outstandPostId`
+   * BARU — `fetchPostOutcome` berikutnya selalu dipanggil dengan id BARU
+   * itu, tidak pernah dengan id lama yang di-delete.
    */
-  async deletePost(outstandPostId, accountIds) {
-    const targets = targetsByOutstandPostId.get(outstandPostId);
-    if (!targets) {
-      return undefined;
-    }
-
-    if (!accountIds || accountIds.length === 0) {
-      targetsByOutstandPostId.delete(outstandPostId);
-      return undefined;
-    }
-
-    const remaining = targets.filter(
-      (target) => !accountIds.includes(target.outstandAccountId),
-    );
-
-    if (remaining.length === 0) {
-      targetsByOutstandPostId.delete(outstandPostId);
-    } else {
-      targetsByOutstandPostId.set(outstandPostId, remaining);
-    }
-
+  async deletePost() {
     return undefined;
   },
 

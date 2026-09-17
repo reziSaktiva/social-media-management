@@ -8,6 +8,114 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-17 — T-027 Done (5/5 subtask): Job runner + Railway Cron, ADR-108, ADR-109
+
+Implementasi Elon Backend Engineer → review arsitektur Ridwan Architecture
+Reviewer (2 putaran) → QA end-to-end Najwa QA Engineer. Branch
+`feature/t-027-job-runner-railway-cron` (working tree, belum di-commit —
+menunggu izin eksplisit King Rezi).
+
+### Implementasi (5/5 subtask)
+
+- **T-027.1** Job runner generik —
+  `apps/web/src/lib/jobs/{background-job-store,backoff,job-runner,job-scheduler}.ts`:
+  klaim job via `SELECT FOR UPDATE SKIP LOCKED` (pola sama ADR-099/T-026),
+  registry handler per job type (bukan hardcode 1 tipe).
+- **T-027.2** Autentikasi `X-Job-Secret` di `POST /api/jobs/run` (`JOB_SECRET`
+  yang sudah ada di env sejak awal, sebelumnya nol referensi di kode).
+- **T-027.3** Retry backoff 5m/15m/60m + dead-letter (status `failed` di
+  tabel `BackgroundJob` yang sama).
+- **T-027.4** Railway Cron config-as-code — `railway.json` (service `web`),
+  `railway.cron.json` (service `cron`), `scripts/trigger-job-run.ts`.
+  Provisioning aktual Railway project untuk cron masih blocked (**KI-025**)
+  — ini baru config-as-code, belum ada service `cron` sungguhan live.
+- **T-027.5** Job handler baru `ResolveScheduledPostOutcomeJobHandler`
+  (`apps/web/src/domains/publishing/services/resolve-scheduled-post-outcome-job-handler.ts`)
+  — dipicu `SchedulePostsUseCase` saat post terjadwal sudah due, meng-enqueue
+  job type baru `publishing.scheduled_post.resolve_outcome` (**JOB-07**) via
+  port baru `IJobScheduler`, lalu reuse `OutstandWebhookProcessor.resolvePostOutcome`
+  (di-extract dari method private T-026 jadi public).
+
+### 2 ADR baru (keputusan desain material)
+
+- **ADR-108** — Redesain kontrak `IOutstandAdapter.fetchPostOutcome`:
+  `fetchPostOutcome(outstandPostId)` → `fetchPostOutcome(outstandPostId,
+  expectedOutstandAccountIds: string[])`. Root cause bug ditemukan QA Najwa:
+  `FakeOutstandAdapter` (ADR-059) sebelumnya mengandalkan `Map` in-memory
+  level-modul untuk mengingat target akun dari panggilan `schedulePost`
+  sebelumnya — valid untuk `PublishNowUseCase` (1 request yang sama), tapi
+  rusak untuk T-027.5 karena `schedulePost` (Server Action) dan
+  `fetchPostOutcome` (job, dari Route Handler `/api/jobs/run` terpisah)
+  dibundle Next.js jadi module chunk terpisah dengan instance `Map`
+  masing-masing — dikonfirmasi Elon Backend Engineer nyata di production
+  build (`.next/server`), bukan artefak dev/Turbopack. King Rezi memilih
+  root-cause fix (bukan band-aid `globalThis`) lewat `AskUserQuestion`.
+  `FakeOutstandAdapter` sekarang pure function tanpa state sama sekali. 3
+  call site diupdate (`PublishNowUseCase`, `RetryFailedTargetUseCase`,
+  `OutstandWebhookProcessor.resolvePostOutcome`); domain `analytics`
+  dikonfirmasi tidak terdampak. Detail:
+  `decisions/ADR-108-redesain-fetchpostoutcome-expected-account-ids.md`.
+- **ADR-109** — Method baru `IPublishingRepository.markPostPublished`. Gap
+  pre-existing sejak T-026 (`✅ Done`): `PublishingPost.status` tidak pernah
+  ditransisikan ke `Published` walau semua target sudah resolved sukses —
+  hanya status per-target yang ter-update. Method baru (simetris
+  `markPostFailed`, idempoten via `updateMany` guard status `Scheduled`,
+  tidak throw kalau 0 baris) dipanggil di
+  `OutstandWebhookProcessor.resolvePostOutcome` saat semua target resolved
+  dan tidak semua gagal, konsisten `integration-layer.md`. Bug-fix yang
+  melengkapi T-026, bukan reopen task; `PublishNowUseCase` tidak disentuh.
+  Detail: `decisions/ADR-109-markpostpublished-post-level-status-transition.md`.
+
+### Baseline (Static Reference) diperbarui — perubahan struktural
+
+- `product-discovery/05-architecture/background-jobs.md` — entry baru
+  **JOB-07 — Resolve Scheduled Post Outcome** ditambahkan ke § Job Type
+  Registry (trigger, tipe, payload, handler, retry), atas rekomendasi
+  eksplisit Ridwan Architecture Reviewer supaya job type baru ini tidak
+  hanya ada di kode tanpa tercatat di baseline.
+- `product-discovery/05-architecture/integration-layer.md` — 3 mention
+  signature `fetchPostOutcome(outstandPostId)` diupdate jadi
+  `fetchPostOutcome(outstandPostId, expectedOutstandAccountIds)` mengikuti
+  ADR-108, supaya baseline tidak silently diverge dari kontrak aktual.
+
+### Known Issues baru
+
+- **KI-062** (Open) — `background-jobs.md` self-contradictory soal formula
+  backoff: tabel bilang 5m/15m/60m (konsisten BG-D04 & kode), formula
+  tertulis `5 * 2^(attempts-1)` menghasilkan 5/10/20 menit. Kode benar,
+  dokumentasi baseline perlu dikoreksi — sengaja tidak diperbaiki sesi ini.
+- **KI-063** (Open, minor) — `PublishingPost.publishedAt` tidak diisi oleh
+  `markPostPublished` maupun `markPostFailed` (pola lama, bukan regresi).
+  UI sudah fallback (`item.publishedAt ?? item.updatedAt`), non-blocking.
+
+### Verifikasi
+
+`bunx tsc --noEmit` bersih, `eslint .` bersih, `prettier --check` bersih,
+`vitest run` **396 pass / 5 skip**. Review Ridwan Architecture Reviewer 2
+putaran (putaran 1: 1 bug correctness diperbaiki; putaran 2: fokus
+ADR-108/ADR-109, 0 temuan). QA Najwa QA Engineer end-to-end (browser real +
+`curl` manual simulasi Railway Cron): golden path Schedule → job runner →
+History Published, diulang 2x konsisten; regresi Publish Now dan Retry
+manual (T-034.4) keduanya PASS.
+
+### Dokumentasi diperbarui (governance)
+
+- `tasks/v02-publishing-mvp.md` § T-027 (status `🟡` → `✅ Done`, checklist
+  5/5, catatan implementasi + 2 ADR + gap) dan § T-026 (catatan tambahan
+  soal ADR-108/109 + koreksi prediksi enqueue+async yang belum terealisasi).
+- `TASKS.md` — indeks v0.2 (17 ✅ · 2 🟡 · 4 ⏳ → 18 ✅ · 1 🟡 · 4 ⏳), Total
+  (43 → 44 selesai, 217 subtask tidak berubah), baris Fokus sekarang T-027,
+  update log baru, catatan rantai blocker terbesar disederhanakan.
+- `DECISIONS.md` — 2 baris ADR baru (ADR-108, ADR-109) di atas tabel.
+- `PROJECT_STATE.md` — Snapshot (Top Next Tasks, Blocker), Known Issues
+  (KI-062, KI-063 baru; KI-003 dicatat T-026/T-027 tidak lagi terhambat),
+  Blockers (baris KI-003 diperbarui), Completed (Ringkasan) — bullet T-027
+  baru ditambah, bullet T-092 (terlama) dihapus supaya tetap 5 item, Recent
+  Decisions (Ringkasan) — ADR-108/109 ditambah, ADR-104/103 (terlama)
+  dihapus supaya tetap 5 item. Metadata Version 1.0.81 → 1.0.82.
+
+---
+
 ## 2026-09-16 — Audit konsistensi dokumentasi (redundansi instruksi AI)
 
 Dijalankan lewat skill `docs-consistency-audit`, scope `all`, atas permintaan

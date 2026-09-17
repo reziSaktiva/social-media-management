@@ -63,6 +63,14 @@ vi.mock("@/lib/adapters/outstand", () => ({
 vi.mock("@/lib/adapters/media-storage/supabase-media-storage-adapter", () => ({
   supabaseMediaStorageAdapter: {},
 }));
+// T-027.5 — `scheduleDraftAction` sekarang meng-enqueue job polling outcome
+// lewat `backgroundJobScheduler` (Prisma `BackgroundJob` di baliknya) — mock
+// supaya modul ini tidak menginisialisasi `PrismaClient` nyata (butuh
+// `DATABASE_URL`) hanya untuk test Server Action yang sudah memalsukan
+// seluruh repository/adapter lain.
+vi.mock("@/lib/jobs/job-scheduler", () => ({
+  backgroundJobScheduler: { scheduleJob: vi.fn(async () => undefined) },
+}));
 
 import { MediaService } from "@/domains/media";
 import {

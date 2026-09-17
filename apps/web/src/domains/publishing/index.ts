@@ -2,6 +2,7 @@
 export * from "./types";
 export * from "./errors";
 export * from "./adapters/outstand-adapter";
+export * from "./adapters/job-scheduler";
 export * from "./content-format-matrix";
 export * from "./rbac";
 export * from "./repositories/publishing.repository";
@@ -11,6 +12,7 @@ export * from "./services/publish-now.use-case";
 export * from "./services/cancel-schedule.use-case";
 export * from "./services/retry-failed-target.use-case";
 export * from "./services/outstand-webhook-processor";
+export * from "./services/resolve-scheduled-post-outcome-job-handler";
 export * from "./services/resolve-schedule-targets";
 export * from "./services/resolve-draft-media-ids";
 export * from "./services/group-queue-items";
