@@ -8,6 +8,93 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-16 — Audit konsistensi dokumentasi (redundansi instruksi AI)
+
+Dijalankan lewat skill `docs-consistency-audit`, scope `all`, atas permintaan
+eksplisit King Rezi: cari instruksi/aturan yang ditulis ulang (bermakna sama)
+di lebih dari satu dokumen internal — termasuk di dalam `AGENTS.md` sendiri —
+supaya AI tidak membaca hal yang sama dua kali di awal sesi, dan usulkan
+hierarki bacaan (AGENTS.md = satu-satunya tempat teks aturan lengkap; dokumen
+turunan cukup pointer). Report-only dulu, baru dieksekusi setelah dikonfirmasi
+King Rezi ("rapikan semua temuan mekanis sekarang").
+
+### Fixed
+
+- **5 hard rules layer (AGENTS.md rules 5-9)** yang sebelumnya disalin ulang
+  verbatim di 4 dokumen turunan — diganti jadi pointer 1 baris ke
+  `AGENTS.md`, teks lengkap tidak lagi diduplikasi:
+  - [`ARCHITECTURE_OVERVIEW.md`](ARCHITECTURE_OVERVIEW.md) § "Aturan layer
+    (untuk label di Figma)" — 5 poin penuh → 1 paragraf pointer.
+  - [`context/ctx-architecture.md`](../context/ctx-architecture.md) "Aturan
+    operasional" poin 1 & 3 (entry point, Supabase JS) → digabung jadi 1
+    poin pointer; list direnumber 1-7 (dari 1-8).
+  - [`context/ctx-domain.md`](../context/ctx-domain.md) "Aturan operasional
+    (domain)" poin 1, 2, 4 (shared types, cross-domain, domain-tanpa-Prisma)
+    → digabung jadi 1 poin pointer; list direnumber 1-7 (dari 1-9).
+  - [`context/ctx-implementation.md`](../context/ctx-implementation.md)
+    "Aturan operasional" poin 1, 3, 5, 7 (entry point, domain logic,
+    cross-domain, shared types) → digabung jadi 1 poin pointer; list
+    direnumber 1-8 (dari 1-11).
+- **Duplikasi internal di `AGENTS.md`** — paragraf di section "Subagent
+  kerja" yang menjelaskan ulang isi poin #3 "Wajib di awal sesi" dipangkas
+  jadi pointer + konteks "kenapa" (ADR-063) saja, tanpa restate aturannya.
+- **`context/ctx-project.md`** poin 3 (evaluasi delegasi subagent) diringkas
+  jadi pointer ke `AGENTS.md` poin 3, alih-alih menjelaskan ulang aturan yang
+  sama.
+- **Referensi usang** — [`DEVELOPER_WORKFLOW.md`](DEVELOPER_WORKFLOW.md)
+  flowchart node yang menyebut `apps/web/.claude/CLAUDE.md` sebagai "agent
+  docs resmi **Astryx**" dikoreksi jadi "agent docs resmi **shadcn/ui**"
+  (dokumen itu sudah 100% tentang shadcn sejak ADR-097/T-095.3).
+- **`apps/web/.claude/CLAUDE.md`** — satu kalimat basi yang bilang migrasi
+  Astryx→shadcn masih "incremental, coexist" dikoreksi jadi mencerminkan
+  status nyata: migrasi **tuntas** (T-102 ✅ Done, 2026-09-04, 0 import
+  `@astryxdesign/*` aktif — dicek langsung lewat grep ke `apps/web/src`).
+
+### Fixed (lanjutan, 2026-09-16 — izin eksplisit King Rezi)
+
+- **`.claude/agents/mark-ui-engineer.md`** (Static Reference, chmod 444) —
+  `chmod 644` → edit → `chmod 444` lagi. Kontradiksi status migrasi
+  dikoreksi di 5 tempat (frontmatter `description`, paragraf pembuka,
+  poin "Wajib dibaca" #4, 2 baris di "Aturan keras"): sebelumnya bilang
+  migrasi Astryx→shadcn "berjalan incremental per route-segment" / "Astryx
+  & shadcn boleh coexist sementara" — dikoreksi jadi **tuntas 100%** (ADR-097,
+  rilis v0.7, T-102 ✅ Done, 2026-09-04, 0 import `@astryxdesign/*` aktif —
+  dicek ulang lewat grep ke `apps/web/src`). Sekaligus dikoreksi klaim
+  `react-icons` "era Astryx, coexist untuk kode belum migrasi" (baris Icon di
+  "Aturan keras") — dicek ke `platform-icons.tsx`: itu bukan sisa migrasi,
+  melainkan keputusan sadar **ADR-058 poin 6/10** (ikon brand platform sosial,
+  Lucide/hugeicons tidak menyediakan logo bermerek dagang).
+
+### Fixed (lanjutan, 2026-09-17 — keputusan eksplisit King Rezi)
+
+- **`project-manager/PROJECT_RULES.md`** section "AI Collaboration Rules" (5
+  bullet generik: baca dokumentasi dulu, tidak boleh ubah arsitektur/business
+  rules tanpa ADR, jaga konsistensi struktur, patuh klasifikasi dokumen) —
+  King Rezi memutuskan **dipangkas jadi pointer** ke `AGENTS.md` (rule 4,
+  rule 17, section "Aturan keras"), konsisten dengan pola yang sudah
+  dieksekusi di file lain sesi ini. Section "Documentation Governance" di
+  bawahnya tetap dipertahankan utuh (bukan duplikasi — itu detail klasifikasi
+  dokumen, bukan aturan kolaborasi AI).
+
+### Fixed (lanjutan, 2026-09-17 — temuan minor dari self-review PR #124)
+
+- **`project-manager/PROJECT_RULES.md`** § "AI Collaboration Rules" — sitasi
+  "rule 17" yang longgar (rule 17 sebenarnya spesifik gate Claude Design,
+  bukan "jaga konsistensi struktur") diganti jadi pointer per-klausa yang
+  presisi: baca dokumentasi dulu → section "Wajib di awal sesi", ubah
+  baseline tanpa ADR → rule 4, konsistensi struktur → section "Aturan keras".
+  "Patuh klasifikasi dokumen" dikoreksi jadi pointer ke section **Document
+  Type Classification** di file yang sama (bukan ke AGENTS.md), karena aturan
+  itu memang didefinisikan di sini, bukan di AGENTS.md.
+
+### Belum dieksekusi
+
+- Duplikasi persona kanonikal (Raka/Maya/Sinta/Dimas/Lara, 4 tempat) dan
+  checklist "setelah mengubah sesuatu" di `ctx-development.md`/
+  `project-os-navigator` SKILL.md — sengaja tidak disentuh, dampak token
+  kecil (1 baris) dan berisiko mengurangi kegunaan checklist yang memang
+  didesain self-contained per mode.
+
 ## 2026-09-15 — KI-061 baru — Tidak ada warning UI saat media over-limit setelah ganti target akun/format
 
 Ditemukan lewat diskusi dengan King Rezi (murni analisis kode/tanya-jawab,

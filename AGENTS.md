@@ -58,12 +58,9 @@ diklasifikasikan **Static Reference** (`PROJECT_RULES.md`), read-only (chmod
 orkestrasi paralel/sekuensial, dan pemetaan **Domain → Subagent** ada di
 `.claude/agents/README.md`.
 
-**Ini bukan referensi opsional.** Poin #3 di "Wajib di awal sesi" mewajibkan
-evaluasi delegasi subagent untuk setiap task implementasi kode — termasuk
-menjalankan beberapa subagent **paralel** kalau ada task/subtask independen
-yang bisa berjalan bersamaan (ADR-063, ditulis setelah audit menemukan AI
-jarang mendelegasikan karena langkah ini sebelumnya tidak terhubung ke
-alur kerja manapun).
+**Ini bukan referensi opsional** — lihat poin #3 di "Wajib di awal sesi"
+(ADR-063, ditulis setelah audit menemukan AI jarang mendelegasikan karena
+langkah ini sebelumnya tidak terhubung ke alur kerja manapun).
 
 ## Skills (`.claude/skills/`)
 

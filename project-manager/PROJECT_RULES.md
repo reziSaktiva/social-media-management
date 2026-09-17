@@ -150,11 +150,13 @@ Supaya `PROJECT_STATE.md` tidak kembali membengkak, dicek sebagai bagian **Defin
 
 # AI Collaboration Rules
 
-* AI harus membaca dokumentasi sebelum melakukan implementasi.
-* AI tidak boleh mengubah arsitektur tanpa keputusan baru yang terdokumentasi.
-* AI tidak boleh mengubah business rules tanpa persetujuan dan pembaruan dokumentasi.
-* AI harus menjaga konsistensi struktur project.
-* AI harus mematuhi klasifikasi dokumen pada bagian **Documentation Governance** saat membuat perubahan.
+Teks lengkap aturan kolaborasi dengan AI ada di **`../AGENTS.md`**: baca
+dokumentasi dulu → section "Wajib di awal sesi"; tidak boleh ubah
+arsitektur/business rules tanpa ADR → rule 4; jaga konsistensi struktur →
+seluruh section "Aturan keras". Tidak disalin ulang di sini supaya tidak
+drift saat salah satu diupdate. Aturan "patuh klasifikasi dokumen" tidak
+perlu pointer keluar — itu section **Document Type Classification** di
+bawah, di dokumen ini sendiri.
 
 ---
 
