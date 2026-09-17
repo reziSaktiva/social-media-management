@@ -94,23 +94,22 @@ Structure` (ADR-069, resolusi KI-010).
 
 ## Aturan operasional
 
-1. **Entry points** (`app/`, Middleware, Route Handlers, Server Actions): wiring + auth guard tipis + panggil service. **Tanpa** business rules. (Server Actions khusus mutation — lihat `rendering-strategy.md`.)
+1. Hard rules entry point / domain logic / cross-domain / shared types —
+   lihat **`../AGENTS.md` rules 5-8**, tidak diulang di sini. (Server Actions
+   khusus mutation — lihat `rendering-strategy.md`.)
 2. **Satu Application Service per BC** — orchestrasi, otorisasi (RBAC), koordinasi repo.
-3. **Domain logic** murni: tidak import Prisma, Supabase client, atau HTTP Outstand.
-4. **Repository**: interface di sisi domain; implementasi pakai Prisma di lapisan infrastructure domain tersebut.
-5. **Cross-domain**: import hanya dari public API (`domains/<other>/index.ts`) — bukan file internal domain lain.
-6. **Outstand**: hanya lewat adapter/ACL — lihat `integration-layer.md`.
-7. **Shared**: tipe bersama di `@social/shared`; jangan taruh use-case di shared package.
-8. **Billing (BC-10)**: jangan diimplementasi sebagai fitur MVP kecuali keputusan berubah + ADR.
-9. Schema DB: selaraskan dengan `database-strategy.md` + `schema.prisma`; migrasi lewat Prisma Migrate.
-10. **Kontrak Outstand ADR-040:** jangan membuat handler webhook komentar/DM,
-    jangan mengirim signed URL Supabase sebagai media publish, dan jangan
-    meminta secret X dari user aplikasi. Gunakan tiga event webhook resmi,
-    Outstand Media API working copy, comment sync 30 menit/manual refresh, serta
-    X BYOK manual di dashboard Outstand.
-11. Keberadaan kontrak dokumentasi atau schema **bukan** bukti runtime sudah
-    diimplementasikan. Saat mulai M8, verifikasi service, adapter, handler, job,
-    dan test yang benar-benar ada sebelum mengandalkannya.
+3. **Repository**: interface di sisi domain; implementasi pakai Prisma di lapisan infrastructure domain tersebut.
+4. **Outstand**: hanya lewat adapter/ACL — lihat `integration-layer.md`.
+5. **Billing (BC-10)**: jangan diimplementasi sebagai fitur MVP kecuali keputusan berubah + ADR.
+6. Schema DB: selaraskan dengan `database-strategy.md` + `schema.prisma`; migrasi lewat Prisma Migrate.
+7. **Kontrak Outstand ADR-040:** jangan membuat handler webhook komentar/DM,
+   jangan mengirim signed URL Supabase sebagai media publish, dan jangan
+   meminta secret X dari user aplikasi. Gunakan tiga event webhook resmi,
+   Outstand Media API working copy, comment sync 30 menit/manual refresh, serta
+   X BYOK manual di dashboard Outstand.
+8. Keberadaan kontrak dokumentasi atau schema **bukan** bukti runtime sudah
+   diimplementasikan. Saat mulai M8, verifikasi service, adapter, handler, job,
+   dan test yang benar-benar ada sebelum mengandalkannya.
 
 ---
 
