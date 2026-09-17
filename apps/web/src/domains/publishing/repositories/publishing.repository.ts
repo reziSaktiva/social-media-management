@@ -645,9 +645,67 @@ export interface IPublishingRepository {
    * target sudah ditulis oleh `updateTargetOutcome` sebelum method ini
    * dipanggil.
    *
+   * **TIDAK throw kalau 0 baris ter-update** (bug fix T-027 — sama seperti
+   * `markPostPublished` di bawah): `resolvePostOutcome` (dipakai BERSAMA
+   * webhook T-026 dan job polling T-027) bisa sah dipanggil lebih dari
+   * sekali untuk `outstandPostId` yang sama, dan panggilan kedua yang
+   * menemukan post SUDAH `Failed` harus diam-diam no-op, bukan dianggap
+   * kegagalan internal.
+   *
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   markPostFailed(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<void>;
+
+  /**
+   * T-027 bug fix (gap ditemukan Elon Backend Engineer saat verifikasi
+   * end-to-end T-027, dikonfirmasi King Rezi: scoped bug-fix, boleh
+   * langsung dieksekusi) — kebalikan `markPostFailed` untuk sisi SUKSES.
+   * Dipanggil `OutstandWebhookProcessor.resolvePostOutcome` (dipakai
+   * BERSAMA oleh webhook T-026 dan job polling T-027) pada titik yang SAMA
+   * PERSIS dengan keputusan "semua target sudah resolved, tidak ada yang
+   * `pending` lagi" — kalau TIDAK semua target diketahui gagal (berarti
+   * minimal satu sukses/partial success), post naik dari `Scheduled` ke
+   * `Published`.
+   *
+   * **Kenapa method ini baru ditambahkan sekarang:** semantik
+   * "post.error hanya kalau SEMUA target gagal; post tetap Published kalau
+   * minimal satu target sukses/partial success" SUDAH eksplisit di baseline
+   * (`integration-layer.md:269-270,305`) sejak T-026 — tapi implementasinya
+   * SELAMA INI hanya menjalankan SISI GAGAL (`markPostFailed`). Tidak ada
+   * kode yang menjalankan sisi SUKSES untuk jalur Schedule (`schedulePost`
+   * menandai `Scheduled` di muka, BUKAN `Published` — beda dari
+   * `publishNow`/`PublishNowUseCase` yang menandai `Published` di muka).
+   * Akibatnya post yang outcome target-nya SUDAH benar (published, via
+   * webhook ATAU job T-027) tidak pernah terlihat pindah ke History/
+   * Calendar sebagai selesai — targetnya benar, level POST-nya tidak
+   * pernah diupdate. Baru ketahuan saat QA end-to-end T-027 (query DB
+   * langsung membuktikan `PublishingPostTarget.status = "published"` tapi
+   * `PublishingPost.status` tetap `"scheduled"` selamanya).
+   *
+   * **TIDAK dipakai `PublishNowUseCase`** (dan tidak boleh disentuh untuk
+   * itu) — use-case itu sudah menandai `Published` DI MUKA lewat
+   * `repository.publishNow` SEBELUM outcome diketahui, dan tidak pernah
+   * memanggil `resolvePostOutcome` sama sekali; koreksinya kalau semua
+   * target gagal tetap lewat `markPostFailed` seperti sebelumnya, tidak
+   * berubah.
+   *
+   * **Sama seperti `markPostFailed`: method ini TIDAK throw kalau 0
+   * baris ter-update** (implementasi Prisma harus no-op diam-diam, bukan
+   * error) — `resolvePostOutcome` bisa dipanggil lebih dari sekali untuk
+   * `outstandPostId` yang sama secara sah (mis. dua webhook event Outstand
+   * BERBEDA — bukan duplikat receipt — untuk akun berbeda pada post yang
+   * sama, yang keduanya bisa saja masing-masing melihat "semua target
+   * sudah resolved" begitu `fetchPostOutcome` sudah mengembalikan status
+   * penuh). Panggilan kedua yang menemukan post SUDAH `Published` harus
+   * diam-diam no-op, bukan dianggap kegagalan internal.
+   *
+   * Idempoten (`updateMany` hanya menyentuh baris yang masih `Scheduled`).
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  markPostPublished(
     input: { workspaceId: WorkspaceId; postId: PostId },
     userId: UserId,
   ): Promise<void>;

@@ -158,9 +158,12 @@ export class RetryFailedTargetUseCase {
         // Retry dari halaman History selalu berarti aksi langsung — sama
         // seperti PublishNowUseCase, panggil fetchPostOutcome SEGERA supaya
         // UI mendapat outcome final tanpa menunggu polling/webhook (T-026)
-        // belakangan.
-        const outcomes =
-          await this.outstandAdapter.fetchPostOutcome(outstandPostId);
+        // belakangan. `expectedOutstandAccountIds` (T-027 bug fix,
+        // root-cause) — retry ini SATU target, jadi cukup akun itu sendiri.
+        const outcomes = await this.outstandAdapter.fetchPostOutcome(
+          outstandPostId,
+          [target.outstandAccountId],
+        );
         const outcome = outcomes.find(
           (candidate) =>
             candidate.outstandAccountId === target.outstandAccountId,

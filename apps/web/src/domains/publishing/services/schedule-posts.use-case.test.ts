@@ -8,9 +8,10 @@ import {
   ContentStatus,
   SocialPlatform,
 } from "@social/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ConflictError } from "@/lib/utils/errors";
 import type { IOutstandAdapter } from "../adapters/outstand-adapter";
+import type { IJobScheduler } from "../adapters/job-scheduler";
 import { PublishingDomainError } from "../errors";
 import type {
   IPublishingRepository,
@@ -55,6 +56,7 @@ function createFakeRepository(
     getHistoryPostById: async () => null,
     cancelSchedule: async () => null,
     markPostFailed: async () => undefined,
+    markPostPublished: async () => undefined,
     getRetryTarget: async () => null,
     resetTargetForRetry: async () => undefined,
     setRetryOutstandPostId: async () => undefined,
@@ -101,6 +103,15 @@ function createFakeOutstandAdapter(
       totalEngagements: 0,
       avgEngagementRate: 0,
     }),
+    ...overrides,
+  };
+}
+
+function createFakeJobScheduler(
+  overrides: Partial<IJobScheduler> = {},
+): IJobScheduler {
+  return {
+    scheduleJob: async () => undefined,
     ...overrides,
   };
 }
@@ -165,8 +176,14 @@ describe("SchedulePostsUseCase.execute", () => {
         return { outstandPostId: "fake-post-shared" };
       },
     });
+    const scheduledJobs: Parameters<IJobScheduler["scheduleJob"]>[0][] = [];
+    const jobScheduler = createFakeJobScheduler({
+      scheduleJob: async (input) => {
+        scheduledJobs.push(input);
+      },
+    });
 
-    const useCase = new SchedulePostsUseCase(repository, adapter);
+    const useCase = new SchedulePostsUseCase(repository, adapter, jobScheduler);
 
     const result = await useCase.execute({
       workspaceId: WORKSPACE_ID,
@@ -207,6 +224,92 @@ describe("SchedulePostsUseCase.execute", () => {
       ]),
     );
     expect(outcomes).toHaveLength(2);
+    // T-027.5 — job polling outcome di-enqueue SEKALI, payload
+    // `outstandPostId` (bukan `postId`), `scheduledAt` job = `scheduledAt`
+    // post (lihat catatan panjang di `SchedulePostsUseCase`).
+    expect(scheduledJobs).toEqual([
+      {
+        type: "publishing.scheduled_post.resolve_outcome",
+        payload: { outstandPostId: "fake-post-shared" },
+        scheduledAt: SCHEDULED_AT,
+      },
+    ]);
+  });
+
+  it("bug fix (review Ridwan Architecture Reviewer): does NOT mark the post/targets failed when the Outstand call succeeds but enqueueing the outcome job throws — the post really is scheduled on Outstand's side", async () => {
+    const scheduleRecord = baseScheduleRecord([
+      {
+        id: asPostTargetId("target-1"),
+        connectedAccountId: CONNECTED_ACCOUNT_1,
+      },
+      {
+        id: asPostTargetId("target-2"),
+        connectedAccountId: CONNECTED_ACCOUNT_2,
+      },
+    ]);
+    const outcomes: Parameters<
+      IPublishingRepository["updateTargetOutcome"]
+    >[0][] = [];
+    const markPostFailed = vi.fn(async () => undefined);
+    const repository = createFakeRepository({
+      schedulePost: async () => scheduleRecord,
+      updateTargetOutcome: async (input) => {
+        outcomes.push(input);
+      },
+      markPostFailed,
+    });
+    const adapter = createFakeOutstandAdapter({
+      schedulePost: async () => ({ outstandPostId: "fake-post-shared" }),
+    });
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const jobScheduler = createFakeJobScheduler({
+      scheduleJob: async () => {
+        throw new Error("BackgroundJob insert failed — DB unreachable");
+      },
+    });
+    const useCase = new SchedulePostsUseCase(repository, adapter, jobScheduler);
+
+    const result = await useCase.execute({
+      workspaceId: WORKSPACE_ID,
+      postId: POST_ID,
+      scheduledAt: SCHEDULED_AT,
+      targets: [
+        {
+          connectedAccountId: CONNECTED_ACCOUNT_1,
+          platform: SocialPlatform.Instagram,
+          contentFormat: ContentFormat.Post,
+          outstandAccountId: "outstand-acc-1",
+        },
+        {
+          connectedAccountId: CONNECTED_ACCOUNT_2,
+          platform: SocialPlatform.Facebook,
+          contentFormat: ContentFormat.Reel,
+          outstandAccountId: "outstand-acc-2",
+        },
+      ],
+      actingUserId: AUTHOR_ID,
+    });
+
+    // Post/target TETAP "scheduled" — enqueue job gagal bukan berarti
+    // publish/schedule gagal (bug lama: exception ini sebelumnya tertangkap
+    // oleh catch yang sama dengan kegagalan adapter, jadi salah menandai
+    // post/target `failed` walau Outstand sudah benar-benar menjadwalkannya).
+    expect(result).toBe(scheduleRecord);
+    expect(outcomes).toEqual(
+      expect.arrayContaining([
+        { postTargetId: asPostTargetId("target-1"), status: "scheduled" },
+        { postTargetId: asPostTargetId("target-2"), status: "scheduled" },
+      ]),
+    );
+    expect(outcomes).toHaveLength(2);
+    expect(markPostFailed).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("gagal enqueue job resolve-outcome"),
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 
   it("all targets are marked failed and the post is marked Failed when the single adapter call rejects", async () => {
@@ -238,7 +341,12 @@ describe("SchedulePostsUseCase.execute", () => {
         throw new Error("Outstand unreachable");
       },
     });
-    const useCase = new SchedulePostsUseCase(repository, adapter);
+    const scheduleJob = vi.fn(async () => undefined);
+    const useCase = new SchedulePostsUseCase(
+      repository,
+      adapter,
+      createFakeJobScheduler({ scheduleJob }),
+    );
 
     await useCase.execute({
       workspaceId: WORKSPACE_ID,
@@ -276,6 +384,9 @@ describe("SchedulePostsUseCase.execute", () => {
       ]),
     );
     expect(markPostFailedCalled).toBe(true);
+    // T-027.5 — tidak ada yang perlu di-poll kalau adapter call-nya sendiri
+    // sudah gagal (all-or-nothing, sudah `markPostFailed` di atas).
+    expect(scheduleJob).not.toHaveBeenCalled();
   });
 
   it("rejects a content format not allowed for the platform before calling repository or adapter", async () => {
@@ -293,7 +404,11 @@ describe("SchedulePostsUseCase.execute", () => {
         return { outstandPostId: "should-not-happen" };
       },
     });
-    const useCase = new SchedulePostsUseCase(repository, adapter);
+    const useCase = new SchedulePostsUseCase(
+      repository,
+      adapter,
+      createFakeJobScheduler(),
+    );
 
     await expect(
       useCase.execute({
@@ -323,7 +438,11 @@ describe("SchedulePostsUseCase.execute", () => {
       schedulePost: async () => null,
     });
     const adapter = createFakeOutstandAdapter();
-    const useCase = new SchedulePostsUseCase(repository, adapter);
+    const useCase = new SchedulePostsUseCase(
+      repository,
+      adapter,
+      createFakeJobScheduler(),
+    );
 
     await expect(
       useCase.execute({
@@ -386,7 +505,11 @@ describe("SchedulePostsUseCase.execute", () => {
         return { outstandPostId: "should-not-happen" };
       },
     });
-    const useCase = new SchedulePostsUseCase(repository, adapter);
+    const useCase = new SchedulePostsUseCase(
+      repository,
+      adapter,
+      createFakeJobScheduler(),
+    );
 
     await expect(
       useCase.execute({

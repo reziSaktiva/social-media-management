@@ -331,8 +331,37 @@ export interface IOutstandAdapter {
    * `integration-layer.md` (bagian "OutstandAdapter", sebelum redesain) —
    * dipertahankan sengaja supaya T-026 (webhook, belum dikerjakan) tidak
    * perlu rework nama method saat diimplementasikan nanti.
+   *
+   * **`expectedOutstandAccountIds` (bug fix T-027, root-cause — dikonfirmasi
+   * King Rezi via `AskUserQuestion` setelah temuan QA Najwa):** parameter
+   * WAJIB berisi daftar `outstandAccountId` yang caller harapkan punya
+   * outcome untuk `outstandPostId` ini. Ditambahkan karena implementasi
+   * SEBELUMNYA membiarkan `FakeOutstandAdapter` "mengingat" set akun per
+   * `outstandPostId` lewat `Map` in-memory level-modul yang diisi saat
+   * `schedulePost`/`publishNow` dipanggil — ini SALAH untuk T-027 (job
+   * runner Railway Cron): `schedulePost()` dipanggil dari Server Action,
+   * `fetchPostOutcome()` dipanggil BELAKANGAN (bisa berjam-jam/berhari-hari)
+   * dari Route Handler TERPISAH (`/api/jobs/run`) — dibuktikan lewat
+   * inspeksi `.next/server` build production (Turbopack) bahwa Next.js
+   * membundle Route Handler dan Server Action/RSC page sebagai CHUNK
+   * TERPISAH yang masing-masing mendapat SALINAN modul `FakeOutstandAdapter`
+   * sendiri (module-level state TIDAK dijamin sama), dan bahkan seandainya
+   * dijamin sama (mis. `globalThis` caching), memori proses tidak survive
+   * restart Railway (auto-deploy tiap push, DI-D05) di antara waktu
+   * schedule dan waktu due post yang bisa berjeda lama.
+   *
+   * Real Outstand API TIDAK butuh parameter ini secara fungsional (server
+   * mereka sudah tahu account list persis dari `create-a-post` yang
+   * disimpan di sisi mereka, durable) — real adapter (T-025, belum ada)
+   * boleh mengabaikannya atau memakainya untuk validasi/filter defensif.
+   * Untuk Fake (ADR-059), parameter ini membuat method jadi PURE FUNCTION
+   * dari `(outstandPostId, expectedOutstandAccountIds)` — tidak butuh
+   * state/memori lintas panggilan sama sekali.
    */
-  fetchPostOutcome(outstandPostId: string): Promise<PostTargetOutcome[]>;
+  fetchPostOutcome(
+    outstandPostId: string,
+    expectedOutstandAccountIds: string[],
+  ): Promise<PostTargetOutcome[]>;
 
   /**
    * Publishing (T-030, ADR-049 Tier 2, redesain 2026-08-26) — batalkan

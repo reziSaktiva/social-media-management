@@ -53,7 +53,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | Release                    | Fokus                                              | Rentang ID  | Task | Status              | File                                                 |
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 16 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
-| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 17 ✅ · 2 🟡 · 4 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
+| **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 18 ✅ · 1 🟡 · 4 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
@@ -61,7 +61,44 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 87 task · 43 selesai · 217 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 87 task · 44 selesai · 217 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-17, T-027 SELESAI 5/5 subtask — ADR-108, ADR-109):**
+> **T-027** (Job runner + Railway Cron, `tasks/v02-publishing-mvp.md`) naik
+> status `🟡 In Progress` → `✅ Done` — seluruh 5/5 subtask tuntas: job
+> runner generik dengan klaim job `SELECT FOR UPDATE SKIP LOCKED` +
+> registry handler per job type (T-027.1), autentikasi `X-Job-Secret`
+> (T-027.2), retry backoff 5m/15m/60m + dead-letter (T-027.3), Railway Cron
+> config-as-code `railway.json`/`railway.cron.json`/`scripts/trigger-job-run.ts`
+> (T-027.4 — provisioning project Railway sungguhan masih blocked **KI-025**),
+> dan job handler baru `ResolveScheduledPostOutcomeJobHandler` (T-027.5) yang
+> menutup gap "belum ada transisi status post otomatis saat waktunya tiba"
+> dengan mengenqueue job type baru `publishing.scheduled_post.resolve_outcome`
+> (**JOB-07**, ditambahkan ke `background-jobs.md` § Job Type Registry) dan
+> reuse `OutstandWebhookProcessor.resolvePostOutcome` (di-extract jadi public,
+> dipakai bersama webhook T-026 dan job ini). Rangkaian: Elon Backend Engineer
+> → Ridwan Architecture Reviewer (2 putaran, putaran 1 1 bug correctness
+> diperbaiki, putaran 2 0 temuan) → Najwa QA Engineer (browser real + `curl`
+> simulasi Railway Cron, golden path Schedule → History Published PASS 2x,
+> regresi Publish Now & Retry manual PASS). **2 ADR baru**: **ADR-108**
+> (redesain `IOutstandAdapter.fetchPostOutcome` menambah parameter
+> `expectedOutstandAccountIds` — root-cause fix bug `FakeOutstandAdapter`
+> yang sebelumnya menyimpan state `Map` in-memory per module chunk,
+> terbukti pecah lintas Server Action↔Route Handler terpisah di production
+> build; `FakeOutstandAdapter` sekarang pure function tanpa state) dan
+> **ADR-109** (method baru `IPublishingRepository.markPostPublished` —
+> melengkapi gap T-026 pre-existing, `PublishingPost.status` sebelumnya
+> tidak pernah bertransisi ke `Published` di level post meski semua target
+> sudah resolved sukses). **KI-062 baru** (formula backoff
+> `background-jobs.md` self-contradictory, tabel vs formula tertulis) dan
+> **KI-063 baru** (`PublishingPost.publishedAt` tidak pernah diisi) dicatat,
+> tidak diperbaiki sesi ini. Breakdown v0.2 berubah dari "17 ✅ · 2 🟡 · 4 ⏳"
+> menjadi **18 ✅ · 1 🟡 · 4 ⏳** (T-027 pindah 🟡 → ✅). Task selesai naik
+> 43 → **44**. Jumlah task/subtask total tidak berubah (87 task, 217
+> subtask), dihitung ulang langsung dari `tasks/v02-publishing-mvp.md`.
+> Detail: `tasks/v02-publishing-mvp.md` § T-027,
+> `decisions/ADR-108-redesain-fetchpostoutcome-expected-account-ids.md`,
+> `decisions/ADR-109-markpostpublished-post-level-status-transition.md`.
 
 > **Update (2026-09-11, T-015 SELESAI 3/3 subtask — ADR-105):** **T-015**
 > (Reconnect flow saat token expired, `tasks/v01-foundation.md`) naik status
@@ -817,6 +854,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
+| **T-027** | Job runner + Railway Cron                       | ✅ 5/5 | **Done (2026-09-17)** — job runner generik (klaim job `SELECT FOR UPDATE SKIP LOCKED` + registry handler per job type), auth `X-Job-Secret`, retry backoff 5m/15m/60m + dead-letter, Railway Cron config-as-code (`railway.json`/`railway.cron.json` — provisioning project sungguhan masih blocked **KI-025**), dan job handler baru `ResolveScheduledPostOutcomeJobHandler` (**JOB-07**) yang menutup transisi status post terjadwal otomatis. **ADR-108** (redesain `fetchPostOutcome` — root-cause fix state `Map` `FakeOutstandAdapter` yang pecah lintas Server Action↔Route Handler) dan **ADR-109** (`markPostPublished`, melengkapi gap T-026). **KI-062**/**KI-063** baru (dokumentasi backoff self-contradictory, `publishedAt` kosong). Lolos review Ridwan (2 putaran) + QA Najwa (browser + `curl` simulasi cron, semua PASS). Lihat `tasks/v02-publishing-mvp.md` § T-027 |
 | **T-103** | Kunci Pola Implementasi shadcn per Komponen di Claude Design | ✅ 4/4 | **Done** (2026-09-10) — mencegah pengulangan drift seperti **KI-054**/**KI-055**: audit Claude Design supaya tiap list/komposisi ambigu (>1 pola shadcn valid) dikunci eksplisit ke satu pola konkret, plus gate baru di `AGENTS.md` — kalau pola belum dikunci, AI wajib tanya King Rezi dulu, bukan menebak. **T-103.1** — 3 file Claude Design (Drafts/Workspaces/Connected Accounts) markup-nya disamakan penuh dengan kode nyata (pola `Table`), `readme.md` diupdate; PR [#116](https://github.com/reziSaktiva/social-media-management/pull/116) ke `staging`. **T-103.2** — gate berhenti-dan-tanya ditambahkan ke `AGENTS.md` rule 17 + `.claude/agents/README.md` + `mark-ui-engineer.md`. **T-103.3** — gate verifikasi struktur setelah implementasi ditambahkan ke checklist `mark-ui-engineer.md` & `najwa-qa-engineer.md` (Najwa juga diberi tool `DesignSync` baru). **T-103.4** — audit retroaktif menemukan **KI-056** (`publish-history.html` drift sama seperti KI-054/055) — Resolved. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-103 |
 | **T-102** | Cleanup & Verifikasi Akhir                      | ✅      | **Done** — seluruh 6 subtask tuntas: T-102.1 (hapus dependency Astryx), T-102.2 (grep 0 import aktif), T-102.3 (update `ctx-design.md`/`ctx-implementation.md`), T-102.4 (QA visual menyeluruh Najwa QA Engineer, PASS 0 regresi), T-102.5 (re-evaluasi & tutup KI-005 moot, KI-030 & KI-035 poin 1 dikonfirmasi closed sebelumnya, KI-035 poin 2 baru ditutup Resolved), T-102.6 (migrasi `useToast` → `sonner`, verifikasi visual toast dikonfirmasi manual King Rezi "toast oke" 2026-09-04). Dengan ini rilis **v0.7 tuntas 100%**. **KI-045** (regresi RBAC Creator, ditemukan T-102.4) — **Resolved 2026-09-04**, root cause `settings`/`billing` page tidak pernah punya guard sejak awal, sudah diperbaiki. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-102 |
 | **T-101** | Migrasi Publish — Calendar, Queue, Drafts, Dashboard | ✅      | **Selesai (2026-09-03)** — seluruh 5/5 subtask tuntas: T-101.1 (Calendar), T-101.2 (Queue), T-101.3 (Drafts), T-101.4 (header/tabbar/layout), T-101.5 (Dashboard). Lolos review Ridwan (0 temuan) tiap subtask. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-101 |
@@ -882,7 +920,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 > catatan tambahan. Detail: `tasks/v02-publishing-mvp.md` § T-092, KI-057 di
 > `PROJECT_STATE.md`.
 
-**Rantai blocker terbesar:** T-025 (Real OutstandAdapter) → T-027 (job runner). **T-026 (webhook) sudah ✅ Done (2026-09-07)** — inbound webhook processing tidak butuh Real OutstandAdapter untuk berjalan (`FakeOutstandAdapter` tetap dipakai jalur produksi, ADR-059), jadi rantai sekarang lebih pendek. Sisa T-025 dan T-027 tetap mengunci sebagian besar v0.2 (T-024, T-034), seluruh v0.3, dan seluruh v0.4. Menyelesaikan T-025 membuka lebih banyak pekerjaan daripada task lain manapun.
+**Rantai blocker terbesar:** T-025 (Real OutstandAdapter) sendiri. **T-026 (webhook) sudah ✅ Done (2026-09-07)** dan **T-027 (job runner) sudah ✅ Done (2026-09-17)** — keduanya tidak butuh Real OutstandAdapter untuk berjalan (`FakeOutstandAdapter` tetap dipakai jalur produksi, ADR-059/ADR-108), jadi rantai sekarang jauh lebih pendek dari sebelumnya. T-025 tetap mengunci sebagian besar v0.3 dan seluruh v0.4 (data akan tetap dari Fake sampai kredensial Outstand asli tersedia). Menyelesaikan T-025 membuka lebih banyak pekerjaan daripada task lain manapun.
 
 ---
 

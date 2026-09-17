@@ -5,7 +5,7 @@
 **Tujuan rilis:** Memungkinkan pengguna membuat dan menjadwalkan konten.
 **Baseline rilis:** `product-discovery/02-product/release-roadmap.md` → v0.2
 
-**Rantai blocker rilis ini:** Real OutstandAdapter (T-025) belum ada → schedule hanya jalan lewat Fake · Connect account (T-013) belum ada → connected account harus di-seed · job runner (T-027) masih 501 → **belum ada transisi status post otomatis saat waktunya tiba** (webhook T-026 sudah ✅ Done 2026-09-07 — menangani transisi status pasca-publish/error/token-expired, tapi trigger-nya masih inbound webhook Outstand, bukan job scheduler). Task-task ini membuka hampir semua sisa rilis ini.
+**Rantai blocker rilis ini:** Real OutstandAdapter (T-025) belum ada → schedule hanya jalan lewat Fake · Connect account (T-013) belum ada → connected account harus di-seed · **job runner (T-027) sudah ✅ Done (2026-09-17)** — transisi status post terjadwal sekarang otomatis lewat job baru `publishing.scheduled_post.resolve_outcome` (JOB-07) begitu due, melengkapi webhook T-026 (✅ Done 2026-09-07) yang menangani transisi status pasca-publish/error/token-expired lewat inbound webhook Outstand. Provisioning Railway Cron project sungguhan masih blocked (KI-025) — job runner baru config-as-code (`railway.json`/`railway.cron.json`), belum ada service `cron` sungguhan live. Sisa rantai blocker rilis ini sekarang T-025 dan T-013.
 
 ---
 
@@ -322,12 +322,26 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 | ------------- | ------------------------------------------------------------------ |
 | **Status**    | ✅ Done                                                            |
 | **Domain**    | integration                                                        |
-| **ADR**       | ADR-020, ADR-040, ADR-099                                          |
-| **Terkait**   | KI-003 (via T-025), KI-015                                         |
+| **ADR**       | ADR-020, ADR-040, ADR-099, ADR-108, ADR-109                        |
+| **Terkait**   | KI-003 (via T-025), KI-015, KI-063 (baru, `publishedAt` tidak diisi) |
 | **Depends**   | T-025                                                              |
 | **Baca dulu** | `05-architecture/integration-layer.md`                              |
 
 `/api/webhooks/outstand` masih return 501. Model `OutstandWebhookEvent` sudah ada di schema, `OUTSTAND_WEBHOOK_SECRET` sudah didefinisikan di `src/lib/env.ts` tapi belum dipakai.
+
+**Catatan tambahan (2026-09-17, T-027):** 2 gap pre-existing task ini
+diperbaiki sebagai bagian implementasi T-027 (bukan reopen status task ini)
+— `resolvePostOutcome` di-extract dari method private jadi public supaya
+dipakai bersama job baru T-027.5 (**ADR-108**: kontrak `fetchPostOutcome`
+diredesain menambah `expectedOutstandAccountIds`; **ADR-109**: method baru
+`markPostPublished` melengkapi transisi status level-post yang sebelumnya
+hilang). Prediksi di catatan 2026-09-07 di bawah ("saat T-027 dikerjakan,
+webhook processing ini semestinya dipindah ke enqueue+async") **belum
+terealisasi** — pemrosesan webhook `/api/webhooks/outstand` tetap inline
+sinkron; T-027 hanya menambah job type terpisah (**JOB-07**) untuk resolve
+outcome post terjadwal, bukan mengubah cara webhook ini diproses. Migrasi
+webhook ke enqueue+async tetap technical debt terbuka, belum ada task
+formal untuk itu.
 
 - [x] **T-026.1** Verifikasi HMAC-SHA256 signature sebelum setiap pemrosesan
 - [x] **T-026.2** Durable-before-ACK — persist event dulu, baru ACK, baru proses
@@ -344,20 +358,38 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done (5/5 subtask)                                          |
 | **Domain**    | platform                                                     |
-| **ADR**       | ADR-022, ADR-028, ADR-032, ADR-040                           |
-| **Terkait**   | KI-003 (via T-025), KI-015, KI-025 (Railway belum pernah dibuat, `PROJECT_STATE.md` § Blockers) |
+| **ADR**       | ADR-022, ADR-028, ADR-032, ADR-040, ADR-108, ADR-109         |
+| **Terkait**   | KI-003 (via T-025), KI-015, KI-025 (Railway belum pernah dibuat — job runner ini baru config-as-code, provisioning aktual masih blocked), KI-062 (baru, formula backoff `background-jobs.md` self-contradictory), KI-063 (baru, `PublishingPost.publishedAt` tidak diisi) |
 | **Depends**   | T-025                                                        |
 | **Baca dulu** | `05-architecture/background-jobs.md` · `06-engineering/deployment-infrastructure.md` |
 
-`/api/jobs/run` masih return 501. Model `BackgroundJob` ada di schema tapi **nol referensi** di kode aplikasi. Tidak ada cron config apapun di repo.
+**Selesai (2026-09-17, Elon Backend Engineer → Ridwan Architecture Reviewer 2 putaran → Najwa QA Engineer):** seluruh 5/5 subtask tuntas.
 
-- [ ] **T-027.1** Job runner: klaim job dari `BackgroundJob` (locking aman untuk eksekusi paralel)
-- [ ] **T-027.2** Autentikasi endpoint via `JOB_SECRET` (sudah ada di env, belum dipakai)
-- [ ] **T-027.3** Retry internal dengan backoff + dead-letter state
-- [ ] **T-027.4** Konfigurasi Railway Cron (service cron terpisah dari web)
-- [ ] **T-027.5** Job handler: publish scheduled post saat waktunya tiba
+- **T-027.1** Job runner generik — `apps/web/src/lib/jobs/{background-job-store,backoff,job-runner,job-scheduler}.ts`: klaim job via `SELECT FOR UPDATE SKIP LOCKED` (pola sama ADR-099/T-026), registry handler per job type (bukan hardcode 1 tipe) sehingga job type baru bisa ditambah tanpa mengubah runner.
+- **T-027.2** Autentikasi `X-Job-Secret` di `POST /api/jobs/run` — memakai `JOB_SECRET` yang sudah ada di env sejak awal tapi sebelumnya nol referensi di kode.
+- **T-027.3** Retry backoff 5m/15m/60m + dead-letter (status `failed` di tabel `BackgroundJob` yang sama, bukan tabel terpisah).
+- **T-027.4** Railway Cron config-as-code — `railway.json` (service `web`), `railway.cron.json` (service `cron`), `scripts/trigger-job-run.ts`. **Provisioning aktual Railway project untuk cron masih blocked (KI-025)** — ini baru config-as-code di repo, belum ada service `cron` sungguhan berjalan; env `JOB_RUNNER_URL`/`JOB_SECRET` di service tersebut masih perlu di-set manual di dashboard Railway setelah project dibuat.
+- **T-027.5** Job handler `ResolveScheduledPostOutcomeJobHandler` (`apps/web/src/domains/publishing/services/resolve-scheduled-post-outcome-job-handler.ts`) — dipicu saat post terjadwal (`SchedulePostsUseCase`) sudah due, meng-enqueue job type baru `publishing.scheduled_post.resolve_outcome` (**JOB-07**, sudah ditambahkan ke `background-jobs.md` § Job Type Registry) lewat port baru `IJobScheduler` (payload `{ outstandPostId }`), lalu reuse `OutstandWebhookProcessor.resolvePostOutcome` (di-extract dari method private T-026 jadi public, sekarang dipakai bersama webhook DAN job) untuk resolve outcome per target.
+
+**2 keputusan desain material selama implementasi, dicatat sebagai ADR baru:**
+
+1. **ADR-108** — Redesain kontrak `IOutstandAdapter.fetchPostOutcome` dari `fetchPostOutcome(outstandPostId)` menjadi `fetchPostOutcome(outstandPostId, expectedOutstandAccountIds: string[])`. Ditemukan Najwa QA Engineer: post terjadwal tidak pernah selesai resolve outcome-nya karena `FakeOutstandAdapter` (ADR-059) sebelumnya mengandalkan `Map` in-memory level-modul untuk "mengingat" target akun dari panggilan `schedulePost`/`publishNow` sebelumnya — valid untuk `PublishNowUseCase` (kedua panggilan dalam 1 request yang sama), tapi RUSAK untuk T-027.5 karena `schedulePost` dipanggil dari Server Action sedangkan `fetchPostOutcome` (lewat job) dipanggil belakangan dari Route Handler `/api/jobs/run` TERPISAH — Next.js membundle keduanya jadi module chunk terpisah dengan instance `Map` sendiri-sendiri, dikonfirmasi Elon Backend Engineer nyata di production build (`.next/server`), bukan cuma artefak dev/Turbopack. King Rezi memilih root-cause fix (ubah kontrak, bukan band-aid `globalThis`) lewat `AskUserQuestion`. `FakeOutstandAdapter` sekarang pure function tanpa state sama sekali (`Map`/`rememberTargets`/`MAX_REMEMBERED_POSTS` dihapus total, `deletePost` jadi no-op murni). 3 call site diupdate (`PublishNowUseCase`, `RetryFailedTargetUseCase`, `OutstandWebhookProcessor.resolvePostOutcome`); domain `analytics` dikonfirmasi tidak terdampak. Detail: `decisions/ADR-108-redesain-fetchpostoutcome-expected-account-ids.md`.
+2. **ADR-109** — Method baru `IPublishingRepository.markPostPublished`. Gap pre-existing sejak T-026 (✅ Done) baru kentara sekarang: `PublishingPost.status` tidak pernah ditransisikan ke `Published` walau semua target sudah resolved sukses (hanya `PublishingPostTarget.status` yang ter-update) — post stuck selamanya di `Scheduled` secara post-level. Fix: `markPostPublished` (simetris `markPostFailed`, idempoten via `updateMany` guard status `Scheduled`, tidak throw kalau 0 baris) dipanggil di `OutstandWebhookProcessor.resolvePostOutcome` persis saat semua target sudah resolved (tidak ada `pending` lagi) DAN tidak semua `failed` — konsisten aturan baseline `integration-layer.md` ("post.error hanya kalau SEMUA target gagal; tetap Published kalau minimal satu sukses"). Ini bug-fix yang melengkapi T-026 (bukan reopen status T-026, cukup catatan tambahan ini). `PublishNowUseCase` tidak disentuh (sudah punya jalur `Published` sendiri di muka). Detail: `decisions/ADR-109-markpostpublished-post-level-status-transition.md`.
+
+**Gap ditemukan, sengaja tidak diperbaiki sekarang (dicatat sebagai Known Issue baru):**
+- **KI-062** — `background-jobs.md` self-contradictory soal formula backoff: tabel bilang 5m/15m/60m, formula tertulis di dokumen yang sama (`5 * 2^(attempts-1)`) menghasilkan 5/10/20 menit. Implementasi kode memakai angka tabel (5/15/60), benar secara fungsional — dokumentasi baseline yang perlu dikoreksi, bukan kode.
+- **KI-063** — kolom `PublishingPost.publishedAt` tidak diisi oleh `markPostPublished` maupun `markPostFailed` (pola lama, bukan regresi baru dari T-027). UI sudah punya fallback (`item.publishedAt ?? item.updatedAt`) jadi tidak berdampak visual, tapi data historis `publishedAt` kosong.
+- **KI-025 tetap terbuka** — Railway project belum pernah dibuat, jadi `railway.json`/`railway.cron.json` baru config-as-code, belum ada service `cron` sungguhan.
+
+**Verifikasi akhir:** `bunx tsc --noEmit` bersih, `eslint .` bersih, `prettier --check` bersih, `vitest run` **396 pass / 5 skip**. Review arsitektur Ridwan Architecture Reviewer (2 putaran — putaran 1: 1 temuan bug correctness, sudah diperbaiki; putaran 2: fokus 2 perubahan besar tambahan ADR-108/ADR-109, 0 temuan; juga merekomendasikan JOB-07 ditambahkan ke `background-jobs.md`, sudah ditindaklanjuti). QA end-to-end Najwa QA Engineer (browser real + `curl` manual simulasi Railway Cron): golden path Schedule → job runner → History Published, diulang 2x konsisten; regresi Publish Now dan Retry manual (T-034.4) keduanya PASS.
+
+- [x] **T-027.1** Job runner: klaim job dari `BackgroundJob` (locking aman untuk eksekusi paralel)
+- [x] **T-027.2** Autentikasi endpoint via `JOB_SECRET` (sudah ada di env, belum dipakai)
+- [x] **T-027.3** Retry internal dengan backoff + dead-letter state
+- [x] **T-027.4** Konfigurasi Railway Cron (service cron terpisah dari web) — config-as-code selesai, provisioning aktual masih blocked KI-025
+- [x] **T-027.5** Job handler: publish scheduled post saat waktunya tiba
 
 ---
 

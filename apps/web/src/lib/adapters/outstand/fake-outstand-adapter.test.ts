@@ -189,7 +189,7 @@ describe("fakeOutstandAdapter.publishNow", () => {
 });
 
 describe("fakeOutstandAdapter.fetchPostOutcome", () => {
-  it("returns every account passed to publishNow marked published instantly (Fake always-success, ADR-059)", async () => {
+  it("returns every account passed in expectedOutstandAccountIds marked published instantly (Fake always-success, ADR-059)", async () => {
     const { outstandPostId } = await fakeOutstandAdapter.publishNow({
       caption: "Hello world",
       targets: [
@@ -198,7 +198,10 @@ describe("fakeOutstandAdapter.fetchPostOutcome", () => {
       ],
     });
 
-    const outcomes = await fakeOutstandAdapter.fetchPostOutcome(outstandPostId);
+    const outcomes = await fakeOutstandAdapter.fetchPostOutcome(
+      outstandPostId,
+      ["acc-1", "acc-2"],
+    );
 
     expect(outcomes).toHaveLength(2);
     for (const outcome of outcomes) {
@@ -213,9 +216,26 @@ describe("fakeOutstandAdapter.fetchPostOutcome", () => {
     );
   });
 
-  it("returns an empty array for an unknown outstandPostId", async () => {
+  it(
+    "T-027 bug fix (root-cause) — returns outcomes for expectedOutstandAccountIds even when called from a completely " +
+      "separate invocation with no prior schedulePost/publishNow call in this process (Fake is now a pure function, no " +
+      "module-level memory to be isolated across bundles/chunks)",
+    async () => {
+      const outcomes = await fakeOutstandAdapter.fetchPostOutcome(
+        "never-scheduled-or-published-in-this-process",
+        ["acc-1"],
+      );
+
+      expect(outcomes).toHaveLength(1);
+      expect(outcomes[0]?.outstandAccountId).toBe("acc-1");
+      expect(outcomes[0]?.status).toBe("published");
+    },
+  );
+
+  it("returns an empty array when expectedOutstandAccountIds is empty", async () => {
     const outcomes = await fakeOutstandAdapter.fetchPostOutcome(
-      "never-scheduled-or-published",
+      "some-outstand-post-id",
+      [],
     );
 
     expect(outcomes).toEqual([]);
@@ -228,8 +248,12 @@ describe("fakeOutstandAdapter.fetchPostOutcome", () => {
       targets: [{ outstandAccountId: "acc-1", contentFormat: "post" as never }],
     });
 
-    const first = await fakeOutstandAdapter.fetchPostOutcome(outstandPostId);
-    const second = await fakeOutstandAdapter.fetchPostOutcome(outstandPostId);
+    const first = await fakeOutstandAdapter.fetchPostOutcome(outstandPostId, [
+      "acc-1",
+    ]);
+    const second = await fakeOutstandAdapter.fetchPostOutcome(outstandPostId, [
+      "acc-1",
+    ]);
 
     expect(first[0]?.platformPostId).toEqual(second[0]?.platformPostId);
     expect(first[0]?.platformPostUrl).toEqual(second[0]?.platformPostUrl);

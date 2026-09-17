@@ -65,6 +65,7 @@ function createFakeRepository(
     getHistoryPostById: async () => null,
     cancelSchedule: async () => null,
     markPostFailed: async () => undefined,
+    markPostPublished: async () => undefined,
     getRetryTarget: async () => null,
     resetTargetForRetry: async () => undefined,
     setRetryOutstandPostId: async () => undefined,
@@ -200,8 +201,11 @@ describe("RetryFailedTargetUseCase.execute", () => {
         expect(caption).toBe("Hello world");
         return { outstandPostId: "fake-post-retry" };
       },
-      fetchPostOutcome: async (outstandPostId) => {
+      fetchPostOutcome: async (outstandPostId, expectedOutstandAccountIds) => {
         expect(outstandPostId).toBe("fake-post-retry");
+        // T-027 bug fix (root-cause) — akun yang di-retry, BUKAN dari
+        // memori adapter.
+        expect(expectedOutstandAccountIds).toEqual(["outstand-acc-1"]);
         return [publishedOutcome("outstand-acc-1")];
       },
     });

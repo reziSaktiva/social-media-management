@@ -29,6 +29,7 @@ import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
 import { supabaseMediaStorageAdapter } from "@/lib/adapters/media-storage/supabase-media-storage-adapter";
+import { backgroundJobScheduler } from "@/lib/jobs/job-scheduler";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { mediaRepository } from "@/lib/repositories/media";
 import { workspaceRepository } from "@/lib/repositories/workspace";
@@ -463,6 +464,7 @@ export async function scheduleDraftAction(
   const scheduled = await new SchedulePostsUseCase(
     publishingRepository,
     getOutstandAdapter(),
+    backgroundJobScheduler,
   ).execute({
     workspaceId,
     postId: post.id,

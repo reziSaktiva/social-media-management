@@ -130,8 +130,14 @@ export class PublishNowUseCase {
         input.actingUserId,
       );
 
+      // T-027 bug fix (root-cause) — `expectedOutstandAccountIds` eksplisit,
+      // BUKAN mengandalkan Fake adapter "mengingat" set akun dari
+      // `publishNow` di atas (lihat catatan panjang di
+      // `IOutstandAdapter.fetchPostOutcome`). `input.targets` sudah tersedia
+      // di scope ini, tidak perlu resolve tambahan.
       const outcomes = await this.outstandAdapter.fetchPostOutcome(
         result.outstandPostId,
+        input.targets.map((target) => target.outstandAccountId),
       );
 
       const outcomeByOutstandAccountId = new Map(
