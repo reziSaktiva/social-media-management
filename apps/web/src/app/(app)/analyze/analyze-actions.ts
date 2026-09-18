@@ -36,6 +36,14 @@ export async function getAnalyzeSummaryAction(
   return analyticsService.getWorkspaceSnapshot(workspaceId, period);
 }
 
+// Cap `listHistory` (code review PR #127) — tanpa ini, Post Performance
+// menarik SELURUH riwayat `Published` workspace tanpa batas pada setiap
+// kunjungan `/analyze`. 500 post terbaru cukup untuk tabel yang disortir
+// client-side ini; `listHistory` sendiri tetap tanpa batas untuk caller lain
+// (`limit` opsional, default `undefined`) — lihat
+// `IPublishingRepository.listHistory`.
+const POST_PERFORMANCE_LIMIT = 500;
+
 /**
  * Server Action untuk Post Performance table `/analyze` (T-043.1). Wire
  * `AnalyticsService` dengan `PostInfoPort` yang diimplementasikan inline di
@@ -62,7 +70,11 @@ export async function getPostPerformanceAction(): Promise<
     {
       listPublishedPosts: async (workspaceIdArg, userIdArg) => {
         const history = await publishingService.listHistory(
-          { workspaceId: workspaceIdArg, statuses: [ContentStatus.Published] },
+          {
+            workspaceId: workspaceIdArg,
+            statuses: [ContentStatus.Published],
+            limit: POST_PERFORMANCE_LIMIT,
+          },
           userIdArg,
         );
         return history.map((item) => ({

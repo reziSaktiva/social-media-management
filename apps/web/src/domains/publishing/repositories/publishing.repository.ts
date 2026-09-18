@@ -487,6 +487,11 @@ export interface IPublishingRepository {
    * di service, bukan di sini) — repository ini murni proyeksi data
    * terfilter, sama pola dengan `listCalendarPosts`/`listQueue`.
    * `connectedAccountIds` opsional, sama pola dengan `listCalendarPosts`.
+   * `limit` opsional (code review PR #127) — cap `take` Prisma, dipakai
+   * `/analyze` (T-043.1, lewat `PostInfoPort` di `analyze-actions.ts`) supaya
+   * tidak menarik SELURUH riwayat workspace tanpa batas untuk tabel Post
+   * Performance. Default `undefined` (tanpa batas) menjaga perilaku caller
+   * lama (`/publish/history`) persis sama.
    *
    * **Gap diketahui (dilaporkan ke King Rezi, bukan diperbaiki di sini):**
    * `PublishingPost.failedAt`/`.failureReason` ada di schema tapi TIDAK
@@ -503,6 +508,7 @@ export interface IPublishingRepository {
       workspaceId: WorkspaceId;
       statuses?: ContentStatus[];
       connectedAccountIds?: ConnectedAccountId[];
+      limit?: number;
     },
     userId: UserId,
   ): Promise<HistoryItemRecord[]>;

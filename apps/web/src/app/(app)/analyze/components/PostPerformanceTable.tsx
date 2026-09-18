@@ -45,6 +45,7 @@ import { Text } from "@/components/ui/text";
 
 import { PLATFORM_ICON } from "../../components/platform-icons";
 import { cn } from "@/lib/utils";
+import { formatCount, formatPercentage } from "@/lib/utils/format-metrics";
 
 import type { PostPerformanceRow } from "@/domains/analytics";
 
@@ -68,14 +69,6 @@ const DEFAULT_DIRECTION_FOR_KEY: Record<SortKey, SortDirection> = {
   reach: "desc",
   engagementRate: "desc",
 };
-
-function formatReach(value: number): string {
-  return value.toLocaleString("id-ID");
-}
-
-function formatEngagementRate(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
 
 /**
  * Urutkan baris (T-043.4): baris `hasMetrics: false` TIDAK ikut disortir
@@ -270,7 +263,7 @@ export function PostPerformanceTable({ rows }: { rows: PostPerformanceRow[] }) {
               <TableCell className="text-right">
                 {row.hasMetrics && row.reach !== null ? (
                   <Text variant="small" as="span" className="tabular-nums">
-                    {formatReach(row.reach)}
+                    {formatCount(row.reach)}
                   </Text>
                 ) : (
                   <Text variant="muted" as="span" className="text-sm">
@@ -281,7 +274,7 @@ export function PostPerformanceTable({ rows }: { rows: PostPerformanceRow[] }) {
               <TableCell className="text-right">
                 {row.hasMetrics && row.engagementRate !== null ? (
                   <Text variant="small" as="span" className="tabular-nums">
-                    {formatEngagementRate(row.engagementRate)}
+                    {formatPercentage(row.engagementRate)}
                   </Text>
                 ) : (
                   <Text variant="muted" as="span" className="text-sm">

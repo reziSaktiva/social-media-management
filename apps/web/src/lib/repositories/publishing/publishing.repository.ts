@@ -644,7 +644,10 @@ export const publishingRepository: IPublishingRepository = {
     return post ? mapCalendarItem(post) : null;
   },
 
-  async listHistory({ workspaceId, statuses, connectedAccountIds }, userId) {
+  async listHistory(
+    { workspaceId, statuses, connectedAccountIds, limit },
+    userId,
+  ) {
     // `statuses` sudah di-clamp ke HISTORY_TERMINAL_STATUSES oleh
     // `PublishingService.listHistory` — repository ini murni proyeksi,
     // tidak menegakkan invariant sendiri (konsisten `listCalendarPosts`).
@@ -667,6 +670,7 @@ export const publishingRepository: IPublishingRepository = {
         // Proksi "waktu selesai" — lihat catatan gap `failedAt` di
         // `IPublishingRepository.listHistory`.
         orderBy: { updatedAt: "desc" },
+        ...(limit !== undefined ? { take: limit } : {}),
         include: {
           targets: {
             include: { connectedAccount: true },

@@ -57,6 +57,9 @@ import {
 import { Text } from "@/components/ui/text";
 
 import { getDashboardSummaryAction } from "../dashboard-actions";
+import { StatTile } from "./stat-tile";
+
+import { formatPercentage } from "@/lib/utils/format-metrics";
 
 import type { DashboardSummary, SnapshotPeriod } from "@/domains/analytics";
 
@@ -64,27 +67,6 @@ const PERIOD_OPTIONS: Array<{ value: SnapshotPeriod; label: string }> = [
   { value: "weekly", label: "Mingguan" },
   { value: "monthly", label: "Bulanan" },
 ];
-
-/** Satu tile metrik ringkasan — Card + heading, tanpa chart (T-042.3). */
-function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent>
-        {/* eslint-disable-next-line no-restricted-syntax -- T-101.5: layout-only, file sudah dimigrasi shadcn */}
-        <div className="flex flex-col gap-2">
-          <Text variant="muted">{label}</Text>
-          <Text variant="h3" as="h2" className="mt-0 scroll-m-0">
-            {value}
-          </Text>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function formatPercentage(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
 
 export function DashboardHome({
   initialPeriod,

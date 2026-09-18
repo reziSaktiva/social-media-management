@@ -365,6 +365,7 @@ export class PublishingService {
       workspaceId: WorkspaceId;
       statuses?: ContentStatus[];
       connectedAccountIds?: ConnectedAccountId[];
+      limit?: number;
     },
     userId: UserId,
   ): Promise<HistoryItemRecord[]> {

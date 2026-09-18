@@ -7,6 +7,7 @@ import { ContentStatus } from "@social/shared";
 import type { PostMetricsRecord } from "@/domains/analytics";
 import type { HistoryItemRecord } from "@/domains/publishing";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
+import { formatCount, formatPercentage } from "@/lib/utils/format-metrics";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -89,14 +90,6 @@ function ViewOriginalPostLink({ url }: { url: string | null }) {
       <TooltipContent>URL post asli belum tersedia</TooltipContent>
     </Tooltip>
   );
-}
-
-function formatReach(value: number): string {
-  return value.toLocaleString("id-ID");
-}
-
-function formatEngagementRate(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
 }
 
 export interface HistoryDetailProps {
@@ -221,10 +214,8 @@ export function HistoryDetail({ item, metrics }: HistoryDetailProps) {
                               as="span"
                               className="text-xs tabular-nums"
                             >
-                              Reach {formatReach(targetMetrics.reach)} ·{" "}
-                              {formatEngagementRate(
-                                targetMetrics.engagementRate,
-                              )}{" "}
+                              Reach {formatCount(targetMetrics.reach)} ·{" "}
+                              {formatPercentage(targetMetrics.engagementRate)}{" "}
                               eng. rate
                             </Text>
                           );

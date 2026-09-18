@@ -44,6 +44,9 @@ import {
 
 import { getAnalyzeSummaryAction } from "../analyze-actions";
 import { PostPerformanceTable } from "./PostPerformanceTable";
+import { StatTile } from "../../components/stat-tile";
+
+import { formatPercentage } from "@/lib/utils/format-metrics";
 
 import type {
   PostPerformanceRow,
@@ -55,27 +58,6 @@ const PERIOD_OPTIONS: Array<{ value: SnapshotPeriod; label: string }> = [
   { value: "weekly", label: "Mingguan" },
   { value: "monthly", label: "Bulanan" },
 ];
-
-/** Satu tile metrik ringkasan — Card + heading, sama persis pola `StatTile` `DashboardHome.tsx` (T-042.3). */
-function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent>
-        {/* eslint-disable-next-line no-restricted-syntax -- layout-only, konsisten pola shadcn+Tailwind DashboardHome */}
-        <div className="flex flex-col gap-2">
-          <Text variant="muted">{label}</Text>
-          <Text variant="h3" as="h2" className="mt-0 scroll-m-0">
-            {value}
-          </Text>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function formatPercentage(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
 
 export function AnalyzeDashboard({
   initialPeriod,
