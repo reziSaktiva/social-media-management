@@ -5,11 +5,16 @@ import { redirect } from "next/navigation";
 
 import type { SnapshotPeriod } from "@/domains/analytics";
 import { AnalyticsService } from "@/domains/analytics";
-import type { PostPerformanceRow } from "@/domains/publishing";
+import type {
+  AccountOverviewRow,
+  PostPerformanceRow,
+} from "@/domains/publishing";
 import { PublishingService } from "@/domains/publishing";
+import { WorkspaceService } from "@/domains/workspace";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { analyticsRepository } from "@/lib/repositories/analytics";
 import { publishingRepository } from "@/lib/repositories/publishing";
+import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 
 /**
@@ -45,6 +50,43 @@ export async function getPostPerformanceAction(
   );
 
   return publishingService.getPostPerformance(
+    workspaceId,
+    period,
+    asUserId(session.user.id),
+  );
+}
+
+/**
+ * Server Action untuk halaman `/analyze` — Account Overview (T-046.1,
+ * KSP-07 Analyze → Dashboard). Dikonsumsi UI bar `Progress` T-046.2 (Mark
+ * UI Engineer), pola pemanggilan ulang saat selector period diganti sama
+ * dengan `getPostPerformanceAction` di atas.
+ *
+ * Composition root cross-domain ganda: `PublishingService` disuplai
+ * `AnalyticsService` sebagai `PostMetricsPort` (`publishing -> analytics`,
+ * pola sama `getPostPerformanceAction`) DAN `WorkspaceService` sebagai
+ * `ConnectedAccountsPort` (`publishing -> workspace`, arah yang SUDAH legal
+ * di `application-layer.md` — "verifikasi ConnectedAccount"). Orkestrasi
+ * tipis saja: resolve workspace context, wire service, delegasikan. Semua
+ * logic (agregasi per akun, kriteria "belum ada data" T-046) hidup di
+ * `PublishingService.getAccountOverview`, bukan di sini.
+ */
+export async function getAccountOverviewAction(
+  period: SnapshotPeriod,
+): Promise<AccountOverviewRow[]> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const publishingService = new PublishingService(
+    publishingRepository,
+    new AnalyticsService(analyticsRepository),
+    new WorkspaceService(workspaceRepository),
+  );
+
+  return publishingService.getAccountOverview(
     workspaceId,
     period,
     asUserId(session.user.id),

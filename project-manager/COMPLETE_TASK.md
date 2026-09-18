@@ -8,6 +8,81 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-18 — T-046 Account Overview — implementasi kode selesai, ✅ Done (3/3 subtask)
+
+T-046 (Account Overview, `tasks/v03-analytics-mvp.md`, rilis v0.3) naik
+status `⏳ Not Started` → `✅ Done` — seluruh 3/3 subtask tuntas.
+
+**T-046.1 (Prabowo Feature Engineer)** — Query agregasi Account Overview:
+method baru `PublishingService.getAccountOverview(workspaceId, period,
+userId)` di `apps/web/src/domains/publishing/services/publishing.service.ts`
+— ditaruh di domain `publishing` (bukan `analytics`) untuk reuse
+`getPostPerformance` (T-043) dan menghindari circular dependency (pola sama
+seperti temuan review putaran 1 T-043). Port baru `ConnectedAccountsPort`
+(arah `publishing→workspace`, sudah legal di `application-layer.md` baris
+316). Server Action baru `getAccountOverviewAction(period)` di
+`apps/web/src/app/(app)/analyze/analyze-actions.ts`. Kriteria "belum ada
+data": akun tanpa post → `totalPosts: 0, totalReach: null`; akun dengan
+post tapi metrik belum ter-ingest → `totalReach: null` juga (dibedakan dari
+0 reach yang sah). 4 test baru di `publishing.service.test.ts` (describe
+`getAccountOverview`).
+
+**T-046.2/T-046.3 (Mark UI Engineer, 2 sesi)** — UI: section "Account
+Overview" ditambahkan ke
+`apps/web/src/app/(app)/analyze/components/AnalyzeDashboard.tsx`. Sesi 1
+awalnya dibuat sebagai `Card` full-width sendiri (deviasi dari mockup,
+karena Post Performance sudah full-width sejak T-043) — King Rezi ditanya
+via `AskUserQuestion`, jawaban: "sesuaikan dengan Claude Design". Sesi 2
+(reflow): `DesignSync get_file` ulang pada `templates/analyze-dashboard.html`
+menemukan struktur sebenarnya — `.dash-cols` grid `1.6fr 1fr`: kartu kiri =
+SATU `card.card-pad` berisi Account Overview + Post Performance BERSAMA
+(bukan dua Card terpisah), kartu kanan = Engagement Summary (T-044, belum
+dikerjakan). Direflow supaya Account Overview + Post Performance berbagi
+satu `Card`/`CardContent`. Kolom kanan grid sengaja dirender full-width
+sementara (bukan grid 2 kolom dengan placeholder) sampai T-044 dikerjakan —
+King Rezi konfirmasi via `AskUserQuestion` ("Full-width sementara
+(Recommended)"). Progress bar: `(row.totalReach / maxReach) * 100`,
+`totalReach === null` → teks "Belum ada data" (bukan bar 0%).
+
+**Review Ridwan Architecture Reviewer:** 0 temuan. Verifikasi: entry point
+bersih, domain tidak import Prisma/Supabase langsung, `ConnectedAccountsPort`
+(publishing→workspace) sudah legal di `application-layer.md` baris 316,
+tidak ada circular dependency baru, kriteria null vs 0 konsisten di seluruh
+layer, tidak ada gap dokumentasi baru (KI-064 yang sudah ada tetap untuk
+`publishing→analytics`, tidak bertambah untuk `publishing→workspace` karena
+arah itu memang sudah lama terdokumentasi).
+
+**QA Najwa QA Engineer:** 0 temuan blocking. Golden path PASS semua (satu
+Card yang sama, progress bar proporsional, selector period refetch paralel
+kedua section, edge case akun-tanpa-post vs akun-dengan-post-tanpa-metrik
+dibedakan benar, regresi Post Performance/Calendar Popover/History Detail
+PASS, dark/light mode aman). Gate T-103.3 (DesignSync vs kode): **match**.
+Satu catatan non-blocking (bukan bug): sort kolom "Akun" di Post Performance
+pakai `localeCompare()` bawaan JS, "Insvire Demo" muncul sebelum
+"@fake.ig.4806" karena urutan simbol "@" — tidak diperbaiki karena tidak
+diminta.
+
+**Verifikasi akhir:** `typecheck`/`lint` bersih, `bun run test` **415
+pass/5 skip** (42 file, naik dari 411).
+
+### File yang berubah
+
+- `apps/web/src/domains/publishing/services/publishing.service.ts`,
+  `publishing.service.test.ts`
+- `apps/web/src/app/(app)/analyze/analyze-actions.ts`
+- `apps/web/src/app/(app)/analyze/components/AnalyzeDashboard.tsx`
+- `project-manager/tasks/v03-analytics-mvp.md` — T-046.1–T-046.3 dicentang,
+  status task `⏳ Not Started` → `✅ Done (2026-09-18)`, ringkasan
+  implementasi ditambahkan.
+- `project-manager/TASKS.md` — breakdown v0.3 "🟡 4 ✅ · 4 ⏳" → **🟡 5 ✅ ·
+  3 ⏳**, **Total** task selesai 45 → **46** (subtask total tidak berubah,
+  221), entri Update baru di riwayat.
+- `project-manager/PROJECT_STATE.md` — Snapshot **Top Next Tasks** dan
+  section **Completed (Ringkasan)** diupdate (bullet T-046 ditambah di atas,
+  bullet T-024.1/.2/.3 terlama dihapus supaya tetap 5 item).
+
+---
+
 ## 2026-09-18 — T-046 (Account Overview) + T-047 (Summary row /analyze) ditambahkan ke backlog v0.3
 
 Atas permintaan King Rezi, 2 task baru ditambahkan ke

@@ -104,7 +104,7 @@ Route `/[slug]` (Home) saat ini placeholder. Dashboard adalah **Must Have** MVP.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done (2026-09-18)                                          |
 | **Domain**    | analytics · UI                                               |
 | **ADR**       | —                                                            |
 | **Depends**   | T-041, T-043 (reuse pola halaman `/analyze` yang sudah ada)  |
@@ -112,9 +112,17 @@ Route `/[slug]` (Home) saat ini placeholder. Dashboard adalah **Must Have** MVP.
 
 Ringkasan performa per akun/platform di `/analyze` — jumlah post + total reach per akun, direpresentasikan sebagai bar (pola `.bar-track`/`.bar-fill` → shadcn `Progress`, SUDAH dikunci di design-prep T-043 sebagai pola valid, lihat komentar "SYNCED" di `analyze-dashboard.html`, tidak perlu sesi desain ulang — cukup ambil struktur yang sudah ada).
 
-- [ ] **T-046.1** Query agregasi jumlah post + total reach per akun/platform untuk period tertentu (weekly/monthly, konsisten `SnapshotPeriod` yang sudah ada)
-- [ ] **T-046.2** UI bar performa per akun di `/analyze` (reuse `Progress`, pola sama `analyze-dashboard.html`)
-- [ ] **T-046.3** Empty state kalau belum ada data (konsisten pola T-043.4/T-042.4 — "Belum ada data", bukan 0)
+- [x] **T-046.1** Query agregasi jumlah post + total reach per akun/platform untuk period tertentu (weekly/monthly, konsisten `SnapshotPeriod` yang sudah ada)
+- [x] **T-046.2** UI bar performa per akun di `/analyze` (reuse `Progress`, pola sama `analyze-dashboard.html`)
+- [x] **T-046.3** Empty state kalau belum ada data (konsisten pola T-043.4/T-042.4 — "Belum ada data", bukan 0)
+
+**Implementasi T-046.1 (selesai, 2026-09-18):** dikerjakan Prabowo Feature Engineer — method baru `PublishingService.getAccountOverview(workspaceId, period, userId)` di `apps/web/src/domains/publishing/services/publishing.service.ts`, ditaruh di domain `publishing` (bukan `analytics`) untuk reuse `getPostPerformance` (T-043) dan menghindari circular dependency (pola sama seperti temuan review putaran 1 T-043). Port baru `ConnectedAccountsPort` (arah `publishing→workspace`, sudah legal di `application-layer.md` baris 316). Server Action baru `getAccountOverviewAction(period)` di `apps/web/src/app/(app)/analyze/analyze-actions.ts`. Kriteria "belum ada data" (T-046.3) diselesaikan di level query: akun tanpa post → `totalPosts: 0, totalReach: null`; akun dengan post tapi metrik belum ter-ingest → `totalReach: null` juga (dibedakan dari 0 reach yang sah). 4 test baru di `publishing.service.test.ts` (describe `getAccountOverview`).
+
+**Implementasi T-046.2/T-046.3 (selesai, 2026-09-18):** dikerjakan Mark UI Engineer lewat 2 sesi. Section "Account Overview" ditambahkan ke `apps/web/src/app/(app)/analyze/components/AnalyzeDashboard.tsx`. Sesi 1 awalnya dibuat sebagai `Card` full-width sendiri (deviasi dari mockup, karena Post Performance sudah full-width sejak T-043) — King Rezi ditanya via `AskUserQuestion`, jawaban: "sesuaikan dengan Claude Design". Sesi 2 (reflow): `DesignSync get_file` ulang pada `templates/analyze-dashboard.html` menemukan struktur sebenarnya — `.dash-cols` grid `1.6fr 1fr`: kartu kiri = SATU `card.card-pad` berisi Account Overview + Post Performance BERSAMA (bukan dua Card terpisah), kartu kanan = Engagement Summary (T-044, belum dikerjakan). Direflow supaya Account Overview + Post Performance berbagi satu `Card`/`CardContent`. Kolom kanan grid sengaja dirender full-width sementara (bukan grid 2 kolom dengan placeholder) sampai T-044 dikerjakan — King Rezi konfirmasi via `AskUserQuestion` ("Full-width sementara (Recommended)"). Progress bar: `(row.totalReach / maxReach) * 100`, `totalReach === null` → teks "Belum ada data" (bukan bar 0%).
+
+**Review Ridwan Architecture Reviewer:** 0 temuan. Verifikasi: entry point bersih, domain tidak import Prisma/Supabase langsung, `ConnectedAccountsPort` (publishing→workspace) sudah legal di `application-layer.md` baris 316, tidak ada circular dependency baru, kriteria null vs 0 konsisten di seluruh layer, tidak ada gap dokumentasi baru (KI-064 yang sudah ada tetap untuk `publishing→analytics`, tidak bertambah untuk `publishing→workspace` karena arah itu memang sudah lama terdokumentasi).
+
+**QA Najwa QA Engineer:** 0 temuan blocking. Golden path PASS semua (satu Card yang sama, progress bar proporsional, selector period refetch paralel kedua section, edge case akun-tanpa-post vs akun-dengan-post-tanpa-metrik dibedakan benar, regresi Post Performance/Calendar Popover/History Detail PASS, dark/light mode aman). Gate T-103.3 (DesignSync vs kode): **match**. Satu catatan non-blocking (bukan bug): sort kolom "Akun" di Post Performance pakai `localeCompare()` bawaan JS, "Insvire Demo" muncul sebelum "@fake.ig.4806" karena urutan simbol "@" — tidak diperbaiki karena tidak diminta. Verifikasi akhir: `typecheck`/`lint` bersih, `bun run test` **415 pass/5 skip** (42 file, naik dari 411).
 
 ### T-047 · Summary row (/analyze)
 
