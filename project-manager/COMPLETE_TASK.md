@@ -8,6 +8,54 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-18 — T-046 (Account Overview) + T-047 (Summary row /analyze) ditambahkan ke backlog v0.3
+
+Atas permintaan King Rezi, 2 task baru ditambahkan ke
+`project-manager/tasks/v03-analytics-mvp.md`, status keduanya
+`⏳ Not Started` (baru masuk backlog, belum mulai dikerjakan). Latar
+belakang: saat implementasi T-043 (Post performance metrics, sesi
+terpisah, sama tanggal), ditemukan bahwa mockup Claude Design
+`templates/analyze-dashboard.html` (KSP-07) punya 2 section lain di
+`/analyze` — Account Overview (bar performa per akun/platform) dan Summary
+row (3 stat card) — yang secara eksplisit dikecualikan dari scope T-043
+saat implementasi, tapi ternyata memang belum pernah dapat nomor task
+manapun. Gap perencanaan murni, bukan technical debt dari bug.
+
+### T-046 · Account Overview
+
+Ringkasan performa per akun/platform di `/analyze` — jumlah post + total
+reach per akun, direpresentasikan sebagai bar (pola `.bar-track`/`.bar-fill`
+→ shadcn `Progress`, sudah dikunci sebagai pola valid di design-prep T-043,
+lihat komentar "SYNCED" di `analyze-dashboard.html` — tidak perlu sesi
+desain ulang). Depends: T-041, T-043. 3 subtask: query agregasi, UI bar,
+empty state.
+
+### T-047 · Summary row (/analyze)
+
+3 stat card di bagian atas `/analyze` — Total Posts, Total Reach,
+Engagement Rate untuk period yang dipilih. Depends: T-041, kemungkinan
+reuse pola `AnalyticsService.getDashboardSummary` (T-042.2) tapi scoped
+`/analyze` — keputusan reuse-vs-query-terpisah sengaja belum dikunci di
+sini, ditentukan saat implementasi. 3 subtask: tentukan sumber data, UI 3
+stat card (reuse `StatTile` dari `DashboardHome.tsx`), empty state.
+
+### File yang diubah
+
+- `project-manager/tasks/v03-analytics-mvp.md` — tambah section T-046 dan
+  T-047 (di antara T-043 dan T-044), update catatan "T-046–T-049 sengaja
+  dikosongkan" (sekarang tersisa T-048–T-049).
+- `project-manager/TASKS.md` — baris indeks v0.3 (T-040–T-045 → T-040–T-047,
+  6 → 8 task, "🟡 4 ✅ · 2 ⏳" → "🟡 4 ✅ · 4 ⏳"), footnote nomor kosong
+  (§ Aturan ID), **Total** (87 → 89 task, 215 → 221 subtask, dihitung ulang
+  langsung dari `tasks/v03-analytics-mvp.md`), entri Update baru di riwayat.
+  Tidak menambah ke tabel **Fokus sekarang** — task baru status
+  `⏳ Not Started` (baru ditambahkan ke backlog, bukan mulai dikerjakan).
+- `PROJECT_STATE.md` — **tidak diubah** (tidak ada referensi T-046/T-047 di
+  sana; phase/milestone/fokus terdekat tidak berubah oleh penambahan
+  backlog murni ini).
+
+---
+
 ## 2026-09-18 — T-043 Post performance metrics — implementasi kode selesai, ✅ Done (4/4 subtask)
 
 Melanjutkan design-prep di bawah (sesi terpisah, sama tanggal). Implementasi

@@ -100,6 +100,38 @@ Route `/[slug]` (Home) saat ini placeholder. Dashboard adalah **Must Have** MVP.
 
 **QA Najwa QA Engineer:** 0 temuan blocking. Golden path PASS semua (Table sortable, empty state "Belum ada data" di Table dan History Detail, regresi Calendar Popover setelah ekstraksi `post-metric-tile.tsx` PASS, dark/light mode aman). Menambah test baru `post-performance-period-range.test.ts` (8 test) menutup catatan (b) di atas. **Satu hal tidak bisa diverifikasi visual browser**: metrik tersembunyi di History Detail untuk post `Failed` (tidak ada post `Failed` di data dev saat verifikasi) — tervalidasi lewat unit test eksplisit saja, dianggap aman secara desain tapi belum ada bukti visual browser nyata. Verifikasi akhir keseluruhan task: `typecheck`/`lint` bersih, `bun run test` **411 pass/5 skip** (42 file). Detail lengkap: `COMPLETE_TASK.md`.
 
+### T-046 · Account Overview
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | analytics · UI                                               |
+| **ADR**       | —                                                            |
+| **Depends**   | T-041, T-043 (reuse pola halaman `/analyze` yang sudah ada)  |
+| **Baca dulu** | `04-ux/key-screen-patterns.md` · `templates/analyze-dashboard.html` (Claude Design, section "Account Overview") |
+
+Ringkasan performa per akun/platform di `/analyze` — jumlah post + total reach per akun, direpresentasikan sebagai bar (pola `.bar-track`/`.bar-fill` → shadcn `Progress`, SUDAH dikunci di design-prep T-043 sebagai pola valid, lihat komentar "SYNCED" di `analyze-dashboard.html`, tidak perlu sesi desain ulang — cukup ambil struktur yang sudah ada).
+
+- [ ] **T-046.1** Query agregasi jumlah post + total reach per akun/platform untuk period tertentu (weekly/monthly, konsisten `SnapshotPeriod` yang sudah ada)
+- [ ] **T-046.2** UI bar performa per akun di `/analyze` (reuse `Progress`, pola sama `analyze-dashboard.html`)
+- [ ] **T-046.3** Empty state kalau belum ada data (konsisten pola T-043.4/T-042.4 — "Belum ada data", bukan 0)
+
+### T-047 · Summary row (/analyze)
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | analytics · UI                                               |
+| **ADR**       | —                                                            |
+| **Depends**   | T-041, kemungkinan reuse logic mirip `AnalyticsService.getDashboardSummary` (T-042.2) tapi scoped halaman `/analyze` — perlu diputuskan saat implementasi apakah reuse persis atau query terpisah |
+| **Baca dulu** | `templates/analyze-dashboard.html` (Claude Design, section summary-row) · `apps/web/src/app/(app)/components/DashboardHome.tsx` (pola `StatTile` Card yang sudah ada di Home, T-042.3) |
+
+3 stat card di bagian atas `/analyze` — Total Posts, Total Reach, Engagement Rate untuk period yang dipilih.
+
+- [ ] **T-047.1** Tentukan sumber data: reuse `AnalyticsService.getDashboardSummary`-style query atau bikin query terpisah scoped `/analyze` — catat keputusannya sebagai bagian implementasi (bukan pra-keputusan di sini)
+- [ ] **T-047.2** UI 3 stat card di `/analyze` (reuse pola `StatTile` dari `DashboardHome.tsx`, T-042.3)
+- [ ] **T-047.3** Empty state konsisten pola T-042.4/T-043.4
+
 ### T-044 · Engagement summary
 
 | Field         | Value                                                        |
@@ -140,6 +172,6 @@ Berstatus **Should Have** di `feature-priority.md` — boleh ditunda tanpa membl
 
 ## Catatan Rilis
 
-* T-046–T-049 sengaja dikosongkan sebagai ruang penambahan task v0.3.
+* T-046–T-049 sengaja dikosongkan sebagai ruang penambahan task v0.3. **Update 2026-09-18:** T-046 (Account Overview) dan T-047 (Summary row /analyze) sudah terpakai — gap perencanaan murni ditemukan saat implementasi T-043 (dua section `analyze-dashboard.html` yang sengaja dikecualikan dari scope T-043 ternyata belum pernah dapat nomor task). Tersisa **T-048–T-049** sebagai ruang kosong.
 * **Definition of Done rilis ini:** pengguna dapat mengevaluasi hasil publikasi.
 * **Yang sengaja di luar rilis ini:** Custom Reports, AI Insights, Enterprise Analytics (`feature-priority.md`).
