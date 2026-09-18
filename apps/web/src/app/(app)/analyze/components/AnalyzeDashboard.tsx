@@ -118,14 +118,17 @@ import { cn } from "@/lib/utils";
 
 import { PLATFORM_ICON } from "../../components/platform-icons";
 import { formatEngagementRate } from "../../components/post-metric-tile";
+import { StatTile } from "../../components/stat-tile";
 import {
   getAccountOverviewAction,
+  getAnalyzeSummaryAction,
   getPostPerformanceAction,
 } from "../analyze-actions";
 
 import type { SnapshotPeriod } from "@/domains/analytics";
 import type {
   AccountOverviewRow,
+  AnalyzeSummary,
   PostPerformanceRow,
 } from "@/domains/publishing";
 
@@ -482,16 +485,26 @@ export function AnalyzeDashboard({
   initialPeriod,
   initialRows,
   initialAccountOverviewRows,
+  initialSummary,
 }: {
   initialPeriod: SnapshotPeriod;
   initialRows: PostPerformanceRow[];
   initialAccountOverviewRows: AccountOverviewRow[];
+  // T-047.1 (Prabowo Feature Engineer) — data-layer summary row (Total
+  // Posts/Total Reach/Engagement Rate). Optional karena `page.tsx` selalu
+  // menyuplai objeknya (`getAnalyzeSummary` tidak pernah return `null`,
+  // beda dari `DashboardSummary`) — signature optional dipertahankan biar
+  // longgar terhadap composition root, bukan karena datanya bisa hilang.
+  initialSummary?: AnalyzeSummary;
 }) {
   const [period, setPeriod] = useState<SnapshotPeriod>(initialPeriod);
   const [rows, setRows] = useState<PostPerformanceRow[]>(initialRows);
   const [accountOverviewRows, setAccountOverviewRows] = useState<
     AccountOverviewRow[]
   >(initialAccountOverviewRows);
+  const [summary, setSummary] = useState<AnalyzeSummary | undefined>(
+    initialSummary,
+  );
   const [sort, setSort] = useState<SortState>({
     column: "reach",
     direction: "desc",
@@ -509,13 +522,16 @@ export function AnalyzeDashboard({
     setPeriod(nextPeriod);
     latestRequestedPeriod.current = nextPeriod;
     startTransition(async () => {
-      const [postPerformanceResult, accountOverviewResult] = await Promise.all([
-        getPostPerformanceAction(nextPeriod),
-        getAccountOverviewAction(nextPeriod),
-      ]);
+      const [postPerformanceResult, accountOverviewResult, summaryResult] =
+        await Promise.all([
+          getPostPerformanceAction(nextPeriod),
+          getAccountOverviewAction(nextPeriod),
+          getAnalyzeSummaryAction(nextPeriod),
+        ]);
       if (latestRequestedPeriod.current === nextPeriod) {
         setRows(postPerformanceResult);
         setAccountOverviewRows(accountOverviewResult);
+        setSummary(summaryResult);
       }
     });
   }
@@ -561,6 +577,41 @@ export function AnalyzeDashboard({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Summary row (T-047.2, `.summary-row` di analyze-dashboard.html,
+          dikunci "SYNCED" T-043 design prep — grid 3 kolom, Total Posts →
+          Total Reach → Engagement Rate, DI ATAS `.dash-cols`). Pola SAMA
+          `StatTile` grid di `DashboardHome.tsx` (T-042.3) — diekstrak jadi
+          `../../components/stat-tile` supaya tidak duplikasi. `totalPosts`
+          selalu angka (termasuk "0"); `totalReach`/`avgEngagementRate`
+          masing-masing independen render "Belum ada data" saat `null`
+          (T-047.3, pola sama T-043.4) — BUKAN empty state per-section,
+          3 card tetap selalu tampil. */}
+      {summary ? (
+        // eslint-disable-next-line no-restricted-syntax -- layout-only
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatTile
+            label="Total Posts"
+            value={summary.totalPosts.toLocaleString("id-ID")}
+          />
+          <StatTile
+            label="Total Reach"
+            value={
+              summary.totalReach === null
+                ? "Belum ada data"
+                : summary.totalReach.toLocaleString("id-ID")
+            }
+          />
+          <StatTile
+            label="Engagement Rate"
+            value={
+              summary.avgEngagementRate === null
+                ? "Belum ada data"
+                : formatEngagementRate(summary.avgEngagementRate)
+            }
+          />
+        </div>
+      ) : null}
 
       {/* `.dash-cols` (analyze-dashboard.html): kartu kiri (1.6fr) berisi
           Account Overview + Post Performance bersama. Kartu kanan (1fr,

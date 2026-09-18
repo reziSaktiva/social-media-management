@@ -1443,6 +1443,227 @@ describe("PublishingService.getAccountOverview", () => {
   });
 });
 
+// T-047.1 — Summary row `/analyze` (3 stat card: Total Posts, Total Reach,
+// Engagement Rate). Reuse `getPostPerformance` di atas (period range + join
+// metrik sudah teruji sendiri), jadi test di sini fokus ke agregasi flat
+// (bukan distinct post count) + kriteria "belum ada data" (null, bukan 0).
+describe("PublishingService.getAnalyzeSummary", () => {
+  const NOW = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const WITHIN_WEEK = new Date(NOW - 3 * DAY_MS);
+  const OUTSIDE_WEEK = new Date(NOW - 10 * DAY_MS);
+
+  it("returns totalPosts: 0, totalReach: null, avgEngagementRate: null when no post falls inside the period range", async () => {
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async () => [
+          createHistoryItem({
+            id: asPostId("post-outside-range"),
+            publishedAt: OUTSIDE_WEEK,
+          }),
+        ],
+      }),
+      { getPostMetricsByPosts: async () => new Map() },
+    );
+
+    const result = await service.getAnalyzeSummary(
+      WORKSPACE_ID,
+      "weekly",
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual({
+      totalPosts: 0,
+      totalReach: null,
+      avgEngagementRate: null,
+    });
+  });
+
+  it("sums totalPosts flat across post x target rows (not distinct post count), sums totalReach, and averages engagementRate", async () => {
+    const postA = asPostId("post-a");
+    const postB = asPostId("post-b");
+    const connA1 = asConnectedAccountId("conn-a1");
+    const connA2 = asConnectedAccountId("conn-a2");
+    const connB1 = asConnectedAccountId("conn-b1");
+
+    const metricA1: PostMetricsRecord = {
+      id: asPostMetricsId("metric-a1"),
+      postId: postA,
+      connectedAccountId: connA1,
+      platform: SocialPlatform.Instagram,
+      impressions: 500,
+      reach: 200,
+      likes: 10,
+      comments: 2,
+      shares: 1,
+      clicks: null,
+      engagementRate: 0.1,
+      fetchedAt: new Date(0),
+    };
+    const metricA2: PostMetricsRecord = {
+      ...metricA1,
+      id: asPostMetricsId("metric-a2"),
+      connectedAccountId: connA2,
+      platform: SocialPlatform.TikTok,
+      reach: 900,
+      engagementRate: 0.3,
+    };
+    const metricB1: PostMetricsRecord = {
+      ...metricA1,
+      id: asPostMetricsId("metric-b1"),
+      postId: postB,
+      connectedAccountId: connB1,
+      reach: 50,
+      engagementRate: 0.05,
+    };
+
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async () => [
+          createHistoryItem({
+            id: postA,
+            caption: "Caption post A",
+            publishedAt: WITHIN_WEEK,
+            targets: [
+              {
+                id: asPostTargetId("target-a1"),
+                connectedAccountId: connA1,
+                platform: SocialPlatform.Instagram,
+                contentFormat: ContentFormat.Post,
+                accountHandle: "@akun-a1",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+              {
+                id: asPostTargetId("target-a2"),
+                connectedAccountId: connA2,
+                platform: SocialPlatform.TikTok,
+                contentFormat: ContentFormat.Reel,
+                accountHandle: "@akun-a2",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+            ],
+          }),
+          createHistoryItem({
+            id: postB,
+            caption: "Caption post B",
+            publishedAt: WITHIN_WEEK,
+            targets: [
+              {
+                id: asPostTargetId("target-b1"),
+                connectedAccountId: connB1,
+                platform: SocialPlatform.Instagram,
+                contentFormat: ContentFormat.Post,
+                accountHandle: "@akun-b1",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+            ],
+          }),
+        ],
+      }),
+      {
+        getPostMetricsByPosts: async () =>
+          new Map([
+            [postA, [metricA1, metricA2]],
+            [postB, [metricB1]],
+          ]),
+      },
+    );
+
+    const result = await service.getAnalyzeSummary(
+      WORKSPACE_ID,
+      "weekly",
+      AUTHOR_ID,
+    );
+
+    // totalPosts = 3 baris post x target (postA punya 2 target, postB 1),
+    // BUKAN 2 (distinct post) — keputusan T-047.1.
+    expect(result).toEqual({
+      totalPosts: 3,
+      totalReach: 200 + 900 + 50,
+      avgEngagementRate: (0.1 + 0.3 + 0.05) / 3,
+    });
+  });
+
+  it("excludes rows without an ingested AnalyticsPostMetric from totalReach/avgEngagementRate accumulation, but still counts them in totalPosts (T-043.4 pattern)", async () => {
+    const postC = asPostId("post-c");
+    const connC1 = asConnectedAccountId("conn-c1");
+    const connC2 = asConnectedAccountId("conn-c2");
+
+    const metricC1: PostMetricsRecord = {
+      id: asPostMetricsId("metric-c1"),
+      postId: postC,
+      connectedAccountId: connC1,
+      platform: SocialPlatform.Instagram,
+      impressions: 500,
+      reach: 300,
+      likes: 10,
+      comments: 2,
+      shares: 1,
+      clicks: null,
+      engagementRate: 0.2,
+      fetchedAt: new Date(0),
+    };
+
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async () => [
+          createHistoryItem({
+            id: postC,
+            caption: "Caption post C",
+            publishedAt: WITHIN_WEEK,
+            targets: [
+              {
+                id: asPostTargetId("target-c1"),
+                connectedAccountId: connC1,
+                platform: SocialPlatform.Instagram,
+                contentFormat: ContentFormat.Post,
+                accountHandle: "@akun-c1",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+              {
+                id: asPostTargetId("target-c2"),
+                connectedAccountId: connC2,
+                platform: SocialPlatform.TikTok,
+                contentFormat: ContentFormat.Reel,
+                accountHandle: "@akun-c2",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+            ],
+          }),
+        ],
+      }),
+      {
+        // Hanya conn-c1 yang sudah di-ingest — conn-c2 belum sama sekali.
+        getPostMetricsByPosts: async () => new Map([[postC, [metricC1]]]),
+      },
+    );
+
+    const result = await service.getAnalyzeSummary(
+      WORKSPACE_ID,
+      "weekly",
+      AUTHOR_ID,
+    );
+
+    // totalPosts tetap 2 (kedua baris target disertakan, T-043.4), tapi
+    // totalReach/avgEngagementRate hanya dari baris yang sudah ter-ingest.
+    expect(result).toEqual({
+      totalPosts: 2,
+      totalReach: 300,
+      avgEngagementRate: 0.2,
+    });
+  });
+});
+
 describe("PublishingService.deletePost", () => {
   function draftRecord(
     overrides: Partial<PublishingPostRecord> = {},

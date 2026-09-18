@@ -7,6 +7,7 @@ import type { SnapshotPeriod } from "@/domains/analytics";
 import { AnalyticsService } from "@/domains/analytics";
 import type {
   AccountOverviewRow,
+  AnalyzeSummary,
   PostPerformanceRow,
 } from "@/domains/publishing";
 import { PublishingService } from "@/domains/publishing";
@@ -87,6 +88,41 @@ export async function getAccountOverviewAction(
   );
 
   return publishingService.getAccountOverview(
+    workspaceId,
+    period,
+    asUserId(session.user.id),
+  );
+}
+
+/**
+ * Server Action untuk halaman `/analyze` — Summary row 3 stat card
+ * (T-047.1, KSP-07 Analyze → Dashboard). Dikonsumsi UI `StatTile` T-047.2
+ * (Mark UI Engineer), pola pemanggilan ulang saat selector period diganti
+ * sama dengan `getPostPerformanceAction`/`getAccountOverviewAction` di atas.
+ *
+ * Composition root LEBIH SEDERHANA dari `getAccountOverviewAction` — tidak
+ * ada `WorkspaceService`/`ConnectedAccountsPort` karena
+ * `PublishingService.getAnalyzeSummary` tidak membutuhkannya (lihat catatan
+ * `AnalyzeSummary`). `AnalyticsService` tetap disuplai sebagai
+ * `PostMetricsPort` (`publishing -> analytics`, pola sama dua action di
+ * atas) karena `getAnalyzeSummary` reuse `getPostPerformance`. Orkestrasi
+ * tipis saja: resolve workspace context, wire service, delegasikan.
+ */
+export async function getAnalyzeSummaryAction(
+  period: SnapshotPeriod,
+): Promise<AnalyzeSummary> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const publishingService = new PublishingService(
+    publishingRepository,
+    new AnalyticsService(analyticsRepository),
+  );
+
+  return publishingService.getAnalyzeSummary(
     workspaceId,
     period,
     asUserId(session.user.id),

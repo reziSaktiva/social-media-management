@@ -173,6 +173,34 @@ export interface AccountOverviewRow {
 }
 
 /**
+ * 3 stat card "Summary row" `/analyze` (T-047.1, KSP-07 — Analyze →
+ * Dashboard, section `.summary-row` dikunci "SYNCED" di design-prep T-043,
+ * `templates/analyze-dashboard.html`). Sengaja agregasi FLAT dari seluruh
+ * `PostPerformanceRow` (granularitas post × target-akun, SAMA dengan
+ * `getPostPerformance`/`getAccountOverview`), BUKAN distinct post count —
+ * diverifikasi terhadap mock Claude Design (`Total Posts: 12`,
+ * `Total Reach: 4.320`) yang persis sama dengan penjumlahan
+ * `AccountOverviewRow` di section yang sama pada file itu.
+ *
+ * Sengaja TIDAK reuse `AnalyticsService.getDashboardSummary` (T-042.2) —
+ * itu snapshot-based (`AnalyticsWorkspaceSnapshot`), field-nya beda
+ * (`activeAccounts`, bukan Reach), dan menyuplainya butuh port baru arah
+ * `analytics -> publishing` yang menciptakan circular dependency dengan
+ * `PostMetricsPort` (`publishing -> analytics`, T-033.1) — persis masalah
+ * yang jadi temuan kritis Ridwan Architecture Reviewer di T-043 (lihat
+ * catatan `PostPerformanceRow`). Method ini hidup di `PublishingService`
+ * karena alasan yang sama, reuse `getPostPerformance` langsung — tidak ada
+ * query Prisma baru.
+ */
+export interface AnalyzeSummary {
+  totalPosts: number;
+  /** `null` kalau tidak ada satupun row dengan reach ter-ingest (T-043.4 pattern) — bukan 0. */
+  totalReach: number | null;
+  /** `null` kalau tidak ada satupun row dengan engagementRate ter-ingest — bukan 0. */
+  avgEngagementRate: number | null;
+}
+
+/**
  * Status post yang dianggap "selesai" dan karenanya boleh muncul di
  * History (T-034.1, KSP-D10 · KSP-03 catatan: "begitu percobaan publish
  * selesai, item pindah ke History"). Single source of truth dipakai oleh
@@ -747,6 +775,58 @@ export class PublishingService {
       return b.totalReach - a.totalReach;
     });
     return overview;
+  }
+
+  /**
+   * Summary row 3 stat card `/analyze` (T-047.1, KSP-07 — Analyze →
+   * Dashboard, UI `StatTile` T-047.2 konsumsi lewat ini). Reuse
+   * `getPostPerformance` di atas (period range + join metrik SUDAH benar di
+   * sana) — TIDAK ada query Prisma baru, lihat catatan keputusan sumber
+   * data lengkap di `AnalyzeSummary`.
+   *
+   * `totalPosts` = jumlah baris post × target (SAMA granularitas dengan
+   * penjumlahan `totalPosts` di `getAccountOverview`) — BUKAN distinct post
+   * count, sudah diverifikasi cocok dengan mock Claude Design.
+   * `totalReach`/`avgEngagementRate` diakumulasi hanya dari baris yang
+   * sudah ter-ingest (pola akumulasi sama seperti `statsByAccount` di
+   * `getAccountOverview`) — `null` kalau tidak ada satupun baris berisi
+   * nilainya, bukan 0.
+   *
+   * Beda dari `getAccountOverview`: method ini TIDAK butuh
+   * `ConnectedAccountsPort` — summary row cuma agregat angka dari post yang
+   * ADA di `period` ini, tidak perlu menyertakan akun tanpa post.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`.
+   */
+  async getAnalyzeSummary(
+    workspaceId: WorkspaceId,
+    period: SnapshotPeriod,
+    userId: UserId,
+  ): Promise<AnalyzeSummary> {
+    const rows = await this.getPostPerformance(workspaceId, period, userId);
+
+    let reachSum: number | null = null;
+    let engagementRateSum: number | null = null;
+    let engagementRateCount = 0;
+
+    for (const row of rows) {
+      if (row.reach !== null) {
+        reachSum = (reachSum ?? 0) + row.reach;
+      }
+      if (row.engagementRate !== null) {
+        engagementRateSum = (engagementRateSum ?? 0) + row.engagementRate;
+        engagementRateCount += 1;
+      }
+    }
+
+    return {
+      totalPosts: rows.length,
+      totalReach: reachSum,
+      avgEngagementRate:
+        engagementRateSum === null
+          ? null
+          : engagementRateSum / engagementRateCount,
+    };
   }
 
   /**

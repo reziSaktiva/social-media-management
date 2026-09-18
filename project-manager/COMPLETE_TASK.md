@@ -8,6 +8,74 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-18 — T-047 Summary row (/analyze) — implementasi kode selesai, ✅ Done (3/3 subtask)
+
+T-047 (Summary row `/analyze`, `tasks/v03-analytics-mvp.md`, rilis v0.3)
+naik status `🟡 In Progress` → `✅ Done` — seluruh 3/3 subtask tuntas. 3
+stat card (Total Posts, Total Reach, Engagement Rate) di bagian atas
+`/analyze`, di atas section Account Overview+Post Performance.
+
+**T-047.1 (Prabowo Feature Engineer)** — Keputusan sumber data: reuse
+`PublishingService.getPostPerformance` (**BUKAN**
+`AnalyticsService.getDashboardSummary`), untuk menghindari circular
+dependency `analytics↔publishing` (pola sama solusi refactor T-043 putaran
+1). Method baru `PublishingService.getAnalyzeSummary(workspaceId, period,
+userId)` + tipe `AnalyzeSummary` (`totalPosts`, `totalReach:
+number|null`, `avgEngagementRate: number|null`) di
+`apps/web/src/domains/publishing/services/publishing.service.ts`.
+`totalPosts` dihitung FLAT per baris post×target-akun (bukan distinct post
+count) — diverifikasi cocok persis dengan mock Claude Design ("Total Posts:
+12" = penjumlahan `AccountOverviewRow.totalPosts` di section yang sama).
+Server Action baru `getAnalyzeSummaryAction` di
+`apps/web/src/app/(app)/analyze/analyze-actions.ts`, wiring `page.tsx`. 3
+test baru di `publishing.service.test.ts`.
+
+**T-047.2 + T-047.3 (Mark UI Engineer)** — UI 3 `StatTile` (diekstrak jadi
+shared component baru `apps/web/src/app/(app)/components/stat-tile.tsx`,
+dipakai ulang juga di `DashboardHome.tsx` yang sebelumnya punya definisi
+lokal duplikat — pure extraction, tidak ada perubahan behavior Dashboard
+Home). Empty state per-field (T-047.3): `totalPosts` selalu tampil angka
+(termasuk "0"), `totalReach`/`avgEngagementRate` masing-masing independen
+render "Belum ada data" saat `null` — pola SAMA T-043.4, BUKAN empty state
+penuh 1 section (3 card selalu tampil).
+
+Desain sudah dicek ke Claude Design SEBELUM implementasi (rule 17
+AGENTS.md) — section `.summary-row` di `templates/analyze-dashboard.html`
+sudah "SYNCED" (locked ke shadcn `Card`+`CardContent`+`Text`, pola sama
+persis `StatTile` T-042.3 yang sudah ada), jadi TIDAK ADA gate
+ambiguitas/`AskUserQuestion` yang perlu dipicu.
+
+**Review Ridwan Architecture Reviewer:** 0 temuan (7 titik fokus dicek:
+entry point bersih, domain logic tidak import Prisma/Supabase, keputusan
+tidak pakai `ConnectedAccountsPort` di `getAnalyzeSummary` masuk akal,
+tidak ada circular dependency baru, `AnalyzeSummary` di
+`publishing.service.ts` konsisten precedent `PostPerformanceRow`/
+`AccountOverviewRow`, `stat-tile.tsx` murni presentasional, formula
+konsisten dengan `getAccountOverview`).
+
+**QA Najwa QA Engineer:** 0 bug. `typecheck`/`lint` bersih, `vitest` **418
+pass/5 skip** (naik dari 415, 3 test baru `getAnalyzeSummary`). Gate
+T-103.3 (verifikasi struktur vs Claude Design) PASS — cocok 1:1, tidak ada
+deviasi. Browser end-to-end: golden path PASS (Total Posts cocok dengan
+penjumlahan Account Overview), ganti period PASS (3 action ter-refetch
+bersamaan, guard out-of-order bekerja), null-safety PASS ("Belum ada data"
+bukan 0/NaN/crash), regresi Account Overview+Post Performance PASS (sort
+masih jalan, empty state masing-masing tidak berubah). Catatan
+non-blocking (bukan Known Issue): 2 skenario (period tanpa post sama
+sekali, campuran sebagian metrik ter-ingest) tidak bisa diverifikasi
+visual di browser karena data dev saat ini tidak punya kombinasi itu —
+sudah tercover unit test deterministik sebagai gantinya, bukan blocker.
+
+Tidak ada ADR baru — keputusan sumber data T-047.1 adalah keputusan
+implementasi biasa, konsisten precedent T-043/T-046 yang juga tidak butuh
+ADR terpisah untuk keputusan serupa.
+
+Detail: `tasks/v03-analytics-mvp.md` § T-047, `TASKS.md` (breakdown v0.3
+"🟡 5 ✅ · 3 ⏳" → **🟡 6 ✅ · 2 ⏳**, task selesai 46 → **47**),
+`PROJECT_STATE.md` (Snapshot + Completed Ringkasan).
+
+---
+
 ## 2026-09-18 — T-046 Account Overview — implementasi kode selesai, ✅ Done (3/3 subtask)
 
 T-046 (Account Overview, `tasks/v03-analytics-mvp.md`, rilis v0.3) naik
