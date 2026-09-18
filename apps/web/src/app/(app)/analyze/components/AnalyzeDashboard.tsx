@@ -15,10 +15,8 @@
 // sebelumnya): shadcn `Table` + `TableHeader` (BUKAN `Item`/`ItemGroup`,
 // konsisten dengan pola Members `MembersTable.tsx` yang JUGA pakai header —
 // beda dari Drafts/Workspaces/Connected Accounts yang tanpa header), 4
-// kolom (Post, Akun, Reach, Eng. Rate), TANPA wrapper `Card` terpisah
-// (border+rounded manual di atas `Table`, pola final KI-055 yang sama
-// dipakai `MembersTable.tsx`), baris TIDAK diklik-penuh (navigasi metrik
-// per-post adalah T-043.3, task terpisah).
+// kolom (Post, Akun, Reach, Eng. Rate), baris TIDAK diklik-penuh (navigasi
+// metrik per-post adalah T-043.3, task terpisah).
 //
 // Sorting (T-043.2): data sudah di-fetch semua sekaligus per `period` lewat
 // `getPostPerformanceAction` — klik header cuma re-sort array yang sudah
@@ -40,6 +38,47 @@
 // numerik pada kedua kolom itu null-safe: baris `null` selalu ditaruh di
 // akhir hasil sort — baik ascending maupun descending — pola sama seperti
 // default comparator `AnalyticsService.getPostPerformance`.
+//
+// Section "Account Overview" (T-046.2–T-046.3): pola dikunci di design-prep
+// T-043 (`templates/analyze-dashboard.html`, komentar "SYNCED (T-043 design
+// prep, 2026-09-18)") — `.bar-track`/`.bar-fill` Astryx-era dipetakan ke
+// shadcn `Progress` per baris akun. Satu baris per akun: ikon+label
+// platform, jumlah post, `Progress` (value = proporsi `totalReach` akun itu
+// relatif ke akun `totalReach` tertinggi di list, dari `AccountOverviewRow[]`
+// yang SUDAH disortir `totalReach` descending oleh
+// `PublishingService.getAccountOverview` — T-046.1), lalu angka reach
+// ter-format. `totalReach: null` (T-046 kriteria "belum ada data" — akun
+// belum punya post di period ini ATAU belum ter-ingest metrik) merender
+// teks "Belum ada data" menggantikan SELURUH kombinasi bar+angka (bukan
+// bar 0%), pola sama seperti sel Reach/Eng. Rate di Post Performance.
+//
+// REFLOW (lanjutan T-046, 2026-09-18 — King Rezi via `AskUserQuestion`:
+// "tolong sesuaikan dengan Claude Design"): `DesignSync get_file` ulang
+// pada `templates/analyze-dashboard.html` menunjukkan `.dash-cols` (grid
+// `1.6fr 1fr`) membungkus DUA kartu — kartu kiri (1.6fr) adalah SATU
+// `card.card-pad` yang berisi section "Account Overview" DIIKUTI section
+// "Post Performance" (title + table) DI DALAM kartu yang SAMA (lihat
+// komentar SYNCED T-043 di file itu: "Wrapper: TANPA `Card` terpisah —
+// table langsung di dalam card.card-pad yang sudah ada di section ini,
+// bukan dobel wrapper"); kartu kanan (1fr) adalah "Engagement Summary"
+// (T-044, `⏳ Not Started`, di luar scope T-046). Sesi sebelumnya salah
+// menaruh Account Overview sebagai `Card` full-width TERPISAH di atas Post
+// Performance (yang juga masih pakai border manual sendiri, pola
+// `MembersTable.tsx`/KI-055) — dua wrapper sendiri-sendiri, bukan satu
+// kartu bersama seperti desain.
+//
+// Diperbaiki di sini: Account Overview + Post Performance sekarang berbagi
+// SATU `Card`/`CardContent` (komponen `AccountOverviewContent` +
+// `PostPerformanceContent` di bawah TIDAK lagi punya wrapper masing-masing —
+// border manual `rounded-xl border` untuk tabel juga dihapus, karena
+// `Table` shadcn sudah menyediakan `overflow-x-auto` sendiri dan kartu
+// pembungkus sudah memberi border+radius). Kolom kanan (`.dash-cols` kedua,
+// Engagement Summary) SENGAJA belum dibuat — grid 2 kolom dengan slot kanan
+// kosong akan terlihat seperti bug rendering (blank space), bukan
+// representasi desain yang sah, jadi kartu kiri untuk saat ini dirender
+// full-width. Ini deviasi yang DISENGAJA dan DILAPORKAN, bukan diam-diam
+// dibiarkan berbeda — grid `lg:grid-cols-[1.6fr_1fr]` menyusul begitu T-044
+// diimplementasikan.
 
 import { useMemo, useRef, useState, useTransition } from "react";
 
@@ -51,12 +90,14 @@ import {
 } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -77,10 +118,19 @@ import { cn } from "@/lib/utils";
 
 import { PLATFORM_ICON } from "../../components/platform-icons";
 import { formatEngagementRate } from "../../components/post-metric-tile";
-import { getPostPerformanceAction } from "../analyze-actions";
+import { StatTile } from "../../components/stat-tile";
+import {
+  getAccountOverviewAction,
+  getAnalyzeSummaryAction,
+  getPostPerformanceAction,
+} from "../analyze-actions";
 
 import type { SnapshotPeriod } from "@/domains/analytics";
-import type { PostPerformanceRow } from "@/domains/publishing";
+import type {
+  AccountOverviewRow,
+  AnalyzeSummary,
+  PostPerformanceRow,
+} from "@/domains/publishing";
 
 const PERIOD_OPTIONS: Array<{ value: SnapshotPeriod; label: string }> = [
   { value: "weekly", label: "Mingguan" },
@@ -182,15 +232,279 @@ function SortableTableHead({
   );
 }
 
+/**
+ * Satu baris akun di section "Account Overview" (T-046.2), pola `.acc-perf-row`
+ * di `analyze-dashboard.html`. `maxReach` adalah `totalReach` tertinggi di
+ * seluruh list (dihitung sekali oleh caller) — dipakai untuk proporsi bar
+ * `Progress`, bukan skala absolut 0-100.
+ */
+function AccountOverviewRowItem({
+  row,
+  maxReach,
+}: {
+  row: AccountOverviewRow;
+  maxReach: number;
+}) {
+  const platformEntry = PLATFORM_ICON[row.platform];
+  const postLabel = row.totalPosts === 1 ? "post" : "posts";
+  const progressValue =
+    row.totalReach === null || maxReach <= 0
+      ? 0
+      : Math.min((row.totalReach / maxReach) * 100, 100);
+
+  return (
+    // eslint-disable-next-line no-restricted-syntax -- layout-only
+    <div className="flex items-center gap-3 border-b border-border py-2.5 last:border-b-0">
+      {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
+      <div className="flex w-36 shrink-0 items-center gap-2">
+        {platformEntry ? (
+          <platformEntry.Icon size={14} color={platformEntry.color} />
+        ) : null}
+        <Text variant="small" className="truncate" title={row.accountHandle}>
+          {row.accountHandle}
+        </Text>
+      </div>
+      <Text
+        variant="muted"
+        className="w-20 shrink-0"
+      >{`${row.totalPosts} ${postLabel}`}</Text>
+      {row.totalReach === null ? (
+        <Text variant="muted" className="flex-1">
+          Belum ada data
+        </Text>
+      ) : (
+        <>
+          <Progress
+            value={progressValue}
+            className="flex-1"
+            aria-label={`Reach ${row.accountHandle}`}
+          />
+          <Text
+            variant="small"
+            className="w-16 shrink-0 text-right tabular-nums"
+          >
+            {row.totalReach.toLocaleString("id-ID")}
+          </Text>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Isi section "Account Overview" (T-046.2–T-046.3) — TANPA wrapper `Card`
+ * sendiri (lihat catatan REFLOW di atas): section ini dan
+ * `PostPerformanceContent` sekarang berbagi satu `Card` dari caller
+ * (`AnalyzeDashboard`), pola `.dash-cols` kartu kiri di `analyze-dashboard.html`.
+ */
+function AccountOverviewContent({ rows }: { rows: AccountOverviewRow[] }) {
+  const maxReach = useMemo(
+    () =>
+      rows.reduce(
+        (max, row) =>
+          row.totalReach !== null ? Math.max(max, row.totalReach) : max,
+        0,
+      ),
+    [rows],
+  );
+
+  return (
+    // eslint-disable-next-line no-restricted-syntax -- layout-only
+    <div className="flex flex-col gap-4">
+      <h2 className="font-heading text-xl font-semibold tracking-tight">
+        Account Overview
+      </h2>
+
+      {rows.length === 0 ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Belum ada data</EmptyTitle>
+            <EmptyDescription>
+              Belum ada akun terhubung untuk ditampilkan di rentang waktu ini.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        // eslint-disable-next-line no-restricted-syntax -- layout-only
+        <div className="flex flex-col">
+          {rows.map((row) => (
+            <AccountOverviewRowItem
+              key={row.connectedAccountId}
+              row={row}
+              maxReach={maxReach}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Isi section "Post Performance" (T-043.2) — TANPA wrapper border manual
+ * sendiri (lihat catatan REFLOW di atas): pola `MembersTable.tsx`/KI-055
+ * (border+rounded manual tanpa `Card`) dipakai saat section ini masih
+ * berdiri sendiri; sekarang section ini pindah ke dalam `Card` yang sama
+ * dengan `AccountOverviewContent`, jadi border manual itu dihapus supaya
+ * tidak dobel wrapper — konsisten dengan komentar SYNCED T-043 di
+ * `analyze-dashboard.html` ("table langsung di dalam card.card-pad yang
+ * sudah ada di section ini, bukan dobel wrapper"). `Table` shadcn sendiri
+ * sudah membungkus `<table>` dengan `overflow-x-auto` (lihat `table.tsx`),
+ * jadi scroll horizontal di layar kecil tetap terjaga tanpa wrapper
+ * tambahan.
+ */
+function PostPerformanceContent({
+  sortedRows,
+  sort,
+  onSort,
+}: {
+  sortedRows: PostPerformanceRow[];
+  sort: SortState;
+  onSort: (column: SortColumn) => void;
+}) {
+  return (
+    // eslint-disable-next-line no-restricted-syntax -- layout-only
+    <div className="flex flex-col gap-4">
+      <h2 className="font-heading text-xl font-semibold tracking-tight">
+        Post Performance
+      </h2>
+
+      {sortedRows.length === 0 ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Belum ada data</EmptyTitle>
+            <EmptyDescription>
+              Belum ada post dengan metrik untuk rentang waktu ini. Data akan
+              muncul setelah sinkronisasi metrik berjalan.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHead
+                column="caption"
+                label="Post"
+                sort={sort}
+                onSort={onSort}
+              />
+              <SortableTableHead
+                column="accountHandle"
+                label="Akun"
+                sort={sort}
+                onSort={onSort}
+              />
+              <SortableTableHead
+                column="reach"
+                label="Reach"
+                align="right"
+                sort={sort}
+                onSort={onSort}
+              />
+              <SortableTableHead
+                column="engagementRate"
+                label="Eng. Rate"
+                align="right"
+                sort={sort}
+                onSort={onSort}
+              />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedRows.map((row) => {
+              const platformEntry = PLATFORM_ICON[row.platform];
+              return (
+                <TableRow key={`${row.postId}-${row.connectedAccountId}`}>
+                  <TableCell>
+                    {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
+                    <div className="flex items-center gap-3">
+                      {/* Placeholder visual "thumbnail" — `PostPerformanceRow`
+                          tidak punya field gambar (bukan field karangan
+                          di luar `AnalyticsPostMetric`/history), jadi
+                          dipakai badge ikon platform sebagai representasi
+                          visual, bukan thumbnail gambar post asli. */}
+                      {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
+                      <div
+                        aria-hidden
+                        className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted"
+                      >
+                        {platformEntry ? (
+                          <platformEntry.Icon
+                            size={16}
+                            color={platformEntry.color}
+                          />
+                        ) : null}
+                      </div>
+                      <span
+                        className="block max-w-70 truncate"
+                        title={row.caption}
+                      >
+                        {row.caption}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
+                    <div className="flex flex-col">
+                      <Text variant="small">{row.accountHandle}</Text>
+                      <Text variant="muted">
+                        {platformEntry?.label ?? row.platform}
+                      </Text>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.reach === null ? (
+                      <span className="text-muted-foreground">
+                        Belum ada data
+                      </span>
+                    ) : (
+                      row.reach.toLocaleString("id-ID")
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.engagementRate === null ? (
+                      <span className="text-muted-foreground">
+                        Belum ada data
+                      </span>
+                    ) : (
+                      formatEngagementRate(row.engagementRate)
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+
 export function AnalyzeDashboard({
   initialPeriod,
   initialRows,
+  initialAccountOverviewRows,
+  initialSummary,
 }: {
   initialPeriod: SnapshotPeriod;
   initialRows: PostPerformanceRow[];
+  initialAccountOverviewRows: AccountOverviewRow[];
+  // T-047.1 (Prabowo Feature Engineer) — data-layer summary row (Total
+  // Posts/Total Reach/Engagement Rate). Optional karena `page.tsx` selalu
+  // menyuplai objeknya (`getAnalyzeSummary` tidak pernah return `null`,
+  // beda dari `DashboardSummary`) — signature optional dipertahankan biar
+  // longgar terhadap composition root, bukan karena datanya bisa hilang.
+  initialSummary?: AnalyzeSummary;
 }) {
   const [period, setPeriod] = useState<SnapshotPeriod>(initialPeriod);
   const [rows, setRows] = useState<PostPerformanceRow[]>(initialRows);
+  const [accountOverviewRows, setAccountOverviewRows] = useState<
+    AccountOverviewRow[]
+  >(initialAccountOverviewRows);
+  const [summary, setSummary] = useState<AnalyzeSummary | undefined>(
+    initialSummary,
+  );
   const [sort, setSort] = useState<SortState>({
     column: "reach",
     direction: "desc",
@@ -208,9 +522,16 @@ export function AnalyzeDashboard({
     setPeriod(nextPeriod);
     latestRequestedPeriod.current = nextPeriod;
     startTransition(async () => {
-      const result = await getPostPerformanceAction(nextPeriod);
+      const [postPerformanceResult, accountOverviewResult, summaryResult] =
+        await Promise.all([
+          getPostPerformanceAction(nextPeriod),
+          getAccountOverviewAction(nextPeriod),
+          getAnalyzeSummaryAction(nextPeriod),
+        ]);
       if (latestRequestedPeriod.current === nextPeriod) {
-        setRows(result);
+        setRows(postPerformanceResult);
+        setAccountOverviewRows(accountOverviewResult);
+        setSummary(summaryResult);
       }
     });
   }
@@ -257,127 +578,55 @@ export function AnalyzeDashboard({
         </Select>
       </div>
 
-      {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
-      <div className="flex flex-col gap-4">
-        <h2 className="font-heading text-xl font-semibold tracking-tight">
-          Post Performance
-        </h2>
+      {/* Summary row (T-047.2, `.summary-row` di analyze-dashboard.html,
+          dikunci "SYNCED" T-043 design prep — grid 3 kolom, Total Posts →
+          Total Reach → Engagement Rate, DI ATAS `.dash-cols`). Pola SAMA
+          `StatTile` grid di `DashboardHome.tsx` (T-042.3) — diekstrak jadi
+          `../../components/stat-tile` supaya tidak duplikasi. `totalPosts`
+          selalu angka (termasuk "0"); `totalReach`/`avgEngagementRate`
+          masing-masing independen render "Belum ada data" saat `null`
+          (T-047.3, pola sama T-043.4) — BUKAN empty state per-section,
+          3 card tetap selalu tampil. */}
+      {summary ? (
+        // eslint-disable-next-line no-restricted-syntax -- layout-only
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatTile
+            label="Total Posts"
+            value={summary.totalPosts.toLocaleString("id-ID")}
+          />
+          <StatTile
+            label="Total Reach"
+            value={
+              summary.totalReach === null
+                ? "Belum ada data"
+                : summary.totalReach.toLocaleString("id-ID")
+            }
+          />
+          <StatTile
+            label="Engagement Rate"
+            value={
+              summary.avgEngagementRate === null
+                ? "Belum ada data"
+                : formatEngagementRate(summary.avgEngagementRate)
+            }
+          />
+        </div>
+      ) : null}
 
-        {sortedRows.length === 0 ? (
-          // eslint-disable-next-line no-restricted-syntax -- pola sama MembersTable.tsx (KI-055): border+rounded manual, tanpa Card
-          <div className="rounded-xl border border-border p-6">
-            <Empty>
-              <EmptyHeader>
-                <EmptyTitle>Belum ada data</EmptyTitle>
-                <EmptyDescription>
-                  Belum ada post dengan metrik untuk rentang waktu ini. Data
-                  akan muncul setelah sinkronisasi metrik berjalan.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          </div>
-        ) : (
-          // eslint-disable-next-line no-restricted-syntax -- pola sama MembersTable.tsx (KI-055)
-          <div className="overflow-hidden rounded-xl border border-border py-2">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortableTableHead
-                    column="caption"
-                    label="Post"
-                    sort={sort}
-                    onSort={handleSort}
-                  />
-                  <SortableTableHead
-                    column="accountHandle"
-                    label="Akun"
-                    sort={sort}
-                    onSort={handleSort}
-                  />
-                  <SortableTableHead
-                    column="reach"
-                    label="Reach"
-                    align="right"
-                    sort={sort}
-                    onSort={handleSort}
-                  />
-                  <SortableTableHead
-                    column="engagementRate"
-                    label="Eng. Rate"
-                    align="right"
-                    sort={sort}
-                    onSort={handleSort}
-                  />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedRows.map((row) => {
-                  const platformEntry = PLATFORM_ICON[row.platform];
-                  return (
-                    <TableRow key={`${row.postId}-${row.connectedAccountId}`}>
-                      <TableCell>
-                        {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
-                        <div className="flex items-center gap-3">
-                          {/* Placeholder visual "thumbnail" — `PostPerformanceRow`
-                              tidak punya field gambar (bukan field karangan
-                              di luar `AnalyticsPostMetric`/history), jadi
-                              dipakai badge ikon platform sebagai representasi
-                              visual, bukan thumbnail gambar post asli. */}
-                          {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
-                          <div
-                            aria-hidden
-                            className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted"
-                          >
-                            {platformEntry ? (
-                              <platformEntry.Icon
-                                size={16}
-                                color={platformEntry.color}
-                              />
-                            ) : null}
-                          </div>
-                          <span
-                            className="block max-w-70 truncate"
-                            title={row.caption}
-                          >
-                            {row.caption}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
-                        <div className="flex flex-col">
-                          <Text variant="small">{row.accountHandle}</Text>
-                          <Text variant="muted">
-                            {platformEntry?.label ?? row.platform}
-                          </Text>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {row.reach === null ? (
-                          <span className="text-muted-foreground">
-                            Belum ada data
-                          </span>
-                        ) : (
-                          row.reach.toLocaleString("id-ID")
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {row.engagementRate === null ? (
-                          <span className="text-muted-foreground">
-                            Belum ada data
-                          </span>
-                        ) : (
-                          formatEngagementRate(row.engagementRate)
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
+      {/* `.dash-cols` (analyze-dashboard.html): kartu kiri (1.6fr) berisi
+          Account Overview + Post Performance bersama. Kartu kanan (1fr,
+          "Engagement Summary") adalah T-044 (`⏳ Not Started`) — belum
+          dirender di sini, lihat catatan REFLOW di kepala file. */}
+      <Card>
+        <CardContent className="flex flex-col gap-6">
+          <AccountOverviewContent rows={accountOverviewRows} />
+          <PostPerformanceContent
+            sortedRows={sortedRows}
+            sort={sort}
+            onSort={handleSort}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

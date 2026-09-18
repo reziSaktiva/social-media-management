@@ -104,7 +104,7 @@ Route `/[slug]` (Home) saat ini placeholder. Dashboard adalah **Must Have** MVP.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done (2026-09-18)                                          |
 | **Domain**    | analytics · UI                                               |
 | **ADR**       | —                                                            |
 | **Depends**   | T-041, T-043 (reuse pola halaman `/analyze` yang sudah ada)  |
@@ -112,15 +112,23 @@ Route `/[slug]` (Home) saat ini placeholder. Dashboard adalah **Must Have** MVP.
 
 Ringkasan performa per akun/platform di `/analyze` — jumlah post + total reach per akun, direpresentasikan sebagai bar (pola `.bar-track`/`.bar-fill` → shadcn `Progress`, SUDAH dikunci di design-prep T-043 sebagai pola valid, lihat komentar "SYNCED" di `analyze-dashboard.html`, tidak perlu sesi desain ulang — cukup ambil struktur yang sudah ada).
 
-- [ ] **T-046.1** Query agregasi jumlah post + total reach per akun/platform untuk period tertentu (weekly/monthly, konsisten `SnapshotPeriod` yang sudah ada)
-- [ ] **T-046.2** UI bar performa per akun di `/analyze` (reuse `Progress`, pola sama `analyze-dashboard.html`)
-- [ ] **T-046.3** Empty state kalau belum ada data (konsisten pola T-043.4/T-042.4 — "Belum ada data", bukan 0)
+- [x] **T-046.1** Query agregasi jumlah post + total reach per akun/platform untuk period tertentu (weekly/monthly, konsisten `SnapshotPeriod` yang sudah ada)
+- [x] **T-046.2** UI bar performa per akun di `/analyze` (reuse `Progress`, pola sama `analyze-dashboard.html`)
+- [x] **T-046.3** Empty state kalau belum ada data (konsisten pola T-043.4/T-042.4 — "Belum ada data", bukan 0)
+
+**Implementasi T-046.1 (selesai, 2026-09-18):** dikerjakan Prabowo Feature Engineer — method baru `PublishingService.getAccountOverview(workspaceId, period, userId)` di `apps/web/src/domains/publishing/services/publishing.service.ts`, ditaruh di domain `publishing` (bukan `analytics`) untuk reuse `getPostPerformance` (T-043) dan menghindari circular dependency (pola sama seperti temuan review putaran 1 T-043). Port baru `ConnectedAccountsPort` (arah `publishing→workspace`, sudah legal di `application-layer.md` baris 316). Server Action baru `getAccountOverviewAction(period)` di `apps/web/src/app/(app)/analyze/analyze-actions.ts`. Kriteria "belum ada data" (T-046.3) diselesaikan di level query: akun tanpa post → `totalPosts: 0, totalReach: null`; akun dengan post tapi metrik belum ter-ingest → `totalReach: null` juga (dibedakan dari 0 reach yang sah). 4 test baru di `publishing.service.test.ts` (describe `getAccountOverview`).
+
+**Implementasi T-046.2/T-046.3 (selesai, 2026-09-18):** dikerjakan Mark UI Engineer lewat 2 sesi. Section "Account Overview" ditambahkan ke `apps/web/src/app/(app)/analyze/components/AnalyzeDashboard.tsx`. Sesi 1 awalnya dibuat sebagai `Card` full-width sendiri (deviasi dari mockup, karena Post Performance sudah full-width sejak T-043) — King Rezi ditanya via `AskUserQuestion`, jawaban: "sesuaikan dengan Claude Design". Sesi 2 (reflow): `DesignSync get_file` ulang pada `templates/analyze-dashboard.html` menemukan struktur sebenarnya — `.dash-cols` grid `1.6fr 1fr`: kartu kiri = SATU `card.card-pad` berisi Account Overview + Post Performance BERSAMA (bukan dua Card terpisah), kartu kanan = Engagement Summary (T-044, belum dikerjakan). Direflow supaya Account Overview + Post Performance berbagi satu `Card`/`CardContent`. Kolom kanan grid sengaja dirender full-width sementara (bukan grid 2 kolom dengan placeholder) sampai T-044 dikerjakan — King Rezi konfirmasi via `AskUserQuestion` ("Full-width sementara (Recommended)"). Progress bar: `(row.totalReach / maxReach) * 100`, `totalReach === null` → teks "Belum ada data" (bukan bar 0%).
+
+**Review Ridwan Architecture Reviewer:** 0 temuan. Verifikasi: entry point bersih, domain tidak import Prisma/Supabase langsung, `ConnectedAccountsPort` (publishing→workspace) sudah legal di `application-layer.md` baris 316, tidak ada circular dependency baru, kriteria null vs 0 konsisten di seluruh layer, tidak ada gap dokumentasi baru (KI-064 yang sudah ada tetap untuk `publishing→analytics`, tidak bertambah untuk `publishing→workspace` karena arah itu memang sudah lama terdokumentasi).
+
+**QA Najwa QA Engineer:** 0 temuan blocking. Golden path PASS semua (satu Card yang sama, progress bar proporsional, selector period refetch paralel kedua section, edge case akun-tanpa-post vs akun-dengan-post-tanpa-metrik dibedakan benar, regresi Post Performance/Calendar Popover/History Detail PASS, dark/light mode aman). Gate T-103.3 (DesignSync vs kode): **match**. Satu catatan non-blocking (bukan bug): sort kolom "Akun" di Post Performance pakai `localeCompare()` bawaan JS, "Insvire Demo" muncul sebelum "@fake.ig.4806" karena urutan simbol "@" — tidak diperbaiki karena tidak diminta. Verifikasi akhir: `typecheck`/`lint` bersih, `bun run test` **415 pass/5 skip** (42 file, naik dari 411).
 
 ### T-047 · Summary row (/analyze)
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done (2026-09-18)                                          |
 | **Domain**    | analytics · UI                                               |
 | **ADR**       | —                                                            |
 | **Depends**   | T-041, kemungkinan reuse logic mirip `AnalyticsService.getDashboardSummary` (T-042.2) tapi scoped halaman `/analyze` — perlu diputuskan saat implementasi apakah reuse persis atau query terpisah |
@@ -128,9 +136,17 @@ Ringkasan performa per akun/platform di `/analyze` — jumlah post + total reach
 
 3 stat card di bagian atas `/analyze` — Total Posts, Total Reach, Engagement Rate untuk period yang dipilih.
 
-- [ ] **T-047.1** Tentukan sumber data: reuse `AnalyticsService.getDashboardSummary`-style query atau bikin query terpisah scoped `/analyze` — catat keputusannya sebagai bagian implementasi (bukan pra-keputusan di sini)
-- [ ] **T-047.2** UI 3 stat card di `/analyze` (reuse pola `StatTile` dari `DashboardHome.tsx`, T-042.3)
-- [ ] **T-047.3** Empty state konsisten pola T-042.4/T-043.4
+- [x] **T-047.1** Tentukan sumber data: reuse `AnalyticsService.getDashboardSummary`-style query atau bikin query terpisah scoped `/analyze` — catat keputusannya sebagai bagian implementasi (bukan pra-keputusan di sini)
+- [x] **T-047.2** UI 3 stat card di `/analyze` (reuse pola `StatTile` dari `DashboardHome.tsx`, T-042.3)
+- [x] **T-047.3** Empty state konsisten pola T-042.4/T-043.4
+
+**Implementasi T-047.1 (selesai, 2026-09-18):** dikerjakan Prabowo Feature Engineer — sumber data diputuskan reuse `PublishingService.getPostPerformance` (T-043), **BUKAN** `AnalyticsService.getDashboardSummary`, untuk menghindari circular dependency `analytics↔publishing` (pola sama solusi refactor T-043 putaran 1). Method baru `PublishingService.getAnalyzeSummary(workspaceId, period, userId)` + tipe `AnalyzeSummary` (`totalPosts`, `totalReach: number|null`, `avgEngagementRate: number|null`) di `apps/web/src/domains/publishing/services/publishing.service.ts`. `totalPosts` dihitung FLAT per baris post×target-akun (bukan distinct post count) — diverifikasi cocok persis dengan mock Claude Design ("Total Posts: 12" = penjumlahan `AccountOverviewRow.totalPosts` di section yang sama). Server Action baru `getAnalyzeSummaryAction` di `apps/web/src/app/(app)/analyze/analyze-actions.ts`, wiring `page.tsx`. 3 test baru di `publishing.service.test.ts`.
+
+**Implementasi T-047.2/T-047.3 (selesai, 2026-09-18):** dikerjakan Mark UI Engineer — 3 `StatTile` di bagian atas `/analyze`, di atas section Account Overview+Post Performance. Komponen `StatTile` diekstrak jadi shared component baru `apps/web/src/app/(app)/components/stat-tile.tsx`, dipakai ulang juga di `DashboardHome.tsx` (sebelumnya punya definisi lokal duplikat — pure extraction, tidak ada perubahan behavior Dashboard Home). Empty state per-field (T-047.3): `totalPosts` selalu tampil angka (termasuk "0"), `totalReach`/`avgEngagementRate` masing-masing independen render "Belum ada data" saat `null` — pola sama T-043.4, bukan empty state penuh 1 section (3 card selalu tampil). Desain sudah dicek ke Claude Design SEBELUM implementasi (rule 17 AGENTS.md) — section `.summary-row` di `templates/analyze-dashboard.html` sudah "SYNCED" (locked ke shadcn `Card`+`CardContent`+`Text`, pola sama persis `StatTile` T-042.3 yang sudah ada), jadi tidak ada gate ambiguitas/`AskUserQuestion` yang perlu dipicu.
+
+**Review Ridwan Architecture Reviewer:** 0 temuan — entry point bersih, domain logic tidak import Prisma/Supabase, keputusan tidak pakai `ConnectedAccountsPort` di `getAnalyzeSummary` masuk akal, tidak ada circular dependency baru, `AnalyzeSummary` di `publishing.service.ts` konsisten precedent `PostPerformanceRow`/`AccountOverviewRow`, `stat-tile.tsx` murni presentasional, formula konsisten dengan `getAccountOverview`.
+
+**QA Najwa QA Engineer:** 0 bug. `typecheck`/`lint` bersih, `vitest` **418 pass/5 skip** (naik dari 415, 3 test baru `getAnalyzeSummary`). Gate T-103.3 (verifikasi struktur vs Claude Design) PASS — cocok 1:1, tidak ada deviasi. Browser end-to-end: golden path PASS (Total Posts cocok dengan penjumlahan Account Overview), ganti period PASS (3 action ter-refetch bersamaan, guard out-of-order bekerja), null-safety PASS ("Belum ada data" bukan 0/NaN/crash), regresi Account Overview+Post Performance PASS (sort masih jalan, empty state masing-masing tidak berubah). Catatan non-blocking (bukan Known Issue): 2 skenario (period tanpa post sama sekali, campuran sebagian metrik ter-ingest) tidak bisa diverifikasi visual di browser karena data dev saat ini tidak punya kombinasi itu — sudah tercover unit test deterministik sebagai gantinya, bukan blocker.
 
 ### T-044 · Engagement summary
 

@@ -38,6 +38,26 @@ interface PostMetricsPort {
 }
 
 /**
+ * Port lokal untuk cross-domain `publishing` → `workspace` (T-046.1,
+ * AGENTS.md #7) — arah ini SUDAH legal di `application-layer.md` § Peta
+ * Dependency Antar Domain ("BC-03 Publishing → BC-02 Workspace, verifikasi
+ * ConnectedAccount"), jadi tidak menambah dependency baru, hanya
+ * memanfaatkan yang sudah didokumentasikan. Pola sama `PostMetricsPort` di
+ * atas — `WorkspaceService` konkret TIDAK boleh diimport ke file ini;
+ * composition root (Server Action) menyuplai instance lewat constructor.
+ * `WorkspaceService.listConnectedAccounts` cocok secara struktural (bentuk
+ * return value superset dari yang dipakai di sini).
+ */
+interface ConnectedAccountsPort {
+  listConnectedAccounts(
+    workspaceId: WorkspaceId,
+    userId: UserId,
+  ): Promise<
+    { id: ConnectedAccountId; platform: SocialPlatform; handle: string }[]
+  >;
+}
+
+/**
  * Satu item Calendar hasil `PublishingService.listCalendarPosts` —
  * `CalendarItemRecord` mentah dari repository + `metrics`. `metrics`
  * bermakna dua kondisi berbeda by design (KSP-02-F08 — metrik hanya
@@ -113,6 +133,74 @@ export interface PostPerformanceRow {
 }
 
 /**
+ * Satu baris "Account Overview" `/analyze` (T-046.1, T-046.2, KSP-07 —
+ * Analyze → Dashboard, pola `Progress` bar SUDAH dikunci "SYNCED" di
+ * design-prep T-043, `templates/analyze-dashboard.html`). Dibangun di
+ * `PublishingService` (bukan `AnalyticsService`) dengan alasan yang sama
+ * persis seperti `PostPerformanceRow`/`getPostPerformance` di atas: butuh
+ * `publishedAt`/`targets` post (dimiliki `publishing`) untuk filter rentang
+ * `period` DAN metrik reach (dimiliki `analytics`, lewat `PostMetricsPort`
+ * yang sudah ada) — meletakkannya di `analytics` akan butuh port baru
+ * `analytics -> publishing`, yang berlawanan arah dengan `PostMetricsPort`
+ * (`publishing -> analytics`) dan menciptakan circular dependency yang
+ * SAMA seperti temuan kritis Ridwan Architecture Reviewer di T-043.
+ *
+ * Beda dari `PostPerformanceRow`: baris ini SATU per `connectedAccountId`
+ * (bukan per post × akun), dan WAJIB menyertakan akun yang di period ini
+ * belum punya post terpublikasi sama sekali (T-046 kriteria "belum ada
+ * data") — makanya sumber utamanya adalah `ConnectedAccountsPort.
+ * listConnectedAccounts` (semua akun workspace), bukan hasil agregasi
+ * `getPostPerformance` semata (yang secara alami hanya berisi akun yang
+ * SUDAH punya post).
+ */
+export interface AccountOverviewRow {
+  connectedAccountId: ConnectedAccountId;
+  platform: SocialPlatform;
+  accountHandle: string;
+  /** 0 kalau akun belum punya post terpublikasi di `period` ini. */
+  totalPosts: number;
+  /**
+   * `null` kalau akun belum punya post di `period` ini (`totalPosts === 0`)
+   * MAUPUN kalau akun punya post tapi belum satu pun ter-ingest
+   * `AnalyticsPostMetric` (job cron metrik, KI-003 chain, belum sempat
+   * jalan) — kedua kondisi ini sama-sama berarti "belum ada data" di UI
+   * (T-046.3), berbeda dari makna 0 reach yang sah. Kalau SEBAGIAN target
+   * akun ini sudah ter-ingest, `totalReach` adalah jumlah reach dari
+   * target yang sudah ada datanya saja (baris tanpa data tidak menyumbang
+   * 0, hanya tidak menyumbang apa-apa ke total).
+   */
+  totalReach: number | null;
+}
+
+/**
+ * 3 stat card "Summary row" `/analyze` (T-047.1, KSP-07 — Analyze →
+ * Dashboard, section `.summary-row` dikunci "SYNCED" di design-prep T-043,
+ * `templates/analyze-dashboard.html`). Sengaja agregasi FLAT dari seluruh
+ * `PostPerformanceRow` (granularitas post × target-akun, SAMA dengan
+ * `getPostPerformance`/`getAccountOverview`), BUKAN distinct post count —
+ * diverifikasi terhadap mock Claude Design (`Total Posts: 12`,
+ * `Total Reach: 4.320`) yang persis sama dengan penjumlahan
+ * `AccountOverviewRow` di section yang sama pada file itu.
+ *
+ * Sengaja TIDAK reuse `AnalyticsService.getDashboardSummary` (T-042.2) —
+ * itu snapshot-based (`AnalyticsWorkspaceSnapshot`), field-nya beda
+ * (`activeAccounts`, bukan Reach), dan menyuplainya butuh port baru arah
+ * `analytics -> publishing` yang menciptakan circular dependency dengan
+ * `PostMetricsPort` (`publishing -> analytics`, T-033.1) — persis masalah
+ * yang jadi temuan kritis Ridwan Architecture Reviewer di T-043 (lihat
+ * catatan `PostPerformanceRow`). Method ini hidup di `PublishingService`
+ * karena alasan yang sama, reuse `getPostPerformance` langsung — tidak ada
+ * query Prisma baru.
+ */
+export interface AnalyzeSummary {
+  totalPosts: number;
+  /** `null` kalau tidak ada satupun row dengan reach ter-ingest (T-043.4 pattern) — bukan 0. */
+  totalReach: number | null;
+  /** `null` kalau tidak ada satupun row dengan engagementRate ter-ingest — bukan 0. */
+  avgEngagementRate: number | null;
+}
+
+/**
  * Status post yang dianggap "selesai" dan karenanya boleh muncul di
  * History (T-034.1, KSP-D10 · KSP-03 catatan: "begitu percobaan publish
  * selesai, item pindah ke History"). Single source of truth dipakai oleh
@@ -129,6 +217,7 @@ export class PublishingService {
   constructor(
     private readonly repository: IPublishingRepository,
     private readonly postMetrics?: PostMetricsPort,
+    private readonly connectedAccounts?: ConnectedAccountsPort,
   ) {}
 
   async saveDraft(input: {
@@ -616,6 +705,128 @@ export class PublishingService {
       return b.reach - a.reach;
     });
     return rows;
+  }
+
+  /**
+   * Ringkasan performa per akun/platform `/analyze` (T-046.1, KSP-07 —
+   * Analyze → Dashboard, UI bar `Progress` T-046.2 konsumsi lewat ini).
+   * Reuse `getPostPerformance` di atas (period range + join metrik SUDAH
+   * benar di sana) lalu diagregasi per `connectedAccountId`, digabung
+   * dengan daftar LENGKAP akun terhubung workspace (`ConnectedAccountsPort`)
+   * supaya akun yang belum punya post di `period` ini TETAP disertakan
+   * (`totalPosts: 0`, `totalReach: null` — T-046 kriteria "belum ada
+   * data", BUKAN skip / BUKAN `totalReach: 0`).
+   *
+   * Diurutkan `totalReach` descending, sama pola default sort
+   * `getPostPerformance` (baris `totalReach: null` di akhir) — konsisten
+   * secara visual dengan Post Performance di halaman yang sama.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`,
+   * diteruskan ke kedua port.
+   */
+  async getAccountOverview(
+    workspaceId: WorkspaceId,
+    period: SnapshotPeriod,
+    userId: UserId,
+  ): Promise<AccountOverviewRow[]> {
+    if (!this.connectedAccounts) {
+      throw new Error(
+        "PublishingService.getAccountOverview requires a ConnectedAccountsPort — none was provided to the constructor.",
+      );
+    }
+
+    const [accounts, performanceRows] = await Promise.all([
+      this.connectedAccounts.listConnectedAccounts(workspaceId, userId),
+      this.getPostPerformance(workspaceId, period, userId),
+    ]);
+
+    const statsByAccount = new Map<
+      ConnectedAccountId,
+      { postIds: Set<PostId>; reach: number | null }
+    >();
+
+    for (const row of performanceRows) {
+      const existing = statsByAccount.get(row.connectedAccountId) ?? {
+        postIds: new Set<PostId>(),
+        reach: null,
+      };
+      existing.postIds.add(row.postId);
+      if (row.reach !== null) {
+        existing.reach = (existing.reach ?? 0) + row.reach;
+      }
+      statsByAccount.set(row.connectedAccountId, existing);
+    }
+
+    const overview: AccountOverviewRow[] = accounts.map((account) => {
+      const stats = statsByAccount.get(account.id);
+      return {
+        connectedAccountId: account.id,
+        platform: account.platform,
+        accountHandle: account.handle,
+        totalPosts: stats?.postIds.size ?? 0,
+        totalReach: stats?.reach ?? null,
+      };
+    });
+
+    overview.sort((a, b) => {
+      if (a.totalReach === null && b.totalReach === null) return 0;
+      if (a.totalReach === null) return 1;
+      if (b.totalReach === null) return -1;
+      return b.totalReach - a.totalReach;
+    });
+    return overview;
+  }
+
+  /**
+   * Summary row 3 stat card `/analyze` (T-047.1, KSP-07 — Analyze →
+   * Dashboard, UI `StatTile` T-047.2 konsumsi lewat ini). Reuse
+   * `getPostPerformance` di atas (period range + join metrik SUDAH benar di
+   * sana) — TIDAK ada query Prisma baru, lihat catatan keputusan sumber
+   * data lengkap di `AnalyzeSummary`.
+   *
+   * `totalPosts` = jumlah baris post × target (SAMA granularitas dengan
+   * penjumlahan `totalPosts` di `getAccountOverview`) — BUKAN distinct post
+   * count, sudah diverifikasi cocok dengan mock Claude Design.
+   * `totalReach`/`avgEngagementRate` diakumulasi hanya dari baris yang
+   * sudah ter-ingest (pola akumulasi sama seperti `statsByAccount` di
+   * `getAccountOverview`) — `null` kalau tidak ada satupun baris berisi
+   * nilainya, bukan 0.
+   *
+   * Beda dari `getAccountOverview`: method ini TIDAK butuh
+   * `ConnectedAccountsPort` — summary row cuma agregat angka dari post yang
+   * ADA di `period` ini, tidak perlu menyertakan akun tanpa post.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`.
+   */
+  async getAnalyzeSummary(
+    workspaceId: WorkspaceId,
+    period: SnapshotPeriod,
+    userId: UserId,
+  ): Promise<AnalyzeSummary> {
+    const rows = await this.getPostPerformance(workspaceId, period, userId);
+
+    let reachSum: number | null = null;
+    let engagementRateSum: number | null = null;
+    let engagementRateCount = 0;
+
+    for (const row of rows) {
+      if (row.reach !== null) {
+        reachSum = (reachSum ?? 0) + row.reach;
+      }
+      if (row.engagementRate !== null) {
+        engagementRateSum = (engagementRateSum ?? 0) + row.engagementRate;
+        engagementRateCount += 1;
+      }
+    }
+
+    return {
+      totalPosts: rows.length,
+      totalReach: reachSum,
+      avgEngagementRate:
+        engagementRateSum === null
+          ? null
+          : engagementRateSum / engagementRateCount,
+    };
   }
 
   /**
