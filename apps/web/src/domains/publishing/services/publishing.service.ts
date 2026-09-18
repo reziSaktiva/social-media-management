@@ -582,6 +582,15 @@ export class PublishingService {
     for (const post of postsInRange) {
       const metrics = metricsByPost.get(post.id);
       for (const target of post.targets) {
+        // Target-level "failed" (partial failure — post tetap Published
+        // kalau minimal satu target sukses) di-skip: target ini TIDAK
+        // PERNAH akan punya AnalyticsPostMetric, beda dari target
+        // published yang belum ter-ingest (reach: null, "Belum ada data").
+        // Guard sama seperti `target.status === "published"` di
+        // HistoryDetail.tsx.
+        if (target.status !== "published") {
+          continue;
+        }
         const metric = metrics?.find(
           (m) => m.connectedAccountId === target.connectedAccountId,
         );

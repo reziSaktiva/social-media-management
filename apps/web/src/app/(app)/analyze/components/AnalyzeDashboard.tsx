@@ -76,6 +76,7 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
 import { PLATFORM_ICON } from "../../components/platform-icons";
+import { formatEngagementRate } from "../../components/post-metric-tile";
 import { getPostPerformanceAction } from "../analyze-actions";
 
 import type { SnapshotPeriod } from "@/domains/analytics";
@@ -126,10 +127,6 @@ function sortRows(
     return sort.direction === "asc" ? comparison : -comparison;
   });
   return sorted;
-}
-
-function formatPercentage(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
 }
 
 /** Tombol sort kecil + ikon panah per `TableHead` (T-043.2, mockup `.th-sort`/`.sort-icon`). */
@@ -370,7 +367,7 @@ export function AnalyzeDashboard({
                             Belum ada data
                           </span>
                         ) : (
-                          formatPercentage(row.engagementRate)
+                          formatEngagementRate(row.engagementRate)
                         )}
                       </TableCell>
                     </TableRow>
