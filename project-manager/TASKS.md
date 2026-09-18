@@ -54,14 +54,30 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 16 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 16 ✅ · 2 🟡 · 5 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
-| **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
+| **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 4 ✅ · 2 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 87 task · 42 selesai · 217 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 87 task · 43 selesai · 217 subtask terdefinisi (v0.1–v0.3, v0.7).
+
+> **Update (2026-09-18, T-043 SELESAI 4/4 subtask — Post performance metrics):**
+> **T-043** (`tasks/v03-analytics-mvp.md`) naik status `⏳ Not Started` →
+> `✅ Done` — seluruh 4/4 subtask tuntas: query metrik per post/akun
+> (`AnalyticsService.getPostPerformance`, `PostInfoPort` baru), UI
+> `/analyze` (Summary row + tabel Post Performance sortable), tampilan
+> metrik di halaman detail post History, dan penanda eksplisit "Belum ada
+> data" untuk post tanpa metrik. Rangkaian: Prabowo Feature Engineer
+> (T-043.1, data layer) → Mark UI Engineer (T-043.2–.4, UI) → Ridwan
+> Architecture Reviewer (0 temuan). Sengaja di luar scope: Account Overview
+> (T-045.2) dan Engagement Summary (T-044, blocked kontrak `engagement`).
+> Verifikasi visual browser **belum dilakukan** — worktree sesi ini tidak
+> punya `DATABASE_URL`/`.env.local`, dev server tidak bisa start; perlu
+> diverifikasi manual oleh King Rezi atau sesi lain yang punya kredensial
+> dev. `typecheck`/`lint`/unit test semua hijau. Detail:
+> `tasks/v03-analytics-mvp.md` § T-043.
 
 > **Update (2026-09-11, T-015 SELESAI 3/3 subtask — ADR-105):** **T-015**
 > (Reconnect flow saat token expired, `tasks/v01-foundation.md`) naik status

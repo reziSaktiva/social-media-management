@@ -4,7 +4,11 @@ import type {
   PostMetricsRecord,
   WorkspaceSnapshotRecord,
 } from "../repositories/analytics.repository";
-import type { DashboardSummary, SnapshotPeriod } from "../types";
+import type {
+  DashboardSummary,
+  PostPerformanceRow,
+  SnapshotPeriod,
+} from "../types";
 
 /**
  * Port lokal untuk cross-domain `analytics` → `workspace` (T-042.2,
@@ -23,10 +27,27 @@ interface ActiveAccountsPort {
   ): Promise<number>;
 }
 
+/**
+ * Port lokal untuk cross-domain `analytics` → `publishing` (T-043.1,
+ * AGENTS.md #7) — pola identik `ActiveAccountsPort` di atas. Sengaja TIDAK
+ * `export` supaya tidak ikut ke-export ulang lewat barrel `index.ts`.
+ * Composition root (`analyze-actions.ts`) menyuplai instance lewat
+ * constructor, diimplementasikan inline memanggil
+ * `PublishingService.listHistory` — `PublishingService` konkret TIDAK
+ * boleh diimport ke file ini.
+ */
+interface PostInfoPort {
+  listPublishedPosts(
+    workspaceId: WorkspaceId,
+    userId: UserId,
+  ): Promise<{ id: PostId; caption: string; publishedAt: Date | null }[]>;
+}
+
 export class AnalyticsService {
   constructor(
     private readonly repository: IAnalyticsRepository,
     private readonly activeAccounts?: ActiveAccountsPort,
+    private readonly postInfo?: PostInfoPort,
   ) {}
 
   /** Metrik performa per post (T-043 UI konsumsi lewat ini). */
@@ -113,5 +134,68 @@ export class AnalyticsService {
       avgEngagementRate: snapshot.avgEngagementRate,
       activeAccounts,
     };
+  }
+
+  /**
+   * Post Performance table `/analyze` (T-043.1, T-043.2 dikonsumsi Mark UI
+   * Engineer setelah ini). Gabungan post `Published` (dari `publishing` via
+   * `PostInfoPort`) dengan metrik per target akun (`getPostMetricsByPosts`,
+   * sudah ada sejak T-033.1). Satu post menghasilkan satu baris per target
+   * akun yang sudah punya metrik ter-ingest; kalau post belum punya baris
+   * metrik sama sekali, tetap dihasilkan SATU baris `hasMetrics: false`
+   * (T-043.4 — post tidak boleh hilang dari tabel hanya karena ingestion
+   * belum jalan).
+   */
+  async getPostPerformance(
+    workspaceId: WorkspaceId,
+    userId: UserId,
+  ): Promise<PostPerformanceRow[]> {
+    if (!this.postInfo) {
+      throw new Error(
+        "AnalyticsService.getPostPerformance requires a PostInfoPort — none was provided to the constructor.",
+      );
+    }
+
+    const posts = await this.postInfo.listPublishedPosts(workspaceId, userId);
+    if (posts.length === 0) {
+      return [];
+    }
+
+    const metricsByPost = await this.getPostMetricsByPosts(
+      posts.map((post) => post.id),
+    );
+
+    const rows: PostPerformanceRow[] = [];
+    for (const post of posts) {
+      const metrics = metricsByPost.get(post.id);
+      if (!metrics || metrics.length === 0) {
+        rows.push({
+          postId: post.id,
+          caption: post.caption,
+          publishedAt: post.publishedAt,
+          connectedAccountId: null,
+          platform: null,
+          reach: null,
+          engagementRate: null,
+          hasMetrics: false,
+        });
+        continue;
+      }
+
+      for (const metric of metrics) {
+        rows.push({
+          postId: post.id,
+          caption: post.caption,
+          publishedAt: post.publishedAt,
+          connectedAccountId: metric.connectedAccountId,
+          platform: metric.platform,
+          reach: metric.reach,
+          engagementRate: metric.engagementRate,
+          hasMetrics: true,
+        });
+      }
+    }
+
+    return rows;
   }
 }

@@ -8,6 +8,69 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-18 — T-043 TUNTAS 4/4 subtask (Post performance metrics, rilis v0.3 Analytics MVP)
+
+Worktree terpisah (`analyze-page-t-check`), branch
+`claude/analyze-page-t-check-a8cdf0`. Rangkaian: Prabowo Feature Engineer
+(T-043.1) → Mark UI Engineer (T-043.2–.4) → Ridwan Architecture Reviewer
+(review, 0 temuan) → Gibran Project Manager (governance docs, sesi ini).
+
+**Added — data layer (Prabowo Feature Engineer, T-043.1):** type baru
+`PostPerformanceRow` (`src/domains/analytics/types.ts`, satu baris per
+post × target akun, `hasMetrics: false` menandai post `Published` yang
+belum punya baris `AnalyticsPostMetric`). Method baru
+`AnalyticsService.getPostPerformance(workspaceId, userId)` — reuse
+`getPostMetricsByPosts` (T-033.1) digabung daftar post `Published` lewat
+port lokal baru `PostInfoPort` (pola sama `ActiveAccountsPort`/
+`ScheduledCountsPort`, tidak di-export lewat barrel). Composition root baru
+`src/app/(app)/analyze/analyze-actions.ts` (Server Action, pola
+`dashboard-actions.ts`): `getAnalyzeSummaryAction(period)` dan
+`getPostPerformanceAction()`. Test baru di `analytics.service.test.ts` (4
+kasus).
+
+**Added — UI (Mark UI Engineer, T-043.2–.4):** route `src/app/(app)/
+analyze/page.tsx` diganti dari `ScaffoldPlaceholder` jadi Server Component
+yang memanggil `getAnalyzeSummaryAction`/`getPostPerformanceAction`
+paralel, merender `AnalyzeDashboard.tsx` baru (Client Component, selector
+period weekly/monthly). Summary row 3 stat card (Total Posts, Total Reach,
+Engagement Rate). Tabel Post Performance baru (`PostPerformanceTable.tsx`)
+— shadcn `Table` DENGAN `TableHeader` (sesuai komentar SYNCED mockup
+`templates/analyze-dashboard.html`), kolom Post/Akun/Reach/Eng. Rate,
+sort client-side, default Reach descending. `publish/history/[postId]/
+page.tsx` menambah panggilan `AnalyticsService.getPostMetrics(postId)`
+paralel dengan `getHistoryById`, `HistoryDetail.tsx` menampilkan
+Reach + Eng. Rate per target `Published`. Baris/target tanpa metrik
+menampilkan `Text variant="muted"` "Belum ada data" (bukan "0" atau
+disembunyikan).
+
+**Sengaja di luar scope sesi ini:** Account Overview (T-045.2, ticket
+terpisah) dan Engagement Summary (T-044, terblokir kontrak `engagement`)
+tidak ditambahkan ke halaman `/analyze` — sesuai instruksi task T-043,
+bukan gap yang lupa.
+
+**Catatan verifikasi (belum lengkap):** `bun run typecheck`, `bun run
+lint`, dan unit test domain analytics semua hijau; review arsitektur
+Ridwan tidak ada temuan. **Verifikasi visual browser BELUM dilakukan** —
+worktree sesi ini tidak punya `DATABASE_URL`/`.env.local` sama sekali
+(bukan cuma data kosong — dev server tidak bisa start sama sekali), jadi
+tidak ada screenshot state kosong maupun terisi yang bisa diambil. Perlu
+diverifikasi visual manual oleh King Rezi atau di sesi/environment lain
+yang punya kredensial dev sebelum T-043 benar-benar dianggap selesai
+secara visual. Ini keterbatasan environment worktree sesi ini, bukan bug
+produk — **tidak dibuatkan Known Issue baru** untuk ini.
+
+**Changed — task status:** **T-043** (Post performance metrics,
+`tasks/v03-analytics-mvp.md`) `⏳ Not Started` → `✅ Done` (4/4 subtask).
+
+**Docs:** `tasks/v03-analytics-mvp.md` § T-043 (status + checklist,
+sudah diupdate Prabowo/Mark, diverifikasi konsisten oleh Gibran Project
+Manager), `TASKS.md` (indeks v0.3 "3 ✅ · 3 ⏳" → "4 ✅ · 2 ⏳", Total 42 →
+43 selesai, entri Update baru), `PROJECT_STATE.md` (Snapshot Top Next
+Tasks, Completed Ringkasan — bullet T-043 ditambahkan, bullet KI-054 lama
+dihapus untuk menjaga batas 5 item).
+
+---
+
 ## 2026-09-11 — T-015 TUNTAS 3/3 subtask (Reconnect flow, ADR-105) — T-013.1/T-013.2 ikut selesai, KI-058 baru
 
 Branch `feature/t-015-reconnect-flow` (checkout dari `staging`). Rangkaian:

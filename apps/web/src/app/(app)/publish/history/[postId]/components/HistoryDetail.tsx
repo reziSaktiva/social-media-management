@@ -4,6 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 import { ContentStatus } from "@social/shared";
+import type { PostMetricsRecord } from "@/domains/analytics";
 import type { HistoryItemRecord } from "@/domains/publishing";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 
@@ -90,8 +91,24 @@ function ViewOriginalPostLink({ url }: { url: string | null }) {
   );
 }
 
+function formatReach(value: number): string {
+  return value.toLocaleString("id-ID");
+}
+
+function formatEngagementRate(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 export interface HistoryDetailProps {
   item: HistoryItemRecord;
+  /**
+   * Metrik per target akun (T-043.3) — hasil `AnalyticsService.getPostMetrics`
+   * (SUDAH ADA, T-040.1), dicocokkan ke tiap target lewat `connectedAccountId`.
+   * Target `Published` tanpa baris metrik yang match (job ingestion T-041
+   * belum jalan untuk post ini) menampilkan "Belum ada data" (T-043.4),
+   * BUKAN disembunyikan atau nol.
+   */
+  metrics: PostMetricsRecord[];
 }
 
 /**
@@ -109,7 +126,7 @@ export interface HistoryDetailProps {
  * Rezi kalau nama author memang wajib tampil — itu perubahan repository/
  * service terpisah (join ke `WorkspaceMember`/`User`), bukan T-034.2/.3.
  */
-export function HistoryDetail({ item }: HistoryDetailProps) {
+export function HistoryDetail({ item, metrics }: HistoryDetailProps) {
   return (
     // eslint-disable-next-line no-restricted-syntax -- layout-only, konsisten pola shadcn+Tailwind lain di publish/
     <div className="flex flex-col gap-4">
@@ -178,7 +195,41 @@ export function HistoryDetail({ item }: HistoryDetailProps) {
                     </div>
 
                     {target.status === "published" && (
-                      <ViewOriginalPostLink url={target.platformPostUrl} />
+                      // eslint-disable-next-line no-restricted-syntax -- layout-only
+                      <div className="flex items-center justify-between gap-2">
+                        <ViewOriginalPostLink url={target.platformPostUrl} />
+                        {(() => {
+                          const targetMetrics = metrics.find(
+                            (metric) =>
+                              metric.connectedAccountId ===
+                              target.connectedAccountId,
+                          );
+                          if (!targetMetrics) {
+                            return (
+                              <Text
+                                variant="muted"
+                                as="span"
+                                className="text-xs"
+                              >
+                                Belum ada data
+                              </Text>
+                            );
+                          }
+                          return (
+                            <Text
+                              variant="muted"
+                              as="span"
+                              className="text-xs tabular-nums"
+                            >
+                              Reach {formatReach(targetMetrics.reach)} ·{" "}
+                              {formatEngagementRate(
+                                targetMetrics.engagementRate,
+                              )}{" "}
+                              eng. rate
+                            </Text>
+                          );
+                        })()}
+                      </div>
                     )}
 
                     {target.status === "failed" && (

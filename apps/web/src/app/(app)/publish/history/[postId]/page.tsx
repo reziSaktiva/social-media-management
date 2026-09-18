@@ -1,10 +1,13 @@
 import { asPostId, asUserId } from "@social/shared";
 import { notFound, redirect } from "next/navigation";
 
+import { AnalyticsService } from "@/domains/analytics";
+import type { PostMetricsRecord } from "@/domains/analytics";
 import { PublishingService } from "@/domains/publishing";
 import type { HistoryItemRecord } from "@/domains/publishing";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
+import { analyticsRepository } from "@/lib/repositories/analytics";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { NotFoundError } from "@/lib/utils/errors";
 
@@ -37,14 +40,19 @@ export default async function Page({
   const userId = asUserId(session.user.id);
 
   const publishingService = new PublishingService(publishingRepository);
+  const analyticsService = new AnalyticsService(analyticsRepository);
 
+  // T-043.3: metrik per target akun ditampilkan di samping "Hasil per Akun"
+  // yang sudah ada. `getPostMetrics` SUDAH ADA (T-040.1) — tidak butuh
+  // repository/service baru. Diambil paralel dengan `getHistoryById`
+  // (tidak saling bergantung).
   let item: HistoryItemRecord;
+  let metrics: PostMetricsRecord[];
   try {
-    item = await publishingService.getHistoryById(
-      workspaceId,
-      asPostId(postId),
-      userId,
-    );
+    [item, metrics] = await Promise.all([
+      publishingService.getHistoryById(workspaceId, asPostId(postId), userId),
+      analyticsService.getPostMetrics(asPostId(postId)),
+    ]);
   } catch (error) {
     if (error instanceof NotFoundError) {
       notFound();
@@ -52,5 +60,5 @@ export default async function Page({
     throw error;
   }
 
-  return <HistoryDetail item={item} />;
+  return <HistoryDetail item={item} metrics={metrics} />;
 }

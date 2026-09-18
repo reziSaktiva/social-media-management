@@ -247,3 +247,147 @@ describe("AnalyticsService.getDashboardSummary", () => {
     ).rejects.toThrow(/ActiveAccountsPort/);
   });
 });
+
+describe("AnalyticsService.getPostPerformance", () => {
+  it("throws when no PostInfoPort is supplied", async () => {
+    const service = new AnalyticsService(createFakeRepository());
+
+    await expect(
+      service.getPostPerformance(WORKSPACE_ID, USER_ID),
+    ).rejects.toThrow(/PostInfoPort/);
+  });
+
+  it("returns [] without querying metrics when there are no published posts", async () => {
+    let metricsCalls = 0;
+    const service = new AnalyticsService(
+      createFakeRepository({
+        findMetricsByPosts: async () => {
+          metricsCalls += 1;
+          return [];
+        },
+      }),
+      undefined,
+      {
+        listPublishedPosts: async () => [],
+      },
+    );
+
+    const result = await service.getPostPerformance(WORKSPACE_ID, USER_ID);
+
+    expect(result).toEqual([]);
+    expect(metricsCalls).toBe(0);
+  });
+
+  it("produces one row with hasMetrics:false for a published post without ingested metrics", async () => {
+    const postA = asPostId("post-a");
+    const publishedAt = new Date("2026-09-01T00:00:00Z");
+    const service = new AnalyticsService(
+      createFakeRepository({
+        findMetricsByPosts: async () => [],
+      }),
+      undefined,
+      {
+        listPublishedPosts: async () => [
+          { id: postA, caption: "Caption A", publishedAt },
+        ],
+      },
+    );
+
+    const result = await service.getPostPerformance(WORKSPACE_ID, USER_ID);
+
+    expect(result).toEqual([
+      {
+        postId: postA,
+        caption: "Caption A",
+        publishedAt,
+        connectedAccountId: null,
+        platform: null,
+        reach: null,
+        engagementRate: null,
+        hasMetrics: false,
+      },
+    ]);
+  });
+
+  it("produces one row per metric for posts with multi-account metrics", async () => {
+    const postA = asPostId("post-a");
+    const postB = asPostId("post-b");
+    const publishedAtA = new Date("2026-09-01T00:00:00Z");
+    const publishedAtB = new Date("2026-09-02T00:00:00Z");
+    const metricA1: PostMetricsRecord = {
+      id: asPostMetricsId("metric-a1"),
+      postId: postA,
+      connectedAccountId: asConnectedAccountId("conn-1"),
+      platform: SocialPlatform.Instagram,
+      impressions: 100,
+      reach: 80,
+      likes: 10,
+      comments: 2,
+      shares: 1,
+      clicks: null,
+      engagementRate: 0.1625,
+      fetchedAt: new Date(0),
+    };
+    const metricA2: PostMetricsRecord = {
+      ...metricA1,
+      id: asPostMetricsId("metric-a2"),
+      connectedAccountId: asConnectedAccountId("conn-2"),
+      platform: SocialPlatform.TikTok,
+      reach: 40,
+      engagementRate: 0.2,
+    };
+
+    let receivedPostIds: PostId[] | null = null;
+    const service = new AnalyticsService(
+      createFakeRepository({
+        findMetricsByPosts: async (postIds) => {
+          receivedPostIds = postIds;
+          return [metricA1, metricA2];
+        },
+      }),
+      undefined,
+      {
+        listPublishedPosts: async () => [
+          { id: postA, caption: "Caption A", publishedAt: publishedAtA },
+          { id: postB, caption: "Caption B", publishedAt: publishedAtB },
+        ],
+      },
+    );
+
+    const result = await service.getPostPerformance(WORKSPACE_ID, USER_ID);
+
+    expect(receivedPostIds).toEqual([postA, postB]);
+    expect(result).toEqual([
+      {
+        postId: postA,
+        caption: "Caption A",
+        publishedAt: publishedAtA,
+        connectedAccountId: asConnectedAccountId("conn-1"),
+        platform: SocialPlatform.Instagram,
+        reach: 80,
+        engagementRate: 0.1625,
+        hasMetrics: true,
+      },
+      {
+        postId: postA,
+        caption: "Caption A",
+        publishedAt: publishedAtA,
+        connectedAccountId: asConnectedAccountId("conn-2"),
+        platform: SocialPlatform.TikTok,
+        reach: 40,
+        engagementRate: 0.2,
+        hasMetrics: true,
+      },
+      {
+        postId: postB,
+        caption: "Caption B",
+        publishedAt: publishedAtB,
+        connectedAccountId: null,
+        platform: null,
+        reach: null,
+        engagementRate: null,
+        hasMetrics: false,
+      },
+    ]);
+  });
+});
