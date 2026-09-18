@@ -295,7 +295,7 @@ export function HistoryList({
                       asChild
                       variant="outline"
                       size="sm"
-                      className="cursor-pointer flex-nowrap items-center gap-4 rounded-2xl bg-card p-4 transition-colors hover:border-foreground/40 hover:bg-card!"
+                      className="cursor-pointer flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl bg-card p-4 transition-colors hover:border-foreground/40 hover:bg-card! sm:flex-nowrap"
                     >
                       <Link href={`/publish/history/${item.id}`}>
                         <Text
@@ -329,8 +329,8 @@ export function HistoryList({
                           })}
                         </div>
 
-                        <ItemContent className="min-w-0 flex-1">
-                          <ItemTitle className="truncate font-normal">
+                        <ItemContent className="order-last min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-auto">
+                          <ItemTitle className="line-clamp-none block w-full min-w-0 font-normal whitespace-normal sm:truncate sm:whitespace-nowrap">
                             {item.caption || "(Tanpa caption)"}
                           </ItemTitle>
                           <Text

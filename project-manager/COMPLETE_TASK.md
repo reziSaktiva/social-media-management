@@ -8,6 +8,202 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-18 — T-043 Post performance metrics — implementasi kode selesai, ✅ Done (4/4 subtask)
+
+Melanjutkan design-prep di bawah (sesi terpisah, sama tanggal). Implementasi
+kode T-043.1–T-043.4 (rilis v0.3 Analytics MVP) selesai, lolos review
+arsitektur (2 putaran) dan QA — T-043 sekarang **✅ Done**.
+
+### Ringkasan implementasi
+
+- **T-043.1** (Prabowo Feature Engineer) — Query performa post per akun.
+  Awalnya dibangun sebagai `AnalyticsService.getPostPerformance` dengan port
+  baru `PublishingHistoryPort` (arah analytics→publishing).
+- **T-043.2** (Mark UI Engineer) — UI Table sortable di `/analyze`
+  (`apps/web/src/app/(app)/analyze/page.tsx` +
+  `components/AnalyzeDashboard.tsx`), 4 kolom Post/Akun/Reach/Eng. Rate,
+  semua sortable, mengikuti pola shadcn `Table` yang sudah dikunci di
+  Claude Design sesi design-prep (2026-09-18, lihat entri di bawah).
+- **T-043.4** (gap ditemukan Mark, diperbaiki Prabowo) — kriteria "belum
+  ada data" untuk baris tanpa metrik. Awalnya `getPostPerformance` skip
+  post tanpa metrik sama sekali; diperbaiki supaya post tetap disertakan
+  dengan `reach`/`engagementRate` bernilai nullable (bukan 0/di-skip).
+- **T-043.3** (Prabowo + Mark) — Metrik ditampilkan di halaman detail post
+  History (`HistoryDetail.tsx`), reuse `PostMetricsPort` yang sudah ada
+  dari Calendar (T-033.1). Komponen `MetricTile` diekstrak jadi shared
+  (`apps/web/src/app/(app)/components/post-metric-tile.tsx`), dipakai
+  bersama Calendar Popover dan History Detail.
+
+### Review arsitektur Ridwan Architecture Reviewer — 2 putaran
+
+**Putaran 1** — 2 temuan:
+
+1. **Kritis** — `PublishingHistoryPort` (arah analytics→publishing) yang
+   baru dibuat T-043.1 menciptakan **circular dependency** dengan
+   `PostMetricsPort` (arah publishing→analytics) yang sudah ada sejak
+   T-033.1 — melanggar aturan `application-layer.md` ("tidak ada circular
+   dependency antar BC").
+2. **Moderate** — field `metrics` ditaruh langsung di `HistoryItemRecord`
+   (level repository interface), seharusnya di interface turunan level
+   service (pola `CalendarPostItem`), bukan mencampur concern repository.
+
+King Rezi diberi `AskUserQuestion` dan memilih **refactor** (bukan mencatat
+ADR baru yang menerima circular dependency). Prabowo Feature Engineer
+memperbaiki:
+
+- `getPostPerformance` dipindah dari `AnalyticsService` ke
+  `PublishingService` — reuse `PostMetricsPort` yang sudah ada, dependency
+  jadi satu arah `publishing→analytics`.
+- `PostPerformanceRow` dipindah ke `publishing.service.ts`.
+- `HistoryItemRecord.metrics` dihapus, diganti `HistoryDetailItem extends
+  HistoryItemRecord` (pola sama `CalendarPostItem`) di
+  `publishing.service.ts`.
+- Rentang tanggal `period` dihitung independen
+  (`apps/web/src/domains/publishing/services/post-performance-period-range.ts`,
+  weekly = 7 hari / monthly = 30 hari), tidak lagi bergantung
+  `AnalyticsWorkspaceSnapshot`.
+
+**Putaran 2** — kedua temuan **TERTUTUP**, 0 temuan blocking baru. 2 catatan
+non-blocking:
+
+1. `application-layer.md` § Peta Dependency Antar Domain ternyata **belum
+   pernah** mencantumkan panah `publishing→analytics` sejak T-033.1 — gap
+   dokumentasi lama, bukan diperkenalkan sesi ini, baru ketahuan sekarang.
+   Dicatat **KI-064** (`PROJECT_STATE.md`), belum ditambal.
+2. `post-performance-period-range.ts` awalnya kurang test coverage untuk
+   kasus "monthly"/edge case — ditutup Najwa (lihat di bawah).
+
+### QA Najwa QA Engineer
+
+0 temuan blocking. Golden path PASS semua: Table sortable, empty state
+"Belum ada data" di Table dan History Detail, regresi Calendar Popover
+setelah ekstraksi `post-metric-tile.tsx` PASS, dark/light mode aman.
+Menambah test baru
+`apps/web/src/domains/publishing/services/post-performance-period-range.test.ts`
+(8 test), menutup catatan non-blocking (2) di atas.
+
+Satu hal **tidak** bisa diverifikasi visual browser: metrik tersembunyi di
+halaman detail post History untuk status `Failed` (tidak ada post `Failed`
+di data dev saat verifikasi) — tervalidasi lewat unit test eksplisit saja,
+dianggap aman secara desain tapi belum ada bukti visual browser nyata.
+
+### Verifikasi akhir
+
+`typecheck`/`lint` bersih, `bun run test` **411 pass/5 skip** (42 file).
+
+### File yang berubah
+
+- `apps/web/src/app/(app)/analyze/page.tsx`,
+  `apps/web/src/app/(app)/analyze/analyze-actions.ts`,
+  `apps/web/src/app/(app)/analyze/components/` (baru)
+- `apps/web/src/app/(app)/components/post-metric-tile.tsx` (baru, shared)
+- `apps/web/src/app/(app)/publish/calendar/components/CalendarPostPopover.tsx`
+  (reuse `post-metric-tile.tsx`)
+- `apps/web/src/app/(app)/publish/history/[postId]/components/HistoryDetail.tsx`,
+  `apps/web/src/app/(app)/publish/history/[postId]/page.tsx`
+- `apps/web/src/domains/analytics/services/analytics.service.ts`,
+  `apps/web/src/domains/analytics/types.ts` (refactor keluar setelah
+  review putaran 1)
+- `apps/web/src/domains/publishing/index.ts`,
+  `apps/web/src/domains/publishing/services/publishing.service.ts`,
+  `apps/web/src/domains/publishing/services/publishing.service.test.ts`
+- `apps/web/src/domains/publishing/services/post-performance-period-range.ts`
+  (baru), `post-performance-period-range.test.ts` (baru)
+- `project-manager/tasks/v03-analytics-mvp.md` § T-043 (status → ✅ Done)
+- `project-manager/tasks/v02-publishing-mvp.md` § T-033.1/.8 (backlink KI-064)
+- `project-manager/TASKS.md` (indeks v0.3, Total, Fokus sekarang — plus
+  koreksi hitungan subtask total 217 → **215**, dihitung ulang langsung
+  dari `tasks/vXX-*.md`, selisih pre-existing sebelum sesi ini)
+- `project-manager/PROJECT_STATE.md` (Snapshot, Completed Ringkasan,
+  KI-064 baru)
+
+---
+
+## 2026-09-18 — T-043 Design-prep: resync `analyze-dashboard.html` ke shadcn/ui (Claude Design)
+
+Bukan implementasi kode. T-043 (Post performance metrics, rilis v0.3
+Analytics MVP) dan seluruh subtask-nya (T-043.1–T-043.4) **tetap
+`⏳ Not Started`** setelah sesi ini — pekerjaan murni desain/persiapan di
+Claude Design sesuai gate rule 17 AGENTS.md, dijalankan sebelum implementasi
+kode dimulai.
+
+### Latar belakang
+
+King Rezi meminta cek dulu apakah T-043 sudah punya rancangan di Claude
+Design. Rancangan dasarnya (`templates/analyze-dashboard.html`, KSP-07 —
+Analyze → Dashboard) sudah ada, tapi ditemukan 2 gap:
+
+1. Section "Post Performance" masih pakai markup era Astryx lama
+   (`.post-perf-row`, list biasa) — belum di-resync ke shadcn/ui seperti
+   Drafts/Workspaces/Connected Accounts/Members yang sudah dikunci T-103.1
+   (2026-09-10).
+2. Ambigu terhadap literal T-043.2 ("tabel performa post, sortable") — dua
+   pola shadcn sama-sama valid secara teknis (`Table` vs `Item`/`ItemGroup`)
+   dan Claude Design belum mengunci pola konkretnya (tidak ada penanda
+   "SYNCED"/"LOCKED PATTERN").
+
+Sesuai rule 17 AGENTS.md (gate berhenti-dan-tanya untuk pola shadcn ambigu),
+King Rezi ditanya lewat `AskUserQuestion`. Jawaban:
+
+1. Post Performance pakai pola **`Table`** (kolom sortable) — bukan
+   `Item`/`ItemGroup` list.
+2. Resync **seluruh halaman** `analyze-dashboard.html` sekaligus (Account
+   Overview, summary cards, Engagement Summary, Post Performance), bukan
+   hanya Post Performance.
+
+### Eksekusi
+
+Awalnya dicoba delegasi ke Neymar Product Designer, tapi `DesignSync` gagal
+dimuat di sesi subagent tersebut — keterbatasan teknis yang sudah tercatat
+berulang di `.claude/agents/README.md`. King Rezi memberi izin eksplisit
+untuk dikerjakan langsung di sesi utama via `DesignSync`.
+
+- **`templates/analyze-dashboard.html`**:
+  - Section "Post Performance": list `.post-perf-row` lama diganti jadi
+    `<table class="table">` dengan struktur `TableHeader`, 4 kolom — **Post**
+    (thumbnail+caption), **Akun**, **Reach**, **Eng. Rate**. Setiap header
+    kolom punya tombol sort (`.th-sort` + ikon panah `.sort-icon`) sebagai
+    affordance sort, dengan `aria-sort` per kolom (default: Reach descending).
+  - Kolom dipilih hanya dari field yang benar-benar ada di model
+    `AnalyticsPostMetric` (Prisma schema) — `platform`, `reach`,
+    `engagementRate`, dst. Tidak ada field karangan.
+  - Summary row (Total Posts/Reach/Engagement Rate) dan Account Overview (bar
+    performa per platform) **tidak diubah strukturnya** — sudah valid
+    memetakan ke `Card`+`Progress` shadcn nyata dari resync token KI-047
+    Phase 1 sebelumnya. Engagement Summary juga tidak diubah.
+  - Ditambahkan komentar inline "SYNCED (T-043 design prep, 2026-09-18)" yang
+    mendokumentasikan seluruh keputusan pola + alasan langsung di file itu.
+  - Verifikasi scope-discipline (`.claude/skills/claude-design-scope-discipline/SKILL.md`
+    poin 6): `get_file` remote dibaca ulang setelah write, dikonfirmasi tidak
+    ada bagian yang hilang/berubah tak diinginkan (sidebar, channels, nav,
+    script theme-toggle tetap utuh).
+- **`readme.md`** (Claude Design project "Social Media Management"): baris
+  `.table` di tabel Components diperluas — mencantumkan
+  `analyze-dashboard.html` sebagai SYNCED, menjelaskan bedanya dari pola
+  Members/Drafts (pola Table DENGAN `TableHeader` + affordance sort baru,
+  karena T-043.2 minta literal "sortable"), dan ditandai eksplisit sebagai
+  **rujukan target** untuk `apps/web` — bukan sync dari kode nyata seperti 3
+  file T-103.1 lain, karena kode T-043 sendiri belum diimplementasikan
+  (masih `⏳ Not Started`).
+
+### Yang TIDAK terjadi
+
+- Tidak ada perubahan kode apa pun di `apps/web`.
+- Status T-043 dan seluruh subtask-nya (T-043.1–T-043.4) **tidak berubah**,
+  tetap `⏳ Not Started`.
+
+### Dampak dokumentasi
+
+- `tasks/v03-analytics-mvp.md` § T-043 — ditambah catatan "Design-prep T-043"
+  merangkum keputusan pola + alasan (gaya penulisan sama seperti catatan
+  "Implementasi T-042.1").
+- Tidak ada entry KI baru — ini gap desain yang sudah ditutup di sesi yang
+  sama, bukan bug/temuan open. Tidak ada perubahan di `PROJECT_STATE.md`
+  (phase/milestone/fokus terdekat tidak berubah oleh pekerjaan design-prep
+  ini).
+
+---
+
 ## 2026-09-17 — T-027 Done (5/5 subtask): Job runner + Railway Cron, ADR-108, ADR-109
 
 Implementasi Elon Backend Engineer → review arsitektur Ridwan Architecture

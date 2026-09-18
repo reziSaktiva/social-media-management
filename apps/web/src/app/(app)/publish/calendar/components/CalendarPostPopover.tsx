@@ -21,6 +21,11 @@ import {
   CONTENT_STATUS_LABEL,
 } from "../../../components/draft-editor/status-badge";
 import { useDraftEditor } from "../../../components/draft-editor/Context";
+import {
+  formatEngagementRate,
+  formatMetricCount,
+  MetricTile,
+} from "../../../components/post-metric-tile";
 import { PLATFORM_ICON } from "../../../components/platform-icons";
 import {
   type CalendarCardEntry,
@@ -28,28 +33,6 @@ import {
 } from "./calendar-grid-shared";
 
 const POPOVER_WIDTH = 296;
-
-function formatMetricCount(value: number): string {
-  return value.toLocaleString("id-ID");
-}
-
-function formatEngagementRate(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-function MetricTile({ label, value }: { label: string; value: string }) {
-  return (
-    // eslint-disable-next-line no-restricted-syntax -- T-101.1: layout-only, file sudah dimigrasi shadcn
-    <div className="flex w-16 flex-col gap-0">
-      <Text variant="small" as="span" className="font-bold">
-        {value}
-      </Text>
-      <Text variant="muted" as="span" className="text-xs">
-        {label}
-      </Text>
-    </div>
-  );
-}
 
 export interface CalendarPostPopoverProps {
   /** Kartu per-target hasil `flattenCalendarItemsToEntries` — satu Popover per kartu. */

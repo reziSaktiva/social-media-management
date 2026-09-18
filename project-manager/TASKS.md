@@ -54,15 +54,43 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 16 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 18 ✅ · 1 🟡 · 4 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
-| **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 3 ✅ · 3 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
+| **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-045 | 6    | 🟡 4 ✅ · 2 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 87 task · 44 selesai · 217 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 87 task · 45 selesai · 215 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-18, T-043 SELESAI 4/4 subtask):** **T-043** (Post
+> performance metrics, `tasks/v03-analytics-mvp.md`) naik status
+> `🟡 In Progress` → `✅ Done` — seluruh 4/4 subtask tuntas: query performa
+> post per akun (awalnya port `PublishingHistoryPort` analytics→publishing,
+> direfactor jadi method `getPostPerformance` di `PublishingService` reuse
+> `PostMetricsPort` yang sudah ada, arah dependency satu jalur
+> `publishing→analytics`), UI Table sortable di `/analyze` (4 kolom
+> Post/Akun/Reach/Eng. Rate), kriteria "belum ada data" (post tanpa metrik
+> tetap disertakan dengan field nullable, bukan di-skip), dan metrik di
+> halaman detail post History (reuse `PostMetricsPort`, komponen
+> `MetricTile` diekstrak jadi shared `post-metric-tile.tsx`). Rangkaian:
+> Prabowo Feature Engineer → Mark UI Engineer → Ridwan Architecture
+> Reviewer (2 putaran — putaran 1 menemukan circular dependency
+> analytics↔publishing, King Rezi memilih refactor via `AskUserQuestion`;
+> putaran 2 kedua temuan tertutup, 0 blocking baru) → Najwa QA Engineer
+> (0 temuan blocking, test baru `post-performance-period-range.test.ts`).
+> **KI-064 baru** (Open): `application-layer.md` § Peta Dependency Antar
+> Domain belum pernah mencantumkan panah `publishing→analytics` sejak
+> T-033.1 — gap dokumentasi lama, baru ketahuan lewat review ini. Verifikasi
+> akhir: `typecheck`/`lint` bersih, `vitest` **411 pass/5 skip** (42 file).
+> Breakdown v0.3 berubah dari "🟡 3 ✅ · 3 ⏳" menjadi **🟡 4 ✅ · 2 ⏳**
+> (dihitung ulang langsung dari `tasks/v03-analytics-mvp.md`). Total task
+> selesai naik 44 → **45**. **Koreksi hitungan subtask** (dihitung ulang
+> langsung dari `tasks/vXX-*.md`, bukan asumsi): total subtask terdefinisi
+> ternyata **215**, bukan 217 seperti tercatat sebelumnya — selisih 2 sudah
+> ada sebelum sesi ini (bukan disebabkan perubahan T-043), baru ketahuan
+> saat audit hitungan sesi ini. Detail: `tasks/v03-analytics-mvp.md` § T-043.
+>
 > **Update (2026-09-17, T-027 SELESAI 5/5 subtask — ADR-108, ADR-109):**
 > **T-027** (Job runner + Railway Cron, `tasks/v02-publishing-mvp.md`) naik
 > status `🟡 In Progress` → `✅ Done` — seluruh 5/5 subtask tuntas: job
@@ -854,6 +882,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
+| **T-043** | Post performance metrics                        | ✅ 4/4 | **Done (2026-09-18)** — Table sortable di `/analyze` (Post/Akun/Reach/Eng. Rate) + metrik di halaman detail post History, `getPostPerformance` di `PublishingService` (reuse `PostMetricsPort`, dependency satu arah `publishing→analytics` setelah refactor). Lolos review Ridwan (2 putaran — putaran 1 temuan circular dependency, direfactor; putaran 2 tertutup) + QA Najwa (0 temuan blocking). **KI-064 baru** (gap dokumentasi `application-layer.md`). Lihat `tasks/v03-analytics-mvp.md` § T-043 |
 | **T-027** | Job runner + Railway Cron                       | ✅ 5/5 | **Done (2026-09-17)** — job runner generik (klaim job `SELECT FOR UPDATE SKIP LOCKED` + registry handler per job type), auth `X-Job-Secret`, retry backoff 5m/15m/60m + dead-letter, Railway Cron config-as-code (`railway.json`/`railway.cron.json` — provisioning project sungguhan masih blocked **KI-025**), dan job handler baru `ResolveScheduledPostOutcomeJobHandler` (**JOB-07**) yang menutup transisi status post terjadwal otomatis. **ADR-108** (redesain `fetchPostOutcome` — root-cause fix state `Map` `FakeOutstandAdapter` yang pecah lintas Server Action↔Route Handler) dan **ADR-109** (`markPostPublished`, melengkapi gap T-026). **KI-062**/**KI-063** baru (dokumentasi backoff self-contradictory, `publishedAt` kosong). Lolos review Ridwan (2 putaran) + QA Najwa (browser + `curl` simulasi cron, semua PASS). Lihat `tasks/v02-publishing-mvp.md` § T-027 |
 | **T-103** | Kunci Pola Implementasi shadcn per Komponen di Claude Design | ✅ 4/4 | **Done** (2026-09-10) — mencegah pengulangan drift seperti **KI-054**/**KI-055**: audit Claude Design supaya tiap list/komposisi ambigu (>1 pola shadcn valid) dikunci eksplisit ke satu pola konkret, plus gate baru di `AGENTS.md` — kalau pola belum dikunci, AI wajib tanya King Rezi dulu, bukan menebak. **T-103.1** — 3 file Claude Design (Drafts/Workspaces/Connected Accounts) markup-nya disamakan penuh dengan kode nyata (pola `Table`), `readme.md` diupdate; PR [#116](https://github.com/reziSaktiva/social-media-management/pull/116) ke `staging`. **T-103.2** — gate berhenti-dan-tanya ditambahkan ke `AGENTS.md` rule 17 + `.claude/agents/README.md` + `mark-ui-engineer.md`. **T-103.3** — gate verifikasi struktur setelah implementasi ditambahkan ke checklist `mark-ui-engineer.md` & `najwa-qa-engineer.md` (Najwa juga diberi tool `DesignSync` baru). **T-103.4** — audit retroaktif menemukan **KI-056** (`publish-history.html` drift sama seperti KI-054/055) — Resolved. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-103 |
 | **T-102** | Cleanup & Verifikasi Akhir                      | ✅      | **Done** — seluruh 6 subtask tuntas: T-102.1 (hapus dependency Astryx), T-102.2 (grep 0 import aktif), T-102.3 (update `ctx-design.md`/`ctx-implementation.md`), T-102.4 (QA visual menyeluruh Najwa QA Engineer, PASS 0 regresi), T-102.5 (re-evaluasi & tutup KI-005 moot, KI-030 & KI-035 poin 1 dikonfirmasi closed sebelumnya, KI-035 poin 2 baru ditutup Resolved), T-102.6 (migrasi `useToast` → `sonner`, verifikasi visual toast dikonfirmasi manual King Rezi "toast oke" 2026-09-04). Dengan ini rilis **v0.7 tuntas 100%**. **KI-045** (regresi RBAC Creator, ditemukan T-102.4) — **Resolved 2026-09-04**, root cause `settings`/`billing` page tidak pernah punya guard sejak awal, sudah diperbaiki. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-102 |
