@@ -1,10 +1,12 @@
 import { asPostId, asUserId } from "@social/shared";
 import { notFound, redirect } from "next/navigation";
 
+import { AnalyticsService } from "@/domains/analytics";
 import { PublishingService } from "@/domains/publishing";
-import type { HistoryItemRecord } from "@/domains/publishing";
+import type { HistoryDetailItem } from "@/domains/publishing";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
+import { analyticsRepository } from "@/lib/repositories/analytics";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { NotFoundError } from "@/lib/utils/errors";
 
@@ -21,6 +23,12 @@ import { HistoryDetail } from "./components/HistoryDetail";
  * diterjemahkan ke halaman 404 Next.js bawaan (`notFound()`) di sini —
  * satu-satunya tempat yang boleh menerjemahkan error domain ke response
  * (AGENTS.md #5).
+ *
+ * `AnalyticsService` disuplai sebagai `PostMetricsPort` (T-043.3) — pola
+ * sama dengan composition root Calendar Server Action
+ * (`publish/calendar/actions.ts`, T-033.2): cross-domain `publishing` →
+ * `analytics` HANYA lewat public API barrel (`@/domains/analytics`),
+ * bukan import internal repository domain lain (AGENTS.md #7).
  */
 export default async function Page({
   params,
@@ -36,9 +44,12 @@ export default async function Page({
   }
   const userId = asUserId(session.user.id);
 
-  const publishingService = new PublishingService(publishingRepository);
+  const publishingService = new PublishingService(
+    publishingRepository,
+    new AnalyticsService(analyticsRepository),
+  );
 
-  let item: HistoryItemRecord;
+  let item: HistoryDetailItem;
   try {
     item = await publishingService.getHistoryById(
       workspaceId,

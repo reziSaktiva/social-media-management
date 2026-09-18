@@ -80,16 +80,57 @@ Route `/[slug]` (Home) saat ini placeholder. Dashboard adalah **Must Have** MVP.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done (2026-09-18)                                          |
 | **Domain**    | analytics · UI                                               |
 | **ADR**       | —                                                            |
 | **Depends**   | T-041, T-034 (riwayat post)                                  |
 | **Baca dulu** | `04-ux/key-screen-patterns.md`                                |
+| **Terkait**   | KI-064 (gap dokumentasi `application-layer.md` § Peta Dependency Antar Domain, ditemukan review Ridwan putaran 2) |
 
-- [ ] **T-043.1** Query metrik per post + per target akun
-- [ ] **T-043.2** UI `/analyze` — tabel performa post, sortable
-- [ ] **T-043.3** Tampilkan metrik di halaman detail post (T-034.3)
-- [ ] **T-043.4** Tandai metrik yang belum tersedia dari platform (bukan nol, tapi "belum ada data")
+- [x] **T-043.1** Query metrik per post + per target akun
+- [x] **T-043.2** UI `/analyze` — tabel performa post, sortable
+- [x] **T-043.3** Tampilkan metrik di halaman detail post (T-034.3)
+- [x] **T-043.4** Tandai metrik yang belum tersedia dari platform (bukan nol, tapi "belum ada data")
+
+**Design-prep T-043 (Claude Design, 2026-09-18, belum implementasi kode — status subtask T-043.1–T-043.4 TETAP `⏳ Not Started`):** sesuai gate rule 17 AGENTS.md, dicek dulu ke Claude Design apakah rancangan `/analyze` sudah ada. Rancangan dasar SUDAH ada (`templates/analyze-dashboard.html`, KSP-07 — Analyze → Dashboard), tapi ditemukan gap: section "Post Performance" masih pakai markup era Astryx lama (`.post-perf-row`), belum di-resync ke shadcn/ui seperti Drafts/Workspaces/Connected Accounts/Members yang sudah dikunci T-103.1 (2026-09-10). Selain itu ambigu terhadap literal T-043.2 ("tabel performa post, sortable") — dua pola shadcn sama-sama valid (`Table` vs `Item`/`ItemGroup`) dan Claude Design belum mengunci pola konkretnya. King Rezi ditanya via `AskUserQuestion`, jawaban: (1) Post Performance pakai pola **`Table`** dengan kolom sortable, (2) resync sekaligus **seluruh halaman** `analyze-dashboard.html` (Account Overview, summary cards, Engagement Summary, Post Performance), bukan cuma Post Performance. Dikerjakan langsung di sesi utama (delegasi ke Neymar Product Designer gagal — `DesignSync` tidak termuat di sesi subagent, keterbatasan teknis tercatat di `.claude/agents/README.md`; King Rezi memberi izin eksplisit). Hasil: section Post Performance diganti jadi `<table class="table">` dengan `TableHeader` + tombol sort per kolom (`.th-sort`/`.sort-icon`, `aria-sort`, default Reach descending), 4 kolom (Post, Akun, Reach, Eng. Rate) memetakan hanya ke field nyata `AnalyticsPostMetric` (Prisma) — tidak ada field karangan. Account Overview, summary cards, dan Engagement Summary dikunci apa adanya (sudah valid `Card`+`Progress` dari resync token KI-047 sebelumnya). Komentar inline "SYNCED (T-043 design prep, 2026-09-18)" ditambahkan di file untuk mendokumentasikan keputusan. `readme.md` tabel Components diupdate: baris `.table` mencantumkan `analyze-dashboard.html` sebagai SYNCED dengan catatan pola Table+sort ini berbeda dari pola Members/Drafts, dan ditandai sebagai **rujukan target** untuk implementasi `apps/web` (bukan sync dari kode nyata, karena T-043 belum diimplementasikan). Menutup ambiguitas pola sebelum implementasi kode T-043 dimulai. Tidak ada perubahan kode di `apps/web`. Detail lengkap: `COMPLETE_TASK.md`.
+
+**Implementasi T-043.1–T-043.4 (selesai, 2026-09-18):** dikerjakan sekuensial — **T-043.1** (Prabowo Feature Engineer): query performa post per akun, awalnya dibangun sebagai `AnalyticsService.getPostPerformance` dengan port baru `PublishingHistoryPort` (arah analytics→publishing). **T-043.2** (Mark UI Engineer): UI Table sortable di `/analyze` (`apps/web/src/app/(app)/analyze/page.tsx` + `components/AnalyzeDashboard.tsx`), 4 kolom Post/Akun/Reach/Eng. Rate, semua sortable, mengikuti pola `Table` yang sudah dikunci di Claude Design sesi design-prep di atas (2026-09-18). **T-043.4** (gap ditemukan Mark, diperbaiki Prabowo): kriteria "belum ada data" — `getPostPerformance` awalnya skip post tanpa metrik sama sekali, diperbaiki supaya post tetap disertakan dengan `reach`/`engagementRate` bernilai nullable (bukan 0). **T-043.3** (Prabowo + Mark): metrik ditampilkan di halaman detail post History (`HistoryDetail.tsx`), reuse `PostMetricsPort` yang sudah ada dari Calendar (T-033.1); komponen `MetricTile` diekstrak jadi shared (`apps/web/src/app/(app)/components/post-metric-tile.tsx`), dipakai bersama Calendar Popover dan History Detail.
+
+**Review arsitektur Ridwan Architecture Reviewer — 2 putaran:** putaran 1 menemukan 2 temuan. **Kritis**: `PublishingHistoryPort` (arah analytics→publishing) menciptakan circular dependency dengan `PostMetricsPort` (arah publishing→analytics) yang sudah ada sejak T-033.1 — melanggar aturan "tidak ada circular dependency antar BC" di `application-layer.md`. **Moderate**: field `metrics` sempat ditaruh langsung di `HistoryItemRecord` (level repository interface), seharusnya di interface turunan level service (pola `CalendarPostItem`). King Rezi diberi `AskUserQuestion` dan memilih **refactor** (bukan mencatat ADR baru yang menerima circular dependency). Prabowo Feature Engineer memperbaiki: `getPostPerformance` dipindah dari `AnalyticsService` ke `PublishingService` (reuse `PostMetricsPort` yang sudah ada, dependency jadi satu arah `publishing→analytics`); `PostPerformanceRow` dipindah ke `publishing.service.ts`; `HistoryItemRecord.metrics` dihapus, diganti `HistoryDetailItem extends HistoryItemRecord` (pola sama seperti `CalendarPostItem`) di `publishing.service.ts`; rentang tanggal `period` dihitung independen (`post-performance-period-range.ts`, weekly = 7 hari / monthly = 30 hari), tidak lagi bergantung `AnalyticsWorkspaceSnapshot`. Putaran 2: kedua temuan **TERTUTUP**, 0 temuan blocking baru — 2 catatan non-blocking masih terbuka: (a) `application-layer.md` § Peta Dependency Antar Domain ternyata **belum pernah** mencantumkan panah `publishing→analytics` sejak T-033.1 (gap dokumentasi lama, bukan diperkenalkan sesi ini, baru ketahuan sekarang lewat review ini) — dicatat **KI-064**, perlu ditambal terpisah; (b) `post-performance-period-range.ts` awalnya kurang test coverage untuk kasus "monthly"/edge case, ditutup Najwa lewat test baru (lihat di bawah).
+
+**QA Najwa QA Engineer:** 0 temuan blocking. Golden path PASS semua (Table sortable, empty state "Belum ada data" di Table dan History Detail, regresi Calendar Popover setelah ekstraksi `post-metric-tile.tsx` PASS, dark/light mode aman). Menambah test baru `post-performance-period-range.test.ts` (8 test) menutup catatan (b) di atas. **Satu hal tidak bisa diverifikasi visual browser**: metrik tersembunyi di History Detail untuk post `Failed` (tidak ada post `Failed` di data dev saat verifikasi) — tervalidasi lewat unit test eksplisit saja, dianggap aman secara desain tapi belum ada bukti visual browser nyata. Verifikasi akhir keseluruhan task: `typecheck`/`lint` bersih, `bun run test` **411 pass/5 skip** (42 file). Detail lengkap: `COMPLETE_TASK.md`.
+
+### T-046 · Account Overview
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | analytics · UI                                               |
+| **ADR**       | —                                                            |
+| **Depends**   | T-041, T-043 (reuse pola halaman `/analyze` yang sudah ada)  |
+| **Baca dulu** | `04-ux/key-screen-patterns.md` · `templates/analyze-dashboard.html` (Claude Design, section "Account Overview") |
+
+Ringkasan performa per akun/platform di `/analyze` — jumlah post + total reach per akun, direpresentasikan sebagai bar (pola `.bar-track`/`.bar-fill` → shadcn `Progress`, SUDAH dikunci di design-prep T-043 sebagai pola valid, lihat komentar "SYNCED" di `analyze-dashboard.html`, tidak perlu sesi desain ulang — cukup ambil struktur yang sudah ada).
+
+- [ ] **T-046.1** Query agregasi jumlah post + total reach per akun/platform untuk period tertentu (weekly/monthly, konsisten `SnapshotPeriod` yang sudah ada)
+- [ ] **T-046.2** UI bar performa per akun di `/analyze` (reuse `Progress`, pola sama `analyze-dashboard.html`)
+- [ ] **T-046.3** Empty state kalau belum ada data (konsisten pola T-043.4/T-042.4 — "Belum ada data", bukan 0)
+
+### T-047 · Summary row (/analyze)
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | analytics · UI                                               |
+| **ADR**       | —                                                            |
+| **Depends**   | T-041, kemungkinan reuse logic mirip `AnalyticsService.getDashboardSummary` (T-042.2) tapi scoped halaman `/analyze` — perlu diputuskan saat implementasi apakah reuse persis atau query terpisah |
+| **Baca dulu** | `templates/analyze-dashboard.html` (Claude Design, section summary-row) · `apps/web/src/app/(app)/components/DashboardHome.tsx` (pola `StatTile` Card yang sudah ada di Home, T-042.3) |
+
+3 stat card di bagian atas `/analyze` — Total Posts, Total Reach, Engagement Rate untuk period yang dipilih.
+
+- [ ] **T-047.1** Tentukan sumber data: reuse `AnalyticsService.getDashboardSummary`-style query atau bikin query terpisah scoped `/analyze` — catat keputusannya sebagai bagian implementasi (bukan pra-keputusan di sini)
+- [ ] **T-047.2** UI 3 stat card di `/analyze` (reuse pola `StatTile` dari `DashboardHome.tsx`, T-042.3)
+- [ ] **T-047.3** Empty state konsisten pola T-042.4/T-043.4
 
 ### T-044 · Engagement summary
 
@@ -131,6 +172,6 @@ Berstatus **Should Have** di `feature-priority.md` — boleh ditunda tanpa membl
 
 ## Catatan Rilis
 
-* T-046–T-049 sengaja dikosongkan sebagai ruang penambahan task v0.3.
+* T-046–T-049 sengaja dikosongkan sebagai ruang penambahan task v0.3. **Update 2026-09-18:** T-046 (Account Overview) dan T-047 (Summary row /analyze) sudah terpakai — gap perencanaan murni ditemukan saat implementasi T-043 (dua section `analyze-dashboard.html` yang sengaja dikecualikan dari scope T-043 ternyata belum pernah dapat nomor task). Tersisa **T-048–T-049** sebagai ruang kosong.
 * **Definition of Done rilis ini:** pengguna dapat mengevaluasi hasil publikasi.
 * **Yang sengaja di luar rilis ini:** Custom Reports, AI Insights, Enterprise Analytics (`feature-priority.md`).

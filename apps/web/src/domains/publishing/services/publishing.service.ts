@@ -4,10 +4,11 @@ import type {
   MediaId,
   MemberRole,
   PostId,
+  SocialPlatform,
   UserId,
   WorkspaceId,
 } from "@social/shared";
-import type { PostMetricsRecord } from "@/domains/analytics";
+import type { PostMetricsRecord, SnapshotPeriod } from "@/domains/analytics";
 import { ConflictError, NotFoundError } from "@/lib/utils/errors";
 import { assertActorCanDeletePost } from "../rbac";
 import type {
@@ -17,6 +18,7 @@ import type {
   PublishingPostRecord,
 } from "../repositories/publishing.repository";
 import { groupQueueItemsByDate, type QueueGroup } from "./group-queue-items";
+import { resolvePostPerformancePeriodRange } from "./post-performance-period-range";
 import { sortCalendarItemsByEffectiveDate } from "./sort-calendar-items";
 
 /**
@@ -46,6 +48,68 @@ interface PostMetricsPort {
  */
 export interface CalendarPostItem extends CalendarItemRecord {
   metrics: PostMetricsRecord[] | null;
+}
+
+/**
+ * Satu item History (T-034.1/.3) hasil `PublishingService.getHistoryById` —
+ * `HistoryItemRecord` mentah dari repository + `metrics` (T-043.3). Pola
+ * sama `CalendarPostItem` di atas (T-033.1): field cross-domain
+ * `publishing` -> `analytics` ditambahkan lewat interface turunan di
+ * SERVICE layer, BUKAN di `HistoryItemRecord` (interface repository murni,
+ * lihat `IPublishingRepository.getHistoryById`) — ditemukan Ridwan
+ * Architecture Reviewer (2026-09-18, Temuan 2) sebagai pelanggaran boundary:
+ * repository seharusnya tidak tahu apa-apa soal domain `analytics`.
+ *
+ * `metrics` semantik SAMA PERSIS dengan `CalendarPostItem.metrics`: `null`
+ * untuk post non-Published (tidak pernah di-fetch), `[]` untuk post
+ * Published yang belum punya baris `PostMetrics` ter-ingest, array berisi
+ * kalau sudah ada.
+ */
+export interface HistoryDetailItem extends HistoryItemRecord {
+  metrics: PostMetricsRecord[] | null;
+}
+
+/**
+ * Satu baris tabel "Post Performance" `/analyze` (T-043.1, T-043.2,
+ * KSP-07 — Analyze → Dashboard). Dipindahkan dari `domains/analytics/types.ts`
+ * (2026-09-18, refactor Temuan 1 Ridwan Architecture Reviewer — circular
+ * dependency `analytics` <-> `publishing`) — sekarang didefinisikan di sini,
+ * domain yang benar-benar memanggilnya, ikut pola `CalendarPostItem`
+ * (tipe cross-domain langsung di service layer, bukan file `types.ts`
+ * terpisah — `publishing` tidak punya konvensi itu).
+ *
+ * Beda dari `PostMetricsRecord` (murni field `AnalyticsPostMetric` Prisma):
+ * baris ini gabungan metrik (lewat `PostMetricsPort` yang sudah ada) +
+ * `caption`/`accountHandle` dari `IPublishingRepository.listHistory`
+ * (`publishing` sendiri, TANPA cross-domain untuk bagian ini —
+ * `AnalyticsPostMetric` tidak punya `@relation` ke `PublishingPost`, lihat
+ * schema.prisma).
+ *
+ * 4 kolom yang dikunci design-prep T-043: Post (`caption`), Akun
+ * (`accountHandle` + `platform`), Reach (`reach`), Eng. Rate
+ * (`engagementRate`) — TIDAK ada field karangan di luar yang sudah tersedia
+ * di `AnalyticsPostMetric`. `postId`/`connectedAccountId` disertakan untuk
+ * keperluan link/key baris di UI (T-043.2), bukan untuk ditampilkan
+ * langsung.
+ *
+ * `reach`/`engagementRate` bisa `null` (T-043.4): post yang sudah publish
+ * di rentang `period` tapi belum sempat di-ingest job cron metrik (KI-003
+ * chain — Real `OutstandAdapter` T-025 belum ada) TETAP disertakan di hasil
+ * `getPostPerformance`, bukan di-skip. `null` berarti belum ada baris
+ * `AnalyticsPostMetric` untuk kombinasi post × akun ini — caller
+ * (`AnalyzeDashboard.tsx`) merender "Belum ada data" untuk baris ini, BUKAN
+ * memperlakukannya sebagai 0.
+ */
+export interface PostPerformanceRow {
+  postId: PostId;
+  connectedAccountId: ConnectedAccountId;
+  caption: string;
+  platform: SocialPlatform;
+  accountHandle: string;
+  /** `null` = belum ada `AnalyticsPostMetric` untuk post+akun ini (T-043.4). */
+  reach: number | null;
+  /** `null` = belum ada `AnalyticsPostMetric` untuk post+akun ini (T-043.4). */
+  engagementRate: number | null;
 }
 
 /**
@@ -403,13 +467,24 @@ export class PublishingService {
    * invariant "history = selesai" ditegakkan di repository, lihat
    * `IPublishingRepository.getHistoryById`).
    *
+   * **T-043.3** — metrik post diisi lewat `PostMetricsPort` yang sama
+   * dengan `listCalendarPosts`/`getCalendarPostById` (batch API, satu
+   * `postId` di sini), semantik SAMA PERSIS: `[]` untuk Published tanpa
+   * data ter-ingest ATAU tanpa port disuplai, `null` untuk `Failed` (tidak
+   * pernah di-fetch — metrik hanya relevan untuk post yang berhasil
+   * publish). Return type `HistoryDetailItem` (bukan `HistoryItemRecord`,
+   * koreksi Temuan 2 Ridwan Architecture Reviewer 2026-09-18) — `metrics`
+   * di-overlay DI SINI, di level service, bukan di
+   * `IPublishingRepository.getHistoryById` (proyeksi data murni yang tidak
+   * boleh tahu soal `analytics`). Lihat catatan `HistoryDetailItem`.
+   *
    * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`.
    */
   async getHistoryById(
     workspaceId: WorkspaceId,
     postId: PostId,
     userId: UserId,
-  ): Promise<HistoryItemRecord> {
+  ): Promise<HistoryDetailItem> {
     const post = await this.repository.getHistoryById(
       { workspaceId, postId },
       userId,
@@ -417,7 +492,130 @@ export class PublishingService {
     if (!post) {
       throw new NotFoundError("Riwayat post tidak ditemukan.");
     }
-    return post;
+
+    const metrics =
+      post.status === ContentStatus.Published && this.postMetrics
+        ? ((await this.postMetrics.getPostMetricsByPosts([post.id])).get(
+            post.id,
+          ) ?? [])
+        : post.status === ContentStatus.Published
+          ? []
+          : null;
+
+    return { ...post, metrics };
+  }
+
+  /**
+   * Daftar performa SEMUA post workspace pada satu `period` (T-043.1, UI
+   * Table "Post Performance" `/analyze` konsumsi lewat ini — T-043.2).
+   *
+   * **Dipindahkan dari `AnalyticsService` (2026-09-18, refactor Temuan 1
+   * Ridwan Architecture Reviewer)** — versi lama di domain `analytics`
+   * memanggil `publishing` lewat port lokal `PublishingHistoryPort`, padahal
+   * `publishing` SUDAH lebih dulu memanggil `analytics` lewat
+   * `PostMetricsPort` di atas (arah legal, T-033.1) — dua arah sekaligus
+   * melanggar `application-layer.md` ("tidak ada circular dependency antar
+   * Bounded Context"). Sekarang method ini hidup di `publishing`, reuse
+   * `IPublishingRepository.listHistory` (lewat `this.listHistory`, sudah
+   * clamp ke status terminal) + `PostMetricsPort` yang SAMA dengan
+   * `getHistoryById`/`listCalendarPosts` di atas — dependency tetap SATU
+   * ARAH (`publishing -> analytics`), tidak ada port baru yang dibutuhkan.
+   *
+   * Rentang tanggal `period` dihitung LANGSUNG dari `period` relatif ke
+   * sekarang (`resolvePostPerformancePeriodRange` — "weekly" = 7 hari
+   * terakhir, "monthly" = 30 hari terakhir), BUKAN lagi dari
+   * `AnalyticsWorkspaceSnapshot.periodStart`/`periodEnd` seperti versi lama
+   * — lihat catatan keputusan lengkap di `post-performance-period-range.ts`
+   * (opsi ini dipilih dibanding memperluas `PostMetricsPort` dengan method
+   * query rentang snapshot, supaya `publishing` tidak perlu tahu apa pun
+   * soal `AnalyticsWorkspaceSnapshot`).
+   *
+   * Baris diurutkan Reach descending — default sort yang dikunci
+   * design-prep T-043 (2026-09-18, `templates/analyze-dashboard.html`).
+   * Sort per kolom lain (T-043.2) jadi tanggung jawab UI di client, bukan
+   * di sini.
+   *
+   * T-043.4: post yang publish di rentang `period` TETAP disertakan di
+   * hasil meski belum ada `AnalyticsPostMetric` untuk sebagian atau seluruh
+   * target akunnya — job cron ingestion metrik (KI-003 chain) belum tentu
+   * sudah memproses post ini. Baris dibentuk dari `post.targets` (bukan
+   * dari metrik), jadi setiap target akun selalu menghasilkan satu baris;
+   * `reach`/`engagementRate` diisi `null` kalau metriknya belum ada —
+   * caller merender "Belum ada data" (T-043.4), bukan 0.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`.
+   */
+  async getPostPerformance(
+    workspaceId: WorkspaceId,
+    period: SnapshotPeriod,
+    userId: UserId,
+  ): Promise<PostPerformanceRow[]> {
+    if (!this.postMetrics) {
+      throw new Error(
+        "PublishingService.getPostPerformance requires a PostMetricsPort — none was provided to the constructor.",
+      );
+    }
+
+    const { from, to } = resolvePostPerformancePeriodRange(period);
+    const fromMs = from.getTime();
+    const toMs = to.getTime();
+
+    const historyItems = await this.listHistory({ workspaceId }, userId);
+    const postsInRange = historyItems.filter((item) => {
+      const publishedAt = item.publishedAt?.getTime();
+      return (
+        publishedAt !== undefined &&
+        publishedAt >= fromMs &&
+        publishedAt <= toMs
+      );
+    });
+
+    if (postsInRange.length === 0) {
+      return [];
+    }
+
+    const metricsByPost = await this.postMetrics.getPostMetricsByPosts(
+      postsInRange.map((post) => post.id),
+    );
+
+    const rows: PostPerformanceRow[] = [];
+    for (const post of postsInRange) {
+      const metrics = metricsByPost.get(post.id);
+      for (const target of post.targets) {
+        // Target-level "failed" (partial failure — post tetap Published
+        // kalau minimal satu target sukses) di-skip: target ini TIDAK
+        // PERNAH akan punya AnalyticsPostMetric, beda dari target
+        // published yang belum ter-ingest (reach: null, "Belum ada data").
+        // Guard sama seperti `target.status === "published"` di
+        // HistoryDetail.tsx.
+        if (target.status !== "published") {
+          continue;
+        }
+        const metric = metrics?.find(
+          (m) => m.connectedAccountId === target.connectedAccountId,
+        );
+        rows.push({
+          postId: post.id,
+          connectedAccountId: target.connectedAccountId,
+          caption: post.caption,
+          platform: target.platform,
+          accountHandle: target.accountHandle,
+          reach: metric?.reach ?? null,
+          engagementRate: metric?.engagementRate ?? null,
+        });
+      }
+    }
+
+    // Reach descending; baris `reach: null` (belum ada data, T-043.4)
+    // ditaruh di akhir urutan — bukan dianggap 0 (yang akan salah
+    // menempatkannya di atas reach negatif hipotetis) dan bukan exception.
+    rows.sort((a, b) => {
+      if (a.reach === null && b.reach === null) return 0;
+      if (a.reach === null) return 1;
+      if (b.reach === null) return -1;
+      return b.reach - a.reach;
+    });
+    return rows;
   }
 
   /**

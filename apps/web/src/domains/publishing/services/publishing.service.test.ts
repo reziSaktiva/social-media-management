@@ -822,15 +822,363 @@ describe("PublishingService.getHistoryById", () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it("returns the history item when found", async () => {
-    const item = createHistoryItem();
+  it("returns the history item when found (Failed, tanpa PostMetricsPort disuplai)", async () => {
+    const item = createHistoryItem({ status: ContentStatus.Failed });
     const service = new PublishingService(
       createFakeRepository({ getHistoryById: async () => item }),
     );
 
     await expect(
       service.getHistoryById(WORKSPACE_ID, asPostId("post-1"), AUTHOR_ID),
-    ).resolves.toBe(item);
+    ).resolves.toEqual({ ...item, metrics: null });
+  });
+
+  // T-043.3 — reuse semantik `PostMetricsPort` yang sama dengan
+  // `listCalendarPosts`/`getCalendarPostById` (KSP-02-F08): `null` untuk
+  // non-Published (tidak pernah di-fetch), `[]` untuk Published tanpa data
+  // ter-ingest, array berisi kalau sudah ada.
+  it("metrics null untuk post Failed, PostMetricsPort tidak pernah dipanggil", async () => {
+    const failed = createHistoryItem({ status: ContentStatus.Failed });
+    let calls = 0;
+    const service = new PublishingService(
+      createFakeRepository({ getHistoryById: async () => failed }),
+      {
+        getPostMetricsByPosts: async () => {
+          calls += 1;
+          return new Map();
+        },
+      },
+    );
+
+    const result = await service.getHistoryById(
+      WORKSPACE_ID,
+      failed.id,
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual({ ...failed, metrics: null });
+    expect(calls).toBe(0);
+  });
+
+  it("metrics [] untuk post Published tanpa PostMetricsPort disuplai", async () => {
+    const published = createHistoryItem({ status: ContentStatus.Published });
+    const service = new PublishingService(
+      createFakeRepository({ getHistoryById: async () => published }),
+    );
+
+    const result = await service.getHistoryById(
+      WORKSPACE_ID,
+      published.id,
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual({ ...published, metrics: [] });
+  });
+
+  it("metrics diisi dari PostMetricsPort untuk post Published", async () => {
+    const published = createHistoryItem({ status: ContentStatus.Published });
+    const metric: PostMetricsRecord = {
+      id: asPostMetricsId("metric-a"),
+      postId: published.id,
+      connectedAccountId: asConnectedAccountId("conn-1"),
+      platform: SocialPlatform.Instagram,
+      impressions: 100,
+      reach: 80,
+      likes: 10,
+      comments: 2,
+      shares: 1,
+      clicks: null,
+      engagementRate: 0.1625,
+      fetchedAt: new Date(0),
+    };
+    let receivedPostIds: PostId[] | null = null;
+    const service = new PublishingService(
+      createFakeRepository({ getHistoryById: async () => published }),
+      {
+        getPostMetricsByPosts: async (postIds) => {
+          receivedPostIds = postIds;
+          return new Map([[published.id, [metric]]]);
+        },
+      },
+    );
+
+    const result = await service.getHistoryById(
+      WORKSPACE_ID,
+      published.id,
+      AUTHOR_ID,
+    );
+
+    expect(receivedPostIds).toEqual([published.id]);
+    expect(result).toEqual({ ...published, metrics: [metric] });
+  });
+});
+
+// T-043.1 — dipindahkan dari `AnalyticsService.getPostPerformance`
+// (2026-09-18, refactor Temuan 1 Ridwan Architecture Reviewer, circular
+// dependency `analytics` <-> `publishing`). Rentang tanggal dihitung
+// relatif ke `Date.now()` saat test berjalan (weekly = 7 hari terakhir) —
+// bukan tanggal hardcode — konsisten dengan
+// `resolvePostPerformancePeriodRange` yang tidak menerima override `now`
+// dari `getPostPerformance` (lihat catatan keputusan di
+// `post-performance-period-range.ts`).
+describe("PublishingService.getPostPerformance", () => {
+  const NOW = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const WITHIN_WEEK = new Date(NOW - 3 * DAY_MS);
+  const OUTSIDE_WEEK = new Date(NOW - 10 * DAY_MS);
+
+  it("throws when no PostMetricsPort is supplied", async () => {
+    const service = new PublishingService(
+      createFakeRepository({ listHistory: async () => [] }),
+    );
+
+    await expect(
+      service.getPostPerformance(WORKSPACE_ID, "weekly", AUTHOR_ID),
+    ).rejects.toThrow(/PostMetricsPort/);
+  });
+
+  it("returns an empty array when no history item falls inside the period range", async () => {
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async () => [
+          createHistoryItem({
+            id: asPostId("post-outside-range"),
+            publishedAt: OUTSIDE_WEEK,
+          }),
+          createHistoryItem({
+            id: asPostId("post-failed"),
+            status: ContentStatus.Failed,
+            publishedAt: null,
+          }),
+        ],
+      }),
+      { getPostMetricsByPosts: async () => new Map() },
+    );
+
+    await expect(
+      service.getPostPerformance(WORKSPACE_ID, "weekly", AUTHOR_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("maps caption + accountHandle with reach/engagementRate per post and account, sorted by reach descending", async () => {
+    const postA = asPostId("post-a");
+    const postB = asPostId("post-b");
+    const connA1 = asConnectedAccountId("conn-a1");
+    const connA2 = asConnectedAccountId("conn-a2");
+    const connB1 = asConnectedAccountId("conn-b1");
+
+    const metricA1: PostMetricsRecord = {
+      id: asPostMetricsId("metric-a1"),
+      postId: postA,
+      connectedAccountId: connA1,
+      platform: SocialPlatform.Instagram,
+      impressions: 500,
+      reach: 200,
+      likes: 10,
+      comments: 2,
+      shares: 1,
+      clicks: null,
+      engagementRate: 0.1,
+      fetchedAt: new Date(0),
+    };
+    const metricA2: PostMetricsRecord = {
+      ...metricA1,
+      id: asPostMetricsId("metric-a2"),
+      connectedAccountId: connA2,
+      platform: SocialPlatform.TikTok,
+      reach: 900,
+      engagementRate: 0.3,
+    };
+    const metricB1: PostMetricsRecord = {
+      ...metricA1,
+      id: asPostMetricsId("metric-b1"),
+      postId: postB,
+      connectedAccountId: connB1,
+      reach: 50,
+      engagementRate: 0.05,
+    };
+
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async () => [
+          createHistoryItem({
+            id: postA,
+            caption: "Caption post A",
+            publishedAt: WITHIN_WEEK,
+            targets: [
+              {
+                id: asPostTargetId("target-a1"),
+                connectedAccountId: connA1,
+                platform: SocialPlatform.Instagram,
+                contentFormat: ContentFormat.Post,
+                accountHandle: "@akun-a1",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+              {
+                id: asPostTargetId("target-a2"),
+                connectedAccountId: connA2,
+                platform: SocialPlatform.TikTok,
+                contentFormat: ContentFormat.Reel,
+                accountHandle: "@akun-a2",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+            ],
+          }),
+          createHistoryItem({
+            id: postB,
+            caption: "Caption post B",
+            publishedAt: WITHIN_WEEK,
+            targets: [
+              {
+                id: asPostTargetId("target-b1"),
+                connectedAccountId: connB1,
+                platform: SocialPlatform.Instagram,
+                contentFormat: ContentFormat.Post,
+                accountHandle: "@akun-b1",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+            ],
+          }),
+        ],
+      }),
+      {
+        getPostMetricsByPosts: async () =>
+          new Map([
+            [postA, [metricA1, metricA2]],
+            [postB, [metricB1]],
+          ]),
+      },
+    );
+
+    const result = await service.getPostPerformance(
+      WORKSPACE_ID,
+      "weekly",
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual([
+      {
+        postId: postA,
+        connectedAccountId: connA2,
+        caption: "Caption post A",
+        platform: SocialPlatform.TikTok,
+        accountHandle: "@akun-a2",
+        reach: 900,
+        engagementRate: 0.3,
+      },
+      {
+        postId: postA,
+        connectedAccountId: connA1,
+        caption: "Caption post A",
+        platform: SocialPlatform.Instagram,
+        accountHandle: "@akun-a1",
+        reach: 200,
+        engagementRate: 0.1,
+      },
+      {
+        postId: postB,
+        connectedAccountId: connB1,
+        caption: "Caption post B",
+        platform: SocialPlatform.Instagram,
+        accountHandle: "@akun-b1",
+        reach: 50,
+        engagementRate: 0.05,
+      },
+    ]);
+  });
+
+  it("includes a target without an ingested AnalyticsPostMetric yet, with reach/engagementRate null instead of skipping the row (T-043.4)", async () => {
+    const postC = asPostId("post-c");
+    const connC1 = asConnectedAccountId("conn-c1");
+    const connC2 = asConnectedAccountId("conn-c2");
+
+    const metricC1: PostMetricsRecord = {
+      id: asPostMetricsId("metric-c1"),
+      postId: postC,
+      connectedAccountId: connC1,
+      platform: SocialPlatform.Instagram,
+      impressions: 500,
+      reach: 300,
+      likes: 10,
+      comments: 2,
+      shares: 1,
+      clicks: null,
+      engagementRate: 0.2,
+      fetchedAt: new Date(0),
+    };
+
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async () => [
+          createHistoryItem({
+            id: postC,
+            caption: "Caption post C",
+            publishedAt: WITHIN_WEEK,
+            targets: [
+              {
+                id: asPostTargetId("target-c1"),
+                connectedAccountId: connC1,
+                platform: SocialPlatform.Instagram,
+                contentFormat: ContentFormat.Post,
+                accountHandle: "@akun-c1",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+              {
+                id: asPostTargetId("target-c2"),
+                connectedAccountId: connC2,
+                platform: SocialPlatform.TikTok,
+                contentFormat: ContentFormat.Reel,
+                accountHandle: "@akun-c2",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+            ],
+          }),
+        ],
+      }),
+      {
+        // Hanya conn-c1 yang sudah di-ingest — conn-c2 belum sama sekali,
+        // mensimulasikan job cron metrik (KI-003) yang belum sempat jalan
+        // untuk target akun ini.
+        getPostMetricsByPosts: async () => new Map([[postC, [metricC1]]]),
+      },
+    );
+
+    const result = await service.getPostPerformance(
+      WORKSPACE_ID,
+      "weekly",
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual([
+      {
+        postId: postC,
+        connectedAccountId: connC1,
+        caption: "Caption post C",
+        platform: SocialPlatform.Instagram,
+        accountHandle: "@akun-c1",
+        reach: 300,
+        engagementRate: 0.2,
+      },
+      {
+        postId: postC,
+        connectedAccountId: connC2,
+        caption: "Caption post C",
+        platform: SocialPlatform.TikTok,
+        accountHandle: "@akun-c2",
+        reach: null,
+        engagementRate: null,
+      },
+    ]);
   });
 });
 
