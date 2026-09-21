@@ -251,6 +251,56 @@ export interface EngagementSummary {
 }
 
 /**
+ * Satu metrik yang dibandingkan antar dua periode (T-045.1/.2). `current`/
+ * `previous` null-safe SAMA PERSIS pola `AnalyzeSummary`/`EngagementSummary`
+ * — `null` berarti tidak ada satupun baris `AnalyticsPostMetric` ter-ingest
+ * untuk periode itu, BUKAN 0.
+ */
+export interface ComparativeMetric {
+  current: number | null;
+  previous: number | null;
+}
+
+/**
+ * Satu baris "Perbandingan Akun/Platform" (T-045.2, KSP-07 — Analyze →
+ * Dashboard, tab "Reports" `templates/analyze-dashboard.html`). Pola SAMA
+ * `AccountOverviewRow` (T-046) — SATU per `connectedAccountId`, wajib
+ * menyertakan akun yang belum punya post di kedua periode sekalipun
+ * (`reach.current`/`reach.previous` keduanya `null`), sumber akun dari
+ * `ConnectedAccountsPort.listConnectedAccounts` (semua akun workspace),
+ * BUKAN hanya akun yang muncul di hasil `getPostPerformance`.
+ */
+export interface AccountComparisonRow {
+  connectedAccountId: ConnectedAccountId;
+  platform: SocialPlatform;
+  accountHandle: string;
+  reach: ComparativeMetric;
+}
+
+/**
+ * Tab "Reports" `/analyze` (T-045, KSP-07 — Analyze → Dashboard). "Periode
+ * sebelumnya" (`previous`) BUKAN calendar-aligned (bukan "bulan kalender
+ * lalu") — rolling window yang SAMA PANJANG dan PERSIS BERSEBELAHAN dengan
+ * periode `current` (mis. period "monthly": current = 30 hari terakhir dari
+ * sekarang, previous = 30 hari SEBELUM ITU, tanpa gap/overlap). Ini
+ * konsisten dengan cara `period` "current" sendiri sudah dihitung
+ * (`resolvePostPerformancePeriodRange`, rolling bukan calendar-aligned) —
+ * keputusan implementasi ini dicatat eksplisit karena mockup Claude Design
+ * memberi label "vs 9 bulan lalu" yang bisa disalahartikan sebagai bulan
+ * kalender.
+ *
+ * `totalPosts` TIDAK pakai `ComparativeMetric` (selalu number, bukan
+ * nullable) — konsisten `AnalyzeSummary.totalPosts` yang juga selalu
+ * number (0 kalau kosong, bukan null).
+ */
+export interface ComparativeReport {
+  totalPosts: { current: number; previous: number };
+  totalReach: ComparativeMetric;
+  avgEngagementRate: ComparativeMetric;
+  accounts: AccountComparisonRow[];
+}
+
+/**
  * Status post yang dianggap "selesai" dan karenanya boleh muncul di
  * History (T-034.1, KSP-D10 · KSP-03 catatan: "begitu percobaan publish
  * selesai, item pindah ke History"). Single source of truth dipakai oleh
@@ -682,12 +732,24 @@ export class PublishingService {
    * `reach`/`engagementRate` diisi `null` kalau metriknya belum ada —
    * caller merender "Belum ada data" (T-043.4), bukan 0.
    *
+   * **`asOf` (T-045.1, opsional)** — titik akhir rentang, diteruskan
+   * langsung ke `resolvePostPerformancePeriodRange` sebagai `now`. Dipakai
+   * `getComparativeReport` di bawah untuk menghitung rentang "periode
+   * sebelumnya" (rolling window SAMA PANJANG, persis bersebelahan dengan
+   * `period` current, tanpa gap/overlap — lihat catatan lengkap di
+   * `ComparativeReport`). Default `undefined` — `resolvePostPerformancePeriodRange`
+   * memakai default `new Date()` miliknya sendiri, jadi 4 call site lama
+   * (`getAccountOverview`, `getAnalyzeSummary`, `getEngagementSummary`, dan
+   * Server Action `getPostPerformanceAction`) TIDAK perlu diubah — perilaku
+   * mereka identik seperti sebelum parameter ini ditambahkan.
+   *
    * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`.
    */
   async getPostPerformance(
     workspaceId: WorkspaceId,
     period: SnapshotPeriod,
     userId: UserId,
+    asOf?: Date,
   ): Promise<PostPerformanceRow[]> {
     if (!this.postMetrics) {
       throw new Error(
@@ -695,7 +757,7 @@ export class PublishingService {
       );
     }
 
-    const { from, to } = resolvePostPerformancePeriodRange(period);
+    const { from, to } = resolvePostPerformancePeriodRange(period, asOf);
     const fromMs = from.getTime();
     const toMs = to.getTime();
 
@@ -856,7 +918,28 @@ export class PublishingService {
     userId: UserId,
   ): Promise<AnalyzeSummary> {
     const rows = await this.getPostPerformance(workspaceId, period, userId);
+    const { totalReach, avgEngagementRate } = this.summarizeRows(rows);
 
+    return {
+      totalPosts: rows.length,
+      totalReach,
+      avgEngagementRate,
+    };
+  }
+
+  /**
+   * Agregasi `totalReach`/`avgEngagementRate` dari `PostPerformanceRow[]`
+   * (extracted 2026-09-21, T-045 — sebelumnya duplikat inline di
+   * `getAnalyzeSummary`). Null-safe SAMA PERSIS logic asli `getAnalyzeSummary`:
+   * `totalReach`/`avgEngagementRate` cuma diakumulasi dari baris yang sudah
+   * ter-ingest, `null` kalau tidak ada satupun baris berisi nilainya (bukan
+   * 0) — dipakai `getAnalyzeSummary` DAN `getComparativeReport` (T-045.1,
+   * dipanggil dua kali untuk baris current & previous secara independen).
+   */
+  private summarizeRows(rows: PostPerformanceRow[]): {
+    totalReach: number | null;
+    avgEngagementRate: number | null;
+  } {
     let reachSum: number | null = null;
     let engagementRateSum: number | null = null;
     let engagementRateCount = 0;
@@ -872,7 +955,6 @@ export class PublishingService {
     }
 
     return {
-      totalPosts: rows.length,
       totalReach: reachSum,
       avgEngagementRate:
         engagementRateSum === null
@@ -918,6 +1000,126 @@ export class PublishingService {
     return {
       totalLikes: likesSum,
       totalComments: commentsSum,
+    };
+  }
+
+  /**
+   * Agregasi reach per `connectedAccountId` dari `PostPerformanceRow[]`
+   * (T-045.2) — HANYA reach (bukan `totalPosts`/distinct post count seperti
+   * `statsByAccount` di `getAccountOverview`, yang butuh `Set<PostId>` juga
+   * dan sengaja TIDAK direfactor ulang di sini supaya diff method yang
+   * sudah teruji itu tetap kecil). Dipakai `getComparativeReport` dua kali
+   * (baris current & previous) untuk membentuk `AccountComparisonRow.reach`.
+   * Account tanpa baris reach ter-ingest TIDAK punya entry di Map ini
+   * (caller memakai `.get(id) ?? null`), bukan `0` — pola null-safety sama
+   * `AccountOverviewRow.totalReach`.
+   */
+  private sumReachByAccount(
+    rows: PostPerformanceRow[],
+  ): Map<ConnectedAccountId, number> {
+    const reachByAccount = new Map<ConnectedAccountId, number>();
+    for (const row of rows) {
+      if (row.reach === null) {
+        continue;
+      }
+      reachByAccount.set(
+        row.connectedAccountId,
+        (reachByAccount.get(row.connectedAccountId) ?? 0) + row.reach,
+      );
+    }
+    return reachByAccount;
+  }
+
+  /**
+   * Tab "Reports" `/analyze` (T-045.1/T-045.2, KSP-07 — Analyze →
+   * Dashboard). Reuse `getPostPerformance` DUA KALI — sekali untuk `period`
+   * current (tanpa `asOf`, sama seperti caller lain), sekali lagi dengan
+   * `asOf: currentFrom` (awal rentang current) untuk mendapat rentang
+   * "sebelumnya" yang persis bersebelahan tanpa gap/overlap (lihat catatan
+   * lengkap di `ComparativeReport` soal kenapa ini rolling, bukan
+   * calendar-aligned). TIDAK ada query Prisma baru — semua lewat
+   * `getPostPerformance` yang sudah ada.
+   *
+   * Butuh `ConnectedAccountsPort` (SAMA seperti `getAccountOverview`) karena
+   * `accounts` (T-045.2) wajib menyertakan akun tanpa post di kedua periode
+   * sekalipun — sumber utamanya daftar akun workspace, bukan hasil agregasi
+   * `getPostPerformance` semata.
+   *
+   * `accounts` diurutkan `reach.current` descending (null di akhir) — pola
+   * sort sama persis `getAccountOverview`/`getPostPerformance`, konsisten
+   * secara visual dengan tab Overview di halaman yang sama.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`,
+   * diteruskan ke kedua port.
+   */
+  async getComparativeReport(
+    workspaceId: WorkspaceId,
+    period: SnapshotPeriod,
+    userId: UserId,
+  ): Promise<ComparativeReport> {
+    if (!this.connectedAccounts) {
+      throw new Error(
+        "PublishingService.getComparativeReport requires a ConnectedAccountsPort — none was provided to the constructor.",
+      );
+    }
+
+    // Satu `now` dipakai ulang untuk kedua rentang (current DAN untuk
+    // menurunkan `currentFrom` di bawah) — BUKAN dua panggilan `new Date()`
+    // independen. Ditemukan Ridwan Architecture Reviewer (2026-09-21):
+    // dua instant yang berbeda (walau selisihnya cuma milidetik) bisa
+    // membuat rentang current/previous tidak "PERSIS BERSEBELAHAN, tanpa
+    // gap/overlap" seperti diklaim JSDoc `ComparativeReport` — post yang
+    // `publishedAt`-nya jatuh tepat di selisih itu berisiko terhitung
+    // dobel atau tidak terhitung di keduanya.
+    const now = new Date();
+    const { from: currentFrom } = resolvePostPerformancePeriodRange(
+      period,
+      now,
+    );
+
+    const [accounts, currentRows, previousRows] = await Promise.all([
+      this.connectedAccounts.listConnectedAccounts(workspaceId, userId),
+      this.getPostPerformance(workspaceId, period, userId, now),
+      this.getPostPerformance(workspaceId, period, userId, currentFrom),
+    ]);
+
+    const currentSummary = this.summarizeRows(currentRows);
+    const previousSummary = this.summarizeRows(previousRows);
+
+    const currentReachByAccount = this.sumReachByAccount(currentRows);
+    const previousReachByAccount = this.sumReachByAccount(previousRows);
+
+    const accountRows: AccountComparisonRow[] = accounts.map((account) => ({
+      connectedAccountId: account.id,
+      platform: account.platform,
+      accountHandle: account.handle,
+      reach: {
+        current: currentReachByAccount.get(account.id) ?? null,
+        previous: previousReachByAccount.get(account.id) ?? null,
+      },
+    }));
+
+    accountRows.sort((a, b) => {
+      if (a.reach.current === null && b.reach.current === null) return 0;
+      if (a.reach.current === null) return 1;
+      if (b.reach.current === null) return -1;
+      return b.reach.current - a.reach.current;
+    });
+
+    return {
+      totalPosts: {
+        current: currentRows.length,
+        previous: previousRows.length,
+      },
+      totalReach: {
+        current: currentSummary.totalReach,
+        previous: previousSummary.totalReach,
+      },
+      avgEngagementRate: {
+        current: currentSummary.avgEngagementRate,
+        previous: previousSummary.avgEngagementRate,
+      },
+      accounts: accountRows,
     };
   }
 

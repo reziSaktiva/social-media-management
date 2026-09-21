@@ -8,6 +8,7 @@ import { AnalyticsService } from "@/domains/analytics";
 import type {
   AccountOverviewRow,
   AnalyzeSummary,
+  ComparativeReport,
   EngagementSummary,
   PostPerformanceRow,
 } from "@/domains/publishing";
@@ -162,6 +163,47 @@ export async function getEngagementSummaryAction(
   );
 
   return publishingService.getEngagementSummary(
+    workspaceId,
+    period,
+    asUserId(session.user.id),
+  );
+}
+
+/**
+ * Server Action untuk halaman `/analyze` — tab "Reports" Comparative
+ * Reports (T-045.1/T-045.2, KSP-07 Analyze → Dashboard). Dikonsumsi UI
+ * (Mark UI Engineer) dengan pola pemanggilan ulang saat selector period
+ * diganti, sama dengan action lain di file ini. T-045.3 (Export CSV)
+ * sengaja TIDAK punya action di sini — generate CSV di client dari data
+ * yang sudah di-fetch action ini, bukan endpoint export terpisah.
+ *
+ * Composition root SAMA PERSIS `getAccountOverviewAction` di atas —
+ * `PublishingService` disuplai `AnalyticsService` sebagai `PostMetricsPort`
+ * (`publishing -> analytics`) DAN `WorkspaceService` sebagai
+ * `ConnectedAccountsPort` (`publishing -> workspace`), karena
+ * `getComparativeReport` butuh keduanya (reuse `getPostPerformance` +
+ * daftar akun lengkap workspace, lihat catatan `ComparativeReport`).
+ * Orkestrasi tipis saja: resolve workspace context, wire service,
+ * delegasikan. Semua logic (rentang periode sebelumnya, agregasi
+ * current/previous, kriteria "belum ada data") hidup di
+ * `PublishingService.getComparativeReport`, bukan di sini.
+ */
+export async function getComparativeReportAction(
+  period: SnapshotPeriod,
+): Promise<ComparativeReport> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const publishingService = new PublishingService(
+    publishingRepository,
+    new AnalyticsService(analyticsRepository),
+    new WorkspaceService(workspaceRepository),
+  );
+
+  return publishingService.getComparativeReport(
     workspaceId,
     period,
     asUserId(session.user.id),

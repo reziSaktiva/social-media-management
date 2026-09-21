@@ -98,6 +98,57 @@
 // T-047.3: `totalComments`/`totalLikes` masing-masing independen render
 // "Belum ada data" saat `null` (BUKAN 0), dan card TETAP tampil (2 baris
 // "Belum ada data") kalau KEDUA field `null` — tidak disembunyikan.
+//
+// Tab "Overview"/"Reports" (T-045, Comparative Reports): pola dikunci
+// design-prep T-045 (`templates/analyze-dashboard.html`, King Rezi via
+// `AskUserQuestion` sebelum implementasi kode) — `Tabs`+`TabsList`
+// (`variant="line"`, sama `PublishTabbar.tsx`)+`TabsTrigger`+`TabsContent`
+// shadcn asli, BUKAN reuse `.seg`/ToggleGroup, karena ini switch antar panel
+// KONTEN PENUH, bukan filter/view-mode toggle. Tab "Overview" = konten
+// existing di atas (summary row + `.dash-cols`), TIDAK diubah strukturnya —
+// cuma dibungkus `TabsContent`. Tab "Reports" (baru) berisi
+// `ComparativePeriodContent` (T-045.1) + `AccountComparisonContent`
+// (T-045.2) + tombol Export CSV (T-045.3). Switch tab murni client-side
+// (Radix `Tabs` uncontrolled, `defaultValue="overview"`) — TIDAK re-fetch,
+// karena `comparativeReport` sudah di-fetch sekaligus lewat `Promise.all`
+// yang sama dengan section lain di file ini (lihat `handlePeriodChange`).
+//
+// Delta "Perbandingan Periode"/"Perbandingan Akun" (T-045.1/T-045.2): badge
+// `Badge` `variant="success"`/`variant="destructive"` (KI-051 resolved,
+// BUKAN token warna baru) + ikon `ArrowUp01Icon`/`ArrowDown01Icon` yang
+// SUDAH diimport untuk sort di atas — adaptasi dari unicode ▲/▼ mockup
+// statis Claude Design ke bahasa visual ikon yang sudah dipakai halaman ini.
+// Aturan delta (lihat `computeRelativeDelta`/`computeEngagementRateDelta` di
+// bawah): TIDAK ada badge kalau salah satu sisi `null`, `previous === 0`
+// (hindari divide-by-zero), atau delta membulat ke 0 (current === previous,
+// netral). `totalPosts`/`totalReach` pakai delta RELATIF (persen,
+// dibulatkan integer); `avgEngagementRate` pakai delta POIN PERSENTASE
+// (`current - previous`, desimal `AnalyticsPostMetric` dikali 100 — SAMA
+// unit dengan `formatEngagementRate` di `post-metric-tile.tsx` — 1 desimal,
+// akhiran "pt").
+//
+// Label "vs periode sebelumnya" (BUKAN "bulan lalu"/"minggu lalu" seperti
+// teks mockup) — `ComparativeReport.previous` adalah rolling window SAMA
+// PANJANG dan PERSIS BERSEBELAHAN dengan `period` current (lihat JSDoc
+// `ComparativeReport` di `publishing.service.ts`), BUKAN calendar-aligned,
+// jadi label literal "bulan lalu"/"minggu lalu" bisa menyesatkan.
+//
+// Fix QA (Najwa QA Engineer, 2026-09-21): caption per-metrik "vs {nilai
+// periode sebelumnya}" (`ComparativeStatColumn.previousLabel`, pola
+// `.stat-compare-sub` mockup) sebelumnya HILANG TOTAL — bukan diadaptasi,
+// terlewat saat implementasi. Ditambahkan kembali, ditaruh di antara angka
+// besar dan badge delta (urutan sama mockup), pakai teks generik "vs
+// periode sebelumnya" + nilai (BUKAN "vs X bulan lalu" literal, alasan
+// sama paragraf di atas).
+//
+// Export CSV (T-045.3): generate string CSV client-side dari
+// `comparativeReport` yang sudah ada di state (`buildComparativeReportCsv`
+// di bawah, DUA section dalam SATU file — "Perbandingan Periode" lalu
+// "Perbandingan Akun/Platform", dipisah baris kosong) lalu trigger download
+// lewat `Blob` + elemen `<a>` sementara — TIDAK ada Server Action baru,
+// TIDAK ada dependency CSV eksternal (murni string building manual, data
+// sudah flat/kecil). Tombol disabled kalau `comparativeReport` belum ada
+// ATAU tidak ada apa pun untuk di-export (`hasComparativeData`).
 
 import { useMemo, useRef, useState, useTransition } from "react";
 
@@ -108,6 +159,7 @@ import {
   ArrowUpDownIcon,
 } from "@hugeicons/core-free-icons";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -132,6 +184,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
@@ -141,14 +194,17 @@ import { StatTile } from "../../components/stat-tile";
 import {
   getAccountOverviewAction,
   getAnalyzeSummaryAction,
+  getComparativeReportAction,
   getEngagementSummaryAction,
   getPostPerformanceAction,
 } from "../analyze-actions";
 
 import type { SnapshotPeriod } from "@/domains/analytics";
 import type {
+  AccountComparisonRow,
   AccountOverviewRow,
   AnalyzeSummary,
+  ComparativeReport,
   EngagementSummary,
   PostPerformanceRow,
 } from "@/domains/publishing";
@@ -198,6 +254,87 @@ function sortRows(
     return sort.direction === "asc" ? comparison : -comparison;
   });
   return sorted;
+}
+
+/** Arah delta "Perbandingan Periode"/"Perbandingan Akun" (T-045) — menentukan warna `Badge` (`up` → `success`, `down` → `destructive`) dan ikon (`ArrowUp01Icon`/`ArrowDown01Icon`). */
+type DeltaDirection = "up" | "down";
+
+interface Delta {
+  direction: DeltaDirection;
+  /** Teks sudah terformat siap render, mis. `"+33%"`, `"-8%"`, `"-0.6pt"`. */
+  label: string;
+}
+
+/**
+ * Delta RELATIF (persentase) untuk `totalPosts`/`totalReach` (T-045.1) dan
+ * `AccountComparisonRow.reach` (T-045.2). Aturan eksplisit (dikunci di
+ * instruksi task, bukan improvisasi):
+ * - `current`/`previous` `null` → tidak ada delta (nilai current apa adanya,
+ *   atau "Belum ada data" ditangani caller).
+ * - `previous === 0` → tidak ada delta (hindari divide-by-zero/infinite %).
+ * - Dibulatkan ke integer terdekat; kalau hasilnya 0% (termasuk
+ *   `current === previous`) → tidak ada delta (netral, tidak naik/turun).
+ */
+function computeRelativeDelta(
+  current: number | null,
+  previous: number | null,
+): Delta | null {
+  if (current === null || previous === null || previous === 0) {
+    return null;
+  }
+  const percent = Math.round(((current - previous) / previous) * 100);
+  if (percent === 0) {
+    return null;
+  }
+  return {
+    direction: percent > 0 ? "up" : "down",
+    label: `${percent > 0 ? "+" : ""}${percent}%`,
+  };
+}
+
+/**
+ * Delta POIN PERSENTASE (bukan relatif) untuk `avgEngagementRate` (T-045.1)
+ * — `current - previous` dalam nilai desimal `AnalyticsPostMetric` dikali
+ * 100 supaya unitnya SAMA seperti `formatEngagementRate` di
+ * `post-metric-tile.tsx` (mis. desimal `0.065` → `"6.5%"`). 1 desimal,
+ * akhiran "pt" (mis. `"-0.6pt"`). Aturan null/zero/netral SAMA PERSIS
+ * `computeRelativeDelta` di atas.
+ */
+function computeEngagementRateDelta(
+  current: number | null,
+  previous: number | null,
+): Delta | null {
+  if (current === null || previous === null || previous === 0) {
+    return null;
+  }
+  const points = Math.round((current - previous) * 1000) / 10;
+  if (points === 0) {
+    return null;
+  }
+  return {
+    direction: points > 0 ? "up" : "down",
+    label: `${points > 0 ? "+" : ""}${points.toFixed(1)}pt`,
+  };
+}
+
+/**
+ * Badge delta (T-045) — `Badge` `variant="success"`/`variant="destructive"`
+ * (`components/ui/badge.tsx`, KI-051 resolved, BUKAN token warna baru) +
+ * ikon `ArrowUp01Icon`/`ArrowDown01Icon` (sudah diimport untuk sort di atas)
+ * menggantikan karakter unicode ▲/▼ di mockup statis Claude Design —
+ * adaptasi supaya konsisten dengan bahasa visual ikon yang sudah dipakai
+ * halaman ini (keputusan eksplisit, bukan improvisasi).
+ */
+function DeltaBadge({ delta }: { delta: Delta }) {
+  return (
+    <Badge variant={delta.direction === "up" ? "success" : "destructive"}>
+      <HugeiconsIcon
+        icon={delta.direction === "up" ? ArrowUp01Icon : ArrowDown01Icon}
+        size={12}
+      />
+      {delta.label}
+    </Badge>
+  );
 }
 
 /** Tombol sort kecil + ikon panah per `TableHead` (T-043.2, mockup `.th-sort`/`.sort-icon`). */
@@ -560,12 +697,300 @@ function EngagementSummaryContent({ summary }: { summary: EngagementSummary }) {
   );
 }
 
+/**
+ * Satu kolom "Perbandingan Periode" (T-045.1) — angka besar (current), lalu
+ * badge delta (kalau bisa dihitung, lihat `computeRelativeDelta`/
+ * `computeEngagementRateDelta`), label di bawahnya. Urutan vertikal ini
+ * literal dari instruksi task (bukan pola `.stat-label` mockup yang
+ * menaruh label+chip sebaris) — tetap konsisten skala tipografi `StatTile`
+ * (`Text` `variant="h3"`).
+ */
+function ComparativeStatColumn({
+  label,
+  value,
+  previousLabel,
+  delta,
+}: {
+  label: string;
+  value: string;
+  /**
+   * Caption "vs {nilai periode sebelumnya}" per-metrik (T-045.1) — pola
+   * `.stat-compare-sub` di mockup Claude Design, sebelumnya HILANG total
+   * di implementasi (ditemukan Najwa QA Engineer, 2026-09-21: cuma ada satu
+   * caption generik "Dibandingkan dengan periode sebelumnya" di header
+   * tab, tanpa konteks per-metrik). Ditambahkan kembali di sini —
+   * ditaruh di ANTARA `value` dan `delta` (urutan sama mockup: angka besar,
+   * lalu "vs X", lalu delta+label), bukan dihapus.
+   */
+  previousLabel: string;
+  delta: Delta | null;
+}) {
+  return (
+    // eslint-disable-next-line no-restricted-syntax -- layout-only
+    <div className="flex flex-col gap-1.5">
+      <Text variant="h3" as="h3" className="mt-0 scroll-m-0 tabular-nums">
+        {value}
+      </Text>
+      <Text variant="muted">{previousLabel}</Text>
+      {delta ? <DeltaBadge delta={delta} /> : null}
+      <Text variant="muted">{label}</Text>
+    </div>
+  );
+}
+
+/**
+ * Isi kartu "Perbandingan Periode" (T-045.1, `templates/analyze-dashboard.html`
+ * bagian `#tab-panel-reports`) — grid 3 kolom, pola SAMA grid summary row
+ * `StatTile` (`grid grid-cols-1 gap-4 sm:grid-cols-3`) tapi TANPA `Card`
+ * bersarang per kolom (mockup: satu `card.card-pad` membungkus
+ * "Perbandingan Periode" + `.summary-row` di dalamnya, bukan 3 card
+ * terpisah) — wrapper `Card` ada di `AnalyzeDashboard` (caller).
+ * `totalPosts.current` selalu angka (tidak pernah null, konsisten
+ * `AnalyzeSummary.totalPosts`); `totalReach`/`avgEngagementRate` render
+ * "Belum ada data" saat `current === null` (pola SAMA `AnalyzeSummary` di
+ * `AnalyzeDashboard` render utama).
+ */
+function ComparativePeriodContent({ report }: { report: ComparativeReport }) {
+  const totalPostsDelta = computeRelativeDelta(
+    report.totalPosts.current,
+    report.totalPosts.previous,
+  );
+  const totalReachDelta = computeRelativeDelta(
+    report.totalReach.current,
+    report.totalReach.previous,
+  );
+  const engagementRateDelta = computeEngagementRateDelta(
+    report.avgEngagementRate.current,
+    report.avgEngagementRate.previous,
+  );
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4">
+        <h2 className="font-heading text-xl font-semibold tracking-tight">
+          Perbandingan Periode
+        </h2>
+        {/* eslint-disable-next-line no-restricted-syntax -- layout-only, pola sama grid summary row StatTile */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <ComparativeStatColumn
+            label="Total Posts"
+            value={report.totalPosts.current.toLocaleString("id-ID")}
+            previousLabel={`vs ${report.totalPosts.previous.toLocaleString("id-ID")}`}
+            delta={totalPostsDelta}
+          />
+          <ComparativeStatColumn
+            label="Total Reach"
+            value={
+              report.totalReach.current === null
+                ? "Belum ada data"
+                : report.totalReach.current.toLocaleString("id-ID")
+            }
+            previousLabel={`vs ${
+              report.totalReach.previous === null
+                ? "Belum ada data"
+                : report.totalReach.previous.toLocaleString("id-ID")
+            }`}
+            delta={totalReachDelta}
+          />
+          <ComparativeStatColumn
+            label="Engagement Rate"
+            value={
+              report.avgEngagementRate.current === null
+                ? "Belum ada data"
+                : formatEngagementRate(report.avgEngagementRate.current)
+            }
+            previousLabel={`vs ${
+              report.avgEngagementRate.previous === null
+                ? "Belum ada data"
+                : formatEngagementRate(report.avgEngagementRate.previous)
+            }`}
+            delta={engagementRateDelta}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Satu baris akun di kartu "Perbandingan Akun/Platform" (T-045.2), pola
+ * kolom Akun SAMA `AccountOverviewRowItem`/`PostPerformanceContent`
+ * (`PLATFORM_ICON` + `Text`). Kolom "Perubahan" TANPA badge (tampil dash
+ * muted) kalau delta tidak bisa dihitung (salah satu sisi `null` atau
+ * `previous === 0`) — keputusan tampilan sendiri (tidak dispesifikasikan
+ * eksplisit di instruksi task), supaya kolom tidak kosong tanpa penjelasan.
+ */
+function AccountComparisonRowItem({ row }: { row: AccountComparisonRow }) {
+  const platformEntry = PLATFORM_ICON[row.platform];
+  const delta = computeRelativeDelta(row.reach.current, row.reach.previous);
+
+  return (
+    <TableRow>
+      <TableCell>
+        {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
+        <div className="flex items-center gap-2">
+          {platformEntry ? (
+            <platformEntry.Icon size={14} color={platformEntry.color} />
+          ) : null}
+          <Text variant="small">{row.accountHandle}</Text>
+        </div>
+      </TableCell>
+      <TableCell className="text-right">
+        {row.reach.current === null ? (
+          <span className="text-muted-foreground">Belum ada data</span>
+        ) : (
+          row.reach.current.toLocaleString("id-ID")
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        {row.reach.previous === null ? (
+          <span className="text-muted-foreground">Belum ada data</span>
+        ) : (
+          row.reach.previous.toLocaleString("id-ID")
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        {delta ? (
+          <DeltaBadge delta={delta} />
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/**
+ * Isi kartu "Perbandingan Akun/Platform" (T-045.2) — `Table`+`TableHeader`
+ * TANPA sort (mockup `.compare-table` statis, tidak ada affordance sort
+ * seperti Post Performance). Wrapper `Card` ada di `AnalyzeDashboard`
+ * (caller), pola sama `ComparativePeriodContent`. Empty state
+ * (`rows.length === 0`) pakai `Empty`/`EmptyHeader`/`EmptyTitle`/
+ * `EmptyDescription`, pola sama `AccountOverviewContent`/
+ * `PostPerformanceContent`.
+ */
+function AccountComparisonContent({ rows }: { rows: AccountComparisonRow[] }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4">
+        <h2 className="font-heading text-xl font-semibold tracking-tight">
+          Perbandingan Akun/Platform
+        </h2>
+        {rows.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>Belum ada data</EmptyTitle>
+              <EmptyDescription>
+                Belum ada akun terhubung untuk dibandingkan.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Akun</TableHead>
+                <TableHead className="text-right">Reach</TableHead>
+                <TableHead className="text-right">Reach Sebelumnya</TableHead>
+                <TableHead className="text-right">Perubahan</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <AccountComparisonRowItem
+                  key={row.connectedAccountId}
+                  row={row}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Satu baris CSV — escape koma/kutip/newline (RFC 4180 minimal), `\r\n` sebagai akhir baris. */
+function csvRow(values: Array<string | number>): string {
+  return (
+    values
+      .map((value) => {
+        const text = String(value);
+        return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+      })
+      .join(",") + "\r\n"
+  );
+}
+
+/**
+ * Export CSV (T-045.3) — SATU file, DUA section dipisah baris kosong:
+ * "Perbandingan Periode" (metric/current/previous) lalu "Perbandingan
+ * Akun/Platform" (baris per akun). Keputusan struktur CSV sendiri (task
+ * membebaskan pilihan: "satu atau dua file, terserah, asal jelas & benar").
+ * `avgEngagementRate` diformat via `formatEngagementRate` (persen 1 desimal)
+ * supaya konsisten dengan angka yang tampil di UI, bukan desimal mentah.
+ */
+function buildComparativeReportCsv(report: ComparativeReport): string {
+  let csv = "";
+  csv += csvRow(["Perbandingan Periode"]);
+  csv += csvRow(["Metric", "Current", "Previous"]);
+  csv += csvRow([
+    "Total Posts",
+    report.totalPosts.current,
+    report.totalPosts.previous,
+  ]);
+  csv += csvRow([
+    "Total Reach",
+    report.totalReach.current ?? "Belum ada data",
+    report.totalReach.previous ?? "Belum ada data",
+  ]);
+  csv += csvRow([
+    "Engagement Rate",
+    report.avgEngagementRate.current === null
+      ? "Belum ada data"
+      : formatEngagementRate(report.avgEngagementRate.current),
+    report.avgEngagementRate.previous === null
+      ? "Belum ada data"
+      : formatEngagementRate(report.avgEngagementRate.previous),
+  ]);
+  csv += csvRow([]);
+  csv += csvRow(["Perbandingan Akun/Platform"]);
+  csv += csvRow(["Akun", "Platform", "Reach", "Reach Sebelumnya"]);
+  for (const account of report.accounts) {
+    csv += csvRow([
+      account.accountHandle,
+      PLATFORM_ICON[account.platform]?.label ?? account.platform,
+      account.reach.current ?? "Belum ada data",
+      account.reach.previous ?? "Belum ada data",
+    ]);
+  }
+  return csv;
+}
+
+/**
+ * Ada apapun untuk di-export? (T-045.3) — dipakai untuk disable tombol
+ * "Export CSV" kalau `comparativeReport` tidak punya satu pun data berarti
+ * (`totalPosts` keduanya 0, metric lain `null`, `accounts` kosong).
+ */
+function hasComparativeData(report: ComparativeReport): boolean {
+  return (
+    report.totalPosts.current > 0 ||
+    report.totalPosts.previous > 0 ||
+    report.totalReach.current !== null ||
+    report.totalReach.previous !== null ||
+    report.avgEngagementRate.current !== null ||
+    report.avgEngagementRate.previous !== null ||
+    report.accounts.length > 0
+  );
+}
+
 export function AnalyzeDashboard({
   initialPeriod,
   initialRows,
   initialAccountOverviewRows,
   initialSummary,
   initialEngagementSummary,
+  initialComparativeReport,
 }: {
   initialPeriod: SnapshotPeriod;
   initialRows: PostPerformanceRow[];
@@ -582,6 +1007,11 @@ export function AnalyzeDashboard({
   // signature optional dipertahankan biar longgar terhadap composition
   // root, bukan karena datanya bisa hilang.
   initialEngagementSummary?: EngagementSummary;
+  // T-045 (Prabowo Feature Engineer) — data-layer tab "Reports"
+  // (Comparative Reports). Optional dengan alasan SAMA PERSIS
+  // `initialSummary`/`initialEngagementSummary` di atas —
+  // `getComparativeReport` tidak pernah return `null`/`undefined`.
+  initialComparativeReport?: ComparativeReport;
 }) {
   const [period, setPeriod] = useState<SnapshotPeriod>(initialPeriod);
   const [rows, setRows] = useState<PostPerformanceRow[]>(initialRows);
@@ -594,6 +1024,9 @@ export function AnalyzeDashboard({
   const [engagementSummary, setEngagementSummary] = useState<
     EngagementSummary | undefined
   >(initialEngagementSummary);
+  const [comparativeReport, setComparativeReport] = useState<
+    ComparativeReport | undefined
+  >(initialComparativeReport);
   const [sort, setSort] = useState<SortState>({
     column: "reach",
     direction: "desc",
@@ -616,19 +1049,38 @@ export function AnalyzeDashboard({
         accountOverviewResult,
         summaryResult,
         engagementSummaryResult,
+        comparativeReportResult,
       ] = await Promise.all([
         getPostPerformanceAction(nextPeriod),
         getAccountOverviewAction(nextPeriod),
         getAnalyzeSummaryAction(nextPeriod),
         getEngagementSummaryAction(nextPeriod),
+        getComparativeReportAction(nextPeriod),
       ]);
       if (latestRequestedPeriod.current === nextPeriod) {
         setRows(postPerformanceResult);
         setAccountOverviewRows(accountOverviewResult);
         setSummary(summaryResult);
         setEngagementSummary(engagementSummaryResult);
+        setComparativeReport(comparativeReportResult);
       }
     });
+  }
+
+  function handleExportCsv() {
+    if (!comparativeReport) {
+      return;
+    }
+    const csv = buildComparativeReportCsv(comparativeReport);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `analyze-comparative-report-${period}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   function handleSort(column: SortColumn) {
@@ -690,61 +1142,107 @@ export function AnalyzeDashboard({
         </Select>
       </div>
 
-      {/* Summary row (T-047.2, `.summary-row` di analyze-dashboard.html,
-          dikunci "SYNCED" T-043 design prep — grid 3 kolom, Total Posts →
-          Total Reach → Engagement Rate, DI ATAS `.dash-cols`). Pola SAMA
-          `StatTile` grid di `DashboardHome.tsx` (T-042.3) — diekstrak jadi
-          `../../components/stat-tile` supaya tidak duplikasi. `totalPosts`
-          selalu angka (termasuk "0"); `totalReach`/`avgEngagementRate`
-          masing-masing independen render "Belum ada data" saat `null`
-          (T-047.3, pola sama T-043.4) — BUKAN empty state per-section,
-          3 card tetap selalu tampil. */}
-      {summary ? (
-        // eslint-disable-next-line no-restricted-syntax -- layout-only
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatTile
-            label="Total Posts"
-            value={summary.totalPosts.toLocaleString("id-ID")}
-          />
-          <StatTile
-            label="Total Reach"
-            value={
-              summary.totalReach === null
-                ? "Belum ada data"
-                : summary.totalReach.toLocaleString("id-ID")
-            }
-          />
-          <StatTile
-            label="Engagement Rate"
-            value={
-              summary.avgEngagementRate === null
-                ? "Belum ada data"
-                : formatEngagementRate(summary.avgEngagementRate)
-            }
-          />
-        </div>
-      ) : null}
+      {/* Tab "Overview"/"Reports" (T-045, Comparative Reports) — `Tabs`+
+          `TabsList` (`variant="line"`, sama `PublishTabbar.tsx`)+
+          `TabsTrigger`+`TabsContent` shadcn asli, pola dikunci design-prep
+          T-045 (lihat catatan kepala file). Posisi tepat di bawah header,
+          di atas summary row — ikuti urutan `templates/analyze-dashboard.html`.
+          `defaultValue="overview"`, uncontrolled — switch murni client-side,
+          TIDAK re-fetch (data kedua tab sudah di-fetch sekaligus lewat
+          `Promise.all` di `handlePeriodChange`). */}
+      <Tabs defaultValue="overview">
+        <TabsList variant="line">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
+        </TabsList>
 
-      {/* `.dash-cols` (analyze-dashboard.html): kartu kiri (1.6fr) berisi
-          Account Overview + Post Performance bersama, kartu kanan (1fr)
-          "Engagement Summary" (T-044) — lihat catatan REFLOW di kepala
-          file. `mainCard` diekstrak ke variabel supaya tidak duplikasi JSX
-          antara layout grid 2 kolom (engagementSummary ada) dan fallback
-          1 kolom (engagementSummary undefined, kasus jarang — lihat
-          catatan `initialEngagementSummary`). */}
-      {engagementSummary ? (
-        // eslint-disable-next-line no-restricted-syntax, tailwindcss/no-arbitrary-value -- layout-only; proporsi grid `1.6fr 1fr` dikunci `.dash-cols` di analyze-dashboard.html, tidak ada utility Tailwind native untuk rasio fr custom ini.
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
-          {mainCard}
-          <Card>
-            <CardContent className="flex flex-col gap-6">
-              <EngagementSummaryContent summary={engagementSummary} />
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        mainCard
-      )}
+        <TabsContent value="overview" className="flex flex-col gap-6">
+          {/* Summary row (T-047.2, `.summary-row` di analyze-dashboard.html,
+              dikunci "SYNCED" T-043 design prep — grid 3 kolom, Total Posts →
+              Total Reach → Engagement Rate, DI ATAS `.dash-cols`). Pola SAMA
+              `StatTile` grid di `DashboardHome.tsx` (T-042.3) — diekstrak jadi
+              `../../components/stat-tile` supaya tidak duplikasi. `totalPosts`
+              selalu angka (termasuk "0"); `totalReach`/`avgEngagementRate`
+              masing-masing independen render "Belum ada data" saat `null`
+              (T-047.3, pola sama T-043.4) — BUKAN empty state per-section,
+              3 card tetap selalu tampil. */}
+          {summary ? (
+            // eslint-disable-next-line no-restricted-syntax -- layout-only
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <StatTile
+                label="Total Posts"
+                value={summary.totalPosts.toLocaleString("id-ID")}
+              />
+              <StatTile
+                label="Total Reach"
+                value={
+                  summary.totalReach === null
+                    ? "Belum ada data"
+                    : summary.totalReach.toLocaleString("id-ID")
+                }
+              />
+              <StatTile
+                label="Engagement Rate"
+                value={
+                  summary.avgEngagementRate === null
+                    ? "Belum ada data"
+                    : formatEngagementRate(summary.avgEngagementRate)
+                }
+              />
+            </div>
+          ) : null}
+
+          {/* `.dash-cols` (analyze-dashboard.html): kartu kiri (1.6fr) berisi
+              Account Overview + Post Performance bersama, kartu kanan (1fr)
+              "Engagement Summary" (T-044) — lihat catatan REFLOW di kepala
+              file. `mainCard` diekstrak ke variabel supaya tidak duplikasi JSX
+              antara layout grid 2 kolom (engagementSummary ada) dan fallback
+              1 kolom (engagementSummary undefined, kasus jarang — lihat
+              catatan `initialEngagementSummary`). */}
+          {engagementSummary ? (
+            // eslint-disable-next-line no-restricted-syntax, tailwindcss/no-arbitrary-value -- layout-only; proporsi grid `1.6fr 1fr` dikunci `.dash-cols` di analyze-dashboard.html, tidak ada utility Tailwind native untuk rasio fr custom ini.
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
+              {mainCard}
+              <Card>
+                <CardContent className="flex flex-col gap-6">
+                  <EngagementSummaryContent summary={engagementSummary} />
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            mainCard
+          )}
+        </TabsContent>
+
+        <TabsContent value="reports" className="flex flex-col gap-6">
+          {/* Caption + tombol "Export CSV" (T-045.3) — pola layout mockup
+              `#tab-panel-reports`: caption kiri, tombol kanan, di atas kedua
+              kartu. Label "vs periode sebelumnya" (BUKAN "bulan lalu" seperti
+              teks mockup, lihat catatan kepala file soal rolling window). */}
+          {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
+          <div className="flex items-center justify-between gap-4">
+            <Text variant="muted">Dibandingkan dengan periode sebelumnya</Text>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={
+                !comparativeReport || !hasComparativeData(comparativeReport)
+              }
+            >
+              Export CSV
+            </Button>
+          </div>
+
+          {comparativeReport ? (
+            <>
+              <ComparativePeriodContent report={comparativeReport} />
+              <AccountComparisonContent rows={comparativeReport.accounts} />
+            </>
+          ) : null}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

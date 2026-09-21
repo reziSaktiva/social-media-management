@@ -1190,6 +1190,78 @@ describe("PublishingService.getPostPerformance", () => {
       },
     ]);
   });
+
+  // T-045.1 — `asOf` dipakai `getComparativeReport` untuk menghitung rentang
+  // "periode sebelumnya". Test langsung ke method yang di-extend (bukan
+  // cuma lewat `getComparativeReport`), memverifikasi rentang yang dihasilkan
+  // benar: `asOf` jadi titik akhir rentang (bukan `now` real), sehingga post
+  // yang jatuh dalam window "weekly" relatif ke `asOf` disertakan, post yang
+  // di luar window itu (baik lebih tua maupun lebih baru, termasuk post yang
+  // justru masuk window "weekly" relatif ke `now` sungguhan) dikecualikan.
+  it("uses asOf as the end of the range instead of the real now, when supplied", async () => {
+    const NOW = Date.now();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const asOf = new Date(NOW - 10 * DAY_MS);
+
+    const postWithinAsOfWindow = asPostId("post-within-asof-window");
+    const postOutsideAsOfWindow = asPostId("post-outside-asof-window");
+    const postWithinRealNowButNotAsOf = asPostId(
+      "post-within-real-now-not-asof",
+    );
+    const conn1 = asConnectedAccountId("conn-asof");
+
+    function target(id: string) {
+      return {
+        id: asPostTargetId(id),
+        connectedAccountId: conn1,
+        platform: SocialPlatform.Instagram,
+        contentFormat: ContentFormat.Post,
+        accountHandle: "@akun-asof",
+        status: "published" as const,
+        platformPostUrl: null,
+        error: null,
+      };
+    }
+
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async () => [
+          // 12 hari sebelum `now` sungguhan = 2 hari sebelum `asOf` — di
+          // dalam window "weekly" relatif ke `asOf` ([asOf-7d, asOf]).
+          createHistoryItem({
+            id: postWithinAsOfWindow,
+            publishedAt: new Date(NOW - 12 * DAY_MS),
+            targets: [target("target-within-asof")],
+          }),
+          // 20 hari sebelum `now` sungguhan — di luar window "weekly"
+          // relatif ke `asOf` mana pun (lebih tua dari `asOf - 7 hari`).
+          createHistoryItem({
+            id: postOutsideAsOfWindow,
+            publishedAt: new Date(NOW - 20 * DAY_MS),
+            targets: [target("target-outside-asof")],
+          }),
+          // 3 hari sebelum `now` sungguhan — DI DALAM window "weekly"
+          // relatif ke `now` real, TAPI setelah `asOf` (NOW - 10d), jadi
+          // HARUS dikecualikan ketika `asOf` dipakai sebagai titik akhir.
+          createHistoryItem({
+            id: postWithinRealNowButNotAsOf,
+            publishedAt: new Date(NOW - 3 * DAY_MS),
+            targets: [target("target-within-real-now")],
+          }),
+        ],
+      }),
+      { getPostMetricsByPosts: async () => new Map() },
+    );
+
+    const result = await service.getPostPerformance(
+      WORKSPACE_ID,
+      "weekly",
+      AUTHOR_ID,
+      asOf,
+    );
+
+    expect(result.map((row) => row.postId)).toEqual([postWithinAsOfWindow]);
+  });
 });
 
 // T-046.1 — Account Overview `/analyze`. Reuse `getPostPerformance` di atas
@@ -1927,6 +1999,248 @@ describe("PublishingService.getEngagementSummary", () => {
     expect(result).toEqual({
       totalComments: 2 + 5 + 1,
       totalLikes: 10 + 20 + 8,
+    });
+  });
+});
+
+// T-045.1/T-045.2 — tab "Reports" `/analyze` Comparative Reports. Reuse
+// `getPostPerformance` di atas (period range + join metrik sudah teruji
+// sendiri) dua kali (current + previous, lewat `asOf`) — test di sini
+// fokus ke agregasi current vs previous, null-safety independen per sisi,
+// dan kriteria "belum ada data" untuk akun tanpa post di kedua periode.
+describe("PublishingService.getComparativeReport", () => {
+  const NOW = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  // Rentang "weekly": current = [NOW-7d, NOW], previous = [NOW-14d, NOW-7d]
+  // (persis bersebelahan, tanpa gap/overlap — lihat catatan `ComparativeReport`).
+  const WITHIN_CURRENT = new Date(NOW - 3 * DAY_MS);
+  const WITHIN_PREVIOUS = new Date(NOW - 10 * DAY_MS);
+  const OUTSIDE_BOTH = new Date(NOW - 20 * DAY_MS);
+
+  it("throws when no ConnectedAccountsPort is supplied", async () => {
+    const service = new PublishingService(
+      createFakeRepository({ listHistory: async () => [] }),
+      { getPostMetricsByPosts: async () => new Map() },
+    );
+
+    await expect(
+      service.getComparativeReport(WORKSPACE_ID, "weekly", AUTHOR_ID),
+    ).rejects.toThrow(/ConnectedAccountsPort/);
+  });
+
+  it("aggregates totalPosts/totalReach/avgEngagementRate and per-account reach independently for current vs previous, sorted by reach.current descending with null-current accounts last", async () => {
+    const connA = asConnectedAccountId("conn-a-cmp");
+    const connB = asConnectedAccountId("conn-b-cmp");
+    const connC = asConnectedAccountId("conn-c-cmp");
+    const postCurrentA = asPostId("post-current-a");
+    const postPreviousA = asPostId("post-previous-a");
+    const postPreviousB = asPostId("post-previous-b");
+    const postOld = asPostId("post-old-cmp");
+
+    function metric(
+      overrides: Partial<PostMetricsRecord> & {
+        postId: PostId;
+        connectedAccountId: ReturnType<typeof asConnectedAccountId>;
+      },
+    ): PostMetricsRecord {
+      return {
+        id: asPostMetricsId(
+          `metric-${overrides.postId}-${overrides.connectedAccountId}`,
+        ),
+        platform: SocialPlatform.Instagram,
+        impressions: 500,
+        reach: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        clicks: null,
+        engagementRate: 0,
+        fetchedAt: new Date(0),
+        ...overrides,
+      };
+    }
+
+    function target(
+      id: string,
+      connectedAccountId: ReturnType<typeof asConnectedAccountId>,
+    ) {
+      return {
+        id: asPostTargetId(id),
+        connectedAccountId,
+        platform: SocialPlatform.Instagram,
+        contentFormat: ContentFormat.Post,
+        accountHandle: "@akun-cmp",
+        status: "published" as const,
+        platformPostUrl: null,
+        error: null,
+      };
+    }
+
+    const metricCurrentA = metric({
+      postId: postCurrentA,
+      connectedAccountId: connA,
+      reach: 100,
+      engagementRate: 0.1,
+    });
+    const metricPreviousA = metric({
+      postId: postPreviousA,
+      connectedAccountId: connA,
+      reach: 50,
+      engagementRate: 0.05,
+    });
+    const metricPreviousB = metric({
+      postId: postPreviousB,
+      connectedAccountId: connB,
+      reach: 30,
+      engagementRate: 0.03,
+    });
+    const metricOld = metric({
+      postId: postOld,
+      connectedAccountId: connA,
+      reach: 999,
+      engagementRate: 0.9,
+    });
+
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async () => [
+          createHistoryItem({
+            id: postCurrentA,
+            publishedAt: WITHIN_CURRENT,
+            targets: [target("target-current-a", connA)],
+          }),
+          createHistoryItem({
+            id: postPreviousA,
+            publishedAt: WITHIN_PREVIOUS,
+            targets: [target("target-previous-a", connA)],
+          }),
+          createHistoryItem({
+            id: postPreviousB,
+            publishedAt: WITHIN_PREVIOUS,
+            targets: [target("target-previous-b", connB)],
+          }),
+          // Di luar KEDUA rentang (lebih tua dari previous) — sanity check
+          // tidak ikut terhitung di current maupun previous.
+          createHistoryItem({
+            id: postOld,
+            publishedAt: OUTSIDE_BOTH,
+            targets: [target("target-old", connA)],
+          }),
+        ],
+      }),
+      {
+        getPostMetricsByPosts: async () =>
+          new Map([
+            [postCurrentA, [metricCurrentA]],
+            [postPreviousA, [metricPreviousA]],
+            [postPreviousB, [metricPreviousB]],
+            [postOld, [metricOld]],
+          ]),
+      },
+      {
+        listConnectedAccounts: async () => [
+          { id: connA, platform: SocialPlatform.Instagram, handle: "@akun-a" },
+          { id: connB, platform: SocialPlatform.TikTok, handle: "@akun-b" },
+          // connC tidak pernah punya post di period manapun — kriteria
+          // "belum ada data" T-045.2, tetap wajib muncul.
+          { id: connC, platform: SocialPlatform.Facebook, handle: "@akun-c" },
+        ],
+      },
+    );
+
+    const result = await service.getComparativeReport(
+      WORKSPACE_ID,
+      "weekly",
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual({
+      totalPosts: { current: 1, previous: 2 },
+      totalReach: { current: 100, previous: 80 },
+      avgEngagementRate: { current: 0.1, previous: (0.05 + 0.03) / 2 },
+      accounts: [
+        {
+          connectedAccountId: connA,
+          platform: SocialPlatform.Instagram,
+          accountHandle: "@akun-a",
+          reach: { current: 100, previous: 50 },
+        },
+        {
+          connectedAccountId: connB,
+          platform: SocialPlatform.TikTok,
+          accountHandle: "@akun-b",
+          reach: { current: null, previous: 30 },
+        },
+        {
+          connectedAccountId: connC,
+          platform: SocialPlatform.Facebook,
+          accountHandle: "@akun-c",
+          reach: { current: null, previous: null },
+        },
+      ],
+    });
+  });
+
+  it("returns totalReach/avgEngagementRate null independently for current and previous when nothing is ingested/no post falls in range", async () => {
+    const connA = asConnectedAccountId("conn-null-cmp");
+    const postCurrent = asPostId("post-null-current");
+
+    const service = new PublishingService(
+      createFakeRepository({
+        listHistory: async () => [
+          // Post ada di current, tapi BELUM ter-ingest AnalyticsPostMetric
+          // sama sekali — totalReach/avgEngagementRate current harus null,
+          // TAPI totalPosts current tetap terhitung (baris tetap disertakan,
+          // T-043.4 pattern).
+          createHistoryItem({
+            id: postCurrent,
+            publishedAt: WITHIN_CURRENT,
+            targets: [
+              {
+                id: asPostTargetId("target-null-current"),
+                connectedAccountId: connA,
+                platform: SocialPlatform.Instagram,
+                contentFormat: ContentFormat.Post,
+                accountHandle: "@akun-null",
+                status: "published",
+                platformPostUrl: null,
+                error: null,
+              },
+            ],
+          }),
+          // Tidak ada post sama sekali di previous.
+        ],
+      }),
+      { getPostMetricsByPosts: async () => new Map() },
+      {
+        listConnectedAccounts: async () => [
+          {
+            id: connA,
+            platform: SocialPlatform.Instagram,
+            handle: "@akun-null",
+          },
+        ],
+      },
+    );
+
+    const result = await service.getComparativeReport(
+      WORKSPACE_ID,
+      "weekly",
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual({
+      totalPosts: { current: 1, previous: 0 },
+      totalReach: { current: null, previous: null },
+      avgEngagementRate: { current: null, previous: null },
+      accounts: [
+        {
+          connectedAccountId: connA,
+          platform: SocialPlatform.Instagram,
+          accountHandle: "@akun-null",
+          reach: { current: null, previous: null },
+        },
+      ],
     });
   });
 });

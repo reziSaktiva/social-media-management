@@ -54,15 +54,46 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 16 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 18 ✅ · 1 🟡 · 4 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
-| **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-047 | 8    | 🟡 7 ✅ · 1 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
+| **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-047 | 8    | 8 ✅                | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 89 task · 48 selesai · 221 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 89 task · 49 selesai · 221 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-21, T-045 SELESAI 3/3 subtask — v0.3 Analytics MVP
+> TUNTAS 8/8 task):** **T-045** (Comparative Reports, Should Have,
+> `tasks/v03-analytics-mvp.md`) naik status `⏳ Not Started` → `✅ Done` —
+> seluruh 3/3 subtask tuntas. Rancangan belum ada di Claude Design saat
+> diminta King Rezi — dibuat langsung oleh main agent (bukan Neymar Product
+> Designer, permintaan eksplisit King Rezi) setelah 2 fork keputusan dijawab
+> via `AskUserQuestion`: IA tab baru "Reports" di halaman Analyze yang sama
+> (bukan route/section terpisah), dan pola `Tabs` shadcn asli (bukan
+> `.seg`/ToggleGroup) untuk switch panel. Implementasi: method baru
+> `PublishingService.getComparativeReport(workspaceId, period, userId)` +
+> tipe `ComparativeMetric`/`AccountComparisonRow`/`ComparativeReport`, reuse
+> `getPostPerformance` (di-extend parameter opsional `asOf?: Date`,
+> backward compatible) dipanggil dua kali untuk "periode sekarang" vs
+> "periode sebelumnya" — **rolling window sama panjang persis bersebelahan,
+> BUKAN calendar-aligned** (konsisten cara `period` current sendiri sudah
+> dihitung). UI: tab "Overview"/"Reports" di `/analyze`, kartu "Perbandingan
+> Periode" + "Perbandingan Akun/Platform" dengan badge delta (`Badge`
+> `variant="success"`/`"destructive"`, KI-051 resolved), tombol "Export CSV"
+> client-side murni (tanpa Server Action/dependency baru). Rangkaian:
+> Prabowo Feature Engineer → Mark UI Engineer → Ridwan Architecture
+> Reviewer (0 temuan arsitektur, 1 catatan minor edge-case `now` dipanggil
+> dua kali independen — diperbaiki langsung main agent) → Najwa QA Engineer
+> (PASS penuh, 1 temuan gate T-103.3 — caption per-metrik "vs X" hilang di
+> implementasi awal — diperbaiki langsung main agent). Verifikasi akhir:
+> `typecheck`/`lint` bersih, `vitest` **426 pass/5 skip** (naik dari 422,
+> +4 test case baru). Breakdown v0.3 berubah dari "🟡 7 ✅ · 1 ⏳" menjadi
+> **8 ✅ (TUNTAS)** — release v0.3 Analytics MVP selesai. Total task selesai
+> naik 48 → **49**. Jumlah subtask total tidak berubah (221 — T-045 sudah
+> terdefinisi 3 subtask sebelumnya, hanya status checklist yang berubah).
+> Detail: `tasks/v03-analytics-mvp.md` § T-045.
+>
 > **Update (2026-09-21, T-044 SELESAI 3/3 subtask — scope dipersempit via
 > `AskUserQuestion`):** **T-044** (Engagement summary, `tasks/v03-analytics-mvp.md`)
 > naik status `🟡 In Progress` → `✅ Done` — seluruh 3/3 subtask tuntas, tapi
