@@ -152,17 +152,31 @@ Ringkasan performa per akun/platform di `/analyze` — jumlah post + total reach
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
-| **Domain**    | analytics                                                    |
-| **ADR**       | ADR-018 (cross-domain lewat public API)                      |
-| **Depends**   | T-041 · idealnya setelah v0.4 (data komentar nyata)          |
+| **Status**    | ✅ Done (2026-09-21)                                          |
+| **Domain**    | publishing · UI (drift dari `analytics` semula — lihat catatan Update di bawah) |
+| **ADR**       | — (ADR-018 di task doc asli tidak dipakai — lihat catatan Update di bawah) |
+| **Depends**   | T-041 (tidak lagi terikat v0.4 — lihat catatan Update di bawah) |
 | **Baca dulu** | `05-architecture/application-layer.md`                        |
 
-Ringkasan engagement adalah **Must Have** MVP. Ambil data lintas domain lewat public API domain `engagement` — **bukan** query tabel engagement langsung dari analytics.
+Ringkasan engagement adalah **Must Have** MVP. ~~Ambil data lintas domain lewat public API domain `engagement` — **bukan** query tabel engagement langsung dari analytics.~~ **Deskripsi asli di atas TIDAK lagi berlaku sejak scope-narrowing 2026-09-21 — lihat catatan Update di bawah untuk apa yang benar-benar dibangun.**
 
-- [ ] **T-044.1** Sepakati kontrak: analytics memanggil `engagement` public API, atau engagement mengirim agregat ke analytics
-- [ ] **T-044.2** Implementasi agregasi (komentar masuk, komentar dibalas, rasio respons)
-- [ ] **T-044.3** Tampilkan di Dashboard (T-042)
+- [x] **T-044.1** ~~Sepakati kontrak: analytics memanggil `engagement` public API, atau engagement mengirim agregat ke analytics~~ → **Update 2026-09-21:** kontrak yang benar-benar dipakai adalah `PublishingService.getEngagementSummary(workspaceId, period, userId)`, reuse `getPostPerformance` (T-043) yang sudah ada — **bukan** panggilan ke public API domain `engagement` manapun (domain itu masih stub kosong, baru dibangun v0.4).
+- [x] **T-044.2** ~~Implementasi agregasi (komentar masuk, komentar dibalas, rasio respons)~~ → **Update 2026-09-21:** agregasi yang diimplementasikan adalah `totalComments`/`totalLikes` (dijumlahkan null-safe dari field `comments`/`likes` di `AnalyticsPostMetric`, sudah ada sejak T-041) — bukan komentar masuk/dibalas/rasio respons.
+- [x] **T-044.3** Tampilkan di Dashboard (T-042) → **Update 2026-09-21:** ditampilkan sebagai card "Engagement Summary" di `/analyze` (bukan Dashboard Home T-042) — kolom kanan grid `.dash-cols` (`lg:grid-cols-[1.6fr_1fr]`) yang sebelumnya sengaja dirender full-width menunggu T-044 (lihat T-046).
+
+**Update 2026-09-21 — Scope dipersempit via `AskUserQuestion`, implementasi selesai:** dicek dulu ke Claude Design (rule 17 AGENTS.md) sebelum implementasi — `templates/analyze-dashboard.html` section "Engagement Summary" **TIDAK** ditandai "SYNCED" (masih sketsa awal, bukan locked pattern), tapi markup-nya hanya mengunci **2 angka sederhana**: "Komentar" dan "Likes" — jauh lebih sempit dari deskripsi task doc asli di atas (komentar masuk/dibalas/rasio respons via domain `engagement`, field **Domain: analytics**, **ADR: ADR-018**). King Rezi ditanya via `AskUserQuestion` dan memilih ikuti Claude Design apa adanya, bukan versi kompleks task doc asli.
+
+**Konsekuensi keputusan (dicatat eksplisit karena field task ini drift dari deskripsi asli):**
+- **Domain berubah dari `analytics` ke `publishing`**: method baru `PublishingService.getEngagementSummary(workspaceId, period, userId)` di `apps/web/src/domains/publishing/services/publishing.service.ts` (bukan `AnalyticsService`) — pola identik `getAnalyzeSummary` (T-047)/`getAccountOverview` (T-046): reuse `getPostPerformance` untuk menghindari circular dependency `analytics↔publishing` (pola sama solusi refactor T-043 putaran 1). **Tidak ada query Prisma baru.**
+- **ADR-018 (cross-domain lewat public API `engagement`) TIDAK dipakai** — **tidak ada** cross-domain edge baru ke domain `engagement` sama sekali (dikonfirmasi Ridwan: 0 kemunculan import `domains/engagement` di file yang berubah). Domain `engagement` tetap stub kosong, baru dibangun v0.4.
+- **Tidak lagi terikat v0.4**: karena tidak butuh domain `engagement`, T-044 tidak perlu menunggu comment sync nyata (v0.4, Engagement MVP) — bisa selesai sekarang.
+- Tipe baru `EngagementSummary { totalComments: number | null; totalLikes: number | null }`, data dari field `likes`/`comments` yang sudah ada di `AnalyticsPostMetric` (Prisma) sejak T-041.
+- Server Action baru `getEngagementSummaryAction` di `apps/web/src/app/(app)/analyze/analyze-actions.ts` — composition root sama persis `getAnalyzeSummaryAction`.
+- UI (Mark UI Engineer): card baru "Engagement Summary" di kolom kanan grid `.dash-cols` (`lg:grid-cols-[1.6fr_1fr]`, akhirnya diaktifkan — sebelumnya sengaja full-width menunggu T-044, lihat komentar REFLOW di kepala `AnalyzeDashboard.tsx`). 2 baris (Komentar, Likes) via `EngagementSummaryRow`, pola row sama `AccountOverviewRowItem` (`flex justify-between`, border-bottom). Null-safety sama persis pola T-043.4/T-046.3/T-047.3: masing-masing field independen render "Belum ada data" saat `null` (bukan 0); card tetap tampil (2 baris "Belum ada data") kalau kedua field `null`.
+
+**Rangkaian kerja:** Prabowo Feature Engineer (`getEngagementSummary` + `EngagementSummary` + Server Action, 4 unit test baru di `publishing.service.test.ts`) → Mark UI Engineer (UI card + reflow grid `.dash-cols`) → Ridwan Architecture Reviewer (0 temuan — 0 import `domains/engagement`, tidak ada query Prisma baru, tidak ada circular dependency baru, null-safety konsisten pola T-043.4/T-046/T-047) → Najwa QA Engineer (PASS penuh — golden path, empty state "Belum ada data", ganti period 4 action paralel tanpa race condition, regresi Account Overview/Post Performance PASS, responsive mobile 375px PASS, dark/light mode PASS; gate T-103.3 PASS, dicek 2x independen karena `DesignSync` tidak termuat di sesi Najwa).
+
+**Verifikasi akhir:** `bun run typecheck` bersih, `bun run lint` bersih, `bun run test` **422 pass/5 skip** (naik dari 415/5, +7 test case baru). **1 catatan non-blocking dari Najwa** (bukan bug): setelah grid 2 kolom diaktifkan, tabel Post Performance di kartu kiri (sekarang `1.6fr`, sebelumnya full-width) butuh scroll horizontal di lebar browser standar untuk melihat kolom Reach/Eng. Rate — `Table` shadcn sudah handle via `overflow-x-auto` bawaan, bukan defect, tapi dicatat sebagai efek samping visual dari lock proporsi grid `.dash-cols` di desain. Detail lengkap: `COMPLETE_TASK.md`.
 
 ---
 

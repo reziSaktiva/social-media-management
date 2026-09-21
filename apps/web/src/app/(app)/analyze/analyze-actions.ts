@@ -8,6 +8,7 @@ import { AnalyticsService } from "@/domains/analytics";
 import type {
   AccountOverviewRow,
   AnalyzeSummary,
+  EngagementSummary,
   PostPerformanceRow,
 } from "@/domains/publishing";
 import { PublishingService } from "@/domains/publishing";
@@ -123,6 +124,44 @@ export async function getAnalyzeSummaryAction(
   );
 
   return publishingService.getAnalyzeSummary(
+    workspaceId,
+    period,
+    asUserId(session.user.id),
+  );
+}
+
+/**
+ * Server Action untuk halaman `/analyze` — card "Engagement Summary"
+ * (T-044). Dikonsumsi UI (Mark UI Engineer) dengan pola pemanggilan ulang
+ * saat selector period diganti, sama dengan action lain di file ini.
+ *
+ * Scope T-044 dipersempit lewat `AskUserQuestion` ke King Rezi (lihat
+ * catatan lengkap di `PublishingService`/`EngagementSummary`) — cuma
+ * `totalComments`/`totalLikes` mengikuti markup locked Claude Design,
+ * BUKAN versi kompleks (komentar masuk/dibalas/rasio respons dari domain
+ * `engagement`) di task doc asli.
+ *
+ * Composition root SAMA PERSIS `getAnalyzeSummaryAction` di atas — tidak
+ * ada `WorkspaceService`/`ConnectedAccountsPort`, `AnalyticsService` tetap
+ * disuplai sebagai `PostMetricsPort` (`publishing -> analytics`) karena
+ * `getEngagementSummary` reuse `getPostPerformance`. Orkestrasi tipis saja:
+ * resolve workspace context, wire service, delegasikan.
+ */
+export async function getEngagementSummaryAction(
+  period: SnapshotPeriod,
+): Promise<EngagementSummary> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const publishingService = new PublishingService(
+    publishingRepository,
+    new AnalyticsService(analyticsRepository),
+  );
+
+  return publishingService.getEngagementSummary(
     workspaceId,
     period,
     asUserId(session.user.id),

@@ -130,6 +130,17 @@ export interface PostPerformanceRow {
   reach: number | null;
   /** `null` = belum ada `AnalyticsPostMetric` untuk post+akun ini (T-043.4). */
   engagementRate: number | null;
+  /**
+   * `likes`/`comments` (T-044) — ditambahkan untuk kebutuhan agregasi
+   * `EngagementSummary` (lihat catatan di sana), BUKAN untuk ditampilkan di
+   * tabel Post Performance itu sendiri (4 kolom tetap dikunci design-prep
+   * T-043: Post/Akun/Reach/Eng. Rate, tidak berubah). Null-safety SAMA
+   * PERSIS pola `reach`/`engagementRate` di atas: `null` = belum ada
+   * `AnalyticsPostMetric` untuk post+akun ini, BUKAN 0.
+   */
+  likes: number | null;
+  /** Lihat catatan `likes` di atas — null-safety sama persis. */
+  comments: number | null;
 }
 
 /**
@@ -198,6 +209,45 @@ export interface AnalyzeSummary {
   totalReach: number | null;
   /** `null` kalau tidak ada satupun row dengan engagementRate ter-ingest — bukan 0. */
   avgEngagementRate: number | null;
+}
+
+/**
+ * Card "Engagement Summary" `/analyze` (T-044, KSP-07 — Analyze →
+ * Dashboard). Scope dipersempit lewat `AskUserQuestion` ke King Rezi
+ * (2026-09-21) SETELAH dicek ke Claude Design (`templates/analyze-dashboard.html`)
+ * — markup locked section "Engagement Summary" cuma berisi DUA angka
+ * sederhana (`Komentar`, `Likes`), BUKAN versi kompleks yang diminta task
+ * doc asli (`v03-analytics-mvp.md` § T-044.1-T-044.3: "komentar masuk,
+ * komentar dibalas, rasio respons" dari domain `engagement` lewat public
+ * API cross-domain). King Rezi memilih ikut Claude Design apa adanya.
+ *
+ * Konsekuensi keputusan ini:
+ * - TIDAK ADA cross-domain edge baru ke `engagement` — domain itu masih
+ *   stub kosong total (baru dibangun v0.4), jadi kalau tetap mengikuti
+ *   T-044.1-T-044.3 apa adanya, task ini akan mandek menunggu v0.4.
+ *   `likes`/`comments` yang dibutuhkan Claude Design SUDAH ADA sebagai
+ *   field `AnalyticsPostMetric` (Prisma) sejak T-041 — tidak ada data baru
+ *   yang perlu diambil dari mana pun.
+ * - Method ini hidup di `PublishingService` (bukan `AnalyticsService`),
+ *   reuse `getPostPerformance` LANGSUNG — pola identik `getAnalyzeSummary`
+ *   di atas (SAMA ALASAN: butuh `publishedAt`/`targets` post milik
+ *   `publishing` + metrik milik `analytics` lewat `PostMetricsPort` yang
+ *   sudah ada; port baru arah `analytics -> publishing` akan menciptakan
+ *   circular dependency, temuan kritis Ridwan Architecture Reviewer di
+ *   T-043). TIDAK ADA query Prisma baru.
+ * - ADR task doc asli (ADR-018, cross-domain lewat public API `engagement`)
+ *   TIDAK dipakai untuk implementasi ini — dicatat di sini supaya jelas
+ *   kenapa TIDAK ada import dari domain `engagement` di file ini, meski
+ *   task doc menyebutnya. Perubahan scope ini bukan perubahan baseline
+ *   (tidak mengubah arsitektur/keputusan tercatat), murni mempersempit apa
+ *   yang diimplementasikan supaya cocok dengan desain yang sudah dikunci —
+ *   dilaporkan ke Gibran Project Manager untuk dicatat di akhir sesi.
+ */
+export interface EngagementSummary {
+  /** `null` kalau tidak ada satupun row dengan comments ter-ingest (T-043.4 pattern) — bukan 0. */
+  totalComments: number | null;
+  /** `null` kalau tidak ada satupun row dengan likes ter-ingest — bukan 0. */
+  totalLikes: number | null;
 }
 
 /**
@@ -691,6 +741,8 @@ export class PublishingService {
           accountHandle: target.accountHandle,
           reach: metric?.reach ?? null,
           engagementRate: metric?.engagementRate ?? null,
+          likes: metric?.likes ?? null,
+          comments: metric?.comments ?? null,
         });
       }
     }
@@ -826,6 +878,46 @@ export class PublishingService {
         engagementRateSum === null
           ? null
           : engagementRateSum / engagementRateCount,
+    };
+  }
+
+  /**
+   * Card "Engagement Summary" `/analyze` (T-044) — lihat catatan keputusan
+   * scope lengkap di `EngagementSummary`. Reuse `getPostPerformance` di
+   * atas (SAMA POLA `getAnalyzeSummary`) — TIDAK ada query Prisma baru,
+   * TIDAK butuh port baru (`PostMetricsPort` yang sudah disuplai constructor
+   * sudah cukup, sama seperti `getAnalyzeSummary` — tidak butuh
+   * `ConnectedAccountsPort`).
+   *
+   * Akumulasi null-safe: `totalLikes`/`totalComments` adalah jumlah dari
+   * baris yang sudah ter-ingest `likes`/`comments` saja (pola sama
+   * `reachSum` di `getAnalyzeSummary`) — `null` kalau tidak ada satupun
+   * baris berisi nilainya, bukan 0.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user untuk `withCurrentUser`.
+   */
+  async getEngagementSummary(
+    workspaceId: WorkspaceId,
+    period: SnapshotPeriod,
+    userId: UserId,
+  ): Promise<EngagementSummary> {
+    const rows = await this.getPostPerformance(workspaceId, period, userId);
+
+    let likesSum: number | null = null;
+    let commentsSum: number | null = null;
+
+    for (const row of rows) {
+      if (row.likes !== null) {
+        likesSum = (likesSum ?? 0) + row.likes;
+      }
+      if (row.comments !== null) {
+        commentsSum = (commentsSum ?? 0) + row.comments;
+      }
+    }
+
+    return {
+      totalLikes: likesSum,
+      totalComments: commentsSum,
     };
   }
 

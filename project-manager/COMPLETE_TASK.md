@@ -8,6 +8,123 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-21 — T-044 Engagement summary (/analyze) — scope dipersempit via `AskUserQuestion`, ✅ Done (3/3 subtask)
+
+T-044 (Engagement summary, `tasks/v03-analytics-mvp.md`, rilis v0.3) naik
+status `🟡 In Progress` → `✅ Done` — seluruh 3/3 subtask tuntas, tapi
+**scope yang diimplementasikan jauh lebih sempit** dari deskripsi task doc
+asli (field **Domain: analytics**, **ADR: ADR-018**, "komentar masuk,
+komentar dibalas, rasio respons" via public API domain `engagement`).
+
+### Scope-narrowing (`AskUserQuestion`)
+
+Sesuai rule 17 AGENTS.md, dicek dulu ke Claude Design sebelum implementasi
+— `templates/analyze-dashboard.html` section "Engagement Summary" **TIDAK**
+ditandai "SYNCED" (masih sketsa awal, bukan locked pattern), tapi
+markup-nya cuma mengunci **2 angka sederhana**: "Komentar" dan "Likes".
+King Rezi ditanya via `AskUserQuestion` dan memilih ikut Claude Design apa
+adanya, bukan versi kompleks task doc asli.
+
+### Implementasi (Prabowo Feature Engineer)
+
+Method baru `PublishingService.getEngagementSummary(workspaceId, period,
+userId)` + tipe `EngagementSummary { totalComments: number | null;
+totalLikes: number | null }` di
+`apps/web/src/domains/publishing/services/publishing.service.ts` — reuse
+`getPostPerformance` (T-043), pola identik `getAnalyzeSummary` (T-047)/
+`getAccountOverview` (T-046) untuk menghindari circular dependency
+`analytics↔publishing` (pola sama solusi refactor T-043 putaran 1). Data
+diambil dari field `likes`/`comments` `AnalyticsPostMetric` (Prisma, sudah
+ada sejak T-041) — **tidak ada query Prisma baru**. Akumulasi null-safe:
+`totalLikes`/`totalComments` adalah jumlah baris yang sudah ter-ingest
+saja, `null` kalau tidak ada satupun baris berisi nilainya (bukan 0).
+Server Action baru `getEngagementSummaryAction` di
+`apps/web/src/app/(app)/analyze/analyze-actions.ts`, wiring `page.tsx`
+(4 action dipanggil paralel via `Promise.all`). 4 test baru di
+`publishing.service.test.ts` (describe `getEngagementSummary`).
+
+**Konsekuensi penting yang TIDAK dipakai dari task doc asli:**
+
+- **Tidak ada cross-domain edge ke domain `engagement`** — domain itu
+  masih stub kosong total, baru dibangun v0.4. **ADR-018** (cross-domain
+  lewat public API `engagement`) tidak dipakai untuk implementasi ini.
+- **Field Domain task berubah dari `analytics` ke `publishing`** — method
+  ini hidup di `PublishingService`, bukan `AnalyticsService`.
+- **T-044 tidak lagi terikat v0.4** (Engagement MVP) — karena tidak butuh
+  domain `engagement`, task ini tidak perlu menunggu comment sync nyata.
+
+### Implementasi (Mark UI Engineer)
+
+Card baru "Engagement Summary" di kolom kanan grid `.dash-cols`
+(`lg:grid-cols-[1.6fr_1fr]`, akhirnya diaktifkan — sebelumnya sengaja
+dirender full-width sementara sejak T-046 menunggu T-044, lihat komentar
+REFLOW di kepala `AnalyzeDashboard.tsx`). 2 baris (Komentar, Likes) via
+komponen baru `EngagementSummaryRow`, pola row sama persis
+`AccountOverviewRowItem` (`flex justify-between`, `border-b border-border
+py-2.5 last:border-b-0`) — idiom konsisten dengan section lain di file,
+bukan pola baru. `EngagementSummaryContent` TANPA wrapper `Card` sendiri
+(dibungkus `Card`/`CardContent` oleh caller, pola sama
+`AccountOverviewContent`/`PostPerformanceContent`). Null-safety sama
+persis pola T-043.4/T-046.3/T-047.3: `totalComments`/`totalLikes`
+masing-masing independen render "Belum ada data" saat `null` (bukan 0);
+card tetap tampil (2 baris "Belum ada data") kalau kedua field `null`.
+Grid stack 1 kolom di layar sempit (`grid-cols-1`, breakpoint `lg`).
+
+### Review Ridwan Architecture Reviewer
+
+0 temuan — 0 kemunculan import `domains/engagement` di file yang berubah,
+tidak ada query Prisma baru, tidak ada circular dependency baru, null-safety
+konsisten pola T-043.4/T-046/T-047, `EngagementSummary` di
+`publishing.service.ts` konsisten precedent `PostPerformanceRow`/
+`AccountOverviewRow`/`AnalyzeSummary`.
+
+### QA Najwa QA Engineer
+
+PASS penuh: golden path, empty state "Belum ada data" (independen per
+field), ganti period 4 action paralel tanpa race condition, regresi
+Account Overview/Post Performance PASS, responsive mobile 375px PASS,
+dark/light mode PASS. Gate T-103.3 (verifikasi struktur vs Claude Design)
+PASS, dicek 2x independen (Mark manual + AI utama via `DesignSync`
+langsung karena tool itu tidak termuat di sesi Najwa) — keduanya tidak
+menemukan deviasi struktural dari `templates/analyze-dashboard.html`.
+
+**Satu catatan non-blocking** (bukan bug): setelah grid 2 kolom diaktifkan,
+tabel Post Performance di kartu kiri (sekarang `1.6fr`, sebelumnya
+full-width) butuh scroll horizontal di lebar browser standar untuk melihat
+kolom Reach/Eng. Rate — `Table` shadcn sudah handle via `overflow-x-auto`
+bawaan, bukan defect, dicatat sebagai efek samping visual dari lock
+proporsi grid `.dash-cols` di desain.
+
+### Verifikasi akhir
+
+`bun run typecheck` bersih, `bun run lint` bersih, `bun run test` **422
+pass/5 skip** (naik dari 415/5 sebelum T-044, +7 test case baru).
+
+### Perbaikan field task (drift, bukan pelanggaran baru)
+
+Field task doc T-044 sebelumnya (**Domain: analytics**, **ADR: ADR-018**,
+**Depends: T-041 · idealnya setelah v0.4**) sudah drift dari implementasi
+sebenarnya — diperbaiki di `tasks/v03-analytics-mvp.md` menjadi **Domain:
+publishing · UI**, ADR dihapus (dicatat alasannya di catatan Update task),
+dan Depends tidak lagi menyebut v0.4. Deskripsi subtask T-044.1–T-044.3
+ditulis ulang sebagai catatan "Update 2026-09-21" (histori keputusan asli
+tetap dipertahankan via strikethrough, tidak dihapus).
+
+### Dampak dokumentasi lain
+
+- `TASKS.md` — breakdown v0.3 berubah dari "🟡 6 ✅ · 2 ⏳" menjadi
+  **🟡 7 ✅ · 1 ⏳** (dihitung ulang langsung dari
+  `tasks/v03-analytics-mvp.md`). Total task selesai naik 47 → **48**.
+  Jumlah subtask total tidak berubah (221 — T-044 sudah terdefinisi 3
+  subtask sebelumnya, dihitung ulang dan cocok).
+- `PROJECT_STATE.md` — Snapshot § Top Next Tasks menambah ringkasan T-044
+  di paling atas; § Completed (Ringkasan) menambah bullet T-044,
+  menghapus bullet terlama (KI-059 Resolved) supaya tetap 5 item.
+
+Detail lengkap: `tasks/v03-analytics-mvp.md` § T-044.
+
+---
+
 ## 2026-09-18 — T-047 Summary row (/analyze) — implementasi kode selesai, ✅ Done (3/3 subtask)
 
 T-047 (Summary row `/analyze`, `tasks/v03-analytics-mvp.md`, rilis v0.3)

@@ -61,11 +61,10 @@
 // komentar SYNCED T-043 di file itu: "Wrapper: TANPA `Card` terpisah —
 // table langsung di dalam card.card-pad yang sudah ada di section ini,
 // bukan dobel wrapper"); kartu kanan (1fr) adalah "Engagement Summary"
-// (T-044, `⏳ Not Started`, di luar scope T-046). Sesi sebelumnya salah
-// menaruh Account Overview sebagai `Card` full-width TERPISAH di atas Post
-// Performance (yang juga masih pakai border manual sendiri, pola
-// `MembersTable.tsx`/KI-055) — dua wrapper sendiri-sendiri, bukan satu
-// kartu bersama seperti desain.
+// (T-044). Sesi sebelumnya salah menaruh Account Overview sebagai `Card`
+// full-width TERPISAH di atas Post Performance (yang juga masih pakai
+// border manual sendiri, pola `MembersTable.tsx`/KI-055) — dua wrapper
+// sendiri-sendiri, bukan satu kartu bersama seperti desain.
 //
 // Diperbaiki di sini: Account Overview + Post Performance sekarang berbagi
 // SATU `Card`/`CardContent` (komponen `AccountOverviewContent` +
@@ -73,12 +72,32 @@
 // border manual `rounded-xl border` untuk tabel juga dihapus, karena
 // `Table` shadcn sudah menyediakan `overflow-x-auto` sendiri dan kartu
 // pembungkus sudah memberi border+radius). Kolom kanan (`.dash-cols` kedua,
-// Engagement Summary) SENGAJA belum dibuat — grid 2 kolom dengan slot kanan
-// kosong akan terlihat seperti bug rendering (blank space), bukan
-// representasi desain yang sah, jadi kartu kiri untuk saat ini dirender
-// full-width. Ini deviasi yang DISENGAJA dan DILAPORKAN, bukan diam-diam
-// dibiarkan berbeda — grid `lg:grid-cols-[1.6fr_1fr]` menyusul begitu T-044
-// diimplementasikan.
+// Engagement Summary) sempat sengaja dirender full-width sementara sampai
+// T-044 dikerjakan (deviasi disengaja + dilaporkan, dikonfirmasi King Rezi
+// via `AskUserQuestion`) — **sekarang T-044 sudah jalan** (2026-09-21):
+// grid `lg:grid-cols-[1.6fr_1fr]` diaktifkan, kartu kiri (Account
+// Overview + Post Performance) di kolom `1.6fr`, kartu kanan baru
+// "Engagement Summary" (`EngagementSummaryContent` di bawah) di kolom
+// `1fr`. Grid dirender 1 kolom (stack) di layar sempit (`grid-cols-1`,
+// breakpoint `lg`), sama pola responsive lain di file ini.
+//
+// Engagement Summary (T-044): section "Engagement Summary" di
+// `templates/analyze-dashboard.html` TIDAK ditandai "SYNCED" (masih
+// sketsa awal, bukan locked pattern) — scope-nya sendiri dipersempit lewat
+// `AskUserQuestion` ke King Rezi jadi cuma 2 angka (`Komentar`, `Likes`,
+// dari `AnalyticsPostMetric`, BUKAN domain `engagement` seperti disebut
+// task doc asli T-044.1-T-044.3 — lihat catatan lengkap di
+// `PublishingService.getEngagementSummary`/`EngagementSummary`). Markup
+// mockup (`.engage-num-row`: label kiri, angka bold kanan, border-bottom)
+// dipetakan ke pola row yang SAMA seperti `AccountOverviewRowItem`
+// (`flex justify-between`, `border-b border-border py-2.5 last:border-b-0`)
+// supaya idiom konsisten dengan section lain di file ini, BUKAN pola baru.
+// `EngagementSummaryContent` TANPA wrapper `Card` sendiri (dibungkus
+// `Card`/`CardContent` di render utama, sama pola `AccountOverviewContent`/
+// `PostPerformanceContent`). Null-safety SAMA PERSIS pola T-043.4/T-046.3/
+// T-047.3: `totalComments`/`totalLikes` masing-masing independen render
+// "Belum ada data" saat `null` (BUKAN 0), dan card TETAP tampil (2 baris
+// "Belum ada data") kalau KEDUA field `null` — tidak disembunyikan.
 
 import { useMemo, useRef, useState, useTransition } from "react";
 
@@ -122,6 +141,7 @@ import { StatTile } from "../../components/stat-tile";
 import {
   getAccountOverviewAction,
   getAnalyzeSummaryAction,
+  getEngagementSummaryAction,
   getPostPerformanceAction,
 } from "../analyze-actions";
 
@@ -129,6 +149,7 @@ import type { SnapshotPeriod } from "@/domains/analytics";
 import type {
   AccountOverviewRow,
   AnalyzeSummary,
+  EngagementSummary,
   PostPerformanceRow,
 } from "@/domains/publishing";
 
@@ -481,11 +502,70 @@ function PostPerformanceContent({
   );
 }
 
+/**
+ * Satu baris "Komentar"/"Likes" di section "Engagement Summary" (T-044),
+ * pola `.engage-num-row` di `analyze-dashboard.html`: label kiri, angka
+ * bold kanan, border-bottom — struktur row SAMA seperti
+ * `AccountOverviewRowItem` (`flex justify-between`, border-b + py-2.5,
+ * `last:border-b-0`), idiom yang sudah dipakai file ini. `value === null`
+ * (T-044, pola T-043.4/T-046.3 — belum ada `AnalyticsPostMetric` ter-ingest
+ * untuk period ini) merender "Belum ada data", BUKAN "0".
+ */
+function EngagementSummaryRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | null;
+}) {
+  return (
+    // eslint-disable-next-line no-restricted-syntax -- layout-only
+    <div className="flex items-center justify-between border-b border-border py-2.5 last:border-b-0">
+      <Text variant="small" className="font-normal">
+        {label}
+      </Text>
+      {value === null ? (
+        <Text variant="muted">Belum ada data</Text>
+      ) : (
+        <Text variant="small" className="font-semibold tabular-nums">
+          {value.toLocaleString("id-ID")}
+        </Text>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Isi section "Engagement Summary" (T-044) — TANPA wrapper `Card` sendiri
+ * (lihat catatan REFLOW di kepala file): section ini dibungkus
+ * `Card`/`CardContent` di kolom kanan `.dash-cols` oleh caller
+ * (`AnalyzeDashboard`), pola sama `AccountOverviewContent`/
+ * `PostPerformanceContent` untuk kolom kiri. Card TETAP dirender meski
+ * `totalComments`/`totalLikes` KEDUANYA `null` (2 baris "Belum ada data"),
+ * bukan disembunyikan — filosofi sama T-043.4/T-046/T-047.
+ */
+function EngagementSummaryContent({ summary }: { summary: EngagementSummary }) {
+  return (
+    // eslint-disable-next-line no-restricted-syntax -- layout-only
+    <div className="flex flex-col gap-4">
+      <h2 className="font-heading text-xl font-semibold tracking-tight">
+        Engagement Summary
+      </h2>
+      {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
+      <div className="flex flex-col">
+        <EngagementSummaryRow label="Komentar" value={summary.totalComments} />
+        <EngagementSummaryRow label="Likes" value={summary.totalLikes} />
+      </div>
+    </div>
+  );
+}
+
 export function AnalyzeDashboard({
   initialPeriod,
   initialRows,
   initialAccountOverviewRows,
   initialSummary,
+  initialEngagementSummary,
 }: {
   initialPeriod: SnapshotPeriod;
   initialRows: PostPerformanceRow[];
@@ -496,6 +576,12 @@ export function AnalyzeDashboard({
   // beda dari `DashboardSummary`) — signature optional dipertahankan biar
   // longgar terhadap composition root, bukan karena datanya bisa hilang.
   initialSummary?: AnalyzeSummary;
+  // T-044 (Prabowo Feature Engineer) — data-layer card "Engagement Summary"
+  // (Komentar/Likes). Optional dengan alasan SAMA PERSIS `initialSummary`
+  // di atas: `getEngagementSummary` tidak pernah return `null`/`undefined`,
+  // signature optional dipertahankan biar longgar terhadap composition
+  // root, bukan karena datanya bisa hilang.
+  initialEngagementSummary?: EngagementSummary;
 }) {
   const [period, setPeriod] = useState<SnapshotPeriod>(initialPeriod);
   const [rows, setRows] = useState<PostPerformanceRow[]>(initialRows);
@@ -505,6 +591,9 @@ export function AnalyzeDashboard({
   const [summary, setSummary] = useState<AnalyzeSummary | undefined>(
     initialSummary,
   );
+  const [engagementSummary, setEngagementSummary] = useState<
+    EngagementSummary | undefined
+  >(initialEngagementSummary);
   const [sort, setSort] = useState<SortState>({
     column: "reach",
     direction: "desc",
@@ -522,16 +611,22 @@ export function AnalyzeDashboard({
     setPeriod(nextPeriod);
     latestRequestedPeriod.current = nextPeriod;
     startTransition(async () => {
-      const [postPerformanceResult, accountOverviewResult, summaryResult] =
-        await Promise.all([
-          getPostPerformanceAction(nextPeriod),
-          getAccountOverviewAction(nextPeriod),
-          getAnalyzeSummaryAction(nextPeriod),
-        ]);
+      const [
+        postPerformanceResult,
+        accountOverviewResult,
+        summaryResult,
+        engagementSummaryResult,
+      ] = await Promise.all([
+        getPostPerformanceAction(nextPeriod),
+        getAccountOverviewAction(nextPeriod),
+        getAnalyzeSummaryAction(nextPeriod),
+        getEngagementSummaryAction(nextPeriod),
+      ]);
       if (latestRequestedPeriod.current === nextPeriod) {
         setRows(postPerformanceResult);
         setAccountOverviewRows(accountOverviewResult);
         setSummary(summaryResult);
+        setEngagementSummary(engagementSummaryResult);
       }
     });
   }
@@ -547,6 +642,23 @@ export function AnalyzeDashboard({
       return { column, direction: DEFAULT_DIRECTION_BY_COLUMN[column] };
     });
   }
+
+  // Kartu kiri `.dash-cols` (Account Overview + Post Performance bersama,
+  // lihat catatan REFLOW di kepala file) — diekstrak ke variabel supaya
+  // dipakai ulang di dua cabang render di bawah (grid 2 kolom vs fallback
+  // 1 kolom) tanpa duplikasi JSX.
+  const mainCard = (
+    <Card>
+      <CardContent className="flex flex-col gap-6">
+        <AccountOverviewContent rows={accountOverviewRows} />
+        <PostPerformanceContent
+          sortedRows={sortedRows}
+          sort={sort}
+          onSort={handleSort}
+        />
+      </CardContent>
+    </Card>
+  );
 
   return (
     // eslint-disable-next-line no-restricted-syntax -- layout-only, file ini sudah dimigrasi shadcn (ADR-097)
@@ -614,19 +726,25 @@ export function AnalyzeDashboard({
       ) : null}
 
       {/* `.dash-cols` (analyze-dashboard.html): kartu kiri (1.6fr) berisi
-          Account Overview + Post Performance bersama. Kartu kanan (1fr,
-          "Engagement Summary") adalah T-044 (`⏳ Not Started`) — belum
-          dirender di sini, lihat catatan REFLOW di kepala file. */}
-      <Card>
-        <CardContent className="flex flex-col gap-6">
-          <AccountOverviewContent rows={accountOverviewRows} />
-          <PostPerformanceContent
-            sortedRows={sortedRows}
-            sort={sort}
-            onSort={handleSort}
-          />
-        </CardContent>
-      </Card>
+          Account Overview + Post Performance bersama, kartu kanan (1fr)
+          "Engagement Summary" (T-044) — lihat catatan REFLOW di kepala
+          file. `mainCard` diekstrak ke variabel supaya tidak duplikasi JSX
+          antara layout grid 2 kolom (engagementSummary ada) dan fallback
+          1 kolom (engagementSummary undefined, kasus jarang — lihat
+          catatan `initialEngagementSummary`). */}
+      {engagementSummary ? (
+        // eslint-disable-next-line no-restricted-syntax, tailwindcss/no-arbitrary-value -- layout-only; proporsi grid `1.6fr 1fr` dikunci `.dash-cols` di analyze-dashboard.html, tidak ada utility Tailwind native untuk rasio fr custom ini.
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
+          {mainCard}
+          <Card>
+            <CardContent className="flex flex-col gap-6">
+              <EngagementSummaryContent summary={engagementSummary} />
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        mainCard
+      )}
     </div>
   );
 }
