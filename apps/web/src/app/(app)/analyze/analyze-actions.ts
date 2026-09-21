@@ -40,6 +40,7 @@ import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
  */
 export async function getPostPerformanceAction(
   period: SnapshotPeriod,
+  asOf?: Date,
 ): Promise<PostPerformanceRow[]> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -56,6 +57,7 @@ export async function getPostPerformanceAction(
     workspaceId,
     period,
     asUserId(session.user.id),
+    asOf,
   );
 }
 
@@ -76,6 +78,7 @@ export async function getPostPerformanceAction(
  */
 export async function getAccountOverviewAction(
   period: SnapshotPeriod,
+  asOf?: Date,
 ): Promise<AccountOverviewRow[]> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -93,6 +96,7 @@ export async function getAccountOverviewAction(
     workspaceId,
     period,
     asUserId(session.user.id),
+    asOf,
   );
 }
 
@@ -112,6 +116,7 @@ export async function getAccountOverviewAction(
  */
 export async function getAnalyzeSummaryAction(
   period: SnapshotPeriod,
+  asOf?: Date,
 ): Promise<AnalyzeSummary> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -128,6 +133,7 @@ export async function getAnalyzeSummaryAction(
     workspaceId,
     period,
     asUserId(session.user.id),
+    asOf,
   );
 }
 
@@ -150,6 +156,7 @@ export async function getAnalyzeSummaryAction(
  */
 export async function getEngagementSummaryAction(
   period: SnapshotPeriod,
+  asOf?: Date,
 ): Promise<EngagementSummary> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -166,6 +173,7 @@ export async function getEngagementSummaryAction(
     workspaceId,
     period,
     asUserId(session.user.id),
+    asOf,
   );
 }
 
@@ -190,6 +198,7 @@ export async function getEngagementSummaryAction(
  */
 export async function getComparativeReportAction(
   period: SnapshotPeriod,
+  asOf?: Date,
 ): Promise<ComparativeReport> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -207,5 +216,6 @@ export async function getComparativeReportAction(
     workspaceId,
     period,
     asUserId(session.user.id),
+    asOf,
   );
 }

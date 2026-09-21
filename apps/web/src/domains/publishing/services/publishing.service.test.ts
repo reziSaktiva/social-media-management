@@ -1333,11 +1333,13 @@ describe("PublishingService.getAccountOverview", () => {
             id: connWithPost,
             platform: SocialPlatform.Instagram,
             handle: "@akun-with-post",
+            status: "active",
           },
           {
             id: connWithoutPost,
             platform: SocialPlatform.TikTok,
             handle: "@akun-without-post",
+            status: "active",
           },
         ],
       },
@@ -1445,6 +1447,7 @@ describe("PublishingService.getAccountOverview", () => {
             id: conn1,
             platform: SocialPlatform.Instagram,
             handle: "@akun-multi",
+            status: "active",
           },
         ],
       },
@@ -1502,6 +1505,7 @@ describe("PublishingService.getAccountOverview", () => {
             id: conn1,
             platform: SocialPlatform.Instagram,
             handle: "@akun-no-metric",
+            status: "active",
           },
         ],
       },
@@ -2139,11 +2143,26 @@ describe("PublishingService.getComparativeReport", () => {
       },
       {
         listConnectedAccounts: async () => [
-          { id: connA, platform: SocialPlatform.Instagram, handle: "@akun-a" },
-          { id: connB, platform: SocialPlatform.TikTok, handle: "@akun-b" },
+          {
+            id: connA,
+            platform: SocialPlatform.Instagram,
+            handle: "@akun-a",
+            status: "active",
+          },
+          {
+            id: connB,
+            platform: SocialPlatform.TikTok,
+            handle: "@akun-b",
+            status: "active",
+          },
           // connC tidak pernah punya post di period manapun — kriteria
           // "belum ada data" T-045.2, tetap wajib muncul.
-          { id: connC, platform: SocialPlatform.Facebook, handle: "@akun-c" },
+          {
+            id: connC,
+            platform: SocialPlatform.Facebook,
+            handle: "@akun-c",
+            status: "active",
+          },
         ],
       },
     );
@@ -2218,6 +2237,7 @@ describe("PublishingService.getComparativeReport", () => {
             id: connA,
             platform: SocialPlatform.Instagram,
             handle: "@akun-null",
+            status: "active",
           },
         ],
       },

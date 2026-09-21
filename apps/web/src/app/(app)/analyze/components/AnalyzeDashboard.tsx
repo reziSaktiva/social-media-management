@@ -189,7 +189,10 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
 import { PLATFORM_ICON } from "../../components/platform-icons";
-import { formatEngagementRate } from "../../components/post-metric-tile";
+import {
+  formatEngagementRate,
+  formatMetricCount,
+} from "../../components/post-metric-tile";
 import { StatTile } from "../../components/stat-tile";
 import {
   getAccountOverviewAction,
@@ -441,7 +444,7 @@ function AccountOverviewRowItem({
             variant="small"
             className="w-16 shrink-0 text-right tabular-nums"
           >
-            {row.totalReach.toLocaleString("id-ID")}
+            {formatMetricCount(row.totalReach)}
           </Text>
         </>
       )}
@@ -617,7 +620,7 @@ function PostPerformanceContent({
                         Belum ada data
                       </span>
                     ) : (
-                      row.reach.toLocaleString("id-ID")
+                      formatMetricCount(row.reach)
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -665,7 +668,7 @@ function EngagementSummaryRow({
         <Text variant="muted">Belum ada data</Text>
       ) : (
         <Text variant="small" className="font-semibold tabular-nums">
-          {value.toLocaleString("id-ID")}
+          {formatMetricCount(value)}
         </Text>
       )}
     </div>
@@ -774,8 +777,8 @@ function ComparativePeriodContent({ report }: { report: ComparativeReport }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <ComparativeStatColumn
             label="Total Posts"
-            value={report.totalPosts.current.toLocaleString("id-ID")}
-            previousLabel={`vs ${report.totalPosts.previous.toLocaleString("id-ID")}`}
+            value={formatMetricCount(report.totalPosts.current)}
+            previousLabel={`vs ${formatMetricCount(report.totalPosts.previous)}`}
             delta={totalPostsDelta}
           />
           <ComparativeStatColumn
@@ -783,12 +786,12 @@ function ComparativePeriodContent({ report }: { report: ComparativeReport }) {
             value={
               report.totalReach.current === null
                 ? "Belum ada data"
-                : report.totalReach.current.toLocaleString("id-ID")
+                : formatMetricCount(report.totalReach.current)
             }
             previousLabel={`vs ${
               report.totalReach.previous === null
                 ? "Belum ada data"
-                : report.totalReach.previous.toLocaleString("id-ID")
+                : formatMetricCount(report.totalReach.previous)
             }`}
             delta={totalReachDelta}
           />
@@ -839,14 +842,14 @@ function AccountComparisonRowItem({ row }: { row: AccountComparisonRow }) {
         {row.reach.current === null ? (
           <span className="text-muted-foreground">Belum ada data</span>
         ) : (
-          row.reach.current.toLocaleString("id-ID")
+          formatMetricCount(row.reach.current)
         )}
       </TableCell>
       <TableCell className="text-right">
         {row.reach.previous === null ? (
           <span className="text-muted-foreground">Belum ada data</span>
         ) : (
-          row.reach.previous.toLocaleString("id-ID")
+          formatMetricCount(row.reach.previous)
         )}
       </TableCell>
       <TableCell className="text-right">
@@ -1044,6 +1047,11 @@ export function AnalyzeDashboard({
     setPeriod(nextPeriod);
     latestRequestedPeriod.current = nextPeriod;
     startTransition(async () => {
+      // Satu `now` dibagikan ke kelima action (sama pola dengan initial
+      // load di `page.tsx`) supaya kartu yang di-refresh bareng saat
+      // selector period diganti tetap sepakat soal post mana yang masuk
+      // rentang "current".
+      const now = new Date();
       const [
         postPerformanceResult,
         accountOverviewResult,
@@ -1051,11 +1059,11 @@ export function AnalyzeDashboard({
         engagementSummaryResult,
         comparativeReportResult,
       ] = await Promise.all([
-        getPostPerformanceAction(nextPeriod),
-        getAccountOverviewAction(nextPeriod),
-        getAnalyzeSummaryAction(nextPeriod),
-        getEngagementSummaryAction(nextPeriod),
-        getComparativeReportAction(nextPeriod),
+        getPostPerformanceAction(nextPeriod, now),
+        getAccountOverviewAction(nextPeriod, now),
+        getAnalyzeSummaryAction(nextPeriod, now),
+        getEngagementSummaryAction(nextPeriod, now),
+        getComparativeReportAction(nextPeriod, now),
       ]);
       if (latestRequestedPeriod.current === nextPeriod) {
         setRows(postPerformanceResult);
@@ -1171,14 +1179,14 @@ export function AnalyzeDashboard({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <StatTile
                 label="Total Posts"
-                value={summary.totalPosts.toLocaleString("id-ID")}
+                value={formatMetricCount(summary.totalPosts)}
               />
               <StatTile
                 label="Total Reach"
                 value={
                   summary.totalReach === null
                     ? "Belum ada data"
-                    : summary.totalReach.toLocaleString("id-ID")
+                    : formatMetricCount(summary.totalReach)
                 }
               />
               <StatTile

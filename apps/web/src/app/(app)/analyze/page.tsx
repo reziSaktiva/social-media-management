@@ -25,6 +25,11 @@ import type { SnapshotPeriod } from "@/domains/analytics";
 const INITIAL_PERIOD: SnapshotPeriod = "weekly";
 
 export default async function Page() {
+  // Satu `now` dibagikan ke kelima action (T-045/T-046/T-047 clock-sharing)
+  // — tanpa ini masing-masing action resolve `new Date()` sendiri-sendiri
+  // di server, dan post yang publish di antara panggilan bisa terhitung di
+  // satu card tapi tidak di card lain pada load yang sama.
+  const now = new Date();
   const [
     postPerformanceRows,
     accountOverviewRows,
@@ -32,11 +37,11 @@ export default async function Page() {
     engagementSummary,
     comparativeReport,
   ] = await Promise.all([
-    getPostPerformanceAction(INITIAL_PERIOD),
-    getAccountOverviewAction(INITIAL_PERIOD),
-    getAnalyzeSummaryAction(INITIAL_PERIOD),
-    getEngagementSummaryAction(INITIAL_PERIOD),
-    getComparativeReportAction(INITIAL_PERIOD),
+    getPostPerformanceAction(INITIAL_PERIOD, now),
+    getAccountOverviewAction(INITIAL_PERIOD, now),
+    getAnalyzeSummaryAction(INITIAL_PERIOD, now),
+    getEngagementSummaryAction(INITIAL_PERIOD, now),
+    getComparativeReportAction(INITIAL_PERIOD, now),
   ]);
 
   return (

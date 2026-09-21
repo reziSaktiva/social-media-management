@@ -53,7 +53,12 @@ interface ConnectedAccountsPort {
     workspaceId: WorkspaceId,
     userId: UserId,
   ): Promise<
-    { id: ConnectedAccountId; platform: SocialPlatform; handle: string }[]
+    {
+      id: ConnectedAccountId;
+      platform: SocialPlatform;
+      handle: string;
+      status: string;
+    }[]
   >;
 }
 
@@ -630,6 +635,7 @@ export class PublishingService {
       workspaceId: WorkspaceId;
       statuses?: ContentStatus[];
       connectedAccountIds?: ConnectedAccountId[];
+      publishedAtRange?: { from: Date; to: Date };
     },
     userId: UserId,
   ): Promise<HistoryItemRecord[]> {
@@ -761,7 +767,15 @@ export class PublishingService {
     const fromMs = from.getTime();
     const toMs = to.getTime();
 
-    const historyItems = await this.listHistory({ workspaceId }, userId);
+    // `publishedAtRange` didorong ke level query (T-045/T-046/T-047,
+    // sebelumnya `listHistory` fetch SELURUH riwayat workspace lalu
+    // difilter di sini) — filter JS di bawah tetap dipertahankan sebagai
+    // guard null-safety (`publishedAt` nullable di tipe), bukan lagi
+    // pekerjaan utama penyaringan rentang tanggal.
+    const historyItems = await this.listHistory(
+      { workspaceId, publishedAtRange: { from, to } },
+      userId,
+    );
     const postsInRange = historyItems.filter((item) => {
       const publishedAt = item.publishedAt?.getTime();
       return (
@@ -842,6 +856,7 @@ export class PublishingService {
     workspaceId: WorkspaceId,
     period: SnapshotPeriod,
     userId: UserId,
+    asOf?: Date,
   ): Promise<AccountOverviewRow[]> {
     if (!this.connectedAccounts) {
       throw new Error(
@@ -849,10 +864,17 @@ export class PublishingService {
       );
     }
 
-    const [accounts, performanceRows] = await Promise.all([
+    const [allAccounts, performanceRows] = await Promise.all([
       this.connectedAccounts.listConnectedAccounts(workspaceId, userId),
-      this.getPostPerformance(workspaceId, period, userId),
+      this.getPostPerformance(workspaceId, period, userId, asOf),
     ]);
+    // `listConnectedAccounts` returns SEMUA status (beda dari
+    // `countActiveConnectedAccounts`, lihat catatan "active" di sana) —
+    // disaring ke "active" di sini supaya akun yang sudah di-disconnect
+    // tidak muncul sebagai baris di Account Overview.
+    const accounts = allAccounts.filter(
+      (account) => account.status === "active",
+    );
 
     const statsByAccount = new Map<
       ConnectedAccountId,
@@ -865,9 +887,10 @@ export class PublishingService {
         reach: null,
       };
       existing.postIds.add(row.postId);
-      if (row.reach !== null) {
-        existing.reach = (existing.reach ?? 0) + row.reach;
-      }
+      existing.reach = PublishingService.accumulateNullable(
+        existing.reach,
+        row.reach,
+      );
       statsByAccount.set(row.connectedAccountId, existing);
     }
 
@@ -916,8 +939,14 @@ export class PublishingService {
     workspaceId: WorkspaceId,
     period: SnapshotPeriod,
     userId: UserId,
+    asOf?: Date,
   ): Promise<AnalyzeSummary> {
-    const rows = await this.getPostPerformance(workspaceId, period, userId);
+    const rows = await this.getPostPerformance(
+      workspaceId,
+      period,
+      userId,
+      asOf,
+    );
     const { totalReach, avgEngagementRate } = this.summarizeRows(rows);
 
     return {
@@ -925,6 +954,21 @@ export class PublishingService {
       totalReach,
       avgEngagementRate,
     };
+  }
+
+  /**
+   * Akumulasi null-safe dipakai bersama oleh `statsByAccount`
+   * (`getAccountOverview`), `summarizeRows`, `sumReachByAccount`, dan
+   * `getEngagementSummary` (extracted 2026-09-21, review finding — 4 tempat
+   * ini sebelumnya reimplement rumus yang sama: baris `null` di-skip, bukan
+   * dianggap 0). `value === null` mengembalikan `current` apa adanya (belum
+   * ada baris ter-ingest sama sekali kalau `current` juga masih `null`).
+   */
+  private static accumulateNullable(
+    current: number | null,
+    value: number | null,
+  ): number | null {
+    return value === null ? current : (current ?? 0) + value;
   }
 
   /**
@@ -945,11 +989,12 @@ export class PublishingService {
     let engagementRateCount = 0;
 
     for (const row of rows) {
-      if (row.reach !== null) {
-        reachSum = (reachSum ?? 0) + row.reach;
-      }
+      reachSum = PublishingService.accumulateNullable(reachSum, row.reach);
       if (row.engagementRate !== null) {
-        engagementRateSum = (engagementRateSum ?? 0) + row.engagementRate;
+        engagementRateSum = PublishingService.accumulateNullable(
+          engagementRateSum,
+          row.engagementRate,
+        );
         engagementRateCount += 1;
       }
     }
@@ -982,19 +1027,24 @@ export class PublishingService {
     workspaceId: WorkspaceId,
     period: SnapshotPeriod,
     userId: UserId,
+    asOf?: Date,
   ): Promise<EngagementSummary> {
-    const rows = await this.getPostPerformance(workspaceId, period, userId);
+    const rows = await this.getPostPerformance(
+      workspaceId,
+      period,
+      userId,
+      asOf,
+    );
 
     let likesSum: number | null = null;
     let commentsSum: number | null = null;
 
     for (const row of rows) {
-      if (row.likes !== null) {
-        likesSum = (likesSum ?? 0) + row.likes;
-      }
-      if (row.comments !== null) {
-        commentsSum = (commentsSum ?? 0) + row.comments;
-      }
+      likesSum = PublishingService.accumulateNullable(likesSum, row.likes);
+      commentsSum = PublishingService.accumulateNullable(
+        commentsSum,
+        row.comments,
+      );
     }
 
     return {
@@ -1007,11 +1057,12 @@ export class PublishingService {
    * Agregasi reach per `connectedAccountId` dari `PostPerformanceRow[]`
    * (T-045.2) — HANYA reach (bukan `totalPosts`/distinct post count seperti
    * `statsByAccount` di `getAccountOverview`, yang butuh `Set<PostId>` juga
-   * dan sengaja TIDAK direfactor ulang di sini supaya diff method yang
-   * sudah teruji itu tetap kecil). Dipakai `getComparativeReport` dua kali
-   * (baris current & previous) untuk membentuk `AccountComparisonRow.reach`.
-   * Account tanpa baris reach ter-ingest TIDAK punya entry di Map ini
-   * (caller memakai `.get(id) ?? null`), bukan `0` — pola null-safety sama
+   * jadi tetap method terpisah; rumus akumulasi null-safe-nya sendiri sudah
+   * dipakai bersama lewat `accumulateNullable` di atas, bukan reimplementasi
+   * lokal lagi). Dipakai `getComparativeReport` dua kali (baris current &
+   * previous) untuk membentuk `AccountComparisonRow.reach`. Account tanpa
+   * baris reach ter-ingest TIDAK punya entry di Map ini (caller memakai
+   * `.get(id) ?? null`), bukan `0` — pola null-safety sama
    * `AccountOverviewRow.totalReach`.
    */
   private sumReachByAccount(
@@ -1024,7 +1075,10 @@ export class PublishingService {
       }
       reachByAccount.set(
         row.connectedAccountId,
-        (reachByAccount.get(row.connectedAccountId) ?? 0) + row.reach,
+        PublishingService.accumulateNullable(
+          reachByAccount.get(row.connectedAccountId) ?? null,
+          row.reach,
+        ) ?? 0,
       );
     }
     return reachByAccount;
@@ -1056,6 +1110,7 @@ export class PublishingService {
     workspaceId: WorkspaceId,
     period: SnapshotPeriod,
     userId: UserId,
+    asOf?: Date,
   ): Promise<ComparativeReport> {
     if (!this.connectedAccounts) {
       throw new Error(
@@ -1070,17 +1125,28 @@ export class PublishingService {
     // membuat rentang current/previous tidak "PERSIS BERSEBELAHAN, tanpa
     // gap/overlap" seperti diklaim JSDoc `ComparativeReport` — post yang
     // `publishedAt`-nya jatuh tepat di selisih itu berisiko terhitung
-    // dobel atau tidak terhitung di keduanya.
-    const now = new Date();
+    // dobel atau tidak terhitung di keduanya. `asOf` opsional (T-045/T-046/
+    // T-047 clock-sharing) membiarkan caller (Server Action) menyuplai satu
+    // `now` yang SAMA dengan 4 action lain di halaman yang sama, bukan cuma
+    // konsisten secara internal method ini.
+    const now = asOf ?? new Date();
     const { from: currentFrom } = resolvePostPerformancePeriodRange(
       period,
       now,
     );
+    // `getPostPerformance` inclusive di KEDUA ujung (`>= from && <= to`,
+    // lihat catatan di sana) — kalau `currentFrom` dipakai langsung sebagai
+    // `asOf` rentang previous, `previous.to === current.from` dan post yang
+    // `publishedAt`-nya persis di titik itu lolos filter inclusive kedua
+    // rentang sekaligus (dobel hitung). Mundurkan 1ms supaya rentang
+    // previous benar-benar berhenti SEBELUM `currentFrom`, menepati klaim
+    // JSDoc "tanpa gap/overlap" di atas.
+    const previousAsOf = new Date(currentFrom.getTime() - 1);
 
     const [accounts, currentRows, previousRows] = await Promise.all([
       this.connectedAccounts.listConnectedAccounts(workspaceId, userId),
       this.getPostPerformance(workspaceId, period, userId, now),
-      this.getPostPerformance(workspaceId, period, userId, currentFrom),
+      this.getPostPerformance(workspaceId, period, userId, previousAsOf),
     ]);
 
     const currentSummary = this.summarizeRows(currentRows);
