@@ -93,10 +93,20 @@ export interface WorkspaceOwnerLookupPort {
  * perilaku salah, konsisten pola `ResolveScheduledPostOutcomeJobHandler`
  * membiarkan job "tidak relevan lagi" berhenti).
  *
- * **Seeding job pertama untuk `ConnectedAccount` baru: di luar scope T-051**
- * (lihat catatan task) — handler ini hanya memproses SATU payload yang
- * sudah di-enqueue oleh pemanggil (job route Cron ATAU nanti manual
- * refresh T-052), tidak mem-bootstrap job untuk seluruh akun aktif.
+ * **Seeding job pertama untuk `ConnectedAccount` baru** (Temuan #1 review
+ * Ridwan Architecture Reviewer, T-051): handler ini HANYA memproses SATU
+ * payload yang sudah di-enqueue oleh pemanggil, tidak mem-bootstrap job
+ * untuk seluruh akun aktif — itu tetap benar. Tapi seeding job PERTAMA
+ * (sebelum handler ini pernah punya sesuatu untuk di-reschedule) TIDAK lagi
+ * "di luar scope" begitu saja: `WorkspaceService.completeAccountConnection`
+ * (`domains/workspace/services/workspace.service.ts`, via
+ * `EngagementSyncSeederPort` + composition root
+ * `createWorkspaceServiceWithOutstandAdapter`) sekarang men-enqueue job
+ * `engagement.sync` PERTAMA persis saat `ConnectedAccount` created/activated
+ * (`background-jobs.md` § "Workspace BC → Background Job"), konsisten
+ * dengan baseline dokumen itu. Manual refresh (T-052) tetap TIDAK
+ * mem-bootstrap apa pun — ia memanggil `SyncCommentsUseCase.sync` langsung
+ * tanpa lewat handler ini sama sekali.
  */
 export class EngagementSyncJobHandler {
   constructor(

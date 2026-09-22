@@ -682,9 +682,33 @@ export const workspaceRepository: IWorkspaceRepository = {
     // method ini untuk kenapa `engagement` butuh lookup ini. Reuse HELPER
     // yang sama dengan `markAccountReconnectRequired`, TANPA langkah tulis
     // `reconnectRequired` (beda tujuan pemanggilan sepenuhnya).
+    //
+    // Eskalasi review Ridwan (T-051, disconnect→reconnect job leak) —
+    // `disconnectAccount` tidak pernah membatalkan chain self-reschedule
+    // `engagement.sync` yang sedang berjalan untuk akun itu (tidak ada
+    // mekanisme cancel/deleteByCriteria di `IJobScheduler`/
+    // `background-job-store.ts`). Fix-nya di sini, bukan menambah cancel
+    // job baru: akun berstatus BUKAN `active` (mis. `disconnected`)
+    // diperlakukan SAMA seperti "akun tidak ditemukan" — return `null`
+    // supaya `EngagementSyncJobHandler.handle` throw SEBELUM memanggil
+    // `SyncCommentsUseCase.sync` dan SEBELUM self-reschedule (jalur
+    // dead-letter yang SUDAH ada & sudah ditest, lihat docstring class
+    // `EngagementSyncJobHandler`) — chain job untuk akun yang di-disconnect
+    // mati sendiri begitu invocation berikutnya berjalan, tanpa pernah
+    // menyentuh Outstand lagi atau memicu notifikasi `engagement_new`.
+    // `markAccountReconnectRequired` (webhook path, T-026.5) TIDAK
+    // dipengaruhi — ia memakai helper yang sama tapi tidak memeriksa field
+    // `status` ini sama sekali, jadi behaviornya persis seperti sebelumnya.
     const lookup =
       await lookupAccountOwnerByOutstandAccountId(outstandAccountId);
-    return lookup;
+    if (!lookup || lookup.status !== "active") {
+      return null;
+    }
+    return {
+      workspaceId: lookup.workspaceId,
+      connectedAccountId: lookup.connectedAccountId,
+      ownerUserId: lookup.ownerUserId,
+    };
   },
 
   async disconnectAccount(workspaceId, connectedAccountId, actingUserId) {
@@ -803,6 +827,16 @@ interface AccountOwnerLookupRow {
   workspace_id: string;
   connected_account_id: string;
   owner_user_id: string;
+  /**
+   * `WorkspaceConnectedAccount.status` (T-051 fix, migration
+   * `20260922110000_t051_filter_active_status_engagement_sync_lookup`) —
+   * ditambahkan sebagai kolom output SQL function, TIDAK mengubah SELECT-nya
+   * (masih mengembalikan akun status apa pun). Konsumen yang butuh guard
+   * status (`findAccountOwnerByOutstandAccountId`) memeriksa field ini
+   * sendiri; `markAccountReconnectRequired` mengabaikannya (behavior tidak
+   * berubah).
+   */
+  status: string;
 }
 
 /**
@@ -820,6 +854,7 @@ async function lookupAccountOwnerByOutstandAccountId(
   workspaceId: WorkspaceId;
   connectedAccountId: ConnectedAccountId;
   ownerUserId: UserId;
+  status: string;
 } | null> {
   const rows = await prisma.$queryRaw<AccountOwnerLookupRow[]>`
     SELECT * FROM "public"."webhook_find_account_owner_by_outstand_account_id"(${outstandAccountId})
@@ -847,5 +882,6 @@ async function lookupAccountOwnerByOutstandAccountId(
     workspaceId: asWorkspaceId(row.workspace_id),
     connectedAccountId: asConnectedAccountId(row.connected_account_id),
     ownerUserId: asUserId(row.owner_user_id),
+    status: row.status,
   };
 }

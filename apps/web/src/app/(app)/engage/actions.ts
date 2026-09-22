@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 
 import {
   EngagementService,
+  RefreshInboxUseCase,
   SyncCommentsUseCase,
   type EngagementInboxItemRecord,
   type EngagementReplyRecord,
@@ -36,24 +37,25 @@ import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
  * DIPANGGIL LANGSUNG dari sini, tanpa lewat handler, karena refresh manual
  * bukan job periodik: sync sekali untuk seluruh `ConnectedAccount` aktif
  * workspace ini, lalu selesai — TIDAK enqueue job baru/self-reschedule.
- * `SyncCommentsUseCase` sendiri sudah tidak mensyaratkan `IJobScheduler`
- * sama sekali di constructor-nya (reschedule murni tanggung jawab
- * `EngagementSyncJobHandler.handle()` yang memanggil `sync()` lalu enqueue
- * sendiri) — jadi tidak ada penyesuaian constructor yang diperlukan untuk
- * mendukung use case ini.
  *
  * Data engagement TIDAK memakai Supabase Realtime (ADR-023 membatasinya
  * hanya untuk tabel `notifications`) — ini satu-satunya cara halaman
- * `/engage` (T-053, masih placeholder) bisa dapat data terbaru tanpa
- * menunggu siklus cron.
+ * `/engage` bisa dapat data terbaru tanpa menunggu siklus cron.
  *
- * Entry point ini murni wiring (AGENTS.md #5): resolve workspace/session,
- * rakit dependency konkret (composition root, pola sama
- * `/api/jobs/run/route.ts`), ambil daftar `ConnectedAccount` AKTIF lewat
- * `WorkspaceService.listConnectedAccounts` (`ConnectedAccountsPort` di
- * `publishing.service.ts`), lalu sync SETIAP akun secara berurutan
- * (menghindari beban paralel ke Outstand yang tidak perlu untuk operasi
- * yang dipicu manual/jarang) dan akumulasi `newCommentsCount`.
+ * **Refactor (Temuan #2 review Ridwan Architecture Reviewer):** orkestrasi
+ * "ambil daftar akun aktif, loop sync tiap akun, akumulasi
+ * `newCommentsCount`" sebelumnya ada LANGSUNG di Server Action ini
+ * (melanggar AGENTS.md #5 — entry point tanpa business logic). Sekarang
+ * dipindahkan ke `RefreshInboxUseCase.refreshAll`
+ * (`domains/engagement/services/refresh-inbox.use-case.ts`), pola sama
+ * `SyncCommentsUseCase`. Entry point ini murni wiring: resolve
+ * workspace/session, rakit dependency konkret (composition root, pola sama
+ * `/api/jobs/run/route.ts`) — `WorkspaceService` instance dipassing
+ * LANGSUNG sebagai `ConnectedAccountsPort` use-case (structural typing,
+ * `listConnectedAccounts` sudah punya shape yang dibutuhkan) — lalu
+ * delegasi SATU panggilan ke `refreshAll`. Signature return
+ * (`{ error?, newCommentsCount? }`) dan behavior (toast jumlah komentar
+ * baru, `revalidatePath("/engage")`) TIDAK berubah dari sebelumnya.
  */
 export async function refreshInboxAction(): Promise<{
   error?: string;
@@ -83,29 +85,16 @@ export async function refreshInboxAction(): Promise<{
       },
     },
   );
+  const refreshInboxUseCase = new RefreshInboxUseCase(
+    syncCommentsUseCase,
+    workspaceService,
+  );
 
   try {
-    const accounts = await workspaceService.listConnectedAccounts(
+    const { newCommentsCount } = await refreshInboxUseCase.refreshAll(
       workspaceId,
       userId,
     );
-    const activeAccounts = accounts.filter(
-      (account) => account.status === "active",
-    );
-
-    let newCommentsCount = 0;
-    for (const account of activeAccounts) {
-      const result = await syncCommentsUseCase.sync(
-        {
-          workspaceId,
-          connectedAccountId: account.id,
-          outstandAccountId: account.outstandAccountId,
-        },
-        userId,
-      );
-      newCommentsCount += result.newCommentsCount;
-    }
-
     revalidatePath("/engage");
     return { newCommentsCount };
   } catch (error) {

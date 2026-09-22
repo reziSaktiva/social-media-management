@@ -306,7 +306,15 @@ export function EngageInboxView({
       toast.error(result.error);
       return;
     }
+    const sentReply = result.data;
     setReplyDraft("");
+    if (sentReply) {
+      setDetail((prev) =>
+        prev && prev.id === sentReply.inboxItemId
+          ? { ...prev, replies: [...prev.replies, sentReply] }
+          : prev,
+      );
+    }
     toast("Balasan terkirim");
   }, [detail, replyDraft]);
 
@@ -502,6 +510,26 @@ export function EngageInboxView({
                   </span>{" "}
                   {detail.content}
                 </Text>
+
+                {detail.replies.length > 0 ? (
+                  // eslint-disable-next-line no-restricted-syntax -- bugfix: riwayat balasan tim, layout-only
+                  <div className="flex flex-col gap-2">
+                    {detail.replies.map((reply) => (
+                      // eslint-disable-next-line no-restricted-syntax -- bugfix: `.reply-history-item`, dibedakan dari komentar customer lewat bg-muted + indent
+                      <div
+                        key={reply.id}
+                        className="ml-4 flex flex-col gap-0.5 rounded-lg bg-muted p-3"
+                      >
+                        <Text variant="muted" as="span" className="text-xs">
+                          Balasan tim · {formatRelativeTime(reply.sentAt)}
+                        </Text>
+                        <Text as="p" className="text-sm text-foreground">
+                          {reply.content}
+                        </Text>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
 
                 {detail.status !== "done" ? (
                   <Button
