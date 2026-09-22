@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.87     |
+| Version      | 1.0.88     |
 | Status       | Active     |
 | Last Updated | 2026-09-22 |
 
@@ -979,6 +979,34 @@ sudah ada sejak sebelum T-027, bukan regresi baru). UI sudah punya fallback
 tapi data historis `publishedAt` di DB tetap kosong untuk seluruh post yang
 sudah tayang. Non-blocking, gap serupa pola **KI-049**
 (`failedAt`/`failureReason` juga tidak pernah ditulis). Tidak memblokir M8.
+
+### KI-066 · Sidebar workspace/settings belum migrasi ke primitive `Sidebar` shadcn/ui
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt / UI |
+| Terkait | ADR-097, T-102 |
+
+Ditemukan King Rezi saat diskusi (2026-09-22): `AppSideNav` (dan turunannya
+`WorkspaceSideNav`/`SettingsSideNav`, `apps/web/src/app/(app)/components/AppSideNav.tsx`)
+BUKAN dibangun dari primitive `Sidebar` shadcn/ui (`SidebarProvider`/
+`Sidebar`/`SidebarMenu`, dst.) — komponen ini belum pernah di-install ke
+`apps/web/src/components/ui/`. Struktur luar sidebar masih `<nav>` custom
+dengan Tailwind manual (`WorkspaceSideNav.tsx:112`), walau elemen di
+dalamnya (`AlertDialog`, `Avatar`, `Button`, `DropdownMenu`, `Tooltip`,
+`Spinner`, `Text`) sudah shadcn/ui.
+
+T-102 (migrasi Astryx → shadcn/ui, ADR-097) ditutup `✅ Done` tanpa mencakup
+migrasi struktur sidebar ke primitive resmi `Sidebar` — scope T-102 waktu
+itu adalah mengganti komponen Astryx, bukan mengaudit apakah setiap area
+layout sudah memakai primitive shadcn yang paling sesuai. Sidebar custom
+saat ini berfungsi penuh (tidak ada bug), jadi ini gap konsistensi/tech-debt,
+bukan bug fungsional — perlu keputusan King Rezi (langsung atau lewat Mark
+UI Engineer) apakah migrasi ke `Sidebar` shadcn dijadikan task formal
+(kemungkinan butuh cek Claude Design dulu per rule 17 AGENTS.md kalau
+migrasi ini mengubah struktur visual/interaksi, bukan cuma refactor
+internal). Tidak memblokir M8.
 
 ---
 
