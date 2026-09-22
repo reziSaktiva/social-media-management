@@ -29,7 +29,7 @@ Periodic pull komentar dari Outstand per connected account, tulis ke `Engagement
 
 ### T-052 · Manual refresh
 
-`⏳ Not Started` · **Domain** engagement · **ADR** ADR-023, ADR-040 · **Depends** T-051
+`🟡 In Progress` · **Domain** engagement · **ADR** ADR-023, ADR-040 · **Depends** T-051
 **Baca dulu:** `05-architecture/realtime-strategy.md`
 
 Kontrol refresh manual supaya pengguna tidak perlu menunggu siklus 30 menit. Data engagement **tidak** memakai Supabase Realtime (ADR-023 membatasinya hanya untuk tabel `notifications`).
