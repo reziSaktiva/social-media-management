@@ -55,14 +55,74 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 16 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 18 ✅ · 1 🟡 · 4 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-047 | 8    | 8 ✅                | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
-| **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
+| **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | 🟡 2 ✅ · 3 🟡 · 1 ⏳  | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 89 task · 49 selesai · 221 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 89 task · 51 selesai · 221 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-22, T-053 + T-054 SELESAI — rilis v0.4 Engagement MVP
+> dimulai; KI-065 baru; drift status ditemukan untuk T-050–T-052):**
+> **T-053** (Comments Inbox UI) dan **T-054** (Reply comment dari dalam
+> aplikasi), `tasks/v04-engagement-mvp.md`, naik status `🟡 In Progress` →
+> `✅ Done`. **T-053:** rancangan sudah ada di Claude Design
+> (`templates/engage-inbox.html`, KSP-06) tapi pola thread-list belum
+> dikunci ("SYNCED"/"LOCKED PATTERN") — sesuai rule 17 AGENTS.md, King Rezi
+> ditanya via `AskUserQuestion` sebelum implementasi kode UI dimulai,
+> jawaban "sesuaikan dengan yang ada di Claude Design" — dibangun dari
+> komponen shadcn `Item`/`ItemGroup` (bukan `Table`, mockup satu blok teks
+> per baris bukan tabular). Server Action baru
+> `listInboxAction`/`getInboxItemDetailAction`/`markAsDoneAction`
+> (`apps/web/src/app/(app)/engage/actions.ts`, murni wiring ke
+> `EngagementService` sejak T-050); UI baru
+> `apps/web/src/app/(app)/engage/page.tsx` (Server Component, ganti
+> `ScaffoldPlaceholder`) + `apps/web/src/app/(app)/engage/components/EngageInboxView.tsx`
+> (Client Component) — layout dua panel (thread-list 340px + detail),
+> filter Akun/Platform/Status, Mark as Done, reply box (Kirim disabled
+> sampai T-054), reuse `refreshInboxAction` (T-052). **KI-065 baru** (Open):
+> kotak "Post asal" di detail panel hanya label generik, tanpa
+> judul/thumbnail post asli, karena `EngagementInboxItemRecord` (T-050)
+> tidak membawa join ke publishing — perlu keputusan/task lanjutan King
+> Rezi. **T-054:** RBAC dicek ke `roles-permissions.md` — Owner/Admin/Creator
+> semua boleh reply, tidak ada gating tambahan. `EngagementService.reply(input,
+> userId)` baru — validasi content kosong (`ValidationError`), guard inbox
+> item tidak ditemukan (`NotFoundError`), panggil
+> `IOutstandAdapter.replyToComment` (Fake, instant-success, pola sama
+> `schedulePost`/`publishNow`), persist `EngagementReply` dengan
+> `outstandReplyId`. **Constructor `EngagementService` berubah** — sekarang
+> wajib menerima `IOutstandAdapter` sebagai parameter kedua (breaking
+> change internal, seluruh call site sudah diupdate, dikonfirmasi Ridwan).
+> `IEngagementRepository.createReply` diperluas menerima `outstandReplyId`
+> (kolom sudah ada di schema, tanpa migration baru). Server Action baru
+> `replyToCommentAction`; tombol "Kirim" di `EngageInboxView.tsx` diaktifkan
+> (disabled saat draft kosong/mengirim, toast sukses/error, textarea
+> dikosongkan setelah sukses). Rangkaian: Prabowo Feature Engineer → Mark UI
+> Engineer → Elon Backend Engineer → Mark UI Engineer → Ridwan Architecture
+> Reviewer (0 temuan — domain purity `IOutstandAdapter` tetap interface
+> abstrak, entry point bersih, cross-domain lewat public API `workspace`,
+> RBAC sesuai baseline, seluruh call site `EngagementService` konsisten) →
+> Najwa QA Engineer (PASS penuh — golden path pilih thread/Mark as
+> Done/kirim reply tanpa reload, filter Akun/Platform/Status semua benar,
+> regresi `/publish/drafts` dan `/analyze` normal, gate T-103.3 match
+> `templates/engage-inbox.html`, gap "Post asal" dikonfirmasi expected).
+> Verifikasi akhir: `typecheck`/`lint` bersih, `vitest` **448 pass/5 skip**
+> (naik dari 426). Breakdown v0.4 berubah dari "⏳ 0 / 6" menjadi **2 ✅ · 3
+> 🟡 (T-050–T-052) · 1 ⏳ (T-055)**. **Catatan governance ditemukan sesi
+> ini, BELUM ditindaklanjuti** (dilaporkan ke King Rezi, bukan ditebak):
+> **T-050** (domain skeleton), **T-051** (comment sync job JOB-03), dan
+> **T-052** (manual refresh) sudah diimplementasikan penuh lewat commit
+> `23f9923`/`ae0f49b` di sesi sebelum ini, tapi status filenya masih `🟡 In
+> Progress` di `tasks/v04-engagement-mvp.md` — tidak ada catatan review
+> Ridwan Architecture Reviewer/QA Najwa QA Engineer untuk ketiganya, dan
+> `PROJECT_STATE.md` tidak pernah mencatat penyelesaiannya. Sengaja TIDAK
+> dipromosikan ke `✅ Done` di sesi ini tanpa konfirmasi King Rezi bahwa
+> ketiganya sudah lolos verifikasi. Total task selesai naik 49 → **51**.
+> Jumlah subtask total tidak berubah (221 — v0.4 sengaja belum punya
+> subtask terdefinisi, rolling wave). Detail:
+> `tasks/v04-engagement-mvp.md` § T-053, § T-054.
+>
 > **Update (2026-09-21, T-045 SELESAI 3/3 subtask — v0.3 Analytics MVP
 > TUNTAS 8/8 task):** **T-045** (Comparative Reports, Should Have,
 > `tasks/v03-analytics-mvp.md`) naik status `⏳ Not Started` → `✅ Done` —
@@ -1014,6 +1074,8 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
+| **T-054** | Reply comment dari dalam aplikasi               | ✅     | **Done (2026-09-22)** — `EngagementService.reply` baru (validasi content kosong, guard `NotFoundError`, panggil `IOutstandAdapter.replyToComment` Fake pola `schedulePost`/`publishNow`, persist `EngagementReply.outstandReplyId`). **Constructor `EngagementService` berubah** — wajib menerima `IOutstandAdapter` sebagai parameter kedua, seluruh call site diupdate. RBAC: Owner/Admin/Creator semua boleh reply. Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh). Lihat `tasks/v04-engagement-mvp.md` § T-054 |
+| **T-053** | Comments Inbox UI                               | ✅     | **Done (2026-09-22)** — inbox `/engage` dua panel (thread-list + detail). Pola thread-list belum dikunci di Claude Design (`templates/engage-inbox.html`) — King Rezi ditanya via `AskUserQuestion`, jawaban "sesuaikan dengan Claude Design", dibangun dari shadcn `Item`/`ItemGroup` (bukan `Table`). Server Action `listInboxAction`/`getInboxItemDetailAction`/`markAsDoneAction`, filter Akun/Platform/Status, reuse `refreshInboxAction` (T-052). **KI-065 baru** (Open) — kotak "Post asal" cuma label generik, tidak ada judul/thumbnail post asli. Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh, gate T-103.3 match). Lihat `tasks/v04-engagement-mvp.md` § T-053 |
 | **T-044** | Engagement summary                              | ✅ 3/3 | **Done (2026-09-21)** — scope dipersempit via `AskUserQuestion` (Claude Design belum "SYNCED" tapi hanya mengunci 2 angka: Komentar, Likes) — jauh lebih sempit dari deskripsi asli (domain `engagement`, ADR-018). `PublishingService.getEngagementSummary` reuse `getPostPerformance`, data dari `AnalyticsPostMetric` (T-041), **domain berubah `analytics`→`publishing`**, **ADR-018 tidak dipakai**, **tidak lagi terikat v0.4**. UI card "Engagement Summary" mengaktifkan grid `.dash-cols` 2 kolom di `/analyze`. Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh, gate T-103.3 2x independen). Lihat `tasks/v03-analytics-mvp.md` § T-044 |
 | **T-043** | Post performance metrics                        | ✅ 4/4 | **Done (2026-09-18)** — Table sortable di `/analyze` (Post/Akun/Reach/Eng. Rate) + metrik di halaman detail post History, `getPostPerformance` di `PublishingService` (reuse `PostMetricsPort`, dependency satu arah `publishing→analytics` setelah refactor). Lolos review Ridwan (2 putaran — putaran 1 temuan circular dependency, direfactor; putaran 2 tertutup) + QA Najwa (0 temuan blocking). **KI-064 baru** (gap dokumentasi `application-layer.md`). Lihat `tasks/v03-analytics-mvp.md` § T-043 |
 | **T-027** | Job runner + Railway Cron                       | ✅ 5/5 | **Done (2026-09-17)** — job runner generik (klaim job `SELECT FOR UPDATE SKIP LOCKED` + registry handler per job type), auth `X-Job-Secret`, retry backoff 5m/15m/60m + dead-letter, Railway Cron config-as-code (`railway.json`/`railway.cron.json` — provisioning project sungguhan masih blocked **KI-025**), dan job handler baru `ResolveScheduledPostOutcomeJobHandler` (**JOB-07**) yang menutup transisi status post terjadwal otomatis. **ADR-108** (redesain `fetchPostOutcome` — root-cause fix state `Map` `FakeOutstandAdapter` yang pecah lintas Server Action↔Route Handler) dan **ADR-109** (`markPostPublished`, melengkapi gap T-026). **KI-062**/**KI-063** baru (dokumentasi backoff self-contradictory, `publishedAt` kosong). Lolos review Ridwan (2 putaran) + QA Najwa (browser + `curl` simulasi cron, semua PASS). Lihat `tasks/v02-publishing-mvp.md` § T-027 |

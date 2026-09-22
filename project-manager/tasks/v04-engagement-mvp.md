@@ -36,17 +36,41 @@ Kontrol refresh manual supaya pengguna tidak perlu menunggu siklus 30 menit. Dat
 
 ### T-053 · Comments Inbox UI
 
-`⏳ Not Started` · **Domain** engagement · UI · **ADR** ADR-046 · **Depends** T-051
+`✅ Done (2026-09-22)` · **Domain** engagement · UI · **ADR** ADR-046 · **Depends** T-051 · **Terkait** KI-065
 **Baca dulu:** `04-ux/key-screen-patterns.md` · `04-ux/information-architecture.md`
 
-Inbox komentar sederhana lintas akun di `/engage`: daftar komentar, filter per akun, status sudah/belum dibalas. Butuh sesi desain Claude Design lebih dulu.
+Inbox komentar sederhana lintas akun di `/engage`: daftar komentar, filter per akun, status sudah/belum dibalas.
+
+**Implementasi (selesai, 2026-09-22):** rancangan sudah ada di Claude Design (`templates/engage-inbox.html`, KSP-06) tapi pola thread-list belum dikunci ("SYNCED"/"LOCKED PATTERN") — sesuai rule 17 AGENTS.md, King Rezi ditanya via `AskUserQuestion` sebelum implementasi kode UI dimulai. Jawaban: "sesuaikan dengan yang ada di Claude Design" — diimplementasikan mengikuti markup mockup apa adanya, dibangun dari komponen shadcn `Item`/`ItemGroup` (bukan `Table`, karena mockup satu blok teks per baris, bukan tabular).
+
+Backend (Prabowo Feature Engineer): Server Action baru `listInboxAction`, `getInboxItemDetailAction`, `markAsDoneAction` di `apps/web/src/app/(app)/engage/actions.ts` — murni wiring ke `EngagementService` yang sudah ada sejak T-050, tidak ada logic domain baru.
+
+UI (Mark UI Engineer): `apps/web/src/app/(app)/engage/page.tsx` diganti dari `ScaffoldPlaceholder` jadi Server Component; komponen baru `apps/web/src/app/(app)/engage/components/EngageInboxView.tsx` (Client Component) — layout dua panel (thread-list kiri 340px tetap + thread-detail kanan), filter 3 dropdown (Akun/Platform/Status) re-fetch server-side, tombol Mark as Done, reply box (tombol Kirim awalnya disabled, diaktifkan di T-054), empty state (`Empty` shadcn), tombol Refresh manual reuse `refreshInboxAction` (T-052).
+
+**Known gap (bukan bug, lihat KI-065):** kotak "Post asal" di detail panel hanya menampilkan label generik ("Komentar ini terhubung ke post terjadwal/terpublish") tanpa judul/thumbnail post asli — `InboxItemDetail`/`EngagementInboxItemRecord` (T-050) tidak membawa join ke caption/media post sungguhan (`postId` hanya ID, tanpa snapshot), dan menambah join lintas domain `engagement → publishing` di luar scope UI-only task ini.
+
+**Review Ridwan Architecture Reviewer:** 0 temuan — domain purity terjaga (`IOutstandAdapter` tetap interface abstrak), entry point tanpa business logic, cross-domain lewat public API `workspace`, RBAC sesuai baseline.
+
+**QA Najwa QA Engineer:** PASS penuh — golden path (pilih thread, Mark as Done) bekerja, filter Akun/Platform/Status semua benar, regresi `/publish/drafts` dan `/analyze` normal, gate T-103.3 (struktur vs `templates/engage-inbox.html`) cocok — pola `Item`/`ItemGroup` sesuai keputusan terkunci di atas; gap "Post asal" dikonfirmasi expected (bukan bug, konsisten `FakeOutstandAdapter` tidak pernah mengisi snapshot post).
 
 ### T-054 · Reply comment dari dalam aplikasi
 
-`⏳ Not Started` · **Domain** engagement · integration · **ADR** ADR-019, ADR-040 · **Depends** T-025, T-053
+`✅ Done (2026-09-22)` · **Domain** engagement · integration · **ADR** ADR-019, ADR-040 · **Depends** T-025, T-053 ✅
 **Baca dulu:** `05-architecture/integration-layer.md` · `02-product/roles-permissions.md`
 
-Kirim balasan lewat `OutstandAdapter`, persist ke `EngagementReply`. Tentukan RBAC role mana yang boleh membalas.
+Kirim balasan lewat `OutstandAdapter`, persist ke `EngagementReply`.
+
+**Implementasi (selesai, 2026-09-22):** RBAC dicek ke baseline `roles-permissions.md` — Owner/Admin/Creator semua boleh reply (tidak ada role gating tambahan, cukup member aktif workspace), tidak perlu keputusan baru.
+
+Domain (Elon Backend Engineer): `EngagementService.reply(input, userId)` baru — validasi content tidak boleh kosong (`ValidationError`), cari inbox item (`NotFoundError` guard), panggil `IOutstandAdapter.replyToComment(item.externalId, content)` (Fake adapter, instant-success, pola sama `schedulePost`/`publishNow`), lalu persist `EngagementReply` dengan `outstandReplyId` hasil adapter, status `"sent"`. **Constructor `EngagementService` berubah** — sekarang wajib menerima `IOutstandAdapter` sebagai parameter kedua (breaking change internal, seluruh call site sudah diupdate, dikonfirmasi konsisten oleh Ridwan Architecture Reviewer). `IEngagementRepository.createReply` diperluas menerima `outstandReplyId` (kolom `EngagementReply.outstandReplyId` sudah ada di schema sejak awal, tanpa migration baru).
+
+Server Action baru `replyToCommentAction` di `actions.ts`. UI (Mark UI Engineer): tombol "Kirim" di `EngageInboxView.tsx` diaktifkan — disabled saat draft kosong/sedang mengirim, toast sukses/error, textarea dikosongkan setelah sukses. Unit test baru untuk `EngagementService.reply` (golden path + `ValidationError` + `NotFoundError`).
+
+**Review Ridwan Architecture Reviewer:** 0 temuan — `IOutstandAdapter` tetap interface abstrak (bukan Prisma/Supabase konkret), entry point tanpa business logic, cross-domain lewat public API `workspace`, RBAC sesuai baseline, shared types tidak duplikat, seluruh call site `EngagementService` konsisten dengan constructor baru.
+
+**QA Najwa QA Engineer:** PASS penuh — golden path (kirim reply dari thread yang dipilih) bekerja tanpa reload, regresi `/publish/drafts` dan `/analyze` normal, gate T-103.3 cocok.
+
+**Verifikasi akhir T-053 + T-054:** `bun run typecheck`/`bun run lint`/`bun run test` semua bersih, **448 pass/5 skip** (naik dari 426), tidak ada regresi.
 
 ### T-055 · Inbox assignment
 

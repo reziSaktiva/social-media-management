@@ -162,13 +162,21 @@ export const engagementRepository: IEngagementRepository = {
     return item ? mapInboxItem(item) : null;
   },
 
-  async createReply({ inboxItemId, userId: authorId, content }, userId) {
+  async createReply(
+    { inboxItemId, userId: authorId, content, outstandReplyId },
+    userId,
+  ) {
     const reply = await withCurrentUser(userId, (tx) =>
       tx.engagementReply.create({
         data: {
           inboxItemId,
           userId: authorId,
           content,
+          outstandReplyId,
+          // Method ini hanya dipanggil `EngagementService.reply` (T-054)
+          // SETELAH `IOutstandAdapter.replyToComment` sukses — status
+          // default schema "pending" tidak pernah relevan di jalur ini.
+          status: "sent",
         },
       }),
     );

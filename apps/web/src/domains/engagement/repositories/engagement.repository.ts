@@ -89,16 +89,28 @@ export interface IEngagementRepository {
 
   /**
    * Persist balasan ke `EngagementReply` — disiapkan di T-050, dipakai
-   * use-case reply (T-054, kirim lewat `OutstandAdapter` lalu persist di
-   * sini). TIDAK dipanggil caller mana pun sampai T-054. `userId` (RLS) —
-   * acting user untuk `withCurrentUser`; juga dipersist sebagai
-   * `EngagementReply.userId` (siapa yang membalas).
+   * use-case reply (T-054: `EngagementService.reply` memanggil
+   * `IOutstandAdapter.replyToComment` LEBIH DULU, baru memanggil method ini
+   * dengan `outstandReplyId` hasilnya). `userId` (RLS) — acting user untuk
+   * `withCurrentUser`; juga dipersist sebagai `EngagementReply.userId`
+   * (siapa yang membalas).
+   *
+   * **`outstandReplyId` (T-054)** — wajib diisi dari
+   * `ReplyToCommentResult.outstandReplyId`, dipersist ke kolom
+   * `EngagementReply.outstandReplyId` yang sudah ada sejak schema T-050.
+   * Implementasi Prisma (`apps/web/src/lib/repositories/engagement`) juga
+   * men-set `status: "sent"` saat membuat baris ini — method ini HANYA
+   * dipanggil setelah `replyToComment` sukses (lihat `EngagementService.reply`),
+   * jadi tidak ada jalur di mana baris `EngagementReply` dibuat tanpa balasan
+   * benar-benar terkirim; nilai default schema `"pending"` tidak pernah
+   * relevan untuk method ini.
    */
   createReply(
     input: {
       inboxItemId: InboxItemId;
       userId: UserId;
       content: string;
+      outstandReplyId: string;
     },
     userId: UserId,
   ): Promise<EngagementReplyRecord>;
