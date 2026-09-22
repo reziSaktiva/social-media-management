@@ -11,6 +11,8 @@ vi.mock("@/lib/repositories/workspace", () => ({ workspaceRepository: {} }));
 vi.mock("@/lib/repositories/notification", () => ({
   notificationRepository: {},
 }));
+vi.mock("@/lib/repositories/engagement", () => ({ engagementRepository: {} }));
+vi.mock("@/lib/jobs/job-scheduler", () => ({ backgroundJobScheduler: {} }));
 
 vi.mock("@/domains/publishing", () => ({
   OutstandWebhookProcessor: class {},
@@ -22,6 +24,13 @@ vi.mock("@/domains/publishing", () => ({
 }));
 vi.mock("@/domains/notification", () => ({
   NotificationService: class {},
+}));
+vi.mock("@/domains/engagement", () => ({
+  ENGAGEMENT_SYNC_JOB_TYPE: "engagement.sync",
+  EngagementSyncJobHandler: class {
+    handle = vi.fn();
+  },
+  SyncCommentsUseCase: class {},
 }));
 
 const { runPendingJobs } = vi.hoisted(() => ({ runPendingJobs: vi.fn() }));

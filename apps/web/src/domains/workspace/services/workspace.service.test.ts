@@ -55,6 +55,7 @@ function createFakeRepository(
     clearPendingOwnerTransfer: async () => undefined,
     acceptOwnershipTransfer: async () => undefined,
     markAccountReconnectRequired: async () => null,
+    findAccountOwnerByOutstandAccountId: async () => null,
     disconnectAccount: async () => undefined,
     findConnectedAccountById: async () => null,
     createConnectedAccount: async ({
@@ -757,6 +758,8 @@ function fakeOutstandAdapter(
       totalEngagements: 0,
       avgEngagementRate: 0,
     }),
+    fetchComments: async () => ({ comments: [], nextCursor: null }),
+    replyToComment: async () => ({ outstandReplyId: "fake-reply" }),
     ...overrides,
   };
 }
@@ -1137,6 +1140,109 @@ describe("WorkspaceService.completeAccountConnection", () => {
         state: "fake-state",
       }),
     ).rejects.toThrow(AuthorizationError);
+  });
+
+  // Temuan #1 (review Ridwan Architecture Reviewer, T-051) — seeding JOB-03
+  // pertama lewat `EngagementSyncSeederPort` (parameter ke-5).
+  it("calls engagementSyncSeeder.onAccountConnected after creating a new ConnectedAccount", async () => {
+    const onAccountConnected = vi.fn(async () => undefined);
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        createConnectedAccount: async (input) => ({
+          id: asConnectedAccountId("cac-conn-new"),
+          workspaceId: input.workspaceId,
+          platform: input.platform,
+          outstandAccountId: input.outstandAccountId,
+          handle: input.handle,
+          status: "active",
+          reconnectRequired: false,
+          connectedAt: new Date(),
+        }),
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter(),
+      { onAccountConnected },
+    );
+
+    await service.completeAccountConnection({
+      workspaceId: WORKSPACE_ID,
+      actorId: OWNER_USER,
+      code: "fake-code",
+      state: "fake-state",
+    });
+
+    expect(onAccountConnected).toHaveBeenCalledWith({
+      workspaceId: WORKSPACE_ID,
+      connectedAccountId: asConnectedAccountId("cac-conn-new"),
+      outstandAccountId: "outstand-account-1",
+    });
+  });
+
+  it("calls engagementSyncSeeder.onAccountConnected after reconnecting an existing ConnectedAccount", async () => {
+    const onAccountConnected = vi.fn(async () => undefined);
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        findConnectedAccountById: async () => existingAccount(),
+        reconnectAccount: async () => ({
+          ...existingAccount(),
+          outstandAccountId: "outstand-account-1",
+          handle: "@fake",
+          status: "active",
+          reconnectRequired: false,
+        }),
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter(),
+      { onAccountConnected },
+    );
+
+    await service.completeAccountConnection({
+      workspaceId: WORKSPACE_ID,
+      actorId: OWNER_USER,
+      code: "fake-code",
+      state: "fake-state",
+      redirectAccountId: CONNECTED_ACCOUNT_ID,
+    });
+
+    expect(onAccountConnected).toHaveBeenCalledWith({
+      workspaceId: WORKSPACE_ID,
+      connectedAccountId: CONNECTED_ACCOUNT_ID,
+      outstandAccountId: "outstand-account-1",
+    });
+  });
+
+  it("does not throw when engagementSyncSeeder is not supplied (optional port)", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        createConnectedAccount: async (input) => ({
+          id: asConnectedAccountId("cac-conn-new"),
+          workspaceId: input.workspaceId,
+          platform: input.platform,
+          outstandAccountId: input.outstandAccountId,
+          handle: input.handle,
+          status: "active",
+          reconnectRequired: false,
+          connectedAt: new Date(),
+        }),
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter(),
+    );
+
+    await expect(
+      service.completeAccountConnection({
+        workspaceId: WORKSPACE_ID,
+        actorId: OWNER_USER,
+        code: "fake-code",
+        state: "fake-state",
+      }),
+    ).resolves.toBeDefined();
   });
 });
 

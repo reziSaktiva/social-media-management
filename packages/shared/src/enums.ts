@@ -78,6 +78,13 @@ export enum NotificationType {
   PostPublishFailed = "post_publish_failed",
   /** Webhook Outstand `account.token_expired` (T-026.5) — akun butuh reconnect. */
   AccountReconnectRequired = "account_reconnect_required",
+  /**
+   * JOB-03 Engagement Sync (`background-jobs.md` § JOB-03, T-051) — satu
+   * notifikasi aggregate per sync run kalau ada komentar baru ditemukan
+   * (bukan per-komentar). Nilai string persis sama dengan narasi resmi
+   * `background-jobs.md` (`type: 'engagement_new'`).
+   */
+  EngagementNewComments = "engagement_new",
 }
 
 /**

@@ -59,6 +59,30 @@ export const backgroundJobStore = {
   },
 
   /**
+   * Cek apakah sudah ada job `type` dengan `payload[key] === value` yang
+   * masih `pending`/`running` — dipakai composition root sebelum men-seed
+   * job self-reschedule (mis. `engagement.sync`) supaya disconnect→reconnect
+   * cepat pada `ConnectedAccount` yang sama tidak membuat dua chain paralel
+   * (tidak ada apa pun yang membatalkan chain lama saat disconnect).
+   */
+  async hasActiveJobForPayloadKey(input: {
+    type: string;
+    key: string;
+    value: string;
+  }): Promise<boolean> {
+    const existing = await prisma.backgroundJob.findFirst({
+      where: {
+        type: input.type,
+        status: { in: ["pending", "running"] },
+        payload: { path: [input.key], equals: input.value },
+      },
+      select: { id: true },
+    });
+
+    return existing !== null;
+  },
+
+  /**
    * T-027.1 — klaim batch job `pending` yang sudah due
    * (`scheduled_at <= now()`), locking aman untuk eksekusi paralel via
    * `SELECT ... FOR UPDATE SKIP LOCKED` (BG-D03, `background-jobs.md` §

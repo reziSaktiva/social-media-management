@@ -112,6 +112,8 @@ function createFakeOutstandAdapter(
       totalEngagements: 0,
       avgEngagementRate: 0,
     }),
+    fetchComments: async () => ({ comments: [], nextCursor: null }),
+    replyToComment: async () => ({ outstandReplyId: "fake-reply" }),
     ...overrides,
   };
 }

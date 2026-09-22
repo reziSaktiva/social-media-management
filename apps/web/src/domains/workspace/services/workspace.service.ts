@@ -86,6 +86,37 @@ interface NotificationPort {
   }): Promise<unknown>;
 }
 
+/**
+ * Port lokal untuk cross-domain `workspace` → `engagement` (Temuan #1
+ * review Ridwan Architecture Reviewer, T-051, `background-jobs.md` §
+ * "Workspace BC → Background Job": "ConnectedAccount created/activated →
+ * JobScheduler.scheduleEngagementSync(connectedAccount)"). Sebelum
+ * perbaikan ini, JOB-03 pertama untuk sebuah `ConnectedAccount` TIDAK
+ * PERNAH dibuat — `EngagementSyncJobHandler` hanya self-reschedule
+ * SETELAH sebuah job sudah ada, tidak ada apa pun yang men-seed job
+ * pertama, sehingga siklus sync 30 menit tidak pernah mulai berjalan
+ * sendiri.
+ *
+ * `workspace` TIDAK BOLEH mengimpor apa pun dari domain `engagement`
+ * (dependency terdokumentasi HANYA satu arah: `engagement` → `workspace`,
+ * `application-layer.md` § "Peta Dependency Antar Domain") — pola sama
+ * `ScheduledCountsPort`/`NotificationPort` di atas: `WorkspaceService`
+ * hanya tahu "akun ini baru terhubung/reconnect, panggil hook ini",
+ * TIDAK tahu apa pun soal tipe job/`ENGAGEMENT_SYNC_JOB_TYPE`. Composition
+ * root (`createWorkspaceServiceWithOutstandAdapter`) menyuplai
+ * implementasi konkret yang mengimpor `ENGAGEMENT_SYNC_JOB_TYPE` dari
+ * `@/domains/engagement` dan meng-enqueue lewat `IJobScheduler`. Opsional
+ * (`undefined` di test/caller lama) — kalau tidak disuplai, seeding
+ * di-skip diam-diam (pola sama `NotificationPort`), bukan throw.
+ */
+interface EngagementSyncSeederPort {
+  onAccountConnected(input: {
+    workspaceId: WorkspaceId;
+    connectedAccountId: ConnectedAccountId;
+    outstandAccountId: string;
+  }): Promise<void>;
+}
+
 export class WorkspaceService {
   constructor(
     private readonly repository: IWorkspaceRepository,
@@ -105,6 +136,15 @@ export class WorkspaceService {
      * `requireOutstandAdapter()`.
      */
     private readonly outstandAdapter?: IOutstandAdapter,
+    /**
+     * Seed JOB-03 pertama saat `ConnectedAccount` created/activated
+     * (Temuan #1 review Ridwan, T-051) — lihat docstring
+     * `EngagementSyncSeederPort`. Opsional, sama pola `scheduledCounts`/
+     * `notifications` — caller lama (Server Action yang tidak menyentuh
+     * `completeAccountConnection`, mis. `disconnectAccount`) tidak perlu
+     * berubah.
+     */
+    private readonly engagementSyncSeeder?: EngagementSyncSeederPort,
   ) {}
 
   async createWorkspace(input: {
@@ -1111,23 +1151,39 @@ export class WorkspaceService {
       );
     }
 
-    if (input.redirectAccountId) {
-      return this.repository.reconnectAccount({
-        workspaceId: input.workspaceId,
-        connectedAccountId: input.redirectAccountId,
-        outstandAccountId: exchanged.outstandAccountId,
-        handle: exchanged.handle,
-        actingUserId: input.actorId,
-      });
-    }
+    const record = input.redirectAccountId
+      ? await this.repository.reconnectAccount({
+          workspaceId: input.workspaceId,
+          connectedAccountId: input.redirectAccountId,
+          outstandAccountId: exchanged.outstandAccountId,
+          handle: exchanged.handle,
+          actingUserId: input.actorId,
+        })
+      : await this.repository.createConnectedAccount({
+          workspaceId: input.workspaceId,
+          platform: exchanged.platform,
+          outstandAccountId: exchanged.outstandAccountId,
+          handle: exchanged.handle,
+          actingUserId: input.actorId,
+        });
 
-    return this.repository.createConnectedAccount({
-      workspaceId: input.workspaceId,
-      platform: exchanged.platform,
-      outstandAccountId: exchanged.outstandAccountId,
-      handle: exchanged.handle,
-      actingUserId: input.actorId,
+    // Temuan #1 (Ridwan) — seed JOB-03 di titik "created/activated" persis
+    // sesuai `background-jobs.md` § "Workspace BC → Background Job", untuk
+    // KEDUA cabang (create maupun reconnect): dokumen itu menyebut
+    // "created/activated", dan reconnect adalah bentuk "activated" untuk
+    // akun yang sebelumnya `reconnect-required`/`disconnected`. Gagal
+    // seeding TIDAK boleh menggagalkan connect account itu sendiri (akun
+    // sudah berhasil dibuat/di-update di atas) — tapi juga tidak boleh
+    // gagal diam-diam tanpa jejak, jadi kegagalan tetap dilempar ke atas
+    // (caller/`ApplicationError` handling di Route Handler callback tetap
+    // konsisten dengan error path lain di sana).
+    await this.engagementSyncSeeder?.onAccountConnected({
+      workspaceId: record.workspaceId,
+      connectedAccountId: record.id,
+      outstandAccountId: record.outstandAccountId,
     });
+
+    return record;
   }
 
   /**

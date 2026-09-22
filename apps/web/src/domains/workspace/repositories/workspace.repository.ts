@@ -371,6 +371,30 @@ export interface IWorkspaceRepository {
   } | null>;
 
   /**
+   * Read-only variant of `markAccountReconnectRequired`'s lookup (T-051,
+   * JOB-03 Engagement Sync) — reuses the SAME SECURITY DEFINER SQL function
+   * (`webhook_find_account_owner_by_outstand_account_id`, migration
+   * `20260907120000_t026_outstand_webhook_system_lookups`), no write.
+   *
+   * **Why `engagement` needs this:** JOB-03's periodic sync job has no
+   * Better Auth session (same chicken-and-egg as T-026's webhook route),
+   * so it has no legitimate `userId` to pass into `withCurrentUser` for
+   * `EngagementInboxItem` writes until it resolves ONE. The job payload
+   * already carries `outstandAccountId` (`background-jobs.md` § JOB-03),
+   * so resolving the workspace Owner here — guaranteed an active member of
+   * their own workspace — gives `EngagementSyncJobHandler` a safe acting
+   * user, exactly the same pattern `markAccountReconnectRequired` already
+   * established for T-026.5. Returns `null` kalau tidak ada akun dengan
+   * `outstandAccountId` itu (job handler menganggap ini anomali — retry
+   * lewat job runner, TIDAK self-reschedule).
+   */
+  findAccountOwnerByOutstandAccountId(outstandAccountId: string): Promise<{
+    workspaceId: WorkspaceId;
+    connectedAccountId: ConnectedAccountId;
+    ownerUserId: UserId;
+  } | null>;
+
+  /**
    * Disconnect akun (T-014.2, ADR-048/ADR-049) — set
    * `WorkspaceConnectedAccount.status` jadi `"disconnected"` DAN
    * `reconnectRequired` jadi `false` (state "perlu reconnect" tidak relevan

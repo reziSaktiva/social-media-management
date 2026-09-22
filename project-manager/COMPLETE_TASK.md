@@ -8,6 +8,232 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-22 — T-050 Engagement domain skeleton + T-051 Comment sync job JOB-03 + T-052 Manual refresh — Ditinjau & ✅ Done, rilis v0.4 Engagement MVP TUNTAS 5/6 (ADR-110, migration pending deploy)
+
+Ketiganya sudah diimplementasikan penuh di sesi sebelum ini (commit
+`23f9923`/`ae0f49b`), status filenya masih `🟡 In Progress` karena belum
+pernah lolos review/QA formal. King Rezi meminta ditinjau sekarang.
+
+Rangkaian review Ridwan Architecture Reviewer **3 putaran**, seluruhnya
+diverifikasi independen (bukan percaya laporan implementer):
+
+1. **Putaran 1 — 3 temuan:**
+   - **#1 (serius, fungsional):** job `engagement.sync` (JOB-03) tidak
+     pernah ter-seed otomatis untuk `ConnectedAccount` baru — handler
+     hanya self-reschedule SETELAH job pertama ada, tidak ada trigger
+     awal. Siklus 30 menit otomatis tidak pernah mulai sendiri,
+     bertentangan dengan Definition of Done v0.4.
+   - **#2 (rule #5):** `refreshInboxAction` melakukan orkestrasi (loop
+     akun, sync, akumulasi count) langsung di Server Action, bukan
+     didelegasikan ke Application Service.
+   - **#3 (rule 19, governance):** kapabilitas Fake `fetchComments`/
+     `replyToComment` di `IOutstandAdapter` belum punya ADR sendiri
+     (preseden ADR-079/093/105/106/108 selalu dapat ADR per kapabilitas
+     baru).
+
+2. **Fix (Elon Backend Engineer):**
+   - **#1** — Opsi A dipilih (sesuai `background-jobs.md` §
+     "Workspace BC → Background Job"): `WorkspaceService` dapat port
+     opsional baru `EngagementSyncSeederPort` (parameter ke-5
+     constructor, TIDAK import domain `engagement`), dipanggil di
+     `completeAccountConnection` untuk cabang create DAN reconnect.
+     Implementasi konkret (enqueue `ENGAGEMENT_SYNC_JOB_TYPE`) di
+     composition root `apps/web/src/lib/workspace/outstand-workspace-service.ts`.
+   - **#2** — orkestrasi dipindah ke use-case baru
+     `RefreshInboxUseCase.refreshAll`
+     (`apps/web/src/domains/engagement/services/refresh-inbox.use-case.ts`,
+     pola sama `SyncCommentsUseCase`), `refreshInboxAction` jadi murni
+     composition root.
+   - **#3** — ditutup lewat **ADR-110 baru**
+     (`decisions/ADR-110-fake-fetchcomments-replytocomment-engagement.md`).
+
+3. **Putaran 2 (verifikasi fix #1 & #2):** Ridwan konfirmasi kedua fix
+   benar (domain purity terjaga, `RefreshInboxUseCase` konsisten pola
+   `SyncCommentsUseCase`), TAPI eskalasi **temuan baru**: `disconnectAccount`
+   tidak pernah membatalkan chain self-reschedule job `engagement.sync` —
+   lookup SQL job handler tidak filter status, tiap reconnect bikin chain
+   baru tanpa cek chain lama → chain paralel bertambah tak terbatas saat
+   disconnect→reconnect berulang. Dengan Fake adapter dampak tersamar
+   (idempoten via upsert dedup), tapi begitu Real adapter (T-025) aktif
+   berarti akun yang sudah diputuskan user tetap terus di-pull + terus
+   memicu notifikasi — masalah privasi/kontrol.
+
+4. **Fix (Elon):** solusi guard status (bukan cancel job baru, karena
+   `IJobScheduler`/`background-job-store.ts` tidak punya mekanisme
+   cancel/deleteByCriteria) — migration baru
+   `20260922110000_t051_filter_active_status_engagement_sync_lookup`
+   menambah kolom `status` ke fungsi SQL
+   `webhook_find_account_owner_by_outstand_account_id`;
+   `findAccountOwnerByOutstandAccountId` return `null` kalau status bukan
+   `active` (diperlakukan sama seperti "tidak ditemukan" —
+   `EngagementSyncJobHandler` sudah punya jalur dead-letter yang throw
+   SEBELUM self-reschedule, jadi chain otomatis berhenti).
+   `markAccountReconnectRequired` (webhook T-026.5) tidak terdampak
+   (SELECT tidak berubah, hanya kolom output ditambah).
+
+5. **Putaran 3 (verifikasi final):** Ridwan konfirmasi independen: migration
+   hanya nambah kolom, tidak ubah filter; call site lain
+   (`markAccountReconnectRequired`) tidak terdampak; urutan
+   throw-sebelum-reschedule dikonfirmasi lewat kode+test; domain purity
+   terjaga. **0 temuan tersisa, seluruh rangkaian review DITUTUP.**
+
+**QA Najwa QA Engineer:**
+
+- Golden path Refresh/Mark as Done/Kirim Balasan — PASS, network request
+  dicek langsung (balasan tersimpan status "sent" +
+  `outstandReplyId` terisi).
+- Connect/Disconnect/Reconnect account (T-013/T-015) — PASS, tidak ada
+  regresi meski file yang disentuh fix ini overlap dengan flow itu.
+- Regresi `/analyze`, `/publish/drafts` — normal.
+- Seeding job otomatis — tidak bisa diverifikasi browser end-to-end (tidak
+  ada akses `JOB_SECRET`/DB), diverifikasi lewat unit test
+  `workspace.service.test.ts` (2 test baru: seed saat create, seed saat
+  reconnect) — keduanya lolos.
+- **1 bug ditemukan** (di luar scope T-050-052, regresi dari T-053/T-054
+  yang lolos QA sebelumnya): balasan komentar tidak pernah tampil lagi di
+  detail panel setelah reload (`EngageInboxView.tsx` tidak merender
+  `detail.replies` meski backend sudah benar). **Sudah diperbaiki** (Mark
+  UI Engineer) — replies sekarang dirender sebagai "Balasan tim" (kotak
+  indent+background beda) setelah komentar asli, dan balasan baru langsung
+  muncul tanpa reload. **Diverifikasi ulang Najwa — PASS.**
+- Test integration baru
+  (`workspace.repository.engagement-sync-lookup.test.ts`) skip di sesi ini
+  (tidak ada `DATABASE_URL` lokal) — expected, bukan gap.
+
+**⚠️ Catatan governance penting untuk King Rezi:** migration
+`20260922110000_t051_filter_active_status_engagement_sync_lookup`
+**BELUM di-deploy** ke database (perlu `bun run db:deploy` manual oleh King
+Rezi) — sampai itu dijalankan, fungsi SQL yang dipakai job JOB-03 masih
+versi lama (job akan gagal untuk SEMUA akun, bukan cuma yang disconnect,
+sampai migration ter-apply).
+
+**Verifikasi akhir:** `bun run typecheck`/`bun run lint`/`bun run test` —
+bersih, **453 test pass/6 skip** (naik dari 448, +5 test baru: 3 di
+`refresh-inbox.use-case.test.ts`, 2 di `workspace.service.test.ts`, 1 skip
+di `workspace.repository.engagement-sync-lookup.test.ts`).
+
+**Commit:** sudah di-push ke branch `feature/engagement-comments-inbox` —
+commit `2b771bd` "fix(engagement): perbaiki 3 temuan review Ridwan + bug
+reply tidak tampil" (menyusul commit `10bc50d` untuk T-053/T-054 awal).
+
+Dengan ini **T-050, T-051, T-052 naik status `🟡 In Progress` → `✅ Done`**
+— **rilis v0.4 Engagement MVP tuntas 5/6 task** (sisa T-055 Inbox
+assignment, Could Have, tidak memblokir rilis). Task selesai naik
+51 → **54**. Detail: `tasks/v04-engagement-mvp.md` § T-050, § T-051,
+§ T-052,
+`decisions/ADR-110-fake-fetchcomments-replytocomment-engagement.md`.
+
+---
+
+## 2026-09-22 — T-053 Comments Inbox UI + T-054 Reply comment — Implementasi selesai, ✅ Done, rilis v0.4 Engagement MVP dimulai (KI-065 baru)
+
+Dikerjakan sekuensial: Prabowo Feature Engineer (backend T-053) → Mark UI
+Engineer (UI T-053) → Elon Backend Engineer (domain T-054) → Mark UI
+Engineer (aktivasi tombol Kirim T-054) → Ridwan Architecture Reviewer
+(review) → Najwa QA Engineer (QA). Sebelum implementasi UI T-053 dimulai,
+main agent berhenti dan bertanya ke King Rezi via `AskUserQuestion` (rule
+17 AGENTS.md) karena pola thread-list di Claude Design
+(`templates/engage-inbox.html`, KSP-06) belum dikunci "SYNCED"/"LOCKED
+PATTERN" — jawaban: "sesuaikan dengan yang ada di Claude Design".
+
+### T-053 · Comments Inbox UI
+
+**Backend (Prabowo Feature Engineer):** Server Action baru
+`listInboxAction`, `getInboxItemDetailAction`, `markAsDoneAction` di
+`apps/web/src/app/(app)/engage/actions.ts` — murni wiring ke
+`EngagementService` yang sudah ada sejak T-050, tidak ada logic domain
+baru.
+
+**UI (Mark UI Engineer):** `apps/web/src/app/(app)/engage/page.tsx`
+diganti dari `ScaffoldPlaceholder` jadi Server Component; komponen baru
+`apps/web/src/app/(app)/engage/components/EngageInboxView.tsx` (Client
+Component) — layout dua panel (thread-list kiri 340px tetap +
+thread-detail kanan), dibangun dari shadcn `Item`/`ItemGroup` (bukan
+`Table`, karena mockup satu blok teks per baris bukan tabular), filter 3
+dropdown (Akun/Platform/Status) re-fetch server-side, tombol Mark as Done,
+reply box (tombol Kirim awalnya disabled, diaktifkan di T-054), empty
+state (`Empty` shadcn), tombol Refresh manual reuse `refreshInboxAction`
+(T-052).
+
+**KI-065 baru** (Open): kotak "Post asal" di detail panel hanya
+menampilkan label generik ("Komentar ini terhubung ke post
+terjadwal/terpublish") tanpa judul/thumbnail post asli —
+`InboxItemDetail`/`EngagementInboxItemRecord` (T-050) tidak membawa join
+ke caption/media post sungguhan (`postId` hanya ID, tanpa snapshot), dan
+menambah join lintas domain `engagement → publishing` di luar scope
+UI-only task ini. Perlu keputusan/task lanjutan King Rezi.
+
+### T-054 · Reply comment dari dalam aplikasi
+
+RBAC dicek ke baseline `roles-permissions.md` — Owner/Admin/Creator SEMUA
+boleh reply (tidak ada role gating tambahan, cukup member aktif
+workspace), tidak perlu keputusan baru.
+
+**Domain (Elon Backend Engineer):** `EngagementService.reply(input,
+userId)` baru — validasi content tidak boleh kosong (`ValidationError`),
+cari inbox item (`NotFoundError` guard), panggil
+`IOutstandAdapter.replyToComment(item.externalId, content)` (Fake
+adapter, instant-success, pola sama `schedulePost`/`publishNow`), lalu
+persist `EngagementReply` dengan `outstandReplyId` hasil adapter, status
+`"sent"`. **Constructor `EngagementService` berubah** — sekarang wajib
+menerima `IOutstandAdapter` sebagai parameter kedua (breaking change
+internal, semua call site sudah diupdate, dikonfirmasi konsisten oleh
+Ridwan Architecture Reviewer). `IEngagementRepository.createReply`
+diperluas menerima `outstandReplyId` (kolom `EngagementReply.outstandReplyId`
+sudah ada di schema sejak awal, tidak ada migration baru). Unit test baru
+untuk `EngagementService.reply` (golden path + `ValidationError` +
+`NotFoundError`).
+
+**Server Action + UI (Prabowo Feature Engineer / Mark UI Engineer):**
+`replyToCommentAction` baru di `actions.ts`; tombol "Kirim" di
+`EngageInboxView.tsx` diaktifkan — disabled saat draft kosong/sedang
+mengirim, toast sukses/error, textarea dikosongkan setelah sukses.
+
+### Review Ridwan Architecture Reviewer
+
+0 temuan — domain purity terjaga (`IOutstandAdapter` tetap interface
+abstrak, bukan Prisma/Supabase konkret), entry point tanpa business logic,
+cross-domain lewat public API `workspace`, RBAC sesuai baseline, shared
+types tidak duplikat, seluruh call site `EngagementService` konsisten
+dengan constructor baru.
+
+### QA Najwa QA Engineer
+
+PASS penuh — golden path (pilih thread, Mark as Done, kirim reply) semua
+bekerja tanpa reload, filter Akun/Platform/Status semua benar, regresi
+`/publish/drafts` dan `/analyze` normal, gate T-103.3 (bandingkan struktur
+ke `templates/engage-inbox.html` Claude Design) cocok — pola
+`Item`/`ItemGroup` sesuai keputusan terkunci, gap "Post asal" dikonfirmasi
+expected (bukan bug, konsisten Fake adapter tidak pernah mengisi
+`postId` snapshot).
+
+### Verifikasi akhir
+
+`bun run typecheck`/`bun run lint`/`bun run test` semua bersih, **448 test
+pass/5 skip** (naik dari 426), tidak ada regresi.
+
+### Catatan governance (dilaporkan ke King Rezi, belum ditindaklanjuti sesi ini)
+
+**T-050** (Engagement domain skeleton), **T-051** (Comment sync job setiap
+30 menit / JOB-03), dan **T-052** (Manual refresh) sudah diimplementasikan
+penuh lewat commit `23f9923` (T-050+T-051) dan `ae0f49b` (T-052) di sesi
+sebelum sesi ini — tapi status ketiganya masih `🟡 In Progress` di
+`tasks/v04-engagement-mvp.md`, tidak ada catatan review Ridwan Architecture
+Reviewer/QA Najwa QA Engineer untuk ketiganya, dan `PROJECT_STATE.md` tidak
+pernah mencatat penyelesaiannya di section manapun. Status ketiganya
+sengaja TIDAK dipromosikan ke `✅ Done` di sesi dokumentasi ini tanpa
+konfirmasi eksplisit King Rezi bahwa implementasinya sudah lolos
+verifikasi penuh — dicatat sebagai temuan terbuka, bukan ditebak.
+
+Breakdown v0.4 berubah dari "⏳ 0 / 6" menjadi **2 ✅ (T-053, T-054) · 3 🟡
+(T-050–T-052) · 1 ⏳ (T-055)**. Total task selesai naik 49 → **51** dari 89
+total. Jumlah subtask total tidak berubah (221 — v0.4 sengaja belum punya
+subtask terdefinisi, rolling wave, dihitung ulang langsung dari
+`tasks/v04-engagement-mvp.md`). Detail: `tasks/v04-engagement-mvp.md` §
+T-053, § T-054; KI-065 di `PROJECT_STATE.md`.
+
+---
+
 ## 2026-09-21 — T-045 Comparative Reports — Implementasi selesai, ✅ Done (3/3 subtask), v0.3 Analytics MVP TUNTAS 8/8
 
 Lanjutan langsung dari design-prep di bawah (entri sebelumnya, sama hari) —

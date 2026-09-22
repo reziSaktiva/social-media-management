@@ -3,8 +3,11 @@ import type {
   ConnectAccountResult,
   ConnectedAccountData,
   ExchangeConnectCodeInput,
+  FetchCommentsResult,
   IOutstandAdapter,
+  InboxCommentData,
   PostTargetOutcome,
+  ReplyToCommentResult,
   UploadMediaWorkingCopyResult,
 } from "@social/shared";
 import { SocialPlatform } from "@social/shared";
@@ -89,6 +92,74 @@ function buildFakeHandle(platform: SocialPlatform, seed: string): string {
  * asli menentukan TTL sesungguhnya (di luar kendali Fake).
  */
 const FAKE_MEDIA_WORKING_COPY_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Template konten komentar palsu (T-051, Engagement MVP) — sekadar variasi
+ * teks realistis, dipilih deterministik via `deterministicInt` supaya
+ * komentar yang sama muncul lagi di sync berikutnya (bukan generate baru
+ * tiap panggilan — lihat catatan panjang di `fetchComments` di bawah soal
+ * kenapa itu justru desain yang benar untuk idempotency, bukan bug).
+ */
+const FAKE_COMMENT_TEMPLATES = [
+  "Kapan promo ini berlaku lagi ya min?",
+  "Suka banget produknya, kualitasnya oke!",
+  "Ada varian/rasa lain gak untuk yang ini?",
+  "Boleh minta rekomendasi produk serupa?",
+  "Pengiriman ke luar kota bisa gak ya?",
+];
+
+const SOCIAL_PLATFORMS = Object.values(SocialPlatform);
+
+/**
+ * Fake tidak menyimpan mapping `outstandAccountId → platform` (adapter ini
+ * sepenuhnya stateless, sama seperti `fetchPostOutcome` sejak bug fix
+ * T-027) — `fetchComments` narasi resminya (`integration-layer.md`) hanya
+ * menerima `outstandAccountId`, bukan `platform`. Platform di sini murni
+ * derivasi deterministik dari id supaya tetap stabil dipanggil ulang;
+ * caller (`SyncCommentsUseCase`) yang butuh platform akurat sebaiknya
+ * memakai `ConnectedAccount.platform` miliknya sendiri (data durable),
+ * bukan mempercayai field ini secara buta — sama prinsipnya dengan kenapa
+ * `expectedOutstandAccountIds` di `fetchPostOutcome` disuplai caller,
+ * bukan ditebak adapter.
+ */
+function derivePlatform(seed: string): SocialPlatform {
+  const index = deterministicInt(seed, "platform", SOCIAL_PLATFORMS.length);
+  return SOCIAL_PLATFORMS[index];
+}
+
+/**
+ * Satu komentar palsu deterministik untuk `outstandAccountId` + `index`
+ * tertentu — `outstandCommentId` stabil (bukan `crypto.randomUUID()`
+ * seperti `schedulePost`/`publishNow`) SENGAJA: JOB-03 (sync tiap 30 menit)
+ * dan manual refresh (T-052) memanggil `fetchComments` berkali-kali untuk
+ * `outstandAccountId` yang sama, dan upsert idempoten di
+ * `EngagementService` bergantung pada `externalId` (=`outstandCommentId`)
+ * yang SAMA supaya tidak menggandakan baris `EngagementInboxItem` tiap
+ * sync (persis kebutuhan "wajib idempoten" di T-051).
+ */
+function buildFakeComment(
+  outstandAccountId: string,
+  index: number,
+): InboxCommentData {
+  const seed = `${outstandAccountId}:comment:${index}`;
+  const templateIndex = deterministicInt(
+    seed,
+    "template",
+    FAKE_COMMENT_TEMPLATES.length,
+  );
+  const authorSuffix = deterministicInt(seed, "author", 10_000);
+  const minutesAgo = deterministicInt(seed, "receivedAt", 240);
+
+  return {
+    outstandCommentId: `fake-comment-${outstandAccountId}-${index}`,
+    outstandAccountId,
+    platform: derivePlatform(outstandAccountId),
+    authorHandle: `@fake.user.${authorSuffix}`,
+    content: FAKE_COMMENT_TEMPLATES[templateIndex],
+    outstandPostId: null,
+    receivedAt: new Date(Date.now() - minutesAgo * 60_000),
+  };
+}
 
 function buildOutcome(
   outstandPostId: string,
@@ -333,5 +404,37 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
       totalEngagements,
       avgEngagementRate,
     };
+  },
+
+  /**
+   * Engagement Sync (JOB-03, T-051) — Fake mengembalikan SATU halaman tetap
+   * (1-5 komentar, deterministik dari `outstandAccountId`), `nextCursor`
+   * selalu `null` (tidak ada simulasi pagination bertingkat — Fake tidak
+   * butuh network call sungguhan untuk itu, ADR-059). `cursor` diterima
+   * apa adanya tapi diabaikan: karena `outstandCommentId` per komentar
+   * stabil (lihat `buildFakeComment`), sync berulang untuk akun yang sama
+   * SELALU mengembalikan set komentar identik — upsert idempoten di
+   * `EngagementService` akan melihatnya sebagai "tidak ada yang baru" pada
+   * sync kedua dan seterusnya, persis simulasi realistis untuk MVP tanpa
+   * perlu state buatan yang bertambah tanpa henti.
+   */
+  async fetchComments(outstandAccountId): Promise<FetchCommentsResult> {
+    const count = 1 + deterministicInt(outstandAccountId, "commentCount", 5);
+    const comments = Array.from({ length: count }, (_, index) =>
+      buildFakeComment(outstandAccountId, index),
+    );
+
+    return { comments, nextCursor: null };
+  },
+
+  /**
+   * Reply dari dalam aplikasi (T-054) — sama fidelitasnya dengan
+   * `schedulePost`/`publishNow`: instant always-success, `outstandReplyId`
+   * acak per panggilan (bukan deterministik — tiap reply adalah resource
+   * baru, bukan sesuatu yang perlu direproduksi identik untuk input yang
+   * sama).
+   */
+  async replyToComment(): Promise<ReplyToCommentResult> {
+    return { outstandReplyId: `fake-reply-${crypto.randomUUID()}` };
   },
 };
