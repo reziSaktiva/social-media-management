@@ -15,24 +15,51 @@
 
 ### T-050 · Engagement domain skeleton
 
-`🟡 In Progress` · **Domain** engagement · **ADR** ADR-017, ADR-018, ADR-031 · **Depends** T-002 ✅
+`✅ Done (2026-09-22)` · **Domain** engagement · **ADR** ADR-017, ADR-018, ADR-031, ADR-110 · **Depends** T-002 ✅ · **Terkait** KI-065
+
 **Baca dulu:** `05-architecture/domain-model.md` · `05-architecture/application-layer.md`
 
 Service + repository interface + implementasi Prisma, mengikuti konvensi `workspace`/`publishing`. Isi `types.ts` yang saat ini masih `export {}`.
 
+**Implementasi:** sudah dibangun sejak commit `23f9923` (sebelum sesi ini), baru ditinjau formal sekarang atas permintaan King Rezi. `EngagementService` + `IEngagementRepository` (Prisma) mengikuti konvensi domain lain; kapabilitas `IOutstandAdapter.fetchComments`/`replyToComment` (Fake, instant-fidelity) baru dicatat **ADR-110** saat review — sebelumnya diimplementasikan benar tapi belum punya ADR sendiri (gap governance, sesuai preseden ADR-079/093/105/106/108).
+
+**Known gap terkait (lihat KI-065):** `EngagementInboxItemRecord` hanya membawa `postId` mentah, tanpa snapshot caption/media post asli — ditemukan saat T-053.
+
+**Review Ridwan Architecture Reviewer (3 putaran, lihat detail penuh di § T-051):** putaran 1 menemukan gap ADR (#3) untuk task ini, ditutup lewat ADR-110. Domain purity dikonfirmasi terjaga di seluruh putaran.
+
+**QA Najwa QA Engineer:** tercakup dalam QA gabungan T-050–T-052 (lihat § T-051) — golden path Refresh/Mark as Done/Kirim Balasan PASS, regresi Connect/Disconnect/Reconnect PASS.
+
 ### T-051 · Comment sync job setiap 30 menit
 
-`🟡 In Progress` · **Domain** engagement · integration · **ADR** ADR-022, ADR-040 · **Depends** T-025, T-027, T-050
+`✅ Done (2026-09-22)` · **Domain** engagement · integration · **ADR** ADR-022, ADR-040, ADR-110 · **Depends** T-025, T-027, T-050 ✅
+
 **Baca dulu:** `05-architecture/background-jobs.md` · `05-architecture/integration-layer.md`
 
 Periodic pull komentar dari Outstand per connected account, tulis ke `EngagementInboxItem`. Wajib idempoten — pull ulang tidak boleh menggandakan komentar.
 
+**Implementasi:** sudah dibangun sejak commit `23f9923` (sebelum sesi ini) — job `engagement.sync` (JOB-03) self-reschedule tiap 30 menit, upsert idempoten ke `EngagementInboxItem`. Ditinjau formal sesi ini atas permintaan King Rezi (Ridwan Architecture Reviewer, 3 putaran, diverifikasi independen bukan percaya laporan implementer):
+
+1. **Putaran 1** — 3 temuan: (#1, serius) job JOB-03 tidak pernah ter-seed otomatis untuk `ConnectedAccount` baru (handler hanya self-reschedule setelah job pertama ada, tidak ada trigger awal — siklus 30 menit tidak pernah mulai sendiri, melanggar Definition of Done rilis ini); (#2, rule #5) `refreshInboxAction` (T-052) melakukan orkestrasi langsung di Server Action; (#3, governance) kapabilitas Fake `fetchComments`/`replyToComment` belum punya ADR.
+2. **Fix (Elon Backend Engineer):** #1 — `WorkspaceService` dapat port opsional baru `EngagementSyncSeederPort` (parameter ke-5 constructor, tidak import domain `engagement`), dipanggil di `completeAccountConnection` (create + reconnect); implementasi konkret di composition root `apps/web/src/lib/workspace/outstand-workspace-service.ts`. #2 — dipindah lihat § T-052. #3 — **ADR-110 baru**.
+3. **Putaran 2 (verifikasi #1/#2):** kedua fix dikonfirmasi benar, TAPI eskalasi **temuan baru**: `disconnectAccount` tidak pernah membatalkan chain self-reschedule JOB-03 — lookup SQL job handler tidak filter status, disconnect→reconnect berulang bikin chain paralel bertambah tak terbatas. Dengan Fake adapter dampak tersamar (idempoten via upsert), tapi begitu Real adapter (T-025) aktif berarti akun yang sudah diputuskan user tetap terus di-pull + terus memicu notifikasi (masalah privasi/kontrol).
+4. **Fix (Elon):** guard status (bukan cancel job baru — `IJobScheduler` tidak punya mekanisme cancel) — migration baru `20260922110000_t051_filter_active_status_engagement_sync_lookup` menambah kolom `status` ke fungsi SQL `webhook_find_account_owner_by_outstand_account_id`; `findAccountOwnerByOutstandAccountId` return `null` kalau status bukan `active` (diperlakukan sama seperti "tidak ditemukan" — `EngagementSyncJobHandler` sudah punya jalur dead-letter yang throw SEBELUM self-reschedule, jadi chain berhenti otomatis). `markAccountReconnectRequired` (webhook T-026.5) tidak terdampak (SELECT sama, hanya kolom output ditambah).
+5. **Putaran 3 (verifikasi final):** 0 temuan tersisa — migration hanya nambah kolom, call site lain tidak terdampak, urutan throw-sebelum-reschedule dikonfirmasi lewat kode+test, domain purity terjaga.
+
+**QA Najwa QA Engineer:** golden path Refresh/Mark as Done/Kirim Balasan PASS (network request dicek langsung); regresi Connect/Disconnect/Reconnect (T-013/T-015) PASS meski file overlap. Seeding job otomatis tidak bisa diverifikasi browser end-to-end (tidak ada akses `JOB_SECRET`/DB) — diverifikasi lewat 2 unit test baru `workspace.service.test.ts` (seed saat create, seed saat reconnect), keduanya lolos. Test integration baru `workspace.repository.engagement-sync-lookup.test.ts` skip (tidak ada `DATABASE_URL` lokal) — expected.
+
+**⚠️ Catatan governance penting:** migration `20260922110000_t051_filter_active_status_engagement_sync_lookup` **BELUM di-deploy** ke database manapun (perlu `bun run db:deploy` manual oleh King Rezi). Sampai itu dijalankan, fungsi SQL yang dipakai JOB-03 masih versi lama — job akan **gagal untuk SEMUA akun** (bukan cuma yang disconnect) sampai migration ter-apply. Lihat juga Blockers di `PROJECT_STATE.md`.
+
+**Verifikasi akhir T-050+T-051+T-052:** `typecheck`/`lint`/`test` bersih, **453 pass/6 skip** (naik dari 448, +5 test baru).
+
 ### T-052 · Manual refresh
 
-`🟡 In Progress` · **Domain** engagement · **ADR** ADR-023, ADR-040 · **Depends** T-051
+`✅ Done (2026-09-22)` · **Domain** engagement · **ADR** ADR-023, ADR-040 · **Depends** T-051 ✅
+
 **Baca dulu:** `05-architecture/realtime-strategy.md`
 
 Kontrol refresh manual supaya pengguna tidak perlu menunggu siklus 30 menit. Data engagement **tidak** memakai Supabase Realtime (ADR-023 membatasinya hanya untuk tabel `notifications`).
+
+**Implementasi:** sudah dibangun sejak commit `ae0f49b` (sebelum sesi ini). Fix review putaran 1 (temuan #2, lihat § T-051): orkestrasi (loop akun, sync, akumulasi count) yang sebelumnya ada langsung di `refreshInboxAction` (pelanggaran rule #5) dipindah ke use-case baru `RefreshInboxUseCase.refreshAll` (`apps/web/src/domains/engagement/services/refresh-inbox.use-case.ts`, pola sama `SyncCommentsUseCase`) — `refreshInboxAction` sekarang murni composition root. Dikonfirmasi Ridwan Architecture Reviewer putaran 2 (0 temuan, konsisten pola `SyncCommentsUseCase`) dan putaran 3 (final, 0 temuan tersisa). QA Najwa QA Engineer: golden path tombol Refresh PASS.
 
 ### T-053 · Comments Inbox UI
 
@@ -69,6 +96,8 @@ Server Action baru `replyToCommentAction` di `actions.ts`. UI (Mark UI Engineer)
 **Review Ridwan Architecture Reviewer:** 0 temuan — `IOutstandAdapter` tetap interface abstrak (bukan Prisma/Supabase konkret), entry point tanpa business logic, cross-domain lewat public API `workspace`, RBAC sesuai baseline, shared types tidak duplikat, seluruh call site `EngagementService` konsisten dengan constructor baru.
 
 **QA Najwa QA Engineer:** PASS penuh — golden path (kirim reply dari thread yang dipilih) bekerja tanpa reload, regresi `/publish/drafts` dan `/analyze` normal, gate T-103.3 cocok.
+
+**Bug regresi ditemukan & diperbaiki (2026-09-22, saat review T-050–T-052):** balasan komentar tidak pernah tampil lagi di detail panel setelah reload — `EngageInboxView.tsx` tidak merender `detail.replies` meski backend sudah benar. Diperbaiki Mark UI Engineer — replies sekarang dirender sebagai "Balasan tim" (kotak indent + background beda) setelah komentar asli, balasan baru langsung muncul tanpa reload. Diverifikasi ulang Najwa QA Engineer — PASS.
 
 **Verifikasi akhir T-053 + T-054:** `bun run typecheck`/`bun run lint`/`bun run test` semua bersih, **448 pass/5 skip** (naik dari 426), tidak ada regresi.
 

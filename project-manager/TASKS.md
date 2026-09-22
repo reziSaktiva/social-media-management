@@ -55,14 +55,69 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 16 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 18 ✅ · 1 🟡 · 4 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-047 | 8    | 8 ✅                | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
-| **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | 🟡 2 ✅ · 3 🟡 · 1 ⏳  | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
+| **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | 🟡 5 ✅ · 1 ⏳ (Could Have) | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 89 task · 51 selesai · 221 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 89 task · 54 selesai · 221 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-22, T-050 + T-051 + T-052 DITINJAU & SELESAI — rilis
+> v0.4 Engagement MVP TUNTAS 5/6 task, sisa T-055 Could Have tidak
+> memblokir rilis):** **T-050** (Engagement domain skeleton), **T-051**
+> (Comment sync job JOB-03), **T-052** (Manual refresh),
+> `tasks/v04-engagement-mvp.md`, naik status `🟡 In Progress` → `✅ Done`.
+> Ketiganya sudah diimplementasikan penuh di sesi sebelum ini (commit
+> `23f9923`/`ae0f49b`), King Rezi meminta ditinjau sekarang (belum pernah
+> lolos review/QA formal). Rangkaian review Ridwan Architecture Reviewer
+> **3 putaran**, seluruhnya diverifikasi independen (bukan percaya laporan
+> implementer): **putaran 1** — 3 temuan (#1 serius: job `engagement.sync`
+> JOB-03 tidak pernah ter-seed otomatis untuk `ConnectedAccount` baru,
+> siklus 30 menit tidak pernah mulai sendiri, melanggar Definition of Done
+> rilis ini; #2 rule #5: `refreshInboxAction` orkestrasi langsung di Server
+> Action; #3 governance: kapabilitas Fake `fetchComments`/`replyToComment`
+> belum punya ADR). **Fix (Elon Backend Engineer):** #1 — port opsional
+> baru `EngagementSyncSeederPort` di `WorkspaceService` (tanpa import
+> domain `engagement`), dipanggil di `completeAccountConnection`
+> (create+reconnect), implementasi konkret di composition root; #2 — use-case
+> baru `RefreshInboxUseCase.refreshAll` (pola sama `SyncCommentsUseCase`),
+> `refreshInboxAction` jadi murni composition root; #3 — **ADR-110 baru**.
+> **Putaran 2** — fix #1/#2 dikonfirmasi benar, TAPI eskalasi **temuan
+> baru**: `disconnectAccount` tidak pernah membatalkan chain self-reschedule
+> JOB-03 — disconnect→reconnect berulang bikin chain paralel tak terbatas;
+> dengan Fake adapter dampak tersamar, tapi begitu Real adapter (T-025)
+> aktif berarti akun yang sudah diputuskan user tetap terus di-pull +
+> memicu notifikasi (masalah privasi/kontrol). **Fix (Elon):** guard status
+> — migration baru
+> `20260922110000_t051_filter_active_status_engagement_sync_lookup`
+> menambah kolom `status` ke fungsi SQL
+> `webhook_find_account_owner_by_outstand_account_id`;
+> `findAccountOwnerByOutstandAccountId` return `null` kalau status bukan
+> `active`, memicu jalur dead-letter yang sudah ada (throw sebelum
+> self-reschedule) sehingga chain berhenti otomatis. **Putaran 3
+> (verifikasi final)** — 0 temuan tersisa, rangkaian review ditutup. QA
+> Najwa QA Engineer: golden path Refresh/Mark as Done/Kirim Balasan PASS,
+> regresi Connect/Disconnect/Reconnect (T-013/T-015) PASS, regresi
+> `/analyze`/`/publish/drafts` normal; seeding job otomatis diverifikasi
+> lewat 2 unit test baru (tidak bisa end-to-end browser, tanpa akses
+> `JOB_SECRET`/DB). **1 bug regresi ditemukan & diperbaiki** (di luar scope
+> T-050–052, regresi dari T-053/T-054): balasan komentar tidak tampil lagi
+> di detail panel setelah reload — `EngageInboxView.tsx` tidak merender
+> `detail.replies` — diperbaiki Mark UI Engineer, diverifikasi ulang Najwa,
+> PASS. Verifikasi akhir: `typecheck`/`lint` bersih, `vitest` **453 pass/6
+> skip** (naik dari 448, +5 test baru). **⚠️ Catatan governance penting**:
+> migration `20260922110000_t051_filter_active_status_engagement_sync_lookup`
+> **BELUM di-deploy** (`bun run db:deploy` pending King Rezi) — sampai itu
+> jalan, JOB-03 gagal untuk SEMUA akun. Breakdown v0.4 berubah dari "🟡 2 ✅
+> · 3 🟡 · 1 ⏳" menjadi **🟡 5 ✅ · 1 ⏳ (T-055, Could Have, tidak memblokir
+> rilis)** — **release v0.4 Engagement MVP TUNTAS** untuk seluruh task Must
+> Have/Should Have. Total task selesai naik 51 → **54**. Jumlah subtask
+> total tidak berubah (221 — v0.4 sengaja belum punya subtask terdefinisi,
+> rolling wave). Detail: `tasks/v04-engagement-mvp.md` § T-050, § T-051,
+> § T-052,
+> `decisions/ADR-110-fake-fetchcomments-replytocomment-engagement.md`.
+>
 > **Update (2026-09-22, T-053 + T-054 SELESAI — rilis v0.4 Engagement MVP
 > dimulai; KI-065 baru; drift status ditemukan untuk T-050–T-052):**
 > **T-053** (Comments Inbox UI) dan **T-054** (Reply comment dari dalam
@@ -1074,6 +1129,9 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
+| **T-050** | Engagement domain skeleton                      | ✅     | **Done (2026-09-22)** — ditinjau formal sesi ini (implementasi sudah ada sejak commit `23f9923`). `EngagementService`+`IEngagementRepository` Prisma, konvensi domain lain. Kapabilitas Fake `fetchComments`/`replyToComment` dicatat **ADR-110 baru** (gap governance ditemukan Ridwan). Lolos review Ridwan (3 putaran, lihat T-051) + QA Najwa. Lihat `tasks/v04-engagement-mvp.md` § T-050 |
+| **T-051** | Comment sync job JOB-03 (30 menit)              | ✅     | **Done (2026-09-22)** — ditinjau formal, 3 putaran review Ridwan (independen, bukan percaya laporan implementer): **#1** job tidak pernah ter-seed otomatis untuk `ConnectedAccount` baru → fix port `EngagementSyncSeederPort` di `WorkspaceService`; **#2** orkestrasi di Server Action (rule #5) → fix `RefreshInboxUseCase` (lihat T-052); **#3** gap ADR → **ADR-110**. Putaran 2 eskalasi temuan baru: `disconnectAccount` tidak membatalkan chain self-reschedule JOB-03 → fix guard status via migration baru `20260922110000_t051_filter_active_status_engagement_sync_lookup` (**BELUM di-deploy**, `bun run db:deploy` pending King Rezi — sampai itu jalan JOB-03 gagal untuk semua akun). Putaran 3: 0 temuan tersisa. QA Najwa PASS penuh + 1 bug regresi reply tidak tampil (dari T-053/T-054) ditemukan & diperbaiki. Verifikasi: `vitest` **453 pass/6 skip**. Lihat `tasks/v04-engagement-mvp.md` § T-051 |
+| **T-052** | Manual refresh                                   | ✅     | **Done (2026-09-22)** — ditinjau formal. Orkestrasi dipindah dari `refreshInboxAction` ke use-case baru `RefreshInboxUseCase.refreshAll` (pola `SyncCommentsUseCase`) sebagai fix temuan Ridwan #2 (lihat T-051). Lolos review Ridwan putaran 2+3 + QA Najwa. Lihat `tasks/v04-engagement-mvp.md` § T-052 |
 | **T-054** | Reply comment dari dalam aplikasi               | ✅     | **Done (2026-09-22)** — `EngagementService.reply` baru (validasi content kosong, guard `NotFoundError`, panggil `IOutstandAdapter.replyToComment` Fake pola `schedulePost`/`publishNow`, persist `EngagementReply.outstandReplyId`). **Constructor `EngagementService` berubah** — wajib menerima `IOutstandAdapter` sebagai parameter kedua, seluruh call site diupdate. RBAC: Owner/Admin/Creator semua boleh reply. Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh). Lihat `tasks/v04-engagement-mvp.md` § T-054 |
 | **T-053** | Comments Inbox UI                               | ✅     | **Done (2026-09-22)** — inbox `/engage` dua panel (thread-list + detail). Pola thread-list belum dikunci di Claude Design (`templates/engage-inbox.html`) — King Rezi ditanya via `AskUserQuestion`, jawaban "sesuaikan dengan Claude Design", dibangun dari shadcn `Item`/`ItemGroup` (bukan `Table`). Server Action `listInboxAction`/`getInboxItemDetailAction`/`markAsDoneAction`, filter Akun/Platform/Status, reuse `refreshInboxAction` (T-052). **KI-065 baru** (Open) — kotak "Post asal" cuma label generik, tidak ada judul/thumbnail post asli. Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh, gate T-103.3 match). Lihat `tasks/v04-engagement-mvp.md` § T-053 |
 | **T-044** | Engagement summary                              | ✅ 3/3 | **Done (2026-09-21)** — scope dipersempit via `AskUserQuestion` (Claude Design belum "SYNCED" tapi hanya mengunci 2 angka: Komentar, Likes) — jauh lebih sempit dari deskripsi asli (domain `engagement`, ADR-018). `PublishingService.getEngagementSummary` reuse `getPostPerformance`, data dari `AnalyticsPostMetric` (T-041), **domain berubah `analytics`→`publishing`**, **ADR-018 tidak dipakai**, **tidak lagi terikat v0.4**. UI card "Engagement Summary" mengaktifkan grid `.dash-cols` 2 kolom di `/analyze`. Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh, gate T-103.3 2x independen). Lihat `tasks/v03-analytics-mvp.md` § T-044 |
