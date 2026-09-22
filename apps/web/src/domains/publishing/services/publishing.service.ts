@@ -9,6 +9,7 @@ import type {
   WorkspaceId,
 } from "@social/shared";
 import type { PostMetricsRecord, SnapshotPeriod } from "@/domains/analytics";
+import { resolveConnectionDisplayStatus } from "@/domains/workspace";
 import { ConflictError, NotFoundError } from "@/lib/utils/errors";
 import { assertActorCanDeletePost } from "../rbac";
 import type {
@@ -58,6 +59,7 @@ interface ConnectedAccountsPort {
       platform: SocialPlatform;
       handle: string;
       status: string;
+      reconnectRequired: boolean;
     }[]
   >;
 }
@@ -776,12 +778,17 @@ export class PublishingService {
       { workspaceId, publishedAtRange: { from, to } },
       userId,
     );
+    // Half-open `[from, to)` — bukan `<= toMs` (review finding 2026-09-22):
+    // closed-closed di KEDUA ujung tidak aman dikomposisi saat caller
+    // (`getComparativeReport`) mengambil dua rentang bersebelahan — `to`
+    // rentang pertama akan sama dengan `from` rentang kedua, dan sebuah
+    // `publishedAt` yang persis di titik itu lolos kedua filter sekaligus
+    // (dobel hitung). Half-open menutup SELURUH kelas bug ini di satu
+    // tempat, bukan cuma di titik pemanggilan yang kebetulan ditemukan.
     const postsInRange = historyItems.filter((item) => {
       const publishedAt = item.publishedAt?.getTime();
       return (
-        publishedAt !== undefined &&
-        publishedAt >= fromMs &&
-        publishedAt <= toMs
+        publishedAt !== undefined && publishedAt >= fromMs && publishedAt < toMs
       );
     });
 
@@ -870,11 +877,10 @@ export class PublishingService {
     ]);
     // `listConnectedAccounts` returns SEMUA status (beda dari
     // `countActiveConnectedAccounts`, lihat catatan "active" di sana) —
-    // disaring ke "active" di sini supaya akun yang sudah di-disconnect
+    // disaring ke "active" di sini (lewat `filterActiveAccounts`, dipakai
+    // bersama `getComparativeReport`) supaya akun yang sudah di-disconnect
     // tidak muncul sebagai baris di Account Overview.
-    const accounts = allAccounts.filter(
-      (account) => account.status === "active",
-    );
+    const accounts = PublishingService.filterActiveAccounts(allAccounts);
 
     const statsByAccount = new Map<
       ConnectedAccountId,
@@ -969,6 +975,24 @@ export class PublishingService {
     value: number | null,
   ): number | null {
     return value === null ? current : (current ?? 0) + value;
+  }
+
+  /**
+   * Saring akun ke status "active" (dipakai bersama `getAccountOverview` DAN
+   * `getComparativeReport`, review finding 2026-09-22 — sebelumnya
+   * `getComparativeReport` lupa disaring, akun yang sudah disconnect masih
+   * muncul di tab Reports padahal sudah hilang dari Account Overview).
+   * Reuse `resolveConnectionDisplayStatus` (`domains/workspace`, satu-satunya
+   * sumber kebenaran makna "active" — `status` mentah `WorkspaceConnectedAccount`
+   * adalah string bebas, bukan enum tertutup, lihat catatan di sana) alih-alih
+   * membandingkan `status === "active"` sendiri di sini.
+   */
+  private static filterActiveAccounts<
+    T extends { status: string; reconnectRequired: boolean },
+  >(accounts: T[]): T[] {
+    return accounts.filter(
+      (account) => resolveConnectionDisplayStatus(account) === "active",
+    );
   }
 
   /**
@@ -1134,20 +1158,20 @@ export class PublishingService {
       period,
       now,
     );
-    // `getPostPerformance` inclusive di KEDUA ujung (`>= from && <= to`,
-    // lihat catatan di sana) — kalau `currentFrom` dipakai langsung sebagai
-    // `asOf` rentang previous, `previous.to === current.from` dan post yang
-    // `publishedAt`-nya persis di titik itu lolos filter inclusive kedua
-    // rentang sekaligus (dobel hitung). Mundurkan 1ms supaya rentang
-    // previous benar-benar berhenti SEBELUM `currentFrom`, menepati klaim
-    // JSDoc "tanpa gap/overlap" di atas.
-    const previousAsOf = new Date(currentFrom.getTime() - 1);
-
-    const [accounts, currentRows, previousRows] = await Promise.all([
+    // `getPostPerformance` half-open `[from, to)` (review finding
+    // 2026-09-22, lihat catatan lengkap di sana) — `currentFrom` dipakai
+    // LANGSUNG sebagai `asOf` rentang previous tanpa penyesuaian apa pun:
+    // previous jadi `[currentFrom - days, currentFrom)`, current jadi
+    // `[currentFrom, now)` — bersebelahan persis di `currentFrom`, tanpa
+    // gap maupun overlap, karena ujung kanan tiap rentang sudah eksklusif.
+    const [allAccounts, currentRows, previousRows] = await Promise.all([
       this.connectedAccounts.listConnectedAccounts(workspaceId, userId),
       this.getPostPerformance(workspaceId, period, userId, now),
-      this.getPostPerformance(workspaceId, period, userId, previousAsOf),
+      this.getPostPerformance(workspaceId, period, userId, currentFrom),
     ]);
+    // Sama seperti `getAccountOverview` — akun yang sudah di-disconnect
+    // tidak boleh muncul di tab Reports (review finding 2026-09-22).
+    const accounts = PublishingService.filterActiveAccounts(allAccounts);
 
     const currentSummary = this.summarizeRows(currentRows);
     const previousSummary = this.summarizeRows(previousRows);

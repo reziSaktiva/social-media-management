@@ -693,11 +693,16 @@ export const publishingRepository: IPublishingRepository = {
                 },
               }
             : {}),
+          // Half-open `[from, to)` — konsisten dengan filter JS di
+          // `PublishingService.getPostPerformance` (review finding
+          // 2026-09-22): `lt`, BUKAN `lte`, supaya dua rentang bersebelahan
+          // (current/previous di `getComparativeReport`) tidak overlap di
+          // titik sambungnya.
           ...(publishedAtRange
             ? {
                 publishedAt: {
                   gte: publishedAtRange.from,
-                  lte: publishedAtRange.to,
+                  lt: publishedAtRange.to,
                 },
               }
             : {}),

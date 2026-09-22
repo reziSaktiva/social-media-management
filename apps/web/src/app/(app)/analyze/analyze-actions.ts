@@ -37,10 +37,19 @@ import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
  * Orkestrasi tipis saja: resolve workspace context, wire service, lalu
  * delegasikan. Semua logic (join metrik + caption/akun, filter rentang
  * tanggal period, empty state, sorting) hidup di service, bukan di sini.
+ *
+ * `asOf` WAJIB (bukan opsional, review finding 2026-09-22 — T-045/T-046/
+ * T-047 clock-sharing): kelima action di file ini dipanggil bersamaan
+ * (`Promise.all`, `page.tsx`/`AnalyzeDashboard.tsx`) dan harus sepakat soal
+ * "now" yang sama, supaya kartu yang refresh bareng tidak berbeda pendapat
+ * soal post mana yang masuk periode "current". Membuatnya wajib di sini
+ * (bukan cuma di `PublishingService`, yang tetap opsional untuk caller lain/
+ * test) memberi sinyal compile-time kalau ada action baru di halaman ini
+ * lupa menerima `asOf` dari composition root.
  */
 export async function getPostPerformanceAction(
   period: SnapshotPeriod,
-  asOf?: Date,
+  asOf: Date,
 ): Promise<PostPerformanceRow[]> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -78,7 +87,7 @@ export async function getPostPerformanceAction(
  */
 export async function getAccountOverviewAction(
   period: SnapshotPeriod,
-  asOf?: Date,
+  asOf: Date,
 ): Promise<AccountOverviewRow[]> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -116,7 +125,7 @@ export async function getAccountOverviewAction(
  */
 export async function getAnalyzeSummaryAction(
   period: SnapshotPeriod,
-  asOf?: Date,
+  asOf: Date,
 ): Promise<AnalyzeSummary> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -156,7 +165,7 @@ export async function getAnalyzeSummaryAction(
  */
 export async function getEngagementSummaryAction(
   period: SnapshotPeriod,
-  asOf?: Date,
+  asOf: Date,
 ): Promise<EngagementSummary> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -198,7 +207,7 @@ export async function getEngagementSummaryAction(
  */
 export async function getComparativeReportAction(
   period: SnapshotPeriod,
-  asOf?: Date,
+  asOf: Date,
 ): Promise<ComparativeReport> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
