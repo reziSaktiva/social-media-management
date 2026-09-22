@@ -15,14 +15,14 @@
 
 ### T-050 · Engagement domain skeleton
 
-`⏳ Not Started` · **Domain** engagement · **ADR** ADR-017, ADR-018, ADR-031 · **Depends** T-002 ✅
+`🟡 In Progress` · **Domain** engagement · **ADR** ADR-017, ADR-018, ADR-031 · **Depends** T-002 ✅
 **Baca dulu:** `05-architecture/domain-model.md` · `05-architecture/application-layer.md`
 
 Service + repository interface + implementasi Prisma, mengikuti konvensi `workspace`/`publishing`. Isi `types.ts` yang saat ini masih `export {}`.
 
 ### T-051 · Comment sync job setiap 30 menit
 
-`⏳ Not Started` · **Domain** engagement · integration · **ADR** ADR-022, ADR-040 · **Depends** T-025, T-027, T-050
+`🟡 In Progress` · **Domain** engagement · integration · **ADR** ADR-022, ADR-040 · **Depends** T-025, T-027, T-050
 **Baca dulu:** `05-architecture/background-jobs.md` · `05-architecture/integration-layer.md`
 
 Periodic pull komentar dari Outstand per connected account, tulis ke `EngagementInboxItem`. Wajib idempoten — pull ulang tidak boleh menggandakan komentar.

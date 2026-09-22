@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import { MemberStatus } from "@social/shared";
+import {
+  ENGAGEMENT_SYNC_JOB_TYPE,
+  EngagementSyncJobHandler,
+  SyncCommentsUseCase,
+} from "@/domains/engagement";
 import {
   OutstandWebhookProcessor,
   RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE,
@@ -8,7 +14,9 @@ import { NotificationService } from "@/domains/notification";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
 import { getServerEnv } from "@/lib/env";
 import { backgroundJobStore } from "@/lib/jobs/background-job-store";
+import { engagementRepository } from "@/lib/repositories/engagement";
 import { runPendingJobs, type JobHandler } from "@/lib/jobs/job-runner";
+import { backgroundJobScheduler } from "@/lib/jobs/job-scheduler";
 import { notificationRepository } from "@/lib/repositories/notification";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { timingSafeEqualString } from "@/lib/utils/timing-safe-equal-string";
@@ -55,9 +63,41 @@ export async function POST(request: Request): Promise<Response> {
   const resolveScheduledPostOutcomeHandler =
     new ResolveScheduledPostOutcomeJobHandler(webhookProcessor);
 
+  // JOB-03 Engagement Sync (T-051, `background-jobs.md`). `backgroundJobScheduler`
+  // di-reuse LANGSUNG dari `publishing` (singleton generic, cuma pass-through
+  // ke `backgroundJobStore.enqueue`) — structural typing membuatnya valid
+  // untuk `IJobScheduler` versi `engagement` juga tanpa implementasi
+  // terpisah. `workspaceRepository` dipakai dua kali: sebagai
+  // `WorkspaceOwnerLookupPort` (resolve acting user, lihat catatan
+  // `EngagementSyncJobHandler`) DAN sebagai sumber `listActiveMembers` untuk
+  // notifikasi aggregate (fan-out ke seluruh member aktif workspace).
+  const syncCommentsUseCase = new SyncCommentsUseCase(
+    engagementRepository,
+    getOutstandAdapter(),
+    new NotificationService(notificationRepository),
+    {
+      async listActiveMembers(workspaceId, userId) {
+        const members = await workspaceRepository.listMembers(
+          workspaceId,
+          userId,
+        );
+        return members
+          .filter((member) => member.status === MemberStatus.Active)
+          .map((member) => ({ userId: member.userId }));
+      },
+    },
+  );
+  const engagementSyncHandler = new EngagementSyncJobHandler(
+    syncCommentsUseCase,
+    backgroundJobScheduler,
+    workspaceRepository,
+  );
+
   const handlers: Record<string, JobHandler> = {
     [RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE]: (payload) =>
       resolveScheduledPostOutcomeHandler.handle(payload),
+    [ENGAGEMENT_SYNC_JOB_TYPE]: (payload) =>
+      engagementSyncHandler.handle(payload),
   };
 
   const summary = await runPendingJobs(backgroundJobStore, handlers);

@@ -22,9 +22,14 @@
  * tersedia mengikuti daftar resmi di
  * `product-discovery/05-architecture/integration-layer.md` (bagian
  * "OutstandAdapter"), tapi hanya method yang SUDAH dibutuhkan kode nyata
- * yang dideklarasikan di sini (YAGNI, sama seperti keputusan ADR-059) —
- * method lain (fetchComments, dst.) ditambahkan nanti saat domain terkait
- * benar-benar mengimplementasikannya.
+ * yang dideklarasikan di sini (YAGNI, sama seperti keputusan ADR-059).
+ *
+ * **`fetchComments`/`replyToComment` (T-051/T-054, Engagement MVP)** —
+ * ditambahkan saat domain `engagement` mulai diimplementasikan. Nama dan
+ * signature persis mengikuti narasi resmi di `integration-layer.md`
+ * ("OutstandAdapter", JOB-03 Engagement Sync):
+ * `fetchComments(outstandAccountId, cursor?)` dan
+ * `replyToComment(outstandCommentId, text)`.
  *
  * **`connectAccount`/`exchangeConnectCode` (ADR-105, 2026-09-11)** —
  * ditambahkan untuk T-015.3 (Reconnect flow) yang ternyata membutuhkan
@@ -250,6 +255,42 @@ export interface FetchWorkspaceMetricsResult {
 }
 
 /**
+ * Satu komentar external Outstand (Engagement MVP, T-051) — dipetakan ke
+ * `EngagementInboxItem` oleh `EngagementService` saat upsert (external
+ * comment ID = `outstandCommentId`, dedup key bersama `outstandAccountId`).
+ * `outstandPostId` nullable — Outstand bisa mengembalikan komentar yang
+ * postnya sudah dihapus/tidak terlacak di sisi kita (IL-D09, comments-only
+ * MVP, tanpa DM/mention).
+ */
+export interface InboxCommentData {
+  outstandCommentId: string;
+  outstandAccountId: string;
+  platform: SocialPlatform;
+  authorHandle: string;
+  content: string;
+  outstandPostId: string | null;
+  receivedAt: Date;
+}
+
+/**
+ * Hasil `fetchComments` — dipaginasi (`nextCursor`, `null` berarti halaman
+ * terakhir). JOB-03 (`background-jobs.md`) memanggil ini berulang per
+ * `ConnectedAccount` sampai `nextCursor` habis dalam satu run sync.
+ */
+export interface FetchCommentsResult {
+  comments: InboxCommentData[];
+  nextCursor: string | null;
+}
+
+/**
+ * Hasil `replyToComment` — dipetakan ke `EngagementReply.outstandReplyId`
+ * (T-054).
+ */
+export interface ReplyToCommentResult {
+  outstandReplyId: string;
+}
+
+/**
  * Anti-Corruption Layer contract untuk Outstand (integration-layer.md,
  * ADR-040, redesain ADR baru 2026-08-26). Domain internal (Publishing,
  * Analytics, dst.) hanya mengenal interface ini — implementasi konkret
@@ -421,4 +462,26 @@ export interface IOutstandAdapter {
     outstandAccountId: string,
     period: OutstandMetricsPeriod,
   ): Promise<FetchWorkspaceMetricsResult>;
+
+  /**
+   * Engagement Sync (JOB-03, T-051) — ambil komentar baru untuk satu
+   * `ConnectedAccount`, dipaginasi lewat `cursor` (kosong = halaman
+   * pertama). Dipanggil `EngagementSyncJobHandler` (periodik 30 menit) dan
+   * manual refresh (T-052) — keduanya lewat use-case yang sama
+   * (`integration-layer.md` § "Engagement Data Sync").
+   */
+  fetchComments(
+    outstandAccountId: string,
+    cursor?: string,
+  ): Promise<FetchCommentsResult>;
+
+  /**
+   * Reply dari dalam aplikasi (T-054) — dipanggil `EngagementService`
+   * setelah RBAC check lolos. `outstandCommentId` adalah external
+   * reference dari `InboxCommentData`/`EngagementInboxItem.externalId`.
+   */
+  replyToComment(
+    outstandCommentId: string,
+    text: string,
+  ): Promise<ReplyToCommentResult>;
 }

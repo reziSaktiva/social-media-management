@@ -7,7 +7,10 @@ import {
   InvitationStatus,
   MemberRole,
   MemberStatus,
+  type ConnectedAccountId,
   type SocialPlatform,
+  type UserId,
+  type WorkspaceId,
 } from "@social/shared";
 import type {
   ConnectedAccountRecord,
@@ -646,37 +649,12 @@ export const workspaceRepository: IWorkspaceRepository = {
   },
 
   async markAccountReconnectRequired(outstandAccountId) {
-    // System-context read (T-026.5, webhook Outstand) — bypasses RLS via a
-    // narrow SECURITY DEFINER SQL function (migration
-    // `20260907120000_t026_outstand_webhook_system_lookups`), NOT
-    // `withCurrentUser` — sama alasan seperti
-    // `publishingRepository.findPostTargetsByOutstandPostId`, lihat catatan
-    // lengkap di interface method ini.
-    const rows = await prisma.$queryRaw<AccountOwnerLookupRow[]>`
-      SELECT * FROM "public"."webhook_find_account_owner_by_outstand_account_id"(${outstandAccountId})
-    `;
-
-    if (rows.length === 0) {
+    const lookup =
+      await lookupAccountOwnerByOutstandAccountId(outstandAccountId);
+    if (!lookup) {
       return null;
     }
-
-    // `outstand_account_id` cuma unique PER WORKSPACE — kalau akun yang
-    // sama kebetulan ter-connect di lebih dari satu workspace (skenario
-    // agency), fungsi SQL di atas mengembalikan SEMUA baris (tidak lagi
-    // `LIMIT 1`). Jangan tebak salah satu secara diam-diam — refuse dan
-    // biarkan route.ts menandai receipt `failed` (defense-in-depth yang
-    // sama dengan guard di `publishingRepository.findPostTargetsByOutstandPostId`).
-    const distinctWorkspaceIds = new Set(rows.map((row) => row.workspace_id));
-    if (distinctWorkspaceIds.size > 1) {
-      throw new Error(
-        `markAccountReconnectRequired: outstandAccountId=${outstandAccountId} cocok dengan ${distinctWorkspaceIds.size} workspace berbeda — menolak menebak salah satu.`,
-      );
-    }
-
-    const [row] = rows;
-    const workspaceId = asWorkspaceId(row.workspace_id);
-    const connectedAccountId = asConnectedAccountId(row.connected_account_id);
-    const ownerUserId = asUserId(row.owner_user_id);
+    const { workspaceId, connectedAccountId, ownerUserId } = lookup;
 
     // Write path tetap RLS-safe seperti method lain di file ini —
     // `ownerUserId` (Owner workspace ini, dibaca lewat bypass di atas)
@@ -697,6 +675,16 @@ export const workspaceRepository: IWorkspaceRepository = {
     );
 
     return { workspaceId, connectedAccountId, ownerUserId };
+  },
+
+  async findAccountOwnerByOutstandAccountId(outstandAccountId) {
+    // Read-only (T-051, JOB-03) — lihat catatan lengkap di interface
+    // method ini untuk kenapa `engagement` butuh lookup ini. Reuse HELPER
+    // yang sama dengan `markAccountReconnectRequired`, TANPA langkah tulis
+    // `reconnectRequired` (beda tujuan pemanggilan sepenuhnya).
+    const lookup =
+      await lookupAccountOwnerByOutstandAccountId(outstandAccountId);
+    return lookup;
   },
 
   async disconnectAccount(workspaceId, connectedAccountId, actingUserId) {
@@ -815,4 +803,49 @@ interface AccountOwnerLookupRow {
   workspace_id: string;
   connected_account_id: string;
   owner_user_id: string;
+}
+
+/**
+ * Helper bersama `markAccountReconnectRequired` (T-026.5) DAN
+ * `findAccountOwnerByOutstandAccountId` (T-051, JOB-03) — keduanya butuh
+ * lookup identik (SECURITY DEFINER SQL function
+ * `webhook_find_account_owner_by_outstand_account_id`), beda hanya di
+ * langkah SETELAHNYA (satu menulis `reconnectRequired`, satu lagi murni
+ * baca). Diekstrak supaya guard "outstand_account_id cocok >1 workspace"
+ * tidak diduplikasi.
+ */
+async function lookupAccountOwnerByOutstandAccountId(
+  outstandAccountId: string,
+): Promise<{
+  workspaceId: WorkspaceId;
+  connectedAccountId: ConnectedAccountId;
+  ownerUserId: UserId;
+} | null> {
+  const rows = await prisma.$queryRaw<AccountOwnerLookupRow[]>`
+    SELECT * FROM "public"."webhook_find_account_owner_by_outstand_account_id"(${outstandAccountId})
+  `;
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  // `outstand_account_id` cuma unique PER WORKSPACE — kalau akun yang sama
+  // kebetulan ter-connect di lebih dari satu workspace (skenario agency),
+  // fungsi SQL di atas mengembalikan SEMUA baris (tidak lagi `LIMIT 1`).
+  // Jangan tebak salah satu secara diam-diam — refuse dan biarkan caller
+  // menandai kegagalan (defense-in-depth yang sama dengan guard di
+  // `publishingRepository.findPostTargetsByOutstandPostId`).
+  const distinctWorkspaceIds = new Set(rows.map((row) => row.workspace_id));
+  if (distinctWorkspaceIds.size > 1) {
+    throw new Error(
+      `lookupAccountOwnerByOutstandAccountId: outstandAccountId=${outstandAccountId} cocok dengan ${distinctWorkspaceIds.size} workspace berbeda — menolak menebak salah satu.`,
+    );
+  }
+
+  const [row] = rows;
+  return {
+    workspaceId: asWorkspaceId(row.workspace_id),
+    connectedAccountId: asConnectedAccountId(row.connected_account_id),
+    ownerUserId: asUserId(row.owner_user_id),
+  };
 }

@@ -55,6 +55,7 @@ function createFakeRepository(
     clearPendingOwnerTransfer: async () => undefined,
     acceptOwnershipTransfer: async () => undefined,
     markAccountReconnectRequired: async () => null,
+    findAccountOwnerByOutstandAccountId: async () => null,
     disconnectAccount: async () => undefined,
     findConnectedAccountById: async () => null,
     createConnectedAccount: async ({
@@ -757,6 +758,8 @@ function fakeOutstandAdapter(
       totalEngagements: 0,
       avgEngagementRate: 0,
     }),
+    fetchComments: async () => ({ comments: [], nextCursor: null }),
+    replyToComment: async () => ({ outstandReplyId: "fake-reply" }),
     ...overrides,
   };
 }
