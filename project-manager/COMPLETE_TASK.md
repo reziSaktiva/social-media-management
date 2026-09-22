@@ -8,6 +8,483 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-21 — T-045 Comparative Reports — Implementasi selesai, ✅ Done (3/3 subtask), v0.3 Analytics MVP TUNTAS 8/8
+
+Lanjutan langsung dari design-prep di bawah (entri sebelumnya, sama hari) —
+King Rezi minta lanjut implementasi T-045.1–T-045.3 setelah rancangan
+Claude Design disetujui. Dikoordinasikan main agent, dikerjakan sekuensial:
+Prabowo Feature Engineer (backend) → Mark UI Engineer (UI) → Ridwan
+Architecture Reviewer (review) → Najwa QA Engineer (QA), dengan 2 fix kecil
+diterapkan langsung oleh main agent setelah temuan review/QA.
+
+### Prabowo Feature Engineer — backend
+
+`apps/web/src/domains/publishing/services/publishing.service.ts`:
+- Method baru `getComparativeReport(workspaceId, period, userId): Promise<ComparativeReport>`.
+- Tipe baru: `ComparativeMetric { current: number | null; previous: number | null }`,
+  `AccountComparisonRow { connectedAccountId; platform; accountHandle; reach: ComparativeMetric }`,
+  `ComparativeReport { totalPosts: {current, previous}; totalReach: ComparativeMetric; avgEngagementRate: ComparativeMetric; accounts: AccountComparisonRow[] }`.
+- `getPostPerformance` di-extend parameter opsional `asOf?: Date` (diteruskan
+  ke `resolvePostPerformancePeriodRange`) — backward compatible, 4 call
+  site lama tidak berubah.
+- 2 helper privat baru diekstrak: `summarizeRows` (agregasi
+  totalReach/avgEngagementRate, dipakai ulang `getAnalyzeSummary` yang
+  di-refactor tanpa mengubah behavior) dan `sumReachByAccount` (agregasi
+  reach per akun, khusus `getComparativeReport` — `getAccountOverview`
+  SENGAJA tidak direfactor ulang karena butuh agregasi ganda
+  reach+distinct-post-count, dua pass tidak sepadan manfaatnya).
+- **Keputusan implementasi penting** (dicatat karena mockup Claude Design
+  memberi label "vs 9 bulan lalu" yang bisa disalahartikan): "periode
+  sebelumnya" BUKAN calendar-aligned, melainkan rolling window SAMA
+  PANJANG dan PERSIS BERSEBELAHAN dengan periode current (`getPostPerformance`
+  dipanggil 2x: sekali tanpa `asOf` untuk current, sekali dengan
+  `asOf: currentFrom` untuk previous) — konsisten dengan cara `period`
+  current sendiri sudah dihitung (`resolvePostPerformancePeriodRange`,
+  rolling bukan calendar-aligned sejak refactor T-043).
+- Server Action baru `getComparativeReportAction(period)` di
+  `apps/web/src/app/(app)/analyze/analyze-actions.ts`, pola composition
+  root persis `getAccountOverviewAction` (`AnalyticsService` sebagai
+  `PostMetricsPort` + `WorkspaceService` sebagai `ConnectedAccountsPort`).
+- 4 unit test baru di `publishing.service.test.ts`.
+- Verifikasi: `typecheck`/`lint` bersih, `vitest` 426 pass/5 skip (naik
+  dari 422).
+
+### Mark UI Engineer — UI
+
+`apps/web/src/app/(app)/analyze/page.tsx` + `components/AnalyzeDashboard.tsx`:
+- `page.tsx`: tambah `getComparativeReportAction` ke `Promise.all` yang
+  sudah ada (5 action paralel), teruskan sebagai prop `initialComparativeReport`.
+- `AnalyzeDashboard.tsx`: halaman `/analyze` sekarang punya
+  `Tabs`+`TabsList`(`variant="line"`, sama `PublishTabbar.tsx`)+
+  `TabsTrigger`+`TabsContent` shadcn asli — tab "Overview" (konten existing,
+  TIDAK diubah struktur) dan tab "Reports" (baru). Switch tab murni
+  client-side (data kedua tab sudah di-fetch sekaligus lewat `Promise.all`
+  yang sama, TIDAK ada re-fetch saat ganti tab).
+- Komponen baru: `ComparativePeriodContent` (kartu "Perbandingan Periode",
+  3 kolom stat + badge delta), `AccountComparisonContent` (kartu
+  "Perbandingan Akun/Platform", tabel + badge delta per baris), `DeltaBadge`
+  + helper `computeRelativeDelta`/`computeEngagementRateDelta` (aturan:
+  tidak ada badge kalau salah satu sisi `null`, `previous === 0`, atau
+  delta membulat ke 0 — netral).
+- Delta badge: `Badge` `variant="success"`/`variant="destructive"`
+  (KI-051 resolved, BUKAN token warna baru) + ikon Hugeicons
+  `ArrowUp01Icon`/`ArrowDown01Icon` (adaptasi dari unicode ▲/▼ mockup
+  statis Claude Design ke bahasa visual ikon yang sudah dipakai halaman
+  ini untuk sort).
+- Label UI "vs periode sebelumnya" (BUKAN "bulan lalu"/"minggu lalu"
+  literal seperti teks mockup) — konsisten dengan keputusan rolling-window
+  di atas, supaya tidak menyesatkan.
+- Export CSV (T-045.3): `handleExportCsv` + `buildComparativeReportCsv` —
+  murni client-side (`Blob` + elemen `<a>` sementara, `URL.createObjectURL`),
+  TIDAK ada Server Action baru, TIDAK ada dependency CSV eksternal. Satu
+  file, dua section ("Perbandingan Periode" lalu "Perbandingan
+  Akun/Platform") dipisah baris kosong. Tombol disabled kalau tidak ada
+  apa pun untuk di-export (`hasComparativeData`).
+- Verifikasi browser: golden path PASS, ganti period PASS di kedua tab,
+  switch tab 0 network request baru, dark/light mode + mobile 375px PASS.
+
+### Ridwan Architecture Reviewer
+
+0 temuan pelanggaran arsitektur keras (tidak ada circular dependency baru
+— `ConnectedAccountsPort`/`PostMetricsPort` reuse arah yang sudah legal;
+entry point `page.tsx`/`analyze-actions.ts` tetap tipis; refactor
+`summarizeRows` tidak mengubah behavior `getAnalyzeSummary`; null-safety
+konsisten pola T-043.4/T-046.3/T-047.3).
+
+**1 temuan minor (edge-case, bukan pelanggaran arsitektur):**
+`getComparativeReport` awalnya memanggil `new Date()` dua kali secara
+independen (sekali untuk menurunkan `currentFrom`, sekali lagi implisit di
+`getPostPerformance` tanpa `asOf` untuk current rows) — risiko sangat kecil
+(butuh post yang `publishedAt`-nya jatuh persis di selisih milidetik antara
+dua panggilan) tapi bertentangan dengan klaim JSDoc `ComparativeReport`
+("rentang PERSIS BERSEBELAHAN, tanpa gap/overlap"). **Diperbaiki langsung
+oleh main agent** (bukan dikembalikan ke Prabowo, karena fix-nya trivial
+dan sudah jelas — satu `now` dihitung sekali di awal method, dipakai ulang
+untuk `resolvePostPerformancePeriodRange` DAN `getPostPerformance` current)
+— diverifikasi ulang `typecheck`/`vitest` (426 pass/5 skip, tidak ada
+regresi) setelah fix.
+
+### Najwa QA Engineer
+
+Golden path PASS (Overview regresi nol dibanding sebelum T-045, Reports
+tab render benar, ganti period Mingguan↔Bulanan PASS di kedua tab tanpa
+race condition, switch tab 0 network request baru, Export CSV isi cocok
+1:1 dengan UI, dark/light mode + mobile 375px PASS). Empty state
+`AccountComparisonContent` tidak bisa diverifikasi visual (data test selalu
+punya ≥1 akun terhubung) — diverifikasi lewat baca kode saja, pola sama
+`AccountOverviewContent`/`PostPerformanceContent` yang sudah terverifikasi
+jalan di section lain halaman yang sama, risiko rendah.
+
+**1 temuan gate T-103.3 (dibandingkan `templates/analyze-dashboard.html`):**
+caption per-metrik "vs {nilai periode sebelumnya}" (pola `.stat-compare-sub`
+mockup — tiap kolom stat punya baris kecil "vs X" sendiri) **hilang total**
+di implementasi awal `ComparativeStatColumn` — bukan diadaptasi (beda dari
+2 deviasi sadar lain yang sudah dikonfirmasi konsisten: ikon Hugeicons
+pengganti unicode, label "vs periode sebelumnya" pengganti "bulan lalu"),
+melainkan terlewat begitu saja; cuma ada satu caption generik di header tab
+Reports, jauh dari tiap angka. Dampak: user lihat badge delta tanpa konteks
+"dibanding apa" yang menempel langsung di angkanya. **Diperbaiki langsung
+oleh main agent**: `ComparativeStatColumn` ditambah prop `previousLabel`,
+caption "vs {nilai}" ditaruh di antara angka besar dan badge delta (urutan
+sama mockup), null-safe sama pola field lain ("vs Belum ada data" saat
+`previous === null`). Diverifikasi ulang lewat browser (screenshot: caption
+"vs 3", "vs Belum ada data" tampil benar per kolom) setelah fix —
+`typecheck`/`lint`/`vitest` tetap bersih (426 pass/5 skip).
+
+### Verifikasi akhir keseluruhan task
+
+`bun run typecheck` bersih, `bun run lint` bersih, `bun run test` **426
+pass/5 skip** (42 file, +4 test case baru dari 422 sebelumnya, tidak ada
+regresi). File yang diubah: `publishing.service.ts`,
+`publishing.service.test.ts`, `analyze-actions.ts`, `page.tsx`,
+`AnalyzeDashboard.tsx` (semua di `apps/web/`), plus dokumentasi
+(`tasks/v03-analytics-mvp.md`, `TASKS.md`, `PROJECT_STATE.md`, entri ini).
+
+### Status
+
+T-045 **✅ Done, 3/3 subtask**. **Release v0.3 Analytics MVP TUNTAS 8/8
+task** (T-040–T-047, breakdown berubah dari "🟡 7 ✅ · 1 ⏳" menjadi
+"8 ✅"). Total task selesai project naik 48 → **49**.
+
+---
+
+## 2026-09-21 — T-045 Comparative Reports — design-prep Claude Design (belum implementasi kode)
+
+T-045 (Comparative Reports, `tasks/v03-analytics-mvp.md`, rilis v0.3, Should
+Have) diminta King Rezi ("check T-045 di claude design apakah sudah ada?
+jika sudah tolong kerjakan langsung"). Dicek dulu sesuai gate rule 17
+AGENTS.md — rancangannya **belum ada sama sekali** di Claude Design (tidak
+ada file `templates/` untuk "Reports"/"Comparative" apa pun;
+`templates/analyze-dashboard.html` cuma berisi Overview/Summary/Account
+Overview/Post Performance/Engagement Summary dari T-043/T-044/T-046/T-047).
+King Rezi lalu secara eksplisit minta dikerjakan langsung oleh main agent
+(bukan didelegasikan ke Neymar Product Designer untuk task ini) — status
+subtask T-045.1–T-045.3 **TETAP `⏳ Not Started`**, sesi ini murni design
+prep di Claude Design, tidak ada perubahan kode `apps/web`.
+
+### Dua fork keputusan (`AskUserQuestion`)
+
+1. **IA placement** — 3 opsi diajukan (tab baru di halaman Analyze yang
+   sama / halaman terpisah dengan nav item sendiri / section scroll-down
+   tanpa tab). King Rezi memilih **tab baru "Reports" di halaman Analyze
+   yang sama** — nav sidebar tetap satu item "Analyze".
+2. **Pola switch tab** — dua pola shadcn/ui sama-sama valid secara teknis
+   dan belum dikunci Claude Design untuk kasus ini: `Tabs`+`TabsList`+
+   `TabsTrigger`+`TabsContent` asli vs reuse `.seg`/ToggleGroup (sudah ada
+   di `components/forms.html`). King Rezi memilih **`Tabs` asli**, karena
+   ini switch antar panel konten penuh, bukan filter/view-mode toggle.
+
+### Temuan sampingan — gap dokumentasi lama
+
+`.tabbar`/`.tab` (class CSS dengan komentar lama "Astryx: TabList") sudah
+dipakai di `templates/publish-drafts.html`/`publish-calendar.html`/
+`publish-queue.html`/`publish-history.html` sebagai tabbar navigasi RUTE
+(`PublishTabbar.tsx` — `TabsTrigger asChild` membungkus `next/link` `Link`,
+`value` disinkronkan ke `usePathname()`, TANPA `TabsContent`/state lokal)
+tapi **belum pernah** punya baris di Components table `readme.md` —
+gap lama, baru ditutup sesi ini bersamaan dengan menambahkan T-045 sebagai
+pemakaian pertama `TabsContent` (client-side, state lokal beneran) di
+project ini.
+
+### Hasil implementasi Claude Design
+
+`templates/analyze-dashboard.html` (`DesignSync`, project "Social Media
+Management"): tab "Overview" (konten existing, TIDAK diubah sama sekali)
+dan tab "Reports" (baru) — "Perbandingan Periode" (T-045.1, 3 angka Summary
+row dibandingkan ke periode setara sebelumnya: 12→9 Total Posts +33%,
+4.320→3.800 Total Reach +14%, 6,5%→7,1% Engagement Rate −0,6pt) dan
+"Perbandingan Akun/Platform" (T-045.2, tabel reuse angka Reach per akun
+dari Account Overview: Instagram 2.100→1.750 +20%, X 1.400→1.520 −8%,
+Facebook 820→530 +55%) — delta reuse `.chip.chip-active`/`.chip.chip-failed`
+yang sudah ada, **tanpa token warna baru**. Tombol "Export CSV" (T-045.3)
+sengaja cuma satu format tanpa dropdown — task doc T-045.3 sendiri menulis
+"format menunggu keputusan, CSV kandidat paling murah", jadi ini asumsi
+minimal eksplisit, bukan keputusan format final. Semua angka tab Reports
+dijaga konsisten dengan angka yang sudah dikunci di Overview; angka "bulan
+lalu" murni mock pembanding, belum ada sumber data nyata.
+
+Diverifikasi visual lewat local static preview server (mirroring struktur
+relatif `templates/`+`styles.css` Claude Design) sebelum push — screenshot
+light mode dan dark mode, klik switch Overview↔Reports, delta chip
+hijau/merah tampil benar, angka konsisten dengan Overview. Diverifikasi
+juga tidak ada drift remote sebelum push (`get_file` ulang tepat sebelum
+`write_files`, sesuai `.claude/skills/claude-design-scope-discipline/SKILL.md`
+poin 6) — remote identik dengan yang dibaca di awal sesi, aman push penuh.
+
+`readme.md` diupdate: baris baru `.tabbar` + `.tab`(`.active`) di
+Components table (mendokumentasikan kedua pola pemakaian, route nav dan
+content switching) dan bullet `templates/analyze-dashboard.html` di section
+Screens diperluas dengan ringkasan T-045.
+
+### Status
+
+Design prep T-045 selesai, menutup ambiguitas IA placement + pola tab
+sebelum implementasi kode dimulai. Tidak ada perubahan kode `apps/web`.
+Implementasi T-045.1–T-045.3 (Prabowo/Elon + Mark UI Engineer + Ridwan +
+Najwa) menyusul terpisah, menunggu King Rezi.
+
+---
+
+## 2026-09-21 — T-044 Engagement summary (/analyze) — scope dipersempit via `AskUserQuestion`, ✅ Done (3/3 subtask)
+
+T-044 (Engagement summary, `tasks/v03-analytics-mvp.md`, rilis v0.3) naik
+status `🟡 In Progress` → `✅ Done` — seluruh 3/3 subtask tuntas, tapi
+**scope yang diimplementasikan jauh lebih sempit** dari deskripsi task doc
+asli (field **Domain: analytics**, **ADR: ADR-018**, "komentar masuk,
+komentar dibalas, rasio respons" via public API domain `engagement`).
+
+### Scope-narrowing (`AskUserQuestion`)
+
+Sesuai rule 17 AGENTS.md, dicek dulu ke Claude Design sebelum implementasi
+— `templates/analyze-dashboard.html` section "Engagement Summary" **TIDAK**
+ditandai "SYNCED" (masih sketsa awal, bukan locked pattern), tapi
+markup-nya cuma mengunci **2 angka sederhana**: "Komentar" dan "Likes".
+King Rezi ditanya via `AskUserQuestion` dan memilih ikut Claude Design apa
+adanya, bukan versi kompleks task doc asli.
+
+### Implementasi (Prabowo Feature Engineer)
+
+Method baru `PublishingService.getEngagementSummary(workspaceId, period,
+userId)` + tipe `EngagementSummary { totalComments: number | null;
+totalLikes: number | null }` di
+`apps/web/src/domains/publishing/services/publishing.service.ts` — reuse
+`getPostPerformance` (T-043), pola identik `getAnalyzeSummary` (T-047)/
+`getAccountOverview` (T-046) untuk menghindari circular dependency
+`analytics↔publishing` (pola sama solusi refactor T-043 putaran 1). Data
+diambil dari field `likes`/`comments` `AnalyticsPostMetric` (Prisma, sudah
+ada sejak T-041) — **tidak ada query Prisma baru**. Akumulasi null-safe:
+`totalLikes`/`totalComments` adalah jumlah baris yang sudah ter-ingest
+saja, `null` kalau tidak ada satupun baris berisi nilainya (bukan 0).
+Server Action baru `getEngagementSummaryAction` di
+`apps/web/src/app/(app)/analyze/analyze-actions.ts`, wiring `page.tsx`
+(4 action dipanggil paralel via `Promise.all`). 4 test baru di
+`publishing.service.test.ts` (describe `getEngagementSummary`).
+
+**Konsekuensi penting yang TIDAK dipakai dari task doc asli:**
+
+- **Tidak ada cross-domain edge ke domain `engagement`** — domain itu
+  masih stub kosong total, baru dibangun v0.4. **ADR-018** (cross-domain
+  lewat public API `engagement`) tidak dipakai untuk implementasi ini.
+- **Field Domain task berubah dari `analytics` ke `publishing`** — method
+  ini hidup di `PublishingService`, bukan `AnalyticsService`.
+- **T-044 tidak lagi terikat v0.4** (Engagement MVP) — karena tidak butuh
+  domain `engagement`, task ini tidak perlu menunggu comment sync nyata.
+
+### Implementasi (Mark UI Engineer)
+
+Card baru "Engagement Summary" di kolom kanan grid `.dash-cols`
+(`lg:grid-cols-[1.6fr_1fr]`, akhirnya diaktifkan — sebelumnya sengaja
+dirender full-width sementara sejak T-046 menunggu T-044, lihat komentar
+REFLOW di kepala `AnalyzeDashboard.tsx`). 2 baris (Komentar, Likes) via
+komponen baru `EngagementSummaryRow`, pola row sama persis
+`AccountOverviewRowItem` (`flex justify-between`, `border-b border-border
+py-2.5 last:border-b-0`) — idiom konsisten dengan section lain di file,
+bukan pola baru. `EngagementSummaryContent` TANPA wrapper `Card` sendiri
+(dibungkus `Card`/`CardContent` oleh caller, pola sama
+`AccountOverviewContent`/`PostPerformanceContent`). Null-safety sama
+persis pola T-043.4/T-046.3/T-047.3: `totalComments`/`totalLikes`
+masing-masing independen render "Belum ada data" saat `null` (bukan 0);
+card tetap tampil (2 baris "Belum ada data") kalau kedua field `null`.
+Grid stack 1 kolom di layar sempit (`grid-cols-1`, breakpoint `lg`).
+
+### Review Ridwan Architecture Reviewer
+
+0 temuan — 0 kemunculan import `domains/engagement` di file yang berubah,
+tidak ada query Prisma baru, tidak ada circular dependency baru, null-safety
+konsisten pola T-043.4/T-046/T-047, `EngagementSummary` di
+`publishing.service.ts` konsisten precedent `PostPerformanceRow`/
+`AccountOverviewRow`/`AnalyzeSummary`.
+
+### QA Najwa QA Engineer
+
+PASS penuh: golden path, empty state "Belum ada data" (independen per
+field), ganti period 4 action paralel tanpa race condition, regresi
+Account Overview/Post Performance PASS, responsive mobile 375px PASS,
+dark/light mode PASS. Gate T-103.3 (verifikasi struktur vs Claude Design)
+PASS, dicek 2x independen (Mark manual + AI utama via `DesignSync`
+langsung karena tool itu tidak termuat di sesi Najwa) — keduanya tidak
+menemukan deviasi struktural dari `templates/analyze-dashboard.html`.
+
+**Satu catatan non-blocking** (bukan bug): setelah grid 2 kolom diaktifkan,
+tabel Post Performance di kartu kiri (sekarang `1.6fr`, sebelumnya
+full-width) butuh scroll horizontal di lebar browser standar untuk melihat
+kolom Reach/Eng. Rate — `Table` shadcn sudah handle via `overflow-x-auto`
+bawaan, bukan defect, dicatat sebagai efek samping visual dari lock
+proporsi grid `.dash-cols` di desain.
+
+### Verifikasi akhir
+
+`bun run typecheck` bersih, `bun run lint` bersih, `bun run test` **422
+pass/5 skip** (naik dari 415/5 sebelum T-044, +7 test case baru).
+
+### Perbaikan field task (drift, bukan pelanggaran baru)
+
+Field task doc T-044 sebelumnya (**Domain: analytics**, **ADR: ADR-018**,
+**Depends: T-041 · idealnya setelah v0.4**) sudah drift dari implementasi
+sebenarnya — diperbaiki di `tasks/v03-analytics-mvp.md` menjadi **Domain:
+publishing · UI**, ADR dihapus (dicatat alasannya di catatan Update task),
+dan Depends tidak lagi menyebut v0.4. Deskripsi subtask T-044.1–T-044.3
+ditulis ulang sebagai catatan "Update 2026-09-21" (histori keputusan asli
+tetap dipertahankan via strikethrough, tidak dihapus).
+
+### Dampak dokumentasi lain
+
+- `TASKS.md` — breakdown v0.3 berubah dari "🟡 6 ✅ · 2 ⏳" menjadi
+  **🟡 7 ✅ · 1 ⏳** (dihitung ulang langsung dari
+  `tasks/v03-analytics-mvp.md`). Total task selesai naik 47 → **48**.
+  Jumlah subtask total tidak berubah (221 — T-044 sudah terdefinisi 3
+  subtask sebelumnya, dihitung ulang dan cocok).
+- `PROJECT_STATE.md` — Snapshot § Top Next Tasks menambah ringkasan T-044
+  di paling atas; § Completed (Ringkasan) menambah bullet T-044,
+  menghapus bullet terlama (KI-059 Resolved) supaya tetap 5 item.
+
+Detail lengkap: `tasks/v03-analytics-mvp.md` § T-044.
+
+---
+
+## 2026-09-18 — T-047 Summary row (/analyze) — implementasi kode selesai, ✅ Done (3/3 subtask)
+
+T-047 (Summary row `/analyze`, `tasks/v03-analytics-mvp.md`, rilis v0.3)
+naik status `🟡 In Progress` → `✅ Done` — seluruh 3/3 subtask tuntas. 3
+stat card (Total Posts, Total Reach, Engagement Rate) di bagian atas
+`/analyze`, di atas section Account Overview+Post Performance.
+
+**T-047.1 (Prabowo Feature Engineer)** — Keputusan sumber data: reuse
+`PublishingService.getPostPerformance` (**BUKAN**
+`AnalyticsService.getDashboardSummary`), untuk menghindari circular
+dependency `analytics↔publishing` (pola sama solusi refactor T-043 putaran
+1). Method baru `PublishingService.getAnalyzeSummary(workspaceId, period,
+userId)` + tipe `AnalyzeSummary` (`totalPosts`, `totalReach:
+number|null`, `avgEngagementRate: number|null`) di
+`apps/web/src/domains/publishing/services/publishing.service.ts`.
+`totalPosts` dihitung FLAT per baris post×target-akun (bukan distinct post
+count) — diverifikasi cocok persis dengan mock Claude Design ("Total Posts:
+12" = penjumlahan `AccountOverviewRow.totalPosts` di section yang sama).
+Server Action baru `getAnalyzeSummaryAction` di
+`apps/web/src/app/(app)/analyze/analyze-actions.ts`, wiring `page.tsx`. 3
+test baru di `publishing.service.test.ts`.
+
+**T-047.2 + T-047.3 (Mark UI Engineer)** — UI 3 `StatTile` (diekstrak jadi
+shared component baru `apps/web/src/app/(app)/components/stat-tile.tsx`,
+dipakai ulang juga di `DashboardHome.tsx` yang sebelumnya punya definisi
+lokal duplikat — pure extraction, tidak ada perubahan behavior Dashboard
+Home). Empty state per-field (T-047.3): `totalPosts` selalu tampil angka
+(termasuk "0"), `totalReach`/`avgEngagementRate` masing-masing independen
+render "Belum ada data" saat `null` — pola SAMA T-043.4, BUKAN empty state
+penuh 1 section (3 card selalu tampil).
+
+Desain sudah dicek ke Claude Design SEBELUM implementasi (rule 17
+AGENTS.md) — section `.summary-row` di `templates/analyze-dashboard.html`
+sudah "SYNCED" (locked ke shadcn `Card`+`CardContent`+`Text`, pola sama
+persis `StatTile` T-042.3 yang sudah ada), jadi TIDAK ADA gate
+ambiguitas/`AskUserQuestion` yang perlu dipicu.
+
+**Review Ridwan Architecture Reviewer:** 0 temuan (7 titik fokus dicek:
+entry point bersih, domain logic tidak import Prisma/Supabase, keputusan
+tidak pakai `ConnectedAccountsPort` di `getAnalyzeSummary` masuk akal,
+tidak ada circular dependency baru, `AnalyzeSummary` di
+`publishing.service.ts` konsisten precedent `PostPerformanceRow`/
+`AccountOverviewRow`, `stat-tile.tsx` murni presentasional, formula
+konsisten dengan `getAccountOverview`).
+
+**QA Najwa QA Engineer:** 0 bug. `typecheck`/`lint` bersih, `vitest` **418
+pass/5 skip** (naik dari 415, 3 test baru `getAnalyzeSummary`). Gate
+T-103.3 (verifikasi struktur vs Claude Design) PASS — cocok 1:1, tidak ada
+deviasi. Browser end-to-end: golden path PASS (Total Posts cocok dengan
+penjumlahan Account Overview), ganti period PASS (3 action ter-refetch
+bersamaan, guard out-of-order bekerja), null-safety PASS ("Belum ada data"
+bukan 0/NaN/crash), regresi Account Overview+Post Performance PASS (sort
+masih jalan, empty state masing-masing tidak berubah). Catatan
+non-blocking (bukan Known Issue): 2 skenario (period tanpa post sama
+sekali, campuran sebagian metrik ter-ingest) tidak bisa diverifikasi
+visual di browser karena data dev saat ini tidak punya kombinasi itu —
+sudah tercover unit test deterministik sebagai gantinya, bukan blocker.
+
+Tidak ada ADR baru — keputusan sumber data T-047.1 adalah keputusan
+implementasi biasa, konsisten precedent T-043/T-046 yang juga tidak butuh
+ADR terpisah untuk keputusan serupa.
+
+Detail: `tasks/v03-analytics-mvp.md` § T-047, `TASKS.md` (breakdown v0.3
+"🟡 5 ✅ · 3 ⏳" → **🟡 6 ✅ · 2 ⏳**, task selesai 46 → **47**),
+`PROJECT_STATE.md` (Snapshot + Completed Ringkasan).
+
+---
+
+## 2026-09-18 — T-046 Account Overview — implementasi kode selesai, ✅ Done (3/3 subtask)
+
+T-046 (Account Overview, `tasks/v03-analytics-mvp.md`, rilis v0.3) naik
+status `⏳ Not Started` → `✅ Done` — seluruh 3/3 subtask tuntas.
+
+**T-046.1 (Prabowo Feature Engineer)** — Query agregasi Account Overview:
+method baru `PublishingService.getAccountOverview(workspaceId, period,
+userId)` di `apps/web/src/domains/publishing/services/publishing.service.ts`
+— ditaruh di domain `publishing` (bukan `analytics`) untuk reuse
+`getPostPerformance` (T-043) dan menghindari circular dependency (pola sama
+seperti temuan review putaran 1 T-043). Port baru `ConnectedAccountsPort`
+(arah `publishing→workspace`, sudah legal di `application-layer.md` baris
+316). Server Action baru `getAccountOverviewAction(period)` di
+`apps/web/src/app/(app)/analyze/analyze-actions.ts`. Kriteria "belum ada
+data": akun tanpa post → `totalPosts: 0, totalReach: null`; akun dengan
+post tapi metrik belum ter-ingest → `totalReach: null` juga (dibedakan dari
+0 reach yang sah). 4 test baru di `publishing.service.test.ts` (describe
+`getAccountOverview`).
+
+**T-046.2/T-046.3 (Mark UI Engineer, 2 sesi)** — UI: section "Account
+Overview" ditambahkan ke
+`apps/web/src/app/(app)/analyze/components/AnalyzeDashboard.tsx`. Sesi 1
+awalnya dibuat sebagai `Card` full-width sendiri (deviasi dari mockup,
+karena Post Performance sudah full-width sejak T-043) — King Rezi ditanya
+via `AskUserQuestion`, jawaban: "sesuaikan dengan Claude Design". Sesi 2
+(reflow): `DesignSync get_file` ulang pada `templates/analyze-dashboard.html`
+menemukan struktur sebenarnya — `.dash-cols` grid `1.6fr 1fr`: kartu kiri =
+SATU `card.card-pad` berisi Account Overview + Post Performance BERSAMA
+(bukan dua Card terpisah), kartu kanan = Engagement Summary (T-044, belum
+dikerjakan). Direflow supaya Account Overview + Post Performance berbagi
+satu `Card`/`CardContent`. Kolom kanan grid sengaja dirender full-width
+sementara (bukan grid 2 kolom dengan placeholder) sampai T-044 dikerjakan —
+King Rezi konfirmasi via `AskUserQuestion` ("Full-width sementara
+(Recommended)"). Progress bar: `(row.totalReach / maxReach) * 100`,
+`totalReach === null` → teks "Belum ada data" (bukan bar 0%).
+
+**Review Ridwan Architecture Reviewer:** 0 temuan. Verifikasi: entry point
+bersih, domain tidak import Prisma/Supabase langsung, `ConnectedAccountsPort`
+(publishing→workspace) sudah legal di `application-layer.md` baris 316,
+tidak ada circular dependency baru, kriteria null vs 0 konsisten di seluruh
+layer, tidak ada gap dokumentasi baru (KI-064 yang sudah ada tetap untuk
+`publishing→analytics`, tidak bertambah untuk `publishing→workspace` karena
+arah itu memang sudah lama terdokumentasi).
+
+**QA Najwa QA Engineer:** 0 temuan blocking. Golden path PASS semua (satu
+Card yang sama, progress bar proporsional, selector period refetch paralel
+kedua section, edge case akun-tanpa-post vs akun-dengan-post-tanpa-metrik
+dibedakan benar, regresi Post Performance/Calendar Popover/History Detail
+PASS, dark/light mode aman). Gate T-103.3 (DesignSync vs kode): **match**.
+Satu catatan non-blocking (bukan bug): sort kolom "Akun" di Post Performance
+pakai `localeCompare()` bawaan JS, "Insvire Demo" muncul sebelum
+"@fake.ig.4806" karena urutan simbol "@" — tidak diperbaiki karena tidak
+diminta.
+
+**Verifikasi akhir:** `typecheck`/`lint` bersih, `bun run test` **415
+pass/5 skip** (42 file, naik dari 411).
+
+### File yang berubah
+
+- `apps/web/src/domains/publishing/services/publishing.service.ts`,
+  `publishing.service.test.ts`
+- `apps/web/src/app/(app)/analyze/analyze-actions.ts`
+- `apps/web/src/app/(app)/analyze/components/AnalyzeDashboard.tsx`
+- `project-manager/tasks/v03-analytics-mvp.md` — T-046.1–T-046.3 dicentang,
+  status task `⏳ Not Started` → `✅ Done (2026-09-18)`, ringkasan
+  implementasi ditambahkan.
+- `project-manager/TASKS.md` — breakdown v0.3 "🟡 4 ✅ · 4 ⏳" → **🟡 5 ✅ ·
+  3 ⏳**, **Total** task selesai 45 → **46** (subtask total tidak berubah,
+  221), entri Update baru di riwayat.
+- `project-manager/PROJECT_STATE.md` — Snapshot **Top Next Tasks** dan
+  section **Completed (Ringkasan)** diupdate (bullet T-046 ditambah di atas,
+  bullet T-024.1/.2/.3 terlama dihapus supaya tetap 5 item).
+
+---
+
 ## 2026-09-18 — T-046 (Account Overview) + T-047 (Summary row /analyze) ditambahkan ke backlog v0.3
 
 Atas permintaan King Rezi, 2 task baru ditambahkan ke

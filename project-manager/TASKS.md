@@ -54,15 +54,127 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | -------------------------- | -------------------------------------------------- | ----------- | ---- | ------------------- | ---------------------------------------------------- |
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹ | 23   | 16 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹ | 23   | 18 ✅ · 1 🟡 · 4 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
-| **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-047 | 8    | 🟡 4 ✅ · 4 ⏳       | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
+| **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-047 | 8    | 8 ✅                | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
 | **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | ⏳ 0 / 6             | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103 | 9    | 🟡 8 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 89 task · 45 selesai · 221 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 89 task · 49 selesai · 221 subtask terdefinisi (v0.1–v0.3, v0.7).
 
+> **Update (2026-09-21, T-045 SELESAI 3/3 subtask — v0.3 Analytics MVP
+> TUNTAS 8/8 task):** **T-045** (Comparative Reports, Should Have,
+> `tasks/v03-analytics-mvp.md`) naik status `⏳ Not Started` → `✅ Done` —
+> seluruh 3/3 subtask tuntas. Rancangan belum ada di Claude Design saat
+> diminta King Rezi — dibuat langsung oleh main agent (bukan Neymar Product
+> Designer, permintaan eksplisit King Rezi) setelah 2 fork keputusan dijawab
+> via `AskUserQuestion`: IA tab baru "Reports" di halaman Analyze yang sama
+> (bukan route/section terpisah), dan pola `Tabs` shadcn asli (bukan
+> `.seg`/ToggleGroup) untuk switch panel. Implementasi: method baru
+> `PublishingService.getComparativeReport(workspaceId, period, userId)` +
+> tipe `ComparativeMetric`/`AccountComparisonRow`/`ComparativeReport`, reuse
+> `getPostPerformance` (di-extend parameter opsional `asOf?: Date`,
+> backward compatible) dipanggil dua kali untuk "periode sekarang" vs
+> "periode sebelumnya" — **rolling window sama panjang persis bersebelahan,
+> BUKAN calendar-aligned** (konsisten cara `period` current sendiri sudah
+> dihitung). UI: tab "Overview"/"Reports" di `/analyze`, kartu "Perbandingan
+> Periode" + "Perbandingan Akun/Platform" dengan badge delta (`Badge`
+> `variant="success"`/`"destructive"`, KI-051 resolved), tombol "Export CSV"
+> client-side murni (tanpa Server Action/dependency baru). Rangkaian:
+> Prabowo Feature Engineer → Mark UI Engineer → Ridwan Architecture
+> Reviewer (0 temuan arsitektur, 1 catatan minor edge-case `now` dipanggil
+> dua kali independen — diperbaiki langsung main agent) → Najwa QA Engineer
+> (PASS penuh, 1 temuan gate T-103.3 — caption per-metrik "vs X" hilang di
+> implementasi awal — diperbaiki langsung main agent). Verifikasi akhir:
+> `typecheck`/`lint` bersih, `vitest` **426 pass/5 skip** (naik dari 422,
+> +4 test case baru). Breakdown v0.3 berubah dari "🟡 7 ✅ · 1 ⏳" menjadi
+> **8 ✅ (TUNTAS)** — release v0.3 Analytics MVP selesai. Total task selesai
+> naik 48 → **49**. Jumlah subtask total tidak berubah (221 — T-045 sudah
+> terdefinisi 3 subtask sebelumnya, hanya status checklist yang berubah).
+> Detail: `tasks/v03-analytics-mvp.md` § T-045.
+>
+> **Update (2026-09-21, T-044 SELESAI 3/3 subtask — scope dipersempit via
+> `AskUserQuestion`):** **T-044** (Engagement summary, `tasks/v03-analytics-mvp.md`)
+> naik status `🟡 In Progress` → `✅ Done` — seluruh 3/3 subtask tuntas, tapi
+> **scope diimplementasikan JAUH lebih sempit** dari deskripsi task doc asli
+> (field **Domain: analytics**, **ADR: ADR-018**, "komentar masuk, komentar
+> dibalas, rasio respons" via public API domain `engagement`). Dicek dulu ke
+> Claude Design (rule 17 AGENTS.md): `templates/analyze-dashboard.html`
+> section "Engagement Summary" TIDAK ditandai "SYNCED", markup-nya cuma
+> mengunci 2 angka sederhana ("Komentar", "Likes"). King Rezi ditanya via
+> `AskUserQuestion`, memilih ikut Claude Design apa adanya. Implementasi:
+> method baru `PublishingService.getEngagementSummary(workspaceId, period,
+> userId)` + tipe `EngagementSummary { totalComments, totalLikes }` — reuse
+> `getPostPerformance` (T-043), data dari field `likes`/`comments`
+> `AnalyticsPostMetric` yang sudah ada sejak T-041, **BUKAN** query baru
+> dan **BUKAN** cross-domain ke `engagement` (0 import `domains/engagement`,
+> dikonfirmasi Ridwan). **Domain task ini berubah dari `analytics` ke
+> `publishing`** (pola sama T-043/T-046/T-047) dan **ADR-018 tidak
+> dipakai** — dicatat sebagai drift field yang diperbaiki, bukan pelanggaran
+> baru. **Konsekuensi penting: T-044 tidak lagi terikat v0.4** (Engagement
+> MVP) karena tidak butuh domain `engagement` sama sekali. Server Action
+> baru `getEngagementSummaryAction`; UI card baru "Engagement Summary" di
+> kolom kanan grid `.dash-cols` (`lg:grid-cols-[1.6fr_1fr]`, akhirnya
+> diaktifkan — sebelumnya full-width sementara sejak T-046). Rangkaian:
+> Prabowo Feature Engineer → Mark UI Engineer → Ridwan Architecture
+> Reviewer (0 temuan) → Najwa QA Engineer (PASS penuh, gate T-103.3 PASS
+> dicek 2x independen). Verifikasi akhir: `typecheck`/`lint` bersih,
+> `vitest` **422 pass/5 skip** (naik dari 415, +7 test case baru). Satu
+> catatan non-blocking dari Najwa: tabel Post Performance di kartu kiri
+> (sekarang `1.6fr`, sebelumnya full-width) butuh scroll horizontal di
+> lebar browser standar untuk kolom Reach/Eng. Rate — bukan defect, efek
+> samping lock proporsi grid desain. Breakdown v0.3 berubah dari "🟡 6 ✅ ·
+> 2 ⏳" menjadi **🟡 7 ✅ · 1 ⏳** (dihitung ulang langsung dari
+> `tasks/v03-analytics-mvp.md`). Total task selesai naik 47 → **48**. Jumlah
+> subtask total tidak berubah (221 — T-044 sudah terdefinisi 3 subtask
+> sebelumnya, dihitung ulang dan cocok, hanya status checklist yang
+> berubah). Detail: `tasks/v03-analytics-mvp.md` § T-044.
+>
+> **Update (2026-09-18, T-047 SELESAI 3/3 subtask):** **T-047** (Summary
+> row `/analyze`, `tasks/v03-analytics-mvp.md`) naik status `🟡 In Progress`
+> → `✅ Done` — seluruh 3/3 subtask tuntas: sumber data diputuskan reuse
+> `PublishingService.getPostPerformance` (method baru
+> `getAnalyzeSummary(workspaceId, period, userId)` + tipe `AnalyzeSummary`),
+> **bukan** `AnalyticsService.getDashboardSummary`, untuk menghindari
+> circular dependency `analytics↔publishing` (pola sama solusi refactor
+> T-043); UI 3 `StatTile` di atas `/analyze` (komponen diekstrak jadi shared
+> `apps/web/src/app/(app)/components/stat-tile.tsx`, dipakai ulang juga di
+> `DashboardHome.tsx`); empty state per-field konsisten pola T-043.4
+> (`totalPosts` selalu angka, `totalReach`/`avgEngagementRate` independen
+> "Belum ada data" saat `null`). Desain sudah "SYNCED" di Claude Design
+> sebelum implementasi (rule 17 AGENTS.md), tidak ada gate ambiguitas yang
+> terpicu. Rangkaian: Prabowo Feature Engineer (T-047.1) → Mark UI Engineer
+> (T-047.2–T-047.3) → Ridwan Architecture Reviewer (0 temuan) → Najwa QA
+> Engineer (0 bug, gate T-103.3 match). Verifikasi akhir: `typecheck`/`lint`
+> bersih, `vitest` **418 pass/5 skip** (42 file, naik dari 415). Breakdown
+> v0.3 berubah dari "🟡 5 ✅ · 3 ⏳" menjadi **🟡 6 ✅ · 2 ⏳** (dihitung ulang
+> langsung dari `tasks/v03-analytics-mvp.md`). Total task selesai naik
+> 46 → **47**. Jumlah subtask total tidak berubah (221 — T-047 sudah
+> terdefinisi 3 subtask sebelumnya, hanya status checklist yang berubah).
+> Detail: `tasks/v03-analytics-mvp.md` § T-047.
+>
+> **Update (2026-09-18, T-046 SELESAI 3/3 subtask):** **T-046** (Account
+> Overview, `tasks/v03-analytics-mvp.md`) naik status `⏳ Not Started` →
+> `✅ Done` — seluruh 3/3 subtask tuntas: query agregasi jumlah post + total
+> reach per akun/platform (method baru `PublishingService.getAccountOverview`,
+> ditaruh di domain `publishing` bukan `analytics` untuk reuse
+> `getPostPerformance` T-043 dan menghindari circular dependency, port baru
+> `ConnectedAccountsPort` arah `publishing→workspace`), UI bar performa per
+> akun di `/analyze` (reuse shadcn `Progress`, direflow jadi satu `Card`
+> bersama Post Performance sesuai struktur asli `analyze-dashboard.html`),
+> dan empty state "Belum ada data" (dibedakan null vs 0 reach). Rangkaian:
+> Prabowo Feature Engineer (T-046.1) → Mark UI Engineer (T-046.2–T-046.3, 2
+> sesi karena reflow layout Card) → Ridwan Architecture Reviewer (0 temuan)
+> → Najwa QA Engineer (0 temuan blocking, gate T-103.3 match). Verifikasi
+> akhir: `typecheck`/`lint` bersih, `vitest` **415 pass/5 skip** (42 file,
+> naik dari 411). Breakdown v0.3 berubah dari "🟡 4 ✅ · 4 ⏳" menjadi
+> **🟡 5 ✅ · 3 ⏳** (dihitung ulang langsung dari
+> `tasks/v03-analytics-mvp.md`). Total task selesai naik 45 → **46**. Jumlah
+> subtask total tidak berubah (221 — T-046 sudah terdefinisi 3 subtask
+> sebelumnya, hanya status checklist yang berubah). Detail:
+> `tasks/v03-analytics-mvp.md` § T-046.
+>
 > **Update (2026-09-18, T-046 + T-047 ditambahkan — gap perencanaan
 > ditemukan saat implementasi T-043):** 2 task baru ditambahkan ke
 > `tasks/v03-analytics-mvp.md`, status keduanya `⏳ Not Started` (baru
@@ -902,6 +1014,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 | ID        | Task                                            | Status | Catatan                                              |
 | --------- | ----------------------------------------------- | ------ | ---------------------------------------------------- |
+| **T-044** | Engagement summary                              | ✅ 3/3 | **Done (2026-09-21)** — scope dipersempit via `AskUserQuestion` (Claude Design belum "SYNCED" tapi hanya mengunci 2 angka: Komentar, Likes) — jauh lebih sempit dari deskripsi asli (domain `engagement`, ADR-018). `PublishingService.getEngagementSummary` reuse `getPostPerformance`, data dari `AnalyticsPostMetric` (T-041), **domain berubah `analytics`→`publishing`**, **ADR-018 tidak dipakai**, **tidak lagi terikat v0.4**. UI card "Engagement Summary" mengaktifkan grid `.dash-cols` 2 kolom di `/analyze`. Lolos review Ridwan (0 temuan) + QA Najwa (PASS penuh, gate T-103.3 2x independen). Lihat `tasks/v03-analytics-mvp.md` § T-044 |
 | **T-043** | Post performance metrics                        | ✅ 4/4 | **Done (2026-09-18)** — Table sortable di `/analyze` (Post/Akun/Reach/Eng. Rate) + metrik di halaman detail post History, `getPostPerformance` di `PublishingService` (reuse `PostMetricsPort`, dependency satu arah `publishing→analytics` setelah refactor). Lolos review Ridwan (2 putaran — putaran 1 temuan circular dependency, direfactor; putaran 2 tertutup) + QA Najwa (0 temuan blocking). **KI-064 baru** (gap dokumentasi `application-layer.md`). Lihat `tasks/v03-analytics-mvp.md` § T-043 |
 | **T-027** | Job runner + Railway Cron                       | ✅ 5/5 | **Done (2026-09-17)** — job runner generik (klaim job `SELECT FOR UPDATE SKIP LOCKED` + registry handler per job type), auth `X-Job-Secret`, retry backoff 5m/15m/60m + dead-letter, Railway Cron config-as-code (`railway.json`/`railway.cron.json` — provisioning project sungguhan masih blocked **KI-025**), dan job handler baru `ResolveScheduledPostOutcomeJobHandler` (**JOB-07**) yang menutup transisi status post terjadwal otomatis. **ADR-108** (redesain `fetchPostOutcome` — root-cause fix state `Map` `FakeOutstandAdapter` yang pecah lintas Server Action↔Route Handler) dan **ADR-109** (`markPostPublished`, melengkapi gap T-026). **KI-062**/**KI-063** baru (dokumentasi backoff self-contradictory, `publishedAt` kosong). Lolos review Ridwan (2 putaran) + QA Najwa (browser + `curl` simulasi cron, semua PASS). Lihat `tasks/v02-publishing-mvp.md` § T-027 |
 | **T-103** | Kunci Pola Implementasi shadcn per Komponen di Claude Design | ✅ 4/4 | **Done** (2026-09-10) — mencegah pengulangan drift seperti **KI-054**/**KI-055**: audit Claude Design supaya tiap list/komposisi ambigu (>1 pola shadcn valid) dikunci eksplisit ke satu pola konkret, plus gate baru di `AGENTS.md` — kalau pola belum dikunci, AI wajib tanya King Rezi dulu, bukan menebak. **T-103.1** — 3 file Claude Design (Drafts/Workspaces/Connected Accounts) markup-nya disamakan penuh dengan kode nyata (pola `Table`), `readme.md` diupdate; PR [#116](https://github.com/reziSaktiva/social-media-management/pull/116) ke `staging`. **T-103.2** — gate berhenti-dan-tanya ditambahkan ke `AGENTS.md` rule 17 + `.claude/agents/README.md` + `mark-ui-engineer.md`. **T-103.3** — gate verifikasi struktur setelah implementasi ditambahkan ke checklist `mark-ui-engineer.md` & `najwa-qa-engineer.md` (Najwa juga diberi tool `DesignSync` baru). **T-103.4** — audit retroaktif menemukan **KI-056** (`publish-history.html` drift sama seperti KI-054/055) — Resolved. Lihat `tasks/v07-astryx-shadcn-migration.md` § T-103 |

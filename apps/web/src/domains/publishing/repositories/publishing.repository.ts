@@ -529,6 +529,12 @@ export interface IPublishingRepository {
       workspaceId: WorkspaceId;
       statuses?: ContentStatus[];
       connectedAccountIds?: ConnectedAccountId[];
+      // Opsional — filter `publishedAt` di level query (T-045/T-046/T-047,
+      // dipakai `PublishingService.getPostPerformance`) supaya caller yang
+      // cuma butuh satu `period` tidak perlu fetch seluruh riwayat
+      // workspace lalu filter di JS. Caller lain (mis. `/publish/history`)
+      // tetap boleh mengabaikannya untuk dapat riwayat penuh.
+      publishedAtRange?: { from: Date; to: Date };
     },
     userId: UserId,
   ): Promise<HistoryItemRecord[]>;
