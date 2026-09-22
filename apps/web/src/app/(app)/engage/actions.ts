@@ -1,7 +1,6 @@
 "use server";
 
 import {
-  MemberStatus,
   SocialPlatform,
   asConnectedAccountId,
   asInboxItemId,
@@ -28,6 +27,7 @@ import { engagementRepository } from "@/lib/repositories/engagement";
 import { notificationRepository } from "@/lib/repositories/notification";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { toActionError } from "@/lib/utils/errors";
+import { createActiveWorkspaceMembersPort } from "@/lib/workspace/active-members-port";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 
 /**
@@ -73,17 +73,7 @@ export async function refreshInboxAction(): Promise<{
     engagementRepository,
     getOutstandAdapter(),
     new NotificationService(notificationRepository),
-    {
-      async listActiveMembers(targetWorkspaceId, actingUserId) {
-        const members = await workspaceRepository.listMembers(
-          targetWorkspaceId,
-          actingUserId,
-        );
-        return members
-          .filter((member) => member.status === MemberStatus.Active)
-          .map((member) => ({ userId: member.userId }));
-      },
-    },
+    createActiveWorkspaceMembersPort(),
   );
   const refreshInboxUseCase = new RefreshInboxUseCase(
     syncCommentsUseCase,

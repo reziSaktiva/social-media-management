@@ -33,14 +33,21 @@
 -- mechanism was added — evaluated against `IJobScheduler`/
 -- `background_job_store.ts` first (no cancel/deleteByCriteria exists
 -- today) and this narrower fix closes the root cause without adding one.
-CREATE OR REPLACE FUNCTION "public"."webhook_find_account_owner_by_outstand_account_id"(
+--
+-- `DROP FUNCTION` first: Postgres refuses `CREATE OR REPLACE FUNCTION` when
+-- the OUT-parameter row type changes (adding `status` changes it), erroring
+-- 42P13 "cannot change return type of existing function" otherwise.
+DROP FUNCTION IF EXISTS "public"."webhook_find_account_owner_by_outstand_account_id"(text);
+
+CREATE FUNCTION "public"."webhook_find_account_owner_by_outstand_account_id"(
   p_outstand_account_id text
 )
 RETURNS TABLE (
   workspace_id uuid,
   connected_account_id uuid,
   owner_user_id text,
-  status text
+  status text,
+  reconnect_required boolean
 )
 LANGUAGE sql
 SECURITY DEFINER
@@ -51,7 +58,8 @@ AS $$
     wca."workspace_id" AS workspace_id,
     wca."id" AS connected_account_id,
     w."owner_id" AS owner_user_id,
-    wca."status" AS status
+    wca."status" AS status,
+    wca."reconnect_required" AS reconnect_required
   FROM "workspace_connected_accounts" wca
   JOIN "workspaces" w ON w."id" = wca."workspace_id"
   WHERE wca."outstand_account_id" = p_outstand_account_id

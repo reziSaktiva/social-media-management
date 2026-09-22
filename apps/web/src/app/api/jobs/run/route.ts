@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { MemberStatus } from "@social/shared";
 import {
   ENGAGEMENT_SYNC_JOB_TYPE,
   EngagementSyncJobHandler,
@@ -20,6 +19,7 @@ import { backgroundJobScheduler } from "@/lib/jobs/job-scheduler";
 import { notificationRepository } from "@/lib/repositories/notification";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { timingSafeEqualString } from "@/lib/utils/timing-safe-equal-string";
+import { createActiveWorkspaceMembersPort } from "@/lib/workspace/active-members-port";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 
 /**
@@ -75,17 +75,7 @@ export async function POST(request: Request): Promise<Response> {
     engagementRepository,
     getOutstandAdapter(),
     new NotificationService(notificationRepository),
-    {
-      async listActiveMembers(workspaceId, userId) {
-        const members = await workspaceRepository.listMembers(
-          workspaceId,
-          userId,
-        );
-        return members
-          .filter((member) => member.status === MemberStatus.Active)
-          .map((member) => ({ userId: member.userId }));
-      },
-    },
+    createActiveWorkspaceMembersPort(),
   );
   const engagementSyncHandler = new EngagementSyncJobHandler(
     syncCommentsUseCase,

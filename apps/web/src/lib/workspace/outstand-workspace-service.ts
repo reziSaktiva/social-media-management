@@ -1,6 +1,7 @@
 import { ENGAGEMENT_SYNC_JOB_TYPE } from "@/domains/engagement";
 import { WorkspaceService } from "@/domains/workspace";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
+import { backgroundJobStore } from "@/lib/jobs/background-job-store";
 import { backgroundJobScheduler } from "@/lib/jobs/job-scheduler";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 
@@ -36,6 +37,20 @@ export function createWorkspaceServiceWithOutstandAdapter(): WorkspaceService {
     getOutstandAdapter(),
     {
       async onAccountConnected(input) {
+        // Cegah dua chain `engagement.sync` paralel kalau akun yang sama
+        // di-disconnect lalu di-reconnect cepat sebelum chain lama sempat
+        // berhenti (disconnect tidak membatalkan job yang sudah di-enqueue).
+        const alreadyScheduled =
+          await backgroundJobStore.hasActiveJobForPayloadKey({
+            type: ENGAGEMENT_SYNC_JOB_TYPE,
+            key: "connectedAccountId",
+            value: input.connectedAccountId,
+          });
+
+        if (alreadyScheduled) {
+          return;
+        }
+
         await backgroundJobScheduler.scheduleJob({
           type: ENGAGEMENT_SYNC_JOB_TYPE,
           payload: {

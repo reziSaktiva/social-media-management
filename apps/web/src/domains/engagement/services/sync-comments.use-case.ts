@@ -102,21 +102,29 @@ export class SyncCommentsUseCase {
         cursor,
       );
 
-      for (const comment of comments) {
-        const { isNew } = await this.repository.upsertInboxItem(
-          {
-            workspaceId,
-            connectedAccountId,
-            platform: comment.platform,
-            type: "comment",
-            externalId: comment.outstandCommentId,
-            authorHandle: comment.authorHandle,
-            content: comment.content,
-            receivedAt: comment.receivedAt,
-          },
-          userId,
-        );
+      // Upsert per komentar dijalankan konkuren (bukan `await` berurutan
+      // satu-satu) supaya round-trip DB tiap halaman tidak terserialisasi —
+      // tiap panggilan tetap atomik/idempotent sendiri (unique constraint +
+      // advisory lock per `connectedAccountId` di `upsertInboxItem`).
+      const results = await Promise.all(
+        comments.map((comment) =>
+          this.repository.upsertInboxItem(
+            {
+              workspaceId,
+              connectedAccountId,
+              platform: comment.platform,
+              type: "comment",
+              externalId: comment.outstandCommentId,
+              authorHandle: comment.authorHandle,
+              content: comment.content,
+              receivedAt: comment.receivedAt,
+            },
+            userId,
+          ),
+        ),
+      );
 
+      for (const { isNew } of results) {
         if (isNew) {
           newCommentsCount += 1;
         }

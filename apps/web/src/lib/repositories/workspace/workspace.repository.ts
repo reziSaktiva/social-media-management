@@ -699,9 +699,14 @@ export const workspaceRepository: IWorkspaceRepository = {
     // `markAccountReconnectRequired` (webhook path, T-026.5) TIDAK
     // dipengaruhi — ia memakai helper yang sama tapi tidak memeriksa field
     // `status` ini sama sekali, jadi behaviornya persis seperti sebelumnya.
+    // `reconnectRequired` bisa true sementara `status` masih `active`
+    // (token expired lewat webhook, `markAccountReconnectRequired` tidak
+    // mengubah `status`) — diperlakukan sama seperti "tidak ditemukan"
+    // supaya JOB-03 berhenti sync akun yang butuh reconnect, bukan terus
+    // memanggil Outstand dengan token yang sudah ditolak.
     const lookup =
       await lookupAccountOwnerByOutstandAccountId(outstandAccountId);
-    if (!lookup || lookup.status !== "active") {
+    if (!lookup || lookup.status !== "active" || lookup.reconnectRequired) {
       return null;
     }
     return {
@@ -837,6 +842,14 @@ interface AccountOwnerLookupRow {
    * berubah).
    */
   status: string;
+  /**
+   * `WorkspaceConnectedAccount.reconnectRequired` — flag terpisah dari
+   * `status` (token expired bisa terjadi sambil `status` masih `active`,
+   * lihat `markAccountReconnectRequired`). `findAccountOwnerByOutstandAccountId`
+   * ikut memeriksa ini supaya JOB-03 tidak terus sync akun yang butuh
+   * reconnect.
+   */
+  reconnect_required: boolean;
 }
 
 /**
@@ -855,6 +868,7 @@ async function lookupAccountOwnerByOutstandAccountId(
   connectedAccountId: ConnectedAccountId;
   ownerUserId: UserId;
   status: string;
+  reconnectRequired: boolean;
 } | null> {
   const rows = await prisma.$queryRaw<AccountOwnerLookupRow[]>`
     SELECT * FROM "public"."webhook_find_account_owner_by_outstand_account_id"(${outstandAccountId})
@@ -883,5 +897,6 @@ async function lookupAccountOwnerByOutstandAccountId(
     connectedAccountId: asConnectedAccountId(row.connected_account_id),
     ownerUserId: asUserId(row.owner_user_id),
     status: row.status,
+    reconnectRequired: row.reconnect_required,
   };
 }
