@@ -986,7 +986,7 @@ sudah tayang. Non-blocking, gap serupa pola **KI-049**
 |-------|-------|
 | Status | Open |
 | Kategori | Tech-Debt / UI |
-| Terkait | ADR-097, T-102 |
+| Terkait | ADR-097, T-102, T-105 |
 
 Ditemukan King Rezi saat diskusi (2026-09-22): `AppSideNav` (dan turunannya
 `WorkspaceSideNav`/`SettingsSideNav`, `apps/web/src/app/(app)/components/AppSideNav.tsx`)
@@ -1002,11 +1002,61 @@ migrasi struktur sidebar ke primitive resmi `Sidebar` — scope T-102 waktu
 itu adalah mengganti komponen Astryx, bukan mengaudit apakah setiap area
 layout sudah memakai primitive shadcn yang paling sesuai. Sidebar custom
 saat ini berfungsi penuh (tidak ada bug), jadi ini gap konsistensi/tech-debt,
-bukan bug fungsional — perlu keputusan King Rezi (langsung atau lewat Mark
-UI Engineer) apakah migrasi ke `Sidebar` shadcn dijadikan task formal
-(kemungkinan butuh cek Claude Design dulu per rule 17 AGENTS.md kalau
-migrasi ini mengubah struktur visual/interaksi, bukan cuma refactor
-internal). Tidak memblokir M8.
+bukan bug fungsional. Tidak memblokir M8.
+
+**Update (2026-09-22):** King Rezi minta dibuatkan branch+PR. Dicek dulu ke
+Claude Design (rule 17) — mockup lama justru mendokumentasikan sidebar
+sebagai hand-built **disengaja** (KI-047 Phase 2b), bertentangan dengan
+premis KI-066. King Rezi memilih update Claude Design dulu (bukan batalkan
+KI-066 atau langsung kode). Dijadikan task formal **T-105**
+(`tasks/v07-astryx-shadcn-migration.md`). **T-105.0 selesai** — mockup
+`components/navigation.html` + `readme.md` § Components diupdate ke
+komposisi primitive `Sidebar` shadcn (`SidebarProvider`/`Sidebar`/
+`SidebarHeader`/`SidebarContent`/`SidebarGroup`/`SidebarMenu`/
+`SidebarMenuItem`/`SidebarMenuButton`/`SidebarFooter`/`SidebarRail`), scope
+dijaga ketat (visual/behavior byte-identik, cuma prosa + HTML comment
+struktural yang berubah, diverifikasi diff + remote check 2x sebelum push).
+**Belum** ditandai "SYNCED" — menunggu review King Rezi. **Keputusan
+terbuka yang perlu dijawab King Rezi sebelum kode ditulis:** mobile
+behavior — pakai `Sheet` bawaan `Sidebar` shadcn (ganti `MobileTopBar.tsx`
+custom T-098.4) atau `Sidebar` cuma untuk struktur desktop, mobile tetap
+pola T-098.4? Percobaan delegasi ke Neymar Product Designer (subagent)
+gagal karena `DesignSync` tidak ter-load di sesi subagent (kejadian ke-6,
+lihat `.claude/agents/README.md`) — dikerjakan langsung di sesi utama.
+
+**Susulan sesi yang sama:** King Rezi minta sidebar bisa collapse/expand
+seperti `Sidebar` shadcn asli. Dicek API sungguhan via MCP shadcn
+(`sidebar-07`) dulu sebelum mockup — 4 keputusan dikunci King Rezi via
+`AskUserQuestion`: mode **icon-only rail** (`collapsible="icon"`), trigger
+di **header sidebar** dekat workspace switcher (bukan header baru di main
+content), Channels **disembunyikan** saat collapsed, dan **hanya sidebar
+workspace** yang collapsible (`.settings-sidebar` dikecualikan). Mockup
+`components/navigation.html` diupdate (5 nav item dapat ikon SVG baru —
+**placeholder, bukan `hugeicons` asli**, perlu diverifikasi saat kode) +
+CSS baru `styles.css` (`.sidebar[data-collapsed="true"]`, lebar 48px) +
+toggle interaktif. **Diverifikasi visual nyata** lewat browser lokal
+(screenshot expanded & collapsed, toggle diklik bolak-balik) sebelum push
+— bukan cuma ditulis lalu diasumsikan benar. Detail lengkap:
+`tasks/v07-astryx-shadcn-migration.md` § T-105.0.
+
+**Susulan kedua (2026-09-22):** King Rezi minta rollout fitur ini ke App
+Prototype + seluruh screen, bukan cuma component spec. Pola diterapkan ke
+8 file `templates/*.html` yang punya sidebar workspace (Settings tetap
+dikecualikan, sesuai keputusan sebelumnya) + wiring baru di
+`templates/app-prototype/AppPrototype.dc.html` (method
+`toggleSidebarCollapse`, case baru di `route()`, mengikuti pola
+`toggleTheme` yang sudah terbukti). Verifikasi konsistensi internal
+per file **menemukan & memperbaiki 2 typo transkripsi nyata** di
+`analyze-dashboard.html` sebelum sempat ter-push. **Keterbatasan:** App
+Prototype pakai format `<x-dc>` yang cuma jalan sungguhan di dalam Claude
+Design — wiring-nya tidak bisa di-klik-test langsung dari sesi ini,
+diverifikasi lewat diff + kesamaan pola `toggleTheme`. King Rezi perlu
+cek langsung di Claude Design untuk konfirmasi akhir semuanya jalan.
+
+Branch+PR kode **belum** dibuat — menunggu King Rezi review pola
+(termasuk fitur collapse/expand baru ini, di App Prototype maupun
+screen individual) + jawab keputusan mobile behavior (T-105.1) dulu,
+sesuai rule 17.
 
 ---
 
