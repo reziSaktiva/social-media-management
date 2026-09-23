@@ -78,6 +78,12 @@ body {
  * dipetakan dari Stone — dipertahankan default preset Maia (T-095.5).
  */
 :root {
+  /* KI-066 follow-up: native browser UI (scrollbar, form controls) follows
+     color-scheme, not the .dark class alone — without this, the Channels
+     scrollbar (and any other native-rendered control) stayed light-themed
+     even with dark mode active. Matches Claude Design's :root[data-theme]
+     toggle (styles.css), which sets this for the same reason. */
+  color-scheme: light;
   --background: #f3f3f5;
   --foreground: #25252a;
   --card: #ffffff;
@@ -117,6 +123,7 @@ body {
 }
 
 .dark {
+  color-scheme: dark;
   --background: #111015;
   --foreground: #f3f3f5;
   --card: #242325;
