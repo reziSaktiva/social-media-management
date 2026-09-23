@@ -23,6 +23,18 @@ langsung dengan user. Perubahan struktural wajib dicatat di
 | `najwa-qa-engineer.md`            | Najwa QA Engineer            | Vitest + verifikasi browser end-to-end                                                  | Ya — `Read, Bash, Grep, Glob, mcp__Claude_Browser, DesignSync` |
 | `gibran-project-manager.md`       | Gibran Project Manager       | Update `PROJECT_STATE.md` / `TASKS.md` / `tasks/` / `DECISIONS.md` / `COMPLETE_TASK.md` | Ya — `Read, Edit, Write, Bash, Grep, Glob`         |
 
+**Override model/effort per subagent:** frontmatter tiap file peran boleh
+menambah `effort: <low|medium|high|xhigh|max>` (dipakai `ridwan-architecture-reviewer.md`
+dan `najwa-qa-engineer.md` sebagai quality gate — butuh ketelitian ekstra,
+bukan cuma golden path) dan/atau `model: <sonnet|opus|haiku|fable>` (belum
+dipakai subagent manapun saat ini) untuk menimpa default sesi utama.
+Perubahan ini termasuk "perubahan struktural" (README ini § "Mengubah
+subagent ini") — chmod dance + entri `COMPLETE_TASK.md` tetap wajib.
+Pertimbangkan risiko sebelum menurunkan `model` pada subagent yang tugasnya
+butuh ketelitian arithmetic/cross-file (mis. Gibran menghitung ulang jumlah
+subtask) — model lebih lemah yang salah hitung berarti sesi tambahan untuk
+memperbaikinya, kadang lebih mahal daripada penghematannya.
+
 ---
 
 ## Cara AI memerintahkan subagent

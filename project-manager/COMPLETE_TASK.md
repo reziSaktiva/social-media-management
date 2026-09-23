@@ -8,6 +8,94 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-23 — Efisiensi subagent: pangkas duplikasi changelog di PROJECT_STATE.md/TASKS.md
+
+King Rezi melaporkan sering kena 5-hours limit Claude, 85% pemakaian dari
+subagent, dan tip langsung dari Claude Code: "consider a cheaper model for
+simple subagents, or tighten their prompts." Audit menemukan sumber
+pemborosan utama BUKAN di prompt subagent (`.claude/agents/*.md`, total
+513 baris/7 file — sudah padat & load-bearing, berisi aturan governance
+yang mencegah pengulangan insiden KI-054/055) tapi di 2 dokumen yang WAJIB
+dibaca tiap subagent/tiap awal sesi task: `PROJECT_STATE.md` dan
+`TASKS.md` — keduanya membengkak karena narasi changelog historis
+(rangkaian putaran review, verifikasi, angka test) ditumpuk terus-menerus
+di tempat yang seharusnya cuma pointer singkat, padahal riwayat lengkapnya
+sudah ada di `COMPLETE_TASK.md`/`tasks/vXX-*.md`.
+
+**Perubahan:**
+
+1. **`PROJECT_STATE.md`** (104.156 → 47.865 karakter, **-54%**):
+   - Snapshot § "Top Next Tasks": paragraf riwayat ~14.000 karakter
+     (menumpuk sejak berbagai task lama) dipangkas jadi ringkasan 1
+     paragraf pendek (fokus terkini + pointer ke Completed Ringkasan).
+   - Known Issues: 6 entri berstatus `Resolved` yang sudah tercatat penuh
+     di `COMPLETE_TASK.md` (KI-048, KI-051, KI-054, KI-055, KI-056,
+     KI-059) dihapus dari daftar — menegakkan aturan yang sudah tertulis
+     di header section ini sendiri tapi belum pernah ditegakkan.
+   - "Completed (Ringkasan)": 5 entri terakhir diringkas dari paragraf
+     panjang (rangkaian putaran review/QA) jadi 1-2 kalimat per entri.
+2. **`TASKS.md`** (118.574 → 14.233 karakter, **-88%**): blok changelog
+   `> **Update (...)**` yang menumpuk di bawah tabel "Indeks release"
+   (~1040 baris, seluruhnya duplikat isi `COMPLETE_TASK.md`) diganti 1
+   baris pointer. Tabel "Fokus sekarang" (23 baris, 22 di antaranya sudah
+   `✅ Done`) dipangkas jadi hanya baris yang benar-benar belum selesai
+   (`T-025`), sisanya jadi 1 baris "Selesai baru-baru ini" (daftar ID +
+   tanggal saja). Blockquote riwayat T-033/T-032/T-029/T-012/T-039/T-089/
+   T-093/T-014 (semuanya task lama yang sudah Done, di luar tabel Fokus
+   Sekarang) dihapus. Footnote ID-borrow (¹) dan catatan sekuensial
+   v0.1/v0.2 dipertahankan karena masih dirujuk aktif oleh tabel di
+   atasnya.
+3. **`.claude/agents/gibran-project-manager.md`**: King Rezi eksplisit
+   menjawab "Ya, turunkan sekarang" saat ditanya (via `AskUserQuestion`)
+   apakah boleh menurunkan model salah satu subagent, dengan Gibran
+   dicontohkan sebagai kandidat — sempat ditambah `model: haiku` di
+   frontmatter. **Direvert di code review PR #132** (bukan King Rezi
+   berubah pikiran): Gibran dokumen sendiri sudah punya riwayat salah
+   hitung nyata pada tugas cross-file arithmetic yang sama (klaim "142
+   subtask" vs aktual 138, lihat aturan governance di file itu) — model
+   lebih lemah untuk pekerjaan itu berisiko menambah sesi perbaikan yang
+   lebih mahal daripada penghematannya. Sebagai gantinya: (a) 5 subagent
+   lain (termasuk Ridwan/Najwa yang sudah `effort: high` sebagai quality
+   gate) tetap **tidak** diubah, (b) guardrail ukuran dokumen (KI Resolved
+   dihapus & Fokus Sekarang diprune saat itu juga, bukan nunggu audit
+   berikutnya) ditulis eksplisit di `gibran-project-manager.md` sendiri
+   supaya bloat yang sama tidak terulang, dan (c) konvensi frontmatter
+   `effort`/`model` per subagent didokumentasikan di
+   `.claude/agents/README.md` (sebelumnya tidak tercatat di manapun).
+
+**Tidak diubah:** isi/status task, ID, hitungan indeks, Known Issues yang
+masih `Open`, dan seluruh 7 file `.claude/agents/*.md` (governance rule di
+dalamnya tidak dipangkas — sudah dicek satu per satu, tidak ada
+duplikasi/bloat yang aman dipotong tanpa kehilangan guardrail).
+
+**Ditemukan tapi belum ditindaklanjuti (gap pre-existing, dilaporkan ke
+King Rezi, bukan diperbaiki sendiri):** **T-037** (Perkaya aturan coding)
+disebut sebagai fokus aktif `🟡 In Progress` di Snapshot `PROJECT_STATE.md`
+tapi tidak pernah muncul di tabel "Fokus sekarang" `TASKS.md` — drift
+lama, bukan akibat pemangkasan sesi ini.
+
+**Update (2026-09-23, fix hasil code review PR #132, 10 temuan):** selain
+revert `model: haiku` di atas — **KI-066** (Resolved, sudah diarsipkan
+penuh di entri di atas) dihapus dari `PROJECT_STATE.md` karena memenuhi
+kriteria hapus yang sama persis dengan 6 KI lain sesi ini, tapi sempat
+terlewat (jadi entri terpanjang yang tersisa, ~105 baris). Section
+"Current Focus" `PROJECT_STATE.md` (39 baris narasi migrasi Astryx→shadcn
+yang sudah selesai dan riwayat ADR-041→ADR-097) ikut dipangkas ke fakta
+yang masih relevan — pola bloat yang sama, sempat terlewat sesi awal.
+Referensi menggantung ke KI-059/KI-054/KI-055 yang sudah dihapus (di
+KI-060 `PROJECT_STATE.md` dan field **Baca dulu** T-103
+`tasks/v07-astryx-shadcn-migration.md`) diperbaiki jadi deskripsi
+mandiri/pointer ke `COMPLETE_TASK.md`, bukan ID kosong. Cap "Completed
+(Ringkasan)" direkonsiliasi — `PROJECT_RULES.md` sebelumnya menulis ≤10
+untuk section ini padahal `AGENTS.md` sudah menegakkan 5, sekarang
+keduanya konsisten (≤10 tetap berlaku khusus untuk "Recent Decisions
+(Ringkasan)"). Tabel "Fokus sekarang" `TASKS.md` yang sempat tersisa
+satu baris (`T-025` saja, sisanya sudah pindah ke "Selesai baru-baru
+ini") disederhanakan jadi satu kalimat "Fokus aktif" — tabel untuk satu
+baris cuma menambah overhead markdown tanpa manfaat.
+
+---
+
 ## 2026-09-23 — KI-066 follow-up: 5 perbaikan visual pasca-migrasi sidebar (lebar, avatar, bg, color-scheme, Badge solid ADR-111)
 
 King Rezi melakukan review manual di browser setelah T-105 ditutup dan
