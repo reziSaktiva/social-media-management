@@ -40,6 +40,22 @@
  * mendesain split 2-method ini (bukan menebak liar) dan menjadi kontrak
  * resmi untuk keduanya.
  *
+ * **`resolveConnectCallback` menggantikan `exchangeConnectCode` (ADR-112,
+ * 2026-09-23, amandemen ADR-105, SCOPE: single-page account saja)** —
+ * setelah verifikasi lewat MCP resmi `mcp.outstand.so` + OpenAPI spec
+ * (sesi T-025, 2026-09-23), ditemukan Outstand TIDAK punya endpoint
+ * "exchange code" untuk platform single-page (Instagram, X, LinkedIn,
+ * Threads, TikTok, YouTube, Pinterest, dst — BUKAN Facebook Pages
+ * multi-halaman, lihat KI-070). Setelah OAuth selesai, Outstand redirect
+ * balik ke `redirect_uri` KITA dengan `account_id`/`network_unique_id`/
+ * `username` LANGSUNG di query param — data akun sudah lengkap tanpa
+ * network call tambahan. `ExchangeConnectCodeInput`/`exchangeConnectCode`
+ * DIHAPUS (bukan dipertahankan sebagai alias) — nama barunya
+ * (`ConnectCallbackInput`/`resolveConnectCallback`) sengaja tidak
+ * menyiratkan "exchange"/network call, karena real adapter untuk kasus
+ * ini murni validasi/normalisasi. Flow Facebook Pages (session-token +
+ * page-selection) di luar scope ADR-112, dicatat KI-070 terpisah.
+ *
  * **`uploadMediaWorkingCopy` (ADR-106, 2026-09-14)** — ditambahkan untuk
  * T-024.3 (media upload working copy Draft Editor). BEDA dari
  * `connectAccount`/`exchangeConnectCode`: ketiga langkah narasi Outstand
@@ -165,22 +181,34 @@ export interface ConnectAccountResult {
 }
 
 /**
- * Exchange Connect Code (T-013.1/T-013.2, T-015.3, ADR-105) — dipanggil
- * Route Handler `/api/integrations/outstand/callback` (Prabowo Feature
- * Engineer, di luar scope method ini) setelah Outstand (atau Fake,
- * loopback) mengarahkan balik dengan `code`+`state`.
+ * Resolve Connect Callback (T-013.1/T-013.2, T-015.3, ADR-105, redesain
+ * ADR-112 — SCOPE: single-page account saja, lihat KI-070 untuk Facebook
+ * Pages) — dipanggil Route Handler `/api/integrations/outstand/callback`
+ * (Prabowo Feature Engineer, di luar scope method ini) setelah Outstand
+ * (atau Fake, loopback) mengarahkan balik. Field-field ini dipetakan
+ * LANGSUNG dari query param yang dikirim Outstand — `outstandAccountId`
+ * dari `account_id`, `username` dari `username`, `networkUniqueId` dari
+ * `network_unique_id` (opsional — belum ada kebutuhan konkret yang
+ * membaca nilainya, disimpan untuk validasi/defensif masa depan, bukan
+ * dipakai memetakan `ConnectedAccountData` sekarang). `state` sama persis
+ * dengan ADR-105 (dibentuk `connectAccount`, membawa `platform`+`nonce`+
+ * `redirectAccountId?`).
  */
-export interface ExchangeConnectCodeInput {
-  code: string;
+export interface ConnectCallbackInput {
   state: string;
+  outstandAccountId: string;
+  username: string;
+  networkUniqueId?: string;
 }
 
 /**
- * Hasil exchange code — dipetakan langsung ke field `ConnectedAccount`
- * yang disimpan `WorkspaceService` (`integration-layer.md`, "Data yang
- * disimpan pada ConnectedAccount"). `status` selalu `"active"` di sini —
- * value lain (`expired`/`disconnected`) hanya muncul belakangan lewat
- * webhook/aksi disconnect, bukan hasil connect yang baru saja berhasil.
+ * Hasil resolve connect callback — dipetakan langsung ke field
+ * `ConnectedAccount` yang disimpan `WorkspaceService` (`integration-layer.md`,
+ * "Data yang disimpan pada ConnectedAccount"). `status` selalu `"active"`
+ * di sini — value lain (`expired`/`disconnected`) hanya muncul belakangan
+ * lewat webhook/aksi disconnect, bukan hasil connect yang baru saja
+ * berhasil. `platform` diambil dari `state` (bukan dari Outstand — lihat
+ * ADR-112), bukan dari `ConnectCallbackInput` secara langsung.
  */
 export interface ConnectedAccountData {
   outstandAccountId: string;
@@ -306,21 +334,26 @@ export interface IOutstandAdapter {
    * `WorkspaceService` saat user klik "Connect Account" (T-013) atau
    * "Reconnect" (T-015.3, dengan `redirectAccountId` diisi). Tidak
    * membuat/mengubah `ConnectedAccount` apa pun — itu terjadi belakangan
-   * di `exchangeConnectCode` setelah callback.
+   * di `resolveConnectCallback` setelah callback (ADR-112).
    */
   connectAccount(input: ConnectAccountInput): Promise<ConnectAccountResult>;
 
   /**
-   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105) —
-   * langkah 2 dari alur 2-tahap OAuth: tukar `code`+`state` (dari
-   * callback) dengan data akun final. Dipanggil Route Handler
-   * `/api/integrations/outstand/callback` (di luar scope kontrak ini).
-   * `WorkspaceService` yang memutuskan CREATE (connect baru) vs UPDATE
-   * (reconnect) `ConnectedAccount` berdasarkan `redirectAccountId` yang
-   * dibawa lewat `state` — bukan tanggung jawab adapter.
+   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105, redesain
+   * ADR-112) — langkah 2 dari alur 2-tahap OAuth. **SCOPE: single-page
+   * account saja** (Instagram, X, LinkedIn, Threads, TikTok, YouTube,
+   * Pinterest, dst — bukan Facebook Pages multi-halaman, lihat KI-070).
+   * BUKAN "exchange" — Outstand sudah mengirim data akun (`account_id`/
+   * `username`/`network_unique_id`) langsung lewat query param callback,
+   * jadi method ini murni validasi/normalisasi jadi `ConnectedAccountData`
+   * (real adapter TIDAK melakukan network call untuk ini). Dipanggil
+   * Route Handler `/api/integrations/outstand/callback` (di luar scope
+   * kontrak ini). `WorkspaceService` yang memutuskan CREATE (connect baru)
+   * vs UPDATE (reconnect) `ConnectedAccount` berdasarkan `redirectAccountId`
+   * yang dibawa lewat `state` — bukan tanggung jawab adapter.
    */
-  exchangeConnectCode(
-    input: ExchangeConnectCodeInput,
+  resolveConnectCallback(
+    input: ConnectCallbackInput,
   ): Promise<ConnectedAccountData>;
 
   /**

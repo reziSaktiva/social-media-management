@@ -41,10 +41,10 @@ export type ServerEnv = {
   /**
    * Optional — Outstand Organization ID, dibutuhkan `connectAccount()`
    * untuk membentuk redirect URL OAuth resmi
-   * (`https://www.outstand.so/app/api/socials/{network}/{orgId}`).
-   * TIDAK cukup untuk menyelesaikan alur connect account — lihat gap
-   * `exchangeConnectCode` di `real-outstand-adapter.ts` (butuh amandemen
-   * ADR-105 + Route Handler callback + UI page-selection).
+   * (`https://www.outstand.so/app/api/socials/{network}/{orgId}`). Sejak
+   * ADR-112, mengisi ini SUDAH cukup untuk alur connect account
+   * single-page selesai (`resolveConnectCallback` tidak butuh env
+   * tambahan) — tidak berlaku untuk Facebook Pages multi-halaman (KI-070).
    */
   OUTSTAND_ORG_ID?: string;
   /** Optional (mengikuti pola OUTSTAND_WEBHOOK_SECRET) — reachable 401 check di route.ts butuh ini TIDAK throw duluan lewat assertServerEnv kalau belum di-set. */

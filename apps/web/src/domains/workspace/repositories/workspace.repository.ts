@@ -457,8 +457,9 @@ export interface IWorkspaceRepository {
   }): Promise<ConnectedAccountRecord>;
 
   /**
-   * UPDATE akun existing (T-015.3, Reconnect, ADR-105) — refresh
-   * `outstandAccountId`/`handle` dari hasil `exchangeConnectCode` terbaru,
+   * UPDATE akun existing (T-015.3, Reconnect, ADR-105, redesain ADR-112)
+   * — refresh `outstandAccountId`/`handle` dari hasil
+   * `resolveConnectCallback` terbaru,
    * set `status: "active"` dan `reconnectRequired: false`. `connectedAt`
    * TIDAK direset — reconnect bukan re-create, riwayat
    * `PublishingPostTarget`/`EngagementInboxItem` yang merujuk row

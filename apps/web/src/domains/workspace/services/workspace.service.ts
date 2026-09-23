@@ -1087,12 +1087,15 @@ export class WorkspaceService {
 
   /**
    * Connect Account (T-013.1/T-013.2) / Reconnect (T-015.3) — langkah 2
-   * (ADR-105), dipanggil Route Handler `/api/integrations/outstand/callback`
-   * setelah user diarahkan balik dengan `code`+`state`.
+   * (ADR-105, redesain ADR-112), dipanggil Route Handler
+   * `/api/integrations/outstand/callback` setelah user diarahkan balik
+   * dengan `accountId`/`username`/`state` (ADR-112 — Outstand tidak
+   * mengirim `code` untuk single-page account, lihat KI-070 untuk
+   * Facebook Pages di luar scope).
    *
    * **Keputusan desain CREATE vs UPDATE (Prabowo, T-015.3/T-013.1/2):**
-   * `ConnectedAccountData` hasil `exchangeConnectCode` (kontrak ADR-105
-   * final, TIDAK diubah) tidak membawa `redirectAccountId` — Route Handler
+   * `ConnectedAccountData` hasil `resolveConnectCallback` (kontrak
+   * ADR-105/ADR-112, TIDAK membawa `redirectAccountId`) — Route Handler
    * yang men-decode `state` (`lib/adapters/outstand/connect-state.ts`,
    * detail wire-format adapter) dan meneruskan `redirectAccountId` di sini
    * sebagai parameter EKSPLISIT, supaya method ini sendiri tetap tidak
@@ -1100,11 +1103,12 @@ export class WorkspaceService {
    * docstring lengkap di `connect-state.ts`).
    *
    * RBAC Owner/Admin ditegakkan LAGI di sini (bukan cuma di
-   * `initiateConnectAccount`) — `code`/`state`/`redirectAccountId`
-   * round-trip lewat browser (query param publik, bisa ditamper) sebelum
-   * callback ini dipanggil, jadi tidak cukup dipercaya dari validasi
-   * inisiasi saja. `redirectAccountId` diverifikasi ulang kepemilikannya ke
-   * `workspaceId` ini (defense-in-depth yang sama, IDOR).
+   * `initiateConnectAccount`) — `accountId`/`username`/`state`/
+   * `redirectAccountId` round-trip lewat browser (query param publik,
+   * bisa ditamper) sebelum callback ini dipanggil, jadi tidak cukup
+   * dipercaya dari validasi inisiasi saja. `redirectAccountId`
+   * diverifikasi ulang kepemilikannya ke `workspaceId` ini
+   * (defense-in-depth yang sama, IDOR).
    *
    * CREATE `WorkspaceConnectedAccount` baru kalau `redirectAccountId`
    * kosong (connect baru, T-013). UPDATE akun existing kalau diisi
@@ -1115,7 +1119,9 @@ export class WorkspaceService {
   async completeAccountConnection(input: {
     workspaceId: WorkspaceId;
     actorId: UserId;
-    code: string;
+    accountId: string;
+    username: string;
+    networkUniqueId?: string;
     state: string;
     redirectAccountId?: ConnectedAccountId;
   }): Promise<ConnectedAccountRecord> {
@@ -1137,10 +1143,13 @@ export class WorkspaceService {
       }
     }
 
-    const exchanged = await this.requireOutstandAdapter().exchangeConnectCode({
-      code: input.code,
-      state: input.state,
-    });
+    const exchanged =
+      await this.requireOutstandAdapter().resolveConnectCallback({
+        state: input.state,
+        outstandAccountId: input.accountId,
+        username: input.username,
+        networkUniqueId: input.networkUniqueId,
+      });
 
     if (
       existingRedirectAccount &&

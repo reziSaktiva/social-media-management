@@ -2,8 +2,8 @@ import {
   SocialPlatform,
   type ConnectAccountInput,
   type ConnectAccountResult,
+  type ConnectCallbackInput,
   type ConnectedAccountData,
-  type ExchangeConnectCodeInput,
   type FetchCommentsResult,
   type FetchPostMetricsResult,
   type FetchWorkspaceMetricsResult,
@@ -25,6 +25,7 @@ import {
   type OutstandHttpClientOptions,
 } from "./outstand-http-client";
 import { OutstandIntegrationError } from "./outstand-integration-error";
+import { parseBase64UrlJson } from "./connect-state";
 
 /**
  * Real `OutstandAdapter` — implementasi HTTP client sungguhan dari
@@ -46,13 +47,16 @@ import { OutstandIntegrationError } from "./outstand-integration-error";
  * **GAP YANG MASIH TERBUKA (belum bisa diperbaiki tanpa keputusan
  * arsitektur/ADR baru dari King Rezi — lihat laporan sesi 2026-09-23):**
  *
- * 1. **`connectAccount`/`exchangeConnectCode` (ADR-105)** — flow OAuth
- *    Outstand asli TIDAK cocok dengan kontrak `code`+`state` yang ada
- *    sekarang. Outstand redirect balik dengan `account_id`/
- *    `network_unique_id`/`username` langsung (bukan `code`), dan platform
- *    multi-halaman (Facebook dkk) butuh flow session-token+page-picker
- *    terpisah yang UI-nya belum ada. `exchangeConnectCode` di bawah SENGAJA
- *    throw `OutstandIntegrationError` alih-alih pura-pura berhasil.
+ * 1. ~~`connectAccount`/`exchangeConnectCode` (ADR-105)~~ — **DISELESAIKAN
+ *    ADR-112 (2026-09-23, amandemen ADR-105) untuk single-page account.**
+ *    Outstand redirect balik dengan `account_id`/`network_unique_id`/
+ *    `username` langsung (bukan `code`) — `resolveConnectCallback` di
+ *    bawah sekarang mengimplementasikan ini (murni validasi/normalisasi,
+ *    TANPA network call). Platform multi-halaman (Facebook dkk, butuh flow
+ *    session-token+page-picker terpisah `GET/POST
+ *    /v1/social-accounts/pending/{sessionToken}`) TETAP di luar scope —
+ *    `resolveConnectCallback` throw eksplisit kalau dipanggil untuk
+ *    `SocialPlatform.Facebook`, lihat KI-070.
  * 2. **`fetchComments`/`replyToComment` (JOB-03/T-054)** — API resmi
  *    Outstand men-scope komentar per POST (`/v1/posts/{id}/replies`,
  *    query `network` wajib, TANPA cursor pagination), sementara kontrak
@@ -87,9 +91,10 @@ export interface RealOutstandAdapterOptions extends OutstandHttpClientOptions {
    * redirect URL OAuth resmi
    * (`https://www.outstand.so/app/api/socials/{network}/{orgId}`).
    * `undefined`/kosong → `connectAccount()` throw `OutstandIntegrationError`
-   * (bukan silent fallback ke URL yang salah). Lihat catatan gap
-   * `exchangeConnectCode` di docstring atas file ini — mengisi ini TIDAK
-   * membuat seluruh alur connect account selesai.
+   * (bukan silent fallback ke URL yang salah). Sejak ADR-112,
+   * `resolveConnectCallback()` (langkah 2) sudah tidak butuh env tambahan
+   * — mengisi `orgId` di sini SUDAH cukup untuk alur connect account
+   * single-page selesai (tidak berlaku untuk Facebook Pages, KI-070).
    */
   orgId?: string;
 }
@@ -292,8 +297,8 @@ export function createRealOutstandAdapter(
      * `state` KITA sisipkan sebagai query param pada `redirect_uri` itu
      * sendiri (Outstand tidak punya konsep `state` OAuth2 standar — ia
      * murni redirect balik ke `redirect_uri` apa adanya dengan
-     * `account_id`/`network_unique_id`/`username` ditambahkan, lihat gap
-     * `exchangeConnectCode` di bawah).
+     * `account_id`/`network_unique_id`/`username` ditambahkan, lihat
+     * `resolveConnectCallback` di bawah, ADR-112).
      *
      * Butuh `options.orgId` (env `OUTSTAND_ORG_ID`) — throw loud kalau
      * kosong, bukan membentuk URL yang pasti salah.
@@ -305,7 +310,7 @@ export function createRealOutstandAdapter(
         throw new OutstandIntegrationError({
           type: "client_error",
           message:
-            "OutstandAdapter: OUTSTAND_ORG_ID belum dikonfigurasi — dibutuhkan untuk membentuk redirect URL OAuth Outstand (https://www.outstand.so/app/api/socials/{network}/{orgId}). Catatan: mengisi ini TIDAK menyelesaikan seluruh alur connect account, lihat gap exchangeConnectCode di real-outstand-adapter.ts.",
+            "OutstandAdapter: OUTSTAND_ORG_ID belum dikonfigurasi — dibutuhkan untuk membentuk redirect URL OAuth Outstand (https://www.outstand.so/app/api/socials/{network}/{orgId}).",
           retryable: false,
         });
       }
@@ -325,37 +330,78 @@ export function createRealOutstandAdapter(
     },
 
     /**
-     * Connect Account (T-025.4, ADR-105) — langkah 2: tukar `code`+`state`
-     * dengan data akun final.
+     * Resolve Connect Callback (T-025.4, ADR-105, redesain ADR-112) —
+     * langkah 2, **SCOPE: single-page account saja** (Instagram, X,
+     * LinkedIn, Threads, TikTok, YouTube, Pinterest, dst — bukan Facebook
+     * Pages multi-halaman, lihat KI-070). Outstand TIDAK punya endpoint
+     * "exchange" untuk kasus ini — setelah user selesai OAuth, Outstand
+     * redirect balik ke `redirect_uri` KITA dengan `account_id`/
+     * `network_unique_id`/`username` LANGSUNG sebagai query param, data
+     * akun sudah lengkap di sana. Method ini karena itu MURNI
+     * validasi/normalisasi jadi `ConnectedAccountData` — **TIDAK ada
+     * network call ke Outstand di sini sama sekali**.
      *
-     * **GAP ARSITEKTUR TERBUKA (2026-09-23, dikonfirmasi dari dokumentasi
-     * resmi Outstand — BUKAN diperbaiki di sini, butuh keputusan King
-     * Rezi):** kontrak `ExchangeConnectCodeInput` ini (`code`+`state`)
-     * mengasumsikan OAuth2 classic code-exchange. Outstand asli TIDAK
-     * bekerja begitu — setelah user selesai OAuth, Outstand redirect balik
-     * ke `redirect_uri` KITA dengan query param `account_id`,
-     * `network_unique_id`, `username` LANGSUNG (bukan `code` sama sekali)
-     * untuk kasus akun tunggal. Untuk platform multi-halaman (Facebook
-     * Pages dkk) ada flow tambahan: `GET /v1/social-accounts/pending/{sessionToken}`
-     * (list `availablePages`) → `POST /v1/social-accounts/pending/{sessionToken}/finalize`
-     * dengan `selectedPageIds[]` → `connectedAccounts[]` — butuh UI
-     * page-selection yang belum ada sama sekali.
-     *
-     * Route Handler callback (`/api/integrations/outstand/callback`) HANYA
-     * membaca `code`+`state` dari query — di luar scope method ini untuk
-     * diubah (butuh amandemen ADR-105 + ADR baru + perubahan Route Handler
-     * + UI page-selection). Method ini SENGAJA throw eksplisit, TIDAK
-     * silent-fallback ke Fake maupun pura-pura berhasil dengan data palsu.
+     * `platform` diambil dari `state` (di-decode ulang di sini, BUKAN dari
+     * Outstand — Outstand tidak pernah mengirim `platform`/`network` lewat
+     * query callback-nya). Kalau `state` ternyata membawa
+     * `platform === Facebook`, throw eksplisit — Facebook Pages seharusnya
+     * TIDAK PERNAH mendarat di callback ini lewat `account_id`/`username`
+     * langsung (Outstand mengarahkannya ke flow session-token yang
+     * berbeda sama sekali); kalaupun terjadi, itu bug di tempat lain yang
+     * harus gagal keras, bukan diam-diam diterima sebagai data yang
+     * mungkin salah bentuk.
      */
-    async exchangeConnectCode(
-      _input: ExchangeConnectCodeInput,
-    ): Promise<ConnectedAccountData> {
-      throw new OutstandIntegrationError({
-        type: "client_error",
-        message:
-          "OutstandAdapter: exchangeConnectCode(code, state) tidak sesuai flow OAuth Outstand asli — Outstand mengirim account_id/network_unique_id/username langsung lewat redirect (bukan code), dan platform multi-halaman (Facebook dkk) butuh flow session-token+page-selection terpisah (GET/POST /v1/social-accounts/pending/{sessionToken}). Butuh amandemen ADR-105 + ADR baru + perubahan Route Handler callback + UI page-selection sebelum method ini bisa diimplementasikan — lihat laporan T-025 2026-09-23.",
-        retryable: false,
-      });
+    async resolveConnectCallback({
+      state,
+      outstandAccountId,
+      username,
+    }: ConnectCallbackInput): Promise<ConnectedAccountData> {
+      let decoded: { platform?: unknown };
+      try {
+        decoded = parseBase64UrlJson(state) as { platform?: unknown };
+      } catch {
+        throw new OutstandIntegrationError({
+          type: "client_error",
+          message:
+            "OutstandAdapter: resolveConnectCallback menerima state yang tidak valid/rusak.",
+          retryable: false,
+        });
+      }
+
+      const platform = decoded.platform as SocialPlatform | undefined;
+      if (!platform || !Object.values(SocialPlatform).includes(platform)) {
+        throw new OutstandIntegrationError({
+          type: "client_error",
+          message:
+            "OutstandAdapter: resolveConnectCallback tidak menemukan platform yang valid di dalam state.",
+          retryable: false,
+        });
+      }
+
+      if (platform === SocialPlatform.Facebook) {
+        throw new OutstandIntegrationError({
+          type: "client_error",
+          message:
+            "OutstandAdapter: resolveConnectCallback tidak mendukung Facebook Pages (multi-halaman) — Outstand memakai flow session-token+page-selection terpisah (GET/POST /v1/social-accounts/pending/{sessionToken}) yang belum diimplementasikan, lihat KI-070. ADR-112 hanya menutup gap untuk single-page account.",
+          retryable: false,
+        });
+      }
+
+      if (!outstandAccountId || !username) {
+        throw new OutstandIntegrationError({
+          type: "client_error",
+          message:
+            "OutstandAdapter: resolveConnectCallback butuh account_id dan username dari query param callback Outstand — salah satunya kosong.",
+          retryable: false,
+        });
+      }
+
+      return {
+        outstandAccountId,
+        platform,
+        handle: username,
+        status: "active",
+      };
     },
 
     /**

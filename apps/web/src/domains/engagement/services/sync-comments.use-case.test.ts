@@ -37,7 +37,7 @@ function createFakeAdapter(
       outstandMediaUrl: "https://fake.outstand.local/media/unused",
       expiresAt: new Date(),
     }),
-    exchangeConnectCode: async () => ({
+    resolveConnectCallback: async () => ({
       outstandAccountId: "unused",
       platform: "instagram" as never,
       handle: "unused",

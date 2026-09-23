@@ -1,8 +1,8 @@
 import type {
   ConnectAccountInput,
   ConnectAccountResult,
+  ConnectCallbackInput,
   ConnectedAccountData,
-  ExchangeConnectCodeInput,
   FetchCommentsResult,
   IOutstandAdapter,
   InboxCommentData,
@@ -208,14 +208,20 @@ function buildOutcome(
  */
 export const fakeOutstandAdapter: IOutstandAdapter = {
   /**
-   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105) — Fake
-   * TIDAK pernah redirect ke domain eksternal manapun. `redirectUrl` yang
-   * dikembalikan adalah path RELATIF ke callback route kita sendiri
-   * (`/api/integrations/outstand/callback`) supaya browser cukup
-   * navigasi ke origin app yang sedang berjalan (tidak butuh env
+   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105, redesain
+   * ADR-112) — Fake TIDAK pernah redirect ke domain eksternal manapun.
+   * `redirectUrl` yang dikembalikan adalah path RELATIF ke callback route
+   * kita sendiri (`/api/integrations/outstand/callback`) supaya browser
+   * cukup navigasi ke origin app yang sedang berjalan (tidak butuh env
    * `APP_URL`/base URL apa pun) — loopback ini sengaja (bukan skip
-   * langsung ke sukses instan) supaya Route Handler callback tetap
-   * teruji end-to-end sebelum real adapter (T-025) masuk, lihat ADR-105.
+   * langsung ke sukses instan) supaya Route Handler callback tetap teruji
+   * end-to-end sebelum real adapter (T-025) masuk, lihat ADR-105.
+   *
+   * **ADR-112:** query param loopback sekarang `account_id`/`username`/
+   * `network_unique_id` (deterministik dari `state`, pola sama
+   * `buildFakeHandle`) — BUKAN `code` lagi, supaya bentuk Fake tetap
+   * merepresentasikan bentuk redirect nyata Outstand untuk single-page
+   * account.
    */
   async connectAccount({
     workspaceId,
@@ -228,40 +234,49 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
       redirectAccountId,
       nonce: crypto.randomUUID(),
     });
-    const code = `fake-code-${crypto.randomUUID()}`;
+    const seed = redirectAccountId ?? `${workspaceId}:${state}`;
+    const outstandAccountId = `fake-account-${deterministicInt(
+      seed,
+      "outstandAccountId",
+      1_000_000,
+    )}`;
+    const username = buildFakeHandle(platform, seed);
+    const networkUniqueId = `fake-network-unique-${deterministicInt(
+      seed,
+      "networkUniqueId",
+      1_000_000,
+    )}`;
 
-    const redirectUrl = `/api/integrations/outstand/callback?code=${encodeURIComponent(
-      code,
-    )}&state=${encodeURIComponent(state)}`;
+    const redirectUrl =
+      `/api/integrations/outstand/callback?account_id=${encodeURIComponent(outstandAccountId)}` +
+      `&username=${encodeURIComponent(username)}` +
+      `&network_unique_id=${encodeURIComponent(networkUniqueId)}` +
+      `&state=${encodeURIComponent(state)}`;
 
     return { redirectUrl };
   },
 
   /**
-   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105) — Fake
-   * always-success instan: `code` diterima apa adanya (dibuat sendiri
-   * oleh `connectAccount` di atas, tidak diverifikasi lebih lanjut —
-   * Fake tidak menyimpan daftar code yang pernah diterbitkan), `state`
-   * di-decode untuk menentukan `platform` hasil koneksi. `outstandAccountId`
-   * deterministik dari `state` supaya reconnect akun yang sama (state
-   * membawa `redirectAccountId` yang sama) menghasilkan handle yang
-   * konsisten dipanggil ulang — bukan acak setiap kali.
+   * Resolve Connect Callback (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105,
+   * redesain ADR-112) — Fake always-success instan: `outstandAccountId`/
+   * `username` diterima apa adanya (dibuat sendiri oleh `connectAccount`
+   * di atas, tidak diverifikasi lebih lanjut — Fake tidak menyimpan daftar
+   * apa pun yang pernah diterbitkan), `state` di-decode untuk menentukan
+   * `platform` hasil koneksi (Outstand asli tidak pernah mengirim
+   * `platform` lewat query callback — lihat ADR-112). TIDAK ada network
+   * call di sini, konsisten dengan real adapter (§5 ADR-112).
    */
-  async exchangeConnectCode({
-    code,
+  async resolveConnectCallback({
     state,
-  }: ExchangeConnectCodeInput): Promise<ConnectedAccountData> {
+    outstandAccountId,
+    username,
+  }: ConnectCallbackInput): Promise<ConnectedAccountData> {
     const decoded = decodeFakeState(state);
-    const seed = decoded.redirectAccountId ?? `${decoded.workspaceId}:${code}`;
 
     return {
-      outstandAccountId: `fake-account-${deterministicInt(
-        seed,
-        "outstandAccountId",
-        1_000_000,
-      )}`,
+      outstandAccountId,
       platform: decoded.platform,
-      handle: buildFakeHandle(decoded.platform, seed),
+      handle: username,
       status: "active",
     };
   },

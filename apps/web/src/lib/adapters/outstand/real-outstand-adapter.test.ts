@@ -326,7 +326,12 @@ describe("RealOutstandAdapter.fetchComments / replyToComment (T-025.6, ADR-110) 
   });
 });
 
-describe("RealOutstandAdapter.connectAccount / exchangeConnectCode (T-025.4, ADR-105) — architecture gap", () => {
+/** Base64url JSON state — SAMA bentuknya dengan `encodeState` privat di `real-outstand-adapter.ts` (ADR-105/ADR-112), dipakai untuk membangun `state` yang valid di test tanpa meng-export helper privat itu. */
+function buildState(payload: Record<string, unknown>): string {
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+}
+
+describe("RealOutstandAdapter.connectAccount / resolveConnectCallback (T-025.4, ADR-105, redesain ADR-112)", () => {
   it("connectAccount builds the real Outstand redirect URL directly (no HTTP call) using OUTSTAND_ORG_ID", async () => {
     const fetchImpl = vi.fn();
     const adapter = buildAdapter(fetchImpl);
@@ -373,14 +378,77 @@ describe("RealOutstandAdapter.connectAccount / exchangeConnectCode (T-025.4, ADR
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("exchangeConnectCode throws OutstandIntegrationError describing the code+state vs account_id/network_unique_id/username mismatch, WITHOUT calling fetch", async () => {
+  it("resolveConnectCallback maps account_id/username directly to ConnectedAccountData (ADR-112 — no exchange/HTTP call, platform from state)", async () => {
+    const fetchImpl = vi.fn();
+    const adapter = buildAdapter(fetchImpl);
+    const state = buildState({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Instagram,
+      nonce: "nonce-1",
+    });
+
+    const result = await adapter.resolveConnectCallback({
+      state,
+      outstandAccountId: "acc-ig-1",
+      username: "@realuser",
+    });
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      outstandAccountId: "acc-ig-1",
+      platform: SocialPlatform.Instagram,
+      handle: "@realuser",
+      status: "active",
+    });
+  });
+
+  it("resolveConnectCallback throws OutstandIntegrationError for a malformed state, WITHOUT calling fetch", async () => {
     const fetchImpl = vi.fn();
     const adapter = buildAdapter(fetchImpl);
 
     await expect(
-      adapter.exchangeConnectCode({
-        code: "auth-code-123",
-        state: "irrelevant",
+      adapter.resolveConnectCallback({
+        state: "not-a-valid-base64url-json-state",
+        outstandAccountId: "acc-ig-1",
+        username: "@realuser",
+      }),
+    ).rejects.toBeInstanceOf(OutstandIntegrationError);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("resolveConnectCallback throws OutstandIntegrationError for Facebook (multi-page flow out of scope, KI-070), WITHOUT calling fetch", async () => {
+    const fetchImpl = vi.fn();
+    const adapter = buildAdapter(fetchImpl);
+    const state = buildState({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Facebook,
+      nonce: "nonce-1",
+    });
+
+    await expect(
+      adapter.resolveConnectCallback({
+        state,
+        outstandAccountId: "page-1",
+        username: "Fake Page",
+      }),
+    ).rejects.toBeInstanceOf(OutstandIntegrationError);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("resolveConnectCallback throws OutstandIntegrationError when outstandAccountId/username is empty, WITHOUT calling fetch", async () => {
+    const fetchImpl = vi.fn();
+    const adapter = buildAdapter(fetchImpl);
+    const state = buildState({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Instagram,
+      nonce: "nonce-1",
+    });
+
+    await expect(
+      adapter.resolveConnectCallback({
+        state,
+        outstandAccountId: "",
+        username: "@realuser",
       }),
     ).rejects.toBeInstanceOf(OutstandIntegrationError);
     expect(fetchImpl).not.toHaveBeenCalled();

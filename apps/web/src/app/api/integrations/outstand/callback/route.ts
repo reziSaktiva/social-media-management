@@ -13,13 +13,20 @@ const CONNECTED_ACCOUNTS_PATH = "/settings/connected-accounts";
 
 /**
  * Route Handler callback Connect/Reconnect Account (T-013.1/T-013.2,
- * T-015.3, ADR-105, `integration-layer.md` § "Alur Connect Account").
- * TIDAK boleh berisi business logic (AGENTS.md #5) — satu-satunya
- * keputusan di sini adalah marshalling (baca query param, decode `state`,
- * cocokkan nonce CSRF) sebelum delegasi penuh ke
+ * T-015.3, ADR-105, redesain ADR-112 — SCOPE: single-page account saja,
+ * lihat KI-070 untuk Facebook Pages, `integration-layer.md` § "Alur
+ * Connect Account"). TIDAK boleh berisi business logic (AGENTS.md #5) —
+ * satu-satunya keputusan di sini adalah marshalling (baca query param,
+ * decode `state`, cocokkan nonce CSRF) sebelum delegasi penuh ke
  * `WorkspaceService.completeAccountConnection`; CREATE vs UPDATE
  * `ConnectedAccount`, RBAC, dan validasi kepemilikan akun semuanya ada di
  * Application Service, bukan di sini.
+ *
+ * **ADR-112 (2026-09-23):** Outstand TIDAK mengirim `code` untuk
+ * di-exchange — setelah OAuth selesai, browser diarahkan balik dengan
+ * `account_id`/`username`/`network_unique_id` LANGSUNG sebagai query
+ * param (data akun sudah lengkap di URL callback ini sendiri). Handler
+ * ini karena itu membaca ketiganya, bukan `code`.
  *
  * `proxy.ts` TIDAK meng-exclude path ini dari gate sesi/workspace (beda
  * dengan `/api/webhooks/outstand` yang server-to-server) — jadi begitu
@@ -34,7 +41,12 @@ const CONNECTED_ACCOUNTS_PATH = "/settings/connected-accounts";
 export async function GET(request: NextRequest): Promise<Response> {
   const appOrigin = getServerEnv().BETTER_AUTH_URL;
 
-  const code = request.nextUrl.searchParams.get("code");
+  // ADR-112: query param Outstand asli untuk single-page account —
+  // BUKAN `code` (lihat docstring di atas). `networkUniqueId` opsional,
+  // tidak ikut menentukan lengkap/tidaknya request (lihat ADR-112 §3).
+  const accountId = request.nextUrl.searchParams.get("account_id");
+  const username = request.nextUrl.searchParams.get("username");
+  const networkUniqueId = request.nextUrl.searchParams.get("network_unique_id");
   const state = request.nextUrl.searchParams.get("state");
 
   // Bug QA Najwa (T-015, 2026-09-11): setiap redirect() sukses dari Server
@@ -44,16 +56,17 @@ export async function GET(request: NextRequest): Promise<Response> {
   // prefetch/revalidasi ke PATHNAME YANG SAMA TANPA query string (perilaku
   // cache prefetch bawaan Next.js, bukan bug kode kita — reproducible di
   // semua platform/reconnect). Request susulan itu SAMA SEKALI tidak
-  // membawa `code` MAUPUN `state` (beda dari request OAuth asli yang selalu
-  // membawa keduanya, atau request malformed/tampered yang membawa salah
-  // satu). Kalau keduanya kosong, diamkan (no-op, redirect polos tanpa
-  // `?connect=`) — JANGAN dianggap gagal, supaya tidak menumpuk toast error
-  // palsu di atas toast sukses dari request asli. Kalau HANYA salah satu
-  // yang kosong, itu tetap request bermasalah sungguhan → tetap error.
-  if (!code && !state) {
+  // membawa `account_id`/`username`/`state` (beda dari request OAuth asli
+  // yang selalu membawa ketiganya, atau request malformed/tampered yang
+  // membawa sebagian). Kalau ketiganya kosong, diamkan (no-op, redirect
+  // polos tanpa `?connect=`) — JANGAN dianggap gagal, supaya tidak
+  // menumpuk toast error palsu di atas toast sukses dari request asli.
+  // Kalau ADA salah satu yang terisi tapi tidak lengkap ketiganya, itu
+  // tetap request bermasalah sungguhan → tetap error (ADR-112 §3).
+  if (!accountId && !username && !state) {
     return NextResponse.redirect(new URL(CONNECTED_ACCOUNTS_PATH, appOrigin));
   }
-  if (!code || !state) {
+  if (!accountId || !username || !state) {
     return NextResponse.redirect(
       new URL(`${CONNECTED_ACCOUNTS_PATH}?connect=error`, appOrigin),
     );
@@ -109,7 +122,9 @@ export async function GET(request: NextRequest): Promise<Response> {
     await workspaceService.completeAccountConnection({
       workspaceId,
       actorId: asUserId(session.user.id),
-      code,
+      accountId,
+      username,
+      networkUniqueId: networkUniqueId ?? undefined,
       state,
       redirectAccountId: decoded.redirectAccountId
         ? asConnectedAccountId(decoded.redirectAccountId)

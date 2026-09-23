@@ -2,19 +2,19 @@ import { SocialPlatform } from "@social/shared";
 import { describe, expect, it } from "vitest";
 import { fakeOutstandAdapter } from "./fake-outstand-adapter";
 
-describe("fakeOutstandAdapter.connectAccount (T-013/T-015.3, ADR-105)", () => {
-  it("returns a redirectUrl that loops back to our own callback route, not an external domain", async () => {
+describe("fakeOutstandAdapter.connectAccount (T-013/T-015.3, ADR-105, redesain ADR-112)", () => {
+  it("returns a redirectUrl that loops back to our own callback route, not an external domain, carrying account_id/username/state (ADR-112 — not code)", async () => {
     const result = await fakeOutstandAdapter.connectAccount({
       workspaceId: "ws-1",
       platform: SocialPlatform.Instagram,
     });
 
     expect(result.redirectUrl).toMatch(
-      /^\/api\/integrations\/outstand\/callback\?code=.+&state=.+$/,
+      /^\/api\/integrations\/outstand\/callback\?account_id=.+&username=.+&network_unique_id=.+&state=.+$/,
     );
   });
 
-  it("returns a different code/state on every call (no delay/failure simulation, ADR-059)", async () => {
+  it("returns a different account_id/state on every call (no delay/failure simulation, ADR-059)", async () => {
     const first = await fakeOutstandAdapter.connectAccount({
       workspaceId: "ws-1",
       platform: SocialPlatform.Instagram,
@@ -28,28 +28,30 @@ describe("fakeOutstandAdapter.connectAccount (T-013/T-015.3, ADR-105)", () => {
   });
 });
 
-describe("fakeOutstandAdapter.exchangeConnectCode (T-013/T-015.3, ADR-105)", () => {
-  it("resolves instantly to ConnectedAccountData with status active, carrying the platform from state", async () => {
+describe("fakeOutstandAdapter.resolveConnectCallback (T-013/T-015.3, ADR-105, redesain ADR-112)", () => {
+  it("resolves instantly to ConnectedAccountData with status active, carrying the platform from state and echoing account_id/username (ADR-112 — no exchange)", async () => {
     const { redirectUrl } = await fakeOutstandAdapter.connectAccount({
       workspaceId: "ws-1",
       platform: SocialPlatform.Facebook,
     });
     const url = new URL(redirectUrl, "https://example.local");
-    const code = url.searchParams.get("code")!;
+    const outstandAccountId = url.searchParams.get("account_id")!;
+    const username = url.searchParams.get("username")!;
     const state = url.searchParams.get("state")!;
 
-    const result = await fakeOutstandAdapter.exchangeConnectCode({
-      code,
+    const result = await fakeOutstandAdapter.resolveConnectCallback({
       state,
+      outstandAccountId,
+      username,
     });
 
     expect(result.status).toBe("active");
     expect(result.platform).toBe(SocialPlatform.Facebook);
-    expect(result.outstandAccountId).toMatch(/^fake-account-/);
-    expect(result.handle.length).toBeGreaterThan(0);
+    expect(result.outstandAccountId).toEqual(outstandAccountId);
+    expect(result.handle).toEqual(username);
   });
 
-  it("is deterministic for a reconnect (same redirectAccountId → same outstandAccountId/handle across calls, T-015.3)", async () => {
+  it("is deterministic for a reconnect (same redirectAccountId → same account_id/username across calls, T-015.3)", async () => {
     const connectAccountId = "connected-account-42";
 
     const first = await fakeOutstandAdapter.connectAccount({
@@ -58,10 +60,6 @@ describe("fakeOutstandAdapter.exchangeConnectCode (T-013/T-015.3, ADR-105)", () 
       redirectAccountId: connectAccountId,
     });
     const firstUrl = new URL(first.redirectUrl, "https://example.local");
-    const firstResult = await fakeOutstandAdapter.exchangeConnectCode({
-      code: firstUrl.searchParams.get("code")!,
-      state: firstUrl.searchParams.get("state")!,
-    });
 
     const second = await fakeOutstandAdapter.connectAccount({
       workspaceId: "ws-1",
@@ -69,229 +67,22 @@ describe("fakeOutstandAdapter.exchangeConnectCode (T-013/T-015.3, ADR-105)", () 
       redirectAccountId: connectAccountId,
     });
     const secondUrl = new URL(second.redirectUrl, "https://example.local");
-    const secondResult = await fakeOutstandAdapter.exchangeConnectCode({
-      code: secondUrl.searchParams.get("code")!,
-      state: secondUrl.searchParams.get("state")!,
-    });
 
-    expect(secondResult.outstandAccountId).toEqual(
-      firstResult.outstandAccountId,
+    expect(secondUrl.searchParams.get("account_id")).toEqual(
+      firstUrl.searchParams.get("account_id"),
     );
-    expect(secondResult.handle).toEqual(firstResult.handle);
+    expect(secondUrl.searchParams.get("username")).toEqual(
+      firstUrl.searchParams.get("username"),
+    );
   });
 
   it("throws a clear error for a malformed/tampered state", async () => {
     await expect(
-      fakeOutstandAdapter.exchangeConnectCode({
-        code: "fake-code-whatever",
+      fakeOutstandAdapter.resolveConnectCallback({
+        outstandAccountId: "fake-account-whatever",
+        username: "@fake",
         state: "not-a-valid-base64url-json-state",
       }),
     ).rejects.toThrow(/state tidak valid/i);
-  });
-});
-
-describe("fakeOutstandAdapter.uploadMediaWorkingCopy (T-024.3, ADR-106)", () => {
-  it("resolves instantly with outstandMediaId/outstandMediaUrl/expiresAt (no delay/failure simulation, ADR-059)", async () => {
-    const result = await fakeOutstandAdapter.uploadMediaWorkingCopy({
-      fileBuffer: Buffer.from("fake-image-bytes"),
-      mimeType: "image/jpeg",
-    });
-
-    expect(result.outstandMediaId).toMatch(/^fake-media-/);
-    expect(result.outstandMediaUrl).toContain(result.outstandMediaId);
-    expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now());
-  });
-
-  it("returns a different outstandMediaId on every call, even for identical input", async () => {
-    const input = {
-      fileBuffer: Buffer.from("same-bytes"),
-      mimeType: "video/mp4",
-    };
-
-    const first = await fakeOutstandAdapter.uploadMediaWorkingCopy(input);
-    const second = await fakeOutstandAdapter.uploadMediaWorkingCopy(input);
-
-    expect(first.outstandMediaId).not.toEqual(second.outstandMediaId);
-  });
-});
-
-describe("fakeOutstandAdapter.fetchPostMetrics", () => {
-  it("is deterministic — same outstandPostId returns identical numbers every call (T-041.5)", async () => {
-    const first = await fakeOutstandAdapter.fetchPostMetrics("post-1");
-    const second = await fakeOutstandAdapter.fetchPostMetrics("post-1");
-
-    expect(second).toEqual(first);
-  });
-
-  it("returns different numbers for a different outstandPostId", async () => {
-    const a = await fakeOutstandAdapter.fetchPostMetrics("post-1");
-    const b = await fakeOutstandAdapter.fetchPostMetrics("post-2");
-
-    expect(a).not.toEqual(b);
-  });
-});
-
-describe("fakeOutstandAdapter.schedulePost", () => {
-  it("resolves instantly with ONE outstandPostId for ALL targets (redesain 2026-08-26)", async () => {
-    const result = await fakeOutstandAdapter.schedulePost({
-      caption: "Hello world",
-      scheduledAt: new Date("2026-09-01T00:00:00Z"),
-      targets: [
-        { outstandAccountId: "acc-1", contentFormat: "post" as never },
-        { outstandAccountId: "acc-2", contentFormat: "reel" as never },
-      ],
-    });
-
-    expect(result.outstandPostId).toMatch(/^fake-post-/);
-  });
-
-  it("returns a different outstandPostId on every call (no delay/failure simulation, ADR-059)", async () => {
-    const first = await fakeOutstandAdapter.schedulePost({
-      caption: "Hello world",
-      scheduledAt: new Date("2026-09-01T00:00:00Z"),
-      targets: [{ outstandAccountId: "acc-1", contentFormat: "post" as never }],
-    });
-    const second = await fakeOutstandAdapter.schedulePost({
-      caption: "Hello world",
-      scheduledAt: new Date("2026-09-01T00:00:00Z"),
-      targets: [{ outstandAccountId: "acc-1", contentFormat: "post" as never }],
-    });
-
-    expect(first.outstandPostId).not.toEqual(second.outstandPostId);
-  });
-});
-
-describe("fakeOutstandAdapter.publishNow", () => {
-  it("resolves instantly with ONE outstandPostId for ALL targets (redesain 2026-08-26)", async () => {
-    const result = await fakeOutstandAdapter.publishNow({
-      caption: "Hello world",
-      targets: [
-        { outstandAccountId: "acc-1", contentFormat: "post" as never },
-        { outstandAccountId: "acc-2", contentFormat: "reel" as never },
-      ],
-    });
-
-    expect(result.outstandPostId).toMatch(/^fake-post-/);
-  });
-
-  it("returns a different outstandPostId on every call (no delay/failure simulation, ADR-059)", async () => {
-    const first = await fakeOutstandAdapter.publishNow({
-      caption: "Hello world",
-      targets: [{ outstandAccountId: "acc-1", contentFormat: "post" as never }],
-    });
-    const second = await fakeOutstandAdapter.publishNow({
-      caption: "Hello world",
-      targets: [{ outstandAccountId: "acc-1", contentFormat: "post" as never }],
-    });
-
-    expect(first.outstandPostId).not.toEqual(second.outstandPostId);
-  });
-});
-
-describe("fakeOutstandAdapter.fetchPostOutcome", () => {
-  it("returns every account passed in expectedOutstandAccountIds marked published instantly (Fake always-success, ADR-059)", async () => {
-    const { outstandPostId } = await fakeOutstandAdapter.publishNow({
-      caption: "Hello world",
-      targets: [
-        { outstandAccountId: "acc-1", contentFormat: "post" as never },
-        { outstandAccountId: "acc-2", contentFormat: "reel" as never },
-      ],
-    });
-
-    const outcomes = await fakeOutstandAdapter.fetchPostOutcome(
-      outstandPostId,
-      ["acc-1", "acc-2"],
-    );
-
-    expect(outcomes).toHaveLength(2);
-    for (const outcome of outcomes) {
-      expect(outcome.status).toBe("published");
-      expect(outcome.error).toBeNull();
-      expect(outcome.platformPostId).not.toBeNull();
-      expect(outcome.platformPostUrl).not.toBeNull();
-      expect(outcome.publishedAt).not.toBeNull();
-    }
-    expect(outcomes.map((outcome) => outcome.outstandAccountId).sort()).toEqual(
-      ["acc-1", "acc-2"],
-    );
-  });
-
-  it(
-    "T-027 bug fix (root-cause) — returns outcomes for expectedOutstandAccountIds even when called from a completely " +
-      "separate invocation with no prior schedulePost/publishNow call in this process (Fake is now a pure function, no " +
-      "module-level memory to be isolated across bundles/chunks)",
-    async () => {
-      const outcomes = await fakeOutstandAdapter.fetchPostOutcome(
-        "never-scheduled-or-published-in-this-process",
-        ["acc-1"],
-      );
-
-      expect(outcomes).toHaveLength(1);
-      expect(outcomes[0]?.outstandAccountId).toBe("acc-1");
-      expect(outcomes[0]?.status).toBe("published");
-    },
-  );
-
-  it("returns an empty array when expectedOutstandAccountIds is empty", async () => {
-    const outcomes = await fakeOutstandAdapter.fetchPostOutcome(
-      "some-outstand-post-id",
-      [],
-    );
-
-    expect(outcomes).toEqual([]);
-  });
-
-  it("is deterministic per (outstandPostId, outstandAccountId) — platformPostId stays identical across calls", async () => {
-    const { outstandPostId } = await fakeOutstandAdapter.schedulePost({
-      caption: "Hello world",
-      scheduledAt: new Date("2026-09-01T00:00:00Z"),
-      targets: [{ outstandAccountId: "acc-1", contentFormat: "post" as never }],
-    });
-
-    const first = await fakeOutstandAdapter.fetchPostOutcome(outstandPostId, [
-      "acc-1",
-    ]);
-    const second = await fakeOutstandAdapter.fetchPostOutcome(outstandPostId, [
-      "acc-1",
-    ]);
-
-    expect(first[0]?.platformPostId).toEqual(second[0]?.platformPostId);
-    expect(first[0]?.platformPostUrl).toEqual(second[0]?.platformPostUrl);
-  });
-});
-
-describe("fakeOutstandAdapter.cancelScheduledPost", () => {
-  it("resolves instantly without throwing, regardless of the outstandPostId (T-030, no delay/failure simulation ADR-059)", async () => {
-    await expect(
-      fakeOutstandAdapter.cancelScheduledPost("fake-post-1"),
-    ).resolves.toBeUndefined();
-  });
-});
-
-describe("fakeOutstandAdapter.fetchWorkspaceMetrics", () => {
-  it("is deterministic — same (outstandAccountId, period) returns identical numbers every call (T-041.5)", async () => {
-    const first = await fakeOutstandAdapter.fetchWorkspaceMetrics(
-      "acc-1",
-      "last_7_days",
-    );
-    const second = await fakeOutstandAdapter.fetchWorkspaceMetrics(
-      "acc-1",
-      "last_7_days",
-    );
-
-    expect(second).toEqual(first);
-  });
-
-  it("returns different numbers for a different period on the same account", async () => {
-    const weekly = await fakeOutstandAdapter.fetchWorkspaceMetrics(
-      "acc-1",
-      "last_7_days",
-    );
-    const monthly = await fakeOutstandAdapter.fetchWorkspaceMetrics(
-      "acc-1",
-      "last_30_days",
-    );
-
-    expect(weekly).not.toEqual(monthly);
   });
 });

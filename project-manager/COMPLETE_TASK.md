@@ -8,6 +8,69 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-23 — KI-067 sebagian resolved: Connect Callback single-page via ADR-112, sisa scope di-split jadi KI-070
+
+King Rezi mempersempit scope KI-067 (gap `exchangeConnectCode`/flow OAuth
+Outstand, ditemukan sesi T-025 hari yang sama): hanya flow **single-page
+account** (Instagram, X, LinkedIn, Threads, TikTok, YouTube, Pinterest,
+dll — bukan Facebook Pages multi-halaman) yang dikerjakan sekarang.
+
+Elon Backend Engineer membuat **ADR-112** (amandemen ADR-105): kontrak
+`IOutstandAdapter.exchangeConnectCode({code, state})` diganti
+`resolveConnectCallback(ConnectCallbackInput)` dengan input `{ state,
+outstandAccountId, username, networkUniqueId? }`, karena Outstand real
+ternyata redirect balik langsung dengan query param akun (`account_id`/
+`username`/`network_unique_id`) — bukan `code` untuk di-exchange lewat
+call server-side terpisah.
+
+**File yang diubah:**
+- `packages/shared/src/contracts/outstand-adapter.ts` — kontrak baru.
+- `apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts` + test —
+  loopback tanpa `code`, `resolveConnectCallback` instant always-success.
+- `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts` + test —
+  `resolveConnectCallback` murni validasi + decode `state` (tanpa HTTP
+  call ke Outstand); throw eksplisit `OutstandIntegrationError` untuk
+  `platform === Facebook` (mengarah ke KI-070).
+- `apps/web/src/lib/adapters/outstand/connect-state.ts`.
+- `apps/web/src/app/api/integrations/outstand/callback/route.ts` — baca
+  `account_id`/`username`/`network_unique_id`/`state`, bukan `code`.
+- `apps/web/src/domains/workspace/services/workspace.service.ts` + test,
+  `apps/web/src/domains/workspace/repositories/workspace.repository.ts`,
+  `apps/web/src/lib/env.ts`.
+- 8 file test domain lain (rename stub mock `exchangeConnectCode` →
+  `resolveConnectCallback`): `analytics-ingestion.use-case.test.ts`,
+  `engagement.service.test.ts`, `refresh-inbox.use-case.test.ts`,
+  `sync-comments.use-case.test.ts`, `cancel-schedule.use-case.test.ts`,
+  `outstand-webhook-processor.test.ts`, `publish-now.use-case.test.ts`,
+  `resolve-scheduled-post-outcome-job-handler.test.ts`,
+  `retry-failed-target.use-case.test.ts`,
+  `schedule-posts.use-case.test.ts`.
+
+Typecheck bersih, 474 test passed/6 skipped (full suite). Ridwan
+Architecture Reviewer re-verifikasi 129 test terkait langsung, semua
+PASS — **0 temuan arsitektur**. T-013/T-015 (Connect/Reconnect Account,
+sudah ✅ Done via Fake) **tidak perlu rework** (ADR-112 §6 — perubahan
+murni di boundary parameter, alur bisnis/RBAC/IDOR tidak berubah).
+
+**Status KI-067:** diubah dari `Open` jadi `Sebagian Resolved — sisa
+scope: KI-070` di `PROJECT_STATE.md` (bukan dihapus — scope multi-halaman
+Facebook Pages belum selesai).
+
+**KI-070 baru** (Open): flow multi-halaman Facebook Pages (session-token,
+`GET/POST /v1/social-accounts/pending/{sessionToken}`) + UI page-selection
+baru yang belum ada di codebase — sisa scope KI-067 yang di-split karena
+butuh kerja UI terpisah.
+
+Dokumentasi diperbarui: `PROJECT_STATE.md` (KI-067/KI-070, Completed
+Ringkasan, Recent Decisions, Blockers, Snapshot Top Next Tasks),
+`DECISIONS.md` (index ADR-112 + tag Amended di ADR-105),
+`decisions/ADR-105-fake-connect-account-oauth-redirect-loopback.md`
+(header Status), `TASKS.md` (Fokus sekarang), `tasks/v02-publishing-mvp.md`
+§ T-025 (T-025.4 tetap belum dicentang penuh — sisa Facebook Pages masih
+blocking).
+
+---
+
 ## 2026-09-23 — T-025 Real OutstandAdapter: publish/media/analytics tuntas terverifikasi API resmi, 3 gap kontrak baru (KI-067/068/069)
 
 King Rezi setup MCP server resmi Outstand (`mcp.outstand.so`) di sesi ini,

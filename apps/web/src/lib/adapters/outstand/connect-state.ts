@@ -7,9 +7,10 @@
  * diset saat inisiasi).
  *
  * **Keputusan desain (Prabowo, giliran T-015.3/T-013.1/2 — lihat ADR-105
- * poin 2 "Referensi"):** kontrak `ExchangeConnectCodeInput`/
- * `ConnectedAccountData` di `packages/shared` SENGAJA tidak diubah (kontrak
- * final ADR-105) — `ConnectedAccountData` tidak membawa `redirectAccountId`.
+ * poin 2 "Referensi"):** kontrak `ConnectCallbackInput`/`ConnectedAccountData`
+ * (ADR-105, redesain ADR-112) di `packages/shared` SENGAJA tidak
+ * mengubah keputusan ini — `ConnectedAccountData` tidak membawa
+ * `redirectAccountId`.
  * ADR-105 poin 2 sendiri menyatakan `WorkspaceService` yang MEMUTUSKAN
  * create/update dari `redirectAccountId` yang "dibawa lewat state", TAPI
  * tidak berarti `WorkspaceService` (Application Service, domain layer) yang

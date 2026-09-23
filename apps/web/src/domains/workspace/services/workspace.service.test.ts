@@ -719,15 +719,16 @@ describe("WorkspaceService.disconnectAccount", () => {
   });
 });
 
-/** Fake `IOutstandAdapter` minimal — hanya `connectAccount`/`exchangeConnectCode` dipakai `initiateConnectAccount`/`completeAccountConnection`, method lain sengaja tidak dipanggil di test ini (mock, bukan dipakai). */
+/** Fake `IOutstandAdapter` minimal — hanya `connectAccount`/`resolveConnectCallback` dipakai `initiateConnectAccount`/`completeAccountConnection`, method lain sengaja tidak dipanggil di test ini (mock, bukan dipakai). */
 function fakeOutstandAdapter(
   overrides: Partial<IOutstandAdapter> = {},
 ): IOutstandAdapter {
   return {
     connectAccount: async () => ({
-      redirectUrl: "/api/integrations/outstand/callback?code=fake&state=fake",
+      redirectUrl:
+        "/api/integrations/outstand/callback?account_id=fake&username=fake&state=fake",
     }),
-    exchangeConnectCode: async () => ({
+    resolveConnectCallback: async () => ({
       outstandAccountId: "outstand-account-1",
       platform: SocialPlatform.Twitter,
       handle: "@fake",
@@ -1005,7 +1006,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
     const result = await service.completeAccountConnection({
       workspaceId: WORKSPACE_ID,
       actorId: OWNER_USER,
-      code: "fake-code",
+      accountId: "fake-account-id",
+      username: "fake-username",
       state: "fake-state",
     });
 
@@ -1044,7 +1046,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
     const result = await service.completeAccountConnection({
       workspaceId: WORKSPACE_ID,
       actorId: OWNER_USER,
-      code: "fake-code",
+      accountId: "fake-account-id",
+      username: "fake-username",
       state: "fake-state",
       redirectAccountId: CONNECTED_ACCOUNT_ID,
     });
@@ -1078,7 +1081,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
       service.completeAccountConnection({
         workspaceId: WORKSPACE_ID,
         actorId: OWNER_USER,
-        code: "fake-code",
+        accountId: "fake-account-id",
+        username: "fake-username",
         state: "fake-state",
         redirectAccountId: CONNECTED_ACCOUNT_ID,
       }),
@@ -1103,7 +1107,7 @@ describe("WorkspaceService.completeAccountConnection", () => {
       undefined,
       undefined,
       fakeOutstandAdapter({
-        exchangeConnectCode: async () => ({
+        resolveConnectCallback: async () => ({
           outstandAccountId: "outstand-account-1",
           platform: SocialPlatform.Instagram,
           handle: "@fake",
@@ -1116,7 +1120,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
       service.completeAccountConnection({
         workspaceId: WORKSPACE_ID,
         actorId: OWNER_USER,
-        code: "fake-code",
+        accountId: "fake-account-id",
+        username: "fake-username",
         state: "fake-state",
         redirectAccountId: CONNECTED_ACCOUNT_ID,
       }),
@@ -1136,7 +1141,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
       service.completeAccountConnection({
         workspaceId: WORKSPACE_ID,
         actorId: CREATOR_USER,
-        code: "fake-code",
+        accountId: "fake-account-id",
+        username: "fake-username",
         state: "fake-state",
       }),
     ).rejects.toThrow(AuthorizationError);
@@ -1169,7 +1175,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
     await service.completeAccountConnection({
       workspaceId: WORKSPACE_ID,
       actorId: OWNER_USER,
-      code: "fake-code",
+      accountId: "fake-account-id",
+      username: "fake-username",
       state: "fake-state",
     });
 
@@ -1203,7 +1210,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
     await service.completeAccountConnection({
       workspaceId: WORKSPACE_ID,
       actorId: OWNER_USER,
-      code: "fake-code",
+      accountId: "fake-account-id",
+      username: "fake-username",
       state: "fake-state",
       redirectAccountId: CONNECTED_ACCOUNT_ID,
     });
@@ -1239,7 +1247,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
       service.completeAccountConnection({
         workspaceId: WORKSPACE_ID,
         actorId: OWNER_USER,
-        code: "fake-code",
+        accountId: "fake-account-id",
+        username: "fake-username",
         state: "fake-state",
       }),
     ).resolves.toBeDefined();
