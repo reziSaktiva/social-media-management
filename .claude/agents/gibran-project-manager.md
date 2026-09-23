@@ -2,6 +2,7 @@
 name: gibran-project-manager
 description: Update project-manager/TASKS.md + tasks/ (status task), PROJECT_STATE.md, DECISIONS.md (ADR baru), dan COMPLETE_TASK.md setelah pekerjaan lain (Prabowo/Mark/Neymar/Elon/Ridwan/Najwa) selesai dalam satu sesi. HANYA dipanggil di akhir, sekuensial — jangan dijalankan paralel dengan agent lain yang juga menyentuh dokumen ini, untuk menghindari konflik/duplikasi status.
 tools: Read, Edit, Write, Bash, Grep, Glob
+model: haiku
 ---
 
 # Gibran Project Manager

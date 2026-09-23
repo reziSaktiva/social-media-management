@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-050 Engagement domain skeleton**, **T-051 Comment sync job JOB-03**, dan **T-052 Manual refresh** (rilis v0.4 Engagement MVP) sekarang **✅ Done** (2026-09-22, ditinjau formal — implementasinya sudah ada sejak sesi sebelumnya lewat commit `23f9923`/`ae0f49b`, King Rezi minta direview sekarang). **Dengan ini rilis v0.4 Engagement MVP TUNTAS 5/6 task** (sisa T-055 Inbox assignment, Could Have, tidak memblokir rilis). Rangkaian review Ridwan Architecture Reviewer **3 putaran**, semuanya diverifikasi independen (bukan percaya laporan implementer): **putaran 1** — 3 temuan: (#1, serius) job `engagement.sync` (JOB-03) tidak pernah ter-seed otomatis untuk `ConnectedAccount` baru (siklus 30 menit tidak pernah mulai sendiri, melanggar Definition of Done rilis ini); (#2, rule #5) `refreshInboxAction` orkestrasi langsung di Server Action; (#3, governance) kapabilitas Fake `fetchComments`/`replyToComment` belum punya ADR sendiri. **Fix (Elon Backend Engineer):** #1 — port opsional baru `EngagementSyncSeederPort` di `WorkspaceService` (tanpa import domain `engagement`), dipanggil di `completeAccountConnection` (create+reconnect); #2 — use-case baru `RefreshInboxUseCase.refreshAll` (pola sama `SyncCommentsUseCase`), `refreshInboxAction` jadi murni composition root; #3 — **ADR-110 baru**. **Putaran 2** — fix #1/#2 dikonfirmasi benar, TAPI eskalasi **temuan baru**: `disconnectAccount` tidak pernah membatalkan chain self-reschedule JOB-03 — disconnect→reconnect berulang bikin chain paralel bertambah tak terbatas; dengan Fake adapter dampak tersamar, tapi begitu Real adapter (T-025) aktif berarti akun yang sudah diputuskan user tetap terus di-pull + memicu notifikasi (masalah privasi/kontrol). **Fix (Elon):** guard status via migration baru `20260922110000_t051_filter_active_status_engagement_sync_lookup` (menambah kolom `status` ke fungsi SQL `webhook_find_account_owner_by_outstand_account_id`; return `null` kalau bukan `active`, memicu jalur dead-letter yang sudah ada sebelum self-reschedule). **Putaran 3 (verifikasi final)** — 0 temuan tersisa, rangkaian review ditutup. QA Najwa QA Engineer: golden path Refresh/Mark as Done/Kirim Balasan PASS, regresi Connect/Disconnect/Reconnect (T-013/T-015) PASS, regresi `/analyze`/`/publish/drafts` normal; seeding job otomatis diverifikasi lewat 2 unit test baru (tanpa akses `JOB_SECRET`/DB untuk end-to-end browser). **1 bug regresi ditemukan & diperbaiki** (di luar scope, regresi dari T-053/T-054 yang sudah lolos QA sebelumnya): balasan komentar tidak tampil lagi di detail panel setelah reload — diperbaiki Mark UI Engineer, diverifikasi ulang Najwa, PASS. Verifikasi akhir: `typecheck`/`lint` bersih, `vitest` **453 pass/6 skip** (naik dari 448). **⚠️ Catatan governance penting, lihat juga Blockers di bawah**: migration `20260922110000_t051_filter_active_status_engagement_sync_lookup` **BELUM di-deploy** (`bun run db:deploy` pending King Rezi) — sampai itu jalan, JOB-03 gagal untuk SEMUA akun. Detail: `tasks/v04-engagement-mvp.md` § T-050, § T-051, § T-052. Sebelumnya: **T-053 Comments Inbox UI** dan **T-054 Reply comment dari dalam aplikasi** sekarang **✅ Done** (2026-09-22) — inbox komentar lintas akun di `/engage` + kemampuan membalas dari dalam aplikasi. **T-053:** rancangan sudah ada di Claude Design (`templates/engage-inbox.html`, KSP-06) tapi pola thread-list belum dikunci ("SYNCED"/"LOCKED PATTERN") — sesuai rule 17 AGENTS.md, King Rezi ditanya via `AskUserQuestion` sebelum implementasi UI dimulai, jawaban "sesuaikan dengan yang ada di Claude Design" — diimplementasikan mengikuti markup mockup apa adanya, dibangun dari komponen shadcn `Item`/`ItemGroup` (bukan `Table`, mockup satu blok teks per baris bukan tabular). Server Action baru `listInboxAction`/`getInboxItemDetailAction`/`markAsDoneAction` (`apps/web/src/app/(app)/engage/actions.ts`, murni wiring ke `EngagementService` sejak T-050); UI baru `apps/web/src/app/(app)/engage/page.tsx` (Server Component, ganti `ScaffoldPlaceholder`) + `apps/web/src/app/(app)/engage/components/EngageInboxView.tsx` (Client Component) — layout dua panel (thread-list 340px tetap + thread-detail), filter Akun/Platform/Status, Mark as Done, reply box, tombol Refresh manual reuse `refreshInboxAction` (T-052). **KI-065 baru** (Open): kotak "Post asal" di detail panel hanya label generik ("Komentar ini terhubung ke post terjadwal/terpublish") tanpa judul/thumbnail post asli — `EngagementInboxItemRecord` (T-050) tidak membawa join ke caption/media post sungguhan, dan menambah join lintas domain `engagement→publishing` di luar scope UI-only task ini; perlu keputusan/task lanjutan King Rezi. **T-054:** RBAC dicek ke `roles-permissions.md` — Owner/Admin/Creator semua boleh reply, tidak ada gating tambahan. `EngagementService.reply(input, userId)` baru — validasi content kosong (`ValidationError`), guard inbox item tidak ditemukan (`NotFoundError`), panggil `IOutstandAdapter.replyToComment` (Fake, instant-success, pola sama `schedulePost`/`publishNow`), persist `EngagementReply` dengan `outstandReplyId`. **Constructor `EngagementService` berubah** — sekarang wajib menerima `IOutstandAdapter` sebagai parameter kedua (breaking change internal, seluruh call site sudah diupdate, dikonfirmasi Ridwan Architecture Reviewer). `IEngagementRepository.createReply` diperluas menerima `outstandReplyId` (kolom sudah ada di schema sejak awal, tanpa migration baru). Server Action baru `replyToCommentAction`; tombol "Kirim" di `EngageInboxView.tsx` diaktifkan (disabled saat draft kosong/mengirim, toast sukses/error, textarea dikosongkan setelah sukses). Rangkaian: Prabowo Feature Engineer → Mark UI Engineer → Elon Backend Engineer → Mark UI Engineer → Ridwan Architecture Reviewer (0 temuan — domain purity `IOutstandAdapter` tetap interface abstrak, entry point bersih, cross-domain lewat public API `workspace`, RBAC sesuai baseline, seluruh call site `EngagementService` konsisten) → Najwa QA Engineer (PASS penuh — golden path pilih thread/Mark as Done/kirim reply tanpa reload, filter Akun/Platform/Status semua benar, regresi `/publish/drafts` dan `/analyze` normal, gate T-103.3 match `templates/engage-inbox.html`, gap "Post asal" dikonfirmasi expected). Verifikasi akhir: `typecheck`/`lint` bersih, `vitest` **448 pass/5 skip** (naik dari 426). **Catatan governance ditemukan sesi ini, BELUM ditindaklanjuti** (dilaporkan ke King Rezi, bukan ditebak): **T-050** (domain skeleton), **T-051** (comment sync job JOB-03), dan **T-052** (manual refresh) sudah diimplementasikan penuh lewat commit `23f9923`/`ae0f49b` di sesi sebelumnya, tapi status filenya masih `🟡 In Progress` di `tasks/v04-engagement-mvp.md` — tidak ada catatan review Ridwan/QA Najwa untuk ketiganya. Sengaja TIDAK dipromosikan ke `✅ Done` di sesi ini tanpa konfirmasi King Rezi. Detail: `tasks/v04-engagement-mvp.md` § T-053, § T-054. Sebelumnya: **T-045 Comparative Reports (/analyze)** sekarang **✅ Done, 3/3 subtask** (2026-09-21) — **release v0.3 Analytics MVP TUNTAS 8/8 task**. Tab baru "Overview"/"Reports" di `/analyze` (`Tabs` shadcn asli) — rancangannya belum ada di Claude Design saat diminta King Rezi, dibuat langsung oleh main agent (bukan Neymar Product Designer, permintaan eksplisit King Rezi) setelah 2 fork keputusan dijawab via `AskUserQuestion` (IA: tab di halaman Analyze yang sama, bukan route terpisah; pola: `Tabs` asli bukan `.seg`/ToggleGroup). Tab Reports: kartu "Perbandingan Periode" (3 stat + badge delta) dan "Perbandingan Akun/Platform" (tabel + badge delta), tombol "Export CSV" client-side murni. Method baru `PublishingService.getComparativeReport(workspaceId, period, userId)` + tipe `ComparativeMetric`/`AccountComparisonRow`/`ComparativeReport`, reuse `getPostPerformance` (extend parameter opsional `asOf?: Date`, backward compatible) — **"periode sebelumnya" adalah rolling window sama panjang persis bersebelahan, BUKAN calendar-aligned**. Rangkaian: Prabowo Feature Engineer → Mark UI Engineer → Ridwan Architecture Reviewer (0 temuan arsitektur; 1 catatan minor `now` dipanggil 2x independen di `getComparativeReport`, diperbaiki langsung main agent) → Najwa QA Engineer (PASS penuh; 1 temuan gate T-103.3 — caption per-metrik "vs X" hilang di implementasi awal, diperbaiki langsung main agent). Verifikasi: `typecheck`/`lint` bersih, `vitest` **426 pass/5 skip** (naik dari 422, +4 test case baru). Detail: `tasks/v03-analytics-mvp.md` § T-045. Sebelumnya: **T-044 Engagement summary (/analyze)** sekarang **✅ Done, 3/3 subtask** (2026-09-21) — card "Engagement Summary" (2 angka: Komentar, Likes) di kolom kanan grid `.dash-cols` `/analyze`, mengaktifkan grid 2 kolom (`lg:grid-cols-[1.6fr_1fr]`) yang sebelumnya sengaja full-width sementara sejak T-046. **Scope dipersempit lewat `AskUserQuestion`** ke King Rezi: dicek dulu ke Claude Design (rule 17), `templates/analyze-dashboard.html` section "Engagement Summary" TIDAK "SYNCED" tapi cuma mengunci 2 angka sederhana — jauh lebih sempit dari deskripsi task doc asli (field Domain: `analytics`, ADR-018, "komentar masuk/dibalas/rasio respons" via public API domain `engagement`). Method baru `PublishingService.getEngagementSummary(workspaceId, period, userId)` + tipe `EngagementSummary { totalComments, totalLikes }`, reuse `getPostPerformance` (T-043), data dari field `likes`/`comments` `AnalyticsPostMetric` yang sudah ada sejak T-041 — **tidak ada query Prisma baru, tidak ada cross-domain edge ke `engagement`** (0 import `domains/engagement`, dikonfirmasi Ridwan). Field task **Domain berubah `analytics` → `publishing`** dan **ADR-018 tidak dipakai** — dicatat sebagai perbaikan drift, bukan pelanggaran baru. **Konsekuensi: T-044 tidak lagi terikat v0.4** (Engagement MVP) karena tidak butuh domain `engagement`. Null-safety pola sama T-043.4/T-046.3/T-047.3: `totalComments`/`totalLikes` independen "Belum ada data" saat `null`. Rangkaian: Prabowo Feature Engineer → Mark UI Engineer → Ridwan Architecture Reviewer (0 temuan) → Najwa QA Engineer (PASS penuh — golden path, empty state, 4 action paralel tanpa race condition saat ganti period, regresi Account Overview/Post Performance PASS, responsive 375px PASS, dark/light mode PASS; gate T-103.3 PASS dicek 2x independen karena `DesignSync` tidak termuat di sesi Najwa). Verifikasi: `typecheck`/`lint` bersih, `vitest` **422 pass/5 skip** (naik dari 415, +7 test case baru). Satu catatan non-blocking dari Najwa: tabel Post Performance di kartu kiri (sekarang `1.6fr`, sebelumnya full-width) butuh scroll horizontal di lebar browser standar untuk kolom Reach/Eng. Rate — bukan defect, efek samping lock proporsi grid desain. Detail: `tasks/v03-analytics-mvp.md` § T-044. Sebelumnya: **T-047 Summary row (/analyze)** **✅ Done, 3/3 subtask** (2026-09-18) — 3 stat card (Total Posts, Total Reach, Engagement Rate) di bagian atas `/analyze`, di atas section Account Overview+Post Performance. Sumber data diputuskan reuse `PublishingService.getPostPerformance` (method baru `getAnalyzeSummary(workspaceId, period, userId)` + tipe `AnalyzeSummary`), bukan `AnalyticsService.getDashboardSummary`, untuk menghindari circular dependency `analytics↔publishing` (pola sama solusi refactor T-043). UI 3 `StatTile` diekstrak jadi shared component baru `stat-tile.tsx` (dipakai ulang juga di `DashboardHome.tsx`, pure extraction tanpa perubahan behavior). Empty state per-field: `totalPosts` selalu tampil angka, `totalReach`/`avgEngagementRate` masing-masing independen "Belum ada data" saat `null` — pola sama T-043.4. Desain sudah "SYNCED" di Claude Design sebelum implementasi, tidak ada gate ambiguitas yang terpicu. Rangkaian: Prabowo Feature Engineer (T-047.1) → Mark UI Engineer (T-047.2–T-047.3) → Ridwan Architecture Reviewer (0 temuan) → Najwa QA Engineer (0 bug, gate T-103.3 match). Verifikasi: `typecheck`/`lint` bersih, `vitest` **418 pass/5 skip** (42 file, naik dari 415). Catatan non-blocking dari Najwa: 2 skenario (period tanpa post sama sekali, campuran sebagian metrik ter-ingest) tidak bisa diverifikasi visual browser karena data dev tidak punya kombinasi itu, sudah tercover unit test. Detail: `tasks/v03-analytics-mvp.md` § T-047. Sebelumnya: **T-046 Account Overview** **✅ Done, 3/3 subtask** (2026-09-18) — bar performa jumlah post + total reach per akun/platform di `/analyze` (reuse shadcn `Progress`). Method baru `PublishingService.getAccountOverview(workspaceId, period, userId)` ditaruh di domain `publishing` (bukan `analytics`) untuk reuse `getPostPerformance` (T-043) dan menghindari circular dependency — port baru `ConnectedAccountsPort` (arah `publishing→workspace`, sudah legal di `application-layer.md`). UI direflow (2 sesi Mark UI Engineer) supaya Account Overview + Post Performance berbagi satu `Card`/`CardContent`, sesuai struktur asli `analyze-dashboard.html` (`.dash-cols` grid) — kolom kanan grid (Engagement Summary, T-044) sengaja dirender full-width sementara sampai T-044 dikerjakan, dikonfirmasi King Rezi via `AskUserQuestion`. Kriteria "belum ada data": akun tanpa post → `totalPosts: 0, totalReach: null`; akun dengan post tapi metrik belum ter-ingest → `totalReach: null` juga. Rangkaian: Prabowo Feature Engineer (T-046.1) → Mark UI Engineer (T-046.2–T-046.3) → Ridwan Architecture Reviewer (0 temuan) → Najwa QA Engineer (0 temuan blocking, gate T-103.3 match; 1 catatan non-blocking sort `localeCompare()` kolom Akun). Verifikasi: `typecheck`/`lint` bersih, `vitest` **415 pass/5 skip** (42 file, naik dari 411). Detail: `tasks/v03-analytics-mvp.md` § T-046. Sebelumnya: **T-043 Post performance metrics** **✅ Done, 4/4 subtask** (2026-09-18) — Table sortable di `/analyze` (Post/Akun/Reach/Eng. Rate) + metrik di halaman detail post History, reuse `PostMetricsPort` yang sudah ada. Rangkaian Prabowo Feature Engineer → Mark UI Engineer → Ridwan Architecture Reviewer 2 putaran (putaran 1: temuan **kritis** circular dependency antara port baru `PublishingHistoryPort` (analytics→publishing) dengan `PostMetricsPort` (publishing→analytics) yang sudah ada — King Rezi memilih **refactor** via `AskUserQuestion`: `getPostPerformance` dipindah ke `PublishingService`, dependency jadi satu arah `publishing→analytics`; putaran 2: 0 temuan blocking baru) → Najwa QA Engineer (0 temuan blocking, test baru `post-performance-period-range.test.ts`). **KI-064 baru** (Open): `application-layer.md` § Peta Dependency Antar Domain belum pernah mencantumkan panah `publishing→analytics` sejak T-033.1 — gap dokumentasi lama, baru ketahuan lewat review ini. Satu catatan non-blocking: metrik tersembunyi History Detail untuk post `Failed` belum terverifikasi visual browser (tidak ada data dev), hanya tertutup unit test. Verifikasi: `typecheck`/`lint` bersih, `vitest` **411 pass/5 skip** (42 file). Detail: `tasks/v03-analytics-mvp.md` § T-043. Sebelumnya: **T-027 Job runner + Railway Cron** sekarang **✅ Done, 5/5 subtask** (2026-09-17) — job runner generik (klaim job `SELECT FOR UPDATE SKIP LOCKED` + registry handler per job type), autentikasi `X-Job-Secret`, retry backoff 5m/15m/60m + dead-letter, dan Railway Cron config-as-code (`railway.json`/`railway.cron.json`/`scripts/trigger-job-run.ts` — provisioning project Railway sungguhan masih blocked **KI-025**, ini baru config-as-code di repo). Subtask terakhir **T-027.5** menambah job handler baru `ResolveScheduledPostOutcomeJobHandler` yang menutup gap "belum ada transisi status post otomatis saat waktunya tiba" — meng-enqueue job type baru `publishing.scheduled_post.resolve_outcome` (**JOB-07**, ditambahkan ke `background-jobs.md` § Job Type Registry) dan reuse `OutstandWebhookProcessor.resolvePostOutcome` (di-extract jadi public, dipakai bersama webhook T-026). QA Najwa QA Engineer menemukan bug correctness: post terjadwal tidak pernah selesai resolve outcome karena `FakeOutstandAdapter` (ADR-059) mengandalkan `Map` in-memory level-modul yang pecah lintas Server Action↔Route Handler terpisah (dikonfirmasi nyata di production build, bukan artefak dev) — King Rezi memilih root-cause fix via `AskUserQuestion`, dicatat **ADR-108** (redesain `fetchPostOutcome` menambah parameter `expectedOutstandAccountIds`, `FakeOutstandAdapter` jadi pure function tanpa state). Sesi yang sama juga menemukan gap pre-existing T-026: `PublishingPost.status` tidak pernah bertransisi ke `Published` di level post meski semua target sudah resolved sukses — dicatat **ADR-109** (method baru `markPostPublished`, melengkapi T-026 tanpa reopen statusnya). Review Ridwan Architecture Reviewer 2 putaran (putaran 1: 1 bug correctness di atas, diperbaiki; putaran 2: fokus ADR-108/109, 0 temuan; juga merekomendasikan JOB-07 masuk baseline, sudah ditindaklanjuti). QA Najwa end-to-end (browser real + `curl` simulasi Railway Cron): golden path Schedule → History Published PASS 2x berturut-turut, regresi Publish Now & Retry manual PASS. **KI-062 baru** (Open): `background-jobs.md` self-contradictory soal formula backoff (tabel 5/15/60 vs formula tertulis `5*2^(n-1)` = 5/10/20; kode benar, dokumentasi perlu dikoreksi). **KI-063 baru** (Open, minor): `PublishingPost.publishedAt` tidak pernah diisi oleh `markPostPublished`/`markPostFailed`, non-blocking (UI sudah fallback). Verifikasi kode: `typecheck`/`lint`/`prettier` bersih, `vitest` **396 pass/5 skip**. Sebelumnya: **T-024 Media upload di Draft Editor** sekarang **✅ Done, 5/5 subtask** (2026-09-14) — feasibility check: subtask T-024 tidak lagi menunggu T-025 (Real OutstandAdapter) penuh, dijalankan lewat pola Fake (rule 19 AGENTS.md) untuk bagian yang bisa jalan tanpa kredensial asli; scope dipersempit lewat `AskUserQuestion` (dropzone custom, "Pilih dari Media Library" ditunda). **T-024.1** (domain `media` skeleton) dan **T-024.2** (upload ke Supabase Storage, bucket `media` Private + signed URL, batas ukuran 50MB dikonfirmasi King Rezi via `AskUserQuestion`) selesai, lolos review Ridwan (0 temuan). Migration bucket `media` sudah dibuat tapi **belum di-deploy** (`bun run db:deploy` pending King Rezi). **T-024.3** (`OutstandAdapter` media upload working copy, ADR-040) selesai lewat `FakeOutstandAdapter` — kontrak `uploadMediaWorkingCopy` 1-method gabungan dicatat sebagai **ADR-106** (bukan split seperti ADR-105, karena murni server-to-server tanpa redirect browser), lolos review Ridwan (0 temuan; 1 catatan forward-looking non-blocking soal kemungkinan split kontrak nanti kalau Real adapter butuh retry granular per-langkah). **T-024.4** (aktifkan kontrol lampiran media di Draft Editor + preview, Prabowo Feature Engineer) selesai — King Rezi mengonfirmasi lewat `AskUserQuestion` bahwa Draft Editor mendukung **multi-media (carousel)**, batas jumlah TERGANTUNG `ContentFormat` (`Post` maks 10, `Reel`/`Story`/`Pin` maks 1, batas efektif = MINIMUM lintas format kalau multi-target) — mengamandemen ADR-039 menjadi **ADR-107 baru**. Implementasi full-stack (Server Action → service → repository → UI), mengaktifkan kolom `media_ids` yang sebelumnya dead. Review Ridwan Architecture Reviewer 2 putaran: putaran 1 menemukan 1 temuan MEDIUM (partial-update semantics `mediaIds` tidak pernah benar-benar tereksekusi karena `undefined` selalu di-collapse jadi `[]`), sudah diperbaiki (12 unit test baru); putaran 2 — 0 temuan. **T-024.5** (Delete Media + dialog konfirmasi Tier 2, ADR-049, subtask terakhir) selesai — tombol "hapus dari post ini" T-024.4 (unlink-only) diganti total jadi aksi destruktif (dialog konfirmasi → hapus file Storage + record `MediaItem` DB permanen), reuse `ConfirmActionDialog`/`useConfirmAction` pola "Hapus Draft". Lolos review Ridwan (0 temuan). Verifikasi akhir keseluruhan task: `typecheck`/`lint` bersih, `vitest` **377 pass/5 skip**. **KI-059 Resolved (2026-09-15)**: verifikasi manual browser end-to-end T-024 sudah dilakukan, seluruh 6 kriteria PASS — lihat Completed (Ringkasan). **KI-060 baru** (Open, di luar scope T-024): Account Selector tidak ter-restore saat reopen edit draft. **KI-061 baru** (Open, ditemukan dari diskusi King Rezi 2026-09-15, murni analisis kode): tidak ada warning UI saat media yang sudah diupload jadi over-limit setelah user menambah akun target dengan format lebih ketat (ADR-107) — user baru tahu saat submit ditolak server. Sebelumnya: **T-015 Reconnect flow saat token expired** sekarang **✅ Done, 3/3 subtask** (2026-09-11) — subtask terakhir **T-015.3** (aksi reconnect) selesai lewat Fake `connectAccount`/`exchangeConnectCode` (**ADR-105**, pola ADR-059, disetujui King Rezi via `AskUserQuestion` karena kredensial Outstand asli belum ada) dengan redirect OAuth loopback ke callback route sendiri; T-015.1/T-015.2 ternyata sudah selesai sebelumnya (bagian tak tercatat dari T-026 webhook + UI existing). **T-013.1/T-013.2** (Connect account) ikut selesai karena berbagi flow OAuth yang sama — **T-013 tetap `🟡 In Progress`** (sisa T-013.4, operasional BYOK X). Rangkaian: Elon Backend Engineer (kontrak adapter + Fake + ADR-105) → Prabowo Feature Engineer (`WorkspaceService`, Route Handler callback, Server Action, UI wiring) → Ridwan Architecture Reviewer (1 temuan non-blocking, diperbaiki) → Prabowo (fix) → Najwa QA Engineer (browser end-to-end, 1 bug ditemukan — toast error dobel di callback route — sudah diperbaiki dan diverifikasi ulang, golden path Connect + Reconnect PASS). **KI-058 baru dibuka** (Design Gap/RBAC UI): `ConnectedAccountsList.tsx` tidak menyembunyikan/menonaktifkan tombol Connect/Disconnect/Reconnect untuk role Creator meski backend RBAC sudah menolak dengan benar — ditemukan Najwa, King Rezi memutuskan dicatat sebagai KI, tidak diperbaiki sesi ini. Deviasi styling tombol Reconnect/Disconnect dari mockup Claude Design diterima eksplisit oleh King Rezi (bukan KI, catatan implementasi di `tasks/v01-foundation.md` § T-015). Sebelumnya: **T-092 Realtime Calendar/Queue/Drafts/History (Supabase Realtime, ADR-094)** **✅ Done, 6/6 subtask** (2026-09-11) — subtask terakhir **T-092.6** (granular patch Realtime History) selesai: method baru `getHistoryPostById` (repository + `PublishingService`, bukan reuse `getCalendarPostById` — History butuh field `status`/`error` per-target), Server Action `getHistoryPostAction`, `HistoryList.tsx` jadi stateful dengan `usePublishingPostsRealtime`. Verifikasi cross-tab browser nyata wajib (KI-057) — **PASS**: Publish Now di tab 1 (Drafts) → tab 2 (History) otomatis menampilkan post baru tanpa refresh. Lolos review Ridwan (0 pelanggaran arsitektur). Dengan tuntasnya T-092.6, **seluruh 6/6 subtask T-092 selesai** dan **KI-057 Resolved** (kriteria verifikasi cross-tab sudah terbukti berjalan sampai akhir untuk seluruh subtask yang jadi syaratnya). Temuan terpisah di luar scope (bug pre-existing "Publish Now di Queue selalu gagal untuk post Scheduled") dicatat sebagai chip task terpisah, menunggu King Rezi, bukan task baru. Sebelumnya: **T-035 Delete Post + dialog konfirmasi** (rilis v0.2) **✅ Done** (2026-09-10) — seluruh 3/3 subtask tuntas. Scope T-035.3 dipersempit eksplisit oleh King Rezi lewat `AskUserQuestion` (bukan asumsi AI): entry point Delete Post hanya di **Drafts**, TIDAK di Queue/History (post `Scheduled` harus di-Cancel Schedule dulu, post `Published`/`Failed` tidak boleh dihapus sama sekali) — keputusan ini muncul setelah dicek dulu ke Claude Design (rule 17) dan ternyata tidak satu pun dari 3 mockup terkait punya rancangan tombol delete. Implementasi: soft-delete dengan guard status dua lapis (hanya `Draft` bisa dihapus), RBAC Owner/Admin/Creator, reuse `ConfirmActionDialog` (Tier 2, ADR-049). Lolos review Ridwan (0 temuan blocking) dan QA Najwa (311 test pass, browser end-to-end PASS golden path + regresi Queue/History + RBAC Creator). Sesi yang sama juga menemukan **T-038 (Toggle Fullscreen/Standard Draft Editor, ADR-065) ternyata sudah selesai** sejak T-100 (2026-09-03) tanpa status pernah diperbarui — dikoreksi jadi **✅ Done**, 0 gap terhadap ADR-065/mockup, tidak ada perubahan kode. Sebelumnya: **T-034 Publishing History + detail post** (rilis v0.2) sekarang **✅ Done** (2026-09-09) — seluruh 4/4 subtask tuntas: query riwayat, UI daftar riwayat + filter, halaman detail post, dan **T-034.4** (retry manual per-target, **ADR-103** melengkapi ADR-092 — scope single-target, bukan whole-post, untuk hindari duplikat konten). Lolos review Ridwan (0 temuan blocking) dan QA Najwa (259 test pass, verifikasi browser golden path + edge case semua PASS). 1 Known Issue baru non-blocking: **KI-052** (hydration warning `formatRelativeTime` di `HistoryList.tsx`). 2 Known Issue lama masih **Open**, belum berubah statusnya oleh penutupan T-034.4: **KI-049** (gap `failedAt`/`failureReason`), **KI-050** (gap meta author di halaman detail). **KI-051** (`Badge` shadcn belum ada varian success) sudah **Resolved** (2026-09-09, Mark UI Engineer) — sekaligus menutup penuh **KI-054** (Design Drift Drafts/History, poin 5 terakhir). Digabung (merge `staging`) dengan pekerjaan paralel: **T-039 Migrasi Routing & Settings (ADR-076) — ✅ Done** (2026-09-08) — subtask terakhir **T-039.4** (onboarding picker workspace) diimplementasikan, lolos review arsitektur Ridwan (0 temuan) + QA Najwa end-to-end browser (6/6 skenario PASS); **KI-023 Resolved**. Sebelumnya: **T-007.8 Members list gabungan Pending (ADR-101) — ✅ Done** (2026-09-07, side-quest di luar rantai utama) — lolos implementasi Prabowo Feature Engineer, review arsitektur Ridwan (1 temuan race condition di `revokeInvitation`, sudah diperbaiki), QA end-to-end Najwa (browser real, semua PASS, 0 bug). **T-026 Webhook handler Outstand — ✅ Done** (2026-09-07) dan **T-036 In-app notification + Supabase Realtime — ✅ Done** (2026-09-07) — King Rezi menjalankan `bun run db:deploy` untuk 3 migration T-026 yang sebelumnya belum ter-apply, Najwa QA Engineer retest 5 skenario webhook end-to-end nyata, semua PASS. **KI-048 Resolved**. ADR-099 (SECURITY DEFINER system-context lookup untuk webhook) dicatat sebagai preseden untuk T-027. **T-103 Kunci Pola Implementasi shadcn per Komponen di Claude Design — ✅ Done, 4/4 subtask tuntas (2026-09-10)** — task permintaan eksplisit King Rezi setelah KI-054/KI-055, dikerjakan sebelum task lain manapun. **T-103.1** — 3 file Claude Design (Drafts/Workspaces/Connected Accounts) markup-nya disamakan penuh dengan kode nyata (pola `Table`), `readme.md` diupdate, PR [#116](https://github.com/reziSaktiva/social-media-management/pull/116). **T-103.2** — gate berhenti-dan-tanya kalau pola shadcn ambigu ditambahkan ke `AGENTS.md` rule 17 + `.claude/agents/README.md` + `mark-ui-engineer.md`. **T-103.3** — gate verifikasi struktur setelah implementasi ditambahkan ke checklist `mark-ui-engineer.md` & `najwa-qa-engineer.md`; Najwa diberi tool `DesignSync` baru. **T-103.4** — retroactive audit 5 screen lain, ditemukan 1 drift baru (**KI-056**, `publish-history.html` masih pola `Card` padahal kode sudah `Item`/`ItemGroup` sejak KI-054) — **Resolved**, markup disamakan. Fokus berikutnya: **T-025 Real OutstandAdapter** (terhenti menunggu kredensial, rantai blocker terbesar tersisa) dan **T-037** (Perkaya aturan coding, kontinu by design, `🟡 In Progress`) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), yang merupakan satu-satunya daftar fokus. Sebelumnya: **T-102 Cleanup & Verifikasi Akhir — ✅ Done** (rilis v0.7, ADR-097) menuntaskan migrasi Astryx→shadcn/ui 100%; **KI-045**, **KI-041** (ADR-098), **KI-035** sudah Resolved (2026-09-04); **KI-046** Resolved (Promoted to T-007.7, ADR-100, 2026-09-07); **KI-047**, **KI-053** (2026-09-07 — invite Copy Link rawan identity takeover kalau email penerima bukan target undangan & belum punya akun, akar masalah KI-001; direnumber dari KI-049 semula saat merge `staging` — nomor itu sudah dipakai lebih dulu oleh Known Issue lain, gap `failedAt`/`failureReason`, di cabang ini) dicatat sebagai gap baru/Open — **KI-053 tidak terkait/tidak berubah statusnya** oleh selesainya T-007.8, masih genuinely Open.
+* **Top Next Tasks:** **T-025 Real OutstandAdapter** (blocked kredensial Outstand — rantai blocker terbesar tersisa) dan **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 5/6 task** (2026-09-22, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal. **T-026 dan T-027 sudah ✅ Done (2026-09-07, 2026-09-17) lewat `FakeOutstandAdapter`** — blocker `OUTSTAND_API_KEY` sekarang murni memblokir **T-025 (Real OutstandAdapter)** itu sendiri, tidak lagi merantai T-026/T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 86 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -15,9 +15,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.88     |
+| Version      | 1.0.89     |
 | Status       | Active     |
-| Last Updated | 2026-09-22 |
+| Last Updated | 2026-09-23 |
 
 ---
 
@@ -434,40 +434,6 @@ T-005/email verification selesai, atau tambahkan verifikasi email terpisah
 khusus alur accept-invite). Tidak memblokir M8 saat ini, tapi risiko
 keamanan nyata untuk Copy Link yang sudah dipakai di production.
 
-### KI-048 · Draft Claude Design T-034 (Publish History) belum direview King Rezi — Resolved
-
-| Field | Value |
-|-------|-------|
-| Status | Resolved (2026-09-08) |
-| Kategori | Design Gap / Process |
-| Terkait | T-034 |
-
-Ditemukan/dicatat 2026-09-08 saat sesi kerja T-034 (Publishing History +
-detail post): 2 screen baru — `templates/publish-history.html` (daftar
-riwayat + filter Status/Akun) dan `templates/publish-history-detail.html`
-(ringkasan post + "Hasil per Akun": link post asli untuk `Published`,
-pesan error + tombol retry untuk `Error`) — sudah di-push ke project Claude
-Design "Social Media Management". Draft awal ini belum direview/dikonfirmasi
-King Rezi saat ditemukan.
-
-**Deviasi proses (dicatat eksplisit, bukan pelanggaran diam-diam):**
-pekerjaan Claude Design ini dikerjakan langsung oleh main agent (bukan
-didelegasikan ke Neymar Product Designer) atas instruksi eksplisit King
-Rezi di sesi ini — menyimpang dari mandat wajib Neymar di
-`.claude/agents/neymar-product-designer.md`, tapi atas dasar instruksi
-langsung King Rezi, bukan inisiatif AI melewati mandat tersebut.
-
-**Penutupan (2026-09-08, sesi sama):** King Rezi mereview draft bareng di
-chat (Artifact review dari kedua template memakai token desain asli) dan
-mengonfirmasi 5 poin (App Prototype dipasang dulu, filter Status+Akun
-cukup, grouping per tanggal pola Queue, tombol retry visual-only, link
-"Lihat post asli" disabled kalau kosong). Gap App Prototype yang ditemukan
-saat konfirmasi (tab History belum terdaftar di `SCREENS`/tab handler,
-redirect Publish Now masih stand-in ke Calendar) langsung ditutup oleh
-main agent — sudah di-push dan diverifikasi remote match persis. Draft
-desain T-034.2/T-034.3 sekarang terkonfirmasi King Rezi dan App Prototype
-bisa diklik penuh — **KI-048 Resolved**.
-
 ### KI-049 · `PublishingPost.failedAt`/`.failureReason` tidak pernah ditulis oleh jalur manapun
 
 | Field | Value |
@@ -506,43 +472,6 @@ Perlu keputusan King Rezi ke depan apakah field ini memang wajib
 ditampilkan (kalau ya, jadi task/gap terpisah, mirip pola KI-049 —
 kemungkinan butuh field baru di schema/domain). Tidak memblokir M8.
 
-### KI-051 · `Badge` shadcn belum punya varian "success" — Resolved
-
-| Field | Value |
-|-------|-------|
-| Status | Resolved (2026-09-09) |
-| Kategori | Tech-Debt / UI |
-| Terkait | T-034, KI-041 (token `--success` sudah ada, komponen belum di-wire), KI-054 (poin 5) |
-
-Ditemukan Ridwan Architecture Reviewer saat review T-034.2/T-034.3
-(2026-09-08): komponen `Badge` shadcn belum punya varian "success" — UI
-History memakai varian `default` sebagai pengganti untuk status
-"Published". Token CSS `--success` sudah ada di `globals.css` sejak
-ADR-098 (penutupan KI-041), tapi belum pernah di-wire ke komponen `Badge`
-itu sendiri. Technical debt kecil, non-blocking, opsional — kalau mau
-dijadikan task terpisah, Domain-nya `UI` (Mark UI Engineer). Tidak
-memblokir M8.
-
-**Penutupan (2026-09-09, Mark UI Engineer, branch
-`fix/ki-054-draft-history-design-sync`):** varian `success` ditambahkan ke
-`cva()` di `apps/web/src/components/ui/badge.tsx`, mengikuti pola tint yang
-sama dengan `warning`/`destructive` yang sudah ada (`bg-success/10
-text-success ... dark:bg-success/20 ...`), memakai token
-`--success`/`--success-foreground` yang sudah ada sejak ADR-098. Varian
-baru ini di-wire ke sumber kebenaran status: `status-badge.ts`
-(`CONTENT_STATUS_BADGE_VARIANT[ContentStatus.Published]`, dipakai Calendar,
-Drafts, dan modal draft-editor) dan `history-status.ts`
-(`HISTORY_STATUS_BADGE_VARIANT`/`TARGET_STATUS_BADGE_VARIANT` untuk status
-`Published`) — keduanya `"default"` → `"success"`. Komentar block usang di
-kedua file yang menjelaskan "belum ada varian success" ikut diperbarui.
-Diverifikasi `tsc --noEmit` pass, `eslint` pass, dan browser preview
-(tidak ada regresi visual pada status lain, mis. Scheduled tetap
-warning/kuning). Di luar scope, sengaja tidak diubah: status
-`ReadyToSchedule`/`Scheduled` tetap `secondary`/`warning` — mockup minta
-warna "info"/"purple" tersendiri, tapi itu butuh token warna baru yang
-belum di-lock desain (dicatat DT-D02, bukan bagian KI-051). Penutupan ini
-sekaligus menutup poin 5 **KI-054** (lihat di bawah).
-
 ### KI-052 · Hydration warning `formatRelativeTime` di `HistoryList.tsx`
 
 | Field | Value |
@@ -559,295 +488,6 @@ client (nilai waktu relatif bisa berbeda tipis tergantung kapan masing-masing
 sisi dieksekusi). Non-blocking, di luar scope T-034.4 (fitur retry sendiri
 berfungsi penuh, PASS semua skenario) — dicatat sebagai follow-up teknis,
 belum ada task formal. Tidak memblokir M8.
-
-### KI-054 · Layout `DraftsList`/`HistoryList` menyimpang dari mockup Claude Design — Resolved
-
-| Field | Value |
-|-------|-------|
-| Status | Resolved (2026-09-09) — seluruh 5 poin sudah punya resolusi (fixed atau accepted deviation) |
-| Kategori | Design Drift |
-| Terkait | T-034, T-101 (Drafts), KI-051 (poin 5, Resolved), Claude Design `templates/publish-drafts.html` & `templates/publish-history.html` |
-
-Dilaporkan King Rezi (2026-09-09): komponen yang sudah diimplementasikan di
-halaman Publish → Drafts dan Publish → History dinilai berbeda cukup jauh
-dari mockup Claude Design. Dibandingkan langsung (`DesignSync get_file`) —
-gap paling signifikan ada di **History**, bukan Drafts:
-
-1. **[FIXED 2026-09-09, branch `fix/ki-054-draft-history-design-sync`]
-   Struktur baris History menyimpang dari mockup.** Mockup
-   (`templates/publish-history.html`, `.history-card`/`.queue-row`) merender
-   tiap entri sebagai **satu baris horizontal** dalam kartu terpisah sendiri
-   (`<a class="card card-pad history-card">`): jam → nama akun (dot warna
-   platform + teks) → caption+meta → chip status, semuanya sejajar dalam
-   satu baris, dengan hover mengubah `border-color` kartu itu sendiri.
-   Implementasi (`HistoryList.tsx` baris ~196-271) merender tiap entri
-   sebagai blok **vertikal bertingkat** di dalam SATU `Card` bersama
-   (`ItemGroup` + `divide-y`, pola yang sama dipakai `DraftsList`/`QueueList`):
-   baris jam+badge, lalu baris ikon platform, lalu caption, lalu meta —
-   4 baris bertumpuk, bukan 1 baris datar per mockup, dan tidak ada kartu
-   terpisah per entri (hover cuma `hover:bg-muted` pada row, bukan border
-   kartu individual).
-   **Fixed:** `HistoryList.tsx` diubah — tiap entri sekarang `Item
-   variant="outline"` terpisah (kartu individual, border+radius sendiri) di
-   dalam `ItemGroup` dengan `gap-2` (bukan `divide-y`), satu baris horizontal
-   jam → ikon+handle platform → caption+meta (truncate) → `Badge` status,
-   hover mengubah border kartu (`hover:border-foreground/40` +
-   `hover:bg-card!`) sesuai mockup. Diverifikasi `tsc --noEmit`, eslint, dan
-   visual browser preview (dark mode). Temuan tambahan di file yang sama saat
-   verifikasi (bukan bagian asli KI-054): teks handle akun sempat dipaksa
-   `text-xs` (12px) padahal spec Design System (`.acc-name`, token
-   `--text-body-size`) 14px (`text-sm`) — override dihapus, kembali ke
-   default varian `muted` komponen `Text`.
-2. **Representasi akun/platform berbeda — accepted deviation, tidak diubah
-   (keputusan verbal King Rezi, 2026-09-09).** Mockup memakai dot warna kecil +
-   nama akun sebagai teks polos (`.platform-dot` + `<span class="acc-name">`).
-   Implementasi merender glyph ikon brand penuh (`PLATFORM_ICON[...].Icon`)
-   + handle akun, untuk **setiap target** publish (bisa multi-platform per
-   post) — perbedaan ini punya alasan produk (History mendukung multi-target
-   per post, mockup cuma contoh 1 platform per baris), tapi visualnya jelas
-   berbeda dari mockup manapun yang ada di Claude Design saat ini. King Rezi
-   memutuskan tetap pakai ikon brand penuh untuk multi-platform — bukan
-   deviation yang perlu diperbaiki, cukup dicatat di sini supaya tidak
-   dianggap belum selesai di masa depan.
-3. **Filter row** (`Select` Status + Akun) di `HistoryList.tsx` sudah cukup
-   dekat dengan mockup (`.history-filter-row`, dua `<select>` rata kanan) —
-   bagian ini TIDAK termasuk gap.
-4. **Drafts** (`DraftsList.tsx` vs `templates/publish-drafts.html`) sebenarnya
-   sudah cukup selaras strukturnya (Card + list baris + judul/subjudul kiri +
-   chip status kanan) — gap di sini lebih ke warna chip status (lihat poin
-   berikutnya), bukan layout.
-5. **Warna chip status** (Draft/Ready to Schedule/Published/Error) di kedua
-   halaman memakai palet abu-abu (`outline`/`secondary`/`default`/`destructive`
-   shadcn `Badge`) padahal mockup memakai dot warna spesifik per status
-   (`chip-draft` kuning, `chip-ready`/`chip-published` hijau, `chip-failed`
-   merah) — ini **gap yang sama dengan KI-051** (`Badge` shadcn belum punya
-   varian "success"/warna custom per status), jangan dobel-catat sebagai
-   temuan baru, cukup link ke sana.
-
-Belum ada task formal untuk memperbaiki gap ini. Poin 1 sudah **Fixed**
-2026-09-09 (lihat detail di atas, branch `fix/ki-054-draft-history-design-sync`).
-Poin 2 sudah **accepted deviation** (keputusan verbal King Rezi, tidak akan
-diubah). Poin 3 & 4 sudah sesuai mockup dari awal, tidak ada perubahan.
-Poin 5 (warna chip status) sekarang **Fixed** menyusul penutupan **KI-051**
-(2026-09-09, sesi sama): varian `Badge` "success" sudah di-wire, status
-"Published" di Drafts & History sekarang hijau sesuai mockup. Status
-`Draft` sendiri tetap memakai varian `outline` (abu-abu netral) di kedua
-halaman — ini **sudah sesuai mockup** (`chip-draft` di Design System juga
-neutral/gray, bukan warna cerah), bukan gap tersisa. Status `Failed`/`Error`
-sudah memakai `destructive` (merah) dari awal, juga sudah sesuai. Dengan
-seluruh 5 poin sudah beres (fixed atau accepted deviation), **KI-054
-dinaikkan dari Partially Resolved ke Resolved penuh.**
-
-**Temuan susulan (2026-09-09, setelah status Resolved di atas) — sudah
-diperbaiki, tidak membuka ulang status Resolved:** King Rezi menemukan 1 gap
-visual tambahan khusus di `DraftsList.tsx` — tiap baris draft tampil sebagai
-kotak individual bersudut membulat dengan celah antar baris (kartu-kartu
-terpisah bertumpuk), bukan list rata menyatu dengan garis pemisah tipis
-seperti mockup `templates/publish-drafts.html` dan pola `QueueList.tsx`.
-Root cause: komponen dasar `Item` (`apps/web/src/components/ui/item.tsx`)
-punya `rounded-2xl border` di base `cva`-nya yang selalu aktif apa pun
-variant-nya (variant cuma mengubah warna border, bukan menghilangkan
-radius/border). `DraftsList.tsx` memakai `Item variant="outline"` per baris
-di dalam satu `ItemGroup` (`divide-y`) — kombinasi ini yang menghasilkan
-efek kotak-kotak terpisah. **Fixed:** `DraftsList.tsx` baris ~57-61 — hapus
-`variant="outline"`, tambahkan `rounded-none border-transparent` ke
-className, sehingga tiap baris rata tanpa border/rounded individual, hanya
-mengandalkan garis pemisah `divide-y` di `ItemGroup` (sama seperti
-`QueueList.tsx`). Diverifikasi `tsc --noEmit`, eslint, dan browser preview
-(computed style `borderRadius: 0px`, `borderColor: transparent`).
-
-### KI-055 · 5 komponen menyimpang dari Claude Design (Drafts, Profile, Workspaces, Members, Connected Accounts) — Resolved
-
-| Field | Value |
-|-------|-------|
-| Status | Resolved (2026-09-10) — seluruh 5/5 poin fixed |
-| Kategori | Design Gap |
-| Terkait | Claude Design `templates/publish-drafts.html`, `settings-profile.html`, `settings-workspaces.html`, `settings-members.html`, `settings-connected-accounts.html`, `components/table.html` |
-
-Ditemukan King Rezi (2026-09-09) lewat audit manual perbandingan
-Claude Design ↔ `apps/web`, 5 poin:
-
-1. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] List draft
-   posts (`/publish/drafts`)** — seharusnya `Table` shadcn tanpa
-   header/judul per kolom (`TableHeader`/`TableHead` dihilangkan). Awalnya
-   dipasangkan dengan `Card` (fix pertama), lalu direvisi King Rezi
-   (mengikuti pola final poin 3 di bawah — dibandingkan langsung, versi
-   tanpa `Card` dinilai lebih baik) menjadi **TANPA** `Card`. **Fixed
-   (final, 2 kali revisi padding 2026-09-10):** `DraftsList.tsx` —
-   `Table`/`TableBody`/`TableRow`/`TableCell` (tanpa `TableHeader`)
-   dibungkus `<div className="rounded-xl border border-border">`, `py-2`
-   saat ada data (riwayat: `py-3` → dihapus total → dikembalikan jadi
-   `py-2` — tanpa padding sama sekali membuat hover baris paling
-   atas/bawah menembus sudut membulat `rounded-xl` container, ditemukan
-   King Rezi; `py-2` cukup kecil untuk tetap terlihat rapat tapi cukup
-   untuk menahan hover di dalam sudut), `p-6` saat kosong (state `Empty`,
-   supaya pesan tidak mepet). Baris
-   klik penuh lewat `onClick` di `TableRow` (native `<tr>`) + `cursor-
-   pointer`, `hover:bg-muted/50` bawaan `table.tsx`. Fungsi buka Draft
-   Editor per baris (`openEditDraft`) tidak berubah. Diverifikasi
-   `tsc --noEmit` pass, eslint pass, browser preview PASS (klik baris
-   membuka modal Edit Draft dengan benar).
-2. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] Ukuran
-   avatar (`/settings/account` → Profile)** — avatar render terlalu
-   kecil dibanding `templates/settings-profile.html` (`.avatar-lg`,
-   88px). `Avatar` shadcn hanya punya 3 preset size (`sm`/`default`/
-   `lg`), dan `lg` cuma 40px (`size-10`) — masih jauh dari 88px.
-   **Fixed:** `ProfileForm.tsx` — `Avatar` di-override langsung via
-   `className="size-22"` (22 × 4px = 88px, token spacing default
-   Tailwind v4, match persis mockup, bukan preset `size` prop bawaan
-   komponen), `AvatarFallback` (inisial) diperbesar ke `text-2xl
-   font-bold` (24px, token terdekat dari target mockup 28px — tidak ada
-   token teks persis 28px). Perubahan lokal ke instance ini saja, tidak
-   mengubah komponen `avatar.tsx` global. Diverifikasi `tsc --noEmit`
-   pass, eslint pass, browser preview PASS (avatar terlihat proporsional
-   lebih besar, upload foto asli maupun fallback initials sama-sama
-   ter-scale).
-3. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] List
-   workspace (`/settings/account/workspaces`)** — alasan sama seperti
-   poin 1: seharusnya `Card` + `Table` shadcn tanpa header kolom (bukan
-   pola `.ws-pick-item` list yang didokumentasikan di Claude Design —
-   King Rezi memutuskan pola `Card`+`Table` sebagai standar baru untuk
-   list ini, menyimpang sengaja dari dokumentasi Claude Design saat
-   ini). **Fixed (revisi 2026-09-10):** `WorkspacesSettingsView.tsx`
-   diubah dari `Item`+`ItemGroup` (via `WorkspacePickableRow`) menjadi
-   `Table`/`TableBody`/`TableRow`/`TableCell` — versi final **TANPA**
-   `Card` (King Rezi minta lihat dulu hasilnya tanpa `Card`, dikonfirmasi
-   dipakai). Judul "Workspace Anda" (sebelumnya `CardTitle`) dipindah
-   jadi `TableCaption` shadcn dengan `className="caption-top"` di
-   `<Table>` (default shadcn `caption-bottom`) supaya tetap tampil di
-   atas tabel sebagai judul section, bukan footnote di bawah — restyle
-   manual (`font-heading text-base font-medium text-foreground`,
-   `TableCaption` defaultnya kecil+muted, didesain untuk catatan kaki).
-   Tabel dibungkus `<div className="rounded-xl border border-border
-   py-2">` manual (riwayat sama seperti poin 1: sempat `py-3` → dihapus
-   total → dikembalikan `py-2` karena hover baris pertama/terakhir
-   menembus sudut membulat `rounded-xl` tanpa padding sama sekali,
-   ditemukan King Rezi) — `Table` (`table.tsx`) tidak meneruskan
-   `className` ke div pembungkus `data-slot="table-container"`-nya
-   sendiri, jadi border/rounded "milik tabel" tidak bisa ditaruh di prop
-   `className` komponen `Table`. `TableCaption` diberi `className="mx-3
-   mt-0 mb-3"` (bukan `m-3` lagi — `mt-0` perlu eksplisit karena
-   `TableCaption` defaultnya `mt-4`, dan sekarang wrapper sudah
-   menyumbang `py-2` sendiri di atas caption, jadi margin-top caption
-   di-nolkan supaya tidak dobel jarak; `mb-3` tetap untuk jarak ke baris
-   pertama). Baris workspace aktif
-   non-interactive dengan `Badge` "Aktif"; baris lain klik penuh lewat
-   `onClick` di `TableRow` → membuka `AlertDialog` konfirmasi switch
-   (tidak berubah) → `switchWorkspaceAction`. **Sengaja tidak
-   memodifikasi `WorkspacePickableRow`** (komponen bersama dengan
-   `WorkspacePicker` onboarding, di luar scope KI-055) — baris di-inline
-   langsung di file ini supaya onboarding tidak ikut terdampak.
-   Diverifikasi `tsc --noEmit` pass, eslint pass, browser preview PASS
-   (judul "Workspace Anda" tampil di atas tabel edge-to-edge, dialog
-   konfirmasi switch workspace tetap berfungsi normal). **Pola final ini
-   (tanpa `Card`, border+rounded manual, `py-3`, `TableCaption` untuk
-   judul bila ada) jadi acuan poin 1 & 5.**
-4. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] Garis
-   bawah header table (`/settings/.../members`, dan berlaku untuk SEMUA
-   komponen `Table` di project ini)** — seharusnya ada **2 garis** di
-   bawah `TableHeader`/`thead`, bukan 1. Dicek dulu lewat MCP shadcn
-   (`view_items_in_registries @shadcn/table`) — komponen `Table` resmi
-   tidak punya varian border ganda, murni styling Tailwind custom.
-   **Fixed:** `apps/web/src/components/ui/table.tsx` — `TableHeader`
-   diubah dari `[&_tr]:border-b` menjadi `[&_tr]:border-b-4
-   [&_tr]:border-double` (border-style `double` butuh width minimal 3px
-   untuk merender 2 garis, bukan 1 tebal; `border-b-4` dipilih supaya
-   jarak antar garis cukup terlihat). Diubah di komponen bersama
-   (`table.tsx`), bukan per pemanggil, jadi otomatis berlaku untuk
-   instance `Table` manapun yang memakai `TableHeader` — saat ini hanya
-   `MembersTable.tsx` (satu-satunya pemakai nyata `<TableHeader>` di
-   project, dicek via grep); Drafts/Workspaces/Connected Accounts (poin
-   1/3/5) tidak memakai `TableHeader` sama sekali jadi tidak terdampak.
-   Diverifikasi `tsc --noEmit` pass, eslint pass, dan computed style
-   browser (`getComputedStyle`): `border-bottom-style: double`,
-   `border-bottom-width: 4px`, warna token `--border` — 2 garis
-   ter-render dengan benar.
-5. **[FIXED 2026-09-10, branch `fix/ki-055-design-sync-gaps`] Connected
-   Accounts (`/settings/connected-accounts`)** — alasan sama seperti
-   poin 1 & 3: seharusnya `Table` shadcn tanpa header kolom. **Fixed:**
-   `ConnectedAccountsList.tsx` — `Card`+`Item`/`ItemGroup` diganti
-   `Table`/`TableBody`/`TableRow`/`TableCell`, dibungkus `<div
-   className="rounded-xl border border-border py-2">` saat ada data
-   (riwayat sama seperti poin 1/3: sempat `py-3` → dihapus total →
-   dikembalikan `py-2` karena hover baris pertama/terakhir menembus
-   sudut membulat tanpa padding), `p-6` saat `Empty`, pola persis final
-   poin 1 & 3. Beda dari
-   Drafts/Workspaces: baris di sini **tidak** diklik penuh (tidak ada
-   `onClick` di `TableRow`) — badge status dan tombol Disconnect/
-   Reconnect tetap elemen interaktif tersendiri di dalam baris (2
-   `TableCell`: identitas akun, lalu badge+tombol aksi rata kanan).
-   Diverifikasi `tsc --noEmit` pass, eslint pass, browser preview PASS
-   (badge "Perlu Reconnect"/"Disconnected" dan tombol aksi tetap utuh).
-
-**Catatan penting:** poin 1, 3, 5 memutuskan pola `Table` tanpa `Card`
-(border+rounded+padding manual) dan tanpa header kolom sebagai standar
-baru untuk ketiga list ini — ini **mengubah pola yang saat ini
-terdokumentasi di Claude Design** (mis. `.ws-pick-item` untuk workspace
-picker, `.queue-row` untuk Drafts). Sesuai rule 16 (`AGENTS.md`)
-dan `.claude/skills/claude-design-scope-discipline/SKILL.md`, perubahan
-pola di Claude Design harus dilakukan dulu (lewat `DesignSync`/Neymar
-Product Designer) sebelum implementasi kode menyimpang permanen dari
-dokumentasi — bukan diam-diam dibiarkan divergen. Poin 4 (2 garis
-header table, sudah Fixed) murni styling shadcn di komponen bersama
-`table.tsx` (bukan perubahan pola Claude Design), jadi tidak kena
-catatan sinkronisasi dokumentasi yang sama seperti poin 1/3/5 di atas.
-Tidak memblokir M8. **KI-055 sekarang Resolved penuh (5/5 poin).**
-
-**Temuan susulan (2026-09-10, setelah status Resolved di atas) — sudah
-diperbaiki, tidak membuka ulang status Resolved:** King Rezi minta `Card`
-juga dihapus dari `MembersTable.tsx` (tabel desktop di `/settings/members`),
-mengikuti pola final poin 1/3/5 meski Members sendiri bukan salah satu dari
-5 poin asli KI-055 (Members cuma disinggung di poin 4 soal border header).
-**Fixed:** `Card`+`CardContent` dihapus, tabel desktop (`hidden md:block`)
-dibungkus `<div className="rounded-xl border border-border py-2">` —
-`py-2` (bukan tanpa padding sama sekali) langsung dipakai dari awal,
-menghindari isu hover-menembus-sudut yang sudah ditemukan di poin 1/3/5.
-Kartu mobile (`flex flex-col gap-3 md:hidden`, di bawah breakpoint `md`)
-**sengaja tidak** dibungkus wrapper border tambahan — tiap kartu per-anggota
-di situ sudah punya `rounded-xl border border-border p-3` sendiri sejak
-T-098.4/KI-042, wrapper luar akan jadi border ganda yang redundan. State
-kosong (`Empty`, belum ada anggota) dibungkus wrapper serupa dengan `p-6`,
-konsisten dengan pola poin 1/3/5. Diverifikasi `tsc --noEmit` pass, eslint
-pass, browser preview PASS di desktop (border+rounded+2-garis-header
-poin 4 masih utuh) dan mobile 375px (kartu per-anggota tidak dobel border).
-
-### KI-056 · `publish-history.html` menyimpang dari kode nyata `HistoryList.tsx` — Resolved
-
-| Field | Value |
-|-------|-------|
-| Status | Resolved (2026-09-10) |
-| Kategori | Design Gap |
-| Terkait | Claude Design `templates/publish-history.html`, kode nyata `HistoryList.tsx` |
-
-Ditemukan lewat audit retroaktif **T-103.4** (`tasks/v07-astryx-shadcn-migration.md`
-§ T-103) — persis pola drift yang sama dengan KI-055: KI-054 (2026-09-09)
-sudah mengubah `HistoryList.tsx` dari blok `Card` bersama menjadi tiap entri
-`Item variant="outline"` dalam `ItemGroup`, tapi Claude Design
-`templates/publish-history.html` tidak ikut disinkronkan saat itu — masih
-menampilkan pola `Card` lama (`<a class="card card-pad history-card">` per
-entri).
-
-**Fixed (2026-09-10):** markup diganti ke pola `Item`/`ItemGroup` — kelas
-baru `.history-item` (di dalam `.history-date-group`, sama seperti sebelumnya)
-membungkus tiap entri sebagai satu elemen klik-penuh (`<a>`, merepresentasikan
-`Item asChild` yang membungkus `Link` di kode nyata): waktu (kolom sempit) →
-ikon+handle akun → judul truncate + meta ("Dipublikasikan X"/pesan error) →
-`Badge` status di kanan. Radius `16px` (`rounded-2xl`, Tailwind langsung,
-BUKAN token `--radius-container` 12px yang dipakai `Card`) — sengaja tidak
-disamakan ke token itu karena kode nyata memang tidak memakainya untuk
-komponen ini. `readme.md` § Files ditambah bullet baru untuk
-`templates/publish-history.html` (sebelumnya file ini tidak disebut sama
-sekali di daftar Files).
-
-**Temuan lain dari audit T-103.4 yang TIDAK diperbaiki (bukan drift
-fungsional, hanya gap dokumentasi):** intro paragraph
-`components/notifications-panel.html` mengklaim body drawer "dibangun dari
-`Item`/`ItemGroup` rows" — tapi baik markup demo di file itu sendiri maupun
-kode nyata `NotificationBell.tsx` sama-sama pakai `div` Tailwind polos, bukan
-primitive `Item` literal. Karena mockup dan kode sudah konsisten satu sama
-lain (sama-sama div polos), ini bukan drift Design-vs-Code seperti KI-054/
-055/056 — hanya deskripsi tekstualnya yang tidak akurat. Dicatat di sini
-supaya tidak hilang, belum dijadwalkan perbaikannya.
 
 ### KI-058 · `ConnectedAccountsList.tsx` tidak menyembunyikan aksi Connect/Disconnect/Reconnect untuk role Creator
 
@@ -870,27 +510,6 @@ Gap ini sudah ada sejak **T-014** (Disconnect account), bukan regresi baru
 dari sesi T-015 — baru ketahuan sekarang karena QA menyentuh area ini lagi
 saat verifikasi Reconnect. King Rezi eksplisit memutuskan (`AskUserQuestion`)
 ini dicatat sebagai Known Issue baru, **tidak diperbaiki di sesi T-015**.
-
-### KI-059 · Verifikasi manual browser T-024 belum bisa dilakukan (`DATABASE_URL` tidak tersedia) — Resolved
-
-| Field | Value |
-|-------|-------|
-| Status | Resolved (2026-09-15) |
-| Kategori | Gap Verifikasi / Environment |
-| Terkait | T-024 (T-024.4, T-024.5) |
-
-Verifikasi manual browser end-to-end T-024 (upload → save draft → reopen
-edit → preview restore → validasi batas count → hapus permanen) sempat
-tercatat belum bisa dilakukan karena `DATABASE_URL` tidak terbaca di
-worktree — root cause ternyata dev server sempat start dari `cwd` repo
-`main` yang salah, bukan env var yang benar-benar hilang. Setelah
-dijalankan manual dengan `cwd` worktree yang benar (`staging-checkout-tasks-976e14`,
-2026-09-15), env terbaca normal dan seluruh 6 kriteria verifikasi **PASS**.
-T-024 (5/5 subtask) sekarang teruji penuh end-to-end. Detail:
-`COMPLETE_TASK.md` (2026-09-15), `tasks/v02-publishing-mvp.md` § T-024.
-
-**KI-060 baru ditemukan** selama sesi verifikasi ini (di luar scope T-024,
-bukan regresi) — lihat entri di bawah.
 
 ### KI-060 · Account Selector tidak ter-restore saat reopen edit draft
 
@@ -1133,11 +752,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
-* **KI-066 follow-up — 5 perbaikan visual pasca-migrasi sidebar, ditemukan King Rezi review manual (2026-09-23)** — sesi lanjutan setelah T-105 ditutup: (1) lebar sidebar 260px→288px (`18rem`, permintaan eksplisit King Rezi, menyimpang dari spec Claude Design 260px — belum disinkronkan balik); (2) avatar workspace switcher dibuat kotak-rounded 6px (Claude Design `.ws-avatar`, bukan lingkaran default `Avatar`, scoped hanya ke satu call-site, ditemukan `rounded-sm` biasa resolve ke 8.4px karena `SidebarHeader` override scope `--radius`, dipakai `rounded-[6px]` literal); (3) background main content `bg-sidebar`→`bg-background` match token `--color-background-body`; (4) `color-scheme` (light/dark) belum pernah di-set di `globals.css` — native scrollbar Channels & kontrol native lain tetap terang meski dark mode aktif, ditambahkan ke `:root`/`.dark`; (5) **ADR-111**: Badge status (`success`/`warning`/`destructive`) ternyata tinted 10-20% opacity padahal Claude Design mendefinisikan solid fill (UXP-04) — diperbaiki jadi solid + token `--destructive-foreground` yang ternyata belum pernah ada ditambahkan, plus bug badge "Active" Channels salah pakai `variant="secondary"`. Semua diverifikasi visual browser (`getComputedStyle`/`getBoundingClientRect`) sebelum push, lint/typecheck bersih. Detail: `decisions/ADR-111-badge-status-variant-solid-fill-destructive-foreground.md`, `tasks/v07-astryx-shadcn-migration.md` § T-105.
-* **T-105 Done (4/4 subtask) — KI-066 Resolved: Sidebar workspace/settings dimigrasi ke primitive `Sidebar` shadcn/ui (2026-09-23)** — King Rezi review Claude Design OK + keputusan mobile dijawab (pakai `Sheet` bawaan, **menggantikan** `MobileTopBar.tsx`/T-098.4), ditandai **SYNCED (T-105.1)**. Mark UI Engineer: `WorkspaceSideNav.tsx`/`SettingsSideNav.tsx` dikomposisi ulang dari primitive asli + wrapper `AppShell.tsx`, 5 keputusan (icon-rail collapse, trigger di header, Channels hidden, Settings dikecualikan, mobile Sheet) semua terimplementasi tanpa regresi. Ridwan: 0 pelanggaran hard rule, 1 temuan non-blocking (persistence cookie `sidebar_state` tidak terbaca ulang) — diperbaiki. Najwa QA: PASS penuh (golden path/regresi/mobile 768px/dark-light), `vitest` 453 pass/6 skip. Gate T-103.3 dijalankan manual di sesi utama (Najwa tidak punya `DesignSync` ter-load) — struktur kode match persis dengan Claude Design SYNCED. Branch+PR kode belum dibuat, menunggu review King Rezi. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-105.
-* **T-050 + T-051 + T-052 Done — Engagement domain skeleton + Comment sync JOB-03 + Manual refresh, v0.4 Engagement MVP TUNTAS 5/6 (2026-09-22)** — ditinjau formal atas permintaan King Rezi (implementasi sudah ada sejak commit `23f9923`/`ae0f49b` sesi sebelumnya). Ridwan Architecture Reviewer 3 putaran, diverifikasi independen: putaran 1 — 3 temuan (job JOB-03 tidak pernah ter-seed otomatis untuk `ConnectedAccount` baru → fix port `EngagementSyncSeederPort`; orkestrasi di `refreshInboxAction` → fix `RefreshInboxUseCase`; gap ADR Fake `fetchComments`/`replyToComment` → **ADR-110**); putaran 2 — eskalasi temuan baru (`disconnectAccount` tidak membatalkan chain self-reschedule JOB-03) → fix guard status via migration `20260922110000_t051_filter_active_status_engagement_sync_lookup`; putaran 3 — 0 temuan tersisa. QA Najwa PASS penuh + 1 bug regresi reply tidak tampil (dari T-053/T-054) ditemukan & diperbaiki. Verifikasi: `vitest` **453 pass/6 skip**. **⚠️ Migration BELUM di-deploy** (`bun run db:deploy` pending King Rezi) — lihat Blockers. **Release v0.4 Engagement MVP sekarang tuntas 5/6 task** (sisa T-055 Could Have, tidak memblokir). Detail: `tasks/v04-engagement-mvp.md` § T-050, § T-051, § T-052.
-* **T-053 + T-054 Done — Comments Inbox UI + Reply comment, v0.4 Engagement MVP (2026-09-22)** — inbox komentar lintas akun di `/engage` (dua panel thread-list 340px + detail, shadcn `Item`/`ItemGroup` — pola dikunci via `AskUserQuestion` karena Claude Design belum "SYNCED") dengan filter Akun/Platform/Status, Mark as Done, dan kemampuan membalas dari dalam aplikasi. `EngagementService.reply` baru (validasi content, guard `NotFoundError`, `IOutstandAdapter.replyToComment` Fake pola `schedulePost`/`publishNow`, persist `EngagementReply.outstandReplyId`) — **constructor `EngagementService` berubah**, wajib menerima `IOutstandAdapter`, seluruh call site diupdate. RBAC: Owner/Admin/Creator semua boleh reply. **KI-065 baru** (Open): kotak "Post asal" cuma label generik, tanpa judul/thumbnail post asli (gap data T-050, bukan bug). Rangkaian: Prabowo Feature Engineer → Mark UI Engineer → Elon Backend Engineer → Mark UI Engineer → Ridwan Architecture Reviewer (0 temuan) → Najwa QA Engineer (PASS penuh, gate T-103.3 match). Verifikasi: `typecheck`/`lint` bersih, `vitest` **448 pass/5 skip** (naik dari 426). Detail: `tasks/v04-engagement-mvp.md` § T-053, § T-054.
-* **T-045 Done (3/3 subtask) — Comparative Reports /analyze, v0.3 Analytics MVP TUNTAS 8/8 (2026-09-21)** — tab baru "Overview"/"Reports" di `/analyze` (`Tabs` shadcn asli, King Rezi minta dikerjakan langsung main agent, bukan Neymar Product Designer, karena rancangan belum ada di Claude Design). Tab Reports: kartu "Perbandingan Periode" (Total Posts/Total Reach/Engagement Rate, current vs periode sebelumnya + badge delta) dan "Perbandingan Akun/Platform" (tabel reach per akun + delta), tombol "Export CSV" client-side murni (tanpa Server Action/dependency baru). Method baru `PublishingService.getComparativeReport(workspaceId, period, userId)` + tipe `ComparativeMetric`/`AccountComparisonRow`/`ComparativeReport`, reuse `getPostPerformance` (extend parameter opsional `asOf?: Date`, backward compatible) dipanggil 2x untuk current vs "periode sebelumnya" — **rolling window sama panjang persis bersebelahan, BUKAN calendar-aligned** (konsisten cara `period` current sendiri dihitung). Badge delta pakai `Badge` `variant="success"`/`"destructive"` (KI-051 resolved, tanpa token warna baru) + ikon Hugeicons (adaptasi dari unicode ▲/▼ mockup statis). Rangkaian: Prabowo Feature Engineer → Mark UI Engineer → Ridwan Architecture Reviewer (0 temuan arsitektur; 1 catatan minor `now` dipanggil 2x independen di `getComparativeReport`, diperbaiki langsung main agent) → Najwa QA Engineer (PASS penuh; 1 temuan gate T-103.3 — caption per-metrik "vs X" hilang di implementasi awal, diperbaiki langsung main agent). Verifikasi: `typecheck`/`lint` bersih, `vitest` **426 pass/5 skip** (naik dari 422, +4 test case baru). **Release v0.3 Analytics MVP sekarang tuntas 8/8 task.** Detail: `tasks/v03-analytics-mvp.md` § T-045.
+* **Efisiensi subagent: pangkas duplikasi changelog + model lebih murah untuk Gibran (2026-09-23)** — `PROJECT_STATE.md` (-54%) dan `TASKS.md` (-88%) dipangkas dari narasi changelog historis yang menumpuk (duplikat `COMPLETE_TASK.md`), 6 KI `Resolved` dihapus dari daftar Known Issues, `gibran-project-manager.md` diberi `model: haiku`. Detail: `COMPLETE_TASK.md` (2026-09-23).
+* **KI-066 follow-up — 5 perbaikan visual sidebar pasca-migrasi, ditemukan review manual King Rezi (2026-09-23)** — lebar 18rem, avatar rounded 6px, bg main content, `color-scheme` dark mode, Badge status jadi solid fill (**ADR-111**). Detail: `decisions/ADR-111-badge-status-variant-solid-fill-destructive-foreground.md`, `tasks/v07-astryx-shadcn-migration.md` § T-105.
+* **T-105 Done (4/4 subtask) — Sidebar workspace/settings migrasi ke primitive `Sidebar` shadcn/ui, KI-066 Resolved (2026-09-23)** — mobile pakai `Sheet` (menggantikan `MobileTopBar.tsx`). Lolos Ridwan (1 temuan non-blocking, fixed) & Najwa QA (PASS penuh). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-105.
+* **T-050 + T-051 + T-052 Done — Engagement domain skeleton, Comment sync JOB-03, Manual refresh; v0.4 Engagement MVP tuntas 5/6 (2026-09-22)** — lolos review Ridwan (3 putaran, 0 temuan tersisa) & QA Najwa PASS penuh. **⚠️ Migration belum di-deploy** — lihat Blockers. Detail: `tasks/v04-engagement-mvp.md` § T-050–T-052.
+* **T-053 + T-054 Done — Comments Inbox UI + Reply comment, v0.4 Engagement MVP (2026-09-22)** — inbox komentar lintas akun di `/engage` + reply langsung dari aplikasi. **KI-065 baru** (Open): thumbnail post asli belum tampil di detail panel. Lolos Ridwan (0 temuan) & Najwa QA (PASS). Detail: `tasks/v04-engagement-mvp.md` § T-053–T-054.
 ---
 
 ## Recent Decisions (Ringkasan)
