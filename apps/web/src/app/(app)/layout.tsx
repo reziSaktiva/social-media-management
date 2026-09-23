@@ -47,36 +47,39 @@ export default async function Layout({
     workspaceRepository,
     new PublishingService(publishingRepository),
   );
-  // Defensif: proxy.ts (ADR-076) seharusnya sudah menjamin workspace context
-  // valid sebelum request mencapai sini, tapi tetap di-gate di sini kalau
-  // diakses tanpa melalui proxy (mis. route belum ke-cover matcher).
-  const workspace = await workspaceService.getWorkspaceById(workspaceId);
+  // Bell notifikasi sidebar footer (T-036.4) — data awal via Server
+  // Component (read), bukan Server Action (ADR-095, pola sama channels di
+  // bawah). Realtime insert baru ditangani client-side oleh `NotificationBell`
+  // (`useNotificationRealtime`, T-036.2).
+  const notificationService = new NotificationService(notificationRepository);
+
+  // 4 query di bawah hanya bergantung pada `workspaceId`/`session.user.id`
+  // yang sudah diketahui (bukan hasil satu sama lain) — dijalankan paralel
+  // lewat Promise.all, bukan sequential, supaya tidak menumpuk 4 round-trip
+  // DB berurutan di render path yang blocking ini (Ridwan review, KI-066).
+  const [workspace, channels, notifications, unreadCount] = await Promise.all([
+    // Defensif: proxy.ts (ADR-076) seharusnya sudah menjamin workspace
+    // context valid sebelum request mencapai sini, tapi tetap di-gate di
+    // sini kalau diakses tanpa melalui proxy (mis. route belum ke-cover
+    // matcher) — dicek setelah Promise.all resolve, bukan sebelum, supaya
+    // tidak menghalangi 3 query lain berjalan paralel.
+    workspaceService.getWorkspaceById(workspaceId),
+    // Sidebar "Channels" — service mengembalikan SidebarChannelAccount[]
+    // siap-render (T-012, ADR-058), termasuk scheduledCount real (T-012.2)
+    // dan urutan personal tersimpan per user (T-012.1).
+    workspaceService.listSidebarChannels(
+      workspaceId,
+      asUserId(session.user.id),
+    ),
+    notificationService.list(asUserId(session.user.id)),
+    // Query `count` terpisah dari `list` (yang dibatasi 50 baris) supaya
+    // badge unread di bell tidak under-count begitu user punya >50
+    // notifikasi belum dibaca.
+    notificationService.countUnread(asUserId(session.user.id)),
+  ]);
   if (!workspace) {
     redirect("/onboarding");
   }
-
-  // Sidebar "Channels" — service mengembalikan SidebarChannelAccount[]
-  // siap-render (T-012, ADR-058), termasuk scheduledCount real (T-012.2)
-  // dan urutan personal tersimpan per user (T-012.1).
-  const channels = await workspaceService.listSidebarChannels(
-    workspaceId,
-    asUserId(session.user.id),
-  );
-
-  // Bell notifikasi sidebar footer (T-036.4) — data awal via Server
-  // Component (read), bukan Server Action (ADR-095, pola sama channels di
-  // atas). Realtime insert baru ditangani client-side oleh `NotificationBell`
-  // (`useNotificationRealtime`, T-036.2).
-  const notificationService = new NotificationService(notificationRepository);
-  const notifications = await notificationService.list(
-    asUserId(session.user.id),
-  );
-  // Query `count` terpisah dari `list` (yang dibatasi 50 baris) supaya badge
-  // unread di bell tidak under-count begitu user punya >50 notifikasi belum
-  // dibaca.
-  const unreadCount = await notificationService.countUnread(
-    asUserId(session.user.id),
-  );
 
   // Provider + modal duduk di level workspace (bukan lagi di `publish/`)
   // supaya CTA "+ New Post" di sidebar bisa membuka Draft Editor dari section

@@ -52,7 +52,17 @@ export function AppShell({
   return (
     <SidebarProvider
       open={isSettings ? true : open}
-      onOpenChange={setOpen}
+      // T-105.3 follow-up (KI-066): `isSettings` cuma memaksa nilai *visual*
+      // `open`, tapi `SidebarProvider`'s keyboard shortcut (Cmd/Ctrl+B) tetap
+      // aktif tanpa peduli route dan membaca `open` yang sedang dipaksa true
+      // itu untuk toggle — kalau `onOpenChange` tetap diteruskan apa adanya,
+      // menekan shortcut di /settings diam-diam menimpa preferensi
+      // collapse/expand tersimpan user di workspace routes. Diabaikan
+      // sepenuhnya selama `isSettings` supaya state lokal tidak ikut korup.
+      onOpenChange={(value) => {
+        if (isSettings) return;
+        setOpen(value);
+      }}
       className={className}
     >
       {children}

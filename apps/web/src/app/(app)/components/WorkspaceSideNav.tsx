@@ -46,7 +46,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
-  useSidebar,
+  useCloseMobileSidebar,
 } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -117,10 +117,7 @@ export function WorkspaceSideNav({
   // decision #5 T-105.1) — `WorkspaceSideNav` sekarang HANYA dirender sekali
   // (bukan lagi dua instance terpisah untuk desktop vs mobile Sheet), jadi
   // "tutup drawer setelah klik nav" dipanggil langsung dari sini.
-  const { isMobile, setOpenMobile } = useSidebar();
-  function closeMobileSidebar() {
-    if (isMobile) setOpenMobile(false);
-  }
+  const closeMobileSidebar = useCloseMobileSidebar();
 
   // T-016.5 / ADR-049 (NP-D10): Logout adalah Tier 2 Safety Check — wajib
   // dialog konfirmasi sebelum eksekusi, karena berpotensi menginterupsi
@@ -169,19 +166,11 @@ export function WorkspaceSideNav({
                 lingkaran. Avatar lain (channel row, footer account) TETAP
                 `rounded-full` sesuai `.channel-avatar`/`.avatar-round` di
                 Claude Design, jadi override di sini saja (call-site), bukan
-                di `avatar.tsx` default.
-                Dipakai `rounded-[6px]` (bukan utility `rounded-sm` biasa):
-                `SidebarHeader` (components/ui/sidebar.tsx) meng-override
-                custom property `--radius` jadi `var(--radius-xl)` di scope
-                ini (untuk skala radius button/input header lain) — kalau
-                pakai `rounded-sm` di sini, `calc(var(--radius)*0.6)` ikut
-                terhitung dari `--radius-xl` (14px), jadi 8.4px, bukan 6px
-                yang dikunci Claude Design. Verified via computed style
-                browser, bukan tebakan. */}
-            {/* eslint-disable-next-line tailwindcss/no-arbitrary-value -- lihat komentar di atas, token `rounded-sm` tidak resolve ke 6px di scope ini karena --radius di-override SidebarHeader. */}
-            <Avatar size="sm" className="rounded-[6px] after:rounded-[6px]">
-              {/* eslint-disable-next-line tailwindcss/no-arbitrary-value -- sama seperti di atas */}
-              <AvatarFallback className="rounded-[6px]">
+                di `avatar.tsx` default. `rounded-sm` di sini resolve ke 6px
+                (`calc(var(--radius)*0.6)`, lihat globals.css), match persis
+                nilai yang dikunci Claude Design. */}
+            <Avatar size="sm" className="rounded-sm after:rounded-sm">
+              <AvatarFallback className="rounded-sm">
                 {getInitials(workspaceName)}
               </AvatarFallback>
             </Avatar>
@@ -195,8 +184,12 @@ export function WorkspaceSideNav({
               (deviasi disengaja dari pola resmi shadcn `SidebarInset >
               header`). Tidak dirender `SidebarRail` (strip toggle tambahan
               di tepi sidebar) supaya tidak ada affordance toggle kedua yang
-              belum dikunci King Rezi. */}
-          <SidebarTrigger className="shrink-0" />
+              belum dikunci King Rezi. Disembunyikan di mobile (`hidden
+              md:flex`) — di viewport itu header ini dirender SEBAGAI konten
+              drawer yang sudah terbuka, jadi trigger yang sama akan langsung
+              menutup drawer yang baru saja dibuka lewat hamburger
+              `MobileTopBar`. */}
+          <SidebarTrigger className="hidden shrink-0 md:flex" />
         </div>
 
         {/* ADR-053: CTA pinned di bawah Workspace Selector, di atas nav items. */}

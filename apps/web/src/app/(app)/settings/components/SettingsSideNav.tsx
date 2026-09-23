@@ -15,7 +15,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
+  useCloseMobileSidebar,
 } from "@/components/ui/sidebar";
 
 // Sidebar Settings tunggal, pola Buffer (ADR-077, T-039.5) — dirender lewat
@@ -72,10 +72,7 @@ export function SettingsSideNav() {
   // T-105.1) — tutup drawer setelah klik nav item, sama seperti
   // `WorkspaceSideNav`. Tidak perlu prop `onNavigate` lagi (dulu diteruskan
   // dari `MobileTopBar` yang merender Sheet-nya sendiri, T-098.4).
-  const { isMobile, setOpenMobile } = useSidebar();
-  function closeMobileSidebar() {
-    if (isMobile) setOpenMobile(false);
-  }
+  const closeMobileSidebar = useCloseMobileSidebar();
 
   return (
     // Keputusan #4 (T-105.0/T-105.1, dikunci King Rezi): SettingsSideNav
