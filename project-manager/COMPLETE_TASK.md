@@ -8,6 +8,76 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-23 — KI-066 follow-up: 5 perbaikan visual pasca-migrasi sidebar (lebar, avatar, bg, color-scheme, Badge solid ADR-111)
+
+King Rezi melakukan review manual di browser setelah T-105 ditutup dan
+melaporkan beberapa mismatch visual, ditangani satu-satu sepanjang sesi
+lanjutan yang sama:
+
+1. **Lebar sidebar** — awalnya diperbaiki ke 260px (`16.25rem`) match
+   Claude Design (`.sidebar { width: 260px }`), diverifikasi
+   `getBoundingClientRect()`. King Rezi kemudian minta eksplisit diubah
+   jadi **18rem (288px)** — dieksekusi langsung (instruksi eksplisit,
+   bukan tebakan), diverifikasi ulang 288px persis. **Catatan: nilai ini
+   sekarang menyimpang dari spec Claude Design (260px)** — belum
+   disinkronkan balik, King Rezi diberi tahu dan belum menjawab.
+2. **Avatar workspace switcher** — Claude Design (`.ws-avatar`) pakai
+   `border-radius: var(--radius-inner)` (6px, kotak-rounded), kode
+   sebelumnya `Avatar`/`AvatarFallback` default lingkaran. Diperbaiki
+   scoped HANYA di `WorkspaceSideNav.tsx` (avatar Channels & footer tetap
+   lingkaran, sesuai mockup). Temuan teknis: `rounded-sm` Tailwind biasa
+   resolve ke 8.4px (bukan 6px) di lokasi ini karena `SidebarHeader`
+   shadcn meng-override scope `--radius` untuk kontrol lain di header —
+   dipakai `rounded-[6px]` literal + komentar penjelasan, diverifikasi
+   `getComputedStyle` persis 6px.
+3. **Background main content** — `bg-sidebar` (putih) diganti
+   `bg-background` (match `--color-background-body` Claude Design, hex
+   `#f3f3f5` diverifikasi sama persis). Ada riwayat lama ADR-084
+   (swap warna, era Astryx) yang di-revert ADR-086 — kedua ADR itu dari
+   sebelum migrasi shadcn (ADR-097/T-102), token/selector-nya sudah tidak
+   ada lagi; instruksi eksplisit King Rezi + Claude Design yang sudah
+   SYNCED sekarang adalah acuan yang berlaku, bukan riwayat itu.
+   `rounded-tl-3xl` dicek visual tetap kontras bagus, dipertahankan
+   (tidak dihapus).
+4. **`color-scheme` tidak pernah di-set** — investigasi awal soal
+   "warna scrollbar Channels" ternyata BUKAN soal warna scrollbar itu
+   sendiri (Claude Design memang tidak mendefinisikan kustomisasi warna
+   scrollbar apa pun) — akar masalahnya `apps/web/src/app/globals.css`
+   tidak pernah men-set properti CSS `color-scheme`, jadi browser
+   me-render seluruh UI native (scrollbar, form control) pakai tema
+   terang meski `.dark` class aktif. Claude Design sudah punya
+   `:root[data-theme="dark"] { color-scheme: dark }` — ditambahkan
+   padanannya (`color-scheme: light` di `:root`, `color-scheme: dark` di
+   `.dark`), diverifikasi `getComputedStyle(document.documentElement)`
+   toggle benar mengikuti tema aktif.
+5. **ADR-111 — Badge status solid fill.** King Rezi minta seluruh warna
+   Badge disamakan dengan Claude Design, bukan cuma Channels. Investigasi
+   menemukan bug di level komponen bersama: `badge.tsx` men-styling
+   variant `success`/`warning`/`destructive` sebagai tinted 10-20% opacity,
+   padahal Claude Design (`components/status-chips.html`, `readme.md`
+   UXP-04: "Keep failed/disconnected states visually loud — must never
+   blend into the neutral ground") mendefinisikan SEMUA status chip
+   sebagai **solid fill**. Nilai token warna sudah benar sejak ADR-098 —
+   hanya cara render-nya yang salah. Diperbaiki (Mark UI Engineer): 3
+   variant `badge.tsx` jadi solid, token `--destructive-foreground` baru
+   ditambahkan (ternyata belum pernah ada sama sekali di kode — Claude
+   Design punya padanannya, `--color-on-error`, didokumentasikan sebagai
+   "derived" dari pola success/warning), dan bug terpisah — badge "Active"
+   di `ChannelsSection.tsx` salah pakai `variant="secondary"` (seharusnya
+   `success`) — ikut diperbaiki. Dampak ripple disengaja ke seluruh
+   pemakaian Badge (Draft Editor, Calendar, History, Connected Accounts,
+   Members "Pending", Analyze delta) — diverifikasi visual browser
+   light+dark di semua tempat itu, tidak ada regresi kontras. **ADR-111
+   baru dicatat** (mengamandemen ADR-098), status ADR-098 ditandai
+   "Amended by ADR-111" di index `DECISIONS.md` + body-nya sendiri (bukan
+   diedit, cuma kolom Status, sesuai append-only rule).
+
+Semua perbaikan di atas diverifikasi visual browser (`getComputedStyle`/
+`getBoundingClientRect`, bukan cuma ditulis lalu diasumsikan benar) dan
+`lint`/`typecheck` bersih sebelum push. Detail keputusan token/Badge:
+`decisions/ADR-111-badge-status-variant-solid-fill-destructive-foreground.md`.
+Progress kode: `tasks/v07-astryx-shadcn-migration.md` § T-105.
+
 ## 2026-09-23 — KI-066/T-105 Sidebar shadcn — TUNTAS 4/4 subtask: implementasi kode + review Ridwan + QA Najwa, KI-066 Resolved
 
 Lanjutan langsung entri T-105.1 di bawah (sesi sama). Setelah gate rule 17
