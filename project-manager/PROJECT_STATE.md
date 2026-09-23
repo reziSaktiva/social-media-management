@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.89     |
+| Version      | 1.0.90     |
 | Status       | Active     |
 | Last Updated | 2026-09-23 |
 
@@ -37,13 +37,6 @@
 
 M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
 
-* **Prioritas utama saat ini (2026-09-02):** migrasi UI component system
-  dari Astryx ke shadcn/ui (**ADR-097**, rilis **v0.7**,
-  `tasks/v07-astryx-shadcn-migration.md`, T-095–T-102) — permintaan
-  eksplisit King Rezi, dikerjakan **sebelum** T-025/T-036. Strategi
-  incremental per route-segment, Astryx & shadcn coexist sementara.
-  T-095/T-096/T-097/T-098/T-099/T-100/T-101/**T-102** sudah `✅ Done` — rilis
-  **v0.7 tuntas 100%** (8/8 task, 2026-09-04).
 * **AI Context layer** (`context/`) sudah di-scaffold (opsi A) — indeks + aturan operasional agent; bukan duplikasi baseline.
 * `AGENTS.md` di root sudah ada; skill resmi vendor yang relevan (Prisma,
   Better Auth, Vercel, Supabase) sudah terpasang di `.claude/skills/` —
@@ -52,25 +45,12 @@ M7 Repository & Bootstrap **selesai**. M8 Development **berjalan**.
   aset agent + dua pasang file kembar yang wajib dijaga sinkron (config MCP,
   proteksi baca secret) didokumentasikan di section "Kompatibilitas tool"
   pada `AGENTS.md` (ADR-064).
-* Alignment ADR-040 pada dokumentasi baseline dan schema/migration sudah
-  selesai. Implementasi runtime Outstand tetap bagian M8 dan belum dinyatakan
-  selesai (T-025 → T-026 → T-027).
-* Alignment dokumentasi ADR-041 (2026-07-23) — **sekarang superseded oleh
-  ADR-097 (2026-09-01)**, lihat bullet prioritas utama di atas. Riwayat:
-  Engineering Baseline, Project Overview, AGENTS, dan AI Context sempat
-  disinkronkan memakai Astryx permanen (theme Stone sejak ADR-087),
-  Tailwind layout-only, wrapper selektif, exact pin Beta — seluruh dokumen
-  itu sudah disinkronkan ulang ke shadcn/ui (ADR-097, T-095.7). Instalasi
-  dan smoke test Next.js 16 (2026-07-23) tetap valid, tidak terpengaruh
-  perubahan ini.
-* Fokus M8 saat ini: Auth Flows, Workspace Onboarding, App Shell, Draft
-  Editor (modal, default Standard per ADR-065; Fullscreen via toggle,
-  ADR-052), persistensi nyata "Save as Draft"/"Edit Draft", Drafts List
-  data asli, dan persistensi nyata "Schedule" via Fake OutstandAdapter
-  (ADR-059) sudah selesai; lanjut ke integrasi Outstand runtime asli
-  (ADR-040) begitu kredensial tersedia.
+* Integrasi Outstand runtime asli (ADR-040) tetap bagian M8, belum selesai —
+  menunggu kredensial (T-025, lihat **Blockers** di bawah). Migrasi UI
+  Astryx→shadcn/ui (ADR-097, rilis v0.7) sudah tuntas 100% — riwayat lengkap
+  di `COMPLETE_TASK.md`, bukan di sini.
 * **Perencanaan task** kini berjenjang per release di [`TASKS.md`](TASKS.md) +
-  `tasks/` (ADR-062), menggantikan flat list `Next Tasks` yang lama.
+  `tasks/` (ADR-062).
 
 ---
 
@@ -517,10 +497,12 @@ ini dicatat sebagai Known Issue baru, **tidak diperbaiki di sesi T-015**.
 |-------|-------|
 | Status | Open |
 | Kategori | Bug — Draft Editor |
-| Terkait | Draft Editor (`Modal.tsx`), ditemukan saat verifikasi KI-059 |
+| Terkait | Draft Editor (`Modal.tsx`), ditemukan saat verifikasi manual browser T-024 (media upload) |
 
-Ditemukan saat verifikasi manual end-to-end KI-059 (2026-09-15, murni sesi
-verifikasi, bukan implementasi): saat draft dibuka ulang untuk diedit,
+Ditemukan saat verifikasi manual end-to-end T-024 (2026-09-15, murni sesi
+verifikasi, bukan implementasi — riwayat lengkap verifikasi ini dulu
+tercatat sebagai KI-059, sudah Resolved dan diarsipkan di
+`COMPLETE_TASK.md`): saat draft dibuka ulang untuk diedit,
 **seluruh checkbox Account Selector kembali unchecked** meski draft
 tersebut punya target akun tersimpan — caption dan media ter-restore
 dengan benar, akun tidak. Root cause: efek `getDraftAction` di `Modal.tsx`
@@ -530,7 +512,7 @@ yang dimuat, tidak pernah men-set `selectedAccountIds`/`formatByAccount`.
 Gap ini **bukan regresi T-024** — T-024 hanya menyentuh state `mediaItems`,
 tidak menyentuh logic restore Account Selector, dan gap ini kemungkinan
 sudah ada sejak awal implementasi Draft Editor. Dicatat sebagai Known Issue
-baru, belum diperbaiki (di luar scope permintaan verifikasi KI-059).
+baru, belum diperbaiki (di luar scope permintaan verifikasi T-024 di atas).
 
 ### KI-061 · Tidak ada warning UI saat media over-limit setelah ganti target akun/format
 
@@ -598,109 +580,6 @@ sudah ada sejak sebelum T-027, bukan regresi baru). UI sudah punya fallback
 tapi data historis `publishedAt` di DB tetap kosong untuk seluruh post yang
 sudah tayang. Non-blocking, gap serupa pola **KI-049**
 (`failedAt`/`failureReason` juga tidak pernah ditulis). Tidak memblokir M8.
-
-### KI-066 · Sidebar workspace/settings belum migrasi ke primitive `Sidebar` shadcn/ui
-
-| Field | Value |
-|-------|-------|
-| Status | **Resolved** (2026-09-23) |
-| Kategori | Tech-Debt / UI |
-| Terkait | ADR-097, T-102, T-105 |
-
-Ditemukan King Rezi saat diskusi (2026-09-22): `AppSideNav` (dan turunannya
-`WorkspaceSideNav`/`SettingsSideNav`, `apps/web/src/app/(app)/components/AppSideNav.tsx`)
-BUKAN dibangun dari primitive `Sidebar` shadcn/ui (`SidebarProvider`/
-`Sidebar`/`SidebarMenu`, dst.) — komponen ini belum pernah di-install ke
-`apps/web/src/components/ui/`. Struktur luar sidebar masih `<nav>` custom
-dengan Tailwind manual (`WorkspaceSideNav.tsx:112`), walau elemen di
-dalamnya (`AlertDialog`, `Avatar`, `Button`, `DropdownMenu`, `Tooltip`,
-`Spinner`, `Text`) sudah shadcn/ui.
-
-T-102 (migrasi Astryx → shadcn/ui, ADR-097) ditutup `✅ Done` tanpa mencakup
-migrasi struktur sidebar ke primitive resmi `Sidebar` — scope T-102 waktu
-itu adalah mengganti komponen Astryx, bukan mengaudit apakah setiap area
-layout sudah memakai primitive shadcn yang paling sesuai. Sidebar custom
-saat ini berfungsi penuh (tidak ada bug), jadi ini gap konsistensi/tech-debt,
-bukan bug fungsional. Tidak memblokir M8.
-
-**Update (2026-09-22):** King Rezi minta dibuatkan branch+PR. Dicek dulu ke
-Claude Design (rule 17) — mockup lama justru mendokumentasikan sidebar
-sebagai hand-built **disengaja** (KI-047 Phase 2b), bertentangan dengan
-premis KI-066. King Rezi memilih update Claude Design dulu (bukan batalkan
-KI-066 atau langsung kode). Dijadikan task formal **T-105**
-(`tasks/v07-astryx-shadcn-migration.md`). **T-105.0 selesai** — mockup
-`components/navigation.html` + `readme.md` § Components diupdate ke
-komposisi primitive `Sidebar` shadcn (`SidebarProvider`/`Sidebar`/
-`SidebarHeader`/`SidebarContent`/`SidebarGroup`/`SidebarMenu`/
-`SidebarMenuItem`/`SidebarMenuButton`/`SidebarFooter`/`SidebarRail`), scope
-dijaga ketat (visual/behavior byte-identik, cuma prosa + HTML comment
-struktural yang berubah, diverifikasi diff + remote check 2x sebelum push).
-**Belum** ditandai "SYNCED" — menunggu review King Rezi. **Keputusan
-terbuka yang perlu dijawab King Rezi sebelum kode ditulis:** mobile
-behavior — pakai `Sheet` bawaan `Sidebar` shadcn (ganti `MobileTopBar.tsx`
-custom T-098.4) atau `Sidebar` cuma untuk struktur desktop, mobile tetap
-pola T-098.4? Percobaan delegasi ke Neymar Product Designer (subagent)
-gagal karena `DesignSync` tidak ter-load di sesi subagent (kejadian ke-6,
-lihat `.claude/agents/README.md`) — dikerjakan langsung di sesi utama.
-
-**Susulan sesi yang sama:** King Rezi minta sidebar bisa collapse/expand
-seperti `Sidebar` shadcn asli. Dicek API sungguhan via MCP shadcn
-(`sidebar-07`) dulu sebelum mockup — 4 keputusan dikunci King Rezi via
-`AskUserQuestion`: mode **icon-only rail** (`collapsible="icon"`), trigger
-di **header sidebar** dekat workspace switcher (bukan header baru di main
-content), Channels **disembunyikan** saat collapsed, dan **hanya sidebar
-workspace** yang collapsible (`.settings-sidebar` dikecualikan). Mockup
-`components/navigation.html` diupdate (5 nav item dapat ikon SVG baru —
-**placeholder, bukan `hugeicons` asli**, perlu diverifikasi saat kode) +
-CSS baru `styles.css` (`.sidebar[data-collapsed="true"]`, lebar 48px) +
-toggle interaktif. **Diverifikasi visual nyata** lewat browser lokal
-(screenshot expanded & collapsed, toggle diklik bolak-balik) sebelum push
-— bukan cuma ditulis lalu diasumsikan benar. Detail lengkap:
-`tasks/v07-astryx-shadcn-migration.md` § T-105.0.
-
-**Susulan kedua (2026-09-22):** King Rezi minta rollout fitur ini ke App
-Prototype + seluruh screen, bukan cuma component spec. Pola diterapkan ke
-8 file `templates/*.html` yang punya sidebar workspace (Settings tetap
-dikecualikan, sesuai keputusan sebelumnya) + wiring baru di
-`templates/app-prototype/AppPrototype.dc.html` (method
-`toggleSidebarCollapse`, case baru di `route()`, mengikuti pola
-`toggleTheme` yang sudah terbukti). Verifikasi konsistensi internal
-per file **menemukan & memperbaiki 2 typo transkripsi nyata** di
-`analyze-dashboard.html` sebelum sempat ter-push. **Keterbatasan:** App
-Prototype pakai format `<x-dc>` yang cuma jalan sungguhan di dalam Claude
-Design — wiring-nya tidak bisa di-klik-test langsung dari sesi ini,
-diverifikasi lewat diff + kesamaan pola `toggleTheme`. King Rezi perlu
-cek langsung di Claude Design untuk konfirmasi akhir semuanya jalan.
-
-**Update (2026-09-23) — T-105.1 ✅ Done:** King Rezi review dan konfirmasi
-OK (pola primitive `Sidebar` + collapse/expand, tidak ada revisi). Keputusan
-mobile behavior dijawab: pakai `Sheet` bawaan `Sidebar` shadcn, **menggantikan**
-`MobileTopBar.tsx`/`Sheet` custom (T-098.4). `components/navigation.html` +
-`readme.md` § Components ditandai **SYNCED (T-105.1, 2026-09-23)** di Claude
-Design. Gate rule 17 terpenuhi — lanjut ke **T-105.2** (audit gap kode) dan
-**T-105.3** (implementasi). Detail lengkap: `tasks/v07-astryx-shadcn-migration.md`
-§ T-105.1.
-
-**Update (2026-09-23) — KI-066 Resolved, T-105 seluruh 4/4 subtask Done:**
-T-105.2 (audit) + T-105.3 (implementasi) dikerjakan Mark UI Engineer —
-`WorkspaceSideNav.tsx`/`SettingsSideNav.tsx` dikomposisi ulang dari
-primitive `Sidebar` shadcn asli, wrapper baru `AppShell.tsx` mengontrol
-`SidebarProvider`, 5 keputusan T-105.1 seluruhnya diimplementasikan tanpa
-regresi fungsional. Review Ridwan Architecture Reviewer: 0 pelanggaran
-hard rule, 1 temuan non-blocking (cookie `sidebar_state` tidak pernah
-dibaca ulang, collapse/expand reset tiap reload) — diperbaiki sebelum QA
-(baca cookie di `(app)/layout.tsx`, teruskan sebagai `defaultOpen`).
-QA Najwa QA Engineer: PASS penuh (golden path, regresi, mobile 768px,
-light/dark), `vitest` 453 pass/6 skip. Gate T-103.3 tidak bisa dijalankan
-Najwa (`DesignSync` tidak ter-load di sesi subagent, limitasi berulang
-sejak T-098.4) — dijalankan manual di sesi utama: struktur kode dibanding
-langsung terhadap `components/navigation.html`/`readme.md` § Components
-yang SYNCED, match persis. Detail lengkap: `tasks/v07-astryx-shadcn-migration.md`
-§ T-105.2-T-105.4.
-
-Branch+PR kode **belum** dibuat — kode `apps/web` sudah selesai di sesi
-ini, menunggu King Rezi review sebelum branch+PR (rule 18 AGENTS.md, HEAD
-sedang di `fix/ki-066-sidebar-shadcn-collapse`, bukan `main`/`staging`).
 
 ---
 

@@ -8,7 +8,7 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
-## 2026-09-23 — Efisiensi subagent: pangkas duplikasi changelog di PROJECT_STATE.md/TASKS.md + model lebih murah untuk Gibran
+## 2026-09-23 — Efisiensi subagent: pangkas duplikasi changelog di PROJECT_STATE.md/TASKS.md
 
 King Rezi melaporkan sering kena 5-hours limit Claude, 85% pemakaian dari
 subagent, dan tip langsung dari Claude Code: "consider a cheaper model for
@@ -45,14 +45,23 @@ sudah ada di `COMPLETE_TASK.md`/`tasks/vXX-*.md`.
    Sekarang) dihapus. Footnote ID-borrow (¹) dan catatan sekuensial
    v0.1/v0.2 dipertahankan karena masih dirujuk aktif oleh tabel di
    atasnya.
-3. **`.claude/agents/gibran-project-manager.md`**: ditambah `model: haiku`
-   di frontmatter — perannya murni bookkeeping dokumentasi mengikuti
-   aturan tertulis (update status, append entry), dinilai cukup untuk
-   model lebih murah. 6 subagent lain (termasuk Ridwan/Najwa yang sudah
-   `effort: high` sebagai quality gate) sengaja **tidak** diubah — kerja
-   implementasi/review/design butuh reasoning penuh, menurunkan modelnya
-   berisiko menaikkan bug/drift yang justru mahal untuk diperbaiki
-   belakangan.
+3. **`.claude/agents/gibran-project-manager.md`**: King Rezi eksplisit
+   menjawab "Ya, turunkan sekarang" saat ditanya (via `AskUserQuestion`)
+   apakah boleh menurunkan model salah satu subagent, dengan Gibran
+   dicontohkan sebagai kandidat — sempat ditambah `model: haiku` di
+   frontmatter. **Direvert di code review PR #132** (bukan King Rezi
+   berubah pikiran): Gibran dokumen sendiri sudah punya riwayat salah
+   hitung nyata pada tugas cross-file arithmetic yang sama (klaim "142
+   subtask" vs aktual 138, lihat aturan governance di file itu) — model
+   lebih lemah untuk pekerjaan itu berisiko menambah sesi perbaikan yang
+   lebih mahal daripada penghematannya. Sebagai gantinya: (a) 5 subagent
+   lain (termasuk Ridwan/Najwa yang sudah `effort: high` sebagai quality
+   gate) tetap **tidak** diubah, (b) guardrail ukuran dokumen (KI Resolved
+   dihapus & Fokus Sekarang diprune saat itu juga, bukan nunggu audit
+   berikutnya) ditulis eksplisit di `gibran-project-manager.md` sendiri
+   supaya bloat yang sama tidak terulang, dan (c) konvensi frontmatter
+   `effort`/`model` per subagent didokumentasikan di
+   `.claude/agents/README.md` (sebelumnya tidak tercatat di manapun).
 
 **Tidak diubah:** isi/status task, ID, hitungan indeks, Known Issues yang
 masih `Open`, dan seluruh 7 file `.claude/agents/*.md` (governance rule di
@@ -64,6 +73,26 @@ King Rezi, bukan diperbaiki sendiri):** **T-037** (Perkaya aturan coding)
 disebut sebagai fokus aktif `🟡 In Progress` di Snapshot `PROJECT_STATE.md`
 tapi tidak pernah muncul di tabel "Fokus sekarang" `TASKS.md` — drift
 lama, bukan akibat pemangkasan sesi ini.
+
+**Update (2026-09-23, fix hasil code review PR #132, 10 temuan):** selain
+revert `model: haiku` di atas — **KI-066** (Resolved, sudah diarsipkan
+penuh di entri di atas) dihapus dari `PROJECT_STATE.md` karena memenuhi
+kriteria hapus yang sama persis dengan 6 KI lain sesi ini, tapi sempat
+terlewat (jadi entri terpanjang yang tersisa, ~105 baris). Section
+"Current Focus" `PROJECT_STATE.md` (39 baris narasi migrasi Astryx→shadcn
+yang sudah selesai dan riwayat ADR-041→ADR-097) ikut dipangkas ke fakta
+yang masih relevan — pola bloat yang sama, sempat terlewat sesi awal.
+Referensi menggantung ke KI-059/KI-054/KI-055 yang sudah dihapus (di
+KI-060 `PROJECT_STATE.md` dan field **Baca dulu** T-103
+`tasks/v07-astryx-shadcn-migration.md`) diperbaiki jadi deskripsi
+mandiri/pointer ke `COMPLETE_TASK.md`, bukan ID kosong. Cap "Completed
+(Ringkasan)" direkonsiliasi — `PROJECT_RULES.md` sebelumnya menulis ≤10
+untuk section ini padahal `AGENTS.md` sudah menegakkan 5, sekarang
+keduanya konsisten (≤10 tetap berlaku khusus untuk "Recent Decisions
+(Ringkasan)"). Tabel "Fokus sekarang" `TASKS.md` yang sempat tersisa
+satu baris (`T-025` saja, sisanya sudah pindah ke "Selesai baru-baru
+ini") disederhanakan jadi satu kalimat "Fokus aktif" — tabel untuk satu
+baris cuma menambah overhead markdown tanpa manfaat.
 
 ---
 

@@ -88,9 +88,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 **Ini satu-satunya daftar fokus.** `PROJECT_STATE.md` hanya menyalin ID-nya di Snapshot dan menunjuk ke sini — jangan menulis daftar fokus versi ketiga di manapun. Kalau daftar ini berubah, perbarui juga baris `Top Next Tasks` di Snapshot `PROJECT_STATE.md` (hanya ID + judul singkat).
 
-| ID        | Task                              | Status | Catatan                                                                                                   |
-| --------- | ---------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------- |
-| **T-025** | Real OutstandAdapter               | ⏳     | Rantai blocker terbesar — butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli **dan** kode Real OutstandAdapter (KI-003, lihat `PROJECT_STATE.md` § Blockers) |
+**Fokus aktif:** **T-025** Real OutstandAdapter (⏳ Not Started) — rantai blocker terbesar, butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli **dan** kode Real OutstandAdapter (KI-003, lihat `PROJECT_STATE.md` § Blockers).
 
 **Selesai baru-baru ini** (detail lengkap per task: `tasks/vXX-*.md`; riwayat penuh: `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi): T-050, T-051, T-052, T-053, T-054 (v0.4 Engagement MVP, 2026-09-22) · T-044, T-045 (v0.3 Analytics MVP tuntas 8/8, 2026-09-21) · T-043 (2026-09-18) · T-027 (2026-09-17) · T-024 (2026-09-14) · T-103, T-034 (2026-09-09–10) · T-102/T-101/T-100/T-099/T-098/T-097/T-096/T-095 (v0.7 migrasi Astryx→shadcn tuntas 100%, 2026-09-01–04) · T-026, T-036 (2026-09-07) · T-092 (2026-09-11).
 
