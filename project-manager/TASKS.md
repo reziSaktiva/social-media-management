@@ -88,11 +88,11 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 **Ini satu-satunya daftar fokus.** `PROJECT_STATE.md` hanya menyalin ID-nya di Snapshot dan menunjuk ke sini — jangan menulis daftar fokus versi ketiga di manapun. Kalau daftar ini berubah, perbarui juga baris `Top Next Tasks` di Snapshot `PROJECT_STATE.md` (hanya ID + judul singkat).
 
-**Fokus aktif:** **T-025** Real OutstandAdapter (⏳ Not Started) — rantai blocker terbesar, butuh `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli **dan** kode Real OutstandAdapter (KI-003, lihat `PROJECT_STATE.md` § Blockers).
+**Fokus aktif:** **T-025** Real OutstandAdapter (🟡 In Progress) — `schedulePost`/`publishNow`/Media API/analytics/cancel-post sudah selesai & terverifikasi API resmi Outstand (2026-09-23). Sisa `connectAccount` (T-025.4) dan engagement fetch/reply (T-025.6) blocked KI-067/KI-068 — butuh keputusan arsitektur King Rezi, lihat `PROJECT_STATE.md` § Known Issues/Blockers.
 
 **Selesai baru-baru ini** (detail lengkap per task: `tasks/vXX-*.md`; riwayat penuh: `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi): T-050, T-051, T-052, T-053, T-054 (v0.4 Engagement MVP, 2026-09-22) · T-044, T-045 (v0.3 Analytics MVP tuntas 8/8, 2026-09-21) · T-043 (2026-09-18) · T-027 (2026-09-17) · T-024 (2026-09-14) · T-103, T-034 (2026-09-09–10) · T-102/T-101/T-100/T-099/T-098/T-097/T-096/T-095 (v0.7 migrasi Astryx→shadcn tuntas 100%, 2026-09-01–04) · T-026, T-036 (2026-09-07) · T-092 (2026-09-11).
 
-**Rantai blocker terbesar:** T-025 (Real OutstandAdapter) sendiri. **T-026 (webhook) sudah ✅ Done (2026-09-07)** dan **T-027 (job runner) sudah ✅ Done (2026-09-17)** — keduanya tidak butuh Real OutstandAdapter untuk berjalan (`FakeOutstandAdapter` tetap dipakai jalur produksi, ADR-059/ADR-108), jadi rantai sekarang jauh lebih pendek dari sebelumnya. T-025 tetap mengunci sebagian besar v0.3 dan seluruh v0.4 (data akan tetap dari Fake sampai kredensial Outstand asli tersedia). Menyelesaikan T-025 membuka lebih banyak pekerjaan daripada task lain manapun.
+**Rantai blocker terbesar:** T-025 (Real OutstandAdapter) sendiri, kini sebagian besar tuntas. **T-026 (webhook) sudah ✅ Done (2026-09-07)** dan **T-027 (job runner) sudah ✅ Done (2026-09-17)** — keduanya tidak butuh Real OutstandAdapter untuk berjalan (`FakeOutstandAdapter` tetap dipakai jalur produksi, ADR-059/ADR-108), jadi rantai sekarang jauh lebih pendek dari sebelumnya. Sisa T-025.4/T-025.6 mengunci T-013/T-015 (connect account real) dan sebagian v0.4 (engagement real) sampai gap kontrak KI-067/KI-068 diputuskan King Rezi.
 
 ---
 

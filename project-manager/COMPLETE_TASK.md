@@ -8,6 +8,82 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-23 — T-025 Real OutstandAdapter: publish/media/analytics tuntas terverifikasi API resmi, 3 gap kontrak baru (KI-067/068/069)
+
+King Rezi setup MCP server resmi Outstand (`mcp.outstand.so`) di sesi ini,
+menemukan dokumentasi REST API publik resmi Outstand
+(`https://api.outstand.so/v1/*/openapi.json`) yang sebelumnya tidak
+diketahui tim. T-025 (Real OutstandAdapter) dikerjakan Elon Backend
+Engineer dalam 2 putaran:
+
+**Putaran 1:** implementasi awal 7 subtask (T-025.1–T-025.7) berdasarkan
+tebakan best-effort, karena belum ada dokumentasi resmi Outstand saat itu.
+
+**Putaran 2:** setelah dokumentasi resmi ditemukan lewat MCP, Elon
+mengoreksi seluruh implementasi mengikuti spec asli. Ridwan Architecture
+Reviewer audit independen: 0 temuan pelanggaran arsitektur, `bun run
+typecheck`/`lint`/`test` semua hijau (486 pass, 6 skip, 0 fail), ACL
+boundary terjaga (`packages/shared` tidak disentuh, real adapter cuma
+diakses lewat factory `getOutstandAdapter()`).
+
+**Selesai dan terverifikasi terhadap API resmi:**
+- T-025.1 HTTP client + auth (`Authorization: Bearer <OUTSTAND_API_KEY>`)
+  + error mapping (`OutstandIntegrationError`), file baru
+  `apps/web/src/lib/adapters/outstand/outstand-http-client.ts` +
+  `outstand-integration-error.ts`.
+- T-025.2 `schedulePost` real — `POST /v1/posts`.
+- T-025.3 `publishNow` real — endpoint sama, tanpa `scheduledAt`.
+- T-025.5 Media API — `POST /v1/media/upload` → PUT bytes → `POST
+  /v1/media/{id}/confirm` (2-langkah upload jadi 3-langkah sesuai API
+  resmi).
+- T-025.7 Unit test HTTP mock — 2 file test baru (
+  `outstand-http-client.test.ts`, `real-outstand-adapter.test.ts`), 82
+  test menguji shape wire asli.
+- Analytics (`fetchPostMetrics`/`fetchWorkspaceMetrics`, kontrak lama
+  T-041) dikoreksi ke `GET /v1/posts/{id}/analytics` dan `GET
+  /v1/social-accounts/{id}/metrics`.
+- Cancel post (`DELETE /v1/posts/{id}`) dan delete-from-remote (`DELETE
+  /v1/posts/{id}/remote`).
+
+**Belum selesai — 3 gap arsitektur baru, sengaja throw eksplisit
+(`OutstandIntegrationError`), bukan silent bug, dicatat sebagai Known
+Issue baru menunggu keputusan King Rezi:**
+
+- **KI-067** (T-025.4) — `exchangeConnectCode` (kontrak ADR-105) tidak
+  cocok dengan flow OAuth Outstand asli: redirect balik membawa
+  `account_id`/`network_unique_id`/`username` langsung (bukan `code`).
+  Platform multi-halaman (Facebook Pages dkk) punya flow session-token
+  terpisah yang butuh UI page-selection baru. Berpotensi rework
+  T-013/T-015.
+- **KI-068** (T-025.6) — Outstand men-scope komentar per-post
+  (`GET/POST /v1/posts/{postId}/replies`, tanpa cursor pagination),
+  kontrak `IOutstandAdapter.fetchComments`/`replyToComment` men-scope
+  per-akun dengan cursor. Butuh redesain alur JOB-03 (T-051).
+- **KI-069** — override format per-platform (Story/Reel/Pin, ADR-039/
+  ADR-107) butuh dikirim sebagai key top-level bernama network di body
+  `POST /v1/posts`, tapi `OutstandPostTargetInput` tidak membawa
+  `platform`/network per target. Untuk sekarang override tidak dikirim
+  ke Outstand.
+
+Root cause ketiganya sama: kontrak `IOutstandAdapter` lama disusun tanpa
+akses dokumentasi resmi Outstand. Detail teknis lengkap ada di docstring
+`apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts`.
+
+Dokumen yang diupdate: `tasks/v02-publishing-mvp.md` § T-025 (checklist
+T-025.1/2/3/5/7 selesai, catatan gap ditambahkan), `PROJECT_STATE.md`
+(KI-003 di-update PARTIALLY resolved, 3 KI baru KI-067/068/069, Blockers,
+Completed Ringkasan, Top Next Tasks), `TASKS.md` (Fokus sekarang).
+
+**Catatan governance:** belum ada ADR baru dibuat untuk resolusi
+ketiga gap ini — King Rezi belum memutuskan arah resolusinya (amandemen
+ADR-105/ADR-021 untuk KI-067, redesain kontrak untuk KI-068/KI-069). Ini
+kandidat ADR yang perlu dikonfirmasi King Rezi terlebih dulu sebelum
+ditulis. Kandidat lain yang juga belum diputuskan: apakah keputusan setup
+MCP Outstand resmi sebagai sumber verifikasi arsitektur layak dicatat ADR
+tersendiri.
+
+---
+
 ## 2026-09-23 — Efisiensi subagent: pangkas duplikasi changelog di PROJECT_STATE.md/TASKS.md
 
 King Rezi melaporkan sering kena 5-hours limit Claude, 85% pemakaian dari

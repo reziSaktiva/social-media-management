@@ -29,6 +29,24 @@ export type ServerEnv = {
   /** Optional (ADR-059) — kosong → Fake OutstandAdapter aktif otomatis. */
   OUTSTAND_API_KEY?: string;
   OUTSTAND_WEBHOOK_SECRET?: string;
+  /**
+   * Optional (T-025.1) — base URL Outstand API. Kosong → default
+   * `https://api.outstand.so` (diverifikasi terhadap OpenAPI spec resmi
+   * Outstand, `https://api.outstand.so/v1/*openapi.json`, diambil
+   * 2026-09-23 — TANPA suffix `/v1`, setiap path di adapter sudah
+   * menyertakan `/v1/...` sendiri). Override ini tetap disediakan untuk
+   * fleksibilitas (mis. staging/sandbox Outstand kalau ada).
+   */
+  OUTSTAND_API_BASE_URL?: string;
+  /**
+   * Optional — Outstand Organization ID, dibutuhkan `connectAccount()`
+   * untuk membentuk redirect URL OAuth resmi
+   * (`https://www.outstand.so/app/api/socials/{network}/{orgId}`).
+   * TIDAK cukup untuk menyelesaikan alur connect account — lihat gap
+   * `exchangeConnectCode` di `real-outstand-adapter.ts` (butuh amandemen
+   * ADR-105 + Route Handler callback + UI page-selection).
+   */
+  OUTSTAND_ORG_ID?: string;
   /** Optional (mengikuti pola OUTSTAND_WEBHOOK_SECRET) — reachable 401 check di route.ts butuh ini TIDAK throw duluan lewat assertServerEnv kalau belum di-set. */
   JOB_SECRET?: string;
   NEXT_PUBLIC_SUPABASE_URL?: string;
@@ -75,6 +93,8 @@ export function getServerEnv(): ServerEnv {
     BETTER_AUTH_KV_URL: process.env.BETTER_AUTH_KV_URL,
     OUTSTAND_API_KEY: process.env.OUTSTAND_API_KEY,
     OUTSTAND_WEBHOOK_SECRET: process.env.OUTSTAND_WEBHOOK_SECRET,
+    OUTSTAND_API_BASE_URL: process.env.OUTSTAND_API_BASE_URL,
+    OUTSTAND_ORG_ID: process.env.OUTSTAND_ORG_ID,
     JOB_SECRET: process.env.JOB_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:

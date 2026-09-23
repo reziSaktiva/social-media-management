@@ -297,24 +297,65 @@ ADR-065. Tidak ada perubahan kode di sesi ini — murni koreksi status.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress                                                |
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-005, ADR-019, ADR-040, ADR-059                           |
-| **Terkait**   | KI-003, KI-015 (`PROJECT_STATE.md` § Blockers)                |
+| **Terkait**   | KI-003, KI-015, KI-067 (baru, gap `connectAccount`/OAuth), KI-068 (baru, gap `fetchComments`/`replyToComment`), KI-069 (baru, override platform-specific tidak terkirim) (`PROJECT_STATE.md` § Blockers/Known Issues) |
 | **Depends**   | T-028 ✅ (port + factory sudah ada) · kredensial Outstand asli |
 | **Baca dulu** | `05-architecture/integration-layer.md`                        |
 
 Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **sengaja throw** jika `OUTSTAND_API_KEY` terisi tapi kode real adapter belum ada — bukan silent fallback ke Fake.
 
-- [ ] **T-025.1** HTTP client + auth header + error mapping ke domain error (Anti-Corruption Layer)
-- [ ] **T-025.2** `schedulePost` real (menggantikan Fake pada jalur produksi)
-- [ ] **T-025.3** `publishNow` real (dipakai T-029)
-- [ ] **T-025.4** `connectAccount` redirect flow (dipakai T-013)
-- [ ] **T-025.5** Media API (dipakai T-024)
-- [ ] **T-025.6** Engagement fetch/reply (dipakai v0.4)
-- [ ] **T-025.7** Unit test adapter dengan HTTP mock — belum ada test adapter sama sekali
+- [x] **T-025.1** HTTP client + auth header + error mapping ke domain error (Anti-Corruption Layer)
+- [x] **T-025.2** `schedulePost` real (menggantikan Fake pada jalur produksi)
+- [x] **T-025.3** `publishNow` real (dipakai T-029)
+- [ ] **T-025.4** `connectAccount` redirect flow (dipakai T-013) — **belum bisa selesai**, lihat **KI-067**
+- [x] **T-025.5** Media API (dipakai T-024)
+- [ ] **T-025.6** Engagement fetch/reply (dipakai v0.4) — **belum bisa dipetakan langsung**, lihat **KI-068**
+- [x] **T-025.7** Unit test adapter dengan HTTP mock — belum ada test adapter sama sekali
 
 > Kredensial `OUTSTAND_API_KEY` / `OUTSTAND_WEBHOOK_SECRET` asli belum dimiliki King Rezi. Fake adapter (T-028) sengaja dibuat supaya rilis ini tidak berhenti menunggu.
+
+**Catatan (2026-09-23, 2 putaran Elon Backend Engineer):** Putaran 1
+implementasi best-effort tanpa dokumentasi resmi Outstand. King Rezi lalu
+setup MCP resmi Outstand (`mcp.outstand.so`), dari situ ditemukan dokumentasi
+REST API publik resmi (`https://api.outstand.so/v1/*/openapi.json`) — Elon
+mengoreksi seluruh implementasi berdasarkan spec resmi di putaran 2. Ridwan
+Architecture Reviewer audit independen: 0 temuan pelanggaran arsitektur,
+`bun run typecheck`/`lint`/`test` hijau (486 pass, 6 skip, 0 fail), ACL
+boundary terjaga.
+
+Selesai dan terverifikasi terhadap API resmi: HTTP client + auth + error
+mapping (T-025.1), `schedulePost`/`publishNow` real via `POST /v1/posts`
+(T-025.2/T-025.3), Media API 3-langkah upload→PUT→confirm (T-025.5), unit
+test HTTP mock 82 test (T-025.7), plus analytics (`fetchPostMetrics`/
+`fetchWorkspaceMetrics`, kontrak T-041) yang dikoreksi ke
+`GET /v1/posts/{id}/analytics` dan `GET /v1/social-accounts/{id}/metrics`,
+dan cancel/delete post (`DELETE /v1/posts/{id}`,
+`DELETE /v1/posts/{id}/remote`).
+
+**Masih gap arsitektur (sengaja throw eksplisit `OutstandIntegrationError`,
+bukan silent bug, butuh keputusan King Rezi + kemungkinan amandemen ADR):**
+
+- **KI-067** — `exchangeConnectCode` (kontrak ADR-105) tidak cocok dengan
+  flow OAuth Outstand asli: Outstand redirect balik dengan query param
+  `account_id`/`network_unique_id`/`username` langsung (bukan `code`), dan
+  platform multi-halaman (Facebook Pages dkk) punya flow session-token
+  terpisah (`GET/POST /v1/social-accounts/pending/{sessionToken}`) yang
+  butuh UI page-selection baru. Berpotensi rework T-013/T-015.
+- **KI-068** — Outstand men-scope komentar per-post
+  (`GET/POST /v1/posts/{postId}/replies`, tanpa cursor pagination),
+  sementara kontrak `IOutstandAdapter.fetchComments`/`replyToComment`
+  men-scope per-akun dengan `cursor`. Butuh redesain alur JOB-03
+  (`engagement.sync`, T-051).
+- **KI-069** — Override format per-platform (Story/Reel/Pin, ADR-039/
+  ADR-107) butuh dikirim sebagai key top-level bernama network di body
+  `POST /v1/posts`, tapi `OutstandPostTargetInput` tidak membawa
+  `platform`/network per target. Untuk sekarang override TIDAK dikirim ke
+  Outstand — post tetap terkirim tanpa override platform-specific.
+
+Detail teknis lengkap ada di docstring
+`apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts`.
 
 ### T-026 · Webhook handler Outstand
 

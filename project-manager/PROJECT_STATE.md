@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-025 Real OutstandAdapter** (blocked kredensial Outstand — rantai blocker terbesar tersisa) dan **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 5/6 task** (2026-09-22, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
+* **Top Next Tasks:** **T-025 Real OutstandAdapter** (publish/media/analytics ✅ terverifikasi API resmi; sisa `connectAccount`/OAuth dan `fetchComments`/`replyToComment` blocked KI-067/KI-068 — perlu keputusan King Rezi) dan **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 5/6 task** (2026-09-22, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 2 blocker aktif (env var Outstand belum diisi + kode Real OutstandAdapter belum ditulis; env var Google OAuth belum diisi) — lihat section **Blockers** di bawah. Railway staging sudah live & terverifikasi (2026-08-14) sehingga blocker itu resolved; JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8 awal. **T-026 dan T-027 sudah ✅ Done (2026-09-07, 2026-09-17) lewat `FakeOutstandAdapter`** — blocker `OUTSTAND_API_KEY` sekarang murni memblokir **T-025 (Real OutstandAdapter)** itu sendiri, tidak lagi merantai T-026/T-027.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 86 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
@@ -140,7 +140,16 @@ Password reset & email verification (Better Auth) membutuhkan email provider yan
 | Kategori | Tech-Debt |
 | Terkait | T-025, T-026, T-027 |
 
-Alignment dokumentasi dan schema/migration sudah selesai, tetapi retry internal, media upload Outstand, engagement sync/reply, dan reconnect flow masih task M8. `schedulePost` sendiri sudah bisa dipakai lewat `FakeOutstandAdapter` (ADR-059) — `getOutstandAdapter()` akan beralih otomatis ke real adapter begitu `OUTSTAND_API_KEY` diisi **dan** kode real adapter sudah ditulis (kalau env terisi tapi kode belum ada, factory throw error, bukan silent fallback ke Fake). Per 2026-08-13, T-041 (metric ingestion) juga sudah diselesaikan lewat pola Fake yang sama (ADR-079) — `fetchPostMetrics`/`fetchWorkspaceMetrics` mengembalikan data mock deterministik sampai kredensial asli tersedia. T-042 (Dashboard Home) juga sudah ✅ Done (2026-08-13, seluruh subtask), tapi datanya tetap dari `FakeOutstandAdapter` sampai KI-003 ini resolved. **T-026 (webhook handler, 2026-09-07) dan T-027 (job runner + Railway Cron, 2026-09-17) sudah ✅ Done** — keduanya berjalan penuh lewat `FakeOutstandAdapter` (ADR-108 meredesain `fetchPostOutcome` supaya tidak lagi bergantung state in-memory), tidak lagi bagian rantai yang terhambat KI-003 ini. Sisa scope KI-003 sekarang murni T-025 (Real OutstandAdapter itu sendiri).
+Alignment dokumentasi dan schema/migration sudah selesai, tetapi retry internal, media upload Outstand, engagement sync/reply, dan reconnect flow masih task M8. `schedulePost` sendiri sudah bisa dipakai lewat `FakeOutstandAdapter` (ADR-059) — `getOutstandAdapter()` akan beralih otomatis ke real adapter begitu `OUTSTAND_API_KEY` diisi **dan** kode real adapter sudah ditulis (kalau env terisi tapi kode belum ada, factory throw error, bukan silent fallback ke Fake). Per 2026-08-13, T-041 (metric ingestion) juga sudah diselesaikan lewat pola Fake yang sama (ADR-079) — `fetchPostMetrics`/`fetchWorkspaceMetrics` mengembalikan data mock deterministik sampai kredensial asli tersedia. T-042 (Dashboard Home) juga sudah ✅ Done (2026-08-13, seluruh subtask), tapi datanya tetap dari `FakeOutstandAdapter` sampai KI-003 ini resolved. **T-026 (webhook handler, 2026-09-07) dan T-027 (job runner + Railway Cron, 2026-09-17) sudah ✅ Done** — keduanya berjalan penuh lewat `FakeOutstandAdapter` (ADR-108 meredesain `fetchPostOutcome` supaya tidak lagi bergantung state in-memory), tidak lagi bagian rantai yang terhambat KI-003 ini.
+
+**Update 2026-09-23 — PARTIALLY resolved:** `OUTSTAND_API_KEY` sekarang
+sudah terisi dan Real OutstandAdapter untuk `schedulePost`/`publishNow`/
+Media API/analytics/cancel-post sudah diimplementasikan dan terverifikasi
+terhadap dokumentasi resmi Outstand (via MCP `mcp.outstand.so`). Sisa scope
+KI-003 bukan lagi "kredensial belum ada", melainkan 3 gap kontrak baru yang
+butuh keputusan arsitektur King Rezi: **KI-067** (`connectAccount`/OAuth
+exchange), **KI-068** (`fetchComments`/`replyToComment` scope), **KI-069**
+(override platform-specific tidak terkirim).
 
 ### KI-014 · Domain `identity` belum punya unit test
 
@@ -581,6 +590,72 @@ tapi data historis `publishedAt` di DB tetap kosong untuk seluruh post yang
 sudah tayang. Non-blocking, gap serupa pola **KI-049**
 (`failedAt`/`failureReason` juga tidak pernah ditulis). Tidak memblokir M8.
 
+### KI-067 · `exchangeConnectCode`/flow OAuth Outstand tidak cocok dengan kontrak ADR-105
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Domain | integration |
+| Terkait | T-025 (T-025.4), T-013, T-015, ADR-105, ADR-021 |
+
+Ditemukan Elon Backend Engineer (2026-09-23) saat mengoreksi T-025 terhadap
+dokumentasi resmi Outstand (via MCP `mcp.outstand.so`) — root cause: kontrak
+`IOutstandAdapter.exchangeConnectCode({code, state})` (ADR-105) disusun best
+-effort tanpa akses dokumentasi resmi. `redirectUrl` sudah benar
+(`https://www.outstand.so/app/api/socials/{network}/{orgId}?redirect_uri=...`),
+tapi Outstand redirect balik dengan query param `account_id`/
+`network_unique_id`/`username` langsung — bukan `code` yang bisa
+di-exchange. Untuk platform multi-halaman (Facebook Pages dkk) ada flow
+session-token terpisah (`GET/POST /v1/social-accounts/pending/{sessionToken}`)
+yang butuh UI page-selection baru, belum ada di codebase. Perlu amandemen
+ADR-105 (dan mungkin ADR-021) + perubahan Route Handler
+`apps/web/src/app/api/integrations/outstand/callback/route.ts` + kemungkinan
+UI baru. T-013/T-015 (Connect/Reconnect Account, sudah ✅ Done via Fake)
+berpotensi perlu rework begitu kredensial asli dipakai penuh. Menunggu
+keputusan King Rezi sebelum lanjut implementasi. Memblokir sisa T-025.4.
+
+### KI-068 · `fetchComments`/`replyToComment` scope tidak cocok dengan API resmi Outstand
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Domain | integration |
+| Terkait | T-025 (T-025.6), T-051, JOB-03, ADR-110 |
+
+Ditemukan Elon Backend Engineer (2026-09-23), root cause sama KI-067 —
+kontrak `IOutstandAdapter` (ADR-110) disusun tanpa akses dokumentasi resmi.
+Outstand men-scope komentar PER-POST (`GET/POST /v1/posts/{postId}/replies`,
+wajib tahu `postId`, tanpa cursor pagination), sementara kontrak
+`fetchComments` men-scope PER-AKUN dengan parameter `cursor`.
+`replyToComment(outstandCommentId, text)` juga tidak bisa jalan karena
+endpoint reply Outstand wajib tahu `postId` yang tidak dibawa parameter
+method ini. Butuh redesain alur JOB-03 (`engagement.sync`, T-051) —
+kemungkinan list posts per akun dulu baru fetch replies per post — dan/atau
+field tambahan di kontrak `IOutstandAdapter`. Menunggu keputusan King Rezi.
+Memblokir sisa T-025.6; engagement sync/reply tetap jalan via
+`FakeOutstandAdapter` (ADR-110) untuk sementara.
+
+### KI-069 · Override format per-platform (Story/Reel/Pin) tidak terkirim ke Outstand
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Domain | integration |
+| Terkait | T-025, ADR-039, ADR-107 |
+
+Ditemukan Elon Backend Engineer (2026-09-23) saat implementasi Real
+OutstandAdapter — Outstand butuh override format dikirim sebagai key
+top-level bernama network (`instagram`/`facebook`/`pinterest`/dst) di body
+`POST /v1/posts`, tapi kontrak `OutstandPostTargetInput` tidak membawa
+`platform`/network per target sehingga adapter tidak bisa membentuk key itu
+dengan aman. Untuk sekarang, override format (Story/Reel/carousel/dst,
+ADR-039/ADR-107) TIDAK dikirim sama sekali ke Outstand — post tetap
+terkirim tapi tanpa override platform-specific. Butuh field tambahan di
+kontrak (mis. `platform: SocialPlatform` di `OutstandPostTargetInput`).
+Menunggu keputusan King Rezi. Tidak memblokir publish dasar, tapi
+menghilangkan behavior platform-specific yang sudah didesain ADR-039/
+ADR-107.
+
 ---
 
 ## Blockers
@@ -594,7 +669,7 @@ benar.
 
 | ID         | Blocker                                                        | Menghambat                          |
 | ---------- | --------------------------------------------------------------- | ------------------------------------ |
-| **KI-003** | `OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` belum diisi **dan** kode Real OutstandAdapter belum ditulis sama sekali (bukan cuma env — factory sengaja throw kalau env terisi tapi kode belum ada) | T-025 (rantai terbesar tersisa — T-026/T-027 sudah ✅ Done lewat `FakeOutstandAdapter`, ADR-059/ADR-108, tidak lagi ikut terhambat) |
+| **KI-003** | **PARTIALLY resolved (2026-09-23)** — kredensial `OUTSTAND_API_KEY` sudah terisi dan Real OutstandAdapter untuk `schedulePost`/`publishNow`/Media API/analytics/cancel-post sudah jalan, terverifikasi API resmi. Sisa blocker bukan lagi kredensial, melainkan 3 gap kontrak (lihat KI-067/KI-068/KI-069) yang butuh keputusan arsitektur King Rezi | T-025.4 (connectAccount, KI-067), T-025.6 (engagement, KI-068) |
 | **KI-015** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` belum diisi (JOB_SECRET sudah resolved 2026-08-14 di Railway staging) | Google OAuth sign-in |
 | **—**      | Migration `20260922110000_t051_filter_active_status_engagement_sync_lookup` **belum di-deploy** (`bun run db:deploy` pending King Rezi) — bukan kredensial eksternal, murni menunggu eksekusi manual King Rezi | T-051 job `engagement.sync` (JOB-03) — sampai migration ter-apply, fungsi SQL yang dipakai job ini masih versi lama dan job **gagal untuk SEMUA akun** (bukan cuma akun yang disconnect) |
 
@@ -631,10 +706,10 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-025 real adapter sebagian besar tuntas — publish/media/analytics terverifikasi API resmi Outstand via MCP (2026-09-23)** — `schedulePost`/`publishNow`/Media API 3-langkah/analytics/cancel-post diimplementasikan Elon Backend Engineer (2 putaran, dikoreksi setelah King Rezi setup MCP resmi `mcp.outstand.so`), 0 temuan arsitektur dari Ridwan. **3 KI baru** (Open, butuh keputusan King Rezi): KI-067 (`connectAccount`/OAuth), KI-068 (`fetchComments`/`replyToComment` scope), KI-069 (override platform-specific tidak terkirim). Detail: `COMPLETE_TASK.md` (2026-09-23), `tasks/v02-publishing-mvp.md` § T-025.
 * **Efisiensi subagent: pangkas duplikasi changelog + model lebih murah untuk Gibran (2026-09-23)** — `PROJECT_STATE.md` (-54%) dan `TASKS.md` (-88%) dipangkas dari narasi changelog historis yang menumpuk (duplikat `COMPLETE_TASK.md`), 6 KI `Resolved` dihapus dari daftar Known Issues, `gibran-project-manager.md` diberi `model: haiku`. Detail: `COMPLETE_TASK.md` (2026-09-23).
 * **KI-066 follow-up — 5 perbaikan visual sidebar pasca-migrasi, ditemukan review manual King Rezi (2026-09-23)** — lebar 18rem, avatar rounded 6px, bg main content, `color-scheme` dark mode, Badge status jadi solid fill (**ADR-111**). Detail: `decisions/ADR-111-badge-status-variant-solid-fill-destructive-foreground.md`, `tasks/v07-astryx-shadcn-migration.md` § T-105.
 * **T-105 Done (4/4 subtask) — Sidebar workspace/settings migrasi ke primitive `Sidebar` shadcn/ui, KI-066 Resolved (2026-09-23)** — mobile pakai `Sheet` (menggantikan `MobileTopBar.tsx`). Lolos Ridwan (1 temuan non-blocking, fixed) & Najwa QA (PASS penuh). Detail: `tasks/v07-astryx-shadcn-migration.md` § T-105.
-* **T-050 + T-051 + T-052 Done — Engagement domain skeleton, Comment sync JOB-03, Manual refresh; v0.4 Engagement MVP tuntas 5/6 (2026-09-22)** — lolos review Ridwan (3 putaran, 0 temuan tersisa) & QA Najwa PASS penuh. **⚠️ Migration belum di-deploy** — lihat Blockers. Detail: `tasks/v04-engagement-mvp.md` § T-050–T-052.
 * **T-053 + T-054 Done — Comments Inbox UI + Reply comment, v0.4 Engagement MVP (2026-09-22)** — inbox komentar lintas akun di `/engage` + reply langsung dari aplikasi. **KI-065 baru** (Open): thumbnail post asli belum tampil di detail panel. Lolos Ridwan (0 temuan) & Najwa QA (PASS). Detail: `tasks/v04-engagement-mvp.md` § T-053–T-054.
 ---
 
