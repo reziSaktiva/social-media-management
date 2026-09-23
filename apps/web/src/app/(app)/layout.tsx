@@ -130,7 +130,15 @@ export default async function Layout({
             VStack/HStack. */}
         <div className="relative flex min-h-0 flex-1 flex-col">
           <MobileTopBar workspaceName={workspace.name} />
-          <main className="relative min-w-0 flex-1 overflow-y-auto rounded-tl-3xl bg-sidebar p-4">
+          {/* KI-066 follow-up (mismatch #4): Claude Design `.main` pakai
+              `--color-background-body` (token BODY), bukan token SIDEBAR —
+              `bg-background` di globals.css sudah match hex-nya persis.
+              Deviasi sadar dari riwayat ADR-084 (swap warna, era Astryx,
+              di-revert ADR-086) — kedua ADR itu memakai token/selector
+              Astryx yang sudah tidak ada lagi pasca migrasi shadcn (T-102);
+              ini instruksi terbaru King Rezi + Claude Design SYNCED saat
+              ini, bukan regresi. */}
+          <main className="relative min-w-0 flex-1 overflow-y-auto rounded-tl-3xl bg-background p-4">
             {children}
           </main>
         </div>

@@ -162,8 +162,28 @@ export function WorkspaceSideNav({
             onClick={closeMobileSidebar}
             className="flex min-w-0 items-center gap-2 px-1 font-heading text-sm font-semibold"
           >
-            <Avatar size="sm">
-              <AvatarFallback>{getInitials(workspaceName)}</AvatarFallback>
+            {/* Deviasi disengaja dari `Avatar` default (`rounded-full`):
+                Claude Design (`styles.css` § `.ws-avatar`) mengunci workspace
+                switcher sebagai kotak `border-radius: var(--radius-inner)`
+                (6px = `--radius-sm` di globals.css, match persis) — BUKAN
+                lingkaran. Avatar lain (channel row, footer account) TETAP
+                `rounded-full` sesuai `.channel-avatar`/`.avatar-round` di
+                Claude Design, jadi override di sini saja (call-site), bukan
+                di `avatar.tsx` default.
+                Dipakai `rounded-[6px]` (bukan utility `rounded-sm` biasa):
+                `SidebarHeader` (components/ui/sidebar.tsx) meng-override
+                custom property `--radius` jadi `var(--radius-xl)` di scope
+                ini (untuk skala radius button/input header lain) — kalau
+                pakai `rounded-sm` di sini, `calc(var(--radius)*0.6)` ikut
+                terhitung dari `--radius-xl` (14px), jadi 8.4px, bukan 6px
+                yang dikunci Claude Design. Verified via computed style
+                browser, bukan tebakan. */}
+            {/* eslint-disable-next-line tailwindcss/no-arbitrary-value -- lihat komentar di atas, token `rounded-sm` tidak resolve ke 6px di scope ini karena --radius di-override SidebarHeader. */}
+            <Avatar size="sm" className="rounded-[6px] after:rounded-[6px]">
+              {/* eslint-disable-next-line tailwindcss/no-arbitrary-value -- sama seperti di atas */}
+              <AvatarFallback className="rounded-[6px]">
+                {getInitials(workspaceName)}
+              </AvatarFallback>
             </Avatar>
             <span className="truncate group-data-[collapsible=icon]:hidden">
               {workspaceName}
