@@ -984,7 +984,7 @@ sudah tayang. Non-blocking, gap serupa pola **KI-049**
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | **Resolved** (2026-09-23) |
 | Kategori | Tech-Debt / UI |
 | Terkait | ADR-097, T-102, T-105 |
 
@@ -1053,10 +1053,35 @@ Design — wiring-nya tidak bisa di-klik-test langsung dari sesi ini,
 diverifikasi lewat diff + kesamaan pola `toggleTheme`. King Rezi perlu
 cek langsung di Claude Design untuk konfirmasi akhir semuanya jalan.
 
-Branch+PR kode **belum** dibuat — menunggu King Rezi review pola
-(termasuk fitur collapse/expand baru ini, di App Prototype maupun
-screen individual) + jawab keputusan mobile behavior (T-105.1) dulu,
-sesuai rule 17.
+**Update (2026-09-23) — T-105.1 ✅ Done:** King Rezi review dan konfirmasi
+OK (pola primitive `Sidebar` + collapse/expand, tidak ada revisi). Keputusan
+mobile behavior dijawab: pakai `Sheet` bawaan `Sidebar` shadcn, **menggantikan**
+`MobileTopBar.tsx`/`Sheet` custom (T-098.4). `components/navigation.html` +
+`readme.md` § Components ditandai **SYNCED (T-105.1, 2026-09-23)** di Claude
+Design. Gate rule 17 terpenuhi — lanjut ke **T-105.2** (audit gap kode) dan
+**T-105.3** (implementasi). Detail lengkap: `tasks/v07-astryx-shadcn-migration.md`
+§ T-105.1.
+
+**Update (2026-09-23) — KI-066 Resolved, T-105 seluruh 4/4 subtask Done:**
+T-105.2 (audit) + T-105.3 (implementasi) dikerjakan Mark UI Engineer —
+`WorkspaceSideNav.tsx`/`SettingsSideNav.tsx` dikomposisi ulang dari
+primitive `Sidebar` shadcn asli, wrapper baru `AppShell.tsx` mengontrol
+`SidebarProvider`, 5 keputusan T-105.1 seluruhnya diimplementasikan tanpa
+regresi fungsional. Review Ridwan Architecture Reviewer: 0 pelanggaran
+hard rule, 1 temuan non-blocking (cookie `sidebar_state` tidak pernah
+dibaca ulang, collapse/expand reset tiap reload) — diperbaiki sebelum QA
+(baca cookie di `(app)/layout.tsx`, teruskan sebagai `defaultOpen`).
+QA Najwa QA Engineer: PASS penuh (golden path, regresi, mobile 768px,
+light/dark), `vitest` 453 pass/6 skip. Gate T-103.3 tidak bisa dijalankan
+Najwa (`DesignSync` tidak ter-load di sesi subagent, limitasi berulang
+sejak T-098.4) — dijalankan manual di sesi utama: struktur kode dibanding
+langsung terhadap `components/navigation.html`/`readme.md` § Components
+yang SYNCED, match persis. Detail lengkap: `tasks/v07-astryx-shadcn-migration.md`
+§ T-105.2-T-105.4.
+
+Branch+PR kode **belum** dibuat — kode `apps/web` sudah selesai di sesi
+ini, menunggu King Rezi review sebelum branch+PR (rule 18 AGENTS.md, HEAD
+sedang di `fix/ki-066-sidebar-shadcn-collapse`, bukan `main`/`staging`).
 
 ---
 
@@ -1108,11 +1133,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-105 Done (4/4 subtask) — KI-066 Resolved: Sidebar workspace/settings dimigrasi ke primitive `Sidebar` shadcn/ui (2026-09-23)** — King Rezi review Claude Design OK + keputusan mobile dijawab (pakai `Sheet` bawaan, **menggantikan** `MobileTopBar.tsx`/T-098.4), ditandai **SYNCED (T-105.1)**. Mark UI Engineer: `WorkspaceSideNav.tsx`/`SettingsSideNav.tsx` dikomposisi ulang dari primitive asli + wrapper `AppShell.tsx`, 5 keputusan (icon-rail collapse, trigger di header, Channels hidden, Settings dikecualikan, mobile Sheet) semua terimplementasi tanpa regresi. Ridwan: 0 pelanggaran hard rule, 1 temuan non-blocking (persistence cookie `sidebar_state` tidak terbaca ulang) — diperbaiki. Najwa QA: PASS penuh (golden path/regresi/mobile 768px/dark-light), `vitest` 453 pass/6 skip. Gate T-103.3 dijalankan manual di sesi utama (Najwa tidak punya `DesignSync` ter-load) — struktur kode match persis dengan Claude Design SYNCED. Branch+PR kode belum dibuat, menunggu review King Rezi. Detail: `tasks/v07-astryx-shadcn-migration.md` § T-105.
 * **T-050 + T-051 + T-052 Done — Engagement domain skeleton + Comment sync JOB-03 + Manual refresh, v0.4 Engagement MVP TUNTAS 5/6 (2026-09-22)** — ditinjau formal atas permintaan King Rezi (implementasi sudah ada sejak commit `23f9923`/`ae0f49b` sesi sebelumnya). Ridwan Architecture Reviewer 3 putaran, diverifikasi independen: putaran 1 — 3 temuan (job JOB-03 tidak pernah ter-seed otomatis untuk `ConnectedAccount` baru → fix port `EngagementSyncSeederPort`; orkestrasi di `refreshInboxAction` → fix `RefreshInboxUseCase`; gap ADR Fake `fetchComments`/`replyToComment` → **ADR-110**); putaran 2 — eskalasi temuan baru (`disconnectAccount` tidak membatalkan chain self-reschedule JOB-03) → fix guard status via migration `20260922110000_t051_filter_active_status_engagement_sync_lookup`; putaran 3 — 0 temuan tersisa. QA Najwa PASS penuh + 1 bug regresi reply tidak tampil (dari T-053/T-054) ditemukan & diperbaiki. Verifikasi: `vitest` **453 pass/6 skip**. **⚠️ Migration BELUM di-deploy** (`bun run db:deploy` pending King Rezi) — lihat Blockers. **Release v0.4 Engagement MVP sekarang tuntas 5/6 task** (sisa T-055 Could Have, tidak memblokir). Detail: `tasks/v04-engagement-mvp.md` § T-050, § T-051, § T-052.
 * **T-053 + T-054 Done — Comments Inbox UI + Reply comment, v0.4 Engagement MVP (2026-09-22)** — inbox komentar lintas akun di `/engage` (dua panel thread-list 340px + detail, shadcn `Item`/`ItemGroup` — pola dikunci via `AskUserQuestion` karena Claude Design belum "SYNCED") dengan filter Akun/Platform/Status, Mark as Done, dan kemampuan membalas dari dalam aplikasi. `EngagementService.reply` baru (validasi content, guard `NotFoundError`, `IOutstandAdapter.replyToComment` Fake pola `schedulePost`/`publishNow`, persist `EngagementReply.outstandReplyId`) — **constructor `EngagementService` berubah**, wajib menerima `IOutstandAdapter`, seluruh call site diupdate. RBAC: Owner/Admin/Creator semua boleh reply. **KI-065 baru** (Open): kotak "Post asal" cuma label generik, tanpa judul/thumbnail post asli (gap data T-050, bukan bug). Rangkaian: Prabowo Feature Engineer → Mark UI Engineer → Elon Backend Engineer → Mark UI Engineer → Ridwan Architecture Reviewer (0 temuan) → Najwa QA Engineer (PASS penuh, gate T-103.3 match). Verifikasi: `typecheck`/`lint` bersih, `vitest` **448 pass/5 skip** (naik dari 426). Detail: `tasks/v04-engagement-mvp.md` § T-053, § T-054.
 * **T-045 Done (3/3 subtask) — Comparative Reports /analyze, v0.3 Analytics MVP TUNTAS 8/8 (2026-09-21)** — tab baru "Overview"/"Reports" di `/analyze` (`Tabs` shadcn asli, King Rezi minta dikerjakan langsung main agent, bukan Neymar Product Designer, karena rancangan belum ada di Claude Design). Tab Reports: kartu "Perbandingan Periode" (Total Posts/Total Reach/Engagement Rate, current vs periode sebelumnya + badge delta) dan "Perbandingan Akun/Platform" (tabel reach per akun + delta), tombol "Export CSV" client-side murni (tanpa Server Action/dependency baru). Method baru `PublishingService.getComparativeReport(workspaceId, period, userId)` + tipe `ComparativeMetric`/`AccountComparisonRow`/`ComparativeReport`, reuse `getPostPerformance` (extend parameter opsional `asOf?: Date`, backward compatible) dipanggil 2x untuk current vs "periode sebelumnya" — **rolling window sama panjang persis bersebelahan, BUKAN calendar-aligned** (konsisten cara `period` current sendiri dihitung). Badge delta pakai `Badge` `variant="success"`/`"destructive"` (KI-051 resolved, tanpa token warna baru) + ikon Hugeicons (adaptasi dari unicode ▲/▼ mockup statis). Rangkaian: Prabowo Feature Engineer → Mark UI Engineer → Ridwan Architecture Reviewer (0 temuan arsitektur; 1 catatan minor `now` dipanggil 2x independen di `getComparativeReport`, diperbaiki langsung main agent) → Najwa QA Engineer (PASS penuh; 1 temuan gate T-103.3 — caption per-metrik "vs X" hilang di implementasi awal, diperbaiki langsung main agent). Verifikasi: `typecheck`/`lint` bersih, `vitest` **426 pass/5 skip** (naik dari 422, +4 test case baru). **Release v0.3 Analytics MVP sekarang tuntas 8/8 task.** Detail: `tasks/v03-analytics-mvp.md` § T-045.
 * **T-044 Done (3/3 subtask) — Engagement summary /analyze (2026-09-21)** — card "Engagement Summary" (2 angka: Komentar, Likes) di kolom kanan grid `.dash-cols` `/analyze`, mengaktifkan grid 2 kolom (`lg:grid-cols-[1.6fr_1fr]`) yang sebelumnya sengaja full-width sejak T-046. Scope dipersempit lewat `AskUserQuestion`: Claude Design (`templates/analyze-dashboard.html`, belum "SYNCED") cuma mengunci 2 angka sederhana — jauh lebih sempit dari task doc asli (Domain: `analytics`, ADR-018, agregasi komentar masuk/dibalas/rasio respons via domain `engagement`). Method baru `PublishingService.getEngagementSummary(workspaceId, period, userId)` + tipe `EngagementSummary { totalComments, totalLikes }`, reuse `getPostPerformance` (T-043), data dari field `likes`/`comments` `AnalyticsPostMetric` (sudah ada sejak T-041) — **tidak ada query Prisma baru, tidak ada cross-domain edge ke `engagement`** (0 import `domains/engagement`). **Domain task berubah `analytics`→`publishing`, ADR-018 tidak dipakai** (drift field task doc diperbaiki) — **konsekuensi: T-044 tidak lagi terikat v0.4**. Rangkaian: Prabowo Feature Engineer → Mark UI Engineer → Ridwan Architecture Reviewer (0 temuan) → Najwa QA Engineer (PASS penuh, gate T-103.3 dicek 2x independen). Verifikasi: `typecheck`/`lint` bersih, `vitest` **422 pass/5 skip** (naik dari 415, +7 test case baru). Catatan non-blocking: tabel Post Performance kartu kiri (sekarang `1.6fr`) butuh scroll horizontal untuk kolom Reach/Eng. Rate di lebar browser standar — bukan defect. Detail: `tasks/v03-analytics-mvp.md` § T-044.
-* **T-047 Done (3/3 subtask) — Summary row /analyze (2026-09-18)** — 3 stat card (Total Posts, Total Reach, Engagement Rate) di bagian atas `/analyze`. Sumber data reuse `PublishingService.getPostPerformance` — method baru `getAnalyzeSummary(workspaceId, period, userId)` + tipe `AnalyzeSummary`, **bukan** `AnalyticsService.getDashboardSummary`, untuk menghindari circular dependency `analytics↔publishing` (pola sama solusi refactor T-043). `totalPosts` dihitung FLAT per baris post×target-akun, diverifikasi cocok dengan mock Claude Design. UI 3 `StatTile` diekstrak jadi shared component baru `apps/web/src/app/(app)/components/stat-tile.tsx`, dipakai ulang di `DashboardHome.tsx` (pure extraction). Empty state per-field: `totalPosts` selalu angka, `totalReach`/`avgEngagementRate` independen "Belum ada data" saat `null` — pola sama T-043.4. Desain sudah "SYNCED" di Claude Design sebelum implementasi, tidak ada gate ambiguitas terpicu. Rangkaian: Prabowo Feature Engineer (T-047.1) → Mark UI Engineer (T-047.2–T-047.3) → Ridwan Architecture Reviewer (0 temuan) → Najwa QA Engineer (0 bug, gate T-103.3 match). Verifikasi: `typecheck`/`lint` bersih, `vitest` **418 pass/5 skip** (42 file, naik dari 415). Catatan non-blocking: 2 skenario (period tanpa post, campuran sebagian metrik) tidak bisa diverifikasi visual browser (data dev tidak ada kombinasi itu), sudah tercover unit test. Detail: `tasks/v03-analytics-mvp.md` § T-047.
 ---
 
 ## Recent Decisions (Ringkasan)

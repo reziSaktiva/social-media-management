@@ -8,6 +8,111 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-23 — KI-066/T-105 Sidebar shadcn — TUNTAS 4/4 subtask: implementasi kode + review Ridwan + QA Najwa, KI-066 Resolved
+
+Lanjutan langsung entri T-105.1 di bawah (sesi sama). Setelah gate rule 17
+terpenuhi, T-105.2 (audit) dan T-105.3 (implementasi) didelegasikan ke Mark
+UI Engineer (domain `UI`).
+
+**T-105.2/T-105.3 (Mark UI Engineer):** `WorkspaceSideNav.tsx` dan
+`SettingsSideNav.tsx` (`apps/web/src/app/(app)/components/` dan
+`apps/web/src/app/(app)/settings/components/`) dikomposisi ulang dari
+primitive `Sidebar` shadcn asli (`Sidebar`/`SidebarHeader`/`SidebarContent`/
+`SidebarGroup`/`SidebarMenu`/`SidebarMenuButton`/`SidebarFooter`,
+`SidebarRail` sengaja tidak dipasang — konsisten dengan mockup Claude
+Design). Wrapper baru `AppShell.tsx` mengontrol prop `open`
+`SidebarProvider` secara eksplisit supaya `/settings` selalu expanded
+(keputusan #4), sambil tetap mempertahankan `collapsible="icon"` di
+`SettingsSideNav` (bukan `"none"`) supaya mobile `Sheet` bawaan (keputusan
+#5) tetap berfungsi di route itu — insight teknis: `collapsible="none"`
+pada primitive shadcn melewati total logic `isMobile`, jadi tidak
+kompatibel dengan keputusan mobile yang sudah dikunci. `MobileTopBar.tsx`
+disederhanakan jadi cuma trigger (drawer mobile kini murni ditangani
+`SidebarProvider`), `AppSideNav.tsx` dirender sekali (bukan dua instance
+desktop+mobile terpisah seperti pola T-098.4 lama). 5 nav item diberi ikon
+`hugeicons` (sebelumnya benar-benar tanpa ikon, bukan cuma placeholder).
+
+3 bug ditemukan & diperbaiki selama implementasi (bukan formalitas —
+ditemukan lewat verifikasi nyata): import `cn` keliru dari package npm
+eksternal hasil install registry (harusnya `@/lib/utils`, `bun remove cn`
+dijalankan untuk bersihkan `package.json`/`bun.lock`); lint error
+`react-hooks/set-state-in-effect` di `use-mobile.ts` bawaan registry
+(diganti pola `useSyncExternalStore`, konsisten cara file lain di repo
+menghindari rule yang sama); overlap visual avatar+trigger di rail 48px
+saat collapsed (diperbaiki `group-data-[collapsible=icon]:flex-col`).
+
+**Susulan sama hari — review Ridwan Architecture Reviewer:** 0 pelanggaran
+hard rule arsitektur (entry point bersih, domain tidak disentuh,
+cross-domain lewat public API `@/domains/notification`/`@/domains/workspace`,
+package hygiene bersih). 1 temuan non-blocking: cookie `sidebar_state`
+ditulis `SidebarProvider` bawaan setiap toggle tapi tidak pernah dibaca
+ulang untuk inisialisasi — state collapse/expand reset ke expanded tiap
+full page reload (infrastruktur cookie ada, efeknya tidak pernah dipakai).
+King Rezi diberi pilihan (perbaiki sekarang vs catat known-gap) via
+`AskUserQuestion` — memilih **perbaiki sekarang**. Fix (Mark UI Engineer,
+sesi dilanjutkan): `(app)/layout.tsx` (Server Component) baca cookie via
+`cookies()` dari `next/headers`, diteruskan sebagai prop `defaultOpen` ke
+`AppShell.tsx` (`useState(true)` hardcoded → `useState(defaultOpen)`).
+Sempat ada false-positive flip-flop saat testing di tab browser lama
+(artifact Next.js router cache dari puluhan reload/HMR sepanjang sesi,
+bukan bug) — dikonfirmasi bersih di tab browser baru: collapse→reload
+tetap collapsed, expand→reload tetap expanded, paksaan `/settings` tidak
+rusak, kembali ke workspace balik ke preferensi tersimpan (bukan reset).
+
+**Susulan — QA Najwa QA Engineer (T-105.4):** PASS penuh — golden path
+(toggle, persistence reload, paksaan settings, Channels hidden saat
+collapsed), regresi (nav aktif per-route, logout dialog Tier-2, dropdown
+workspace switcher, unread badge, Channels hover drag/count↔+, New Post
+CTA) semua PASS, mobile breakpoint 768px (Sheet workspace & settings,
+auto-close setelah klik nav) PASS, light/dark mode PASS. `typecheck`/
+`lint` bersih, `vitest` **453 pass/6 skip**. Satu catatan: header
+"workspace switcher" ternyata memang cuma `Link` biasa ke `/`, bukan
+dropdown — sudah begitu sejak sebelum T-105 (dicek riwayat git), bukan
+regresi, cuma mismatch istilah di deskripsi task.
+
+**Gate T-103.3** tidak bisa dijalankan Najwa — `DesignSync` tidak
+ter-load di sesi subagent-nya (limitasi berulang yang sama sejak T-098.4,
+tercatat `.claude/agents/README.md`). Dijalankan manual di sesi utama
+sebagai gantinya: `WorkspaceSideNav.tsx`/`SettingsSideNav.tsx`/
+`AppShell.tsx` dibaca langsung dan dibandingkan terhadap
+`components/navigation.html`/`readme.md` § Components yang sudah SYNCED
+(T-105.1) — komposisi primitive match persis (termasuk `SidebarRail`
+yang sama-sama tidak dipasang di keduanya). Gate **PASS**.
+
+**KI-066 Resolved.** T-105 seluruh 4/4 subtask `✅ Done`. Branch+PR kode
+**belum** dibuat — menunggu review King Rezi (kode sudah ada di branch
+kerja `fix/ki-066-sidebar-shadcn-collapse`, bukan `main`/`staging`, sesuai
+rule 18 AGENTS.md). Detail lengkap: `tasks/v07-astryx-shadcn-migration.md`
+§ T-105.2–T-105.4, `PROJECT_STATE.md` § KI-066.
+
+## 2026-09-23 — KI-066/T-105.1 Sidebar shadcn — King Rezi review Claude Design: OK, mobile pakai Sheet bawaan (gate rule 17 terpenuhi, lanjut ke kode)
+
+King Rezi mereview hasil update Claude Design sesi sebelumnya (T-105.0:
+mapping primitive `Sidebar` + collapse/expand icon-only) dan mengonfirmasi
+**OK, tidak ada revisi**. Keputusan terbuka mobile behavior (satu-satunya
+yang belum dijawab) juga dijawab: pakai `Sheet` bawaan `Sidebar` shadcn
+(auto-swap di bawah breakpoint `md` via `SidebarProvider`) — **menggantikan**
+`MobileTopBar.tsx`/`Sheet` custom (T-098.4), bukan dipertahankan
+berdampingan.
+
+`components/navigation.html` dan `readme.md` § Components (Claude Design,
+project "Social Media Management") diupdate untuk mencatat kedua keputusan
+ini dan ditandai **SYNCED (T-105.1, 2026-09-23)** — locked pattern, subagent
+implementasi (Mark UI Engineer) tidak perlu bertanya ulang soal pola ini
+per gate rule 17/`.claude/agents/README.md`. Perubahan dijaga scope-ketat:
+diff dicek sebelum push — hanya paragraf/sel tabel terkait dua keputusan
+ini yang berubah, sisanya byte-identik dengan versi T-105.0. Remote
+diverifikasi 2x (fetch sebelum edit, fetch ulang tepat sebelum push, tidak
+ada drift) sesuai skill `claude-design-scope-discipline` rule 6.
+
+Gate wajib rule 17 AGENTS.md kini terpenuhi untuk T-105 — **T-105.2**
+(audit gap kode) dan **T-105.3** (implementasi migrasi struktur + fitur
+collapse/expand + mobile Sheet) didelegasikan ke Mark UI Engineer (domain
+`UI`, sesuai pemetaan `.claude/agents/README.md`). Kode `apps/web` untuk
+KI-066 baru mulai berjalan setelah entri ini. Detail keputusan lengkap:
+`tasks/v07-astryx-shadcn-migration.md` § T-105.1, `PROJECT_STATE.md` §
+KI-066.
+
 ## 2026-09-22 — KI-066/T-105 Sidebar shadcn — rollout fitur collapse/expand ke App Prototype + 8 screen template (kode apps/web tetap belum dimulai)
 
 Susulan kedua dari entri T-105.0 di bawah (sesi sama). Setelah fitur
