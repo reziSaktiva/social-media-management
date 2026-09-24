@@ -6,6 +6,7 @@ import { WorkspaceService } from "@/domains/workspace";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { engagementRepository } from "@/lib/repositories/engagement";
+import { publishingRepository } from "@/lib/repositories/publishing";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 
@@ -39,6 +40,7 @@ export default async function Page() {
   const engagementService = new EngagementService(
     engagementRepository,
     getOutstandAdapter(),
+    publishingRepository,
   );
   const workspaceService = new WorkspaceService(workspaceRepository);
 

@@ -2,6 +2,8 @@ import {
   NotificationType,
   type ConnectedAccountId,
   type IOutstandAdapter,
+  type PostId,
+  type SocialPlatform,
   type UserId,
   type WorkspaceId,
 } from "@social/shared";
@@ -48,10 +50,45 @@ interface WorkspaceMembersPort {
   ): Promise<{ userId: UserId }[]>;
 }
 
+/**
+ * Port lokal cross-domain `engagement` → `publishing` (dependency arah ini
+ * SUDAH legal — sama alasan `ConnectedAccountsPort` di
+ * `RefreshInboxUseCase`/`WorkspaceMembersPort` di bawah: `engagement` tidak
+ * mengimpor `PublishingRepository`/`PublishingService` konkret, composition
+ * root (job route/`refreshInboxAction`) menyuplai instance lewat
+ * constructor). Redesain KI-068/ADR-113 — root cause KI-068 adalah kontrak
+ * `fetchComments` lama men-scope komentar PER AKUN dengan `cursor`,
+ * sementara API resmi Outstand men-scope PER POST tanpa cursor. Daftar post
+ * yang perlu di-sync sekarang diambil dari DB kita sendiri
+ * (`PublishingPost`/`PublishingPostTarget`, BUKAN endpoint list-posts
+ * Outstand — keputusan eksplisit King Rezi) lewat public API barrel
+ * `@/domains/publishing` (`IPublishingRepository.listSyncablePostsByConnectedAccount`,
+ * dipassing langsung structural-typing sama seperti `workspaceRepository`
+ * dipakai sebagai `WorkspaceOwnerLookupPort`).
+ */
+interface PublishingPostsPort {
+  listSyncablePostsByConnectedAccount(
+    input: { workspaceId: WorkspaceId; connectedAccountId: ConnectedAccountId },
+    userId: UserId,
+  ): Promise<
+    { postId: PostId; outstandPostId: string; platform: SocialPlatform }[]
+  >;
+}
+
 export interface SyncCommentsPayload {
   workspaceId: WorkspaceId;
   connectedAccountId: ConnectedAccountId;
-  outstandAccountId: string;
+  /**
+   * Redesain KI-068/ADR-113 — menggantikan `outstandAccountId` (tidak lagi
+   * dibutuhkan langsung oleh `sync()`: `outstandPostId`/`platform` per post
+   * sekarang datang dari `PublishingPostsPort`, bukan dari
+   * `IOutstandAdapter.fetchComments` yang di-scope per akun seperti
+   * sebelumnya). `accountUsername` = `WorkspaceConnectedAccount.handle` —
+   * WAJIB dikirim ke `fetchComments` karena API resmi Outstand butuhnya
+   * untuk disambiguasi saat satu post publish ke >1 akun di network yang
+   * sama (lihat `outstand-adapter.ts`).
+   */
+  accountUsername: string;
 }
 
 export interface SyncCommentsResult {
@@ -59,10 +96,11 @@ export interface SyncCommentsResult {
 }
 
 /**
- * JOB-03 Engagement Sync (`background-jobs.md`, T-051) — logic sync MURNI
- * untuk SATU `ConnectedAccount`, dipisahkan dari job scheduling/self-reschedule
- * (itu tanggung jawab `EngagementSyncJobHandler`, BUKAN use-case ini) supaya
- * method `sync` bisa di-reuse LANGSUNG oleh manual refresh (T-052, tidak
+ * JOB-03 Engagement Sync (`background-jobs.md`, T-051, redesain
+ * KI-068/ADR-113) — logic sync MURNI untuk SATU `ConnectedAccount`,
+ * dipisahkan dari job scheduling/self-reschedule (itu tanggung jawab
+ * `EngagementSyncJobHandler`, BUKAN use-case ini) supaya method `sync`
+ * bisa di-reuse LANGSUNG oleh manual refresh (T-052, tidak
  * self-reschedule) tanpa duplikasi logic sync.
  *
  * **`userId` untuk `withCurrentUser`/RLS:** job periodik (dipanggil lewat
@@ -77,6 +115,7 @@ export class SyncCommentsUseCase {
   constructor(
     private readonly repository: IEngagementRepository,
     private readonly adapter: IOutstandAdapter,
+    private readonly publishingPosts: PublishingPostsPort,
     private readonly notification?: NotificationPort,
     private readonly workspaceMembers?: WorkspaceMembersPort,
   ) {}
@@ -85,26 +124,31 @@ export class SyncCommentsUseCase {
     payload: SyncCommentsPayload,
     userId: UserId,
   ): Promise<SyncCommentsResult> {
-    const { workspaceId, connectedAccountId, outstandAccountId } = payload;
+    const { workspaceId, connectedAccountId, accountUsername } = payload;
 
-    // JOB-03 dokumentasi: "Memanggil `OutstandAdapter.fetchComments(outstandAccountId, cursor?)`"
-    // dipanggil berulang sampai `nextCursor` habis dalam SATU run sync
-    // (`background-jobs.md` § JOB-03 catatan `FetchCommentsResult`). Fake
-    // adapter (T-051) selalu mengembalikan `nextCursor: null` (tidak
-    // mensimulasikan pagination bertingkat), tapi loop di sini tetap benar
-    // untuk real adapter nanti.
-    let cursor: string | undefined;
-    let newCommentsCount = 0;
-
-    do {
-      const { comments, nextCursor } = await this.adapter.fetchComments(
-        outstandAccountId,
-        cursor,
+    // Redesain KI-068/ADR-113 — daftar post yang di-sync sekarang dari DB
+    // kita sendiri (bukan lagi satu call `fetchComments` per akun dengan
+    // `cursor`). Loop BERURUTAN per post (bukan `Promise.all` lintas post)
+    // — sengaja, menghindari beban paralel tak perlu ke Outstand untuk job
+    // periodik/manual refresh, konsisten pola `RefreshInboxUseCase`.
+    const syncablePosts =
+      await this.publishingPosts.listSyncablePostsByConnectedAccount(
+        { workspaceId, connectedAccountId },
+        userId,
       );
 
+    let newCommentsCount = 0;
+
+    for (const post of syncablePosts) {
+      const { comments } = await this.adapter.fetchComments({
+        outstandPostId: post.outstandPostId,
+        platform: post.platform,
+        accountUsername,
+      });
+
       // Upsert per komentar dijalankan konkuren (bukan `await` berurutan
-      // satu-satu) supaya round-trip DB tiap halaman tidak terserialisasi —
-      // tiap panggilan tetap atomik/idempotent sendiri (unique constraint +
+      // satu-satu) supaya round-trip DB tidak terserialisasi — tiap
+      // panggilan tetap atomik/idempotent sendiri (unique constraint +
       // advisory lock per `connectedAccountId` di `upsertInboxItem`).
       const results = await Promise.all(
         comments.map((comment) =>
@@ -118,6 +162,15 @@ export class SyncCommentsUseCase {
               authorHandle: comment.authorHandle,
               content: comment.content,
               receivedAt: comment.receivedAt,
+              // Redesain KI-068/ADR-113 — kolom `EngagementInboxItem.postId`
+              // sudah ada di schema sejak awal (T-050) tapi TIDAK PERNAH
+              // diisi jalur manapun sebelum ini (root cause salah satu
+              // sub-poin KI-068): sekarang terisi dari `post.postId` yang
+              // SAMA dengan `outstandPostId` yang barusan dipakai
+              // `fetchComments` di atas — join balik lewat
+              // `listSyncablePostsByConnectedAccount` (BUKAN tebakan/lookup
+              // terpisah).
+              postId: post.postId,
             },
             userId,
           ),
@@ -129,9 +182,7 @@ export class SyncCommentsUseCase {
           newCommentsCount += 1;
         }
       }
-
-      cursor = nextCursor ?? undefined;
-    } while (cursor !== undefined);
+    }
 
     if (newCommentsCount > 0) {
       await this.notifyNewComments(workspaceId, newCommentsCount, userId);

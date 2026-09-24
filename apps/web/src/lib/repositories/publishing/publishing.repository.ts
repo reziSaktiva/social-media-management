@@ -953,6 +953,64 @@ export const publishingRepository: IPublishingRepository = {
 
     return post ? mapPost(post) : null;
   },
+
+  /**
+   * Engagement Sync (JOB-03, T-051, redesain KI-068/ADR-113) — query lewat
+   * `publishingPostTarget` (bukan `publishingPost`) karena filter utamanya
+   * (`connectedAccountId`) ada di level target, bukan post. `outstandPostId`
+   * (post-level) dan `deletedAt` (soft-delete) difilter lewat relasi
+   * `post`. Lihat `IPublishingRepository.listSyncablePostsByConnectedAccount`.
+   */
+  async listSyncablePostsByConnectedAccount(
+    { workspaceId, connectedAccountId },
+    userId,
+  ) {
+    const targets = await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.findMany({
+        where: {
+          connectedAccountId,
+          post: {
+            workspaceId,
+            deletedAt: null,
+            outstandPostId: { not: null },
+          },
+        },
+        select: {
+          postId: true,
+          platform: true,
+          post: { select: { outstandPostId: true } },
+        },
+      }),
+    );
+
+    return targets
+      .filter(
+        (
+          target,
+        ): target is typeof target & { post: { outstandPostId: string } } =>
+          target.post.outstandPostId !== null,
+      )
+      .map((target) => ({
+        postId: asPostId(target.postId),
+        outstandPostId: target.post.outstandPostId,
+        platform: target.platform as SocialPlatform,
+      }));
+  },
+
+  /**
+   * Reply Engagement (T-054, redesain KI-068/ADR-113) — lihat
+   * `IPublishingRepository.findPostOutstandId`.
+   */
+  async findPostOutstandId({ workspaceId, postId }, userId) {
+    const post = await withCurrentUser(userId, (tx) =>
+      tx.publishingPost.findFirst({
+        where: { id: postId, workspaceId, deletedAt: null },
+        select: { outstandPostId: true },
+      }),
+    );
+
+    return post?.outstandPostId ?? null;
+  },
 };
 
 /** Row shape returned by the raw SQL call above — snake_case, mirrors the SQL function's RETURNS TABLE. */

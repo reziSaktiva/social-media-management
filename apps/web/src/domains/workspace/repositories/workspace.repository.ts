@@ -387,11 +387,19 @@ export interface IWorkspaceRepository {
    * established for T-026.5. Returns `null` kalau tidak ada akun dengan
    * `outstandAccountId` itu (job handler menganggap ini anomali — retry
    * lewat job runner, TIDAK self-reschedule).
+   *
+   * **`handle` (redesain KI-068/ADR-113)** — ditambahkan supaya
+   * `EngagementSyncJobHandler` bisa menyuplai `accountUsername` ke
+   * `SyncCommentsUseCase.sync` tanpa lookup terpisah (API resmi Outstand
+   * butuh username untuk `fetchComments`/disambiguasi multi-akun — lihat
+   * `outstand-adapter.ts`). Diimplementasikan lewat kolom baru pada fungsi
+   * SQL yang sama, migration `20260924090000_ki068_add_handle_to_account_owner_lookup`.
    */
   findAccountOwnerByOutstandAccountId(outstandAccountId: string): Promise<{
     workspaceId: WorkspaceId;
     connectedAccountId: ConnectedAccountId;
     ownerUserId: UserId;
+    handle: string;
   } | null>;
 
   /**

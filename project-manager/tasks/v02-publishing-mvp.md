@@ -300,7 +300,7 @@ ADR-065. Tidak ada perubahan kode di sesi ini — murni koreksi status.
 | **Status**    | 🟡 In Progress                                                |
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-005, ADR-019, ADR-040, ADR-059                           |
-| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070), KI-068 (baru, gap `fetchComments`/`replyToComment`), KI-069 (baru, override platform-specific tidak terkirim), KI-070 (baru, flow multi-halaman Facebook Pages), ADR-112 (`PROJECT_STATE.md` § Blockers/Known Issues) |
+| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070), KI-068 (Resolved via ADR-113), KI-069 (baru, override platform-specific tidak terkirim), KI-070 (baru, flow multi-halaman Facebook Pages), KI-071 (baru, gap disambiguasi reply multi-akun), ADR-112, ADR-113 (`PROJECT_STATE.md` § Blockers/Known Issues) |
 | **Depends**   | T-028 ✅ (port + factory sudah ada) · kredensial Outstand asli |
 | **Baca dulu** | `05-architecture/integration-layer.md`                        |
 
@@ -311,7 +311,7 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 - [x] **T-025.3** `publishNow` real (dipakai T-029)
 - [ ] **T-025.4** `connectAccount` redirect flow (dipakai T-013) — flow **single-page** (Instagram/X/LinkedIn/Threads/TikTok/YouTube/Pinterest dkk) sudah selesai lewat **ADR-112** (`resolveConnectCallback` menggantikan `exchangeConnectCode`); sisa flow **multi-halaman Facebook Pages** (session-token) belum diimplementasikan, lihat **KI-070**
 - [x] **T-025.5** Media API (dipakai T-024)
-- [ ] **T-025.6** Engagement fetch/reply (dipakai v0.4) — **belum bisa dipetakan langsung**, lihat **KI-068**
+- [x] **T-025.6** Engagement fetch/reply (dipakai v0.4) — redesain per-post via **ADR-113**, KI-068 Resolved (2026-09-24)
 - [x] **T-025.7** Unit test adapter dengan HTTP mock — belum ada test adapter sama sekali
 
 > Kredensial `OUTSTAND_API_KEY` / `OUTSTAND_WEBHOOK_SECRET` asli belum dimiliki King Rezi. Fake adapter (T-028) sengaja dibuat supaya rilis ini tidak berhenti menunggu.
@@ -351,6 +351,27 @@ passed/6 skipped (full suite), Ridwan re-verifikasi 129 test terkait
 langsung — 0 temuan arsitektur. T-013/T-015 **tidak perlu rework** (ADR-112
 §6 — perubahan murni di boundary parameter, bukan alur bisnis).
 
+**Update (2026-09-24, Elon Backend Engineer, lolos review Ridwan 0 temuan):**
+**KI-068 Resolved** — kontrak `fetchComments`/`replyToComment` diredesain
+per-post sesuai API resmi Outstand lewat **ADR-113** (amandemen ADR-110):
+`fetchComments` sekarang menerima `outstandPostId`/`platform`/
+`accountUsername` (tanpa cursor, `FetchCommentsResult.nextCursor` dihapus
+total); `replyToComment` menerima `outstandPostId` (wajib) +
+`parentOutstandCommentId` (opsional, threading). `SyncCommentsUseCase`
+(T-051, JOB-03) diredesain loop per-post lewat port lokal
+`PublishingPostsPort` (cross-domain via composition root, bukan import file
+internal domain lain — dikonfirmasi bersih oleh Ridwan). Real adapter
+diimplementasikan penuh (menggantikan throw gap sebelumnya), Fake adapter
+disesuaikan (tetap instant/deterministic, ADR-059). Typecheck bersih, lint
+bersih, Vitest 480 pass/6 skip/0 fail. Migration baru
+`20260924090000_ki068_add_handle_to_account_owner_lookup` **belum
+di-deploy** (`bun run db:deploy` pending King Rezi, lihat `PROJECT_STATE.md`
+§ Blockers). Gap baru ditemukan (bukan bug, keputusan scope King Rezi):
+endpoint reply Outstand menerima `account_username`/`platform_post_id`
+opsional untuk disambiguasi post yang publish ke >1 akun di network sama —
+signature `replyToComment` yang dikonfirmasi tidak membawa field itu,
+dicatat **KI-071** (baru, tidak memblokir penutupan KI-068).
+
 **Masih gap arsitektur (sengaja throw eksplisit `OutstandIntegrationError`,
 bukan silent bug, butuh keputusan King Rezi + kemungkinan amandemen ADR):**
 
@@ -360,16 +381,13 @@ bukan silent bug, butuh keputusan King Rezi + kemungkinan amandemen ADR):**
   page-selection baru yang belum ada di codebase. Real adapter sengaja
   throw eksplisit untuk `platform === Facebook` (ADR-112 §5), bukan
   berpura-pura berhasil.
-- **KI-068** — Outstand men-scope komentar per-post
-  (`GET/POST /v1/posts/{postId}/replies`, tanpa cursor pagination),
-  sementara kontrak `IOutstandAdapter.fetchComments`/`replyToComment`
-  men-scope per-akun dengan `cursor`. Butuh redesain alur JOB-03
-  (`engagement.sync`, T-051).
 - **KI-069** — Override format per-platform (Story/Reel/Pin, ADR-039/
   ADR-107) butuh dikirim sebagai key top-level bernama network di body
   `POST /v1/posts`, tapi `OutstandPostTargetInput` tidak membawa
   `platform`/network per target. Untuk sekarang override TIDAK dikirim ke
   Outstand — post tetap terkirim tanpa override platform-specific.
+- **KI-071** (baru, gap disambiguasi reply multi-akun) — lihat catatan
+  update di atas.
 
 Detail teknis lengkap ada di docstring
 `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts`.

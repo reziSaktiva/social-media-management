@@ -22,6 +22,7 @@ interface ConnectedAccountsPort {
     {
       id: ConnectedAccountId;
       outstandAccountId: string;
+      handle: string;
       status: string;
     }[]
   >;
@@ -73,7 +74,7 @@ export class RefreshInboxUseCase {
         {
           workspaceId,
           connectedAccountId: account.id,
-          outstandAccountId: account.outstandAccountId,
+          accountUsername: account.handle,
         },
         userId,
       );

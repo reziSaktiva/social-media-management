@@ -849,4 +849,60 @@ export interface IPublishingRepository {
     input: { workspaceId: WorkspaceId; postId: PostId },
     userId: UserId,
   ): Promise<PublishingPostRecord | null>;
+
+  /**
+   * Engagement Sync (JOB-03, T-051, redesain KI-068/ADR-113) — daftar post
+   * yang sudah punya `outstandPostId` (pernah publish/dijadwalkan lewat
+   * Outstand) untuk SATU `connectedAccountId`, dipakai
+   * `SyncCommentsUseCase` untuk tahu `outstandPostId`+`platform` mana saja
+   * yang perlu di-`IOutstandAdapter.fetchComments` — API resmi Outstand
+   * men-scope replies PER POST, bukan per akun (root cause KI-068, lihat
+   * `ctx-architecture.md`/`PROJECT_STATE.md`), jadi sumber daftar post yang
+   * di-sync adalah DB kita sendiri (`PublishingPost`/`PublishingPostTarget`),
+   * BUKAN endpoint list-posts Outstand (keputusan eksplisit King Rezi).
+   *
+   * Post yang belum pernah publish (`outstandPostId` masih `null`) TIDAK
+   * ikut — tidak ada apa pun di Outstand untuk di-fetch. Soft-deleted post
+   * (`deletedAt` terisi) juga tidak ikut, pola sama `listDrafts`/`listQueue`.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  listSyncablePostsByConnectedAccount(
+    input: {
+      workspaceId: WorkspaceId;
+      connectedAccountId: ConnectedAccountId;
+    },
+    userId: UserId,
+  ): Promise<SyncablePostRecord[]>;
+
+  /**
+   * Reply Engagement (T-054, redesain KI-068/ADR-113) — resolve
+   * `outstandPostId` post-level untuk SATU `postId` internal, dipakai
+   * `EngagementService.reply` untuk membentuk
+   * `IOutstandAdapter.replyToComment` (endpoint resmi Outstand WAJIB tahu
+   * `postId`, bukan cuma `outstandCommentId` — root cause KI-068). Returns
+   * `null` kalau post tidak ditemukan di `workspaceId` ini, sudah
+   * di-soft-delete, ATAU belum pernah publish (`outstandPostId` masih
+   * `null`) — caller memperlakukan ketiganya sama (tidak bisa reply).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  findPostOutstandId(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<string | null>;
+}
+
+/**
+ * Satu post yang punya `outstandPostId` untuk SATU `connectedAccountId`
+ * (Engagement Sync, JOB-03, T-051, redesain KI-068/ADR-113) — hasil
+ * `listSyncablePostsByConnectedAccount`. `platform` diambil dari
+ * `PublishingPostTarget.platform` (per-target, bukan per-post) karena satu
+ * post bisa punya target di platform berbeda-beda; baris ini SATU target
+ * spesifik untuk `connectedAccountId` yang diminta.
+ */
+export interface SyncablePostRecord {
+  postId: PostId;
+  outstandPostId: string;
+  platform: SocialPlatform;
 }

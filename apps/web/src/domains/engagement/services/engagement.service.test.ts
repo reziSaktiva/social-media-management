@@ -1,6 +1,7 @@
 import {
   asConnectedAccountId,
   asInboxItemId,
+  asPostId,
   asReplyId,
   asUserId,
   asWorkspaceId,
@@ -9,7 +10,11 @@ import {
   type ReplyToCommentResult,
 } from "@social/shared";
 import { describe, expect, it } from "vitest";
-import { NotFoundError, ValidationError } from "@/lib/utils/errors";
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from "@/lib/utils/errors";
 import type { IEngagementRepository } from "../repositories/engagement.repository";
 import type {
   EngagementInboxItemRecord,
@@ -110,10 +115,31 @@ function createFakeAdapter(
       totalEngagements: 0,
       avgEngagementRate: 0,
     }),
-    fetchComments: async () => ({ comments: [], nextCursor: null }),
+    fetchComments: async () => ({ comments: [] }),
     replyToComment: async (): Promise<ReplyToCommentResult> => ({
       outstandReplyId: "fake-reply-1",
     }),
+    ...overrides,
+  };
+}
+
+/**
+ * Fake port `engagement` → `publishing` (redesain KI-068/ADR-113) — resolve
+ * `outstandPostId` dari `postId` internal. Default selalu mengembalikan
+ * `"fake-outstand-post-1"` (post yang "sudah pernah publish") supaya test
+ * yang tidak secara spesifik menguji jalur "belum pernah publish"/"post
+ * tidak terhubung" tidak perlu mengurus override ini.
+ */
+function createFakePublishingPosts(
+  overrides: Partial<{
+    findPostOutstandId: (
+      input: unknown,
+      userId: unknown,
+    ) => Promise<string | null>;
+  }> = {},
+) {
+  return {
+    findPostOutstandId: async () => "fake-outstand-post-1",
     ...overrides,
   };
 }
@@ -128,7 +154,11 @@ describe("EngagementService.listInbox", () => {
         return items;
       },
     });
-    const service = new EngagementService(repository, createFakeAdapter());
+    const service = new EngagementService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts(),
+    );
 
     const result = await service.listInbox(
       {
@@ -168,7 +198,11 @@ describe("EngagementService.getInboxItemDetail", () => {
       findInboxItemById: async () => item,
       listRepliesByInboxItemId: async () => replies,
     });
-    const service = new EngagementService(repository, createFakeAdapter());
+    const service = new EngagementService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts(),
+    );
 
     const result = await service.getInboxItemDetail(
       { workspaceId: WORKSPACE_ID, inboxItemId: item.id },
@@ -182,7 +216,11 @@ describe("EngagementService.getInboxItemDetail", () => {
     const repository = createFakeRepository({
       findInboxItemById: async () => null,
     });
-    const service = new EngagementService(repository, createFakeAdapter());
+    const service = new EngagementService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts(),
+    );
 
     await expect(
       service.getInboxItemDetail(
@@ -203,7 +241,11 @@ describe("EngagementService.markAsDone", () => {
         return doneItem;
       },
     });
-    const service = new EngagementService(repository, createFakeAdapter());
+    const service = new EngagementService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts(),
+    );
 
     const result = await service.markAsDone(
       { workspaceId: WORKSPACE_ID, inboxItemId: INBOX_ITEM_ID },
@@ -222,7 +264,11 @@ describe("EngagementService.markAsDone", () => {
     const repository = createFakeRepository({
       markInboxItemStatus: async () => null,
     });
-    const service = new EngagementService(repository, createFakeAdapter());
+    const service = new EngagementService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts(),
+    );
 
     await expect(
       service.markAsDone(
@@ -235,12 +281,15 @@ describe("EngagementService.markAsDone", () => {
 
 describe("EngagementService.reply", () => {
   it("golden path: reply lewat OutstandAdapter lalu persist outstandReplyId", async () => {
-    const item = makeInboxItem({ externalId: "outstand-comment-1" });
+    const item = makeInboxItem({
+      externalId: "outstand-comment-1",
+      postId: asPostId("post-1"),
+    });
     let receivedReplyArgs: unknown;
     let receivedCreateReplyInput: unknown;
     const adapter = createFakeAdapter({
-      replyToComment: async (outstandCommentId, text) => {
-        receivedReplyArgs = { outstandCommentId, text };
+      replyToComment: async (input) => {
+        receivedReplyArgs = input;
         return { outstandReplyId: "fake-reply-42" };
       },
     });
@@ -261,7 +310,11 @@ describe("EngagementService.reply", () => {
         };
       },
     });
-    const service = new EngagementService(repository, adapter);
+    const service = new EngagementService(
+      repository,
+      adapter,
+      createFakePublishingPosts(),
+    );
 
     const result = await service.reply(
       {
@@ -273,8 +326,9 @@ describe("EngagementService.reply", () => {
     );
 
     expect(receivedReplyArgs).toEqual({
-      outstandCommentId: "outstand-comment-1",
-      text: "Terima kasih ya!",
+      outstandPostId: "fake-outstand-post-1",
+      content: "Terima kasih ya!",
+      parentOutstandCommentId: "outstand-comment-1",
     });
     expect(receivedCreateReplyInput).toEqual({
       inboxItemId: item.id,
@@ -288,7 +342,11 @@ describe("EngagementService.reply", () => {
 
   it("throw ValidationError kalau content kosong/whitespace-only", async () => {
     const repository = createFakeRepository();
-    const service = new EngagementService(repository, createFakeAdapter());
+    const service = new EngagementService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts(),
+    );
 
     await expect(
       service.reply(
@@ -306,7 +364,11 @@ describe("EngagementService.reply", () => {
     const repository = createFakeRepository({
       findInboxItemById: async () => null,
     });
-    const service = new EngagementService(repository, createFakeAdapter());
+    const service = new EngagementService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts(),
+    );
 
     await expect(
       service.reply(
@@ -318,5 +380,43 @@ describe("EngagementService.reply", () => {
         USER_ID,
       ),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throw ConflictError kalau item.postId null (data lama sebelum redesain KI-068)", async () => {
+    const item = makeInboxItem({ postId: null });
+    const repository = createFakeRepository({
+      findInboxItemById: async () => item,
+    });
+    const service = new EngagementService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts(),
+    );
+
+    await expect(
+      service.reply(
+        { workspaceId: WORKSPACE_ID, inboxItemId: item.id, content: "Halo" },
+        USER_ID,
+      ),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it("throw ConflictError kalau post terkait belum pernah publish di Outstand (findPostOutstandId null)", async () => {
+    const item = makeInboxItem({ postId: asPostId("post-1") });
+    const repository = createFakeRepository({
+      findInboxItemById: async () => item,
+    });
+    const service = new EngagementService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts({ findPostOutstandId: async () => null }),
+    );
+
+    await expect(
+      service.reply(
+        { workspaceId: WORKSPACE_ID, inboxItemId: item.id, content: "Halo" },
+        USER_ID,
+      ),
+    ).rejects.toThrow(ConflictError);
   });
 });

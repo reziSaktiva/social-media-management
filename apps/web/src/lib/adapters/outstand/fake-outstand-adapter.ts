@@ -108,40 +108,26 @@ const FAKE_COMMENT_TEMPLATES = [
   "Pengiriman ke luar kota bisa gak ya?",
 ];
 
-const SOCIAL_PLATFORMS = Object.values(SocialPlatform);
-
 /**
- * Fake tidak menyimpan mapping `outstandAccountId → platform` (adapter ini
- * sepenuhnya stateless, sama seperti `fetchPostOutcome` sejak bug fix
- * T-027) — `fetchComments` narasi resminya (`integration-layer.md`) hanya
- * menerima `outstandAccountId`, bukan `platform`. Platform di sini murni
- * derivasi deterministik dari id supaya tetap stabil dipanggil ulang;
- * caller (`SyncCommentsUseCase`) yang butuh platform akurat sebaiknya
- * memakai `ConnectedAccount.platform` miliknya sendiri (data durable),
- * bukan mempercayai field ini secara buta — sama prinsipnya dengan kenapa
- * `expectedOutstandAccountIds` di `fetchPostOutcome` disuplai caller,
- * bukan ditebak adapter.
- */
-function derivePlatform(seed: string): SocialPlatform {
-  const index = deterministicInt(seed, "platform", SOCIAL_PLATFORMS.length);
-  return SOCIAL_PLATFORMS[index];
-}
-
-/**
- * Satu komentar palsu deterministik untuk `outstandAccountId` + `index`
- * tertentu — `outstandCommentId` stabil (bukan `crypto.randomUUID()`
- * seperti `schedulePost`/`publishNow`) SENGAJA: JOB-03 (sync tiap 30 menit)
- * dan manual refresh (T-052) memanggil `fetchComments` berkali-kali untuk
- * `outstandAccountId` yang sama, dan upsert idempoten di
- * `EngagementService` bergantung pada `externalId` (=`outstandCommentId`)
- * yang SAMA supaya tidak menggandakan baris `EngagementInboxItem` tiap
- * sync (persis kebutuhan "wajib idempoten" di T-051).
+ * Satu komentar palsu deterministik untuk `outstandPostId` + `index`
+ * tertentu (redesain KI-068/ADR-113 — dulu keyed by `outstandAccountId`,
+ * sekarang keyed by `outstandPostId` karena `fetchComments` di-scope per
+ * post) — `outstandCommentId` stabil (bukan `crypto.randomUUID()` seperti
+ * `schedulePost`/`publishNow`) SENGAJA: JOB-03 (sync tiap 30 menit) dan
+ * manual refresh (T-052) memanggil `fetchComments` berkali-kali untuk
+ * `outstandPostId` yang sama, dan upsert idempoten di `EngagementService`
+ * bergantung pada `externalId` (=`outstandCommentId`) yang SAMA supaya
+ * tidak menggandakan baris `EngagementInboxItem` tiap sync (persis
+ * kebutuhan "wajib idempoten" di T-051). `platform` diterima apa adanya
+ * dari caller (bukan lagi derivasi deterministik) — konsisten dengan real
+ * adapter yang juga tidak bisa menebak platform sendiri.
  */
 function buildFakeComment(
-  outstandAccountId: string,
+  outstandPostId: string,
+  platform: SocialPlatform,
   index: number,
 ): InboxCommentData {
-  const seed = `${outstandAccountId}:comment:${index}`;
+  const seed = `${outstandPostId}:comment:${index}`;
   const templateIndex = deterministicInt(
     seed,
     "template",
@@ -151,12 +137,11 @@ function buildFakeComment(
   const minutesAgo = deterministicInt(seed, "receivedAt", 240);
 
   return {
-    outstandCommentId: `fake-comment-${outstandAccountId}-${index}`,
-    outstandAccountId,
-    platform: derivePlatform(outstandAccountId),
+    outstandCommentId: `fake-comment-${outstandPostId}-${index}`,
+    platform,
     authorHandle: `@fake.user.${authorSuffix}`,
     content: FAKE_COMMENT_TEMPLATES[templateIndex],
-    outstandPostId: null,
+    outstandPostId,
     receivedAt: new Date(Date.now() - minutesAgo * 60_000),
   };
 }
@@ -422,32 +407,41 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
   },
 
   /**
-   * Engagement Sync (JOB-03, T-051) — Fake mengembalikan SATU halaman tetap
-   * (1-5 komentar, deterministik dari `outstandAccountId`), `nextCursor`
-   * selalu `null` (tidak ada simulasi pagination bertingkat — Fake tidak
-   * butuh network call sungguhan untuk itu, ADR-059). `cursor` diterima
-   * apa adanya tapi diabaikan: karena `outstandCommentId` per komentar
-   * stabil (lihat `buildFakeComment`), sync berulang untuk akun yang sama
+   * Engagement Sync (JOB-03, T-051, redesain KI-068/ADR-113) — di-scope
+   * per POST (bukan lagi per akun): Fake mengembalikan SATU halaman tetap
+   * (1-5 komentar, deterministik dari `outstandPostId`) — tidak ada lagi
+   * `nextCursor`/pagination sama sekali (API resmi Outstand memang tidak
+   * punya cursor untuk endpoint ini). `platform`/`accountUsername`
+   * diterima apa adanya dari caller; `accountUsername` sendiri tidak
+   * mempengaruhi hasil (Fake tidak mensimulasikan disambiguasi multi-akun
+   * per network, ADR-059: fidelitas instan tanpa simulasi kegagalan).
+   * Karena `outstandCommentId` per komentar stabil (lihat
+   * `buildFakeComment`), sync berulang untuk `outstandPostId` yang sama
    * SELALU mengembalikan set komentar identik — upsert idempoten di
    * `EngagementService` akan melihatnya sebagai "tidak ada yang baru" pada
    * sync kedua dan seterusnya, persis simulasi realistis untuk MVP tanpa
    * perlu state buatan yang bertambah tanpa henti.
    */
-  async fetchComments(outstandAccountId): Promise<FetchCommentsResult> {
-    const count = 1 + deterministicInt(outstandAccountId, "commentCount", 5);
+  async fetchComments({
+    outstandPostId,
+    platform,
+  }): Promise<FetchCommentsResult> {
+    const count = 1 + deterministicInt(outstandPostId, "commentCount", 5);
     const comments = Array.from({ length: count }, (_, index) =>
-      buildFakeComment(outstandAccountId, index),
+      buildFakeComment(outstandPostId, platform, index),
     );
 
-    return { comments, nextCursor: null };
+    return { comments };
   },
 
   /**
-   * Reply dari dalam aplikasi (T-054) — sama fidelitasnya dengan
-   * `schedulePost`/`publishNow`: instant always-success, `outstandReplyId`
-   * acak per panggilan (bukan deterministik — tiap reply adalah resource
-   * baru, bukan sesuatu yang perlu direproduksi identik untuk input yang
-   * sama).
+   * Reply dari dalam aplikasi (T-054, redesain KI-068/ADR-113) — sama
+   * fidelitasnya dengan `schedulePost`/`publishNow`: instant always-success,
+   * `outstandReplyId` acak per panggilan (bukan deterministik — tiap reply
+   * adalah resource baru, bukan sesuatu yang perlu direproduksi identik
+   * untuk input yang sama). `outstandPostId`/`parentOutstandCommentId`
+   * diterima apa adanya tapi tidak mempengaruhi hasil (Fake tidak
+   * memvalidasi threading/post existence, ADR-059).
    */
   async replyToComment(): Promise<ReplyToCommentResult> {
     return { outstandReplyId: `fake-reply-${crypto.randomUUID()}` };

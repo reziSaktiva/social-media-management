@@ -713,6 +713,7 @@ export const workspaceRepository: IWorkspaceRepository = {
       workspaceId: lookup.workspaceId,
       connectedAccountId: lookup.connectedAccountId,
       ownerUserId: lookup.ownerUserId,
+      handle: lookup.handle,
     };
   },
 
@@ -850,6 +851,14 @@ interface AccountOwnerLookupRow {
    * reconnect.
    */
   reconnect_required: boolean;
+  /**
+   * Redesain KI-068/ADR-113 — kolom baru (migration
+   * `20260924090000_ki068_add_handle_to_account_owner_lookup`), dipakai
+   * `findAccountOwnerByOutstandAccountId` untuk menyuplai `accountUsername`
+   * ke `SyncCommentsUseCase`. `markAccountReconnectRequired` mengabaikannya
+   * (behavior tidak berubah).
+   */
+  handle: string;
 }
 
 /**
@@ -869,6 +878,7 @@ async function lookupAccountOwnerByOutstandAccountId(
   ownerUserId: UserId;
   status: string;
   reconnectRequired: boolean;
+  handle: string;
 } | null> {
   const rows = await prisma.$queryRaw<AccountOwnerLookupRow[]>`
     SELECT * FROM "public"."webhook_find_account_owner_by_outstand_account_id"(${outstandAccountId})
@@ -898,5 +908,6 @@ async function lookupAccountOwnerByOutstandAccountId(
     ownerUserId: asUserId(row.owner_user_id),
     status: row.status,
     reconnectRequired: row.reconnect_required,
+    handle: row.handle,
   };
 }

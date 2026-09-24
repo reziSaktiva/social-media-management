@@ -6,7 +6,7 @@ Fake `fetchComments`/`replyToComment` — Engagement Sync + Reply mengikuti pola
 
 ### Status
 
-Accepted
+Accepted — Amended by ADR-113 (2026-09-24)
 
 ### Date
 

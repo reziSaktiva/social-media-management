@@ -1,6 +1,7 @@
 import type {
   ConnectedAccountId,
   InboxItemId,
+  PostId,
   SocialPlatform,
   UserId,
   WorkspaceId,
@@ -55,6 +56,16 @@ export interface IEngagementRepository {
    * background (T-051), `userId` yang dipakai adalah keputusan implementasi
    * composition root job route (`/api/jobs/run/route.ts`) — lihat catatan
    * `EngagementSyncJobHandler` untuk `userId` mana yang disuplai.
+   *
+   * **`postId` (redesain KI-068/ADR-113)** — uuid internal `PublishingPost`
+   * yang cocok dengan `outstandPostId` komentar ini (di-resolve `caller`,
+   * `SyncCommentsUseCase`, lewat join balik ke domain `publishing` — lihat
+   * catatan di use-case itu). Opsional supaya caller lain (mis. test lama)
+   * tidak wajib ikut mengisinya, TAPI `SyncCommentsUseCase` SELALU
+   * mengisinya sekarang (kolom `EngagementInboxItem.postId` yang sebelumnya
+   * ada di schema tapi tidak pernah ditulis — root cause KI-068 poin ini).
+   * `create`-only (sama seperti `authorHandle`/`content` di `update`) — post
+   * yang sudah terhubung tidak akan berubah lagi.
    */
   upsertInboxItem(
     input: {
@@ -66,6 +77,7 @@ export interface IEngagementRepository {
       authorHandle: string;
       content: string;
       receivedAt: Date;
+      postId?: PostId;
     },
     userId: UserId,
   ): Promise<{ item: EngagementInboxItemRecord; isNew: boolean }>;

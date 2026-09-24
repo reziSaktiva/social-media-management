@@ -283,36 +283,57 @@ export interface FetchWorkspaceMetricsResult {
 }
 
 /**
- * Satu komentar external Outstand (Engagement MVP, T-051) — dipetakan ke
- * `EngagementInboxItem` oleh `EngagementService` saat upsert (external
- * comment ID = `outstandCommentId`, dedup key bersama `outstandAccountId`).
- * `outstandPostId` nullable — Outstand bisa mengembalikan komentar yang
- * postnya sudah dihapus/tidak terlacak di sisi kita (IL-D09, comments-only
- * MVP, tanpa DM/mention).
+ * Satu komentar external Outstand (Engagement MVP, T-051, redesain KI-068
+ * ADR-113) — dipetakan ke `EngagementInboxItem` oleh `EngagementService`
+ * saat upsert (external comment ID = `outstandCommentId`, dedup key
+ * bersama `connectedAccountId` yang diketahui CALLER dari konteks loop
+ * sync — lihat `SyncCommentsUseCase` — bukan dari field di sini).
+ *
+ * **`outstandPostId` sekarang WAJIB (bukan lagi `string | null`)** — API
+ * resmi Outstand men-scope replies PER POST
+ * (`GET /v1/posts/{postId}/replies`), jadi setiap komentar yang berhasil
+ * diambil PASTI berasal dari `outstandPostId` yang diminta caller (di-echo
+ * balik ke sini, BUKAN dari field response Outstand — `NormalizedReply`
+ * tidak membawa post id). Gap lama ("Outstand bisa mengembalikan komentar
+ * dari post yang tidak terlacak") sudah tidak relevan dengan model
+ * per-post ini.
+ *
+ * **`outstandAccountId` DIHAPUS (redesain KI-068)** — field lama ini tidak
+ * pernah bisa diisi bermakna oleh real adapter: `fetchComments` sekarang
+ * menerima `accountUsername` (bukan account ID) sebagai parameter, dan
+ * response `NormalizedReply` Outstand tidak membawa account id sama
+ * sekali (hanya `author`, nama/handle penulis KOMENTAR, bukan akun kita
+ * yang menerimanya). Caller (`SyncCommentsUseCase`) sudah tahu
+ * `connectedAccountId` dari konteks loop-nya sendiri (data durable), jadi
+ * tidak butuh field ini di-echo balik oleh adapter — pola yang sama
+ * dengan alasan `expectedOutstandAccountIds` di `fetchPostOutcome` disuplai
+ * caller, bukan ditebak adapter.
  */
 export interface InboxCommentData {
   outstandCommentId: string;
-  outstandAccountId: string;
   platform: SocialPlatform;
   authorHandle: string;
   content: string;
-  outstandPostId: string | null;
+  outstandPostId: string;
   receivedAt: Date;
 }
 
 /**
- * Hasil `fetchComments` — dipaginasi (`nextCursor`, `null` berarti halaman
- * terakhir). JOB-03 (`background-jobs.md`) memanggil ini berulang per
- * `ConnectedAccount` sampai `nextCursor` habis dalam satu run sync.
+ * Hasil `fetchComments` (redesain KI-068/ADR-113) — **`nextCursor` DIHAPUS**
+ * (bukan disisakan `null` selalu, itu sudah keputusan eksplisit King Rezi,
+ * bukan future-proofing): endpoint resmi Outstand
+ * (`GET /v1/posts/{postId}/replies`) TIDAK punya pagination cursor sama
+ * sekali. JOB-03 (`background-jobs.md`) sekarang memanggil `fetchComments`
+ * SEKALI per post (bukan berulang sampai cursor habis).
  */
 export interface FetchCommentsResult {
   comments: InboxCommentData[];
-  nextCursor: string | null;
 }
 
 /**
  * Hasil `replyToComment` — dipetakan ke `EngagementReply.outstandReplyId`
- * (T-054).
+ * (T-054). Tidak berubah oleh redesain KI-068 — tetap `reply_id` platform
+ * hasil `POST /v1/posts/{postId}/replies`.
  */
 export interface ReplyToCommentResult {
   outstandReplyId: string;
@@ -497,24 +518,46 @@ export interface IOutstandAdapter {
   ): Promise<FetchWorkspaceMetricsResult>;
 
   /**
-   * Engagement Sync (JOB-03, T-051) — ambil komentar baru untuk satu
-   * `ConnectedAccount`, dipaginasi lewat `cursor` (kosong = halaman
-   * pertama). Dipanggil `EngagementSyncJobHandler` (periodik 30 menit) dan
-   * manual refresh (T-052) — keduanya lewat use-case yang sama
-   * (`integration-layer.md` § "Engagement Data Sync").
+   * Engagement Sync (JOB-03, T-051, redesain KI-068/ADR-113) — ambil
+   * komentar untuk SATU post (`outstandPostId`), BUKAN lagi satu
+   * `ConnectedAccount`. API resmi Outstand men-scope replies per post
+   * (`GET /v1/posts/{postId}/replies`, query `network` WAJIB, `username`
+   * opsional — tapi kita selalu mengirimnya untuk menghindari 400
+   * disambiguasi saat satu post publish ke >1 akun di network yang sama)
+   * dan TIDAK punya pagination cursor sama sekali — karena itu tidak ada
+   * lagi parameter `cursor`/`nextCursor`.
+   *
+   * `SyncCommentsUseCase` (JOB-03) sekarang memanggil ini SEKALI PER POST
+   * (bukan sekali per akun) — daftar post yang di-sync diambil dari
+   * `PublishingPost`/`PublishingPostTarget` milik `connectedAccountId` ini
+   * (query domain `publishing` sendiri lewat public API barrel, BUKAN
+   * endpoint list-posts Outstand — keputusan eksplisit King Rezi/KI-068).
+   * `platform`/`accountUsername` diteruskan dari data durable yang sudah
+   * diketahui caller (pola sama `expectedOutstandAccountIds` di
+   * `fetchPostOutcome` — adapter tidak menebak, caller menyuplai).
    */
-  fetchComments(
-    outstandAccountId: string,
-    cursor?: string,
-  ): Promise<FetchCommentsResult>;
+  fetchComments(input: {
+    outstandPostId: string;
+    platform: SocialPlatform;
+    accountUsername: string;
+  }): Promise<FetchCommentsResult>;
 
   /**
-   * Reply dari dalam aplikasi (T-054) — dipanggil `EngagementService`
-   * setelah RBAC check lolos. `outstandCommentId` adalah external
-   * reference dari `InboxCommentData`/`EngagementInboxItem.externalId`.
+   * Reply dari dalam aplikasi (T-054, redesain KI-068/ADR-113) — dipanggil
+   * `EngagementService` setelah RBAC check lolos. Endpoint resmi Outstand
+   * `POST /v1/posts/{postId}/replies` WAJIB tahu `postId` — `outstandPostId`
+   * karena itu sekarang wajib di kontrak ini (sebelumnya method ini hanya
+   * membawa `outstandCommentId`, yang TIDAK cukup untuk memanggil endpoint
+   * resmi sama sekali, root cause KI-068). `content` adalah isi balasan.
+   * `parentOutstandCommentId` opsional — kalau diisi, balasan di-thread di
+   * bawah komentar itu (`parent_comment_id`, didukung Facebook/Instagram/
+   * LinkedIn/Threads); kalau kosong, balasan langsung ke post
+   * (`EngagementService.reply` mengisinya dengan `outstandCommentId`
+   * komentar yang sedang dibalas — lihat catatan di sana).
    */
-  replyToComment(
-    outstandCommentId: string,
-    text: string,
-  ): Promise<ReplyToCommentResult>;
+  replyToComment(input: {
+    outstandPostId: string;
+    content: string;
+    parentOutstandCommentId?: string;
+  }): Promise<ReplyToCommentResult>;
 }

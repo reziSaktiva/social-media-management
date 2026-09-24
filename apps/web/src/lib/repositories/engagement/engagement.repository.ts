@@ -98,6 +98,7 @@ export const engagementRepository: IEngagementRepository = {
       authorHandle,
       content,
       receivedAt,
+      postId,
     },
     userId,
   ) {
@@ -145,6 +146,7 @@ export const engagementRepository: IEngagementRepository = {
           authorHandle,
           content,
           receivedAt,
+          ...(postId ? { postId } : {}),
         },
         update: {
           authorHandle,

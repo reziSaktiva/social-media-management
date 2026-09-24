@@ -5,6 +5,7 @@ import {
   type ConnectCallbackInput,
   type ConnectedAccountData,
   type FetchCommentsResult,
+  type InboxCommentData,
   type FetchPostMetricsResult,
   type FetchWorkspaceMetricsResult,
   type IOutstandAdapter,
@@ -57,12 +58,11 @@ import { parseBase64UrlJson } from "./connect-state";
  *    /v1/social-accounts/pending/{sessionToken}`) TETAP di luar scope —
  *    `resolveConnectCallback` throw eksplisit kalau dipanggil untuk
  *    `SocialPlatform.Facebook`, lihat KI-070.
- * 2. **`fetchComments`/`replyToComment` (JOB-03/T-054)** — API resmi
- *    Outstand men-scope komentar per POST (`/v1/posts/{id}/replies`,
- *    query `network` wajib, TANPA cursor pagination), sementara kontrak
- *    `IOutstandAdapter` men-scope per AKUN dengan `cursor` opsional. Tidak
- *    ada endpoint Outstand untuk "semua komentar lintas post satu akun".
- *    Kedua method di bawah SENGAJA throw, bukan silent-wrong.
+ * 2. ~~`fetchComments`/`replyToComment` (JOB-03/T-054)~~ — **DISELESAIKAN
+ *    ADR-113 (2026-09-24, redesain KI-068).** Kontrak `IOutstandAdapter`
+ *    sekarang men-scope kedua method per POST (`outstandPostId` wajib),
+ *    cocok dengan API resmi Outstand (`GET/POST /v1/posts/{id}/replies`) —
+ *    lihat implementasi kedua method di bawah.
  * 3. **Platform-specific overrides (Story/Reel/Pin, ADR-039)** —
  *    `OutstandPostTargetInput` tidak membawa `platform`/network per target
  *    (hanya `outstandAccountId`+`contentFormat`+`platformOptions`), padahal
@@ -183,6 +183,22 @@ interface RawPostAccountOutcome {
   platformPostId?: unknown;
   platformPostUrl?: unknown;
   publishedAt?: unknown;
+}
+
+/**
+ * Bentuk `NormalizedReply` pada response `GET /v1/posts/{id}/replies`
+ * (field `data`) — **diverifikasi terhadap OpenAPI spec resmi Outstand**
+ * (`components.schemas.NormalizedReply`, `/v1/posts/openapi.json`).
+ * `created_at` nullable persis sesuai spec (`type: ["string", "null"]`).
+ * `replies` (nested, hanya muncul kalau `include_replies=true`) tidak
+ * dipetakan — method ini sengaja tidak mengirim `include_replies`
+ * (comments-only MVP, ADR-040, tanpa nested thread).
+ */
+interface RawNormalizedReply {
+  id?: unknown;
+  author?: unknown;
+  text?: unknown;
+  created_at?: unknown;
 }
 
 /**
@@ -720,57 +736,106 @@ export function createRealOutstandAdapter(
     },
 
     /**
-     * Engagement Sync (T-025.6, JOB-03).
+     * Engagement Sync (T-025.6, JOB-03, redesain KI-068/ADR-113) —
+     * **diverifikasi terhadap OpenAPI spec resmi Outstand:**
+     * `GET /v1/posts/{postId}/replies` (query `network` WAJIB, `username`
+     * opsional — kita selalu mengirim `username` supaya tidak pernah kena
+     * 400 disambiguasi saat satu post publish ke >1 akun di network yang
+     * sama). Response: `{ success, data: NormalizedReply[] }` — dibaca dari
+     * `data` (bentuk cross-network konsisten), BUKAN `replies` (field itu
+     * deprecated, bentuknya beda per network). `NormalizedReply` tidak
+     * membawa post id ATAU account id — keduanya di-echo balik dari input
+     * (`outstandPostId`, `platform`), bukan dari wire response (lihat
+     * catatan `InboxCommentData` di `packages/shared/src/contracts/outstand-adapter.ts`
+     * untuk kenapa `outstandAccountId` dihapus dari kontrak ini).
+     * `include_replies` sengaja TIDAK dikirim (default top-level only) —
+     * comments-only MVP (ADR-040) tidak butuh nested thread.
      *
-     * **GAP ARSITEKTUR TERBUKA (2026-09-23, dikonfirmasi dari dokumentasi
-     * resmi Outstand — BUKAN diperbaiki di sini, butuh keputusan King
-     * Rezi):** kontrak `fetchComments(outstandAccountId, cursor?)` men-scope
-     * komentar per AKUN dengan pagination `cursor`. API resmi Outstand
-     * TIDAK punya endpoint seperti itu — komentar hanya bisa diambil per
-     * POST (`GET /v1/posts/{postId}/replies`, query `network` WAJIB,
-     * `username` opsional), dan endpoint itu TIDAK punya pagination cursor
-     * sama sekali. Tidak ada cara mengambil "semua komentar baru untuk satu
-     * akun lintas semua post"-nya dalam satu call seperti yang diasumsikan
-     * JOB-03 (`background-jobs.md`) — implementasi yang benar butuh:
-     * (1) daftar post yang sudah dipublish untuk akun ini (`GET /v1/posts`
-     * list, difilter/paginasi sendiri), (2) panggil `GET /v1/posts/{id}/replies`
-     * per post. Ini perubahan arsitektur job sync, bukan sekadar
-     * perbaikan path — method ini SENGAJA throw eksplisit.
+     * `created_at` bisa `null` (spec: `type: ["string", "null"]`) — fallback
+     * `new Date()` (waktu fetch) kalau Outstand tidak mengembalikannya,
+     * supaya `InboxCommentData.receivedAt` (non-nullable) tetap terisi
+     * masuk akal alih-alih melempar error untuk kasus tepi ini.
      */
-    async fetchComments(
-      _outstandAccountId: string,
-      _cursor?: string,
-    ): Promise<FetchCommentsResult> {
-      throw new OutstandIntegrationError({
-        type: "client_error",
-        message:
-          "OutstandAdapter: fetchComments(outstandAccountId, cursor) tidak sesuai API resmi Outstand — komentar di-scope per POST (GET /v1/posts/{postId}/replies, query network wajib), tanpa pagination cursor, dan tidak ada endpoint 'semua komentar lintas post satu akun'. Butuh redesain JOB-03 Engagement Sync (list posts per akun lalu fetch replies per post) sebelum method ini bisa diimplementasikan — lihat laporan T-025 2026-09-23.",
-        retryable: false,
-      });
+    async fetchComments({
+      outstandPostId,
+      platform,
+      accountUsername,
+    }): Promise<FetchCommentsResult> {
+      const response = await client.request<Record<string, unknown>>(
+        `/v1/posts/${encodeURIComponent(outstandPostId)}/replies`,
+        {
+          method: "GET",
+          query: {
+            network: toOutstandNetwork(platform),
+            username: accountUsername,
+          },
+        },
+      );
+
+      const rawReplies = Array.isArray(response.data)
+        ? (response.data as RawNormalizedReply[])
+        : [];
+
+      const comments: InboxCommentData[] = [];
+      for (const raw of rawReplies) {
+        if (typeof raw.id !== "string" || raw.id.length === 0) continue;
+
+        comments.push({
+          outstandCommentId: raw.id,
+          platform,
+          authorHandle: typeof raw.author === "string" ? raw.author : "",
+          content: typeof raw.text === "string" ? raw.text : "",
+          outstandPostId,
+          receivedAt: toDateOrNull(raw.created_at) ?? new Date(),
+        });
+      }
+
+      return { comments };
     },
 
     /**
-     * Reply (T-025.6, T-054).
+     * Reply (T-025.6, T-054, redesain KI-068/ADR-113) — **diverifikasi
+     * terhadap OpenAPI spec resmi Outstand:** `POST /v1/posts/{postId}/replies`
+     * body `{ content, parent_comment_id? }`. Response
+     * `{ success, reply_id }`.
      *
-     * **GAP ARSITEKTUR TERBUKA** — sama akar masalahnya dengan `fetchComments`
-     * di atas: endpoint resmi `POST /v1/posts/{postId}/replies` body
-     * `{ content, platform_post_id?, account_username?, parent_comment_id? }`
-     * WAJIB tahu `postId`, sementara kontrak `replyToComment(outstandCommentId,
-     * text)` hanya membawa id komentar — tidak ada cara menemukan `postId`
-     * dari `outstandCommentId` saja tanpa endpoint tambahan. `InboxCommentData`
-     * domain SUDAH menyimpan `outstandPostId` per komentar (lihat
-     * `outstand-adapter.ts`), tapi kontrak method ini tidak menyalurkannya —
-     * butuh field tambahan di kontrak. Method ini SENGAJA throw eksplisit.
+     * **Catatan (bukan bug, keputusan scope KI-068):** body request resmi
+     * juga menerima `account_username`/`platform_post_id` opsional untuk
+     * disambiguasi saat satu post publish ke >1 akun di network yang sama
+     * — kontrak `IOutstandAdapter.replyToComment` (dikonfirmasi King Rezi)
+     * SENGAJA tidak membawa field itu, jadi reply ke post multi-akun bisa
+     * gagal 400 di sisi Outstand kalau ambigu. Di luar scope perbaikan
+     * sesi ini (dilaporkan, bukan diputuskan sendiri).
      */
-    async replyToComment(
-      outstandCommentId: string,
-      _text: string,
-    ): Promise<ReplyToCommentResult> {
-      throw new OutstandIntegrationError({
-        type: "client_error",
-        message: `OutstandAdapter: replyToComment(outstandCommentId, text) tidak sesuai API resmi Outstand — endpoint POST /v1/posts/{postId}/replies wajib tahu postId, sementara kontrak ini hanya membawa outstandCommentId ("${outstandCommentId}") tanpa outstandPostId. Butuh field tambahan di kontrak IOutstandAdapter sebelum method ini bisa diimplementasikan — lihat laporan T-025 2026-09-23.`,
-        retryable: false,
-      });
+    async replyToComment({
+      outstandPostId,
+      content,
+      parentOutstandCommentId,
+    }): Promise<ReplyToCommentResult> {
+      const response = await client.request<Record<string, unknown>>(
+        `/v1/posts/${encodeURIComponent(outstandPostId)}/replies`,
+        {
+          method: "POST",
+          body: {
+            content,
+            ...(parentOutstandCommentId
+              ? { parent_comment_id: parentOutstandCommentId }
+              : {}),
+          },
+        },
+      );
+
+      const replyId = response.reply_id;
+      if (typeof replyId !== "string" || replyId.length === 0) {
+        throw new OutstandIntegrationError({
+          type: "client_error",
+          message:
+            "OutstandAdapter: response publish-a-comment (POST /v1/posts/{id}/replies) tidak mengandung reply_id yang valid.",
+          retryable: false,
+        });
+      }
+
+      return { outstandReplyId: replyId };
     },
   };
 }

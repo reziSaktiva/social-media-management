@@ -8,6 +8,104 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-24 — KI-068 Resolved: redesain `fetchComments`/`replyToComment` per-post via ADR-113, gap disambiguasi multi-akun dicatat KI-071 baru
+
+KI-068 (`fetchComments`/`replyToComment` scope tidak cocok API resmi
+Outstand, ditemukan Elon Backend Engineer 2026-09-23 saat implementasi
+T-025) diselesaikan Elon Backend Engineer, lolos review arsitektur Ridwan
+Architecture Reviewer (0 temuan).
+
+**Root cause:** sama seperti KI-067/ADR-112 — kontrak `IOutstandAdapter`
+(ADR-110) disusun best-effort tanpa akses dokumentasi resmi Outstand.
+OpenAPI spec resmi (`GET/POST /v1/posts/{postId}/replies`) men-scope
+comments/replies PER-POST, tanpa cursor pagination sama sekali — bukan
+per-akun dengan cursor seperti diasumsikan ADR-110.
+
+**3 keputusan arsitektur dikonfirmasi King Rezi sebelum implementasi (via
+`AskUserQuestion`):**
+1. Sumber daftar post untuk sync JOB-03: dari DB kita sendiri
+   (`PublishingPost`/`PublishingPostTarget`), bukan endpoint list-posts
+   Outstand.
+2. `fetchComments` baru: per-post, tanpa cursor — field `nextCursor`
+   dihapus total dari `FetchCommentsResult` (bukan disisakan selalu-null).
+3. `replyToComment` baru: tambah `outstandPostId` (wajib) +
+   `parentOutstandCommentId` (opsional, untuk threading).
+
+**Perubahan kontrak** (`packages/shared/src/contracts/outstand-adapter.ts`):
+- `fetchComments`/`replyToComment` diredesain per-post sesuai 3 keputusan
+  di atas.
+- `FetchCommentsResult.nextCursor` dihapus total.
+- `InboxCommentData.outstandPostId` jadi wajib (dulu `string | null`).
+- `InboxCommentData.outstandAccountId` dihapus (keputusan tambahan King
+  Rezi, dikonfirmasi setelah implementasi — field ini secara struktural
+  tidak bisa diisi bermakna oleh real adapter).
+
+**Implementasi:**
+- `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts` — throw gap
+  sebelumnya diganti implementasi HTTP asli, diverifikasi terhadap OpenAPI
+  spec resmi Outstand.
+- `apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts` — disesuaikan
+  pola baru, tetap instant/deterministic (ADR-059).
+- `apps/web/src/domains/engagement/services/sync-comments.use-case.ts`
+  (JOB-03/T-051) — redesain loop per-post, akses data `publishing` lewat
+  port lokal cross-domain baru `PublishingPostsPort` (structural typing,
+  disuplai composition root `apps/web/src/app/(app)/engage/actions.ts` dan
+  `apps/web/src/app/api/jobs/run/route.ts`) — bukan import file internal
+  domain lain, dikonfirmasi bersih oleh Ridwan.
+- `apps/web/src/domains/engagement/services/engagement.service.ts`
+  (`EngagementService.reply`, T-054) — resolve `outstandPostId` dari
+  `postId` internal, guard `ConflictError` untuk data lama yang belum
+  terhubung.
+- `apps/web/src/domains/engagement/repositories/engagement.repository.ts`,
+  `apps/web/src/domains/publishing/repositories/publishing.repository.ts`,
+  `apps/web/src/domains/workspace/repositories/workspace.repository.ts`,
+  `apps/web/src/lib/repositories/engagement/engagement.repository.ts`,
+  `apps/web/src/lib/repositories/publishing/publishing.repository.ts`,
+  `apps/web/src/lib/repositories/workspace/workspace.repository.ts` —
+  disesuaikan mengikuti kontrak baru.
+- Migration baru
+  `apps/web/prisma/migrations/20260924090000_ki068_add_handle_to_account_owner_lookup`
+  — extend fungsi SQL `SECURITY DEFINER`
+  `webhook_find_account_owner_by_outstand_account_id` untuk return kolom
+  `handle` juga. **Belum di-deploy** ke database manapun (butuh
+  `bun run db:deploy` manual King Rezi — pola sama migration T-051
+  sebelumnya).
+- Test terkait diupdate: `apps/web/src/app/(app)/engage/actions.test.ts`,
+  `apps/web/src/domains/engagement/services/engagement-sync-job-handler.test.ts`,
+  `apps/web/src/domains/engagement/services/engagement.service.test.ts`,
+  `apps/web/src/domains/engagement/services/refresh-inbox.use-case.test.ts`,
+  `apps/web/src/domains/engagement/services/sync-comments.use-case.test.ts`,
+  `apps/web/src/domains/publishing/services/*.test.ts` (7 file, rename
+  stub mock mengikuti kontrak baru),
+  `apps/web/src/lib/adapters/outstand/real-outstand-adapter.test.ts`.
+
+**ADR baru:** `project-manager/decisions/ADR-113-redesain-fetchcomments-replytocomment-per-post-ki068.md`
+(amandemen ADR-110) — ditulis Elon Backend Engineer, diverifikasi akurat
+1:1 dengan diff kode oleh Ridwan.
+
+**Verifikasi:** `bun run typecheck` bersih, `bun run lint` bersih, Vitest
+480 pass/6 skip/0 fail.
+
+**Gap baru ditemukan (bukan bug, keputusan scope eksplisit King Rezi,
+dicatat KI baru — bukan diperbaiki sekarang):** endpoint resmi Outstand
+`POST /v1/posts/{id}/replies` menerima `account_username`/
+`platform_post_id` opsional untuk disambiguasi kalau satu post publish ke
+>1 akun di network yang sama — signature `replyToComment` yang dikonfirmasi
+King Rezi tidak membawa field itu. Reply ke post yang publish ke lebih dari
+satu akun pada network yang sama berisiko gagal 400 di sisi Outstand. King
+Rezi memutuskan (via `AskUserQuestion`): catat sebagai **KI-071** (baru,
+Open), tidak memblokir penutupan KI-068.
+
+**Dokumentasi diupdate dalam sesi ini (Gibran Project Manager):**
+`PROJECT_STATE.md` (KI-068 → Resolved, KI-071 baru, Top Next Tasks,
+Blockers, Completed Ringkasan, Recent Decisions), `DECISIONS.md` (entri
+ADR-113 + status ADR-110 diamandemen), `decisions/ADR-110-*.md` (header
+Status diamandemen), `TASKS.md` (Fokus sekarang, rantai blocker),
+`tasks/v02-publishing-mvp.md` (T-025.6 ✅, catatan KI-068 Resolved + KI-071),
+`tasks/v04-engagement-mvp.md` (T-051/T-054 referensi balik KI-068).
+
+---
+
 ## 2026-09-23 — KI-067 sebagian resolved: Connect Callback single-page via ADR-112, sisa scope di-split jadi KI-070
 
 King Rezi mempersempit scope KI-067 (gap `exchangeConnectCode`/flow OAuth

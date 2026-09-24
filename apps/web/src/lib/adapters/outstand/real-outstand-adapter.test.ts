@@ -304,25 +304,135 @@ describe("RealOutstandAdapter analytics (fetchPostMetrics/fetchWorkspaceMetrics,
   });
 });
 
-describe("RealOutstandAdapter.fetchComments / replyToComment (T-025.6, ADR-110) — architecture gap", () => {
-  it("fetchComments throws OutstandIntegrationError describing the per-post vs per-account/cursor mismatch, WITHOUT calling fetch", async () => {
-    const fetchImpl = vi.fn();
+describe("RealOutstandAdapter.fetchComments / replyToComment (T-025.6, redesain KI-068/ADR-113)", () => {
+  it("fetchComments calls GET /v1/posts/{id}/replies with network+username query and maps NormalizedReply[] from `data`", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(200, {
+        success: true,
+        replies: [],
+        data: [
+          {
+            id: "reply-1",
+            author: "johndoe",
+            text: "Great post!",
+            created_at: "2026-01-15T10:30:00Z",
+          },
+          {
+            id: "reply-2",
+            author: "janedoe",
+            text: "Agreed!",
+            created_at: null,
+          },
+        ],
+      }),
+    );
     const adapter = buildAdapter(fetchImpl);
 
-    await expect(
-      adapter.fetchComments("acc-1", "cursor-1"),
-    ).rejects.toBeInstanceOf(OutstandIntegrationError);
-    expect(fetchImpl).not.toHaveBeenCalled();
+    const result = await adapter.fetchComments({
+      outstandPostId: "post-123",
+      platform: SocialPlatform.Twitter,
+      accountUsername: "mycompany",
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0];
+    const parsed = new URL(url);
+    expect(parsed.pathname).toBe("/v1/posts/post-123/replies");
+    // Twitter -> "x" (SAME mapping as `toOutstandNetwork` dipakai `connectAccount`/`schedulePost`).
+    expect(parsed.searchParams.get("network")).toBe("x");
+    expect(parsed.searchParams.get("username")).toBe("mycompany");
+    expect(init.method).toBe("GET");
+
+    expect(result.comments).toHaveLength(2);
+    expect(result.comments[0]).toEqual({
+      outstandCommentId: "reply-1",
+      platform: SocialPlatform.Twitter,
+      authorHandle: "johndoe",
+      content: "Great post!",
+      outstandPostId: "post-123",
+      receivedAt: new Date("2026-01-15T10:30:00Z"),
+    });
+    // `created_at: null` -> fallback ke waktu fetch (bukan error), lihat docstring method ini.
+    expect(result.comments[1].receivedAt).toBeInstanceOf(Date);
   });
 
-  it("replyToComment throws OutstandIntegrationError describing the missing outstandPostId, WITHOUT calling fetch", async () => {
-    const fetchImpl = vi.fn();
+  it("fetchComments skips malformed entries (missing/empty id) instead of throwing", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(200, {
+        success: true,
+        replies: [],
+        data: [
+          { author: "no-id", text: "missing id field entirely" },
+          { id: "", author: "empty-id", text: "empty id string" },
+          { id: "reply-valid", author: "ok", text: "valid", created_at: null },
+        ],
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.fetchComments({
+      outstandPostId: "post-123",
+      platform: SocialPlatform.Instagram,
+      accountUsername: "mycompany",
+    });
+
+    expect(result.comments).toHaveLength(1);
+    expect(result.comments[0].outstandCommentId).toBe("reply-valid");
+  });
+
+  it("replyToComment calls POST /v1/posts/{id}/replies with content + parent_comment_id and maps reply_id", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, reply_id: "platform-reply-1" }),
+      );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.replyToComment({
+      outstandPostId: "post-123",
+      content: "Great post! I agree with you.",
+      parentOutstandCommentId: "comment-abc",
+    });
+
+    expect(result).toEqual({ outstandReplyId: "platform-reply-1" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("https://api.outstand.so/v1/posts/post-123/replies");
+    expect(init.method).toBe("POST");
+    const body = JSON.parse(init.body);
+    expect(body).toEqual({
+      content: "Great post! I agree with you.",
+      parent_comment_id: "comment-abc",
+    });
+  });
+
+  it("replyToComment omits parent_comment_id when parentOutstandCommentId is not given", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, reply_id: "platform-reply-2" }),
+      );
+    const adapter = buildAdapter(fetchImpl);
+
+    await adapter.replyToComment({
+      outstandPostId: "post-123",
+      content: "No threading here.",
+    });
+
+    const [, init] = fetchImpl.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body).toEqual({ content: "No threading here." });
+  });
+
+  it("replyToComment throws OutstandIntegrationError when response has no valid reply_id", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { success: true }));
     const adapter = buildAdapter(fetchImpl);
 
     await expect(
-      adapter.replyToComment("cmt-1", "Thanks!"),
+      adapter.replyToComment({ outstandPostId: "post-123", content: "Hi" }),
     ).rejects.toBeInstanceOf(OutstandIntegrationError);
-    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
 
