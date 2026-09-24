@@ -36,6 +36,8 @@ function createFakeAdapter(
 ): IOutstandAdapter {
   return {
     connectAccount: async () => ({ redirectUrl: "/unused" }),
+    listPendingFacebookPages: async () => ({ pages: [] }),
+    confirmFacebookPagesConnection: async () => ({ accounts: [] }),
     uploadMediaWorkingCopy: async () => ({
       outstandMediaId: "unused",
       outstandMediaUrl: "https://fake.outstand.local/media/unused",
