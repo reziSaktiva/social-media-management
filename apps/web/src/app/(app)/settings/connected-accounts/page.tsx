@@ -24,7 +24,17 @@ import { ConnectedAccountsList } from "./components/ConnectedAccountsList";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ connect?: string }>;
+  searchParams: Promise<{
+    connect?: string;
+    // Facebook Pages flow (T-025.4, KI-070, ADR-115 §7/§10) — diset Route
+    // Handler callback saat Outstand redirect balik dengan query param
+    // `session` (bukan `account_id`/`username`, flow multi-halaman).
+    // Diteruskan apa adanya ke `ConnectedAccountsList` (Client Component)
+    // yang otomatis membuka dialog Facebook Pages Picker saat mount kalau
+    // keduanya ada.
+    connectFacebookSessionToken?: string;
+    connectFacebookState?: string;
+  }>;
 }) {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -32,7 +42,8 @@ export default async function Page({
     redirect("/login");
   }
 
-  const { connect } = await searchParams;
+  const { connect, connectFacebookSessionToken, connectFacebookState } =
+    await searchParams;
 
   const workspaceService = new WorkspaceService(workspaceRepository);
   const accounts = await workspaceService.listConnectedAccounts(
@@ -45,6 +56,14 @@ export default async function Page({
       accounts={accounts}
       connectResult={
         connect === "success" || connect === "error" ? connect : null
+      }
+      facebookPagesPicker={
+        connectFacebookSessionToken && connectFacebookState
+          ? {
+              sessionToken: connectFacebookSessionToken,
+              state: connectFacebookState,
+            }
+          : null
       }
     />
   );
