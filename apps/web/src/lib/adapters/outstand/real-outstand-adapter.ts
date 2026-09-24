@@ -5,7 +5,12 @@ import {
   type ConnectAccountResult,
   type ConnectCallbackInput,
   type ConnectedAccountData,
+  type ConfirmFacebookPagesInput,
+  type ConfirmFacebookPagesResult,
+  type FacebookPendingPage,
   type FetchCommentsResult,
+  type ListPendingFacebookPagesInput,
+  type ListPendingFacebookPagesResult,
   type InboxCommentData,
   type FetchPostMetricsResult,
   type FetchWorkspaceMetricsResult,
@@ -54,11 +59,14 @@ import { parseBase64UrlJson } from "./connect-state";
  *    Outstand redirect balik dengan `account_id`/`network_unique_id`/
  *    `username` langsung (bukan `code`) — `resolveConnectCallback` di
  *    bawah sekarang mengimplementasikan ini (murni validasi/normalisasi,
- *    TANPA network call). Platform multi-halaman (Facebook dkk, butuh flow
- *    session-token+page-picker terpisah `GET/POST
- *    /v1/social-accounts/pending/{sessionToken}`) TETAP di luar scope —
- *    `resolveConnectCallback` throw eksplisit kalau dipanggil untuk
- *    `SocialPlatform.Facebook`, lihat KI-070.
+ *    TANPA network call). Platform multi-halaman (Facebook, KI-070) TETAP
+ *    di luar scope method ini — `resolveConnectCallback` throw eksplisit
+ *    kalau dipanggil untuk `SocialPlatform.Facebook`. **DISELESAIKAN
+ *    TERPISAH ADR-115/ADR-116 (2026-09-24)** lewat 2 method baru
+ *    `listPendingFacebookPages`/`confirmFacebookPagesConnection` (flow
+ *    session-token + page-picker, `GET/POST
+ *    /v1/social-accounts/pending/{sessionToken}[/finalize]`) — lihat
+ *    implementasi keduanya di bawah.
  * 2. ~~`fetchComments`/`replyToComment` (JOB-03/T-054)~~ — **DISELESAIKAN
  *    ADR-113 (2026-09-24, redesain KI-068).** Kontrak `IOutstandAdapter`
  *    sekarang men-scope kedua method per POST (`outstandPostId` wajib),
@@ -499,6 +507,111 @@ export function createRealOutstandAdapter(
         handle: username,
         status: "active",
       };
+    },
+
+    /**
+     * Facebook Pages — list pending Pages (T-025.4, ADR-115, wire-format
+     * dikoreksi ADR-116) — `GET /v1/social-accounts/pending/{sessionToken}`.
+     * **Diverifikasi 2026-09-24** langsung dari dokumentasi resmi Outstand
+     * (`docs/get-pending-connection-details`, `docs/configurations/facebook`
+     * — OpenAPI JSON `api.outstand.so/openapi.json` tetap tidak bisa
+     * diakses, tapi docs page HTML resmi berhasil dibaca via WebFetch,
+     * lihat ADR-116 untuk detail lengkap). Response asli DIBUNGKUS di
+     * `data.availablePages[]` (ADR-115 menebak flat `{ pages: [...] }`,
+     * salah) — field per-page dipetakan `id`→`pageId`, `name`→`name`,
+     * `profilePictureUrl`→`pictureUrl`, `category`→`category` (field lain
+     * seperti `type`/`username`/`urn`/`accountId`/`address` tidak dipetakan,
+     * kontrak `FacebookPendingPage` tidak membutuhkannya).
+     */
+    async listPendingFacebookPages({
+      sessionToken,
+    }: ListPendingFacebookPagesInput): Promise<ListPendingFacebookPagesResult> {
+      const response = await client.request<Record<string, unknown>>(
+        `/v1/social-accounts/pending/${encodeURIComponent(sessionToken)}`,
+        { method: "GET" },
+      );
+
+      const data =
+        typeof response.data === "object" && response.data !== null
+          ? (response.data as Record<string, unknown>)
+          : {};
+      const rawPages = Array.isArray(data.availablePages)
+        ? (data.availablePages as Record<string, unknown>[])
+        : [];
+
+      const pages: FacebookPendingPage[] = [];
+      for (const raw of rawPages) {
+        if (typeof raw.id !== "string" || raw.id.length === 0) continue;
+        if (typeof raw.name !== "string" || raw.name.length === 0) continue;
+        pages.push({
+          pageId: raw.id,
+          name: raw.name,
+          pictureUrl:
+            typeof raw.profilePictureUrl === "string"
+              ? raw.profilePictureUrl
+              : undefined,
+          category: typeof raw.category === "string" ? raw.category : undefined,
+        });
+      }
+
+      return { pages };
+    },
+
+    /**
+     * Facebook Pages — confirm selected Pages (T-025.4, ADR-115,
+     * wire-format dikoreksi ADR-116) — `POST
+     * /v1/social-accounts/pending/{sessionToken}/finalize` (**path punya
+     * suffix `/finalize`** — ADR-115 menebak `POST` langsung ke path yang
+     * sama dengan `GET`, salah, lihat ADR-116). Body `{ selectedPageIds }`
+     * (nama field ini TERKONFIRMASI BENAR sesuai tebakan ADR-115, tidak
+     * berubah). Response asli `{ success, connectedAccounts: [{ id,
+     * nickname, username, network, accountType }] }` (ADR-115 menebak
+     * `{ accounts: [...] }`, salah) — dipetakan `id`→`outstandAccountId`,
+     * `username` (fallback `nickname`)→`handle`, `platform` di-hardcode
+     * `SocialPlatform.Facebook` (method ini SELALU dipanggil dalam konteks
+     * Facebook Pages, kontrak `ConfirmFacebookPagesResult` ADR-115
+     * menyatakan ini eksplisit). Validasi `selectedPageIds` tidak kosong
+     * diulang di sini (defense-in-depth, ADR-115 — jangan cuma percaya
+     * `WorkspaceService`/UI).
+     */
+    async confirmFacebookPagesConnection({
+      sessionToken,
+      selectedPageIds,
+    }: ConfirmFacebookPagesInput): Promise<ConfirmFacebookPagesResult> {
+      if (selectedPageIds.length === 0) {
+        throw new OutstandIntegrationError({
+          type: "client_error",
+          message:
+            "OutstandAdapter: confirmFacebookPagesConnection butuh minimal satu selectedPageIds.",
+          retryable: false,
+        });
+      }
+
+      const response = await client.request<Record<string, unknown>>(
+        `/v1/social-accounts/pending/${encodeURIComponent(sessionToken)}/finalize`,
+        { method: "POST", body: { selectedPageIds } },
+      );
+
+      const rawAccounts = Array.isArray(response.connectedAccounts)
+        ? (response.connectedAccounts as Record<string, unknown>[])
+        : [];
+
+      const accounts: ConnectedAccountData[] = [];
+      for (const raw of rawAccounts) {
+        if (typeof raw.id !== "string" || raw.id.length === 0) continue;
+        const handle =
+          (typeof raw.username === "string" && raw.username) ||
+          (typeof raw.nickname === "string" && raw.nickname) ||
+          "";
+        accounts.push({
+          outstandAccountId: raw.id,
+          platform: SocialPlatform.Facebook,
+          handle,
+          status: "active",
+        });
+      }
+
+      return { accounts };
     },
 
     /**

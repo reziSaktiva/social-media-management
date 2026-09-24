@@ -746,6 +746,147 @@ describe("RealOutstandAdapter.connectAccount / resolveConnectCallback (T-025.4, 
   });
 });
 
+describe("RealOutstandAdapter.listPendingFacebookPages / confirmFacebookPagesConnection (T-025.4, ADR-115, wire-format dikoreksi ADR-116)", () => {
+  it("listPendingFacebookPages calls GET /v1/social-accounts/pending/{sessionToken} and maps data.availablePages[] (real Outstand response is wrapped, not flat)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        data: {
+          network: "facebook",
+          expiresAt: 1734567890000,
+          availablePages: [
+            {
+              id: "fb-page-1",
+              type: "page",
+              name: "Kopi Selasar",
+              username: "kopi.selasar",
+              profilePictureUrl: "https://example.com/kopi-selasar.jpg",
+              category: "Coffee Shop",
+              urn: "urn:fb:page:1",
+              accountId: "accounts/1",
+              address: "Jl. Selasar No. 1",
+            },
+            // Baris tanpa `id`/`name` valid harus di-skip diam-diam.
+            { id: "", name: "Invalid" },
+          ],
+        },
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.listPendingFacebookPages({
+      sessionToken: "session-token-1",
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(String(url)).toBe(
+      "https://api.outstand.so/v1/social-accounts/pending/session-token-1",
+    );
+    expect(init.method).toBe("GET");
+    expect(result).toEqual({
+      pages: [
+        {
+          pageId: "fb-page-1",
+          name: "Kopi Selasar",
+          pictureUrl: "https://example.com/kopi-selasar.jpg",
+          category: "Coffee Shop",
+        },
+      ],
+    });
+  });
+
+  it("listPendingFacebookPages returns an empty list when data.availablePages is missing", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { success: true, data: {} }));
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.listPendingFacebookPages({
+      sessionToken: "session-token-1",
+    });
+
+    expect(result).toEqual({ pages: [] });
+  });
+
+  it("confirmFacebookPagesConnection calls POST /v1/social-accounts/pending/{sessionToken}/finalize with { selectedPageIds } and maps response.connectedAccounts[] (real Outstand response, not { accounts })", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        connectedAccounts: [
+          {
+            id: "fb-page-1",
+            nickname: "kopiselasar",
+            username: "kopi.selasar",
+            network: "facebook",
+            accountType: "page",
+          },
+          // Baris tanpa `id` valid harus di-skip diam-diam.
+          { nickname: "Invalid" },
+        ],
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.confirmFacebookPagesConnection({
+      sessionToken: "session-token-1",
+      selectedPageIds: ["fb-page-1"],
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(String(url)).toBe(
+      "https://api.outstand.so/v1/social-accounts/pending/session-token-1/finalize",
+    );
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({
+      selectedPageIds: ["fb-page-1"],
+    });
+    expect(result).toEqual({
+      accounts: [
+        {
+          outstandAccountId: "fb-page-1",
+          platform: SocialPlatform.Facebook,
+          handle: "kopi.selasar",
+          status: "active",
+        },
+      ],
+    });
+  });
+
+  it("confirmFacebookPagesConnection falls back to `nickname` when `username` is absent", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        connectedAccounts: [
+          { id: "fb-page-2", nickname: "Roti Selasar", network: "facebook" },
+        ],
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.confirmFacebookPagesConnection({
+      sessionToken: "session-token-1",
+      selectedPageIds: ["fb-page-2"],
+    });
+
+    expect(result.accounts[0]?.handle).toBe("Roti Selasar");
+  });
+
+  it("confirmFacebookPagesConnection throws OutstandIntegrationError for an empty selectedPageIds, WITHOUT calling fetch", async () => {
+    const fetchImpl = vi.fn();
+    const adapter = buildAdapter(fetchImpl);
+
+    await expect(
+      adapter.confirmFacebookPagesConnection({
+        sessionToken: "session-token-1",
+        selectedPageIds: [],
+      }),
+    ).rejects.toBeInstanceOf(OutstandIntegrationError);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
 describe("RealOutstandAdapter.uploadMediaWorkingCopy (T-025.5, ADR-106)", () => {
   it("chains POST /v1/media/upload → PUT bytes → POST /v1/media/{id}/confirm, returning the mapped result", async () => {
     const fetchImpl = vi

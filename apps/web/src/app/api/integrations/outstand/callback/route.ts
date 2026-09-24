@@ -28,6 +28,17 @@ const CONNECTED_ACCOUNTS_PATH = "/settings/connected-accounts";
  * param (data akun sudah lengkap di URL callback ini sendiri). Handler
  * ini karena itu membaca ketiganya, bukan `code`.
  *
+ * **Facebook Pages (T-025.4, ADR-115, wire-format dikoreksi ADR-116,
+ * menutup KI-070):** route SATU ini TETAP dipakai untuk Facebook — TIDAK
+ * ada route terpisah. Outstand redirect balik dengan query param `session`
+ * (BUKAN `account_id`/`username`) — percabangan di awal handler
+ * mendeteksi ini, CSRF-check nonce (TANPA menghapus cookie-nya, flow belum
+ * selesai) lalu redirect ke Connected Accounts dengan
+ * `connectFacebookSessionToken`/`connectFacebookState` yang memicu dialog
+ * Page-selection (Server Action `listFacebookPendingPagesAction`/
+ * `confirmFacebookPagesConnectionAction`, `connected-accounts/actions.ts`,
+ * yang menyelesaikan sisa flow + menghapus cookie nonce).
+ *
  * `proxy.ts` TIDAK meng-exclude path ini dari gate sesi/workspace (beda
  * dengan `/api/webhooks/outstand` yang server-to-server) — jadi begitu
  * handler ini dieksekusi, sesi user dan membership workspace aktif sudah
@@ -48,6 +59,56 @@ export async function GET(request: NextRequest): Promise<Response> {
   const username = request.nextUrl.searchParams.get("username");
   const networkUniqueId = request.nextUrl.searchParams.get("network_unique_id");
   const state = request.nextUrl.searchParams.get("state");
+  // Facebook Pages flow (T-025.4, ADR-115, menutup KI-070) — query param
+  // ASLI Outstand adalah `session` (BUKAN `session_token`, tebakan awal
+  // ADR-115 yang dikoreksi ADR-116 setelah verifikasi dokumentasi resmi
+  // Outstand). Kalau ADA, ini bukan flow single-page — percabangan di
+  // bawah SEBELUM pengecekan `account_id`/`username`.
+  const facebookSessionToken = request.nextUrl.searchParams.get("session");
+
+  // Facebook Pages (ADR-115 §7) — TIDAK bergabung dengan alur single-page
+  // di bawah: Outstand mengarahkan balik dengan `session` (bukan
+  // `account_id`/`username`), butuh langkah page-selection terpisah
+  // sebelum ConnectedAccount benar-benar dibuat. `state` (nonce CSRF) tetap
+  // WAJIB ada bareng `session` — kalau cuma satu, itu request bermasalah
+  // (`?connect=error`), bukan no-op.
+  if (facebookSessionToken) {
+    if (!state) {
+      return NextResponse.redirect(
+        new URL(`${CONNECTED_ACCOUNTS_PATH}?connect=error`, appOrigin),
+      );
+    }
+
+    let decodedForFacebook: ReturnType<typeof decodeConnectAccountState>;
+    try {
+      decodedForFacebook = decodeConnectAccountState(state);
+    } catch {
+      return NextResponse.redirect(
+        new URL(`${CONNECTED_ACCOUNTS_PATH}?connect=error`, appOrigin),
+      );
+    }
+
+    // CSRF-check nonce SAMA seperti alur single-page di bawah — TAPI
+    // cookie TIDAK dihapus di sini (beda dari `redirectWithStatus`
+    // existing): flow BELUM selesai, user masih perlu memilih Page lewat
+    // `listFacebookPendingPagesAction`/`confirmFacebookPagesConnectionAction`
+    // (Server Action baru yang menghapus cookie ini di titik akhirnya).
+    const facebookNonceCookieName = outstandConnectNonceCookieName(
+      decodedForFacebook.nonce,
+    );
+    if (!request.cookies.has(facebookNonceCookieName)) {
+      return NextResponse.redirect(
+        new URL(`${CONNECTED_ACCOUNTS_PATH}?connect=error`, appOrigin),
+      );
+    }
+
+    return NextResponse.redirect(
+      new URL(
+        `${CONNECTED_ACCOUNTS_PATH}?connectFacebookSessionToken=${encodeURIComponent(facebookSessionToken)}&connectFacebookState=${encodeURIComponent(state)}`,
+        appOrigin,
+      ),
+    );
+  }
 
   // Bug QA Najwa (T-015, 2026-09-11): setiap redirect() sukses dari Server
   // Action (`initiateConnectAccountAction`/`initiateReconnectAccountAction`)
@@ -144,3 +205,35 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   return redirectWithStatus("success");
 }
+
+/**
+ * Alias POST → GET (investigasi King Rezi + Elon Backend Engineer,
+ * 2026-09-24, lanjutan T-025.4/KI-070). Direproduksi konsisten (dev server
+ * Turbopack, Next.js 16.2.10): klik natural "Connect Account → Facebook"
+ * memicu Server Action `initiateConnectAccountAction`, yang di dalamnya
+ * memanggil `redirect(redirectUrl)` ke path RELATIF route ini (bukan page
+ * di app router — hanya Route Handler). Next.js App Router melakukan
+ * client-side navigation untuk redirect dari Server Action (dokumentasi
+ * resmi: "In a Server Action, redirect performs a client-side navigation
+ * when JavaScript is available") — TAPI karena target bukan bagian dari
+ * page tree yang bisa di-render ulang lewat RSC soft-navigation, client
+ * runtime kadang (non-deterministic, tergantung timing/cache router)
+ * menembak ulang URL redirect dengan method ASLI (POST) alih-alih
+ * mengonversi ke GET seperti semantik 303 See Other standar (yang berlaku
+ * benar untuk navigasi non-JS / full page reload). Ini murni idiosinkrasi
+ * client-side navigation Next.js, BUKAN bug kode di sini — dikonfirmasi
+ * lewat reproduksi berulang (network log: request YANG SAMA persis kadang
+ * sukses 200 lewat GET, kadang gagal 405 lewat POST, tanpa perubahan kode
+ * di antaranya) dan tidak ditemukan pengaturan resmi Next.js untuk
+ * memaksa GET pada kasus ini.
+ *
+ * Aman di-alias ke `GET` karena handler ini murni idempoten: baca query
+ * param + cookie, decode `state`, delegasikan penuh ke
+ * `WorkspaceService.completeAccountConnection`, lalu redirect — tidak ada
+ * efek samping yang berbahaya kalau dieksekusi dua kali (idempotency
+ * sudah dijamin di level `WorkspaceService`/repository, bukan di route
+ * ini). Bukan keputusan arsitektur (tidak mengubah kontrak Outstand/ACL,
+ * ADR-040) — murni workaround robustness terhadap perilaku framework,
+ * sehingga TIDAK dicatat sebagai ADR baru.
+ */
+export const POST = GET;

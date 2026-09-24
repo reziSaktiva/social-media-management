@@ -8,6 +8,7 @@ import {
 } from "@social/shared";
 import type {
   ConnectedAccountId,
+  FacebookPendingPage,
   IOutstandAdapter,
   InvitationId,
   MemberId,
@@ -1193,6 +1194,116 @@ export class WorkspaceService {
     });
 
     return record;
+  }
+
+  /**
+   * Facebook Pages — list pending Pages (T-025.4, ADR-115, wire-format
+   * dikoreksi ADR-116) — dipanggil `listFacebookPendingPagesAction` setelah
+   * Route Handler callback redirect ke Connected Accounts dengan
+   * `sessionToken` (dialog Page-selection mount, state Loading → Default).
+   * RBAC Owner/Admin sama dengan `initiateConnectAccount`/
+   * `completeAccountConnection` (gate yang sama, bukan RBAC baru). Tidak
+   * ada IDOR check tambahan di sini — belum ada `ConnectedAccount` yang
+   * disentuh, murni membaca daftar Page dari Outstand lewat adapter.
+   */
+  async listFacebookPendingPages(input: {
+    workspaceId: WorkspaceId;
+    actorId: UserId;
+    sessionToken: string;
+  }): Promise<FacebookPendingPage[]> {
+    await this.assertActorCanManageConnectedAccounts(
+      input.workspaceId,
+      input.actorId,
+      "Hanya Owner atau Admin yang bisa menghubungkan akun.",
+    );
+
+    const result = await this.requireOutstandAdapter().listPendingFacebookPages(
+      { sessionToken: input.sessionToken },
+    );
+    return result.pages;
+  }
+
+  /**
+   * Facebook Pages — confirm selected Pages (T-025.4, ADR-115, wire-format
+   * dikoreksi ADR-116) — dipanggil `confirmFacebookPagesConnectionAction`
+   * saat user submit dialog Page-selection. RBAC Owner/Admin (gate sama).
+   * Validasi `selectedPageIds.length >= 1` diulang di sini (defense-in-depth
+   * — UI sudah disable tombol di 0 dipilih, tapi Server Action/adapter
+   * tidak boleh dipercaya sendirian).
+   *
+   * SATU panggilan `IOutstandAdapter.confirmFacebookPagesConnection` untuk
+   * SEMUA Page yang dipilih (bukan N panggilan — bentuk endpoint Outstand
+   * sendiri, ADR-115 poin 8). Hasilnya di-loop untuk
+   * `createConnectedAccount` SATU PER Page (reuse method existing) —
+   * **kalau Page itu sudah pernah terhubung sebelumnya** (`ConflictError`,
+   * unique constraint `[workspaceId, outstandAccountId]`), **skip
+   * (idempoten, bukan gagal total)** dan lanjut ke Page berikutnya, pola
+   * sama idempotent-guard ADR-109. Return value HANYA berisi Page yang
+   * BENAR-BENAR baru dibuat (Page yang di-skip tidak ikut) — caller/UI
+   * merangkum "N Page terhubung" dari panjang array ini.
+   *
+   * JOB-03 engagement sync seeding (`engagementSyncSeeder?.onAccountConnected`,
+   * Temuan #1 Ridwan, pola sama `completeAccountConnection`) dipanggil
+   * SEKALI PER Page yang berhasil dibuat.
+   *
+   * **Reconnect Facebook Page tunggal — DI LUAR SCOPE** (ADR-115 poin 8):
+   * method ini SELALU CREATE, tidak menerima `redirectAccountId`.
+   */
+  async confirmFacebookPagesConnection(input: {
+    workspaceId: WorkspaceId;
+    actorId: UserId;
+    sessionToken: string;
+    selectedPageIds: string[];
+  }): Promise<ConnectedAccountRecord[]> {
+    await this.assertActorCanManageConnectedAccounts(
+      input.workspaceId,
+      input.actorId,
+      "Hanya Owner atau Admin yang bisa menghubungkan akun.",
+    );
+
+    if (input.selectedPageIds.length === 0) {
+      throw new ValidationError(
+        "Pilih minimal satu Page Facebook untuk dihubungkan.",
+      );
+    }
+
+    const { accounts } =
+      await this.requireOutstandAdapter().confirmFacebookPagesConnection({
+        sessionToken: input.sessionToken,
+        selectedPageIds: input.selectedPageIds,
+      });
+
+    const created: ConnectedAccountRecord[] = [];
+    for (const account of accounts) {
+      let record: ConnectedAccountRecord;
+      try {
+        record = await this.repository.createConnectedAccount({
+          workspaceId: input.workspaceId,
+          platform: account.platform,
+          outstandAccountId: account.outstandAccountId,
+          handle: account.handle,
+          actingUserId: input.actorId,
+        });
+      } catch (error) {
+        if (error instanceof ConflictError) {
+          // Idempotent-guard (ADR-109) — Page ini sudah pernah terhubung
+          // sebelumnya, skip dan lanjut ke Page berikutnya (bukan gagal
+          // total untuk seluruh batch).
+          continue;
+        }
+        throw error;
+      }
+
+      await this.engagementSyncSeeder?.onAccountConnected({
+        workspaceId: record.workspaceId,
+        connectedAccountId: record.id,
+        outstandAccountId: record.outstandAccountId,
+      });
+
+      created.push(record);
+    }
+
+    return created;
   }
 
   /**

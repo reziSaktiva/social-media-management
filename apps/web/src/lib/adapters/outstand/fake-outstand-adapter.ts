@@ -1,4 +1,6 @@
 import type {
+  ConfirmFacebookPagesInput,
+  ConfirmFacebookPagesResult,
   ConnectAccountInput,
   ConnectAccountResult,
   ConnectCallbackInput,
@@ -6,6 +8,7 @@ import type {
   FetchCommentsResult,
   IOutstandAdapter,
   InboxCommentData,
+  ListPendingFacebookPagesResult,
   PostTargetOutcome,
   ReplyToCommentResult,
   UploadMediaWorkingCopyResult,
@@ -167,6 +170,38 @@ function buildOutcome(
 }
 
 /**
+ * 3 fixture Facebook Page tetap (T-025.4, ADR-115) — SENGAJA sama persis
+ * (nama) dengan draft desain King Rezi yang sudah CONFIRMED di Claude
+ * Design (`templates/settings-connect-facebook-pages.html`), supaya
+ * QA/demo Fake adapter konsisten dengan apa yang sudah direview King Rezi
+ * — bukan fixture generik `deterministicInt` per `sessionToken` seperti
+ * pola `buildFakeHandle` (ADR-115 poin 5 membuka opsi itu, tapi 3 fixture
+ * TETAP lebih berguna di sini karena Page-nya memang sengaja selalu sama,
+ * bukan bervariasi per akun/token seperti handle single-page).
+ */
+const FAKE_FACEBOOK_PAGE_FIXTURES: ReadonlyArray<{
+  pageId: string;
+  name: string;
+  category: string;
+}> = [
+  {
+    pageId: "fake-fb-page-kopi-selasar",
+    name: "Kopi Selasar",
+    category: "Coffee Shop",
+  },
+  {
+    pageId: "fake-fb-page-kopi-selasar-cabang-selatan",
+    name: "Kopi Selasar — Cabang Selatan",
+    category: "Coffee Shop",
+  },
+  {
+    pageId: "fake-fb-page-roti-selasar",
+    name: "Roti Selasar",
+    category: "Bakery",
+  },
+];
+
+/**
  * Fake OutstandAdapter (ADR-059) — instant always-success, tanpa simulasi
  * delay, network call, webhook, atau skenario gagal. Dipakai otomatis oleh
  * factory `getOutstandAdapter` (`./index.ts`) selama `OUTSTAND_API_KEY`
@@ -207,6 +242,26 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
    * `buildFakeHandle`) — BUKAN `code` lagi, supaya bentuk Fake tetap
    * merepresentasikan bentuk redirect nyata Outstand untuk single-page
    * account.
+   *
+   * **Facebook Pages (T-025.4, ADR-115, wire-format dikoreksi ADR-116,
+   * menutup gap testability KI-070):** SEBELUM percabangan ini, Fake selalu
+   * mengembalikan loopback single-page di atas untuk SEMUA platform
+   * termasuk Facebook — akibatnya klik "Connect Account → Facebook" di Fake
+   * mode tidak pernah memicu dialog Facebook Pages Picker secara natural
+   * (hanya bisa diuji lewat navigasi manual ke URL `?session=...` yang
+   * dirakit tangan, bukan golden path sungguhan). Sekarang
+   * `platform === SocialPlatform.Facebook` menghasilkan loopback dengan
+   * query param `session` (BUKAN `account_id`/`username`/
+   * `network_unique_id`) ke `CONNECT_CALLBACK_PATH` yang SAMA — persis
+   * bentuk redirect Outstand asli untuk Facebook (ADR-116) — supaya
+   * percabangan baca `session` yang sudah ada di Route Handler
+   * (`route.ts`) benar-benar ter-trigger end-to-end dari klik UI, bukan
+   * cuma dari test/URL manual. `fakeSessionToken` deterministik dari
+   * `seed` (pola sama `buildFakeHandle`/`outstandAccountId` di bawah) —
+   * `listPendingFacebookPages`/`confirmFacebookPagesConnection` di bawah
+   * accept-all terhadap `sessionToken` apa pun (ADR-059: instant
+   * always-success, tanpa validasi bentuk token), jadi token ini valid
+   * dipakai tanpa perubahan apa pun di method lain.
    */
   async connectAccount({
     workspaceId,
@@ -220,6 +275,21 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
       nonce: crypto.randomUUID(),
     });
     const seed = redirectAccountId ?? `${workspaceId}:${state}`;
+
+    if (platform === SocialPlatform.Facebook) {
+      const fakeSessionToken = `fake-fb-session-${deterministicInt(
+        seed,
+        "facebookSessionToken",
+        1_000_000,
+      )}`;
+
+      const redirectUrl =
+        `/api/integrations/outstand/callback?session=${encodeURIComponent(fakeSessionToken)}` +
+        `&state=${encodeURIComponent(state)}`;
+
+      return { redirectUrl };
+    }
+
     const outstandAccountId = `fake-account-${deterministicInt(
       seed,
       "outstandAccountId",
@@ -264,6 +334,56 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
       handle: username,
       status: "active",
     };
+  },
+
+  /**
+   * Facebook Pages — list pending Pages (T-025.4, ADR-115) — Fake selalu
+   * mengembalikan 3 fixture tetap (`FAKE_FACEBOOK_PAGE_FIXTURES`, di atas)
+   * terlepas dari `sessionToken` yang diminta (ADR-059: instant
+   * always-success, tanpa simulasi delay/gagal/expired) — `pictureUrl`
+   * disintesis dari `pageId` (path lokal `fake.outstand.local`, konsisten
+   * dengan pola `uploadMediaWorkingCopy`/`schedulePost` yang juga tidak
+   * pernah menunjuk ke domain eksternal sungguhan).
+   */
+  async listPendingFacebookPages(): Promise<ListPendingFacebookPagesResult> {
+    return {
+      pages: FAKE_FACEBOOK_PAGE_FIXTURES.map((fixture) => ({
+        pageId: fixture.pageId,
+        name: fixture.name,
+        category: fixture.category,
+        pictureUrl: `https://fake.outstand.local/pages/${fixture.pageId}.jpg`,
+      })),
+    };
+  },
+
+  /**
+   * Facebook Pages — confirm selected Pages (T-025.4, ADR-115) — Fake
+   * mengembalikan `ConnectedAccountData` HANYA untuk `selectedPageIds` yang
+   * cocok dengan salah satu dari 3 fixture tetap (deterministik, tanpa
+   * network call) — `pageId` yang tidak dikenal diam-diam di-skip (bukan
+   * error), sama seperti real adapter yang membiarkan Outstand sendiri
+   * memutuskan Page mana yang valid; validasi `selectedPageIds` kosong
+   * tetap dilempar (defense-in-depth, konsisten dengan real adapter).
+   */
+  async confirmFacebookPagesConnection({
+    selectedPageIds,
+  }: ConfirmFacebookPagesInput): Promise<ConfirmFacebookPagesResult> {
+    if (selectedPageIds.length === 0) {
+      throw new Error(
+        "FakeOutstandAdapter: confirmFacebookPagesConnection butuh minimal satu selectedPageIds.",
+      );
+    }
+
+    const accounts: ConnectedAccountData[] = FAKE_FACEBOOK_PAGE_FIXTURES.filter(
+      (fixture) => selectedPageIds.includes(fixture.pageId),
+    ).map((fixture) => ({
+      outstandAccountId: fixture.pageId,
+      platform: SocialPlatform.Facebook,
+      handle: fixture.name,
+      status: "active",
+    }));
+
+    return { accounts };
   },
 
   /**

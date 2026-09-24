@@ -28,11 +28,77 @@ describe("fakeOutstandAdapter.connectAccount (T-013/T-015.3, ADR-105, redesain A
   });
 });
 
-describe("fakeOutstandAdapter.resolveConnectCallback (T-013/T-015.3, ADR-105, redesain ADR-112)", () => {
-  it("resolves instantly to ConnectedAccountData with status active, carrying the platform from state and echoing account_id/username (ADR-112 — no exchange)", async () => {
+describe("fakeOutstandAdapter.connectAccount — Facebook Pages (T-025.4, ADR-115, wire-format ADR-116, gap testability KI-070)", () => {
+  it("returns a redirectUrl carrying session/state (NOT account_id/username/network_unique_id) for Facebook, matching Outstand's real multi-page loopback shape", async () => {
+    const result = await fakeOutstandAdapter.connectAccount({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Facebook,
+    });
+
+    expect(result.redirectUrl).toMatch(
+      /^\/api\/integrations\/outstand\/callback\?session=.+&state=.+$/,
+    );
+    const url = new URL(result.redirectUrl, "https://example.local");
+    expect(url.searchParams.get("account_id")).toBeNull();
+    expect(url.searchParams.get("username")).toBeNull();
+    expect(url.searchParams.get("network_unique_id")).toBeNull();
+  });
+
+  it("is deterministic for a reconnect (same redirectAccountId → same session token across calls, ADR-059)", async () => {
+    const connectAccountId = "connected-account-fb-1";
+
+    const first = await fakeOutstandAdapter.connectAccount({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Facebook,
+      redirectAccountId: connectAccountId,
+    });
+    const second = await fakeOutstandAdapter.connectAccount({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Facebook,
+      redirectAccountId: connectAccountId,
+    });
+
+    const firstSession = new URL(
+      first.redirectUrl,
+      "https://example.local",
+    ).searchParams.get("session");
+    const secondSession = new URL(
+      second.redirectUrl,
+      "https://example.local",
+    ).searchParams.get("session");
+
+    expect(secondSession).toEqual(firstSession);
+    expect(firstSession).not.toBeNull();
+  });
+
+  it("the resulting session token is directly usable by listPendingFacebookPages, returning the 3 fixed fixtures", async () => {
     const { redirectUrl } = await fakeOutstandAdapter.connectAccount({
       workspaceId: "ws-1",
       platform: SocialPlatform.Facebook,
+    });
+    const sessionToken = new URL(
+      redirectUrl,
+      "https://example.local",
+    ).searchParams.get("session")!;
+
+    const result = await fakeOutstandAdapter.listPendingFacebookPages({
+      sessionToken,
+    });
+
+    expect(result.pages).toHaveLength(3);
+    expect(result.pages.map((page) => page.name)).toEqual([
+      "Kopi Selasar",
+      "Kopi Selasar — Cabang Selatan",
+      "Roti Selasar",
+    ]);
+  });
+});
+
+describe("fakeOutstandAdapter.resolveConnectCallback (T-013/T-015.3, ADR-105, redesain ADR-112)", () => {
+  it("resolves instantly to ConnectedAccountData with status active, carrying the platform from state and echoing account_id/username (ADR-112 — no exchange; single-page platform, not Facebook Pages — see the connectAccount Facebook describe block above)", async () => {
+    const { redirectUrl } = await fakeOutstandAdapter.connectAccount({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Instagram,
     });
     const url = new URL(redirectUrl, "https://example.local");
     const outstandAccountId = url.searchParams.get("account_id")!;
@@ -46,7 +112,7 @@ describe("fakeOutstandAdapter.resolveConnectCallback (T-013/T-015.3, ADR-105, re
     });
 
     expect(result.status).toBe("active");
-    expect(result.platform).toBe(SocialPlatform.Facebook);
+    expect(result.platform).toBe(SocialPlatform.Instagram);
     expect(result.outstandAccountId).toEqual(outstandAccountId);
     expect(result.handle).toEqual(username);
   });

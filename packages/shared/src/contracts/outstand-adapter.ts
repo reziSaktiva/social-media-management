@@ -267,6 +267,49 @@ export interface UploadMediaWorkingCopyResult {
 }
 
 /**
+ * Facebook Pages — session-token connect flow (T-025.4, ADR-115, menutup
+ * KI-070; wire-format dikoreksi ADR-116) — Facebook (dan provider
+ * multi-halaman lain di sisi Outstand) tidak bisa memakai
+ * `resolveConnectCallback` (single-page saja, ADR-112): satu login bisa
+ * mengelola banyak Page, jadi Outstand redirect balik dengan
+ * `sessionToken` (BUKAN `account_id`/`username` langsung), dipakai untuk
+ * `GET /v1/social-accounts/pending/{sessionToken}` (daftar Page yang bisa
+ * dipilih) lalu `POST /v1/social-accounts/pending/{sessionToken}/finalize`
+ * (konfirmasi Page yang dipilih user, boleh lebih dari satu sekaligus).
+ *
+ * `pageId` dipetakan dari field wire `id` (real adapter, ADR-116) —
+ * **opaque, dipakai balik sebagai anggota `selectedPageIds` di confirm,
+ * bukan `outstandAccountId`** (Outstand bisa mengembalikan id berbeda di
+ * response confirm, sama seperti pola "jangan asumsikan" ADR-039/114 soal
+ * `board_id` Pinterest).
+ */
+export interface FacebookPendingPage {
+  pageId: string;
+  name: string;
+  pictureUrl?: string;
+  category?: string;
+}
+
+export interface ListPendingFacebookPagesInput {
+  sessionToken: string;
+}
+
+export interface ListPendingFacebookPagesResult {
+  pages: FacebookPendingPage[];
+}
+
+export interface ConfirmFacebookPagesInput {
+  sessionToken: string;
+  /** Minimum 1 elemen — divalidasi UI (tombol disabled) DAN adapter/WorkspaceService (defense-in-depth, jangan cuma percaya client). */
+  selectedPageIds: string[];
+}
+
+export interface ConfirmFacebookPagesResult {
+  /** Satu entri per Page yang berhasil dikonfirmasi Outstand — `platform` SELALU `SocialPlatform.Facebook` untuk tiap entri. */
+  accounts: ConnectedAccountData[];
+}
+
+/**
  * NOTE (2026-08-26, dicatat sebagai gap diketahui, bukan diimplementasikan
  * penuh di sini — di luar scope redesain ini, lihat draft ADR): dokumentasi
  * resmi Outstand `get-post-analytics` sebenarnya mengembalikan metrics
@@ -392,6 +435,32 @@ export interface IOutstandAdapter {
   resolveConnectCallback(
     input: ConnectCallbackInput,
   ): Promise<ConnectedAccountData>;
+
+  /**
+   * Facebook Pages — langkah 3 (T-025.4, ADR-115, wire-format dikoreksi
+   * ADR-116): daftar Page yang tersedia untuk dipilih dari sebuah
+   * `sessionToken` (didapat Route Handler callback dari redirect Outstand,
+   * lihat docstring `FacebookPendingPage`). Murni pass-through + mapping
+   * response — tidak ada RBAC/business logic di adapter (ACL boundary,
+   * AGENTS.md #6), itu tanggung jawab `WorkspaceService.listFacebookPendingPages`.
+   */
+  listPendingFacebookPages(
+    input: ListPendingFacebookPagesInput,
+  ): Promise<ListPendingFacebookPagesResult>;
+
+  /**
+   * Facebook Pages — langkah 4 (T-025.4, ADR-115, wire-format dikoreksi
+   * ADR-116): konfirmasi Page yang dipilih user (SATU panggilan untuk
+   * SEMUA `selectedPageIds`, bukan N panggilan — bentuk endpoint Outstand
+   * sendiri, `POST .../finalize` menerima array). `WorkspaceService.
+   * confirmFacebookPagesConnection` yang bertanggung jawab persist
+   * `ConnectedAccount` per Page hasil method ini (skip-on-conflict,
+   * idempotent-guard ADR-109) — adapter ini tidak menyentuh database sama
+   * sekali.
+   */
+  confirmFacebookPagesConnection(
+    input: ConfirmFacebookPagesInput,
+  ): Promise<ConfirmFacebookPagesResult>;
 
   /**
    * Media upload working copy (T-024.3, ADR-040 poin 4, ADR-106) — minta
