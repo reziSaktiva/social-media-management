@@ -63,6 +63,14 @@
  * server-to-server tanpa redirect browser, jadi digabung menjadi SATU
  * method alih-alih split 2 method — lihat ADR-106 untuk perbandingan
  * eksplisit dengan alasan split ADR-105.
+ *
+ * **`OutstandPostTargetInput.platform` ditambahkan (ADR-114, 2026-09-24,
+ * resolusi KI-069)** — real adapter butuh tahu network (`instagram`/
+ * `facebook`/`pinterest`/dst) tiap target untuk membentuk key top-level
+ * override format platform-specific (Story/Reel, ADR-039/ADR-107) yang
+ * dibutuhkan body `POST /v1/posts` Outstand. Field lain di interface ini
+ * sudah wajib (bukan opsional) — `platform` konsisten dengan pola itu,
+ * bukan ditambahkan sebagai opsional/best-effort.
  */
 import type { ContentFormat, SocialPlatform } from "../enums";
 
@@ -73,9 +81,17 @@ import type { ContentFormat, SocialPlatform } from "../enums";
  * target karena bisa berbeda per akun (ADR-039, Content Format per akun
  * tujuan, mis. Reel di Instagram + Post biasa di Facebook dalam satu aksi
  * publish yang sama).
+ *
+ * `platform` (ADR-114, resolusi KI-069) — network tujuan target ini,
+ * dibutuhkan real adapter untuk membentuk key top-level override
+ * platform-specific (`instagram`/`facebook`/dst) di body `POST /v1/posts`.
+ * Caller SUDAH tahu nilai ini dari `SchedulePostsTargetInput.platform`/
+ * `RetryTargetRecord.platform` — adapter tidak menebak dari
+ * `outstandAccountId`.
  */
 export interface OutstandPostTargetInput {
   outstandAccountId: string;
+  platform: SocialPlatform;
   contentFormat: ContentFormat;
   platformOptions?: Record<string, unknown>;
 }

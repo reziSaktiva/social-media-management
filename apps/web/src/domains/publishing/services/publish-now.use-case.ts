@@ -116,6 +116,7 @@ export class PublishNowUseCase {
         caption: record.caption,
         targets: input.targets.map((target) => ({
           outstandAccountId: target.outstandAccountId,
+          platform: target.platform,
           contentFormat: target.contentFormat,
           platformOptions: target.platformOptions,
         })),

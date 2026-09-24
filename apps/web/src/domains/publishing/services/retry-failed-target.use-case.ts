@@ -129,6 +129,7 @@ export class RetryFailedTargetUseCase {
         targets: [
           {
             outstandAccountId: target.outstandAccountId,
+            platform: target.platform,
             contentFormat: target.contentFormat,
             platformOptions: target.platformOptions ?? undefined,
           },

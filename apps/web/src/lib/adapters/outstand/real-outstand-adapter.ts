@@ -1,4 +1,5 @@
 import {
+  ContentFormat,
   SocialPlatform,
   type ConnectAccountInput,
   type ConnectAccountResult,
@@ -63,17 +64,17 @@ import { parseBase64UrlJson } from "./connect-state";
  *    sekarang men-scope kedua method per POST (`outstandPostId` wajib),
  *    cocok dengan API resmi Outstand (`GET/POST /v1/posts/{id}/replies`) —
  *    lihat implementasi kedua method di bawah.
- * 3. **Platform-specific overrides (Story/Reel/Pin, ADR-039)** —
- *    `OutstandPostTargetInput` tidak membawa `platform`/network per target
- *    (hanya `outstandAccountId`+`contentFormat`+`platformOptions`), padahal
- *    Outstand butuh override dikirim sebagai top-level key BERNAMA NETWORK
- *    (`instagram`/`facebook`/`pinterest`/dst, lihat `buildPostRequestBody`
- *    di bawah). Tanpa tahu network tiap target, adapter ini TIDAK bisa
- *    membentuk key itu dengan aman — jadi utk sekarang override per-format
- *    TIDAK dikirim ke Outstand sama sekali (post tetap terbit sebagai
- *    "post" biasa di semua network). Field asli sudah dikonfirmasi di
- *    OpenAPI spec, tinggal butuh field tambahan di kontrak untuk
- *    menyalurkannya.
+ * 3. ~~Platform-specific overrides (Story/Reel/Pin, ADR-039)~~ —
+ *    **DISELESAIKAN SEBAGIAN (ADR-114, 2026-09-24, resolusi KI-069).**
+ *    `OutstandPostTargetInput` sekarang membawa `platform` per target, jadi
+ *    `buildPostRequestBody` di bawah bisa membentuk top-level key BERNAMA
+ *    NETWORK (`instagram`/`facebook`/dst) untuk override format. Instagram
+ *    Story dan Facebook Story/Reel sudah dikirim (field-nya sudah ada di
+ *    domain kita). **Pinterest `board_id` (wajib di API Outstand) SENGAJA
+ *    TIDAK diimplementasikan** — domain/UI kita belum mengumpulkan
+ *    `board_id` sama sekali, jadi key `pinterest` tetap TIDAK PERNAH
+ *    dikirim (bukan lupa, keputusan eksplisit King Rezi) — dicatat sebagai
+ *    KI baru terpisah oleh Gibran Project Manager, di luar scope ADR-114.
  */
 export interface RealOutstandAdapterOptions extends OutstandHttpClientOptions {
   /**
@@ -242,28 +243,108 @@ export function createRealOutstandAdapter(
   const client = new OutstandHttpClient(apiKey, options);
 
   /**
+   * Override per-platform (Story/Reel, ADR-039/ADR-107) untuk SATU target,
+   * dipetakan ke bentuk asli Outstand — diverifikasi langsung lewat MCP
+   * resmi `create_post` + cross-check OpenAPI spec
+   * (`https://api.outstand.so/v1/posts/openapi.json`), ADR-114:
+   *
+   * - Instagram: TIDAK ADA flag eksplisit untuk Reel (auto-detect dari
+   *   video di sisi Outstand) — hanya `Story` yang butuh override
+   *   (`publishAsStory: true`). `Post`/`Reel` tidak mengirim key
+   *   `instagram` sama sekali (tidak ada yang perlu diisi).
+   * - Facebook: `Story` → `publishAsStory: true`, `Reel` →
+   *   `publishAsReel: true`. `Post` tidak mengirim key `facebook`.
+   * - Pinterest: SENGAJA tidak diimplementasikan (`board_id` wajib di API
+   *   Outstand, domain/UI kita belum mengumpulkan field itu sama sekali,
+   *   ADR-114) — selalu `null`, dicatat sebagai KI baru terpisah.
+   * - Platform lain: belum ada override yang didesain ADR-039/ADR-107,
+   *   `null`.
+   *
+   * `null` berarti "tidak ada override untuk dikirim" — BEDA dari objek
+   * kosong `{}` (yang tetap akan membentuk key top-level tanpa isi
+   * berguna).
+   */
+  function computePlatformOverride(
+    platform: SocialPlatform,
+    contentFormat: ContentFormat,
+  ): Record<string, unknown> | null {
+    if (platform === SocialPlatform.Instagram) {
+      return contentFormat === ContentFormat.Story
+        ? { publishAsStory: true }
+        : null;
+    }
+    if (platform === SocialPlatform.Facebook) {
+      if (contentFormat === ContentFormat.Story) {
+        return { publishAsStory: true };
+      }
+      if (contentFormat === ContentFormat.Reel) {
+        return { publishAsReel: true };
+      }
+      return null;
+    }
+    // Pinterest (board_id wajib, belum dikumpulkan domain kita) dan
+    // platform lain (belum ada override yang didesain) — lihat docstring
+    // di atas.
+    return null;
+  }
+
+  /**
    * `POST /v1/posts` body — diverifikasi terhadap OpenAPI spec resmi
    * Outstand: `accounts: string[]` (id/username akun, bukan network),
    * `content: string` (BUKAN `caption` — nama field lama adalah tebakan
-   * salah), `scheduledAt?: ISO8601`. Override per-platform (Story/Reel/Pin,
-   * ADR-039) TIDAK disertakan di sini — lihat gap #3 di docstring atas file
-   * ini: `OutstandPostTargetInput` tidak membawa `platform`/network per
-   * target, jadi kita tidak bisa aman membentuk top-level key
-   * `instagram`/`facebook`/`pinterest`/dst yang dibutuhkan Outstand untuk
-   * override itu. `contentFormat`/`platformOptions` per target saat ini
-   * diabaikan (bukan dikirim salah) sampai kontrak diamandemen.
+   * salah), `scheduledAt?: ISO8601`. Override per-platform (Story/Reel,
+   * ADR-039/ADR-107, resolusi KI-069 via ADR-114) dikirim sebagai key
+   * top-level BERNAMA NETWORK (`instagram`/`facebook`/dst) — lihat
+   * `computePlatformOverride`.
+   *
+   * **Edge case: multi-target dengan network SAMA tapi `contentFormat`
+   * BERBEDA** (mis. dua akun Instagram di post yang sama, satu `Story` satu
+   * `Post`) — body Outstand hanya punya SATU key `instagram` per POST
+   * (bukan per-account), jadi override tidak bisa dikirim berbeda untuk
+   * masing-masing akun di network yang sama. Aturan eksplisit (dikonfirmasi
+   * King Rezi, bukan tebakan): target PERTAMA (urutan array `targets`) yang
+   * menghasilkan override untuk network itu MENANG; target berikutnya di
+   * network yang sama dengan override BERBEDA diabaikan — TIDAK silent,
+   * di-`console.warn` supaya kelihatan di log produksi/CI kalau kasus ini
+   * benar-benar terjadi (form multi-target beda format per network yang
+   * sama belum ada di UI sekarang, jadi ini defensif untuk masa depan).
    */
   function buildPostRequestBody(input: {
     targets: OutstandPostTargetInput[];
     caption: string;
     scheduledAt?: Date;
   }) {
+    const overridesByNetwork: Record<string, Record<string, unknown>> = {};
+
+    for (const target of input.targets) {
+      const override = computePlatformOverride(
+        target.platform,
+        target.contentFormat,
+      );
+      if (!override) {
+        continue;
+      }
+
+      const network = toOutstandNetwork(target.platform);
+      const existing = overridesByNetwork[network];
+      if (existing) {
+        if (JSON.stringify(existing) !== JSON.stringify(override)) {
+          console.warn(
+            `[RealOutstandAdapter] Konflik contentFormat untuk network "${network}" dalam satu post — override pertama ${JSON.stringify(existing)} dipertahankan, override target berikutnya (outstandAccountId=${target.outstandAccountId}) ${JSON.stringify(override)} DIABAIKAN. Body Outstand POST /v1/posts hanya punya satu key per-network (bukan per-account).`,
+          );
+        }
+        continue;
+      }
+      overridesByNetwork[network] = override;
+    }
+
     return {
       accounts: input.targets.map((target) => target.outstandAccountId),
       content: input.caption,
       scheduledAt: input.scheduledAt
         ? input.scheduledAt.toISOString()
         : undefined,
+      ...overridesByNetwork,
     };
   }
 

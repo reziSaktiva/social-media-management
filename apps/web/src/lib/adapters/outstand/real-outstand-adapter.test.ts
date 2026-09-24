@@ -42,10 +42,15 @@ describe("RealOutstandAdapter.schedulePost / publishNow (T-025.2/T-025.3)", () =
       targets: [
         {
           outstandAccountId: "acc-ig-1",
+          platform: SocialPlatform.Instagram,
           contentFormat: ContentFormat.Reel,
           platformOptions: { coverImageUrl: "https://x/cover.png" },
         },
-        { outstandAccountId: "acc-fb-1", contentFormat: ContentFormat.Post },
+        {
+          outstandAccountId: "acc-fb-1",
+          platform: SocialPlatform.Facebook,
+          contentFormat: ContentFormat.Post,
+        },
       ],
     });
 
@@ -61,10 +66,11 @@ describe("RealOutstandAdapter.schedulePost / publishNow (T-025.2/T-025.3)", () =
     expect(body.accounts).toEqual(["acc-ig-1", "acc-fb-1"]);
     expect(body.content).toBe("Hello world");
     expect(body.scheduledAt).toBe(scheduledAt.toISOString());
-    // Known gap (2026-09-23): OutstandPostTargetInput doesn't carry the
-    // target's platform/network, so per-platform overrides (Story/Reel/Pin,
-    // ADR-039) cannot be sent as Outstand's real top-level network keys yet
-    // — body must NOT contain a fabricated `targetOptions` key anymore.
+    // Instagram Reel + Facebook Post: neither needs an override (ADR-114) —
+    // Reel has no explicit Instagram flag (auto-detect), Post is the
+    // default shape for Facebook.
+    expect(body.instagram).toBeUndefined();
+    expect(body.facebook).toBeUndefined();
     expect(body.targetOptions).toBeUndefined();
     expect(body.caption).toBeUndefined();
   });
@@ -80,7 +86,11 @@ describe("RealOutstandAdapter.schedulePost / publishNow (T-025.2/T-025.3)", () =
     const result = await adapter.publishNow({
       caption: "Ship it now",
       targets: [
-        { outstandAccountId: "acc-1", contentFormat: ContentFormat.Post },
+        {
+          outstandAccountId: "acc-1",
+          platform: SocialPlatform.LinkedIn,
+          contentFormat: ContentFormat.Post,
+        },
       ],
     });
 
@@ -102,7 +112,11 @@ describe("RealOutstandAdapter.schedulePost / publishNow (T-025.2/T-025.3)", () =
         caption: "x",
         scheduledAt: new Date(),
         targets: [
-          { outstandAccountId: "acc-1", contentFormat: ContentFormat.Post },
+          {
+            outstandAccountId: "acc-1",
+            platform: SocialPlatform.Instagram,
+            contentFormat: ContentFormat.Post,
+          },
         ],
       }),
     ).rejects.toBeInstanceOf(OutstandIntegrationError);
@@ -119,10 +133,177 @@ describe("RealOutstandAdapter.schedulePost / publishNow (T-025.2/T-025.3)", () =
         caption: "x",
         scheduledAt: new Date(),
         targets: [
-          { outstandAccountId: "acc-1", contentFormat: ContentFormat.Post },
+          {
+            outstandAccountId: "acc-1",
+            platform: SocialPlatform.Instagram,
+            contentFormat: ContentFormat.Post,
+          },
         ],
       }),
     ).rejects.toMatchObject({ type: "transient", retryable: true });
+  });
+});
+
+describe("RealOutstandAdapter.schedulePost — platform-specific overrides (KI-069, ADR-114)", () => {
+  async function schedulePostAndGetBody(
+    fetchImpl: ReturnType<typeof vi.fn>,
+    targets: Parameters<
+      ReturnType<typeof buildAdapter>["schedulePost"]
+    >[0]["targets"],
+  ) {
+    const adapter = buildAdapter(fetchImpl);
+    await adapter.schedulePost({
+      caption: "caption",
+      scheduledAt: new Date("2026-10-01T10:00:00.000Z"),
+      targets,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    return JSON.parse(init.body);
+  }
+
+  it("sends `instagram: { publishAsStory: true }` for Instagram Story", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+
+    const body = await schedulePostAndGetBody(fetchImpl, [
+      {
+        outstandAccountId: "acc-ig-1",
+        platform: SocialPlatform.Instagram,
+        contentFormat: ContentFormat.Story,
+      },
+    ]);
+
+    expect(body.instagram).toEqual({ publishAsStory: true });
+    expect(body.facebook).toBeUndefined();
+    expect(body.pinterest).toBeUndefined();
+  });
+
+  it("sends NO `instagram` key for Instagram Reel (no explicit flag — auto-detected by Outstand)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+
+    const body = await schedulePostAndGetBody(fetchImpl, [
+      {
+        outstandAccountId: "acc-ig-1",
+        platform: SocialPlatform.Instagram,
+        contentFormat: ContentFormat.Reel,
+      },
+    ]);
+
+    expect(body.instagram).toBeUndefined();
+  });
+
+  it("sends `facebook: { publishAsStory: true }` for Facebook Story", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+
+    const body = await schedulePostAndGetBody(fetchImpl, [
+      {
+        outstandAccountId: "acc-fb-1",
+        platform: SocialPlatform.Facebook,
+        contentFormat: ContentFormat.Story,
+      },
+    ]);
+
+    expect(body.facebook).toEqual({ publishAsStory: true });
+  });
+
+  it("sends `facebook: { publishAsReel: true }` for Facebook Reel", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+
+    const body = await schedulePostAndGetBody(fetchImpl, [
+      {
+        outstandAccountId: "acc-fb-1",
+        platform: SocialPlatform.Facebook,
+        contentFormat: ContentFormat.Reel,
+      },
+    ]);
+
+    expect(body.facebook).toEqual({ publishAsReel: true });
+  });
+
+  it("sends NO override key for a plain Post (Instagram or Facebook)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+
+    const body = await schedulePostAndGetBody(fetchImpl, [
+      {
+        outstandAccountId: "acc-ig-1",
+        platform: SocialPlatform.Instagram,
+        contentFormat: ContentFormat.Post,
+      },
+      {
+        outstandAccountId: "acc-fb-1",
+        platform: SocialPlatform.Facebook,
+        contentFormat: ContentFormat.Post,
+      },
+    ]);
+
+    expect(body.instagram).toBeUndefined();
+    expect(body.facebook).toBeUndefined();
+  });
+
+  it("NEVER sends a `pinterest` key, even for ContentFormat.Pin (board_id not collected by our domain/UI yet — deliberate, KI-069/ADR-114)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+
+    const body = await schedulePostAndGetBody(fetchImpl, [
+      {
+        outstandAccountId: "acc-pin-1",
+        platform: SocialPlatform.Pinterest,
+        contentFormat: ContentFormat.Pin,
+      },
+    ]);
+
+    expect(body.pinterest).toBeUndefined();
+  });
+
+  it("first-match-wins + warns on a same-network contentFormat conflict across multiple targets", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const body = await schedulePostAndGetBody(fetchImpl, [
+      {
+        outstandAccountId: "acc-fb-1",
+        platform: SocialPlatform.Facebook,
+        contentFormat: ContentFormat.Story,
+      },
+      {
+        outstandAccountId: "acc-fb-2",
+        platform: SocialPlatform.Facebook,
+        contentFormat: ContentFormat.Reel,
+      },
+    ]);
+
+    // First target (Story) wins — second (Reel) is dropped, not silently.
+    expect(body.facebook).toEqual({ publishAsStory: true });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0][0]).toContain("Konflik contentFormat");
+
+    warnSpy.mockRestore();
   });
 });
 

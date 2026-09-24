@@ -8,6 +8,68 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-24 — KI-069 Resolved: override format platform-specific (Story/Reel) via ADR-114, gap Pinterest `board_id` dicatat KI-072 baru
+
+KI-069 (override format per-platform Story/Reel/Pin tidak terkirim ke
+Outstand, ditemukan Elon Backend Engineer 2026-09-23 saat implementasi
+T-025) diselesaikan Elon Backend Engineer, lolos review arsitektur Ridwan
+Architecture Reviewer 0 temuan.
+
+**Root cause:** `OutstandPostTargetInput` tidak membawa `platform`/network
+per target, padahal body resmi Outstand `POST /v1/posts` butuh override
+format (Story/Reel/Pin) dikirim sebagai key top-level bernama network
+(`instagram`/`facebook`/`pinterest`/dst) — override platform-specific yang
+sudah didesain ADR-039/ADR-107 tidak pernah terkirim (post Instagram/
+Facebook yang user pilih format Story/Reel di composer tetap tayang
+sebagai "post biasa" di Outstand).
+
+**Keputusan King Rezi (dikonfirmasi via `AskUserQuestion` sebelum
+implementasi):** (1) kerjakan penuh field `platform` wajib di kontrak +
+mapping `contentFormat` ke shape asli Outstand per network untuk field yang
+datanya sudah ada di domain kita; (2) Pinterest `board_id` (wajib di API
+Outstand) sengaja TIDAK diimplementasikan — domain/UI kita tidak pernah
+mengumpulkannya, key `pinterest` tetap tidak dikirim (aman, tidak
+menambah risiko baru), dicatat KI baru terpisah **KI-072** oleh Gibran
+Project Manager, tidak memblokir penutupan KI-069.
+
+**Implementasi (fixed via ADR-114):** `OutstandPostTargetInput`
+(`packages/shared/src/contracts/outstand-adapter.ts`) ditambah field wajib
+`platform: SocialPlatform`. Caller (`schedule-posts.use-case.ts`,
+`publish-now.use-case.ts`, `retry-failed-target.use-case.ts`) meneruskan
+`platform` yang sudah tersedia di scope. `RealOutstandAdapter` menambah
+fungsi baru `computePlatformOverride(platform, contentFormat)` — Instagram
+Story → `publishAsStory` (Instagram tidak punya flag Reel eksplisit,
+auto-detect dari video), Facebook Story/Reel → `publishAsStory`/
+`publishAsReel`, Pinterest selalu `null`. Edge case konflik same-network
+`contentFormat` berbeda (mis. 2 akun Facebook, satu Story satu Reel):
+first-match-wins + `console.warn` eksplisit, tidak silent. Shape asli
+diverifikasi lewat MCP resmi `create_post` + OpenAPI spec resmi Outstand.
+
+**Verifikasi:** `bun run typecheck`/`lint` bersih, Vitest 487 pass/6 skip/0
+fail (full suite). `real-outstand-adapter.test.ts` ditambah cakupan penuh
+(Instagram Story/Reel, Facebook Story/Reel, Post biasa, Pinterest tetap
+kosong, konflik same-network).
+
+**Dokumentasi:** ADR baru `decisions/ADR-114-outstand-post-target-platform-override-ki069.md`
+(sudah diverifikasi akurat oleh Ridwan, cocok diff kode aktual), diregister
+di `DECISIONS.md`. `PROJECT_STATE.md` § Known Issues: KI-069 diubah jadi
+Resolved, KI-072 baru ditambahkan (Open, Domain integration — butuh
+keputusan desain UI board-picker sebelum implementasi, kena gate rule #17
+AGENTS.md). `tasks/v02-publishing-mvp.md` § T-025 diupdate (field Terkait +
+catatan naratif). Efek fungsional: publish Story/Reel Instagram/Facebook
+sekarang benar-benar tayang sesuai pilihan format user di composer.
+
+File yang berubah: `packages/shared/src/contracts/outstand-adapter.ts`,
+`apps/web/src/domains/publishing/services/schedule-posts.use-case.ts`,
+`apps/web/src/domains/publishing/services/publish-now.use-case.ts`,
+`apps/web/src/domains/publishing/services/retry-failed-target.use-case.ts`,
+`apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts` (+ test),
+`project-manager/decisions/ADR-114-outstand-post-target-platform-override-ki069.md`
+(baru), `project-manager/DECISIONS.md`, `project-manager/PROJECT_STATE.md`,
+`project-manager/TASKS.md`, `project-manager/tasks/v02-publishing-mvp.md`.
+
+---
+
 ## 2026-09-24 — KI-068 Resolved: redesain `fetchComments`/`replyToComment` per-post via ADR-113, gap disambiguasi multi-akun dicatat KI-071 baru
 
 KI-068 (`fetchComments`/`replyToComment` scope tidak cocok API resmi

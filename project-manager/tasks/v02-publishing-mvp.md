@@ -300,7 +300,7 @@ ADR-065. Tidak ada perubahan kode di sesi ini — murni koreksi status.
 | **Status**    | 🟡 In Progress                                                |
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-005, ADR-019, ADR-040, ADR-059                           |
-| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070), KI-068 (Resolved via ADR-113), KI-069 (baru, override platform-specific tidak terkirim), KI-070 (baru, flow multi-halaman Facebook Pages), KI-071 (baru, gap disambiguasi reply multi-akun), ADR-112, ADR-113 (`PROJECT_STATE.md` § Blockers/Known Issues) |
+| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070), KI-068 (Resolved via ADR-113), KI-069 (Resolved via ADR-114), KI-070 (flow multi-halaman Facebook Pages), KI-071 (gap disambiguasi reply multi-akun), KI-072 (baru, Pinterest `board_id` belum dikumpulkan), ADR-112, ADR-113, ADR-114 (`PROJECT_STATE.md` § Blockers/Known Issues) |
 | **Depends**   | T-028 ✅ (port + factory sudah ada) · kredensial Outstand asli |
 | **Baca dulu** | `05-architecture/integration-layer.md`                        |
 
@@ -372,6 +372,20 @@ opsional untuk disambiguasi post yang publish ke >1 akun di network sama —
 signature `replyToComment` yang dikonfirmasi tidak membawa field itu,
 dicatat **KI-071** (baru, tidak memblokir penutupan KI-068).
 
+**Update (2026-09-24, Elon Backend Engineer, lolos review Ridwan 0
+temuan):** **KI-069 Resolved** — `OutstandPostTargetInput` ditambah field
+wajib `platform: SocialPlatform` lewat **ADR-114**, diteruskan dari data
+yang sudah ada di scope caller (`schedule-posts.use-case.ts`,
+`publish-now.use-case.ts`, `retry-failed-target.use-case.ts`).
+`RealOutstandAdapter` menambah fungsi baru `computePlatformOverride`
+(memetakan `contentFormat` ke shape asli Outstand per network — Instagram
+Story → `publishAsStory`, Facebook Story/Reel → `publishAsStory`/
+`publishAsReel`, edge case konflik same-network `contentFormat` berbeda
+ditangani first-match-wins + `console.warn`). Typecheck/lint bersih, Vitest
+487 pass/6 skip/0 fail (full suite). **Pinterest `board_id` sengaja belum
+diimplementasikan** (domain/UI tidak pernah mengumpulkannya) — key
+`pinterest` tetap tidak dikirim ke Outstand, dicatat **KI-072** (baru).
+
 **Masih gap arsitektur (sengaja throw eksplisit `OutstandIntegrationError`,
 bukan silent bug, butuh keputusan King Rezi + kemungkinan amandemen ADR):**
 
@@ -381,13 +395,12 @@ bukan silent bug, butuh keputusan King Rezi + kemungkinan amandemen ADR):**
   page-selection baru yang belum ada di codebase. Real adapter sengaja
   throw eksplisit untuk `platform === Facebook` (ADR-112 §5), bukan
   berpura-pura berhasil.
-- **KI-069** — Override format per-platform (Story/Reel/Pin, ADR-039/
-  ADR-107) butuh dikirim sebagai key top-level bernama network di body
-  `POST /v1/posts`, tapi `OutstandPostTargetInput` tidak membawa
-  `platform`/network per target. Untuk sekarang override TIDAK dikirim ke
-  Outstand — post tetap terkirim tanpa override platform-specific.
 - **KI-071** (baru, gap disambiguasi reply multi-akun) — lihat catatan
   update di atas.
+- **KI-072** (baru, sisa scope KI-069) — Pinterest `board_id` (wajib di API
+  resmi Outstand) tidak pernah dikumpulkan di domain/UI kita — override
+  Pinterest sengaja tidak dikirim ke Outstand (aman, tidak break publish
+  dasar) sampai ada keputusan desain UI board-picker.
 
 Detail teknis lengkap ada di docstring
 `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts`.
