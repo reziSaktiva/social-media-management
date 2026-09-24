@@ -297,10 +297,10 @@ ADR-065. Tidak ada perubahan kode di sesi ini — murni koreksi status.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress                                                |
+| **Status**    | ✅ Done — seluruh subtask T-025.1–T-025.7 selesai (2026-09-24, T-025.4 Facebook Pages menutup KI-070). Sisa gap non-blocking dicatat terpisah: **KI-071** (disambiguasi reply multi-akun), **KI-072** (Pinterest `board_id`) |
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-005, ADR-019, ADR-040, ADR-059                           |
-| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070), KI-068 (Resolved via ADR-113), KI-069 (Resolved via ADR-114), KI-070 (flow multi-halaman Facebook Pages), KI-071 (gap disambiguasi reply multi-akun), KI-072 (baru, Pinterest `board_id` belum dikumpulkan), ADR-112, ADR-113, ADR-114 (`PROJECT_STATE.md` § Blockers/Known Issues) |
+| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070 Resolved), KI-068 (Resolved via ADR-113), KI-069 (Resolved via ADR-114), KI-070 (Resolved 2026-09-24 — flow multi-halaman Facebook Pages via ADR-115/ADR-116, UI Mark UI Engineer, 2 bug fix Elon Backend Engineer), KI-071 (gap disambiguasi reply multi-akun), KI-072 (baru, Pinterest `board_id` belum dikumpulkan), ADR-112, ADR-113, ADR-114, ADR-115, ADR-116 (`PROJECT_STATE.md` § Blockers/Known Issues) |
 | **Depends**   | T-028 ✅ (port + factory sudah ada) · kredensial Outstand asli |
 | **Baca dulu** | `05-architecture/integration-layer.md`                        |
 
@@ -309,7 +309,7 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 - [x] **T-025.1** HTTP client + auth header + error mapping ke domain error (Anti-Corruption Layer)
 - [x] **T-025.2** `schedulePost` real (menggantikan Fake pada jalur produksi)
 - [x] **T-025.3** `publishNow` real (dipakai T-029)
-- [ ] **T-025.4** `connectAccount` redirect flow (dipakai T-013) — flow **single-page** (Instagram/X/LinkedIn/Threads/TikTok/YouTube/Pinterest dkk) sudah selesai lewat **ADR-112** (`resolveConnectCallback` menggantikan `exchangeConnectCode`); sisa flow **multi-halaman Facebook Pages** (session-token) belum diimplementasikan, lihat **KI-070**
+- [x] **T-025.4** `connectAccount` redirect flow (dipakai T-013) — flow **single-page** (Instagram/X/LinkedIn/Threads/TikTok/YouTube/Pinterest dkk) sudah selesai lewat **ADR-112** (`resolveConnectCallback` menggantikan `exchangeConnectCode`). Flow **multi-halaman Facebook Pages** (session-token, **KI-070, Resolved 2026-09-24**): desain UI **CONFIRMED King Rezi** (`templates/settings-connect-facebook-pages.html`), kontrak backend **ADR-115** (Proposed) dikoreksi wire-format-nya via **ADR-116** (Accepted), backend diimplementasikan penuh dan lolos review Ridwan Architecture Reviewer (0 temuan), lalu **UI dialog `FacebookPagesPickerDialog.tsx` diimplementasikan Mark UI Engineer** (4 state Loading/Default/Selected/Empty + Error, shadcn `Dialog`/`Checkbox`/`Item`/`ItemGroup`/`Empty`/`Alert`/`Skeleton`, row Page full-row click sesuai gate desain terverifikasi). **2 bug kritis ditemukan + diperbaiki Elon Backend Engineer** saat verifikasi end-to-end klik natural (detail lengkap di catatan "Update (2026-09-24, penutupan KI-070)" di bawah), lolos review Ridwan putaran final (0 temuan) dan **QA final Najwa PASS** (Connect + Reconnect Facebook via klik natural, regresi platform lain aman). Subtask ditutup selesai
 - [x] **T-025.5** Media API (dipakai T-024)
 - [x] **T-025.6** Engagement fetch/reply (dipakai v0.4) — redesain per-post via **ADR-113**, KI-068 Resolved (2026-09-24)
 - [x] **T-025.7** Unit test adapter dengan HTTP mock — belum ada test adapter sama sekali
@@ -386,15 +386,73 @@ ditangani first-match-wins + `console.warn`). Typecheck/lint bersih, Vitest
 diimplementasikan** (domain/UI tidak pernah mengumpulkannya) — key
 `pinterest` tetap tidak dikirim ke Outstand, dicatat **KI-072** (baru).
 
+**Update (2026-09-24, Elon Backend Engineer, lolos review Ridwan 0
+temuan):** **Backend Facebook Pages (KI-070) selesai diimplementasikan** —
+kontrak ADR-115 diverifikasi wire-formatnya lewat WebFetch dokumentasi
+resmi Outstand, ditemukan 4 dari 4 asumsi ADR-115 salah (query param
+callback `session` bukan `session_token`; path finalize
+`POST /v1/social-accounts/pending/{sessionToken}/finalize`, ada suffix
+`/finalize`; response GET dibungkus `data.availablePages[]` field
+`id`/`profilePictureUrl`; response POST `connectedAccounts[]` field
+`id`/`username`/`nickname`) — dicatat sebagai amandemen **ADR-116**
+(Accepted). Kontrak `packages/shared` tidak berubah, koreksi murni mapping
+wire↔domain di `real-outstand-adapter.ts`. Perubahan: kontrak
+`outstand-adapter.ts`, `real-outstand-adapter.ts`, `fake-outstand-adapter.ts`
+(3 fixture Page), `workspace.service.ts` (2 method baru:
+`listFacebookPendingPages`/`confirmFacebookPagesConnection`, RBAC reuse,
+skip-bukan-gagal per Page, JOB-03 seeding), Route Handler callback
+(percabangan baca `session`), 2 Server Action baru di
+`connected-accounts/actions.ts`, plus test baru + stub minimal di 10 file
+test lain. Typecheck/lint bersih, Vitest 498 pass/6 skip/0 fail. Ridwan
+Architecture Reviewer: **0 temuan** (satu catatan non-blocking — strip
+query param `session` dari address bar, didelegasikan ke Mark UI Engineer
+saat implementasi dialog). **Update lanjutan di bawah** — UI dialog
+Facebook Pages Picker (Mark UI Engineer) sudah dikerjakan setelahnya,
+subtask T-025.4 ditutup selesai.
+
+**Update (2026-09-24, penutupan KI-070) — UI dialog + 2 bug fix + QA final
+PASS, KI-070 Resolved:** Mark UI Engineer mengimplementasikan
+`FacebookPagesPickerDialog.tsx` (4 state Loading/Default/Selected/Empty +
+Error) di `apps/web/src/app/(app)/settings/connected-accounts/`, wire ke
+`listFacebookPendingPagesAction`/`confirmFacebookPagesConnectionAction`
+yang sudah ada, row Page full-row click sesuai gate desain (diverifikasi
+langsung terhadap Claude Design, cocok). QA Najwa putaran 1 menemukan
+`FakeOutstandAdapter.connectAccount()` belum bercabang untuk Facebook
+(diperbaiki Elon) — lalu ditemukan **Bug #1**: klik natural "Connect
+Account → Facebook" gagal 405 (browser POST ke Route Handler
+`GET`-only di `apps/web/src/app/api/integrations/outstand/callback/route.ts`,
+padahal navigasi URL manual berhasil) — fix permanen: alias
+`export const POST = GET`. Retest mengungkap **Bug #2**: dialog terbuka
+tapi macet selamanya di Loading (`listFacebookPendingPagesAction` tidak
+pernah terpanggil) — root cause: `FakeOutstandAdapter` Facebook loopback
+ke domain kita sendiri (bukan domain eksternal seperti platform lain),
+sehingga redirect chain Server Action → Route Handler → balik ke halaman
+diperlakukan Next.js App Router sebagai satu transisi client-side yang
+membuat action-dispatch queue macet — **murni artefak Fake-mode testing,
+tidak terjadi di produksi** (Real adapter selalu redirect ke domain
+eksternal `outstand.so` di hop pertama). Fix: `initiateConnectAccountAction`/
+`initiateReconnectAccountAction`
+(`connected-accounts/actions.ts`) khusus `platform === Facebook` tidak lagi
+`redirect()` di server — return `{ redirectUrl }`, client
+(`ConnectPlatformMenu.tsx`, `ReconnectButton` di
+`ConnectedAccountsList.tsx`, `FacebookPagesPickerDialog.tsx`) melakukan
+`window.location.href` (hard navigation); platform lain tidak berubah.
+Test baru `route.test.ts` (4 test) + `actions.test.ts` (4 test), total
+naik ke **509 passed/6 skipped**. Ridwan Architecture Reviewer putaran
+final: **0 temuan** (rule #5 AGENTS.md tidak dilanggar — perubahan murni
+"siapa memicu navigasi browser", bukan business logic baru). **Najwa QA
+final: PASS** — Connect Facebook via klik natural, **Reconnect Facebook**
+(jalur baru, berhasil teknis), regresi platform lain (Instagram/X) dan
+screen lain aman. **Catatan non-blocking (keputusan eksplisit King
+Rezi):** Reconnect Facebook Page tunggal selalu **CREATE**, bukan
+**UPDATE** (sudah di luar scope sejak ADR-115 poin 8) — badge "Perlu
+Reconnect" di akun asal tidak hilang setelah reconnect. Didokumentasikan
+sebagai keterbatasan, **tidak** ada task susulan yang dibuat untuk ini
+sekarang.
+
 **Masih gap arsitektur (sengaja throw eksplisit `OutstandIntegrationError`,
 bukan silent bug, butuh keputusan King Rezi + kemungkinan amandemen ADR):**
 
-- **KI-070** (baru, sisa scope KI-067) — flow **multi-halaman Facebook
-  Pages** butuh session-token terpisah
-  (`GET/POST /v1/social-accounts/pending/{sessionToken}`) + UI
-  page-selection baru yang belum ada di codebase. Real adapter sengaja
-  throw eksplisit untuk `platform === Facebook` (ADR-112 §5), bukan
-  berpura-pura berhasil.
 - **KI-071** (baru, gap disambiguasi reply multi-akun) — lihat catatan
   update di atas.
 - **KI-072** (baru, sisa scope KI-069) — Pinterest `board_id` (wajib di API
