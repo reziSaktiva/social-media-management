@@ -23,7 +23,8 @@ SENGAJA tidak ditambahkan (disambiguasi sudah ditutup username, pola sama
 
 Ridwan Architecture Reviewer: **0 temuan**. Najwa QA Engineer: Vitest
 **6 file / 80 tes PASS**; tidak ada perubahan UI; typecheck Elon PASS.
-**Tidak ada commit/push** di sesi governance ini.
+Perubahan ini di-commit di branch `feature/ki-071-reply-disambiguation`
+(PR #134).
 
 **ADR baru:** `project-manager/decisions/ADR-117-replytocomment-account-username-disambiguation-ki071.md`
 (amandemen ADR-113). Status ADR-113 → `Accepted — Amended by ADR-117
