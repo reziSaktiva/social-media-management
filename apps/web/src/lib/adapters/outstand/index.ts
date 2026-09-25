@@ -30,13 +30,16 @@ export function getOutstandAdapter(): IOutstandAdapter {
     BETTER_AUTH_URL,
   } = getServerEnv();
 
-  if (!OUTSTAND_API_KEY) {
+  const apiKey = OUTSTAND_API_KEY?.trim();
+  if (!apiKey) {
     return fakeOutstandAdapter;
   }
 
-  return createRealOutstandAdapter(OUTSTAND_API_KEY, {
+  const baseUrl = OUTSTAND_API_BASE_URL?.trim() || undefined;
+
+  return createRealOutstandAdapter(apiKey, {
     appOrigin: BETTER_AUTH_URL,
-    baseUrl: OUTSTAND_API_BASE_URL,
-    orgId: OUTSTAND_ORG_ID,
+    baseUrl,
+    orgId: OUTSTAND_ORG_ID?.trim() || undefined,
   });
 }

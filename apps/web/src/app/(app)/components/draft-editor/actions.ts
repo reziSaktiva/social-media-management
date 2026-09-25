@@ -18,6 +18,7 @@ import {
   resolveDraftMediaIds,
   resolveScheduleTargets,
   SchedulePostsUseCase,
+  type PostMediaLookupPort,
 } from "@/domains/publishing";
 import {
   DeleteMediaUseCase,
@@ -34,6 +35,16 @@ import { publishingRepository } from "@/lib/repositories/publishing";
 import { mediaRepository } from "@/lib/repositories/media";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { ApplicationError } from "@/lib/utils/errors";
+
+/** Composition root — MediaService + Storage download untuk schedule/publish. */
+function createPostMediaLookup(): PostMediaLookupPort {
+  const mediaService = new MediaService(mediaRepository);
+  return {
+    listByIds: (input, userId) => mediaService.listByIds(input, userId),
+    downloadBytes: (storagePath) =>
+      supabaseMediaStorageAdapter.downloadMedia(storagePath),
+  };
+}
 
 /**
  * Bagian "resolve + assert" bersama untuk `resolveAndValidateMediaIds` di
@@ -465,6 +476,7 @@ export async function scheduleDraftAction(
     publishingRepository,
     getOutstandAdapter(),
     backgroundJobScheduler,
+    createPostMediaLookup(),
   ).execute({
     workspaceId,
     postId: post.id,
@@ -577,6 +589,7 @@ export async function publishNowAction(
   const published = await new PublishNowUseCase(
     publishingRepository,
     getOutstandAdapter(),
+    createPostMediaLookup(),
   ).execute({
     workspaceId,
     postId: post.id,

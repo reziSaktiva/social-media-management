@@ -8,6 +8,55 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-25 — Hardening code-review PR #133 (T-025 tetap ✅ Done): SECURITY DEFINER privileges, Facebook session cookie, media/Story, delete/retry, engagement, CSRF
+
+King Rezi meminta implementasi rencana perbaikan dari code-review PR #133
+di branch `feature/t-025-real-outstand-adapter`. Elon Backend Engineer
+menerapkan perbaikan; Ridwan Architecture Reviewer: **0 temuan**; Vitest
+**130** test terkait lulus; typecheck bersih. **Tidak ada commit/push**
+di sesi ini.
+
+**Status task:** T-025 sempat di-set `🟡 In Progress` oleh Elon saat
+perbaikan — **dikembalikan ke `✅ Done`** oleh Gibran Project Manager.
+Perbaikan ini adalah **hardening follow-up** di atas T-025 yang sudah
+selesai (2026-09-24), bukan reopen seluruh task. Catatan Update
+ditambahkan di `tasks/v02-publishing-mvp.md` § T-025.
+
+**Poin perbaikan (ringkas):**
+
+1. **CRITICAL** — migration
+   `20260925094500_restore_webhook_lookup_privileges`: `REVOKE` PUBLIC +
+   `GRANT` `app_runtime` pada fungsi SECURITY DEFINER webhook lookup
+   (regresi setelah `DROP`/`CREATE` migrasi KI-068).
+2. Facebook session token tidak di URL — cookie httpOnly
+   `outstandFacebookSession_<nonce>`; query hanya
+   `connectFacebook=1&connectFacebookState` (hardening implementasi
+   ADR-115/ADR-116; **tanpa ADR baru** — keputusan arsitektur material
+   tidak berubah).
+3. Media di-wire ke create-post lewat containers; Story omit caption;
+   campuran Story + feed ber-caption throw keras.
+4. `deletePost` + `accountIds` throw; `RetryFailedTargetUseCase` skip
+   wipe bila sibling target masih live.
+5. Upsert inbox engagement backfill `postId` pada update.
+6. Tombol Facebook Reconnect disembunyikan (belum ada jalur UPDATE).
+7. Presigned upload URL di-redact dari pesan error.
+8. IG Reel `coverImageUrl` → `reelCoverUrl`; HTTP 429 retryable.
+9. Sync comments: published only, limit 50, try/catch per-post.
+10. Test CSRF list/confirm Facebook; factory trim API key.
+
+**KI tetap Open (gap diterima, tidak diperbaiki di putaran ini):**
+**KI-071** (disambiguasi reply multi-akun), **KI-072** (Pinterest
+`board_id`). Tidak ada KI baru; **KI-067/KI-070 tidak di-reopen**.
+
+**Dokumen yang diupdate:** `tasks/v02-publishing-mvp.md` § T-025 (status
+kembali ✅ Done + Update 2026-09-25), `TASKS.md` (Fokus sekarang —
+baris "Selesai baru-baru ini"; hitungan indeks v0.2 tidak berubah:
+19 ✅ · 2 🟡 · 2 ⏳), `PROJECT_STATE.md` (Snapshot Top Next Tasks,
+Metadata 1.0.93 / 2026-09-25, Completed Ringkasan — bullet baru di atas,
+bullet KI-068 dihapus agar tetap 5 item).
+
+---
+
 ## 2026-09-24 — T-025.4/KI-070 ditutup: UI Facebook Pages Picker + 2 bug kritis ditemukan & diperbaiki + QA final PASS — T-025 (Real OutstandAdapter) 7/7 subtask tuntas, KI-003 Resolved
 
 Penutupan penuh rangkaian kerja Connect Account Facebook Pages yang dimulai

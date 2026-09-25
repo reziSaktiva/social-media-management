@@ -7,6 +7,7 @@ import { outstandConnectNonceCookieName } from "@/lib/workspace/outstand-connect
 // needs a real origin to build redirect URLs (pola sama `proxy.test.ts`).
 vi.mock("@/lib/env", () => ({
   getServerEnv: () => ({ BETTER_AUTH_URL: "http://localhost:3000" }),
+  secureCookiesEnabled: () => false,
 }));
 
 // Tidak dipanggil di jalur Facebook (branch `session` return SEBELUM
@@ -99,16 +100,17 @@ describe("POST /api/integrations/outstand/callback (alias GET, Bug #1)", () => {
     const getLocation = new URL(getResponse.headers.get("location")!);
     const postLocation = new URL(postResponse.headers.get("location")!);
     expect(postLocation.pathname).toBe(getLocation.pathname);
-    expect(postLocation.searchParams.get("connectFacebookSessionToken")).toBe(
-      "fake-fb-session-123",
-    );
+    // Session token TIDAK di query (httpOnly cookie) — hanya flag + state.
+    expect(postLocation.searchParams.get("connectFacebook")).toBe("1");
     expect(postLocation.searchParams.get("connectFacebookState")).toBe(state);
-    // Cookie nonce TIDAK dihapus di jalur Facebook (flow belum selesai,
-    // lihat docstring route.ts) — POST harus berperilaku sama. Cek lewat
-    // header `Set-Cookie` (bukan `.cookies` — tipe return `GET`/`POST`
-    // sengaja `Response`, bukan `NextResponse`, jadi `.cookies` tidak ada
-    // di level tipe walau ada di runtime).
-    expect(postResponse.headers.get("set-cookie")).toBeNull();
+    expect(
+      postLocation.searchParams.get("connectFacebookSessionToken"),
+    ).toBeNull();
+    // Session cookie diset di response (nonce cookie TIDAK dihapus — flow
+    // belum selesai). Cek lewat header `Set-Cookie`.
+    const setCookie = postResponse.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain(`outstandFacebookSession_${nonce}=`);
+    expect(setCookie).toContain("fake-fb-session-123");
   });
 
   it("POST dengan session token tapi TANPA nonce cookie (CSRF invalid) redirect ke ?connect=error — identik dengan GET", async () => {

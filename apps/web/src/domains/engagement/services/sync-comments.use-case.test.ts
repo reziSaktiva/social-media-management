@@ -189,6 +189,49 @@ describe("SyncCommentsUseCase.sync", () => {
     expect(second).toEqual({ newCommentsCount: 0 });
   });
 
+  it("melanjutkan post lain kalau fetchComments satu post gagal (isolasi per-post)", async () => {
+    const upserted: string[] = [];
+    const fetchComments = vi
+      .fn<IOutstandAdapter["fetchComments"]>()
+      .mockImplementation(async ({ outstandPostId }) => {
+        if (outstandPostId === OUTSTAND_POST_ID_1) {
+          throw new Error("Outstand 404 for post-1");
+        }
+        return {
+          comments: [makeComment(2, outstandPostId)],
+        };
+      });
+    const repository = createFakeRepository({
+      upsertInboxItem: async (input) => {
+        upserted.push(input.externalId);
+        return { item: {} as EngagementInboxItemRecord, isNew: true };
+      },
+    });
+    const publishingPosts = createFakePublishingPosts([
+      {
+        postId: POST_ID_1,
+        outstandPostId: OUTSTAND_POST_ID_1,
+        platform: SocialPlatform.Instagram,
+      },
+      {
+        postId: POST_ID_2,
+        outstandPostId: OUTSTAND_POST_ID_2,
+        platform: SocialPlatform.Instagram,
+      },
+    ]);
+    const useCase = new SyncCommentsUseCase(
+      repository,
+      createFakeAdapter(fetchComments),
+      publishingPosts,
+    );
+
+    const result = await useCase.sync(PAYLOAD, USER_ID);
+
+    expect(result).toEqual({ newCommentsCount: 1 });
+    expect(upserted).toEqual(["comment-2"]);
+    expect(fetchComments).toHaveBeenCalledTimes(2);
+  });
+
   it("memanggil fetchComments SEKALI PER POST syncable (redesain KI-068 — bukan lagi cursor per akun)", async () => {
     const requestedOutstandPostIds: string[] = [];
     const fetchComments = vi

@@ -16,6 +16,7 @@ import {
   type FetchWorkspaceMetricsResult,
   type IOutstandAdapter,
   type OutstandMetricsPeriod,
+  type OutstandPostMediaInput,
   type OutstandPostTargetInput,
   type OutstandPostTargetStatus,
   type PostTargetOutcome,
@@ -275,11 +276,22 @@ export function createRealOutstandAdapter(
   function computePlatformOverride(
     platform: SocialPlatform,
     contentFormat: ContentFormat,
+    platformOptions?: Record<string, unknown>,
   ): Record<string, unknown> | null {
     if (platform === SocialPlatform.Instagram) {
-      return contentFormat === ContentFormat.Story
-        ? { publishAsStory: true }
-        : null;
+      if (contentFormat === ContentFormat.Story) {
+        return { publishAsStory: true };
+      }
+      // Reel: Outstand auto-detect video → Reel; kirim key `instagram`
+      // HANYA kalau ada cover (`coverImageUrl` domain → `reelCoverUrl`).
+      if (contentFormat === ContentFormat.Reel) {
+        const cover =
+          typeof platformOptions?.coverImageUrl === "string"
+            ? platformOptions.coverImageUrl
+            : undefined;
+        return cover ? { reelCoverUrl: cover } : null;
+      }
+      return null;
     }
     if (platform === SocialPlatform.Facebook) {
       if (contentFormat === ContentFormat.Story) {
@@ -290,44 +302,63 @@ export function createRealOutstandAdapter(
       }
       return null;
     }
-    // Pinterest (board_id wajib, belum dikumpulkan domain kita) dan
-    // platform lain (belum ada override yang didesain) — lihat docstring
-    // di atas.
+    // Pinterest (board_id wajib, belum dikumpulkan — KI-072): JANGAN kirim
+    // key `pinterest` walau `pinTitle`/`pinLink` ada di platformOptions.
+    // Platform lain: belum ada override yang didesain.
     return null;
   }
 
   /**
    * `POST /v1/posts` body — diverifikasi terhadap OpenAPI spec resmi
-   * Outstand: `accounts: string[]` (id/username akun, bukan network),
-   * `content: string` (BUKAN `caption` — nama field lama adalah tebakan
-   * salah), `scheduledAt?: ISO8601`. Override per-platform (Story/Reel,
-   * ADR-039/ADR-107, resolusi KI-069 via ADR-114) dikirim sebagai key
-   * top-level BERNAMA NETWORK (`instagram`/`facebook`/dst) — lihat
-   * `computePlatformOverride`.
+   * Outstand: `accounts: string[]`, `content` ATAU `containers` (media),
+   * `scheduledAt?: ISO8601`. Override per-platform (Story/Reel, ADR-039/
+   * ADR-107, ADR-114) dikirim sebagai key top-level BERNAMA NETWORK.
    *
-   * **Edge case: multi-target dengan network SAMA tapi `contentFormat`
-   * BERBEDA** (mis. dua akun Instagram di post yang sama, satu `Story` satu
-   * `Post`) — body Outstand hanya punya SATU key `instagram` per POST
-   * (bukan per-account), jadi override tidak bisa dikirim berbeda untuk
-   * masing-masing akun di network yang sama. Aturan eksplisit (dikonfirmasi
-   * King Rezi, bukan tebakan): target PERTAMA (urutan array `targets`) yang
-   * menghasilkan override untuk network itu MENANG; target berikutnya di
-   * network yang sama dengan override BERBEDA diabaikan — TIDAK silent,
-   * di-`console.warn` supaya kelihatan di log produksi/CI kalau kasus ini
-   * benar-benar terjadi (form multi-target beda format per network yang
-   * sama belum ada di UI sekarang, jadi ini defensif untuk masa depan).
+   * **Media:** kalau `media` non-kosong → `containers: [{ content, media }]`
+   * (bukan top-level `content` saja). Tanpa media → `content` string seperti
+   * sebelumnya (text-only).
+   *
+   * **Story caption:** Facebook/IG Story menolak caption — kalau SEMUA
+   * target Story, `content` dikosongkan. Kalau ADA target Story campur
+   * feed/Reel ber-caption → throw `client_error` (Outstand menolak
+   * cross-post Story + captioned content dalam satu call).
+   *
+   * **Edge case multi-target network sama, contentFormat beda:** first-
+   * match-wins + `console.warn` (lihat ADR-114).
    */
   function buildPostRequestBody(input: {
     targets: OutstandPostTargetInput[];
     caption: string;
     scheduledAt?: Date;
+    media?: OutstandPostMediaInput[];
   }) {
+    const hasStoryTarget = input.targets.some(
+      (target) => target.contentFormat === ContentFormat.Story,
+    );
+    const hasNonStoryTarget = input.targets.some(
+      (target) => target.contentFormat !== ContentFormat.Story,
+    );
+    const captionTrimmed = input.caption.trim();
+
+    if (hasStoryTarget && hasNonStoryTarget && captionTrimmed.length > 0) {
+      throw new OutstandIntegrationError({
+        type: "client_error",
+        message:
+          "OutstandAdapter: tidak bisa mengirim Story bersama target feed/Reel yang ber-caption dalam satu create-post — Outstand menolak caption pada Story. Pisahkan publish Story (caption kosong) dari feed ber-caption.",
+        retryable: false,
+      });
+    }
+
+    // Story-only (atau Story + target lain tanpa caption) → content kosong.
+    const contentForBody = hasStoryTarget ? "" : input.caption;
+
     const overridesByNetwork: Record<string, Record<string, unknown>> = {};
 
     for (const target of input.targets) {
       const override = computePlatformOverride(
         target.platform,
         target.contentFormat,
+        target.platformOptions,
       );
       if (!override) {
         continue;
@@ -346,13 +377,35 @@ export function createRealOutstandAdapter(
       overridesByNetwork[network] = override;
     }
 
-    return {
+    const media = input.media?.filter(
+      (item) => item.url.length > 0 && item.filename.length > 0,
+    );
+    const base = {
       accounts: input.targets.map((target) => target.outstandAccountId),
-      content: input.caption,
       scheduledAt: input.scheduledAt
         ? input.scheduledAt.toISOString()
         : undefined,
       ...overridesByNetwork,
+    };
+
+    if (media && media.length > 0) {
+      return {
+        ...base,
+        containers: [
+          {
+            content: contentForBody,
+            media: media.map((item) => ({
+              url: item.url,
+              filename: item.filename,
+            })),
+          },
+        ],
+      };
+    }
+
+    return {
+      ...base,
+      content: contentForBody,
     };
   }
 
@@ -382,6 +435,7 @@ export function createRealOutstandAdapter(
     targets: OutstandPostTargetInput[];
     caption: string;
     scheduledAt?: Date;
+    media?: OutstandPostMediaInput[];
   }): Promise<{ outstandPostId: string }> {
     const response = await client.request<unknown>("/v1/posts", {
       method: "POST",
@@ -706,6 +760,7 @@ export function createRealOutstandAdapter(
         targets: input.targets,
         caption: input.caption,
         scheduledAt: input.scheduledAt,
+        media: input.media,
       });
     },
 
@@ -721,6 +776,7 @@ export function createRealOutstandAdapter(
       return createPost({
         targets: input.targets,
         caption: input.caption,
+        media: input.media,
       });
     },
 
@@ -799,24 +855,28 @@ export function createRealOutstandAdapter(
     /**
      * Retry manual (T-034.4, ADR-092/ADR-103) — **diverifikasi:** `DELETE
      * /v1/posts/{outstandPostId}/remote` ("Delete a post from social
-     * networks") — BEDA endpoint dari `cancelScheduledPost` (path lama
-     * `DELETE /posts/{id}` di atas adalah cancel-BELUM-publish, bukan
-     * hapus-yang-SUDAH-publish; dua-duanya memang ada di kontrak
-     * `IOutstandAdapter` sebagai method terpisah, jadi dipetakan ke endpoint
-     * masing-masing yang benar).
+     * networks") — BEDA endpoint dari `cancelScheduledPost`.
      *
-     * **GAP (dicatat, bukan diperbaiki diam-diam):** endpoint `/remote`
-     * TIDAK punya parameter untuk membatasi penghapusan ke akun tertentu —
-     * ia selalu mencoba menghapus dari SEMUA akun yang post ini publish ke
-     * (per-account result ada di response, tapi tidak ada input filter).
-     * Parameter `accountIds` di kontrak method ini karena itu diabaikan
-     * untuk real adapter (tetap dihormati oleh Fake) — didokumentasikan
-     * sebagai keterbatasan real API, bukan bug adapter ini.
+     * **Scoped delete tidak didukung API Outstand:** endpoint `/remote`
+     * selalu menghapus dari SEMUA akun. Kalau caller menyuplai `accountIds`
+     * non-kosong (niat single-account, mis. retry satu target gagal),
+     * JANGAN panggil DELETE — throw `client_error` supaya caller
+     * (`RetryFailedTargetUseCase`) skip wipe sibling yang sudah
+     * published/scheduled. Tanpa `accountIds` (atau array kosong) =
+     * hapus seluruh remote seperti semula.
      */
     async deletePost(
       outstandPostId: string,
-      _accountIds?: string[],
+      accountIds?: string[],
     ): Promise<void> {
+      if (accountIds && accountIds.length > 0) {
+        throw new OutstandIntegrationError({
+          type: "client_error",
+          message:
+            "OutstandAdapter.deletePost: API Outstand tidak mendukung scoped delete per akun (DELETE /remote selalu menghapus SEMUA akun). Jangan panggil dengan accountIds — skip delete kalau post masih punya sibling target live, atau hapus tanpa filter hanya bila target ini satu-satunya.",
+          retryable: false,
+        });
+      }
       await client.request<void>(
         `/v1/posts/${encodeURIComponent(outstandPostId)}/remote`,
         { method: "DELETE" },

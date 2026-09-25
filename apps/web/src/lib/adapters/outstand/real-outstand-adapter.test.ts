@@ -66,10 +66,10 @@ describe("RealOutstandAdapter.schedulePost / publishNow (T-025.2/T-025.3)", () =
     expect(body.accounts).toEqual(["acc-ig-1", "acc-fb-1"]);
     expect(body.content).toBe("Hello world");
     expect(body.scheduledAt).toBe(scheduledAt.toISOString());
-    // Instagram Reel + Facebook Post: neither needs an override (ADR-114) —
-    // Reel has no explicit Instagram flag (auto-detect), Post is the
-    // default shape for Facebook.
-    expect(body.instagram).toBeUndefined();
+    // Instagram Reel + coverImageUrl → reelCoverUrl; Facebook Post = no override.
+    expect(body.instagram).toEqual({
+      reelCoverUrl: "https://x/cover.png",
+    });
     expect(body.facebook).toBeUndefined();
     expect(body.targetOptions).toBeUndefined();
     expect(body.caption).toBeUndefined();
@@ -150,10 +150,11 @@ describe("RealOutstandAdapter.schedulePost — platform-specific overrides (KI-0
     targets: Parameters<
       ReturnType<typeof buildAdapter>["schedulePost"]
     >[0]["targets"],
+    caption = "caption",
   ) {
     const adapter = buildAdapter(fetchImpl);
     await adapter.schedulePost({
-      caption: "caption",
+      caption,
       scheduledAt: new Date("2026-10-01T10:00:00.000Z"),
       targets,
     });
@@ -161,7 +162,7 @@ describe("RealOutstandAdapter.schedulePost — platform-specific overrides (KI-0
     return JSON.parse(init.body);
   }
 
-  it("sends `instagram: { publishAsStory: true }` for Instagram Story", async () => {
+  it("sends `instagram: { publishAsStory: true }` for Instagram Story and clears caption", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(
@@ -177,8 +178,81 @@ describe("RealOutstandAdapter.schedulePost — platform-specific overrides (KI-0
     ]);
 
     expect(body.instagram).toEqual({ publishAsStory: true });
+    expect(body.content).toBe("");
     expect(body.facebook).toBeUndefined();
     expect(body.pinterest).toBeUndefined();
+  });
+
+  it("throws client_error when mixing Story with captioned non-Story targets", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+    const adapter = buildAdapter(fetchImpl);
+
+    await expect(
+      adapter.schedulePost({
+        caption: "Caption for feed",
+        scheduledAt: new Date("2026-10-01T10:00:00.000Z"),
+        targets: [
+          {
+            outstandAccountId: "acc-ig-story",
+            platform: SocialPlatform.Instagram,
+            contentFormat: ContentFormat.Story,
+          },
+          {
+            outstandAccountId: "acc-ig-feed",
+            platform: SocialPlatform.Instagram,
+            contentFormat: ContentFormat.Post,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      type: "client_error",
+      retryable: false,
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("sends containers with media when media is provided (text-only keeps content)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-media" } }),
+      );
+    const adapter = buildAdapter(fetchImpl);
+
+    await adapter.publishNow({
+      caption: "With photo",
+      targets: [
+        {
+          outstandAccountId: "acc-1",
+          platform: SocialPlatform.Instagram,
+          contentFormat: ContentFormat.Post,
+        },
+      ],
+      media: [
+        {
+          url: "https://outstand.example/media/a.jpg",
+          filename: "a.jpg",
+        },
+      ],
+    });
+
+    const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(body.content).toBeUndefined();
+    expect(body.containers).toEqual([
+      {
+        content: "With photo",
+        media: [
+          {
+            url: "https://outstand.example/media/a.jpg",
+            filename: "a.jpg",
+          },
+        ],
+      },
+    ]);
   });
 
   it("sends NO `instagram` key for Instagram Reel (no explicit flag — auto-detected by Outstand)", async () => {
@@ -285,18 +359,24 @@ describe("RealOutstandAdapter.schedulePost — platform-specific overrides (KI-0
       );
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const body = await schedulePostAndGetBody(fetchImpl, [
-      {
-        outstandAccountId: "acc-fb-1",
-        platform: SocialPlatform.Facebook,
-        contentFormat: ContentFormat.Story,
-      },
-      {
-        outstandAccountId: "acc-fb-2",
-        platform: SocialPlatform.Facebook,
-        contentFormat: ContentFormat.Reel,
-      },
-    ]);
+    // Caption kosong — Story+Reel campur dengan caption akan throw
+    // (aturan terpisah); di sini kita menguji first-match override saja.
+    const body = await schedulePostAndGetBody(
+      fetchImpl,
+      [
+        {
+          outstandAccountId: "acc-fb-1",
+          platform: SocialPlatform.Facebook,
+          contentFormat: ContentFormat.Story,
+        },
+        {
+          outstandAccountId: "acc-fb-2",
+          platform: SocialPlatform.Facebook,
+          contentFormat: ContentFormat.Reel,
+        },
+      ],
+      "",
+    );
 
     // First target (Story) wins — second (Reel) is dropped, not silently.
     expect(body.facebook).toEqual({ publishAsStory: true });
@@ -396,20 +476,30 @@ describe("RealOutstandAdapter.cancelScheduledPost / deletePost (T-030/T-034.4)",
     expect(init.method).toBe("DELETE");
   });
 
-  it("deletePost calls DELETE /v1/posts/{id}/remote (delete-from-social-networks, distinct endpoint from cancel)", async () => {
+  it("deletePost without accountIds calls DELETE /v1/posts/{id}/remote", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(jsonResponse(200, { success: true, results: [] }));
     const adapter = buildAdapter(fetchImpl);
 
-    // Known gap (2026-09-23): the real /remote endpoint has no per-account
-    // filter, so accountIds is accepted for contract compatibility but not
-    // forwarded to Outstand.
-    await adapter.deletePost("post-123", ["acc-1", "acc-2"]);
+    await adapter.deletePost("post-123");
 
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe("https://api.outstand.so/v1/posts/post-123/remote");
     expect(init.method).toBe("DELETE");
+  });
+
+  it("deletePost with accountIds throws client_error (API cannot scoped-delete)", async () => {
+    const fetchImpl = vi.fn();
+    const adapter = buildAdapter(fetchImpl);
+
+    await expect(
+      adapter.deletePost("post-123", ["acc-1", "acc-2"]),
+    ).rejects.toMatchObject({
+      type: "client_error",
+      retryable: false,
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
 

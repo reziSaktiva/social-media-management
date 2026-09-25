@@ -239,6 +239,8 @@ export interface RetryTargetRecord {
   workspaceId: WorkspaceId;
   postOutstandPostId: string | null;
   caption: string;
+  /** Media post-level (satu set untuk seluruh post, ADR-107) — dipakai recreate. */
+  mediaIds: MediaId[];
   targetId: PostTargetId;
   targetStatus: PublishingPostTargetStatus;
   connectedAccountId: ConnectedAccountId;
@@ -246,6 +248,12 @@ export interface RetryTargetRecord {
   platform: SocialPlatform;
   contentFormat: ContentFormat;
   platformOptions: Record<string, unknown> | null;
+  /**
+   * True kalau post punya target SAUDARA berstatus published/scheduled/
+   * pending — Real `deletePost` dengan accountIds akan wipe SEMUA remote
+   * (API tidak scoped). Retry harus SKIP `deletePost` bila true.
+   */
+  hasSiblingLiveTargets: boolean;
 }
 
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/publishing. */

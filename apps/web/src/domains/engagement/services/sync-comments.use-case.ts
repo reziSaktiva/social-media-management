@@ -138,13 +138,28 @@ export class SyncCommentsUseCase {
       );
 
     let newCommentsCount = 0;
+    const postErrors: { outstandPostId: string; message: string }[] = [];
 
     for (const post of syncablePosts) {
-      const { comments } = await this.adapter.fetchComments({
-        outstandPostId: post.outstandPostId,
-        platform: post.platform,
-        accountUsername,
-      });
+      // Isolasi per-post: satu fetchComments gagal (404/transient) jangan
+      // menggagalkan sync seluruh akun — log + lanjut post berikutnya.
+      let comments;
+      try {
+        const result = await this.adapter.fetchComments({
+          outstandPostId: post.outstandPostId,
+          platform: post.platform,
+          accountUsername,
+        });
+        comments = result.comments;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(
+          `[SyncCommentsUseCase] fetchComments gagal untuk outstandPostId=${post.outstandPostId} (akun ${connectedAccountId}) — lanjut post lain:`,
+          error,
+        );
+        postErrors.push({ outstandPostId: post.outstandPostId, message });
+        continue;
+      }
 
       // Upsert per komentar dijalankan konkuren (bukan `await` berurutan
       // satu-satu) supaya round-trip DB tidak terserialisasi — tiap
@@ -182,6 +197,13 @@ export class SyncCommentsUseCase {
           newCommentsCount += 1;
         }
       }
+    }
+
+    if (postErrors.length > 0) {
+      console.error(
+        `[SyncCommentsUseCase] ${postErrors.length}/${syncablePosts.length} post gagal di-sync untuk connectedAccountId=${connectedAccountId}:`,
+        postErrors,
+      );
     }
 
     if (newCommentsCount > 0) {

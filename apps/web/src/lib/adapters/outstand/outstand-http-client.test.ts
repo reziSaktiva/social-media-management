@@ -152,15 +152,28 @@ describe("OutstandHttpClient.request (T-025.1)", () => {
       });
     });
 
-    it("carries the vendor error code/message through into OutstandIntegrationError", async () => {
+    it("maps HTTP 429 to transient, retryable (rate limit)", async () => {
       const fetchImpl = vi
         .fn()
-        .mockResolvedValue(
-          jsonResponse(400, {
-            code: "invalid_caption",
-            message: "Caption too long",
-          }),
-        );
+        .mockResolvedValue(jsonResponse(429, { message: "slow down" }));
+      const client = new OutstandHttpClient(API_KEY, { fetchImpl });
+
+      await expect(
+        client.request("/posts", { method: "GET" }),
+      ).rejects.toMatchObject({
+        type: "transient",
+        retryable: true,
+        httpStatus: 429,
+      });
+    });
+
+    it("carries the vendor error code/message through into OutstandIntegrationError", async () => {
+      const fetchImpl = vi.fn().mockResolvedValue(
+        jsonResponse(400, {
+          code: "invalid_caption",
+          message: "Caption too long",
+        }),
+      );
       const client = new OutstandHttpClient(API_KEY, { fetchImpl });
 
       let caught: unknown;
@@ -247,5 +260,26 @@ describe("OutstandHttpClient.putBytes (T-025.5, media upload working copy)", () 
         "image/png",
       ),
     ).rejects.toBeInstanceOf(OutstandIntegrationError);
+  });
+
+  it("redacts presigned upload URL query string from error messages", async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error("socket hang up"));
+    const client = new OutstandHttpClient(API_KEY, { fetchImpl });
+    const presigned =
+      "https://uploads.outstand.example/media/abc?X-Amz-Signature=SECRET&token=leak";
+
+    let caught: unknown;
+    try {
+      await client.putBytes(presigned, Buffer.from("x"), "image/png");
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(OutstandIntegrationError);
+    const message = (caught as OutstandIntegrationError).message;
+    expect(message).not.toContain("SECRET");
+    expect(message).not.toContain("token=leak");
+    expect(message).not.toContain(presigned);
+    expect(message).toContain("/media/abc");
   });
 });

@@ -145,10 +145,14 @@ export function mapHttpErrorToIntegrationError(
       httpStatus: status,
     });
   }
-  if (status >= 500) {
+  // 429 Too Many Requests — transient (rate limit), retryable seperti 5xx.
+  if (status === 429 || status >= 500) {
     return new OutstandIntegrationError({
       type: "transient",
-      message: `Outstand server error (HTTP ${status}): ${baseMessage}`,
+      message:
+        status === 429
+          ? `Outstand rate limited (HTTP 429): ${baseMessage}`
+          : `Outstand server error (HTTP ${status}): ${baseMessage}`,
       outstandErrorCode,
       retryable: true,
       httpStatus: status,

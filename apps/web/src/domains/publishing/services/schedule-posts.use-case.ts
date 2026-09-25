@@ -15,6 +15,10 @@ import type {
   IPublishingRepository,
   PublishingPostRecord,
 } from "../repositories/publishing.repository";
+import {
+  resolveOutstandPostMedia,
+  type PostMediaLookupPort,
+} from "./resolve-outstand-post-media";
 
 export interface SchedulePostsTargetInput {
   connectedAccountId: ConnectedAccountId;
@@ -90,6 +94,8 @@ export class SchedulePostsUseCase {
     private readonly repository: IPublishingRepository,
     private readonly outstandAdapter: IOutstandAdapter,
     private readonly jobScheduler: IJobScheduler,
+    /** Opsional — resolve mediaIds → URL Outstand sebelum create-post. */
+    private readonly mediaLookup?: PostMediaLookupPort,
   ) {}
 
   async execute(input: {
@@ -132,6 +138,14 @@ export class SchedulePostsUseCase {
     let scheduleResult: { outstandPostId: string } | null = null;
 
     try {
+      const media = await resolveOutstandPostMedia({
+        workspaceId: input.workspaceId,
+        mediaIds: record.mediaIds,
+        actingUserId: input.actingUserId,
+        outstandAdapter: this.outstandAdapter,
+        mediaLookup: this.mediaLookup,
+      });
+
       const result = await this.outstandAdapter.schedulePost({
         caption: record.caption,
         scheduledAt: input.scheduledAt,
@@ -141,6 +155,7 @@ export class SchedulePostsUseCase {
           contentFormat: target.contentFormat,
           platformOptions: target.platformOptions,
         })),
+        ...(media ? { media } : {}),
       });
 
       await this.repository.setOutstandPostId(

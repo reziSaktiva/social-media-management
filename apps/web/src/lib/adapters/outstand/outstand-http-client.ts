@@ -32,6 +32,23 @@ const DEFAULT_BASE_URL = "https://api.outstand.so";
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 /**
+ * Label aman untuk error context — jangan log/leak full presigned URL
+ * (query string sering berisi credential/signature). Pathname saja, atau
+ * label tetap `media-upload` kalau parse gagal.
+ */
+export function redactUrlForErrorContext(urlOrPath: string): string {
+  if (urlOrPath.startsWith("/") && !urlOrPath.includes("://")) {
+    return urlOrPath;
+  }
+  try {
+    const parsed = new URL(urlOrPath);
+    return parsed.pathname || "media-upload";
+  } catch {
+    return "media-upload";
+  }
+}
+
+/**
  * Signature call minimal `fetch` (bukan `typeof fetch` penuh) — `typeof
  * fetch` di runtime Bun juga mensyaratkan properti statis seperti
  * `preconnect` yang tidak dimiliki `vi.fn()` biasa, jadi interface longgar
@@ -145,7 +162,9 @@ export class OutstandHttpClient {
         signal: controller.signal,
       });
     } catch (rawError) {
-      throw mapNetworkErrorToIntegrationError(rawError, { path: uploadUrl });
+      throw mapNetworkErrorToIntegrationError(rawError, {
+        path: redactUrlForErrorContext(uploadUrl),
+      });
     } finally {
       clearTimeout(timeoutHandle);
     }
@@ -153,7 +172,7 @@ export class OutstandHttpClient {
     if (!response.ok) {
       const parsedBody = await this.parseBody(response);
       throw mapHttpErrorToIntegrationError(response.status, parsedBody, {
-        path: uploadUrl,
+        path: redactUrlForErrorContext(uploadUrl),
       });
     }
   }

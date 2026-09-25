@@ -96,10 +96,24 @@ export interface OutstandPostTargetInput {
   platformOptions?: Record<string, unknown>;
 }
 
+/**
+ * Satu item media untuk `schedulePost`/`publishNow` — dipetakan ke
+ * `containers[].media[]` di body `POST /v1/posts` Outstand (`url` +
+ * `filename`). Caller (use-case publishing) menyuplai URL working copy
+ * Outstand (`uploadMediaWorkingCopy`) atau HTTPS publik yang sudah
+ * memenuhi syarat Outstand — adapter tidak mengunduh file sendiri.
+ */
+export interface OutstandPostMediaInput {
+  url: string;
+  filename: string;
+}
+
 export interface ScheduleOutstandPostInput {
   targets: OutstandPostTargetInput[];
   caption: string;
   scheduledAt: Date;
+  /** Opsional — kalau ada, body memakai `containers` (bukan top-level `content` saja). */
+  media?: OutstandPostMediaInput[];
 }
 
 export interface ScheduleOutstandPostResult {
@@ -122,6 +136,8 @@ export interface ScheduleOutstandPostResult {
 export interface PublishNowOutstandPostInput {
   targets: OutstandPostTargetInput[];
   caption: string;
+  /** Opsional — sama semantik `ScheduleOutstandPostInput.media`. */
+  media?: OutstandPostMediaInput[];
 }
 
 export interface PublishNowOutstandPostResult {

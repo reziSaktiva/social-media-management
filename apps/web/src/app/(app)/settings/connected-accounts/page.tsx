@@ -26,13 +26,10 @@ export default async function Page({
 }: {
   searchParams: Promise<{
     connect?: string;
-    // Facebook Pages flow (T-025.4, KI-070, ADR-115 §7/§10) — diset Route
-    // Handler callback saat Outstand redirect balik dengan query param
-    // `session` (bukan `account_id`/`username`, flow multi-halaman).
-    // Diteruskan apa adanya ke `ConnectedAccountsList` (Client Component)
-    // yang otomatis membuka dialog Facebook Pages Picker saat mount kalau
-    // keduanya ada.
-    connectFacebookSessionToken?: string;
+    // Facebook Pages flow (T-025.4, KI-070, ADR-115 §7/§10; review fix) —
+    // Route Handler menyimpan session token di cookie httpOnly; query
+    // hanya membawa flag buka-dialog + `state` CSRF (bukan bearer).
+    connectFacebook?: string;
     connectFacebookState?: string;
   }>;
 }) {
@@ -42,8 +39,7 @@ export default async function Page({
     redirect("/login");
   }
 
-  const { connect, connectFacebookSessionToken, connectFacebookState } =
-    await searchParams;
+  const { connect, connectFacebook, connectFacebookState } = await searchParams;
 
   const workspaceService = new WorkspaceService(workspaceRepository);
   const accounts = await workspaceService.listConnectedAccounts(
@@ -58,11 +54,8 @@ export default async function Page({
         connect === "success" || connect === "error" ? connect : null
       }
       facebookPagesPicker={
-        connectFacebookSessionToken && connectFacebookState
-          ? {
-              sessionToken: connectFacebookSessionToken,
-              state: connectFacebookState,
-            }
+        connectFacebook === "1" && connectFacebookState
+          ? { state: connectFacebookState }
           : null
       }
     />

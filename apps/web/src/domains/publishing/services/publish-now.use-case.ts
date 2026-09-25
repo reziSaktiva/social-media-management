@@ -14,6 +14,10 @@ import type {
   PublishingPostRecord,
 } from "../repositories/publishing.repository";
 import type { SchedulePostsTargetInput } from "./schedule-posts.use-case";
+import {
+  resolveOutstandPostMedia,
+  type PostMediaLookupPort,
+} from "./resolve-outstand-post-media";
 
 /**
  * Use-case terpisah dari `PublishingService`, mengikuti pola
@@ -52,6 +56,8 @@ export class PublishNowUseCase {
   constructor(
     private readonly repository: IPublishingRepository,
     private readonly outstandAdapter: IOutstandAdapter,
+    /** Opsional — resolve mediaIds → URL Outstand sebelum create-post. */
+    private readonly mediaLookup?: PostMediaLookupPort,
   ) {}
 
   async execute(input: {
@@ -112,6 +118,14 @@ export class PublishNowUseCase {
     let allTargetsFailed = record.targets.length > 0;
 
     try {
+      const media = await resolveOutstandPostMedia({
+        workspaceId: input.workspaceId,
+        mediaIds: record.mediaIds,
+        actingUserId: input.actingUserId,
+        outstandAdapter: this.outstandAdapter,
+        mediaLookup: this.mediaLookup,
+      });
+
       const result = await this.outstandAdapter.publishNow({
         caption: record.caption,
         targets: input.targets.map((target) => ({
@@ -120,6 +134,7 @@ export class PublishNowUseCase {
           contentFormat: target.contentFormat,
           platformOptions: target.platformOptions,
         })),
+        ...(media ? { media } : {}),
       });
 
       await this.repository.setOutstandPostId(

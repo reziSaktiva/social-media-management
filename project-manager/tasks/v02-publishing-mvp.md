@@ -297,7 +297,7 @@ ADR-065. Tidak ada perubahan kode di sesi ini — murni koreksi status.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ✅ Done — seluruh subtask T-025.1–T-025.7 selesai (2026-09-24, T-025.4 Facebook Pages menutup KI-070). Sisa gap non-blocking dicatat terpisah: **KI-071** (disambiguasi reply multi-akun), **KI-072** (Pinterest `board_id`) |
+| **Status**    | ✅ Done (7/7 subtask) — hardening code-review PR #133 (2026-09-25) tanpa reopen task |
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-005, ADR-019, ADR-040, ADR-059                           |
 | **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070 Resolved), KI-068 (Resolved via ADR-113), KI-069 (Resolved via ADR-114), KI-070 (Resolved 2026-09-24 — flow multi-halaman Facebook Pages via ADR-115/ADR-116, UI Mark UI Engineer, 2 bug fix Elon Backend Engineer), KI-071 (gap disambiguasi reply multi-akun), KI-072 (baru, Pinterest `board_id` belum dikumpulkan), ADR-112, ADR-113, ADR-114, ADR-115, ADR-116 (`PROJECT_STATE.md` § Blockers/Known Issues) |
@@ -450,15 +450,45 @@ Reconnect" di akun asal tidak hilang setelah reconnect. Didokumentasikan
 sebagai keterbatasan, **tidak** ada task susulan yang dibuat untuk ini
 sekarang.
 
+**Update (2026-09-25, Elon Backend Engineer, hardening code-review PR #133
+— T-025 tetap `✅ Done`, bukan reopen):** King Rezi meminta implementasi
+rencana perbaikan dari code-review PR #133. Elon Backend Engineer
+menerapkan perbaikan; Ridwan Architecture Reviewer: **0 temuan**; Vitest
+**130** test terkait lulus; typecheck bersih. Tidak ada commit/push di
+sesi ini. Perbaikan (follow-up hardening di atas T-025 yang sudah
+selesai, bukan membuka ulang seluruh task):
+
+1. **CRITICAL** — migration
+   `20260925094500_restore_webhook_lookup_privileges`: `REVOKE` dari
+   `PUBLIC` + `GRANT` ke `app_runtime` pada fungsi SECURITY DEFINER
+   webhook lookup (regresi setelah `DROP`/`CREATE` di migrasi KI-068).
+2. Facebook session token tidak lagi di URL halaman — cookie httpOnly
+   `outstandFacebookSession_<nonce>`; query hanya
+   `connectFacebook=1&connectFacebookState` (hardening implementasi
+   ADR-115/ADR-116, tanpa ADR baru).
+3. Media di-wire ke create-post lewat containers; Story tanpa caption;
+   campuran Story + feed ber-caption throw keras.
+4. `deletePost` dengan `accountIds` throw; `RetryFailedTargetUseCase`
+   skip wipe bila sibling target masih live.
+5. Upsert inbox engagement backfill `postId` pada update.
+6. Tombol Facebook Reconnect disembunyikan (belum ada jalur UPDATE).
+7. Presigned upload URL di-redact dari pesan error.
+8. IG Reel `coverImageUrl` → `reelCoverUrl`; HTTP 429 retryable.
+9. Sync comments: hanya published, limit 50, try/catch per-post.
+10. Test CSRF untuk aksi list/confirm Facebook; factory trim API key.
+
+**KI-071** dan **KI-072** tetap **Open** (gap yang diterima King Rezi,
+bukan bug yang diperbaiki di putaran ini).
+
 **Masih gap arsitektur (sengaja throw eksplisit `OutstandIntegrationError`,
 bukan silent bug, butuh keputusan King Rezi + kemungkinan amandemen ADR):**
 
-- **KI-071** (baru, gap disambiguasi reply multi-akun) — lihat catatan
-  update di atas.
-- **KI-072** (baru, sisa scope KI-069) — Pinterest `board_id` (wajib di API
+- **KI-071** (gap disambiguasi reply multi-akun) — lihat catatan
+  update di atas; tetap Open.
+- **KI-072** (sisa scope KI-069) — Pinterest `board_id` (wajib di API
   resmi Outstand) tidak pernah dikumpulkan di domain/UI kita — override
   Pinterest sengaja tidak dikirim ke Outstand (aman, tidak break publish
-  dasar) sampai ada keputusan desain UI board-picker.
+  dasar) sampai ada keputusan desain UI board-picker; tetap Open.
 
 Detail teknis lengkap ada di docstring
 `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts`.

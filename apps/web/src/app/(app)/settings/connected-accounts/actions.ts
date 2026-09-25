@@ -19,6 +19,7 @@ import {
   outstandConnectNonceCookieName,
   outstandConnectNonceCookieOptions,
 } from "@/lib/workspace/outstand-connect-nonce-cookie";
+import { outstandFacebookSessionCookieName } from "@/lib/workspace/outstand-facebook-session-cookie";
 import { toActionError } from "@/lib/utils/errors";
 
 /**
@@ -232,16 +233,38 @@ export async function initiateReconnectAccountAction(
 }
 
 /**
+ * Baca session token Facebook dari cookie httpOnly yang di-bind ke
+ * `state.nonce` (diset Route Handler callback). Jangan terima token dari
+ * client — bearer tidak boleh round-trip lewat props/query.
+ */
+async function readFacebookSessionTokenFromCookie(
+  nonce: string,
+): Promise<string | null> {
+  const cookieStore = await cookies();
+  const value = cookieStore.get(
+    outstandFacebookSessionCookieName(nonce),
+  )?.value;
+  return value && value.length > 0 ? value : null;
+}
+
+function clearFacebookConnectCookies(
+  cookieStore: Awaited<ReturnType<typeof cookies>>,
+  nonce: string,
+): void {
+  cookieStore.delete(outstandConnectNonceCookieName(nonce));
+  cookieStore.delete(outstandFacebookSessionCookieName(nonce));
+}
+
+/**
  * Facebook Pages — list pending Pages (T-025.4, ADR-115) — dipanggil dialog
  * Page-selection saat mount (state Loading → Default), setelah Route
  * Handler callback redirect ke Connected Accounts dengan
- * `connectFacebookSessionToken`/`connectFacebookState` (ADR-115 §7).
- * `state` di-decode LAGI di sini untuk mencocokkan nonce CSRF (reuse
- * `decodeConnectAccountState`) — cookie HANYA dibaca, TIDAK dihapus (flow
- * belum selesai, dihapus di `confirmFacebookPagesConnectionAction`).
+ * `?connectFacebook=1&connectFacebookState=` (session token di cookie
+ * httpOnly, bukan query). `state` di-decode untuk mencocokkan nonce CSRF
+ * + lookup cookie session — cookie HANYA dibaca, TIDAK dihapus (flow belum
+ * selesai, dihapus di `confirmFacebookPagesConnectionAction` / CSRF fail).
  */
 export async function listFacebookPendingPagesAction(
-  sessionToken: string,
   state: string,
 ): Promise<{ pages?: FacebookPendingPage[]; error?: string }> {
   const { workspaceId } = await getWorkspaceContext();
@@ -257,8 +280,16 @@ export async function listFacebookPendingPagesAction(
     return { error: "Sesi koneksi Facebook tidak valid." };
   }
 
+  const cookieStore = await cookies();
   const nonceCookieName = outstandConnectNonceCookieName(decoded.nonce);
-  if (!(await cookies()).has(nonceCookieName)) {
+  if (!cookieStore.has(nonceCookieName)) {
+    clearFacebookConnectCookies(cookieStore, decoded.nonce);
+    return { error: "Sesi koneksi Facebook tidak valid atau kedaluwarsa." };
+  }
+
+  const sessionToken = await readFacebookSessionTokenFromCookie(decoded.nonce);
+  if (!sessionToken) {
+    clearFacebookConnectCookies(cookieStore, decoded.nonce);
     return { error: "Sesi koneksi Facebook tidak valid atau kedaluwarsa." };
   }
 
@@ -278,14 +309,11 @@ export async function listFacebookPendingPagesAction(
 /**
  * Facebook Pages — confirm selected Pages (T-025.4, ADR-115) — dipanggil
  * saat user submit dialog Page-selection (tombol "Hubungkan N Page
- * Terpilih"). `state` di-decode LAGI + cookie CSRF dicocokkan LAGI
- * (defense-in-depth sama seperti `completeAccountConnection` —
- * parameter round-trip lewat browser/dialog bisa ditamper antara list dan
- * confirm) — **cookie nonce DIHAPUS DI SINI** (baik sukses maupun gagal,
- * titik akhir flow, sama seperti `redirectWithStatus` di Route Handler).
+ * Terpilih"). `state` di-decode LAGI + cookie CSRF/session dicocokkan LAGI
+ * (defense-in-depth) — **cookie nonce + session DIHAPUS DI SINI** (baik
+ * sukses maupun gagal CSRF, titik akhir flow).
  */
 export async function confirmFacebookPagesConnectionAction(
-  sessionToken: string,
   state: string,
   selectedPageIds: string[],
 ): Promise<{ connectedCount?: number; error?: string }> {
@@ -305,9 +333,10 @@ export async function confirmFacebookPagesConnectionAction(
   const cookieStore = await cookies();
   const nonceCookieName = outstandConnectNonceCookieName(decoded.nonce);
   const hasNonce = cookieStore.has(nonceCookieName);
-  cookieStore.delete(nonceCookieName);
+  const sessionToken = await readFacebookSessionTokenFromCookie(decoded.nonce);
+  clearFacebookConnectCookies(cookieStore, decoded.nonce);
 
-  if (!hasNonce) {
+  if (!hasNonce || !sessionToken) {
     return { error: "Sesi koneksi Facebook tidak valid atau kedaluwarsa." };
   }
 

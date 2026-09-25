@@ -18,6 +18,8 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Text } from "@/components/ui/text";
 import { ConfirmActionDialog } from "@/components/shared/ConfirmActionDialog";
 
+import { SocialPlatform } from "@social/shared";
+
 import {
   getConnectionStatusLabel,
   resolveConnectionDisplayStatus,
@@ -156,6 +158,11 @@ function ConnectedAccountAction({
 }) {
   switch (displayStatus) {
     case "reconnect-required":
+      // Facebook Pages reconnect multi-page belum punya UPDATE path —
+      // sembunyikan tombol supaya tidak silent 0-page "sukses" toast.
+      if (account.platform === SocialPlatform.Facebook) {
+        return null;
+      }
       return <ReconnectButton account={account} />;
     case "active":
       return (
@@ -249,19 +256,14 @@ export function ConnectedAccountsList({
    */
   connectResult?: "success" | "error" | null;
   /**
-   * Facebook Pages flow (T-025.4, KI-070, ADR-115 §7/§10) — diteruskan
-   * dari `page.tsx` (dibaca dari `?connectFacebookSessionToken=` +
-   * `?connectFacebookState=` yang diset Route Handler callback saat
-   * Outstand redirect balik dengan query param `session`, bukan
-   * `account_id`/`username`). Kalau ada saat mount, dialog Facebook Pages
-   * Picker otomatis terbuka — nilainya dibekukan ke state lokal
-   * (`useState(facebookPagesPicker)`, React sengaja mengabaikan
-   * initializer pada re-render berikutnya) supaya query param bisa
-   * langsung di-strip dari address bar (`router.replace(pathname)`,
-   * dokumentasi Outstand: jangan biarkan token sensitif nongkrong di URL)
-   * tanpa membuat dialog yang sudah terbuka tiba-tiba kehilangan datanya.
+   * Facebook Pages flow (T-025.4, KI-070, ADR-115 §7/§10; review fix) —
+   * diteruskan dari `page.tsx` (`?connectFacebook=1` +
+   * `?connectFacebookState=`). Session token ada di cookie httpOnly
+   * (dibaca Server Action), bukan di props. Kalau ada saat mount, dialog
+   * otomatis terbuka — state dibekukan lokal supaya query flag bisa
+   * di-strip dari address bar tanpa menutup dialog.
    */
-  facebookPagesPicker?: { sessionToken: string; state: string } | null;
+  facebookPagesPicker?: { state: string } | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -281,11 +283,9 @@ export function ConnectedAccountsList({
 
   useEffect(() => {
     if (!facebookPagesPicker) return;
-    // Strip `connectFacebookSessionToken`/`connectFacebookState` dari
-    // address bar SEGERA setelah dibaca ke state lokal di atas — sebelum
-    // dialog benar-benar dianggap "terbuka" oleh user, konsisten dengan
-    // anjuran dokumentasi resmi Outstand (ADR-116 §1) untuk tidak
-    // membiarkan token sesi nongkrong di URL.
+    // Strip `connectFacebook`/`connectFacebookState` dari address bar
+    // SEGERA setelah dibaca ke state lokal — flag bukan bearer, tapi
+    // tetap jangan biarkan query mengotori URL setelah dialog terbuka.
     router.replace(pathname);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- hanya perlu jalan sekali saat mount dengan query param Facebook awal, bukan tiap render router/pathname.
   }, []);
@@ -365,7 +365,6 @@ export function ConnectedAccountsList({
       {facebookSession ? (
         <FacebookPagesPickerDialog
           open
-          sessionToken={facebookSession.sessionToken}
           state={facebookSession.state}
           onOpenChange={(next) => {
             if (!next) setFacebookSession(null);

@@ -43,11 +43,11 @@ import {
 /**
  * Dialog Facebook Pages Picker (T-025.4, KI-070, ADR-115 §10/ADR-116) —
  * dibuka `ConnectedAccountsList` begitu Route Handler callback redirect
- * balik dengan `connectFacebookSessionToken`/`connectFacebookState`
- * (bukan trigger dari tombol "Connect Account" biasa). 4 state mengikuti
- * struktur `templates/settings-connect-facebook-pages.html` (Claude
- * Design, CONFIRMED King Rezi): Loading (skeleton) → Default/Selected
- * (checkbox list) atau Empty (0 Page) → submit.
+ * balik dengan `?connectFacebook=1&connectFacebookState=` (session token
+ * di cookie httpOnly, dibaca Server Action — bukan props). 4 state
+ * mengikuti struktur `templates/settings-connect-facebook-pages.html`
+ * (Claude Design, CONFIRMED King Rezi): Loading (skeleton) →
+ * Default/Selected (checkbox list) atau Empty (0 Page) → submit.
  *
  * CATATAN (flag ke Mark UI Engineer delegator, bukan asumsi diam-diam):
  * `DesignSync` tidak berhasil dimuat di sesi subagent ini (pola gagal
@@ -71,12 +71,10 @@ import {
  */
 export function FacebookPagesPickerDialog({
   open,
-  sessionToken,
   state,
   onOpenChange,
 }: {
   open: boolean;
-  sessionToken: string;
   state: string;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -88,12 +86,12 @@ export function FacebookPagesPickerDialog({
   const [isRestarting, startRestartTransition] = useTransition();
 
   // Reset state saat "sesi" dialog berganti (dialog dibuka ulang dengan
-  // sessionToken/state berbeda) — diadaptasi SELAMA render (bukan di
-  // dalam `useEffect`), pola yang sama dengan penyesuaian
+  // state berbeda) — diadaptasi SELAMA render (bukan di dalam
+  // `useEffect`), pola yang sama dengan penyesuaian
   // `hasCheckedAutoAdvance` di `draft-editor/Modal.tsx`, supaya tidak
   // memicu render effect tambahan (`react-hooks/set-state-in-effect`)
   // untuk reset state turunan sederhana seperti ini.
-  const sessionKey = open ? `${sessionToken}::${state}` : null;
+  const sessionKey = open ? state : null;
   const [trackedSessionKey, setTrackedSessionKey] = useState(sessionKey);
   if (sessionKey !== trackedSessionKey) {
     setTrackedSessionKey(sessionKey);
@@ -104,17 +102,14 @@ export function FacebookPagesPickerDialog({
   }
 
   // Fetch daftar Page pending setiap dialog dibuka (state Loading →
-  // Default/Empty/Error). `setPages`/`setListError` di sini dipanggil di
-  // dalam callback async SETELAH `await` (bukan sinkron di body effect),
-  // yang memang pola yang direkomendasikan untuk "subscribe ke hasil
-  // sistem eksternal" — bukan kasus yang di-flag
-  // `react-hooks/set-state-in-effect`.
+  // Default/Empty/Error). Session token dibaca Server Action dari cookie
+  // httpOnly (bound ke `state.nonce`) — client tidak pernah melihatnya.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
 
     void (async () => {
-      const result = await listFacebookPendingPagesAction(sessionToken, state);
+      const result = await listFacebookPendingPagesAction(state);
       if (cancelled) return;
       if (result.error) {
         setListError(result.error);
@@ -126,7 +121,7 @@ export function FacebookPagesPickerDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, sessionToken, state]);
+  }, [open, state]);
 
   function toggleSelection(pageId: string, checked: boolean) {
     setSelectedIds((prev) => {
@@ -145,7 +140,6 @@ export function FacebookPagesPickerDialog({
     setConfirmError(null);
     startConfirmTransition(async () => {
       const result = await confirmFacebookPagesConnectionAction(
-        sessionToken,
         state,
         Array.from(selectedIds),
       );

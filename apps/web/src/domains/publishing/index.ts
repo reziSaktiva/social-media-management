@@ -15,6 +15,7 @@ export * from "./services/outstand-webhook-processor";
 export * from "./services/resolve-scheduled-post-outcome-job-handler";
 export * from "./services/resolve-schedule-targets";
 export * from "./services/resolve-draft-media-ids";
+export * from "./services/resolve-outstand-post-media";
 export * from "./services/group-queue-items";
 export * from "./services/group-history-items";
 export * from "./services/sort-calendar-items";

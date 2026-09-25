@@ -8,6 +8,10 @@ import { ApplicationError } from "@/lib/utils/errors";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
 import { outstandConnectNonceCookieName } from "@/lib/workspace/outstand-connect-nonce-cookie";
+import {
+  outstandFacebookSessionCookieName,
+  outstandFacebookSessionCookieOptions,
+} from "@/lib/workspace/outstand-facebook-session-cookie";
 
 const CONNECTED_ACCOUNTS_PATH = "/settings/connected-accounts";
 
@@ -29,15 +33,16 @@ const CONNECTED_ACCOUNTS_PATH = "/settings/connected-accounts";
  * ini karena itu membaca ketiganya, bukan `code`.
  *
  * **Facebook Pages (T-025.4, ADR-115, wire-format dikoreksi ADR-116,
- * menutup KI-070):** route SATU ini TETAP dipakai untuk Facebook — TIDAK
- * ada route terpisah. Outstand redirect balik dengan query param `session`
- * (BUKAN `account_id`/`username`) — percabangan di awal handler
- * mendeteksi ini, CSRF-check nonce (TANPA menghapus cookie-nya, flow belum
- * selesai) lalu redirect ke Connected Accounts dengan
- * `connectFacebookSessionToken`/`connectFacebookState` yang memicu dialog
- * Page-selection (Server Action `listFacebookPendingPagesAction`/
- * `confirmFacebookPagesConnectionAction`, `connected-accounts/actions.ts`,
- * yang menyelesaikan sisa flow + menghapus cookie nonce).
+ * menutup KI-070; review fix session cookie):** route SATU ini TETAP
+ * dipakai untuk Facebook — TIDAK ada route terpisah. Outstand redirect
+ * balik dengan query param `session` (BUKAN `account_id`/`username`) —
+ * percabangan di awal handler mendeteksi ini, CSRF-check nonce (TANPA
+ * menghapus cookie-nya, flow belum selesai), simpan `session` ke cookie
+ * httpOnly `outstandFacebookSession_<nonce>`, lalu redirect ke Connected
+ * Accounts dengan `?connectFacebook=1&connectFacebookState=<state>` SAJA
+ * (TANPA bearer di query). Dialog Page-selection + Server Action
+ * `listFacebookPendingPagesAction`/`confirmFacebookPagesConnectionAction`
+ * membaca token dari cookie lewat `state.nonce`.
  *
  * `proxy.ts` TIDAK meng-exclude path ini dari gate sesi/workspace (beda
  * dengan `/api/webhooks/outstand` yang server-to-server) — jadi begitu
@@ -92,7 +97,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     // cookie TIDAK dihapus di sini (beda dari `redirectWithStatus`
     // existing): flow BELUM selesai, user masih perlu memilih Page lewat
     // `listFacebookPendingPagesAction`/`confirmFacebookPagesConnectionAction`
-    // (Server Action baru yang menghapus cookie ini di titik akhirnya).
+    // (Server Action yang menghapus cookie nonce + session di titik akhirnya).
     const facebookNonceCookieName = outstandConnectNonceCookieName(
       decodedForFacebook.nonce,
     );
@@ -102,12 +107,23 @@ export async function GET(request: NextRequest): Promise<Response> {
       );
     }
 
-    return NextResponse.redirect(
+    // Session token Outstand → httpOnly cookie (bukan query string) —
+    // dialihkan ke Connected Accounts hanya dengan flag + state CSRF.
+    const sessionCookieName = outstandFacebookSessionCookieName(
+      decodedForFacebook.nonce,
+    );
+    const response = NextResponse.redirect(
       new URL(
-        `${CONNECTED_ACCOUNTS_PATH}?connectFacebookSessionToken=${encodeURIComponent(facebookSessionToken)}&connectFacebookState=${encodeURIComponent(state)}`,
+        `${CONNECTED_ACCOUNTS_PATH}?connectFacebook=1&connectFacebookState=${encodeURIComponent(state)}`,
         appOrigin,
       ),
     );
+    response.cookies.set(
+      sessionCookieName,
+      facebookSessionToken,
+      outstandFacebookSessionCookieOptions(),
+    );
+    return response;
   }
 
   // Bug QA Najwa (T-015, 2026-09-11): setiap redirect() sukses dari Server

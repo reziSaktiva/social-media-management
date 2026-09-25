@@ -68,4 +68,19 @@ export const supabaseMediaStorageAdapter: IMediaStorageAdapter = {
     // `supabaseAvatarStorageAdapter.deleteAvatar`.
     await supabase.storage.from(MEDIA_BUCKET).remove([storagePath]);
   },
+
+  async downloadMedia(storagePath: string) {
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase.storage
+      .from(MEDIA_BUCKET)
+      .download(storagePath);
+
+    if (error || !data) {
+      throw new ExternalServiceError(
+        `Gagal mengunduh media dari Storage: ${error?.message ?? "empty response"}`,
+      );
+    }
+
+    return Buffer.from(await data.arrayBuffer());
+  },
 };

@@ -5,14 +5,24 @@ const {
   getSessionMock,
   redirectMock,
   cookiesSetMock,
+  cookiesHasMock,
+  cookiesGetMock,
+  cookiesDeleteMock,
   initiateConnectAccountMock,
+  listFacebookPendingPagesMock,
+  confirmFacebookPagesConnectionMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   redirectMock: vi.fn((path: string) => {
     throw new Error(`REDIRECT:${path}`);
   }),
   cookiesSetMock: vi.fn(),
+  cookiesHasMock: vi.fn(() => true),
+  cookiesGetMock: vi.fn(),
+  cookiesDeleteMock: vi.fn(),
   initiateConnectAccountMock: vi.fn(),
+  listFacebookPendingPagesMock: vi.fn(),
+  confirmFacebookPagesConnectionMock: vi.fn(),
 }));
 
 vi.mock("@/lib/better-auth/auth", () => ({
@@ -29,9 +39,9 @@ vi.mock("next/headers", () => ({
   ),
   cookies: vi.fn(async () => ({
     set: cookiesSetMock,
-    get: vi.fn(),
-    has: vi.fn(() => true),
-    delete: vi.fn(),
+    get: cookiesGetMock,
+    has: cookiesHasMock,
+    delete: cookiesDeleteMock,
   })),
 }));
 
@@ -46,54 +56,41 @@ vi.mock("next/cache", () => ({
 vi.mock("@/lib/workspace/outstand-workspace-service", () => ({
   createWorkspaceServiceWithOutstandAdapter: () => ({
     initiateConnectAccount: initiateConnectAccountMock,
+    listFacebookPendingPages: listFacebookPendingPagesMock,
+    confirmFacebookPagesConnection: confirmFacebookPagesConnectionMock,
   }),
 }));
 
-// `@/lib/repositories/workspace` me-load Prisma client di module scope —
-// di-stub supaya test tidak butuh koneksi DB nyata (pola sama
-// `settings/members/actions.test.ts`). Tidak pernah benar-benar dipanggil
-// di sini karena `createWorkspaceServiceWithOutstandAdapter` sudah di-mock
-// total di atas.
 vi.mock("@/lib/repositories/workspace", () => ({
   workspaceRepository: {},
 }));
 
 import {
+  confirmFacebookPagesConnectionAction,
   initiateConnectAccountAction,
   initiateReconnectAccountAction,
+  listFacebookPendingPagesAction,
 } from "./actions";
 
 const SESSION = { user: { id: "user-1" } };
 
-/**
- * Regresi Bug #2 (dialog Facebook Pages Picker macet Loading selamanya,
- * investigasi King Rezi + Elon Backend Engineer, 2026-09-24, T-025.4/KI-070)
- * — root cause: `redirect()` di dalam Server Action ke `redirectUrl`
- * loopback SAME-ORIGIN (Fake: langsung ke Route Handler kita sendiri;
- * Real: balik dari `outstand.so` ke Route Handler kita sendiri) memicu
- * client-side App Router navigation Next.js yang, untuk target Route
- * Handler (bukan page), bisa membuat internal action-dispatch queue macet
- * — Server Action BERIKUTNYA yang dipanggil dialog Page-picker
- * (`listFacebookPendingPagesAction`) tidak pernah ter-resolve (dikonfirmasi
- * lewat instrumentasi `console.log` manual di browser real, network
- * request-nya bahkan tidak pernah terkirim).
- *
- * Fix: KHUSUS `platform === Facebook`, action ini TIDAK memanggil
- * `redirect()` di server — mengembalikan `{ redirectUrl }` mentah supaya
- * client (`ConnectPlatformMenu`/`ReconnectButton`/
- * `FacebookPagesPickerDialog.handleRestartConnect`) melakukan hard
- * navigation (`window.location.href`) sendiri, memutus rantai App Router
- * soft-nav sepenuhnya. Platform lain TIDAK berubah — tetap `redirect()`
- * server seperti semula (dibuktikan test "non-Facebook" di bawah, supaya
- * regresi ke arah sebaliknya juga tertangkap).
- */
+function encodeState(nonce: string): string {
+  return Buffer.from(JSON.stringify({ nonce }), "utf8").toString("base64url");
+}
+
 describe("initiateConnectAccountAction / initiateReconnectAccountAction — pengecualian Facebook (Bug #2)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     getSessionMock.mockReset();
     redirectMock.mockClear();
     cookiesSetMock.mockClear();
+    cookiesHasMock.mockReset();
+    cookiesHasMock.mockReturnValue(true);
+    cookiesGetMock.mockReset();
+    cookiesDeleteMock.mockReset();
     initiateConnectAccountMock.mockReset();
+    listFacebookPendingPagesMock.mockReset();
+    confirmFacebookPagesConnectionMock.mockReset();
     getSessionMock.mockResolvedValue(SESSION);
   });
 
@@ -146,5 +143,114 @@ describe("initiateConnectAccountAction / initiateReconnectAccountAction — peng
     ).rejects.toThrow(`REDIRECT:${redirectUrl}`);
 
     expect(redirectMock).toHaveBeenCalledWith(redirectUrl);
+  });
+});
+
+describe("listFacebookPendingPagesAction / confirmFacebookPagesConnectionAction — CSRF + session cookie", () => {
+  beforeEach(() => {
+    getSessionMock.mockReset();
+    cookiesHasMock.mockReset();
+    cookiesGetMock.mockReset();
+    cookiesDeleteMock.mockReset();
+    listFacebookPendingPagesMock.mockReset();
+    confirmFacebookPagesConnectionMock.mockReset();
+    getSessionMock.mockResolvedValue(SESSION);
+  });
+
+  it("listFacebookPendingPagesAction menolak kalau nonce cookie hilang (CSRF)", async () => {
+    cookiesHasMock.mockReturnValue(false);
+    const state = encodeState("nonce-csrf-1");
+
+    const result = await listFacebookPendingPagesAction(state);
+
+    expect(result.error).toMatch(/tidak valid|kedaluwarsa/i);
+    expect(listFacebookPendingPagesMock).not.toHaveBeenCalled();
+  });
+
+  it("listFacebookPendingPagesAction menolak kalau session cookie hilang", async () => {
+    cookiesHasMock.mockReturnValue(true);
+    cookiesGetMock.mockReturnValue(undefined);
+    const state = encodeState("nonce-csrf-2");
+
+    const result = await listFacebookPendingPagesAction(state);
+
+    expect(result.error).toMatch(/tidak valid|kedaluwarsa/i);
+    expect(listFacebookPendingPagesMock).not.toHaveBeenCalled();
+  });
+
+  it("listFacebookPendingPagesAction membaca session dari cookie (bukan argumen client)", async () => {
+    const nonce = "nonce-ok";
+    const state = encodeState(nonce);
+    cookiesHasMock.mockReturnValue(true);
+    cookiesGetMock.mockImplementation((name: string) => {
+      if (name === `outstandFacebookSession_${nonce}`) {
+        return { value: "session-from-cookie" };
+      }
+      return undefined;
+    });
+    listFacebookPendingPagesMock.mockResolvedValue([
+      { pageId: "p1", name: "Page 1" },
+    ]);
+
+    const result = await listFacebookPendingPagesAction(state);
+
+    expect(result.pages).toEqual([{ pageId: "p1", name: "Page 1" }]);
+    expect(listFacebookPendingPagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionToken: "session-from-cookie" }),
+    );
+  });
+
+  it("confirmFacebookPagesConnectionAction menghapus nonce + session cookie lalu menolak tanpa CSRF", async () => {
+    cookiesHasMock.mockReturnValue(false);
+    cookiesGetMock.mockReturnValue(undefined);
+    const nonce = "nonce-confirm-fail";
+    const state = encodeState(nonce);
+
+    const result = await confirmFacebookPagesConnectionAction(state, ["p1"]);
+
+    expect(result.error).toMatch(/tidak valid|kedaluwarsa/i);
+    expect(cookiesDeleteMock).toHaveBeenCalledWith(
+      `outstand-connect-nonce-${nonce}`,
+    );
+    expect(cookiesDeleteMock).toHaveBeenCalledWith(
+      `outstandFacebookSession_${nonce}`,
+    );
+    expect(confirmFacebookPagesConnectionMock).not.toHaveBeenCalled();
+  });
+
+  it("confirmFacebookPagesConnectionAction sukses memakai session cookie + hapus kedua cookie", async () => {
+    const nonce = "nonce-confirm-ok";
+    const state = encodeState(nonce);
+    cookiesHasMock.mockReturnValue(true);
+    cookiesGetMock.mockImplementation((name: string) => {
+      if (name === `outstandFacebookSession_${nonce}`) {
+        return { value: "session-confirm" };
+      }
+      return undefined;
+    });
+    confirmFacebookPagesConnectionMock.mockResolvedValue([
+      {
+        outstandAccountId: "acc-1",
+        platform: SocialPlatform.Facebook,
+        handle: "page1",
+        status: "active",
+      },
+    ]);
+
+    const result = await confirmFacebookPagesConnectionAction(state, ["p1"]);
+
+    expect(result).toEqual({ connectedCount: 1 });
+    expect(confirmFacebookPagesConnectionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionToken: "session-confirm",
+        selectedPageIds: ["p1"],
+      }),
+    );
+    expect(cookiesDeleteMock).toHaveBeenCalledWith(
+      `outstand-connect-nonce-${nonce}`,
+    );
+    expect(cookiesDeleteMock).toHaveBeenCalledWith(
+      `outstandFacebookSession_${nonce}`,
+    );
   });
 });

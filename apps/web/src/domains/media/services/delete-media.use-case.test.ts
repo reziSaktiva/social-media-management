@@ -56,6 +56,7 @@ function createFakeMediaStorage(
       storagePath: STORAGE_PATH,
     }),
     deleteMedia: async () => undefined,
+    downloadMedia: async () => Buffer.from(""),
     ...overrides,
   };
 }
