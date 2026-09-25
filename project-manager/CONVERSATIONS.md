@@ -18,6 +18,16 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-09-25 — Sisa channel dan post Fake di luar filter T-106.4
+
+**Phase:** Phase 6 / M8 Development
+
+**Summary:** Setelah T-106.1–.4, browser masih menampilkan channel dan post palsu. Filter cleanup hanya `outstand_post_id` `fake-post-%` dan URL `fake.outstand.local`. Akun di `workspace_connected_accounts` (`fake-%` / `mock-%`) dan post tanpa id Outstand tidak terhapus.
+
+**Key Insight / Decision:** King Rezi meminta subtask baru, bukan task terpisah. T-106.5 mencakup seluruh sisa data Fake/mock di DB bersama dev/staging. T-106 kembali 🟡 In Progress.
+
+**Impact:** `tasks/v02-publishing-mvp.md` § T-106, indeks `TASKS.md`, Snapshot `PROJECT_STATE.md`.
+
 ## 2026-09-25 — Hapus FakeOutstandAdapter dilacak sebagai task, bukan Known Issue
 
 **Phase:** Phase 6 / M8 Development
