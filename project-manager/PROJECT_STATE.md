@@ -645,7 +645,7 @@ terpisah **KI-072** (baru, Open).
 | Field | Value |
 |-------|-------|
 | Status | Open |
-| Domain | integration (butuh keputusan desain UI board-picker sebelum implementasi, lihat catatan rule #17 di bawah) |
+| Domain | integration — rancangan UI board-picker SUDAH SELESAI di Claude Design (2026-09-25); menunggu implementasi kode: fetch board Outstand + wiring publish |
 | Terkait | T-025, ADR-039, ADR-107, ADR-114, KI-069 |
 
 Ditemukan Gibran Project Manager (2026-09-24) saat menutup KI-069/ADR-114 —
@@ -660,12 +660,25 @@ sebelum ADR-114), tapi berarti publish ke Pinterest tidak pernah
 membawa `board_id`/`pinTitle`/`pinLink` sama sekali ke Outstand. Tidak
 memblokir penutupan KI-069 maupun publish dasar T-025.
 
-Menunggu keputusan lanjutan King Rezi soal desain board-picker (perlu tahu
-board mana yang dituju di akun Pinterest terhubung — kemungkinan butuh UI
-baru untuk memilih/menyimpan `board_id` per akun atau per post). Karena ini
-kemungkinan besar **UI/UX-related** (screen/komponen baru), berlaku gate
-rule #17 `AGENTS.md` — cek dulu ke Claude Design apakah rancangan
-board-picker sudah ada sebelum implementasi kode UI dimulai.
+**Update (2026-09-25):** King Rezi mengonfirmasi 2 keputusan scope lewat
+`AskUserQuestion` — (1) board Pinterest dipilih **per post** (di Draft
+Editor saja), bukan per akun/Connected Accounts, bukan hybrid — artinya
+implementasi nanti **tidak butuh schema Prisma baru** (tidak ada kolom
+`board_id` tersimpan permanen di `ConnectedAccount`); (2) rancangan
+board-picker **sudah selesai** dikerjakan di Claude Design (project
+"Social Media Management"). 3 file diubah: `templates/draft-editor.html`
+(field "Board" Pinterest diganti dari free-text `<input>` jadi native
+`<select class="select">` bergaya sama seperti "Filter Akun" di
+`components/forms.html`, opsi mock: "Pilih board…"/"Resep &
+Minuman"/"Interior Kedai"/"Promo Musiman", plus komentar HTML menjelaskan
+keputusan KI-072), `components/forms.html` (showcase "AccountRow" section
+Pinterest disamakan), `templates/app-prototype/AppPrototype.dc.html`
+(2 occurrence markup `.pin-fields` — state "New Post" dan "Edit Draft" —
+disamakan juga). Status KI-072 **tetap Open** — yang selesai baru
+rancangan UI, implementasi kode (fetch board list dari Outstand
+`list_pinterest_boards` saat compose + kirim `board_id` terpilih di
+request publish Pinterest, domain/UI `apps/web`) masih task terpisah yang
+belum dikerjakan.
 
 ---
 
@@ -716,12 +729,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **KI-072 — rancangan UI board-picker Pinterest selesai di Claude Design, scope per-post dikonfirmasi (2026-09-25)** — King Rezi konfirmasi via `AskUserQuestion`: board dipilih per post (Draft Editor saja), tidak butuh schema Prisma baru. 3 file Claude Design diubah (`templates/draft-editor.html`, `components/forms.html`, `templates/app-prototype/AppPrototype.dc.html`) — field Pinterest "Board" jadi `<select>` bergaya "Filter Akun". Status KI-072 tetap Open — implementasi kode (fetch `list_pinterest_boards` + wiring publish) masih task terpisah. Detail: `COMPLETE_TASK.md` (2026-09-25), `tasks/v02-publishing-mvp.md` § T-025.
 * **KI-071 Resolved — `replyToComment` wajib `accountUsername` via ADR-117 (2026-09-25)** — Elon Backend Engineer mewajibkan `accountUsername` di `IOutstandAdapter.replyToComment`; `RealOutstandAdapter` selalu mengirim `account_username`; Fake tetap ADR-059. `EngagementService.reply` resolve handle lewat `ConnectedAccountHandlePort` (composition root → `workspaceRepository`); handle kosong/akun tidak ketemu → `ConflictError`. `platform_post_id` sengaja tidak masuk kontrak (pola sama `fetchComments` ADR-113). Ridwan Architecture Reviewer: 0 temuan. Najwa QA: Vitest 6 file / 80 tes PASS; typecheck PASS. Tidak ada perubahan UI; T-025 tetap ✅ Done. Detail: `COMPLETE_TASK.md` (2026-09-25), `decisions/ADR-117-replytocomment-account-username-disambiguation-ki071.md`.
 * **T-025 hardening code-review PR #133 (2026-09-25) — status tetap ✅ Done** — Elon Backend Engineer menerapkan perbaikan dari rencana code-review PR #133 (SECURITY DEFINER webhook privileges, Facebook session httpOnly cookie, media/Story caption, deletePost/retry, engagement upsert, hide Facebook Reconnect, redact presigned URL, reelCoverUrl + 429 retryable, sync comments guard, CSRF tests). Ridwan Architecture Reviewer: 0 temuan. Vitest 130 test terkait lulus; typecheck bersih. **KI-071** Resolved via ADR-117 (2026-09-25); **KI-072** tetap Open. Cookie handoff = hardening ADR-115/116 (tanpa ADR baru). Detail: `COMPLETE_TASK.md` (2026-09-25), `tasks/v02-publishing-mvp.md` § T-025.
 * **T-025 ✅ Done — KI-070 Resolved, UI Facebook Pages Picker + 2 bug fix + QA final PASS (2026-09-24)** — Mark UI Engineer mengimplementasikan `FacebookPagesPickerDialog.tsx` (4 state, tersambung ke 2 Server Action ADR-115/ADR-116). 2 bug ditemukan+diperbaiki Elon Backend Engineer: Bug #1 (405 POST ke Route Handler `GET`-only, fix alias `POST = GET`), Bug #2 (dialog macet di Loading — root cause artefak Fake-mode loopback domain sendiri, fix `initiateConnectAccountAction`/`initiateReconnectAccountAction` return `redirectUrl` + client `window.location.href` khusus Facebook). Ridwan 0 temuan, Najwa QA final PASS (509 passed/6 skipped). Catatan non-blocking: Reconnect Facebook Page tunggal selalu CREATE bukan UPDATE (keputusan eksplisit King Rezi, didokumentasikan sebagai keterbatasan). **KI-003 (parent) juga Resolved** — seluruh subtask T-025.1–T-025.7 tuntas. Detail: `COMPLETE_TASK.md` (2026-09-24), `tasks/v02-publishing-mvp.md` § T-025.
 * **ADR-116 Accepted — backend Facebook Pages selesai + lolos review Ridwan (2026-09-24)** — koreksi wire-format ADR-115 (query param `session` bukan `session_token`, path finalize `/finalize`, response `data.availablePages[]`/`connectedAccounts[]`) diverifikasi Elon Backend Engineer via WebFetch dokumentasi resmi Outstand. Kontrak `packages/shared` tidak berubah. Implementasi penuh: real+fake adapter, `WorkspaceService` (2 method baru), Route Handler, 2 Server Action. Vitest 498 pass/6 skip/0 fail, Ridwan 0 temuan. Detail: `COMPLETE_TASK.md` (2026-09-24), `decisions/ADR-116-facebook-pages-wire-format-koreksi-adr-115.md`, `tasks/v02-publishing-mvp.md` § T-025.
-* **ADR-115 diajukan — kontrak Connect Account Facebook Pages session-token, menutup gap KI-070 (2026-09-24)** — `listPendingFacebookPages`/`confirmFacebookPagesConnection` (method baru `IOutstandAdapter`, `resolveConnectCallback` tidak diubah), percabangan Route Handler callback existing, 2 method baru `WorkspaceService` (RBAC reuse, skip-bukan-gagal untuk Page sudah terhubung). Status **Proposed** (bukan Accepted) — wire-format persis belum terverifikasi terhadap OpenAPI spec resmi Outstand, wajib dicek Elon Backend Engineer sebelum implementasi. Detail: `COMPLETE_TASK.md` (2026-09-24), `decisions/ADR-115-facebook-pages-session-token-connect-ki070.md`, `tasks/v02-publishing-mvp.md` § T-025.
-
 ---
 
 ## Recent Decisions (Ringkasan)

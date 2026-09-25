@@ -300,7 +300,7 @@ ADR-065. Tidak ada perubahan kode di sesi ini — murni koreksi status.
 | **Status**    | ✅ Done (7/7 subtask) — hardening code-review PR #133 (2026-09-25) tanpa reopen task |
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-005, ADR-019, ADR-040, ADR-059                           |
-| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070 Resolved), KI-068 (Resolved via ADR-113), KI-069 (Resolved via ADR-114), KI-070 (Resolved 2026-09-24 — flow multi-halaman Facebook Pages via ADR-115/ADR-116, UI Mark UI Engineer, 2 bug fix Elon Backend Engineer), KI-071 (Resolved via ADR-117, 2026-09-25), KI-072 (baru, Pinterest `board_id` belum dikumpulkan), ADR-112, ADR-113, ADR-114, ADR-115, ADR-116, ADR-117 (`PROJECT_STATE.md` § Blockers/Known Issues) |
+| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070 Resolved), KI-068 (Resolved via ADR-113), KI-069 (Resolved via ADR-114), KI-070 (Resolved 2026-09-24 — flow multi-halaman Facebook Pages via ADR-115/ADR-116, UI Mark UI Engineer, 2 bug fix Elon Backend Engineer), KI-071 (Resolved via ADR-117, 2026-09-25), KI-072 (Open, Pinterest `board_id` belum diimplementasikan di kode — rancangan UI board-picker sudah selesai di Claude Design 2026-09-25, scope per-post dikonfirmasi King Rezi), ADR-112, ADR-113, ADR-114, ADR-115, ADR-116, ADR-117 (`PROJECT_STATE.md` § Blockers/Known Issues) |
 | **Depends**   | T-028 ✅ (port + factory sudah ada) · kredensial Outstand asli |
 | **Baca dulu** | `05-architecture/integration-layer.md`                        |
 
@@ -385,6 +385,10 @@ ditangani first-match-wins + `console.warn`). Typecheck/lint bersih, Vitest
 487 pass/6 skip/0 fail (full suite). **Pinterest `board_id` sengaja belum
 diimplementasikan** (domain/UI tidak pernah mengumpulkannya) — key
 `pinterest` tetap tidak dikirim ke Outstand, dicatat **KI-072** (baru).
+**Update (2026-09-25):** rancangan UI board-picker sudah selesai di Claude
+Design (scope per-post, tidak butuh schema Prisma baru) — lihat catatan
+lengkap di bawah dan di `PROJECT_STATE.md` § KI-072. Implementasi kode
+masih pending.
 
 **Update (2026-09-24, Elon Backend Engineer, lolos review Ridwan 0
 temuan):** **Backend Facebook Pages (KI-070) selesai diimplementasikan** —
@@ -481,6 +485,24 @@ selesai, bukan membuka ulang seluruh task):
 update KI-068 / T-025.6 di atas. **KI-072** tetap **Open** (gap yang
 diterima King Rezi, bukan bug yang diperbaiki di putaran hardening PR #133).
 
+**Update (2026-09-25, Gibran Project Manager) — KI-072 rancangan UI
+selesai, implementasi kode masih pending:** King Rezi mengonfirmasi 2
+keputusan scope lewat `AskUserQuestion` — (1) board Pinterest dipilih
+**per post** (di Draft Editor saja), bukan per akun/Connected Accounts,
+bukan hybrid, sehingga implementasi nanti **tidak butuh schema Prisma
+baru**; (2) rancangan board-picker sudah selesai di Claude Design (project
+"Social Media Management"): field "Board" Pinterest di
+`templates/draft-editor.html` diganti dari free-text `<input>` jadi native
+`<select class="select">` bergaya sama seperti "Filter Akun" di
+`components/forms.html` (opsi mock: "Pilih board…"/"Resep &
+Minuman"/"Interior Kedai"/"Promo Musiman"), disamakan juga di showcase
+`components/forms.html` dan 2 occurrence markup `.pin-fields` di
+`templates/app-prototype/AppPrototype.dc.html`. Status KI-072 **tetap
+Open** — yang selesai baru rancangan UI; implementasi kode (fetch board
+list dari Outstand `list_pinterest_boards` saat compose + kirim `board_id`
+terpilih di request publish Pinterest, domain/UI `apps/web`) masih task
+terpisah yang belum dikerjakan.
+
 **Masih gap arsitektur (sengaja throw eksplisit `OutstandIntegrationError`,
 bukan silent bug, butuh keputusan King Rezi + kemungkinan amandemen ADR):**
 
@@ -489,7 +511,10 @@ bukan silent bug, butuh keputusan King Rezi + kemungkinan amandemen ADR):**
 - **KI-072** (sisa scope KI-069) — Pinterest `board_id` (wajib di API
   resmi Outstand) tidak pernah dikumpulkan di domain/UI kita — override
   Pinterest sengaja tidak dikirim ke Outstand (aman, tidak break publish
-  dasar) sampai ada keputusan desain UI board-picker; tetap Open.
+  dasar). Rancangan UI board-picker **sudah selesai** di Claude Design
+  (2026-09-25, scope per-post, tanpa schema Prisma baru) — menunggu
+  implementasi kode (fetch `list_pinterest_boards` + wiring publish);
+  tetap Open.
 
 Detail teknis lengkap ada di docstring
 `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts`.

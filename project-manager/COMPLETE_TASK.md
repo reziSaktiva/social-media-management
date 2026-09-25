@@ -8,6 +8,47 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-25 — KI-072: rancangan UI board-picker Pinterest selesai di Claude Design, scope per-post dikonfirmasi
+
+Gibran Project Manager mendokumentasikan hasil sesi desain KI-072 (Pinterest
+`board_id` tidak pernah dikumpulkan). King Rezi mengonfirmasi 2 keputusan
+scope lewat `AskUserQuestion`:
+
+1. Board Pinterest dipilih **per post** (di Draft Editor saja) — bukan
+   per akun/Connected Accounts, bukan hybrid. Implementasi nanti **tidak
+   butuh schema Prisma baru** (tidak ada kolom `board_id` tersimpan
+   permanen di `ConnectedAccount`).
+2. Rancangan board-picker **sudah selesai** dikerjakan di Claude Design
+   (project "Social Media Management", via DesignSync). 3 file diubah:
+   - `templates/draft-editor.html` — field "Board" section `.pin-fields`
+     Pinterest diganti dari free-text `<input>` jadi native
+     `<select class="select">` bergaya sama seperti selector "Filter Akun"
+     di `components/forms.html`, dengan opsi mock: "Pilih board…"
+     (kosong/unselected), "Resep & Minuman", "Interior Kedai", "Promo
+     Musiman". Ditambahkan komentar block HTML menjelaskan keputusan
+     KI-072 (per-post only, mock data mewakili live fetch dari
+     `list_pinterest_boards`, fallback ke pola `.reconnect-link` kalau
+     fetch gagal).
+   - `components/forms.html` — showcase komponen "AccountRow" section
+     Pinterest disamakan (select yang sama) supaya tidak divergen dari
+     `draft-editor.html`.
+   - `templates/app-prototype/AppPrototype.dc.html` — 2 occurrence markup
+     Pinterest `.pin-fields` (state "New Post" kosong dan state "Edit
+     Draft" terisi) disamakan juga ke select yang sama.
+
+Status **KI-072 tetap Open** — yang selesai baru rancangan UI di Claude
+Design. Implementasi kode (fetch board list dari Outstand
+`list_pinterest_boards` saat compose + kirim `board_id` terpilih di
+request publish Pinterest, domain/UI `apps/web`) belum dikerjakan dan jadi
+task terpisah. Sesi ini murni dokumentasi — tidak ada perubahan kode
+`apps/web`. Tidak ada ADR baru dibuat (keputusan per-post-only dinilai
+belum cukup material untuk ADR tersendiri, sudah tercermin di catatan
+KI-072 `PROJECT_STATE.md`/`tasks/v02-publishing-mvp.md`).
+
+Detail: `PROJECT_STATE.md` § KI-072, `tasks/v02-publishing-mvp.md` § T-025.
+
+---
+
 ## 2026-09-25 — KI-071 Resolved: `replyToComment` wajib `accountUsername` via ADR-117
 
 King Rezi menutup **KI-071** (gap disambiguasi reply multi-akun network
