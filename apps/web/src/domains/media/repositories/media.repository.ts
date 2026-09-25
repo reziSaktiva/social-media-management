@@ -94,4 +94,19 @@ export interface IMediaRepository {
     input: { workspaceId: WorkspaceId; mediaId: MediaId },
     userId: UserId,
   ): Promise<MediaItemRecord | null>;
+
+  /**
+   * Simpan URL working copy Outstand setelah unggah berhasil, supaya
+   * publish berikutnya memakai URL yang masih berlaku.
+   */
+  saveOutstandWorkingCopy(
+    input: {
+      workspaceId: WorkspaceId;
+      mediaId: MediaId;
+      outstandMediaId: string;
+      outstandMediaUrl: string;
+      outstandExpiresAt: Date;
+    },
+    userId: UserId,
+  ): Promise<void>;
 }

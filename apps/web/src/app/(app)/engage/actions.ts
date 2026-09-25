@@ -25,6 +25,7 @@ import { getOutstandAdapter } from "@/lib/adapters/outstand";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { engagementRepository } from "@/lib/repositories/engagement";
 import { notificationRepository } from "@/lib/repositories/notification";
+import { publishingRepository } from "@/lib/repositories/publishing";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { toActionError } from "@/lib/utils/errors";
 import { createActiveWorkspaceMembersPort } from "@/lib/workspace/active-members-port";
@@ -72,6 +73,7 @@ export async function refreshInboxAction(): Promise<{
   const syncCommentsUseCase = new SyncCommentsUseCase(
     engagementRepository,
     getOutstandAdapter(),
+    publishingRepository,
     new NotificationService(notificationRepository),
     createActiveWorkspaceMembersPort(),
   );
@@ -119,6 +121,7 @@ export async function listInboxAction(
   const engagementService = new EngagementService(
     engagementRepository,
     getOutstandAdapter(),
+    publishingRepository,
   );
 
   try {
@@ -157,6 +160,7 @@ export async function getInboxItemDetailAction(
   const engagementService = new EngagementService(
     engagementRepository,
     getOutstandAdapter(),
+    publishingRepository,
   );
 
   try {
@@ -188,6 +192,7 @@ export async function markAsDoneAction(
   const engagementService = new EngagementService(
     engagementRepository,
     getOutstandAdapter(),
+    publishingRepository,
   );
 
   try {
@@ -228,6 +233,7 @@ export async function replyToCommentAction(
   const engagementService = new EngagementService(
     engagementRepository,
     getOutstandAdapter(),
+    publishingRepository,
   );
 
   try {

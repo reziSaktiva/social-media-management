@@ -98,6 +98,7 @@ export const engagementRepository: IEngagementRepository = {
       authorHandle,
       content,
       receivedAt,
+      postId,
     },
     userId,
   ) {
@@ -145,10 +146,15 @@ export const engagementRepository: IEngagementRepository = {
           authorHandle,
           content,
           receivedAt,
+          ...(postId ? { postId } : {}),
         },
         update: {
           authorHandle,
           content,
+          // Backfill `postId` kalau baris lama sempat terbuat tanpa join
+          // (sebelum KI-068 wiring) — aman overwrite hanya saat caller
+          // menyuplai nilai (null/undefined tidak menimpa yang sudah ada).
+          ...(postId ? { postId } : {}),
         },
       });
 

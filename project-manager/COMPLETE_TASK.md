@@ -8,6 +8,685 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-25 — T-106 dicatat: hapus FakeOutstandAdapter (belum dikerjakan)
+
+King Rezi meminta task atau Known Issue untuk menghilangkan
+`FakeOutstandAdapter`. Dicatat sebagai **T-106** ⏳ Not Started di
+`tasks/v02-publishing-mvp.md` (domain integration, kelanjutan T-025),
+bukan KI — adapter itu sengaja ada lewat ADR-059, bukan kerusakan.
+Empat subtask: ADR amendemen ADR-059, hapus fallback factory, pindahkan
+tes ke double lokal, bersihkan baris dev `fake-post-…`. Kode belum
+disentuh. Indeks `TASKS.md`: v0.2 24 task, total 91.
+
+## 2026-09-25 — Hardening code-review PR #133 (T-025 tetap ✅ Done): SECURITY DEFINER privileges, Facebook session cookie, media/Story, delete/retry, engagement, CSRF
+
+King Rezi meminta implementasi rencana perbaikan dari code-review PR #133
+di branch `feature/t-025-real-outstand-adapter`. Elon Backend Engineer
+menerapkan perbaikan; Ridwan Architecture Reviewer: **0 temuan**; Vitest
+**130** test terkait lulus; typecheck bersih. **Tidak ada commit/push**
+di sesi ini.
+
+**Status task:** T-025 sempat di-set `🟡 In Progress` oleh Elon saat
+perbaikan — **dikembalikan ke `✅ Done`** oleh Gibran Project Manager.
+Perbaikan ini adalah **hardening follow-up** di atas T-025 yang sudah
+selesai (2026-09-24), bukan reopen seluruh task. Catatan Update
+ditambahkan di `tasks/v02-publishing-mvp.md` § T-025.
+
+**Poin perbaikan (ringkas):**
+
+1. **CRITICAL** — migration
+   `20260925094500_restore_webhook_lookup_privileges`: `REVOKE` PUBLIC +
+   `GRANT` `app_runtime` pada fungsi SECURITY DEFINER webhook lookup
+   (regresi setelah `DROP`/`CREATE` migrasi KI-068).
+2. Facebook session token tidak di URL — cookie httpOnly
+   `outstandFacebookSession_<nonce>`; query hanya
+   `connectFacebook=1&connectFacebookState` (hardening implementasi
+   ADR-115/ADR-116; **tanpa ADR baru** — keputusan arsitektur material
+   tidak berubah).
+3. Media di-wire ke create-post lewat containers; Story omit caption;
+   campuran Story + feed ber-caption throw keras.
+4. `deletePost` + `accountIds` throw; `RetryFailedTargetUseCase` skip
+   wipe bila sibling target masih live.
+5. Upsert inbox engagement backfill `postId` pada update.
+6. Tombol Facebook Reconnect disembunyikan (belum ada jalur UPDATE).
+7. Presigned upload URL di-redact dari pesan error.
+8. IG Reel `coverImageUrl` → `reelCoverUrl`; HTTP 429 retryable.
+9. Sync comments: published only, limit 50, try/catch per-post.
+10. Test CSRF list/confirm Facebook; factory trim API key.
+
+**KI tetap Open (gap diterima, tidak diperbaiki di putaran ini):**
+**KI-071** (disambiguasi reply multi-akun), **KI-072** (Pinterest
+`board_id`). Tidak ada KI baru; **KI-067/KI-070 tidak di-reopen**.
+
+**Dokumen yang diupdate:** `tasks/v02-publishing-mvp.md` § T-025 (status
+kembali ✅ Done + Update 2026-09-25), `TASKS.md` (Fokus sekarang —
+baris "Selesai baru-baru ini"; hitungan indeks v0.2 tidak berubah:
+19 ✅ · 2 🟡 · 2 ⏳), `PROJECT_STATE.md` (Snapshot Top Next Tasks,
+Metadata 1.0.93 / 2026-09-25, Completed Ringkasan — bullet baru di atas,
+bullet KI-068 dihapus agar tetap 5 item).
+
+---
+
+## 2026-09-24 — T-025.4/KI-070 ditutup: UI Facebook Pages Picker + 2 bug kritis ditemukan & diperbaiki + QA final PASS — T-025 (Real OutstandAdapter) 7/7 subtask tuntas, KI-003 Resolved
+
+Penutupan penuh rangkaian kerja Connect Account Facebook Pages yang dimulai
+dari entri sebelumnya (desain confirmed → ADR-115 → ADR-116 → backend
+selesai + reviewed). Urutan kerja sesi ini:
+
+**1. UI dialog (Mark UI Engineer).** Mengimplementasikan
+`FacebookPagesPickerDialog.tsx` (4 state: Loading/Default/Selected/Empty +
+Error) di `apps/web/src/app/(app)/settings/connected-accounts/`, wire ke
+`listFacebookPendingPagesAction`/`confirmFacebookPagesConnectionAction`
+yang sudah ada dari ADR-116. Komponen shadcn dipakai: `Dialog`,
+`Checkbox`, `Item`/`ItemGroup`/`ItemMedia`/`ItemContent`, `Empty`,
+`Alert`, `Skeleton`. Row Page dibuat full-row click
+(`<Item className="cursor-pointer">` + `<label>`).
+
+**2. QA putaran 1 (Najwa QA Engineer).** Fungsional PASS (golden path via
+klik + navigasi URL manual, semua state teruji), tapi menemukan 2 gap:
+(a) gate struktur `DesignSync` gagal dimuat di sesi subagent-nya (kejadian
+ke-8, dicatat di `.claude/agents/README.md`); (b)
+`FakeOutstandAdapter.connectAccount()` belum bercabang untuk Facebook —
+klik "Connect Account → Facebook" di dev/Fake mode selalu salah mendarat
+di alur single-page lama.
+
+**3. Verifikasi gate desain (main agent).** `DesignSync` tersedia
+langsung di sesi utama — verifikasi independen dilakukan: row klik-penuh
+Mark **cocok** dengan desain confirmed, tidak ada perbaikan kode
+diperlukan.
+
+**4. Fix gap Fake adapter + Bug #1 ditemukan (Elon Backend Engineer).**
+`FakeOutstandAdapter.connectAccount()` diperbaiki supaya bercabang untuk
+Facebook (loopback `?session=...`). Saat verifikasi, ditemukan **Bug #1**:
+klik natural "Connect Account → Facebook" gagal **405** — browser
+mengirim `POST` ke Route Handler
+`apps/web/src/app/api/integrations/outstand/callback/route.ts` yang
+hanya punya export `GET`, sementara navigasi URL manual (yang otomatis
+`GET`) berhasil. Di-flag sebagai task terpisah, belum diperbaiki di titik
+ini.
+
+**5. Investigasi Bug #1 + ditemukan Bug #2 (main agent).** Investigasi
+langsung di browser real (dev server Fake mode via env override
+sementara, `.env.local` tidak disentuh) — Bug #1 direproduksi dan
+dikonfirmasi, ditemukan workaround (`export const POST = GET` alias di
+Route Handler) yang terbukti membuka dialog via klik natural. Tapi retest
+mengungkap **Bug #2**: dialog terbuka tapi macet selamanya di Loading
+(`listFacebookPendingPagesAction` tidak pernah terpanggil) — berbeda dari
+sebelumnya yang sukses via URL manual. Temuan detail diserahkan ke Elon.
+
+**6. Root cause Bug #2 + fix permanen kedua bug (Elon Backend Engineer,
+putaran 2).** Root cause Bug #2: `FakeOutstandAdapter.connectAccount()`
+Facebook loopback ke **domain kita sendiri** (bukan domain eksternal
+seperti platform lain), sehingga redirect chain Server Action → Route
+Handler kita → balik ke halaman diperlakukan Next.js App Router sebagai
+satu transisi client-side yang membuat action-dispatch queue macet.
+**Murni artefak Fake-mode testing — TIDAK terjadi di produksi** (Real
+adapter selalu redirect ke domain eksternal `outstand.so` di hop
+pertama). Fix: `initiateConnectAccountAction`/
+`initiateReconnectAccountAction`
+(`apps/web/src/app/(app)/settings/connected-accounts/actions.ts`) khusus
+`platform === Facebook` tidak lagi `redirect()` di server — return
+`{ redirectUrl }`; client (`ConnectPlatformMenu.tsx`, `ReconnectButton` di
+`ConnectedAccountsList.tsx`, `FacebookPagesPickerDialog.tsx`) melakukan
+`window.location.href` (hard navigation). Platform lain **tidak berubah**
+sama sekali. Bug #1 (`export const POST = GET` alias di `route.ts`) juga
+diterapkan permanen dengan docstring lengkap menjelaskan root cause.
+Test baru: `route.test.ts` (4 test) + `actions.test.ts` (4 test). Total
+naik ke **509 passed/6 skipped** (dari 501 sebelumnya).
+
+**7. Review arsitektur final (Ridwan Architecture Reviewer).** **0
+temuan** — verifikasi independen: typecheck bersih, lint bersih, 509
+passed/6 skipped cocok. Rule #5 AGENTS.md tidak dilanggar (perubahan
+murni "siapa memicu navigasi browser", bukan business logic baru),
+RBAC/CSRF tidak ada celah baru, isolasi perubahan ke Facebook saja
+terverifikasi via test.
+
+**8. QA final (Najwa QA Engineer).** **PASS** semua: golden path Connect
+Facebook via klik natural (tanpa 405, tanpa macet), **Reconnect
+Facebook** (jalur baru, belum pernah dites sebelumnya — berhasil
+teknis), regresi platform lain (Instagram/X Connect+Reconnect tetap
+pakai `redirect()` server, tidak ikut berubah), regresi screen lain
+(Home/Calendar normal). **Satu catatan non-blocking**: Reconnect Facebook
+Page tunggal selalu **CREATE** bukan **UPDATE** (sudah didokumentasikan
+out-of-scope di ADR-115 poin 8) — badge "Perlu Reconnect" di akun asal
+tidak hilang setelah reconnect. **King Rezi memutuskan eksplisit (via
+`AskUserQuestion`): cukup didokumentasikan sebagai keterbatasan, TIDAK
+perlu task susulan sekarang.**
+
+**Penutupan dokumentasi:** **T-025.4 dicentang selesai** (`tasks/v02-publishing-mvp.md`
+§ T-025) — dengan itu **seluruh subtask T-025.1–T-025.7 tuntas**, task
+**T-025 (Real OutstandAdapter) ditutup `✅ Done`**. **KI-070 Resolved**
+dan dihapus dari `PROJECT_STATE.md` § Known Issues (guardrail ADR
+governance — Resolved + sudah tercatat di sini). **KI-067** (parent
+split KI-070) juga ditutup Resolved sepenuhnya dan dihapus dari Known
+Issues (sisa scope-nya, Facebook Pages, sekarang tuntas). **KI-003**
+(parent tertinggi, "Runtime ADR-040 belum diimplementasikan") juga
+ditutup Resolved dan dihapus dari Known Issues — seluruh sub-scope-nya
+(KI-067/068/069/070) sudah Resolved. Baris KI-003 di `PROJECT_STATE.md`
+§ Blockers juga dihapus (tidak lagi menghambat task manapun). Sisa gap
+non-blocking dari rangkaian T-025 tetap terbuka terpisah: **KI-071**
+(disambiguasi reply multi-akun) dan **KI-072** (Pinterest `board_id`) —
+keduanya Open, tidak memblokir closure T-025.
+
+`TASKS.md`: baris indeks v0.2 diperbarui (19 ✅ · 2 🟡 · 2 ⏳, dari 18 ✅ ·
+3 🟡 · 2 ⏳ hasil hitung ulang langsung dari `tasks/v02-publishing-mvp.md`
+— catatan: split 🟡/⏳ sebelumnya di baris ini sempat salah, dikoreksi
+bersamaan), **Total 57 selesai** (dari 54, hasil hitung ulang seluruh
+release — v01=16 terverifikasi cocok, v02=19, v03=8, v04=5, v07=9), dan
+**Fokus sekarang** dipindah dari T-025 ke **T-037** (satu-satunya
+🟡 In Progress lain yang eksplisit dilacak di sana, kontinu by design,
+prioritas rendah).
+
+Tidak ada ADR baru untuk 2 bug fix di atas — keduanya workaround
+infrastruktur/framework Fake-mode testing (bukan keputusan arsitektur
+produk baru), dikonfirmasi Elon Backend Engineer dan Ridwan Architecture
+Reviewer.
+
+---
+
+## 2026-09-24 — ADR-116: koreksi wire-format Facebook Pages session-token (KI-070), backend selesai + lolos review Ridwan 0 temuan
+
+Lanjutan entri sebelumnya (ADR-115, hari yang sama) — Elon Backend Engineer
+mengimplementasikan kontrak ADR-115.
+
+**Verifikasi wire-format (langkah wajib sebelum implementasi, ADR-115 §
+"Belum Terverifikasi"):** berbeda dari sesi penyusun ADR-115 yang gagal
+mengakses dokumentasi resmi Outstand, sesi Elon berhasil mengakses lewat
+WebFetch: `https://www.outstand.so/docs/configurations/facebook`,
+`https://www.outstand.so/docs/get-pending-connection-details`,
+`https://www.outstand.so/docs/finalize-pending-connection` (OpenAPI JSON
+`api.outstand.so/openapi.json` tetap 404, tapi docs page HTML resmi bisa
+diakses). Ditemukan **4 dari 4 asumsi wire-format ADR-115 salah**:
+
+1. Query param callback: **`session`**, bukan `session_token` yang
+   diasumsikan ADR-115.
+2. Path finalize: **`POST /v1/social-accounts/pending/{sessionToken}/finalize`**
+   (ada suffix `/finalize`), bukan `POST` langsung ke path GET seperti
+   asumsi ADR-115.
+3. Response GET dibungkus **`data.availablePages[]`**, field
+   `id`/`profilePictureUrl` — bukan flat `pages[]` dengan
+   `pageId`/`pictureUrl` seperti asumsi ADR-115.
+4. Response POST **`connectedAccounts[]`** dengan field
+   `id`/`username`/`nickname` — bukan `accounts[]` seperti asumsi ADR-115.
+
+Yang ternyata **sudah benar** di ADR-115: body request finalize
+`{selectedPageIds: [...]}`, path GET
+`/v1/social-accounts/pending/{sessionToken}`. TTL session dikonfirmasi
+**30 menit** (temuan baru, mengisi poin 4 "Belum Terverifikasi" ADR-115
+yang sebelumnya kosong).
+
+**ADR-116 ditulis** (`project-manager/decisions/ADR-116-facebook-pages-wire-format-koreksi-adr-115.md`,
+status **Accepted**) sebagai amandemen terpisah — bukan menambal kode
+diam-diam, mengikuti pola persis ADR-105→ADR-112 (rule #4 AGENTS.md).
+Kontrak `packages/shared/src/contracts/outstand-adapter.ts` (nama
+interface/method `FacebookPendingPage` dkk.) **TIDAK berubah** — koreksi
+murni di mapping wire↔domain di dalam real adapter (ACL boundary tetap
+terjaga).
+
+**File yang diubah Elon:**
+`packages/shared/src/contracts/outstand-adapter.ts` (kontrak, tidak
+berubah dari ADR-115 tapi diverifikasi ulang),
+`apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts` (implementasi
+sesuai ADR-116 — baca `session`, path `/finalize`, mapping
+`data.availablePages[]`/`connectedAccounts[]`),
+`apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts` (mock 3
+fixture Page, deterministik, ADR-059),
+`apps/web/src/domains/workspace/services/workspace.service.ts` (2 method
+baru: `listFacebookPendingPages`/`confirmFacebookPagesConnection`, RBAC
+Owner/Admin reuse, skip-bukan-gagal per Page yang sudah terhubung
+sebelumnya — idempotent-guard pola ADR-109, JOB-03 engagement sync
+seeding per Page baru),
+`apps/web/src/app/api/integrations/outstand/callback/route.ts`
+(percabangan baca query param `session`),
+`apps/web/src/app/(app)/settings/connected-accounts/actions.ts` (2 Server
+Action baru), plus test baru di `real-outstand-adapter.test.ts`/
+`workspace.service.test.ts` dan stub minimal di 10 file test lain (supaya
+tetap match `IOutstandAdapter` yang bertambah 2 method).
+
+**Verifikasi:** Vitest 498 passed, 6 skipped (tidak ada regresi dari 487
+sebelumnya). `bun run typecheck`/`lint` bersih.
+
+**Ridwan Architecture Reviewer review — 0 temuan pelanggaran arsitektur.**
+Verifikasi independen: typecheck bersih, lint bersih, 498 test
+passed/6 skipped cocok dengan klaim Elon. Satu catatan non-blocking
+(bukan pelanggaran): dokumentasi Outstand menyarankan strip param
+`session` dari address bar browser setelah dibaca — didelegasikan ke Mark
+UI Engineer saat implementasi dialog (bersihkan query param via
+`router.replace` saat dialog mount), sudah didesain sadar di ADR-115
+§7/ADR-116 §5, bukan gap.
+
+**Status akhir T-025.4/KI-070:** backend Facebook Pages session-token
+**tuntas dan lolos review** — kontrak, real+fake adapter, `WorkspaceService`,
+Route Handler, Server Action semuanya sudah jalan. **Belum selesai secara
+keseluruhan** — UI dialog Facebook Pages Picker (React, Mark UI Engineer)
+yang memanggil 2 Server Action itu belum dikerjakan. T-025.4 tetap `[ ]`
+di `tasks/v02-publishing-mvp.md`, KI-070 tetap **Open** di
+`PROJECT_STATE.md`.
+
+Dokumentasi diperbarui: `DECISIONS.md` (baris ADR-116 baru, catatan
+amandemen di baris ADR-115 existing — status tetap Proposed, ditambah tag
+"Amended by ADR-116"), ADR-115 file (§ Status ditambah tag amandemen),
+`PROJECT_STATE.md` § KI-070 (progres backend selesai + reviewed, Completed
+Ringkasan + Recent Decisions Ringkasan diputar), `tasks/v02-publishing-mvp.md`
+§ T-025 (T-025.4 catatan + Terkait, blok update naratif baru, bullet KI-070
+gap arsitektur diperbarui).
+
+---
+
+## 2026-09-24 — ADR-115: kontrak Connect Account Facebook Pages (session-token) diajukan, menutup gap KI-070
+
+Setelah desain page-selection Facebook Pages CONFIRMED King Rezi di Claude
+Design (entri sebelumnya, hari yang sama), sesi ini menyusun **ADR-115**
+untuk mengisi gap kontrak backend yang tersisa di KI-070.
+
+**Riset dulu (read-only, Explore agent + verifikasi manual):** dibaca
+penuh `real-outstand-adapter.ts` (`resolveConnectCallback` Facebook throw,
+baris 478-485), `outstand-adapter.ts` (kontrak `IOutstandAdapter` shared),
+`fake-outstand-adapter.ts` (pola ADR-059), `workspace.service.ts`
+(`initiateConnectAccount`/`completeAccountConnection` — RBAC/IDOR
+pattern), `route.ts` callback handler, Prisma model
+`WorkspaceConnectedAccount`, dan ADR-112/ADR-105 penuh untuk pola
+penulisan. Percobaan verifikasi wire-format lewat OpenAPI spec resmi
+Outstand (`api.outstand.so`) via browser **gagal/ditolak** — MCP
+`mcp__outstand__*` yang terpasang juga tidak mengekspos tool operasional
+untuk flow session-token Facebook (dicek `list_social_accounts`,
+`get_social_account`, `create_social_network`, `get_more_tools`).
+
+**Isi ADR-115** (`project-manager/decisions/ADR-115-facebook-pages-session-token-connect-ki070.md`):
+- Kontrak baru `listPendingFacebookPages`/`confirmFacebookPagesConnection`
+  ditambahkan ke `IOutstandAdapter` — method BARU, `resolveConnectCallback`
+  TIDAK diubah (Facebook tetap throw eksplisit di situ, method itu murni
+  untuk single-page).
+- `connectAccount` (langkah 1, redirect OAuth) tidak berubah sama sekali —
+  sama untuk semua platform.
+- Route Handler callback existing (`/api/integrations/outstand/callback`)
+  diperluas dengan percabangan baca `session_token` — BUKAN route baru.
+  Nonce cookie CSRF tetap dicek tapi TIDAK dihapus di titik ini (flow
+  belum selesai) — redirect ke Connected Accounts dengan query param yang
+  memicu dialog Facebook Pages Picker terbuka otomatis.
+- `WorkspaceService` dapat 2 method baru (`listFacebookPendingPages`,
+  `confirmFacebookPagesConnection`) — RBAC Owner/Admin reuse gate existing;
+  hasil batch di-loop untuk `createConnectedAccount` per Page, SKIP
+  (bukan gagal total) kalau satu Page sudah pernah terhubung sebelumnya
+  (idempotent-guard, pola ADR-109) — bukan `$transaction` penuh (YAGNI).
+  Reconnect untuk satu Facebook Page yang sudah ada sengaja DI LUAR SCOPE.
+- Fake adapter: mock deterministik reuse 3 fixture Page yang sama persis
+  dengan draft desain King Rezi ("Kopi Selasar", "Kopi Selasar — Cabang
+  Selatan", "Roti Selasar"), pola ADR-059 (instant, no delay/failure sim).
+
+**Status ADR-115 sengaja "Proposed", bukan "Accepted"** — beda dari ADR
+lain yang biasanya langsung Accepted setelah diimplementasikan. Wire-format
+persis (nama query param `session_token`, bentuk body/response endpoint
+`GET/POST /v1/social-accounts/pending/{sessionToken}`) BELUM terverifikasi
+terhadap OpenAPI spec resmi Outstand — ADR mencatat eksplisit 4 poin di
+§ "Belum Terverifikasi" yang wajib dicek Elon Backend Engineer
+sebelum/-saat implementasi (pola sama persis ADR-105 yang ditulis
+best-effort lalu dikoreksi ADR-112 setelah verifikasi nyata). Kalau
+bentuknya beda, wajib ADR amandemen baru — bukan tambal kode diam-diam
+(rule #4 AGENTS.md).
+
+Dokumentasi diperbarui: `DECISIONS.md` (baris ADR-115 baru),
+`PROJECT_STATE.md` § KI-070 (progres ADR-115 + "Masih menunggu" diupdate),
+`tasks/v02-publishing-mvp.md` § T-025 (T-025.4, ditambah referensi
+ADR-115). Belum ada perubahan kode — ADR ini murni dokumen keputusan,
+implementasi menunggu Elon Backend Engineer setelah verifikasi wire-format.
+
+---
+
+## 2026-09-24 — KI-070 progres: desain draft UI page-selection Facebook Pages dibuat di Claude Design (masih Open)
+
+King Rezi minta lanjut KI-070 (blocker terakhir T-025.4/T-025 Real
+OutstandAdapter — flow multi-halaman Facebook Pages, session-token). Sesuai
+rule #17 AGENTS.md (gate desain sebelum kode UI), main agent (Jokowi) cek
+Claude Design project "Social Media Management" — belum ada rancangan
+page-selection Facebook Pages, implementasi kode di-stop dulu.
+
+King Rezi minta panggil Neymar Product Designer untuk drafting. `DesignSync`
+gagal dimuat lagi di sesi Neymar (kejadian ketujuh, pola sama seperti
+kejadian sebelumnya di `.claude/agents/README.md` § "Keterbatasan teknis
+`DesignSync` di sesi subagent"). Mengikuti jalur fallback yang sudah
+didokumentasikan di situ, main agent minta izin eksplisit King Rezi untuk
+mengerjakan drafting langsung di sesi utama — disetujui.
+
+Sebelum drafting, 4 keputusan desain ditanyakan via `AskUserQuestion`, semua
+dijawab King Rezi: (1) minimum selection wajib pilih ≥1 Facebook Page,
+tombol lanjut disabled kalau 0 dipilih; (2) label tombol dinamis "Hubungkan
+N Page Terpilih" mengikuti jumlah dipilih; (3) empty state (akun tanpa
+Page) menawarkan retry/re-auth Facebook, bukan cuma dismiss; (4) pola
+dialog pakai ukuran Dialog/Sheet lebih besar (bukan Tier 2 AlertDialog
+kecil) karena isinya checklist Page, bukan teks konfirmasi pendek.
+
+Drafting selesai di Claude Design (projectId
+`84aded99-bb23-49b1-be9f-dd8f21c6873e`), sudah di-push ke remote dan
+dibaca ulang untuk verifikasi:
+
+- **`styles.css`** — pola dialog baru `.dialog-md-backdrop`/`.dialog-md`
+  (560px, di antara `.dialog` 400px dan `.dialog-lg` 960px Draft Editor,
+  reuse `.dialog-fs-header/-title/-actions/-body/-footer`), plus
+  `.fbpage-list`/`.fbpage-row`(`.is-checked`)/`.fbpage-avatar`/`.fbpage-body`/
+  `.fbpage-name`/`.fbpage-meta` (checkbox row, reuse visual language
+  `.acc-row` Draft Editor Account Selector) dan skeleton loading
+  `.fbpage-skel-row`/`.fbpage-skel-avatar`/`.fbpage-skel-lines`/`.fbpage-skel-line`
+  (mirror `.notif-skel-*`).
+- **`templates/settings-connect-facebook-pages.html`** (baru,
+  `@dsCard group="Screens"`) — 4 state: Loading (skeleton), Default (0 Page
+  dipilih, tombol disabled), 2 Page dipilih (tombol "Hubungkan 2 Page
+  Terpilih" aktif), Empty state (tidak ada Page + tombol "Login Ulang dengan
+  Facebook"). Ditandai eksplisit **DESIGN DRAFT — belum ada implementasi
+  kode nyata yang mengacu ke sini**.
+- **`readme.md`** — 1 baris tabel Components (setelah `.dialog-lg`) dan 1
+  bullet daftar templates (setelah `settings-connected-accounts.html`),
+  menandai status **DESIGN DRAFT (KI-070, Open)**.
+
+**Status KI-070 tetap Open** — ini progres desain, bukan penyelesaian.
+Masih menunggu: (a) review/konfirmasi visual King Rezi atas draft; (b) ADR
+baru untuk kontrak Facebook (`resolveConnectCallback` untuk
+`platform === Facebook` masih throw eksplisit — belum ada implementasi
+backend); (c) implementasi kode UI oleh Mark UI Engineer setelah draft
+dikonfirmasi. Detail lengkap: `PROJECT_STATE.md` § KI-070,
+`tasks/v02-publishing-mvp.md` § T-025 (T-025.4).
+
+---
+
+## 2026-09-24 — KI-069 Resolved: override format platform-specific (Story/Reel) via ADR-114, gap Pinterest `board_id` dicatat KI-072 baru
+
+KI-069 (override format per-platform Story/Reel/Pin tidak terkirim ke
+Outstand, ditemukan Elon Backend Engineer 2026-09-23 saat implementasi
+T-025) diselesaikan Elon Backend Engineer, lolos review arsitektur Ridwan
+Architecture Reviewer 0 temuan.
+
+**Root cause:** `OutstandPostTargetInput` tidak membawa `platform`/network
+per target, padahal body resmi Outstand `POST /v1/posts` butuh override
+format (Story/Reel/Pin) dikirim sebagai key top-level bernama network
+(`instagram`/`facebook`/`pinterest`/dst) — override platform-specific yang
+sudah didesain ADR-039/ADR-107 tidak pernah terkirim (post Instagram/
+Facebook yang user pilih format Story/Reel di composer tetap tayang
+sebagai "post biasa" di Outstand).
+
+**Keputusan King Rezi (dikonfirmasi via `AskUserQuestion` sebelum
+implementasi):** (1) kerjakan penuh field `platform` wajib di kontrak +
+mapping `contentFormat` ke shape asli Outstand per network untuk field yang
+datanya sudah ada di domain kita; (2) Pinterest `board_id` (wajib di API
+Outstand) sengaja TIDAK diimplementasikan — domain/UI kita tidak pernah
+mengumpulkannya, key `pinterest` tetap tidak dikirim (aman, tidak
+menambah risiko baru), dicatat KI baru terpisah **KI-072** oleh Gibran
+Project Manager, tidak memblokir penutupan KI-069.
+
+**Implementasi (fixed via ADR-114):** `OutstandPostTargetInput`
+(`packages/shared/src/contracts/outstand-adapter.ts`) ditambah field wajib
+`platform: SocialPlatform`. Caller (`schedule-posts.use-case.ts`,
+`publish-now.use-case.ts`, `retry-failed-target.use-case.ts`) meneruskan
+`platform` yang sudah tersedia di scope. `RealOutstandAdapter` menambah
+fungsi baru `computePlatformOverride(platform, contentFormat)` — Instagram
+Story → `publishAsStory` (Instagram tidak punya flag Reel eksplisit,
+auto-detect dari video), Facebook Story/Reel → `publishAsStory`/
+`publishAsReel`, Pinterest selalu `null`. Edge case konflik same-network
+`contentFormat` berbeda (mis. 2 akun Facebook, satu Story satu Reel):
+first-match-wins + `console.warn` eksplisit, tidak silent. Shape asli
+diverifikasi lewat MCP resmi `create_post` + OpenAPI spec resmi Outstand.
+
+**Verifikasi:** `bun run typecheck`/`lint` bersih, Vitest 487 pass/6 skip/0
+fail (full suite). `real-outstand-adapter.test.ts` ditambah cakupan penuh
+(Instagram Story/Reel, Facebook Story/Reel, Post biasa, Pinterest tetap
+kosong, konflik same-network).
+
+**Dokumentasi:** ADR baru `decisions/ADR-114-outstand-post-target-platform-override-ki069.md`
+(sudah diverifikasi akurat oleh Ridwan, cocok diff kode aktual), diregister
+di `DECISIONS.md`. `PROJECT_STATE.md` § Known Issues: KI-069 diubah jadi
+Resolved, KI-072 baru ditambahkan (Open, Domain integration — butuh
+keputusan desain UI board-picker sebelum implementasi, kena gate rule #17
+AGENTS.md). `tasks/v02-publishing-mvp.md` § T-025 diupdate (field Terkait +
+catatan naratif). Efek fungsional: publish Story/Reel Instagram/Facebook
+sekarang benar-benar tayang sesuai pilihan format user di composer.
+
+File yang berubah: `packages/shared/src/contracts/outstand-adapter.ts`,
+`apps/web/src/domains/publishing/services/schedule-posts.use-case.ts`,
+`apps/web/src/domains/publishing/services/publish-now.use-case.ts`,
+`apps/web/src/domains/publishing/services/retry-failed-target.use-case.ts`,
+`apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts` (+ test),
+`project-manager/decisions/ADR-114-outstand-post-target-platform-override-ki069.md`
+(baru), `project-manager/DECISIONS.md`, `project-manager/PROJECT_STATE.md`,
+`project-manager/TASKS.md`, `project-manager/tasks/v02-publishing-mvp.md`.
+
+---
+
+## 2026-09-24 — KI-068 Resolved: redesain `fetchComments`/`replyToComment` per-post via ADR-113, gap disambiguasi multi-akun dicatat KI-071 baru
+
+KI-068 (`fetchComments`/`replyToComment` scope tidak cocok API resmi
+Outstand, ditemukan Elon Backend Engineer 2026-09-23 saat implementasi
+T-025) diselesaikan Elon Backend Engineer, lolos review arsitektur Ridwan
+Architecture Reviewer (0 temuan).
+
+**Root cause:** sama seperti KI-067/ADR-112 — kontrak `IOutstandAdapter`
+(ADR-110) disusun best-effort tanpa akses dokumentasi resmi Outstand.
+OpenAPI spec resmi (`GET/POST /v1/posts/{postId}/replies`) men-scope
+comments/replies PER-POST, tanpa cursor pagination sama sekali — bukan
+per-akun dengan cursor seperti diasumsikan ADR-110.
+
+**3 keputusan arsitektur dikonfirmasi King Rezi sebelum implementasi (via
+`AskUserQuestion`):**
+1. Sumber daftar post untuk sync JOB-03: dari DB kita sendiri
+   (`PublishingPost`/`PublishingPostTarget`), bukan endpoint list-posts
+   Outstand.
+2. `fetchComments` baru: per-post, tanpa cursor — field `nextCursor`
+   dihapus total dari `FetchCommentsResult` (bukan disisakan selalu-null).
+3. `replyToComment` baru: tambah `outstandPostId` (wajib) +
+   `parentOutstandCommentId` (opsional, untuk threading).
+
+**Perubahan kontrak** (`packages/shared/src/contracts/outstand-adapter.ts`):
+- `fetchComments`/`replyToComment` diredesain per-post sesuai 3 keputusan
+  di atas.
+- `FetchCommentsResult.nextCursor` dihapus total.
+- `InboxCommentData.outstandPostId` jadi wajib (dulu `string | null`).
+- `InboxCommentData.outstandAccountId` dihapus (keputusan tambahan King
+  Rezi, dikonfirmasi setelah implementasi — field ini secara struktural
+  tidak bisa diisi bermakna oleh real adapter).
+
+**Implementasi:**
+- `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts` — throw gap
+  sebelumnya diganti implementasi HTTP asli, diverifikasi terhadap OpenAPI
+  spec resmi Outstand.
+- `apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts` — disesuaikan
+  pola baru, tetap instant/deterministic (ADR-059).
+- `apps/web/src/domains/engagement/services/sync-comments.use-case.ts`
+  (JOB-03/T-051) — redesain loop per-post, akses data `publishing` lewat
+  port lokal cross-domain baru `PublishingPostsPort` (structural typing,
+  disuplai composition root `apps/web/src/app/(app)/engage/actions.ts` dan
+  `apps/web/src/app/api/jobs/run/route.ts`) — bukan import file internal
+  domain lain, dikonfirmasi bersih oleh Ridwan.
+- `apps/web/src/domains/engagement/services/engagement.service.ts`
+  (`EngagementService.reply`, T-054) — resolve `outstandPostId` dari
+  `postId` internal, guard `ConflictError` untuk data lama yang belum
+  terhubung.
+- `apps/web/src/domains/engagement/repositories/engagement.repository.ts`,
+  `apps/web/src/domains/publishing/repositories/publishing.repository.ts`,
+  `apps/web/src/domains/workspace/repositories/workspace.repository.ts`,
+  `apps/web/src/lib/repositories/engagement/engagement.repository.ts`,
+  `apps/web/src/lib/repositories/publishing/publishing.repository.ts`,
+  `apps/web/src/lib/repositories/workspace/workspace.repository.ts` —
+  disesuaikan mengikuti kontrak baru.
+- Migration baru
+  `apps/web/prisma/migrations/20260924090000_ki068_add_handle_to_account_owner_lookup`
+  — extend fungsi SQL `SECURITY DEFINER`
+  `webhook_find_account_owner_by_outstand_account_id` untuk return kolom
+  `handle` juga. **Belum di-deploy** ke database manapun (butuh
+  `bun run db:deploy` manual King Rezi — pola sama migration T-051
+  sebelumnya).
+- Test terkait diupdate: `apps/web/src/app/(app)/engage/actions.test.ts`,
+  `apps/web/src/domains/engagement/services/engagement-sync-job-handler.test.ts`,
+  `apps/web/src/domains/engagement/services/engagement.service.test.ts`,
+  `apps/web/src/domains/engagement/services/refresh-inbox.use-case.test.ts`,
+  `apps/web/src/domains/engagement/services/sync-comments.use-case.test.ts`,
+  `apps/web/src/domains/publishing/services/*.test.ts` (7 file, rename
+  stub mock mengikuti kontrak baru),
+  `apps/web/src/lib/adapters/outstand/real-outstand-adapter.test.ts`.
+
+**ADR baru:** `project-manager/decisions/ADR-113-redesain-fetchcomments-replytocomment-per-post-ki068.md`
+(amandemen ADR-110) — ditulis Elon Backend Engineer, diverifikasi akurat
+1:1 dengan diff kode oleh Ridwan.
+
+**Verifikasi:** `bun run typecheck` bersih, `bun run lint` bersih, Vitest
+480 pass/6 skip/0 fail.
+
+**Gap baru ditemukan (bukan bug, keputusan scope eksplisit King Rezi,
+dicatat KI baru — bukan diperbaiki sekarang):** endpoint resmi Outstand
+`POST /v1/posts/{id}/replies` menerima `account_username`/
+`platform_post_id` opsional untuk disambiguasi kalau satu post publish ke
+>1 akun di network yang sama — signature `replyToComment` yang dikonfirmasi
+King Rezi tidak membawa field itu. Reply ke post yang publish ke lebih dari
+satu akun pada network yang sama berisiko gagal 400 di sisi Outstand. King
+Rezi memutuskan (via `AskUserQuestion`): catat sebagai **KI-071** (baru,
+Open), tidak memblokir penutupan KI-068.
+
+**Dokumentasi diupdate dalam sesi ini (Gibran Project Manager):**
+`PROJECT_STATE.md` (KI-068 → Resolved, KI-071 baru, Top Next Tasks,
+Blockers, Completed Ringkasan, Recent Decisions), `DECISIONS.md` (entri
+ADR-113 + status ADR-110 diamandemen), `decisions/ADR-110-*.md` (header
+Status diamandemen), `TASKS.md` (Fokus sekarang, rantai blocker),
+`tasks/v02-publishing-mvp.md` (T-025.6 ✅, catatan KI-068 Resolved + KI-071),
+`tasks/v04-engagement-mvp.md` (T-051/T-054 referensi balik KI-068).
+
+---
+
+## 2026-09-23 — KI-067 sebagian resolved: Connect Callback single-page via ADR-112, sisa scope di-split jadi KI-070
+
+King Rezi mempersempit scope KI-067 (gap `exchangeConnectCode`/flow OAuth
+Outstand, ditemukan sesi T-025 hari yang sama): hanya flow **single-page
+account** (Instagram, X, LinkedIn, Threads, TikTok, YouTube, Pinterest,
+dll — bukan Facebook Pages multi-halaman) yang dikerjakan sekarang.
+
+Elon Backend Engineer membuat **ADR-112** (amandemen ADR-105): kontrak
+`IOutstandAdapter.exchangeConnectCode({code, state})` diganti
+`resolveConnectCallback(ConnectCallbackInput)` dengan input `{ state,
+outstandAccountId, username, networkUniqueId? }`, karena Outstand real
+ternyata redirect balik langsung dengan query param akun (`account_id`/
+`username`/`network_unique_id`) — bukan `code` untuk di-exchange lewat
+call server-side terpisah.
+
+**File yang diubah:**
+- `packages/shared/src/contracts/outstand-adapter.ts` — kontrak baru.
+- `apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts` + test —
+  loopback tanpa `code`, `resolveConnectCallback` instant always-success.
+- `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts` + test —
+  `resolveConnectCallback` murni validasi + decode `state` (tanpa HTTP
+  call ke Outstand); throw eksplisit `OutstandIntegrationError` untuk
+  `platform === Facebook` (mengarah ke KI-070).
+- `apps/web/src/lib/adapters/outstand/connect-state.ts`.
+- `apps/web/src/app/api/integrations/outstand/callback/route.ts` — baca
+  `account_id`/`username`/`network_unique_id`/`state`, bukan `code`.
+- `apps/web/src/domains/workspace/services/workspace.service.ts` + test,
+  `apps/web/src/domains/workspace/repositories/workspace.repository.ts`,
+  `apps/web/src/lib/env.ts`.
+- 8 file test domain lain (rename stub mock `exchangeConnectCode` →
+  `resolveConnectCallback`): `analytics-ingestion.use-case.test.ts`,
+  `engagement.service.test.ts`, `refresh-inbox.use-case.test.ts`,
+  `sync-comments.use-case.test.ts`, `cancel-schedule.use-case.test.ts`,
+  `outstand-webhook-processor.test.ts`, `publish-now.use-case.test.ts`,
+  `resolve-scheduled-post-outcome-job-handler.test.ts`,
+  `retry-failed-target.use-case.test.ts`,
+  `schedule-posts.use-case.test.ts`.
+
+Typecheck bersih, 474 test passed/6 skipped (full suite). Ridwan
+Architecture Reviewer re-verifikasi 129 test terkait langsung, semua
+PASS — **0 temuan arsitektur**. T-013/T-015 (Connect/Reconnect Account,
+sudah ✅ Done via Fake) **tidak perlu rework** (ADR-112 §6 — perubahan
+murni di boundary parameter, alur bisnis/RBAC/IDOR tidak berubah).
+
+**Status KI-067:** diubah dari `Open` jadi `Sebagian Resolved — sisa
+scope: KI-070` di `PROJECT_STATE.md` (bukan dihapus — scope multi-halaman
+Facebook Pages belum selesai).
+
+**KI-070 baru** (Open): flow multi-halaman Facebook Pages (session-token,
+`GET/POST /v1/social-accounts/pending/{sessionToken}`) + UI page-selection
+baru yang belum ada di codebase — sisa scope KI-067 yang di-split karena
+butuh kerja UI terpisah.
+
+Dokumentasi diperbarui: `PROJECT_STATE.md` (KI-067/KI-070, Completed
+Ringkasan, Recent Decisions, Blockers, Snapshot Top Next Tasks),
+`DECISIONS.md` (index ADR-112 + tag Amended di ADR-105),
+`decisions/ADR-105-fake-connect-account-oauth-redirect-loopback.md`
+(header Status), `TASKS.md` (Fokus sekarang), `tasks/v02-publishing-mvp.md`
+§ T-025 (T-025.4 tetap belum dicentang penuh — sisa Facebook Pages masih
+blocking).
+
+---
+
+## 2026-09-23 — T-025 Real OutstandAdapter: publish/media/analytics tuntas terverifikasi API resmi, 3 gap kontrak baru (KI-067/068/069)
+
+King Rezi setup MCP server resmi Outstand (`mcp.outstand.so`) di sesi ini,
+menemukan dokumentasi REST API publik resmi Outstand
+(`https://api.outstand.so/v1/*/openapi.json`) yang sebelumnya tidak
+diketahui tim. T-025 (Real OutstandAdapter) dikerjakan Elon Backend
+Engineer dalam 2 putaran:
+
+**Putaran 1:** implementasi awal 7 subtask (T-025.1–T-025.7) berdasarkan
+tebakan best-effort, karena belum ada dokumentasi resmi Outstand saat itu.
+
+**Putaran 2:** setelah dokumentasi resmi ditemukan lewat MCP, Elon
+mengoreksi seluruh implementasi mengikuti spec asli. Ridwan Architecture
+Reviewer audit independen: 0 temuan pelanggaran arsitektur, `bun run
+typecheck`/`lint`/`test` semua hijau (486 pass, 6 skip, 0 fail), ACL
+boundary terjaga (`packages/shared` tidak disentuh, real adapter cuma
+diakses lewat factory `getOutstandAdapter()`).
+
+**Selesai dan terverifikasi terhadap API resmi:**
+- T-025.1 HTTP client + auth (`Authorization: Bearer <OUTSTAND_API_KEY>`)
+  + error mapping (`OutstandIntegrationError`), file baru
+  `apps/web/src/lib/adapters/outstand/outstand-http-client.ts` +
+  `outstand-integration-error.ts`.
+- T-025.2 `schedulePost` real — `POST /v1/posts`.
+- T-025.3 `publishNow` real — endpoint sama, tanpa `scheduledAt`.
+- T-025.5 Media API — `POST /v1/media/upload` → PUT bytes → `POST
+  /v1/media/{id}/confirm` (2-langkah upload jadi 3-langkah sesuai API
+  resmi).
+- T-025.7 Unit test HTTP mock — 2 file test baru (
+  `outstand-http-client.test.ts`, `real-outstand-adapter.test.ts`), 82
+  test menguji shape wire asli.
+- Analytics (`fetchPostMetrics`/`fetchWorkspaceMetrics`, kontrak lama
+  T-041) dikoreksi ke `GET /v1/posts/{id}/analytics` dan `GET
+  /v1/social-accounts/{id}/metrics`.
+- Cancel post (`DELETE /v1/posts/{id}`) dan delete-from-remote (`DELETE
+  /v1/posts/{id}/remote`).
+
+**Belum selesai — 3 gap arsitektur baru, sengaja throw eksplisit
+(`OutstandIntegrationError`), bukan silent bug, dicatat sebagai Known
+Issue baru menunggu keputusan King Rezi:**
+
+- **KI-067** (T-025.4) — `exchangeConnectCode` (kontrak ADR-105) tidak
+  cocok dengan flow OAuth Outstand asli: redirect balik membawa
+  `account_id`/`network_unique_id`/`username` langsung (bukan `code`).
+  Platform multi-halaman (Facebook Pages dkk) punya flow session-token
+  terpisah yang butuh UI page-selection baru. Berpotensi rework
+  T-013/T-015.
+- **KI-068** (T-025.6) — Outstand men-scope komentar per-post
+  (`GET/POST /v1/posts/{postId}/replies`, tanpa cursor pagination),
+  kontrak `IOutstandAdapter.fetchComments`/`replyToComment` men-scope
+  per-akun dengan cursor. Butuh redesain alur JOB-03 (T-051).
+- **KI-069** — override format per-platform (Story/Reel/Pin, ADR-039/
+  ADR-107) butuh dikirim sebagai key top-level bernama network di body
+  `POST /v1/posts`, tapi `OutstandPostTargetInput` tidak membawa
+  `platform`/network per target. Untuk sekarang override tidak dikirim
+  ke Outstand.
+
+Root cause ketiganya sama: kontrak `IOutstandAdapter` lama disusun tanpa
+akses dokumentasi resmi Outstand. Detail teknis lengkap ada di docstring
+`apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts`.
+
+Dokumen yang diupdate: `tasks/v02-publishing-mvp.md` § T-025 (checklist
+T-025.1/2/3/5/7 selesai, catatan gap ditambahkan), `PROJECT_STATE.md`
+(KI-003 di-update PARTIALLY resolved, 3 KI baru KI-067/068/069, Blockers,
+Completed Ringkasan, Top Next Tasks), `TASKS.md` (Fokus sekarang).
+
+**Catatan governance:** belum ada ADR baru dibuat untuk resolusi
+ketiga gap ini — King Rezi belum memutuskan arah resolusinya (amandemen
+ADR-105/ADR-021 untuk KI-067, redesain kontrak untuk KI-068/KI-069). Ini
+kandidat ADR yang perlu dikonfirmasi King Rezi terlebih dulu sebelum
+ditulis. Kandidat lain yang juga belum diputuskan: apakah keputusan setup
+MCP Outstand resmi sebagai sumber verifikasi arsitektur layak dicatat ADR
+tersendiri.
+
+---
+
 ## 2026-09-23 — Efisiensi subagent: pangkas duplikasi changelog di PROJECT_STATE.md/TASKS.md
 
 King Rezi melaporkan sering kena 5-hours limit Claude, 85% pemakaian dari

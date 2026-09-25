@@ -74,6 +74,7 @@ export async function POST(request: Request): Promise<Response> {
   const syncCommentsUseCase = new SyncCommentsUseCase(
     engagementRepository,
     getOutstandAdapter(),
+    publishingRepository,
     new NotificationService(notificationRepository),
     createActiveWorkspaceMembersPort(),
   );

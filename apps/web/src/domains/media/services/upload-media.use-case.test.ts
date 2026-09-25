@@ -42,6 +42,7 @@ function createFakeRepository(
     findByWorkspace: async () => [],
     findByIds: async () => [],
     delete: async () => null,
+    saveOutstandWorkingCopy: async () => undefined,
     ...overrides,
   };
 }
@@ -55,6 +56,7 @@ function createFakeMediaStorage(
       storagePath: `${WORKSPACE_ID}/2026/09/uuid.jpg`,
     }),
     deleteMedia: async () => undefined,
+    downloadMedia: async () => Buffer.from(""),
     ...overrides,
   };
 }

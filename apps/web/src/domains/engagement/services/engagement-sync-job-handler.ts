@@ -64,6 +64,13 @@ export interface WorkspaceOwnerLookupPort {
     workspaceId: string;
     connectedAccountId: string;
     ownerUserId: UserId;
+    /**
+     * Redesain KI-068/ADR-113 — `handle` (`WorkspaceConnectedAccount.handle`)
+     * dibutuhkan untuk mengisi `SyncCommentsPayload.accountUsername` (API
+     * resmi Outstand butuh username untuk `fetchComments`, bukan lagi
+     * `outstandAccountId`).
+     */
+    handle: string;
   } | null>;
 }
 
@@ -146,7 +153,7 @@ export class EngagementSyncJobHandler {
       {
         workspaceId: asWorkspaceId(payload.workspaceId),
         connectedAccountId: asConnectedAccountId(payload.connectedAccountId),
-        outstandAccountId: payload.outstandAccountId,
+        accountUsername: owner.handle,
       },
       owner.ownerUserId,
     );

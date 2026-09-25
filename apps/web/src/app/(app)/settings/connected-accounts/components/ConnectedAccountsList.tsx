@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -17,6 +17,8 @@ import {
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Text } from "@/components/ui/text";
 import { ConfirmActionDialog } from "@/components/shared/ConfirmActionDialog";
+
+import { SocialPlatform } from "@social/shared";
 
 import {
   getConnectionStatusLabel,
@@ -38,6 +40,7 @@ import {
   initiateReconnectAccountAction,
 } from "../actions";
 import { ConnectPlatformMenu } from "./ConnectPlatformMenu";
+import { FacebookPagesPickerDialog } from "./FacebookPagesPickerDialog";
 
 // KI-041 (Stone theme shadcn belum punya token --success/--warning, dicatat
 // saat T-097.3): `Badge` shadcn cuma varian default/secondary/destructive/
@@ -108,6 +111,13 @@ function ReconnectButton({ account }: { account: ConnectedAccountRecord }) {
       );
       if (result?.error) {
         toast.error(result.error);
+        return;
+      }
+      // Facebook (Bug #2, T-025.4/KI-070) — lihat docstring
+      // `initiateReconnectAccountAction` (`../actions.ts`). Hard navigation
+      // penuh, bukan client-side App Router transition.
+      if (result?.redirectUrl) {
+        window.location.href = result.redirectUrl;
       }
     });
   }
@@ -148,6 +158,11 @@ function ConnectedAccountAction({
 }) {
   switch (displayStatus) {
     case "reconnect-required":
+      // Facebook Pages reconnect multi-page belum punya UPDATE path —
+      // sembunyikan tombol supaya tidak silent 0-page "sukses" toast.
+      if (account.platform === SocialPlatform.Facebook) {
+        return null;
+      }
       return <ReconnectButton account={account} />;
     case "active":
       return (
@@ -228,6 +243,7 @@ function ConnectedAccountRow({
 export function ConnectedAccountsList({
   accounts,
   connectResult = null,
+  facebookPagesPicker = null,
 }: {
   accounts: ConnectedAccountRecord[];
   /**
@@ -239,6 +255,15 @@ export function ConnectedAccountsList({
    * berulang.
    */
   connectResult?: "success" | "error" | null;
+  /**
+   * Facebook Pages flow (T-025.4, KI-070, ADR-115 §7/§10; review fix) —
+   * diteruskan dari `page.tsx` (`?connectFacebook=1` +
+   * `?connectFacebookState=`). Session token ada di cookie httpOnly
+   * (dibaca Server Action), bukan di props. Kalau ada saat mount, dialog
+   * otomatis terbuka — state dibekukan lokal supaya query flag bisa
+   * di-strip dari address bar tanpa menutup dialog.
+   */
+  facebookPagesPicker?: { state: string } | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -253,6 +278,17 @@ export function ConnectedAccountsList({
     router.replace(pathname);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- hanya perlu re-run saat `connectResult` (query param) berubah, bukan tiap render `router`/`pathname` (referensi baru tiap render Next.js).
   }, [connectResult]);
+
+  const [facebookSession, setFacebookSession] = useState(facebookPagesPicker);
+
+  useEffect(() => {
+    if (!facebookPagesPicker) return;
+    // Strip `connectFacebook`/`connectFacebookState` dari address bar
+    // SEGERA setelah dibaca ke state lokal — flag bukan bearer, tapi
+    // tetap jangan biarkan query mengotori URL setelah dialog terbuka.
+    router.replace(pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hanya perlu jalan sekali saat mount dengan query param Facebook awal, bukan tiap render router/pathname.
+  }, []);
 
   const disconnectConfirm = useConfirmAction<ConnectedAccountRecord>(
     (account) => disconnectAccountAction(account.id),
@@ -325,6 +361,16 @@ export function ConnectedAccountsList({
         onConfirm={() => void disconnectConfirm.confirm()}
         variant="destructive"
       />
+
+      {facebookSession ? (
+        <FacebookPagesPickerDialog
+          open
+          state={facebookSession.state}
+          onOpenChange={(next) => {
+            if (!next) setFacebookSession(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

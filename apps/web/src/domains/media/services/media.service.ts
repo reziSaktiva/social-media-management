@@ -119,4 +119,17 @@ export class MediaService {
     }
     return deleted;
   }
+
+  async saveOutstandWorkingCopy(
+    input: {
+      workspaceId: WorkspaceId;
+      mediaId: MediaId;
+      outstandMediaId: string;
+      outstandMediaUrl: string;
+      outstandExpiresAt: Date;
+    },
+    userId: UserId,
+  ): Promise<void> {
+    await this.repository.saveOutstandWorkingCopy(input, userId);
+  }
 }

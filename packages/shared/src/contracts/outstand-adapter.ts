@@ -40,6 +40,22 @@
  * mendesain split 2-method ini (bukan menebak liar) dan menjadi kontrak
  * resmi untuk keduanya.
  *
+ * **`resolveConnectCallback` menggantikan `exchangeConnectCode` (ADR-112,
+ * 2026-09-23, amandemen ADR-105, SCOPE: single-page account saja)** —
+ * setelah verifikasi lewat MCP resmi `mcp.outstand.so` + OpenAPI spec
+ * (sesi T-025, 2026-09-23), ditemukan Outstand TIDAK punya endpoint
+ * "exchange code" untuk platform single-page (Instagram, X, LinkedIn,
+ * Threads, TikTok, YouTube, Pinterest, dst — BUKAN Facebook Pages
+ * multi-halaman, lihat KI-070). Setelah OAuth selesai, Outstand redirect
+ * balik ke `redirect_uri` KITA dengan `account_id`/`network_unique_id`/
+ * `username` LANGSUNG di query param — data akun sudah lengkap tanpa
+ * network call tambahan. `ExchangeConnectCodeInput`/`exchangeConnectCode`
+ * DIHAPUS (bukan dipertahankan sebagai alias) — nama barunya
+ * (`ConnectCallbackInput`/`resolveConnectCallback`) sengaja tidak
+ * menyiratkan "exchange"/network call, karena real adapter untuk kasus
+ * ini murni validasi/normalisasi. Flow Facebook Pages (session-token +
+ * page-selection) di luar scope ADR-112, dicatat KI-070 terpisah.
+ *
  * **`uploadMediaWorkingCopy` (ADR-106, 2026-09-14)** — ditambahkan untuk
  * T-024.3 (media upload working copy Draft Editor). BEDA dari
  * `connectAccount`/`exchangeConnectCode`: ketiga langkah narasi Outstand
@@ -47,6 +63,14 @@
  * server-to-server tanpa redirect browser, jadi digabung menjadi SATU
  * method alih-alih split 2 method — lihat ADR-106 untuk perbandingan
  * eksplisit dengan alasan split ADR-105.
+ *
+ * **`OutstandPostTargetInput.platform` ditambahkan (ADR-114, 2026-09-24,
+ * resolusi KI-069)** — real adapter butuh tahu network (`instagram`/
+ * `facebook`/`pinterest`/dst) tiap target untuk membentuk key top-level
+ * override format platform-specific (Story/Reel, ADR-039/ADR-107) yang
+ * dibutuhkan body `POST /v1/posts` Outstand. Field lain di interface ini
+ * sudah wajib (bukan opsional) — `platform` konsisten dengan pola itu,
+ * bukan ditambahkan sebagai opsional/best-effort.
  */
 import type { ContentFormat, SocialPlatform } from "../enums";
 
@@ -57,17 +81,39 @@ import type { ContentFormat, SocialPlatform } from "../enums";
  * target karena bisa berbeda per akun (ADR-039, Content Format per akun
  * tujuan, mis. Reel di Instagram + Post biasa di Facebook dalam satu aksi
  * publish yang sama).
+ *
+ * `platform` (ADR-114, resolusi KI-069) — network tujuan target ini,
+ * dibutuhkan real adapter untuk membentuk key top-level override
+ * platform-specific (`instagram`/`facebook`/dst) di body `POST /v1/posts`.
+ * Caller SUDAH tahu nilai ini dari `SchedulePostsTargetInput.platform`/
+ * `RetryTargetRecord.platform` — adapter tidak menebak dari
+ * `outstandAccountId`.
  */
 export interface OutstandPostTargetInput {
   outstandAccountId: string;
+  platform: SocialPlatform;
   contentFormat: ContentFormat;
   platformOptions?: Record<string, unknown>;
+}
+
+/**
+ * Satu item media untuk `schedulePost`/`publishNow` — dipetakan ke
+ * `containers[].media[]` di body `POST /v1/posts` Outstand (`url` +
+ * `filename`). Caller (use-case publishing) menyuplai URL working copy
+ * Outstand (`uploadMediaWorkingCopy`) atau HTTPS publik yang sudah
+ * memenuhi syarat Outstand — adapter tidak mengunduh file sendiri.
+ */
+export interface OutstandPostMediaInput {
+  url: string;
+  filename: string;
 }
 
 export interface ScheduleOutstandPostInput {
   targets: OutstandPostTargetInput[];
   caption: string;
   scheduledAt: Date;
+  /** Opsional — kalau ada, body memakai `containers` (bukan top-level `content` saja). */
+  media?: OutstandPostMediaInput[];
 }
 
 export interface ScheduleOutstandPostResult {
@@ -90,6 +136,8 @@ export interface ScheduleOutstandPostResult {
 export interface PublishNowOutstandPostInput {
   targets: OutstandPostTargetInput[];
   caption: string;
+  /** Opsional — sama semantik `ScheduleOutstandPostInput.media`. */
+  media?: OutstandPostMediaInput[];
 }
 
 export interface PublishNowOutstandPostResult {
@@ -165,22 +213,34 @@ export interface ConnectAccountResult {
 }
 
 /**
- * Exchange Connect Code (T-013.1/T-013.2, T-015.3, ADR-105) — dipanggil
- * Route Handler `/api/integrations/outstand/callback` (Prabowo Feature
- * Engineer, di luar scope method ini) setelah Outstand (atau Fake,
- * loopback) mengarahkan balik dengan `code`+`state`.
+ * Resolve Connect Callback (T-013.1/T-013.2, T-015.3, ADR-105, redesain
+ * ADR-112 — SCOPE: single-page account saja, lihat KI-070 untuk Facebook
+ * Pages) — dipanggil Route Handler `/api/integrations/outstand/callback`
+ * (Prabowo Feature Engineer, di luar scope method ini) setelah Outstand
+ * (atau Fake, loopback) mengarahkan balik. Field-field ini dipetakan
+ * LANGSUNG dari query param yang dikirim Outstand — `outstandAccountId`
+ * dari `account_id`, `username` dari `username`, `networkUniqueId` dari
+ * `network_unique_id` (opsional — belum ada kebutuhan konkret yang
+ * membaca nilainya, disimpan untuk validasi/defensif masa depan, bukan
+ * dipakai memetakan `ConnectedAccountData` sekarang). `state` sama persis
+ * dengan ADR-105 (dibentuk `connectAccount`, membawa `platform`+`nonce`+
+ * `redirectAccountId?`).
  */
-export interface ExchangeConnectCodeInput {
-  code: string;
+export interface ConnectCallbackInput {
   state: string;
+  outstandAccountId: string;
+  username: string;
+  networkUniqueId?: string;
 }
 
 /**
- * Hasil exchange code — dipetakan langsung ke field `ConnectedAccount`
- * yang disimpan `WorkspaceService` (`integration-layer.md`, "Data yang
- * disimpan pada ConnectedAccount"). `status` selalu `"active"` di sini —
- * value lain (`expired`/`disconnected`) hanya muncul belakangan lewat
- * webhook/aksi disconnect, bukan hasil connect yang baru saja berhasil.
+ * Hasil resolve connect callback — dipetakan langsung ke field
+ * `ConnectedAccount` yang disimpan `WorkspaceService` (`integration-layer.md`,
+ * "Data yang disimpan pada ConnectedAccount"). `status` selalu `"active"`
+ * di sini — value lain (`expired`/`disconnected`) hanya muncul belakangan
+ * lewat webhook/aksi disconnect, bukan hasil connect yang baru saja
+ * berhasil. `platform` diambil dari `state` (bukan dari Outstand — lihat
+ * ADR-112), bukan dari `ConnectCallbackInput` secara langsung.
  */
 export interface ConnectedAccountData {
   outstandAccountId: string;
@@ -223,6 +283,49 @@ export interface UploadMediaWorkingCopyResult {
 }
 
 /**
+ * Facebook Pages — session-token connect flow (T-025.4, ADR-115, menutup
+ * KI-070; wire-format dikoreksi ADR-116) — Facebook (dan provider
+ * multi-halaman lain di sisi Outstand) tidak bisa memakai
+ * `resolveConnectCallback` (single-page saja, ADR-112): satu login bisa
+ * mengelola banyak Page, jadi Outstand redirect balik dengan
+ * `sessionToken` (BUKAN `account_id`/`username` langsung), dipakai untuk
+ * `GET /v1/social-accounts/pending/{sessionToken}` (daftar Page yang bisa
+ * dipilih) lalu `POST /v1/social-accounts/pending/{sessionToken}/finalize`
+ * (konfirmasi Page yang dipilih user, boleh lebih dari satu sekaligus).
+ *
+ * `pageId` dipetakan dari field wire `id` (real adapter, ADR-116) —
+ * **opaque, dipakai balik sebagai anggota `selectedPageIds` di confirm,
+ * bukan `outstandAccountId`** (Outstand bisa mengembalikan id berbeda di
+ * response confirm, sama seperti pola "jangan asumsikan" ADR-039/114 soal
+ * `board_id` Pinterest).
+ */
+export interface FacebookPendingPage {
+  pageId: string;
+  name: string;
+  pictureUrl?: string;
+  category?: string;
+}
+
+export interface ListPendingFacebookPagesInput {
+  sessionToken: string;
+}
+
+export interface ListPendingFacebookPagesResult {
+  pages: FacebookPendingPage[];
+}
+
+export interface ConfirmFacebookPagesInput {
+  sessionToken: string;
+  /** Minimum 1 elemen — divalidasi UI (tombol disabled) DAN adapter/WorkspaceService (defense-in-depth, jangan cuma percaya client). */
+  selectedPageIds: string[];
+}
+
+export interface ConfirmFacebookPagesResult {
+  /** Satu entri per Page yang berhasil dikonfirmasi Outstand — `platform` SELALU `SocialPlatform.Facebook` untuk tiap entri. */
+  accounts: ConnectedAccountData[];
+}
+
+/**
  * NOTE (2026-08-26, dicatat sebagai gap diketahui, bukan diimplementasikan
  * penuh di sini — di luar scope redesain ini, lihat draft ADR): dokumentasi
  * resmi Outstand `get-post-analytics` sebenarnya mengembalikan metrics
@@ -255,36 +358,57 @@ export interface FetchWorkspaceMetricsResult {
 }
 
 /**
- * Satu komentar external Outstand (Engagement MVP, T-051) — dipetakan ke
- * `EngagementInboxItem` oleh `EngagementService` saat upsert (external
- * comment ID = `outstandCommentId`, dedup key bersama `outstandAccountId`).
- * `outstandPostId` nullable — Outstand bisa mengembalikan komentar yang
- * postnya sudah dihapus/tidak terlacak di sisi kita (IL-D09, comments-only
- * MVP, tanpa DM/mention).
+ * Satu komentar external Outstand (Engagement MVP, T-051, redesain KI-068
+ * ADR-113) — dipetakan ke `EngagementInboxItem` oleh `EngagementService`
+ * saat upsert (external comment ID = `outstandCommentId`, dedup key
+ * bersama `connectedAccountId` yang diketahui CALLER dari konteks loop
+ * sync — lihat `SyncCommentsUseCase` — bukan dari field di sini).
+ *
+ * **`outstandPostId` sekarang WAJIB (bukan lagi `string | null`)** — API
+ * resmi Outstand men-scope replies PER POST
+ * (`GET /v1/posts/{postId}/replies`), jadi setiap komentar yang berhasil
+ * diambil PASTI berasal dari `outstandPostId` yang diminta caller (di-echo
+ * balik ke sini, BUKAN dari field response Outstand — `NormalizedReply`
+ * tidak membawa post id). Gap lama ("Outstand bisa mengembalikan komentar
+ * dari post yang tidak terlacak") sudah tidak relevan dengan model
+ * per-post ini.
+ *
+ * **`outstandAccountId` DIHAPUS (redesain KI-068)** — field lama ini tidak
+ * pernah bisa diisi bermakna oleh real adapter: `fetchComments` sekarang
+ * menerima `accountUsername` (bukan account ID) sebagai parameter, dan
+ * response `NormalizedReply` Outstand tidak membawa account id sama
+ * sekali (hanya `author`, nama/handle penulis KOMENTAR, bukan akun kita
+ * yang menerimanya). Caller (`SyncCommentsUseCase`) sudah tahu
+ * `connectedAccountId` dari konteks loop-nya sendiri (data durable), jadi
+ * tidak butuh field ini di-echo balik oleh adapter — pola yang sama
+ * dengan alasan `expectedOutstandAccountIds` di `fetchPostOutcome` disuplai
+ * caller, bukan ditebak adapter.
  */
 export interface InboxCommentData {
   outstandCommentId: string;
-  outstandAccountId: string;
   platform: SocialPlatform;
   authorHandle: string;
   content: string;
-  outstandPostId: string | null;
+  outstandPostId: string;
   receivedAt: Date;
 }
 
 /**
- * Hasil `fetchComments` — dipaginasi (`nextCursor`, `null` berarti halaman
- * terakhir). JOB-03 (`background-jobs.md`) memanggil ini berulang per
- * `ConnectedAccount` sampai `nextCursor` habis dalam satu run sync.
+ * Hasil `fetchComments` (redesain KI-068/ADR-113) — **`nextCursor` DIHAPUS**
+ * (bukan disisakan `null` selalu, itu sudah keputusan eksplisit King Rezi,
+ * bukan future-proofing): endpoint resmi Outstand
+ * (`GET /v1/posts/{postId}/replies`) TIDAK punya pagination cursor sama
+ * sekali. JOB-03 (`background-jobs.md`) sekarang memanggil `fetchComments`
+ * SEKALI per post (bukan berulang sampai cursor habis).
  */
 export interface FetchCommentsResult {
   comments: InboxCommentData[];
-  nextCursor: string | null;
 }
 
 /**
  * Hasil `replyToComment` — dipetakan ke `EngagementReply.outstandReplyId`
- * (T-054).
+ * (T-054). Tidak berubah oleh redesain KI-068 — tetap `reply_id` platform
+ * hasil `POST /v1/posts/{postId}/replies`.
  */
 export interface ReplyToCommentResult {
   outstandReplyId: string;
@@ -306,22 +430,53 @@ export interface IOutstandAdapter {
    * `WorkspaceService` saat user klik "Connect Account" (T-013) atau
    * "Reconnect" (T-015.3, dengan `redirectAccountId` diisi). Tidak
    * membuat/mengubah `ConnectedAccount` apa pun — itu terjadi belakangan
-   * di `exchangeConnectCode` setelah callback.
+   * di `resolveConnectCallback` setelah callback (ADR-112).
    */
   connectAccount(input: ConnectAccountInput): Promise<ConnectAccountResult>;
 
   /**
-   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105) —
-   * langkah 2 dari alur 2-tahap OAuth: tukar `code`+`state` (dari
-   * callback) dengan data akun final. Dipanggil Route Handler
-   * `/api/integrations/outstand/callback` (di luar scope kontrak ini).
-   * `WorkspaceService` yang memutuskan CREATE (connect baru) vs UPDATE
-   * (reconnect) `ConnectedAccount` berdasarkan `redirectAccountId` yang
-   * dibawa lewat `state` — bukan tanggung jawab adapter.
+   * Connect Account (T-013.1/T-013.2, T-015.3 Reconnect, ADR-105, redesain
+   * ADR-112) — langkah 2 dari alur 2-tahap OAuth. **SCOPE: single-page
+   * account saja** (Instagram, X, LinkedIn, Threads, TikTok, YouTube,
+   * Pinterest, dst — bukan Facebook Pages multi-halaman, lihat KI-070).
+   * BUKAN "exchange" — Outstand sudah mengirim data akun (`account_id`/
+   * `username`/`network_unique_id`) langsung lewat query param callback,
+   * jadi method ini murni validasi/normalisasi jadi `ConnectedAccountData`
+   * (real adapter TIDAK melakukan network call untuk ini). Dipanggil
+   * Route Handler `/api/integrations/outstand/callback` (di luar scope
+   * kontrak ini). `WorkspaceService` yang memutuskan CREATE (connect baru)
+   * vs UPDATE (reconnect) `ConnectedAccount` berdasarkan `redirectAccountId`
+   * yang dibawa lewat `state` — bukan tanggung jawab adapter.
    */
-  exchangeConnectCode(
-    input: ExchangeConnectCodeInput,
+  resolveConnectCallback(
+    input: ConnectCallbackInput,
   ): Promise<ConnectedAccountData>;
+
+  /**
+   * Facebook Pages — langkah 3 (T-025.4, ADR-115, wire-format dikoreksi
+   * ADR-116): daftar Page yang tersedia untuk dipilih dari sebuah
+   * `sessionToken` (didapat Route Handler callback dari redirect Outstand,
+   * lihat docstring `FacebookPendingPage`). Murni pass-through + mapping
+   * response — tidak ada RBAC/business logic di adapter (ACL boundary,
+   * AGENTS.md #6), itu tanggung jawab `WorkspaceService.listFacebookPendingPages`.
+   */
+  listPendingFacebookPages(
+    input: ListPendingFacebookPagesInput,
+  ): Promise<ListPendingFacebookPagesResult>;
+
+  /**
+   * Facebook Pages — langkah 4 (T-025.4, ADR-115, wire-format dikoreksi
+   * ADR-116): konfirmasi Page yang dipilih user (SATU panggilan untuk
+   * SEMUA `selectedPageIds`, bukan N panggilan — bentuk endpoint Outstand
+   * sendiri, `POST .../finalize` menerima array). `WorkspaceService.
+   * confirmFacebookPagesConnection` yang bertanggung jawab persist
+   * `ConnectedAccount` per Page hasil method ini (skip-on-conflict,
+   * idempotent-guard ADR-109) — adapter ini tidak menyentuh database sama
+   * sekali.
+   */
+  confirmFacebookPagesConnection(
+    input: ConfirmFacebookPagesInput,
+  ): Promise<ConfirmFacebookPagesResult>;
 
   /**
    * Media upload working copy (T-024.3, ADR-040 poin 4, ADR-106) — minta
@@ -464,24 +619,46 @@ export interface IOutstandAdapter {
   ): Promise<FetchWorkspaceMetricsResult>;
 
   /**
-   * Engagement Sync (JOB-03, T-051) — ambil komentar baru untuk satu
-   * `ConnectedAccount`, dipaginasi lewat `cursor` (kosong = halaman
-   * pertama). Dipanggil `EngagementSyncJobHandler` (periodik 30 menit) dan
-   * manual refresh (T-052) — keduanya lewat use-case yang sama
-   * (`integration-layer.md` § "Engagement Data Sync").
+   * Engagement Sync (JOB-03, T-051, redesain KI-068/ADR-113) — ambil
+   * komentar untuk SATU post (`outstandPostId`), BUKAN lagi satu
+   * `ConnectedAccount`. API resmi Outstand men-scope replies per post
+   * (`GET /v1/posts/{postId}/replies`, query `network` WAJIB, `username`
+   * opsional — tapi kita selalu mengirimnya untuk menghindari 400
+   * disambiguasi saat satu post publish ke >1 akun di network yang sama)
+   * dan TIDAK punya pagination cursor sama sekali — karena itu tidak ada
+   * lagi parameter `cursor`/`nextCursor`.
+   *
+   * `SyncCommentsUseCase` (JOB-03) sekarang memanggil ini SEKALI PER POST
+   * (bukan sekali per akun) — daftar post yang di-sync diambil dari
+   * `PublishingPost`/`PublishingPostTarget` milik `connectedAccountId` ini
+   * (query domain `publishing` sendiri lewat public API barrel, BUKAN
+   * endpoint list-posts Outstand — keputusan eksplisit King Rezi/KI-068).
+   * `platform`/`accountUsername` diteruskan dari data durable yang sudah
+   * diketahui caller (pola sama `expectedOutstandAccountIds` di
+   * `fetchPostOutcome` — adapter tidak menebak, caller menyuplai).
    */
-  fetchComments(
-    outstandAccountId: string,
-    cursor?: string,
-  ): Promise<FetchCommentsResult>;
+  fetchComments(input: {
+    outstandPostId: string;
+    platform: SocialPlatform;
+    accountUsername: string;
+  }): Promise<FetchCommentsResult>;
 
   /**
-   * Reply dari dalam aplikasi (T-054) — dipanggil `EngagementService`
-   * setelah RBAC check lolos. `outstandCommentId` adalah external
-   * reference dari `InboxCommentData`/`EngagementInboxItem.externalId`.
+   * Reply dari dalam aplikasi (T-054, redesain KI-068/ADR-113) — dipanggil
+   * `EngagementService` setelah RBAC check lolos. Endpoint resmi Outstand
+   * `POST /v1/posts/{postId}/replies` WAJIB tahu `postId` — `outstandPostId`
+   * karena itu sekarang wajib di kontrak ini (sebelumnya method ini hanya
+   * membawa `outstandCommentId`, yang TIDAK cukup untuk memanggil endpoint
+   * resmi sama sekali, root cause KI-068). `content` adalah isi balasan.
+   * `parentOutstandCommentId` opsional — kalau diisi, balasan di-thread di
+   * bawah komentar itu (`parent_comment_id`, didukung Facebook/Instagram/
+   * LinkedIn/Threads); kalau kosong, balasan langsung ke post
+   * (`EngagementService.reply` mengisinya dengan `outstandCommentId`
+   * komentar yang sedang dibalas — lihat catatan di sana).
    */
-  replyToComment(
-    outstandCommentId: string,
-    text: string,
-  ): Promise<ReplyToCommentResult>;
+  replyToComment(input: {
+    outstandPostId: string;
+    content: string;
+    parentOutstandCommentId?: string;
+  }): Promise<ReplyToCommentResult>;
 }

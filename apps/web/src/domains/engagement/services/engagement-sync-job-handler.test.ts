@@ -22,6 +22,7 @@ function createOwnerLookup(
       workspaceId: PAYLOAD.workspaceId,
       connectedAccountId: PAYLOAD.connectedAccountId,
       ownerUserId: asUserId("owner-1"),
+      handle: "@fake.account",
     }),
     ...overrides,
   };
@@ -47,7 +48,7 @@ describe("EngagementSyncJobHandler.handle", () => {
     expect(calledPayload).toEqual({
       workspaceId: PAYLOAD.workspaceId,
       connectedAccountId: PAYLOAD.connectedAccountId,
-      outstandAccountId: PAYLOAD.outstandAccountId,
+      accountUsername: "@fake.account",
     });
     expect(calledUserId).toBe("owner-1");
   });
@@ -125,6 +126,7 @@ describe("EngagementSyncJobHandler.handle", () => {
           workspaceId: "workspace-DIFFERENT",
           connectedAccountId: PAYLOAD.connectedAccountId,
           ownerUserId: asUserId("owner-1"),
+          handle: "@fake.account",
         }),
       }),
     );

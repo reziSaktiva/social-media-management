@@ -783,33 +783,53 @@ export const publishingRepository: IPublishingRepository = {
   },
 
   async getRetryTarget({ workspaceId, postId, targetId }, userId) {
-    const target = await withCurrentUser(userId, (tx) =>
-      tx.publishingPostTarget.findFirst({
+    const target = await withCurrentUser(userId, async (tx) => {
+      const found = await tx.publishingPostTarget.findFirst({
         where: {
           id: targetId,
           postId,
           post: { workspaceId, deletedAt: null },
         },
         include: { post: true, connectedAccount: true },
-      }),
-    );
+      });
+      if (!found) {
+        return null;
+      }
+
+      // Sibling live = published/scheduled/pending selain target ini —
+      // dipakai RetryFailedTargetUseCase untuk SKIP deletePost (API
+      // Outstand /remote tidak scoped per akun).
+      const siblingLiveCount = await tx.publishingPostTarget.count({
+        where: {
+          postId,
+          id: { not: targetId },
+          status: { in: ["published", "scheduled", "pending"] },
+        },
+      });
+
+      return { found, hasSiblingLiveTargets: siblingLiveCount > 0 };
+    });
 
     if (!target) {
       return null;
     }
 
+    const { found, hasSiblingLiveTargets } = target;
+
     const record: RetryTargetRecord = {
-      postId: asPostId(target.post.id),
-      workspaceId: asWorkspaceId(target.post.workspaceId),
-      postOutstandPostId: target.post.outstandPostId,
-      caption: target.post.caption,
-      targetId: asPostTargetId(target.id),
-      targetStatus: target.status as PublishingPostTargetStatus,
-      connectedAccountId: asConnectedAccountId(target.connectedAccountId),
-      outstandAccountId: target.connectedAccount.outstandAccountId,
-      platform: target.platform as SocialPlatform,
-      contentFormat: target.contentFormat as ContentFormat,
-      platformOptions: target.platformOptions as Record<string, unknown> | null,
+      postId: asPostId(found.post.id),
+      workspaceId: asWorkspaceId(found.post.workspaceId),
+      postOutstandPostId: found.post.outstandPostId,
+      caption: found.post.caption,
+      mediaIds: found.post.mediaIds.map((id) => asMediaId(id)),
+      targetId: asPostTargetId(found.id),
+      targetStatus: found.status as PublishingPostTargetStatus,
+      connectedAccountId: asConnectedAccountId(found.connectedAccountId),
+      outstandAccountId: found.connectedAccount.outstandAccountId,
+      platform: found.platform as SocialPlatform,
+      contentFormat: found.contentFormat as ContentFormat,
+      platformOptions: found.platformOptions as Record<string, unknown> | null,
+      hasSiblingLiveTargets,
     };
 
     return record;
@@ -952,6 +972,101 @@ export const publishingRepository: IPublishingRepository = {
     });
 
     return post ? mapPost(post) : null;
+  },
+
+  /**
+   * Engagement Sync (JOB-03, T-051, redesain KI-068/ADR-113) — query lewat
+   * `publishingPostTarget` (bukan `publishingPost`) karena filter utamanya
+   * (`connectedAccountId`) ada di level target, bukan post. `outstandPostId`
+   * (post-level) dan `deletedAt` (soft-delete) difilter lewat relasi
+   * `post`. Lihat `IPublishingRepository.listSyncablePostsByConnectedAccount`.
+   */
+  async listSyncablePostsByConnectedAccount(
+    { workspaceId, connectedAccountId },
+    userId,
+  ) {
+    // Engagement sync: hanya target yang sudah published (komentar hanya
+    // relevan setelah tayang). Bound 50 terbaru supaya JOB-03 tidak
+    // men-pull seluruh history akun.
+    const SYNCABLE_POST_LIMIT = 50;
+
+    const targets = await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.findMany({
+        where: {
+          connectedAccountId,
+          status: "published",
+          post: {
+            workspaceId,
+            deletedAt: null,
+            outstandPostId: { not: null },
+          },
+        },
+        select: {
+          postId: true,
+          platform: true,
+          retryOutstandPostId: true,
+          post: {
+            select: {
+              outstandPostId: true,
+              publishedAt: true,
+              createdAt: true,
+            },
+          },
+        },
+        orderBy: [
+          { post: { publishedAt: "desc" } },
+          { post: { createdAt: "desc" } },
+        ],
+        take: SYNCABLE_POST_LIMIT,
+      }),
+    );
+
+    return targets.flatMap((target) => {
+      const outstandPostId =
+        target.retryOutstandPostId ?? target.post.outstandPostId;
+      if (!outstandPostId) return [];
+      return [
+        {
+          postId: asPostId(target.postId),
+          outstandPostId,
+          platform: target.platform as SocialPlatform,
+        },
+      ];
+    });
+  },
+
+  /**
+   * Reply Engagement (T-054, redesain KI-068/ADR-113) — lihat
+   * `IPublishingRepository.findPostOutstandId`.
+   */
+  async findPostOutstandId(
+    { workspaceId, postId, connectedAccountId },
+    userId,
+  ) {
+    return withCurrentUser(userId, async (tx) => {
+      if (connectedAccountId) {
+        const target = await tx.publishingPostTarget.findFirst({
+          where: {
+            postId,
+            connectedAccountId,
+            post: { workspaceId, deletedAt: null },
+          },
+          select: {
+            retryOutstandPostId: true,
+            post: { select: { outstandPostId: true } },
+          },
+        });
+        if (!target) return null;
+        return target.retryOutstandPostId ?? target.post.outstandPostId;
+      }
+
+      const post = await tx.publishingPost.findFirst({
+        where: { id: postId, workspaceId, deletedAt: null },
+        select: { outstandPostId: true },
+      });
+
+      return post?.outstandPostId ?? null;
+    });
   },
 };
 

@@ -86,6 +86,8 @@ function createFakeRepository(
     reconcilePostStatusAfterRetry: async () => undefined,
     findPostTargetsByOutstandPostId: async () => null,
     softDeletePost: async () => null,
+    listSyncablePostsByConnectedAccount: async () => [],
+    findPostOutstandId: async () => null,
     ...overrides,
   } satisfies IPublishingRepository;
 }
@@ -114,12 +116,14 @@ function createFakeAdapter(
 ): IOutstandAdapter {
   return {
     connectAccount: async () => ({ redirectUrl: "/unused" }),
+    listPendingFacebookPages: async () => ({ pages: [] }),
+    confirmFacebookPagesConnection: async () => ({ accounts: [] }),
     uploadMediaWorkingCopy: async () => ({
       outstandMediaId: "unused",
       outstandMediaUrl: "https://fake.outstand.local/media/unused",
       expiresAt: new Date(),
     }),
-    exchangeConnectCode: async () => ({
+    resolveConnectCallback: async () => ({
       outstandAccountId: "unused",
       platform: "instagram" as never,
       handle: "unused",

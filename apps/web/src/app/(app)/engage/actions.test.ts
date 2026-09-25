@@ -52,6 +52,13 @@ vi.mock("@/lib/repositories/engagement", () => ({ engagementRepository: {} }));
 vi.mock("@/lib/repositories/notification", () => ({
   notificationRepository: {},
 }));
+// Redesain KI-068/ADR-113 — `refreshInboxAction`/`replyToCommentAction` dkk
+// sekarang juga merakit `publishingRepository` (dipassing sebagai
+// `PublishingPostsPort`/`PublishingPostReferencePort` ke
+// `SyncCommentsUseCase`/`EngagementService`) — di-stub sama seperti
+// repository lain di atas supaya import module ini tidak menyentuh
+// PrismaClient sungguhan (butuh `DATABASE_URL`).
+vi.mock("@/lib/repositories/publishing", () => ({ publishingRepository: {} }));
 vi.mock("@/lib/adapters/outstand", () => ({
   getOutstandAdapter: () => ({}),
 }));
@@ -114,7 +121,7 @@ describe("refreshInboxAction", () => {
       {
         workspaceId: WORKSPACE_ID,
         connectedAccountId: ACCOUNT_ACTIVE.id,
-        outstandAccountId: ACCOUNT_ACTIVE.outstandAccountId,
+        accountUsername: ACCOUNT_ACTIVE.handle,
       },
       USER_ID,
     );

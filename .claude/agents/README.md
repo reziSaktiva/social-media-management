@@ -64,8 +64,10 @@ task token warna KI-041/ADR-098 **dan** task desain mobile Calendar
 KI-035 poin 3 — keduanya gagal di sesi Neymar yang sama; lalu 2026-09-22,
 task migrasi sidebar ke primitive `Sidebar` shadcn KI-066/T-105 — sama
 persis: `ToolSearch` beberapa query termasuk `select:DesignSync` tidak
-menemukan apa pun di sesi Neymar), padahal tool yang sama berhasil di sesi
-utama pada waktu yang berdekatan setiap kali.
+menemukan apa pun di sesi Neymar; lalu 2026-09-24, task drafting UI
+page-selection Facebook Pages KI-070 — kejadian ketujuh, pola sama persis),
+padahal tool yang sama berhasil di sesi utama pada waktu yang berdekatan
+setiap kali.
 
 **Ini pengecualian sementara terhadap mandat WAJIB di
 `neymar-product-designer.md`, bukan pembatalannya.** Selama keterbatasan ini

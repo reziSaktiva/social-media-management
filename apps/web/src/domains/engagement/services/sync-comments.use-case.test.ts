@@ -1,8 +1,10 @@
 import {
   asConnectedAccountId,
+  asPostId,
   asUserId,
   asWorkspaceId,
   SocialPlatform,
+  type PostId,
 } from "@social/shared";
 import type { IOutstandAdapter, InboxCommentData } from "@social/shared";
 import { describe, expect, it, vi } from "vitest";
@@ -13,16 +15,22 @@ import { SyncCommentsUseCase } from "./sync-comments.use-case";
 const WORKSPACE_ID = asWorkspaceId("workspace-1");
 const CONNECTED_ACCOUNT_ID = asConnectedAccountId("account-1");
 const USER_ID = asUserId("user-1");
-const OUTSTAND_ACCOUNT_ID = "outstand-account-1";
+const ACCOUNT_USERNAME = "@fake.account";
+const POST_ID_1 = asPostId("post-1");
+const POST_ID_2 = asPostId("post-2");
+const OUTSTAND_POST_ID_1 = "outstand-post-1";
+const OUTSTAND_POST_ID_2 = "outstand-post-2";
 
-function makeComment(index: number): InboxCommentData {
+function makeComment(
+  index: number,
+  outstandPostId: string = OUTSTAND_POST_ID_1,
+): InboxCommentData {
   return {
     outstandCommentId: `comment-${index}`,
-    outstandAccountId: OUTSTAND_ACCOUNT_ID,
     platform: SocialPlatform.Instagram,
     authorHandle: `@user${index}`,
     content: `Komentar ke-${index}`,
-    outstandPostId: null,
+    outstandPostId,
     receivedAt: new Date(0),
   };
 }
@@ -32,12 +40,14 @@ function createFakeAdapter(
 ): IOutstandAdapter {
   return {
     connectAccount: async () => ({ redirectUrl: "/unused" }),
+    listPendingFacebookPages: async () => ({ pages: [] }),
+    confirmFacebookPagesConnection: async () => ({ accounts: [] }),
     uploadMediaWorkingCopy: async () => ({
       outstandMediaId: "unused",
       outstandMediaUrl: "https://fake.outstand.local/media/unused",
       expiresAt: new Date(),
     }),
-    exchangeConnectCode: async () => ({
+    resolveConnectCallback: async () => ({
       outstandAccountId: "unused",
       platform: "instagram" as never,
       handle: "unused",
@@ -87,12 +97,45 @@ function createFakeRepository(
   };
 }
 
+/**
+ * Fake port `engagement` → `publishing` (redesain KI-068/ADR-113) — lihat
+ * `refresh-inbox.use-case.test.ts` untuk penjelasan lengkap. Default satu
+ * post (`POST_ID_1`/`OUTSTAND_POST_ID_1`) supaya test yang tidak spesifik
+ * menguji multi-post tidak perlu mengurus daftar ini sendiri.
+ */
+function createFakePublishingPosts(
+  posts: {
+    postId: PostId;
+    outstandPostId: string;
+    platform: SocialPlatform;
+  }[] = [
+    {
+      postId: POST_ID_1,
+      outstandPostId: OUTSTAND_POST_ID_1,
+      platform: SocialPlatform.Instagram,
+    },
+  ],
+) {
+  return {
+    listSyncablePostsByConnectedAccount: async () => posts,
+  };
+}
+
+const PAYLOAD = {
+  workspaceId: WORKSPACE_ID,
+  connectedAccountId: CONNECTED_ACCOUNT_ID,
+  accountUsername: ACCOUNT_USERNAME,
+};
+
 describe("SyncCommentsUseCase.sync", () => {
   it("mengupsert setiap komentar hasil fetchComments dan menghitung yang benar-benar baru", async () => {
-    const upsertedExternalIds: string[] = [];
+    const upsertedInputs: { externalId: string; postId?: PostId }[] = [];
     const repository = createFakeRepository({
       upsertInboxItem: async (input) => {
-        upsertedExternalIds.push(input.externalId);
+        upsertedInputs.push({
+          externalId: input.externalId,
+          postId: input.postId,
+        });
         return {
           item: {} as EngagementInboxItemRecord,
           isNew: true,
@@ -101,21 +144,20 @@ describe("SyncCommentsUseCase.sync", () => {
     });
     const adapter = createFakeAdapter(async () => ({
       comments: [makeComment(1), makeComment(2)],
-      nextCursor: null,
     }));
-    const useCase = new SyncCommentsUseCase(repository, adapter);
-
-    const result = await useCase.sync(
-      {
-        workspaceId: WORKSPACE_ID,
-        connectedAccountId: CONNECTED_ACCOUNT_ID,
-        outstandAccountId: OUTSTAND_ACCOUNT_ID,
-      },
-      USER_ID,
+    const useCase = new SyncCommentsUseCase(
+      repository,
+      adapter,
+      createFakePublishingPosts(),
     );
 
+    const result = await useCase.sync(PAYLOAD, USER_ID);
+
     expect(result).toEqual({ newCommentsCount: 2 });
-    expect(upsertedExternalIds).toEqual(["comment-1", "comment-2"]);
+    expect(upsertedInputs).toEqual([
+      { externalId: "comment-1", postId: POST_ID_1 },
+      { externalId: "comment-2", postId: POST_ID_1 },
+    ]);
   });
 
   it("idempoten — sync kedua untuk komentar yang sama tidak menghitung komentar baru", async () => {
@@ -133,50 +175,110 @@ describe("SyncCommentsUseCase.sync", () => {
     });
     const adapter = createFakeAdapter(async () => ({
       comments: [makeComment(1), makeComment(2)],
-      nextCursor: null,
     }));
-    const useCase = new SyncCommentsUseCase(repository, adapter);
-    const payload = {
-      workspaceId: WORKSPACE_ID,
-      connectedAccountId: CONNECTED_ACCOUNT_ID,
-      outstandAccountId: OUTSTAND_ACCOUNT_ID,
-    };
+    const useCase = new SyncCommentsUseCase(
+      repository,
+      adapter,
+      createFakePublishingPosts(),
+    );
 
-    const first = await useCase.sync(payload, USER_ID);
-    const second = await useCase.sync(payload, USER_ID);
+    const first = await useCase.sync(PAYLOAD, USER_ID);
+    const second = await useCase.sync(PAYLOAD, USER_ID);
 
     expect(first).toEqual({ newCommentsCount: 2 });
     expect(second).toEqual({ newCommentsCount: 0 });
   });
 
-  it("mengikuti nextCursor sampai habis (pagination)", async () => {
-    const cursorsRequested: (string | undefined)[] = [];
+  it("melanjutkan post lain kalau fetchComments satu post gagal (isolasi per-post)", async () => {
+    const upserted: string[] = [];
     const fetchComments = vi
       .fn<IOutstandAdapter["fetchComments"]>()
-      .mockImplementationOnce(async (_accountId, cursor) => {
-        cursorsRequested.push(cursor);
-        return { comments: [makeComment(1)], nextCursor: "page-2" };
-      })
-      .mockImplementationOnce(async (_accountId, cursor) => {
-        cursorsRequested.push(cursor);
-        return { comments: [makeComment(2)], nextCursor: null };
+      .mockImplementation(async ({ outstandPostId }) => {
+        if (outstandPostId === OUTSTAND_POST_ID_1) {
+          throw new Error("Outstand 404 for post-1");
+        }
+        return {
+          comments: [makeComment(2, outstandPostId)],
+        };
+      });
+    const repository = createFakeRepository({
+      upsertInboxItem: async (input) => {
+        upserted.push(input.externalId);
+        return { item: {} as EngagementInboxItemRecord, isNew: true };
+      },
+    });
+    const publishingPosts = createFakePublishingPosts([
+      {
+        postId: POST_ID_1,
+        outstandPostId: OUTSTAND_POST_ID_1,
+        platform: SocialPlatform.Instagram,
+      },
+      {
+        postId: POST_ID_2,
+        outstandPostId: OUTSTAND_POST_ID_2,
+        platform: SocialPlatform.Instagram,
+      },
+    ]);
+    const useCase = new SyncCommentsUseCase(
+      repository,
+      createFakeAdapter(fetchComments),
+      publishingPosts,
+    );
+
+    const result = await useCase.sync(PAYLOAD, USER_ID);
+
+    expect(result).toEqual({ newCommentsCount: 1 });
+    expect(upserted).toEqual(["comment-2"]);
+    expect(fetchComments).toHaveBeenCalledTimes(2);
+  });
+
+  it("memanggil fetchComments SEKALI PER POST syncable (redesain KI-068 — bukan lagi cursor per akun)", async () => {
+    const requestedOutstandPostIds: string[] = [];
+    const fetchComments = vi
+      .fn<IOutstandAdapter["fetchComments"]>()
+      .mockImplementation(async ({ outstandPostId }) => {
+        requestedOutstandPostIds.push(outstandPostId);
+        return {
+          comments: [
+            makeComment(
+              outstandPostId === OUTSTAND_POST_ID_1 ? 1 : 2,
+              outstandPostId,
+            ),
+          ],
+        };
       });
     const repository = createFakeRepository();
     const adapter = createFakeAdapter(fetchComments);
-    const useCase = new SyncCommentsUseCase(repository, adapter);
-
-    const result = await useCase.sync(
+    const publishingPosts = createFakePublishingPosts([
       {
-        workspaceId: WORKSPACE_ID,
-        connectedAccountId: CONNECTED_ACCOUNT_ID,
-        outstandAccountId: OUTSTAND_ACCOUNT_ID,
+        postId: POST_ID_1,
+        outstandPostId: OUTSTAND_POST_ID_1,
+        platform: SocialPlatform.Instagram,
       },
-      USER_ID,
+      {
+        postId: POST_ID_2,
+        outstandPostId: OUTSTAND_POST_ID_2,
+        platform: SocialPlatform.Instagram,
+      },
+    ]);
+    const useCase = new SyncCommentsUseCase(
+      repository,
+      adapter,
+      publishingPosts,
     );
 
+    const result = await useCase.sync(PAYLOAD, USER_ID);
+
     expect(result).toEqual({ newCommentsCount: 2 });
-    expect(cursorsRequested).toEqual([undefined, "page-2"]);
+    expect(requestedOutstandPostIds).toEqual([
+      OUTSTAND_POST_ID_1,
+      OUTSTAND_POST_ID_2,
+    ]);
     expect(fetchComments).toHaveBeenCalledTimes(2);
+    for (const call of fetchComments.mock.calls) {
+      expect(call[0].accountUsername).toBe(ACCOUNT_USERNAME);
+      expect(call[0].platform).toBe(SocialPlatform.Instagram);
+    }
   });
 
   it("mengirim SATU notifikasi aggregate per member aktif kalau ada komentar baru (bukan per-komentar)", async () => {
@@ -186,13 +288,13 @@ describe("SyncCommentsUseCase.sync", () => {
     const repository = createFakeRepository();
     const adapter = createFakeAdapter(async () => ({
       comments: [makeComment(1), makeComment(2), makeComment(3)],
-      nextCursor: null,
     }));
     const memberA = asUserId("member-a");
     const memberB = asUserId("member-b");
     const useCase = new SyncCommentsUseCase(
       repository,
       adapter,
+      createFakePublishingPosts(),
       { notify },
       {
         listActiveMembers: async () => [
@@ -202,14 +304,7 @@ describe("SyncCommentsUseCase.sync", () => {
       },
     );
 
-    await useCase.sync(
-      {
-        workspaceId: WORKSPACE_ID,
-        connectedAccountId: CONNECTED_ACCOUNT_ID,
-        outstandAccountId: OUTSTAND_ACCOUNT_ID,
-      },
-      USER_ID,
-    );
+    await useCase.sync(PAYLOAD, USER_ID);
 
     expect(notify).toHaveBeenCalledTimes(2);
     const notifiedUserIds = notify.mock.calls.map((call) => call[0].userId);
@@ -223,18 +318,14 @@ describe("SyncCommentsUseCase.sync", () => {
     const repository = createFakeRepository();
     const adapter = createFakeAdapter(async () => ({
       comments: [makeComment(1)],
-      nextCursor: null,
     }));
-    const useCase = new SyncCommentsUseCase(repository, adapter);
-
-    const result = await useCase.sync(
-      {
-        workspaceId: WORKSPACE_ID,
-        connectedAccountId: CONNECTED_ACCOUNT_ID,
-        outstandAccountId: OUTSTAND_ACCOUNT_ID,
-      },
-      USER_ID,
+    const useCase = new SyncCommentsUseCase(
+      repository,
+      adapter,
+      createFakePublishingPosts(),
     );
+
+    const result = await useCase.sync(PAYLOAD, USER_ID);
 
     expect(result).toEqual({ newCommentsCount: 1 });
   });
@@ -249,27 +340,36 @@ describe("SyncCommentsUseCase.sync", () => {
     });
     const adapter = createFakeAdapter(async () => ({
       comments: [makeComment(1)],
-      nextCursor: null,
     }));
     const useCase = new SyncCommentsUseCase(
       repository,
       adapter,
+      createFakePublishingPosts(),
       { notify },
       {
         listActiveMembers: async () => [{ userId: asUserId("member-a") }],
       },
     );
 
-    const result = await useCase.sync(
-      {
-        workspaceId: WORKSPACE_ID,
-        connectedAccountId: CONNECTED_ACCOUNT_ID,
-        outstandAccountId: OUTSTAND_ACCOUNT_ID,
-      },
-      USER_ID,
-    );
+    const result = await useCase.sync(PAYLOAD, USER_ID);
 
     expect(result).toEqual({ newCommentsCount: 0 });
     expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("tidak memanggil fetchComments sama sekali kalau tidak ada post syncable untuk akun ini", async () => {
+    const fetchComments = vi.fn<IOutstandAdapter["fetchComments"]>();
+    const repository = createFakeRepository();
+    const adapter = createFakeAdapter(fetchComments);
+    const useCase = new SyncCommentsUseCase(
+      repository,
+      adapter,
+      createFakePublishingPosts([]),
+    );
+
+    const result = await useCase.sync(PAYLOAD, USER_ID);
+
+    expect(result).toEqual({ newCommentsCount: 0 });
+    expect(fetchComments).not.toHaveBeenCalled();
   });
 });

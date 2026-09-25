@@ -43,6 +43,7 @@ function createFakeRepository(
     findByWorkspace: async () => [],
     findByIds: async () => [],
     delete: async () => fakeRecord(),
+    saveOutstandWorkingCopy: async () => undefined,
     ...overrides,
   };
 }
@@ -56,6 +57,7 @@ function createFakeMediaStorage(
       storagePath: STORAGE_PATH,
     }),
     deleteMedia: async () => undefined,
+    downloadMedia: async () => Buffer.from(""),
     ...overrides,
   };
 }

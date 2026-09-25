@@ -34,4 +34,9 @@ export interface IMediaStorageAdapter {
   uploadMedia(input: UploadMediaInput): Promise<UploadMediaResult>;
   /** Best-effort cleanup — used when a DB write fails after upload succeeded. */
   deleteMedia(storagePath: string): Promise<void>;
+  /**
+   * Unduh bytes original dari bucket private (schedule/publish →
+   * `uploadMediaWorkingCopy`). Throw kalau path tidak ada / Storage gagal.
+   */
+  downloadMedia(storagePath: string): Promise<Buffer>;
 }

@@ -1,16 +1,44 @@
 import type {
   IOutstandAdapter,
   InboxItemId,
+  PostId,
+  ConnectedAccountId,
   UserId,
   WorkspaceId,
 } from "@social/shared";
-import { NotFoundError, ValidationError } from "@/lib/utils/errors";
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from "@/lib/utils/errors";
 import type { IEngagementRepository } from "../repositories/engagement.repository";
 import type {
   EngagementInboxItemRecord,
   EngagementReplyRecord,
   InboxItemFilter,
 } from "../types";
+
+/**
+ * Port lokal cross-domain `engagement` → `publishing` (redesain
+ * KI-068/ADR-113, sama alasan `PublishingPostsPort` di
+ * `sync-comments.use-case.ts`) — `EngagementService.reply` butuh
+ * `outstandPostId` (bukan hanya `outstandCommentId`) untuk memenuhi
+ * kontrak `IOutstandAdapter.replyToComment` yang baru, karena endpoint
+ * resmi Outstand WAJIB tahu `postId`. `engagement` TIDAK mengimpor
+ * `PublishingRepository` konkret; composition root (`engage/actions.ts`)
+ * menyuplai instance lewat constructor (structural typing, pola sama
+ * `SyncCommentsUseCase`).
+ */
+interface PublishingPostReferencePort {
+  findPostOutstandId(
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      connectedAccountId?: ConnectedAccountId;
+    },
+    userId: UserId,
+  ): Promise<string | null>;
+}
 
 /**
  * Detail satu inbox item + balasannya (T-050) — dipakai composition root
@@ -34,6 +62,7 @@ export class EngagementService {
   constructor(
     private readonly repository: IEngagementRepository,
     private readonly adapter: IOutstandAdapter,
+    private readonly publishingPosts: PublishingPostReferencePort,
   ) {}
 
   /**
@@ -92,26 +121,33 @@ export class EngagementService {
 
   /**
    * Balas komentar dari dalam aplikasi (T-054, `integration-layer.md`
-   * § "Reply via Outstand API", ADR-019/ADR-040). RBAC: seluruh role
-   * (Account Owner/Admin/Creator) boleh membalas — `roles-permissions.md`
-   * tidak membedakan akses "Kelola Engagement Comments Inbox" per role,
-   * jadi tidak ada role gating tambahan di sini selain member aktif
-   * workspace (sudah ditegakkan composition root lewat
+   * § "Reply via Outstand API", ADR-019/ADR-040, redesain KI-068/ADR-113).
+   * RBAC: seluruh role (Account Owner/Admin/Creator) boleh membalas —
+   * `roles-permissions.md` tidak membedakan akses "Kelola Engagement
+   * Comments Inbox" per role, jadi tidak ada role gating tambahan di sini
+   * selain member aktif workspace (sudah ditegakkan composition root lewat
    * `getWorkspaceContext`/session, pola sama Server Action lain).
    *
    * Urutan: validasi `content` (pola sama `IdentityService.updateProfile` —
    * trim lalu tolak string kosong/whitespace-only) → `findInboxItemById`
    * (guard `NotFoundError` kalau tidak ketemu/bukan milik `workspaceId` ini,
-   * pola sama `getInboxItemDetail`/`markAsDone`) →
-   * `IOutstandAdapter.replyToComment(item.externalId, content)` (Anti-
-   * Corruption Layer — domain ini tidak pernah tahu bentuk request/response
-   * HTTP Outstand) → `createReply` dengan `outstandReplyId` hasil adapter
-   * ikut dipersist (kolom `EngagementReply.outstandReplyId`, ADR-040).
-   * `item.externalId` adalah `outstandCommentId` (komentar eksternal
-   * Outstand yang sedang dibalas) — field ini disebut `externalId` di
-   * `EngagementInboxItemRecord` karena mengikuti nama kolom Prisma persis
-   * (`schema.prisma`), bukan diganti nama supaya konsisten leksikal dengan
-   * kontrak Outstand.
+   * pola sama `getInboxItemDetail`/`markAsDone`) → resolve `outstandPostId`
+   * lewat `item.postId` (uuid internal `PublishingPost`, `ConflictError`
+   * kalau `null` — data lama sebelum redesain KI-068/T-051 yang belum
+   * pernah mengisi kolom ini, ATAU post terkait belum pernah publish di
+   * Outstand) → `IOutstandAdapter.replyToComment({ outstandPostId, content,
+   * parentOutstandCommentId: item.externalId })` (Anti-Corruption Layer —
+   * domain ini tidak pernah tahu bentuk request/response HTTP Outstand) →
+   * `createReply` dengan `outstandReplyId` hasil adapter ikut dipersist
+   * (kolom `EngagementReply.outstandReplyId`, ADR-040).
+   *
+   * **`parentOutstandCommentId: item.externalId`** — `item.externalId`
+   * adalah `outstandCommentId` (komentar eksternal Outstand yang SEDANG
+   * dibalas, field ini disebut `externalId` di `EngagementInboxItemRecord`
+   * karena mengikuti nama kolom Prisma persis, bukan diganti nama supaya
+   * konsisten leksikal dengan kontrak Outstand) — balasan di-thread di
+   * BAWAH komentar itu (bukan langsung ke post), konsisten dengan UX
+   * "membalas komentar tertentu" di Comments Inbox (T-053).
    */
   async reply(
     input: {
@@ -134,10 +170,31 @@ export class EngagementService {
       throw new NotFoundError("Komentar tidak ditemukan.");
     }
 
-    const { outstandReplyId } = await this.adapter.replyToComment(
-      item.externalId,
-      content,
+    if (!item.postId) {
+      throw new ConflictError(
+        "Komentar ini belum terhubung ke post manapun sehingga tidak bisa dibalas (data lama sebelum redesain sinkronisasi komentar).",
+      );
+    }
+
+    const outstandPostId = await this.publishingPosts.findPostOutstandId(
+      {
+        workspaceId: input.workspaceId,
+        postId: item.postId,
+        connectedAccountId: item.connectedAccountId,
+      },
+      userId,
     );
+    if (!outstandPostId) {
+      throw new ConflictError(
+        "Post terkait komentar ini tidak ditemukan atau belum pernah dipublikasikan di Outstand.",
+      );
+    }
+
+    const { outstandReplyId } = await this.adapter.replyToComment({
+      outstandPostId,
+      content,
+      parentOutstandCommentId: item.externalId,
+    });
 
     return this.repository.createReply(
       {

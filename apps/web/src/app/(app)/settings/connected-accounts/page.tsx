@@ -24,7 +24,14 @@ import { ConnectedAccountsList } from "./components/ConnectedAccountsList";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ connect?: string }>;
+  searchParams: Promise<{
+    connect?: string;
+    // Facebook Pages flow (T-025.4, KI-070, ADR-115 §7/§10; review fix) —
+    // Route Handler menyimpan session token di cookie httpOnly; query
+    // hanya membawa flag buka-dialog + `state` CSRF (bukan bearer).
+    connectFacebook?: string;
+    connectFacebookState?: string;
+  }>;
 }) {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
@@ -32,7 +39,7 @@ export default async function Page({
     redirect("/login");
   }
 
-  const { connect } = await searchParams;
+  const { connect, connectFacebook, connectFacebookState } = await searchParams;
 
   const workspaceService = new WorkspaceService(workspaceRepository);
   const accounts = await workspaceService.listConnectedAccounts(
@@ -45,6 +52,11 @@ export default async function Page({
       accounts={accounts}
       connectResult={
         connect === "success" || connect === "error" ? connect : null
+      }
+      facebookPagesPicker={
+        connectFacebook === "1" && connectFacebookState
+          ? { state: connectFacebookState }
+          : null
       }
     />
   );

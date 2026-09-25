@@ -72,6 +72,8 @@ function createFakeRepository(
     reconcilePostStatusAfterRetry: async () => undefined,
     findPostTargetsByOutstandPostId: async () => null,
     softDeletePost: async () => null,
+    listSyncablePostsByConnectedAccount: async () => [],
+    findPostOutstandId: async () => null,
     ...overrides,
   };
 }
@@ -81,12 +83,14 @@ function createFakeOutstandAdapter(
 ): IOutstandAdapter {
   return {
     connectAccount: async () => ({ redirectUrl: "/unused" }),
+    listPendingFacebookPages: async () => ({ pages: [] }),
+    confirmFacebookPagesConnection: async () => ({ accounts: [] }),
     uploadMediaWorkingCopy: async () => ({
       outstandMediaId: "unused",
       outstandMediaUrl: "https://fake.outstand.local/media/unused",
       expiresAt: new Date(),
     }),
-    exchangeConnectCode: async () => ({
+    resolveConnectCallback: async () => ({
       outstandAccountId: "unused",
       platform: "instagram" as never,
       handle: "unused",
@@ -126,6 +130,7 @@ function baseRetryTarget(
     workspaceId: WORKSPACE_ID,
     postOutstandPostId: "fake-post-original",
     caption: "Hello world",
+    mediaIds: [],
     targetId: TARGET_ID,
     targetStatus: "failed",
     connectedAccountId: CONNECTED_ACCOUNT_ID,
@@ -133,6 +138,7 @@ function baseRetryTarget(
     platform: SocialPlatform.Instagram,
     contentFormat: ContentFormat.Post,
     platformOptions: null,
+    hasSiblingLiveTargets: false,
     ...overrides,
   };
 }
@@ -222,8 +228,9 @@ describe("RetryFailedTargetUseCase.execute", () => {
       actingUserId: AUTHOR_ID,
     });
 
+    // Sole target (hasSiblingLiveTargets=false) → full delete tanpa accountIds.
     expect(deletePostCalls).toEqual([
-      { outstandPostId: "fake-post-original", accountIds: ["outstand-acc-1"] },
+      { outstandPostId: "fake-post-original", accountIds: undefined },
     ]);
     expect(resetCalls).toBe(1);
     expect(setRetryOutstandPostIdCalls).toEqual([
@@ -247,6 +254,33 @@ describe("RetryFailedTargetUseCase.execute", () => {
       error: null,
       platformPostUrl: "https://fake.outstand.local/posts/outstand-acc-1",
     });
+  });
+
+  it("skips deletePost when sibling targets are still live (published/scheduled/pending)", async () => {
+    const retryTarget = baseRetryTarget({ hasSiblingLiveTargets: true });
+    const deletePostCalls: unknown[] = [];
+
+    const repository = createFakeRepository({
+      getRetryTarget: async () => retryTarget,
+    });
+    const adapter = createFakeOutstandAdapter({
+      deletePost: async (...args) => {
+        deletePostCalls.push(args);
+      },
+      publishNow: async () => ({ outstandPostId: "fake-post-retry" }),
+      fetchPostOutcome: async () => [publishedOutcome("outstand-acc-1")],
+    });
+
+    const useCase = new RetryFailedTargetUseCase(repository, adapter);
+    await useCase.execute({
+      workspaceId: WORKSPACE_ID,
+      postId: POST_ID,
+      targetId: TARGET_ID,
+      actorRole: MemberRole.Creator,
+      actingUserId: AUTHOR_ID,
+    });
+
+    expect(deletePostCalls).toEqual([]);
   });
 
   it("keeps target/post Failed when the retry publish fails again", async () => {

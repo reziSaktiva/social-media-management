@@ -1,8 +1,11 @@
 import {
   asConnectedAccountId,
+  asPostId,
   asUserId,
   asWorkspaceId,
   SocialPlatform,
+  type ConnectedAccountId,
+  type PostId,
 } from "@social/shared";
 import type { IOutstandAdapter, InboxCommentData } from "@social/shared";
 import { describe, expect, it, vi } from "vitest";
@@ -17,14 +20,13 @@ const ACCOUNT_ACTIVE_1 = asConnectedAccountId("account-active-1");
 const ACCOUNT_ACTIVE_2 = asConnectedAccountId("account-active-2");
 const ACCOUNT_INACTIVE = asConnectedAccountId("account-inactive");
 
-function makeComment(id: string): InboxCommentData {
+function makeComment(id: string, outstandPostId: string): InboxCommentData {
   return {
     outstandCommentId: id,
-    outstandAccountId: "unused",
     platform: SocialPlatform.Instagram,
     authorHandle: "@user",
     content: `Komentar ${id}`,
-    outstandPostId: null,
+    outstandPostId,
     receivedAt: new Date(0),
   };
 }
@@ -34,12 +36,14 @@ function createFakeAdapter(
 ): IOutstandAdapter {
   return {
     connectAccount: async () => ({ redirectUrl: "/unused" }),
+    listPendingFacebookPages: async () => ({ pages: [] }),
+    confirmFacebookPagesConnection: async () => ({ accounts: [] }),
     uploadMediaWorkingCopy: async () => ({
       outstandMediaId: "unused",
       outstandMediaUrl: "https://fake.outstand.local/media/unused",
       expiresAt: new Date(),
     }),
-    exchangeConnectCode: async () => ({
+    resolveConnectCallback: async () => ({
       outstandAccountId: "unused",
       platform: "instagram" as never,
       handle: "unused",
@@ -89,38 +93,82 @@ function createFakeRepository(
   };
 }
 
+/**
+ * Fake port `engagement` → `publishing` (redesain KI-068/ADR-113) — daftar
+ * post "syncable" per `connectedAccountId`, sesuai
+ * `SyncCommentsUseCase.publishingPosts`. `postsByAccount` dikunci by
+ * `connectedAccountId` string (bukan branded type) supaya pemanggilan test
+ * tetap ringkas.
+ */
+function createFakePublishingPosts(
+  postsByAccount: Record<
+    string,
+    { postId: PostId; outstandPostId: string; platform: SocialPlatform }[]
+  >,
+) {
+  return {
+    listSyncablePostsByConnectedAccount: async ({
+      connectedAccountId,
+    }: {
+      connectedAccountId: ConnectedAccountId;
+    }) => postsByAccount[connectedAccountId] ?? [],
+  };
+}
+
 describe("RefreshInboxUseCase.refreshAll", () => {
   it("sync hanya ConnectedAccount berstatus active dan mengakumulasi newCommentsCount lintas akun", async () => {
-    const fetchedOutstandAccountIds: string[] = [];
+    const fetchedOutstandPostIds: string[] = [];
     const repository = createFakeRepository({
       upsertInboxItem: async () => ({
         item: {} as EngagementInboxItemRecord,
         isNew: true,
       }),
     });
-    const adapter = createFakeAdapter(async (outstandAccountId) => {
-      fetchedOutstandAccountIds.push(outstandAccountId);
+    const adapter = createFakeAdapter(async ({ outstandPostId }) => {
+      fetchedOutstandPostIds.push(outstandPostId);
       return {
-        comments: [makeComment(`${outstandAccountId}-1`)],
-        nextCursor: null,
+        comments: [makeComment(`${outstandPostId}-1`, outstandPostId)],
       };
     });
-    const syncCommentsUseCase = new SyncCommentsUseCase(repository, adapter);
+    const publishingPosts = createFakePublishingPosts({
+      [ACCOUNT_ACTIVE_1]: [
+        {
+          postId: asPostId("post-1"),
+          outstandPostId: "outstand-post-1",
+          platform: SocialPlatform.Instagram,
+        },
+      ],
+      [ACCOUNT_ACTIVE_2]: [
+        {
+          postId: asPostId("post-2"),
+          outstandPostId: "outstand-post-2",
+          platform: SocialPlatform.Instagram,
+        },
+      ],
+    });
+    const syncCommentsUseCase = new SyncCommentsUseCase(
+      repository,
+      adapter,
+      publishingPosts,
+    );
     const useCase = new RefreshInboxUseCase(syncCommentsUseCase, {
       listConnectedAccounts: async () => [
         {
           id: ACCOUNT_ACTIVE_1,
           outstandAccountId: "outstand-active-1",
+          handle: "@active-1",
           status: "active",
         },
         {
           id: ACCOUNT_INACTIVE,
           outstandAccountId: "outstand-inactive",
+          handle: "@inactive",
           status: "reconnect-required",
         },
         {
           id: ACCOUNT_ACTIVE_2,
           outstandAccountId: "outstand-active-2",
+          handle: "@active-2",
           status: "active",
         },
       ],
@@ -129,9 +177,9 @@ describe("RefreshInboxUseCase.refreshAll", () => {
     const result = await useCase.refreshAll(WORKSPACE_ID, USER_ID);
 
     expect(result).toEqual({ newCommentsCount: 2 });
-    expect(fetchedOutstandAccountIds).toEqual([
-      "outstand-active-1",
-      "outstand-active-2",
+    expect(fetchedOutstandPostIds).toEqual([
+      "outstand-post-1",
+      "outstand-post-2",
     ]);
   });
 
@@ -139,12 +187,18 @@ describe("RefreshInboxUseCase.refreshAll", () => {
     const fetchComments = vi.fn<IOutstandAdapter["fetchComments"]>();
     const repository = createFakeRepository();
     const adapter = createFakeAdapter(fetchComments);
-    const syncCommentsUseCase = new SyncCommentsUseCase(repository, adapter);
+    const publishingPosts = createFakePublishingPosts({});
+    const syncCommentsUseCase = new SyncCommentsUseCase(
+      repository,
+      adapter,
+      publishingPosts,
+    );
     const useCase = new RefreshInboxUseCase(syncCommentsUseCase, {
       listConnectedAccounts: async () => [
         {
           id: ACCOUNT_INACTIVE,
           outstandAccountId: "outstand-inactive",
+          handle: "@inactive",
           status: "reconnect-required",
         },
       ],

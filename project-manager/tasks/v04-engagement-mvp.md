@@ -31,7 +31,7 @@ Service + repository interface + implementasi Prisma, mengikuti konvensi `worksp
 
 ### T-051 · Comment sync job setiap 30 menit
 
-`✅ Done (2026-09-22)` · **Domain** engagement · integration · **ADR** ADR-022, ADR-040, ADR-110 · **Depends** T-025, T-027, T-050 ✅
+`✅ Done (2026-09-22)` · **Domain** engagement · integration · **ADR** ADR-022, ADR-040, ADR-110, ADR-113 · **Depends** T-025, T-027, T-050 ✅ · **Terkait** KI-068 (Resolved 2026-09-24)
 
 **Baca dulu:** `05-architecture/background-jobs.md` · `05-architecture/integration-layer.md`
 
@@ -50,6 +50,16 @@ Periodic pull komentar dari Outstand per connected account, tulis ke `Engagement
 **⚠️ Catatan governance penting:** migration `20260922110000_t051_filter_active_status_engagement_sync_lookup` **BELUM di-deploy** ke database manapun (perlu `bun run db:deploy` manual oleh King Rezi). Sampai itu dijalankan, fungsi SQL yang dipakai JOB-03 masih versi lama — job akan **gagal untuk SEMUA akun** (bukan cuma yang disconnect) sampai migration ter-apply. Lihat juga Blockers di `PROJECT_STATE.md`.
 
 **Verifikasi akhir T-050+T-051+T-052:** `typecheck`/`lint`/`test` bersih, **453 pass/6 skip** (naik dari 448, +5 test baru).
+
+**Update (2026-09-24, KI-068 Resolved via ADR-113):** kontrak
+`IOutstandAdapter.fetchComments` yang dipakai job ini diredesain per-post
+(bukan per-akun+cursor) sesuai API resmi Outstand — lihat detail lengkap di
+`tasks/v02-publishing-mvp.md` § T-025 dan `decisions/ADR-113-redesain-fetchcomments-replytocomment-per-post-ki068.md`.
+`SyncCommentsUseCase` diredesain loop per-post lewat port lokal
+`PublishingPostsPort` (sumber daftar post dari DB kita sendiri, bukan
+endpoint list-posts Outstand), lolos review Ridwan 0 temuan. Status task ini
+tidak berubah (`✅ Done` sejak 2026-09-22) — ini adalah penyesuaian kontrak
+adapter yang dikonsumsi, bukan reopen scope T-051.
 
 ### T-052 · Manual refresh
 
@@ -82,7 +92,7 @@ UI (Mark UI Engineer): `apps/web/src/app/(app)/engage/page.tsx` diganti dari `Sc
 
 ### T-054 · Reply comment dari dalam aplikasi
 
-`✅ Done (2026-09-22)` · **Domain** engagement · integration · **ADR** ADR-019, ADR-040 · **Depends** T-025, T-053 ✅
+`✅ Done (2026-09-22)` · **Domain** engagement · integration · **ADR** ADR-019, ADR-040, ADR-113 · **Depends** T-025, T-053 ✅ · **Terkait** KI-068 (Resolved 2026-09-24)
 **Baca dulu:** `05-architecture/integration-layer.md` · `02-product/roles-permissions.md`
 
 Kirim balasan lewat `OutstandAdapter`, persist ke `EngagementReply`.
@@ -100,6 +110,15 @@ Server Action baru `replyToCommentAction` di `actions.ts`. UI (Mark UI Engineer)
 **Bug regresi ditemukan & diperbaiki (2026-09-22, saat review T-050–T-052):** balasan komentar tidak pernah tampil lagi di detail panel setelah reload — `EngageInboxView.tsx` tidak merender `detail.replies` meski backend sudah benar. Diperbaiki Mark UI Engineer — replies sekarang dirender sebagai "Balasan tim" (kotak indent + background beda) setelah komentar asli, balasan baru langsung muncul tanpa reload. Diverifikasi ulang Najwa QA Engineer — PASS.
 
 **Verifikasi akhir T-053 + T-054:** `bun run typecheck`/`bun run lint`/`bun run test` semua bersih, **448 pass/5 skip** (naik dari 426), tidak ada regresi.
+
+**Update (2026-09-24, KI-068 Resolved via ADR-113):** kontrak
+`IOutstandAdapter.replyToComment` yang dipakai `EngagementService.reply`
+diredesain — sekarang menerima `outstandPostId` (wajib, di-resolve dari
+`postId` internal, guard `ConflictError` untuk data lama yang belum
+terhubung) + `parentOutstandCommentId` (opsional, threading). Detail
+lengkap di `tasks/v02-publishing-mvp.md` § T-025 dan
+`decisions/ADR-113-redesain-fetchcomments-replytocomment-per-post-ki068.md`.
+Status task ini tidak berubah (`✅ Done` sejak 2026-09-22).
 
 ### T-055 · Inbox assignment
 
