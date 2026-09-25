@@ -26,7 +26,12 @@ export type ServerEnv = {
   BETTER_AUTH_API_KEY?: string;
   BETTER_AUTH_API_URL?: string;
   BETTER_AUTH_KV_URL?: string;
-  /** Optional (ADR-059) — kosong → Fake OutstandAdapter aktif otomatis. */
+  /**
+   * Wajib untuk setiap jalur yang memanggil `getOutstandAdapter()` (ADR-119).
+   * Kosong atau whitespace membuat factory throw — tidak ada fallback Fake.
+   * Sengaja tidak masuk `REQUIRED_SERVER_VARS`: halaman yang tidak menyentuh
+   * Outstand tetap boleh boot; kegagalan baru muncul di jalur Outstand.
+   */
   OUTSTAND_API_KEY?: string;
   OUTSTAND_WEBHOOK_SECRET?: string;
   /**
