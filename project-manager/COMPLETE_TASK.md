@@ -8,6 +8,16 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-25 — T-106 dicatat: hapus FakeOutstandAdapter (belum dikerjakan)
+
+King Rezi meminta task atau Known Issue untuk menghilangkan
+`FakeOutstandAdapter`. Dicatat sebagai **T-106** ⏳ Not Started di
+`tasks/v02-publishing-mvp.md` (domain integration, kelanjutan T-025),
+bukan KI — adapter itu sengaja ada lewat ADR-059, bukan kerusakan.
+Empat subtask: ADR amendemen ADR-059, hapus fallback factory, pindahkan
+tes ke double lokal, bersihkan baris dev `fake-post-…`. Kode belum
+disentuh. Indeks `TASKS.md`: v0.2 24 task, total 91.
+
 ## 2026-09-25 — Hardening code-review PR #133 (T-025 tetap ✅ Done): SECURITY DEFINER privileges, Facebook session cookie, media/Story, delete/retry, engagement, CSRF
 
 King Rezi meminta implementasi rencana perbaikan dari code-review PR #133

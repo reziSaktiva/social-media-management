@@ -1487,6 +1487,37 @@ Sudah dicatat sebagai chip task terpisah oleh Prabowo Feature Engineer
 (`task_6b93cfb5`) — menunggu King Rezi memilihnya sendiri, tidak dibuatkan
 task/subtask formal baru di sini.
 
+### T-106 · Hapus `FakeOutstandAdapter` dari jalur produksi
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | integration                                                  |
+| **ADR**       | ADR baru wajib sebelum kode — mengamendemen ADR-059 (dan catatan switch di ADR-079, ADR-105, ADR-106, ADR-108, ADR-110) |
+| **Terkait**   | T-025 ✅ (real adapter sudah ada) · T-028 (factory + Fake awal) |
+| **Depends**   | T-025 ✅ · `OUTSTAND_API_KEY` terisi di setiap proses yang menjalankan app (lokal, Railway staging, cron) |
+| **Baca dulu** | `decisions/ADR-059-fake-outstandadapter-persistensi-nyata-schedule-tanpa-kredensial-outstand-asli.md` · `apps/web/src/lib/adapters/outstand/index.ts` · `AGENTS.md` aturan 19 |
+
+King Rezi meminta (2026-09-25) `FakeOutstandAdapter` dihilangkan dari project.
+Adapter itu masih jalur produksi: `getOutstandAdapter()` memakainya selama
+`OUTSTAND_API_KEY` kosong (ADR-059). Real adapter (T-025) berdiri di
+sampingnya, tidak menggantikannya.
+
+Menghapus kelas ini **tidak** menghapus post yang sudah tersimpan. Di DB
+dev (cek 2026-09-25) ada 22 `publishing_posts` ber-id `fake-post-…` dan 19
+target ber-URL `https://fake.outstand.local/…`, sisa QA sampai 17 September
+2026. Subtask data membersihkan baris itu; history membacanya dari tabel,
+bukan dari Outstand.
+
+Implementasi kode dilarang sebelum ADR pengganti berstatus Accepted
+(aturan 4 `AGENTS.md`). Selama task ini belum selesai, publish baru dengan
+key terisi tetap memakai real adapter dan tidak menambah id `fake-post-`.
+
+- [ ] **T-106.1** ADR baru: jalur produksi wajib `OUTSTAND_API_KEY`; key kosong throw jelas, bukan fallback ke Fake. Amendemen ADR-059.
+- [ ] **T-106.2** Hapus `fake-outstand-adapter.ts` dari factory `getOutstandAdapter()` dan dari jalur produksi.
+- [ ] **T-106.3** Pindahkan tes yang memakai singleton Fake ke double lokal; perbarui aturan 19 `AGENTS.md` supaya tidak lagi menyuruh membangun Fake di domain baru.
+- [ ] **T-106.4** Bersihkan baris dev `fake-post-…` / `https://fake.outstand.local/…` di `publishing_posts` dan `publishing_post_targets` (dan metrik/komentar yang menggantung padanya, kalau ada).
+
 ---
 
 ## Catatan Rilis
@@ -1495,4 +1526,5 @@ task/subtask formal baru di sini.
 * **T-090** dan **T-091** (ditambah 2026-08-28, sesi diskusi ADR-093) memakai pola yang sama seperti footnote di atas — nomor kosong v0.2 (T-020–T-038) sudah habis, jadi keduanya memakai nomor global berikutnya yang belum pernah dipakai (090, 091), sama seperti presedan **T-039**/**T-089** di `tasks/v01-foundation.md`. Ditempatkan di file ini (bukan file release lain) karena keduanya domain `publishing`, lahir dari diskusi Calendar/T-033.
 * **T-092** (ditambah 2026-08-28, sesi diskusi ADR-094) memakai pola nomor global yang sama lagi — berikutnya setelah T-091.
 * **T-104** (ditambah 2026-09-11, gap ditemukan saat implementasi T-092.5) memakai ID global berikutnya yang belum pernah dipakai (terakhir T-103, di `tasks/v07-astryx-shadcn-migration.md`) — ditempatkan di file ini karena domain `publishing`, terkait langsung T-092.
+* **T-106** (ditambah 2026-09-25, permintaan King Rezi setelah T-025) memakai ID global berikutnya setelah T-105 — ditempatkan di file ini karena domain `integration`, kelanjutan T-025/ADR-059.
 * **Definition of Done rilis ini** (dari `release-roadmap.md`): pengguna dapat mengelola proses publikasi dari awal hingga selesai — draft → format per akun → schedule/publish → lihat queue/calendar → lihat hasil di history.

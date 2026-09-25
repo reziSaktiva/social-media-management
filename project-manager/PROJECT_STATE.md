@@ -6,7 +6,7 @@
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
 * **Top Next Tasks:** **T-025 Real OutstandAdapter — ✅ Done (2026-09-24)** + hardening code-review PR #133 (2026-09-25, status tetap Done, bukan reopen) — lihat **Completed (Ringkasan)** di bawah. Fokus aktif sekarang: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 5/6 task** (2026-09-22, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 1 blocker aktif (env var Google OAuth belum diisi, KI-015) — lihat section **Blockers** di bawah. Blocker Outstand (KI-003, `OUTSTAND_API_KEY` + Real OutstandAdapter) sudah **Resolved (2026-09-24)**. Railway staging sudah live & terverifikasi (2026-08-14); JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8.
-* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 86 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
+* **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 91 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
 ---
@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.93     |
+| Version      | 1.0.94     |
 | Status       | Active     |
 | Last Updated | 2026-09-25 |
 

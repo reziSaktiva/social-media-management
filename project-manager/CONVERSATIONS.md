@@ -18,6 +18,16 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-09-25 — Hapus FakeOutstandAdapter dilacak sebagai task, bukan Known Issue
+
+**Phase:** Phase 6 / M8 Development
+
+**Summary:** Setelah T-025, post ber-id `fake-post-…` masih tampil karena sisa QA di database, sementara `FakeOutstandAdapter` tetap jalur produksi kalau `OUTSTAND_API_KEY` kosong (ADR-059). King Rezi meminta agar adapter itu dihilangkan dari project.
+
+**Key Insight / Decision:** Ini pekerjaan terencana, bukan bug. Dicatat sebagai T-106 (⏳), bukan KI. Kode baru dilarang sebelum ADR yang mengamendemen ADR-059 berstatus Accepted. Menghapus kelas adapter tidak otomatis menghapus 22 baris post palsu; pembersihan data ada di T-106.4.
+
+**Impact:** `tasks/v02-publishing-mvp.md`, indeks `TASKS.md`, hitungan backlog di Snapshot `PROJECT_STATE.md`, entri `COMPLETE_TASK.md`.
+
 ## 2026-09-02 — Gap token warna semantik `--success`/`--warning` belum ada di Stone theme shadcn
 
 **Phase:** M8 Development (v0.7 migrasi Astryx → shadcn/ui, ADR-097)
