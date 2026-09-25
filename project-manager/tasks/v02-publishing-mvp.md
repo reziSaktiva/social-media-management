@@ -1533,7 +1533,7 @@ task/subtask formal baru di sini.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress — T-106.1–.4 ✅ (2026-09-25); T-106.5 ⏳       |
+| **Status**    | ✅ Done (2026-09-25) — T-106.5 menutup sisa data Fake/mock    |
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-119 (amandemen ADR-059)                                  |
 | **Terkait**   | T-025 ✅ (real adapter sudah ada) · T-028 (factory + Fake awal) |
@@ -1562,7 +1562,7 @@ Architecture Reviewer: LOLOS, 0 temuan. Najwa QA: Vitest PASS — 17 file /
 - [x] **T-106.2** ✅ Done — Hapus `fake-outstand-adapter.ts` dari factory `getOutstandAdapter()` dan dari jalur produksi.
 - [x] **T-106.3** ✅ Done — Double lokal di tes tetap; aturan 19 `AGENTS.md` + `ctx-development.md` diselaraskan (jangan Fake di jalur produksi).
 - [x] **T-106.4** ✅ Done — Bersihkan 24 baris dev `fake-post-…` (+ targets cascade) di DB bersama; verifikasi 0 remaining `fake-post-%` / `fake.outstand.local`.
-- [ ] **T-106.5** Hapus seluruh sisa data Fake/mock Outstand di DB bersama dev/staging (`ndcrkzqgqukqfmekgoze`, ADR-081). Cakupan: `workspace_connected_accounts` yang `outstand_account_id`-nya `fake-%` atau `mock-%` (channel sidebar), plus setiap `publishing_posts` yang menempel ke akun itu (draft, scheduled, published, failed) beserta target, metrik, komentar, dan urutan channel. T-106.4 tidak menyentuh tabel channel dan tidak menghapus post yang `outstand_post_id`-nya kosong. Cek 2026-09-25: 23 akun (`Fake Pinterest …`, `@fake.ig.…`, `QA Queue Test`, `Insvire Demo`, dll.) dan 28 post tanpa `outstand_post_id` masih tampil di browser.
+- [x] **T-106.5** ✅ Done — Hapus 23 `workspace_connected_accounts` (`fake-%` / `mock-%`) dan 9 `publishing_posts` yang menempel (target cascade). Inbox 13 dan urutan channel 2 ikut terhapus lewat cascade. Verifikasi: 0 akun, 0 target, 0 inbox. 19 draft tanpa channel tidak masuk cakupan (tidak menempel ke akun Fake/mock).
 
 ---
 

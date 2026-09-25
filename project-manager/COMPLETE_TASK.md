@@ -8,6 +8,12 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-25 — T-106.5 ✅ Done: sisa akun dan post Fake/mock dihapus
+
+Di DB bersama `ndcrkzqgqukqfmekgoze`: 23 `workspace_connected_accounts` (`outstand_account_id` `fake-%` atau `mock-%`) dan 9 `publishing_posts` yang menempel dihapus. Target ikut cascade. Inbox (13) dan urutan channel (2) ikut terhapus bersama akun. Verifikasi: 0 akun, 0 target, 0 inbox. 19 draft tanpa channel tidak dihapus — tidak menempel ke akun Fake/mock.
+
+Status T-106 kembali ✅ Done. Indeks v0.2: `20 ✅ · 2 🟡 · 2 ⏳`. Total selesai 58.
+
 ## 2026-09-25 — T-106 dibuka lagi: subtask T-106.5 sisa data Fake/mock
 
 King Rezi masih melihat post dan channel palsu di browser setelah T-106.1–.4.
