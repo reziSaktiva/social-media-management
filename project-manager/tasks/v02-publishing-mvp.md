@@ -300,7 +300,7 @@ ADR-065. Tidak ada perubahan kode di sesi ini — murni koreksi status.
 | **Status**    | ✅ Done (7/7 subtask) — hardening code-review PR #133 (2026-09-25) tanpa reopen task |
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-005, ADR-019, ADR-040, ADR-059                           |
-| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070 Resolved), KI-068 (Resolved via ADR-113), KI-069 (Resolved via ADR-114), KI-070 (Resolved 2026-09-24 — flow multi-halaman Facebook Pages via ADR-115/ADR-116, UI Mark UI Engineer, 2 bug fix Elon Backend Engineer), KI-071 (gap disambiguasi reply multi-akun), KI-072 (baru, Pinterest `board_id` belum dikumpulkan), ADR-112, ADR-113, ADR-114, ADR-115, ADR-116 (`PROJECT_STATE.md` § Blockers/Known Issues) |
+| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070 Resolved), KI-068 (Resolved via ADR-113), KI-069 (Resolved via ADR-114), KI-070 (Resolved 2026-09-24 — flow multi-halaman Facebook Pages via ADR-115/ADR-116, UI Mark UI Engineer, 2 bug fix Elon Backend Engineer), KI-071 (Resolved via ADR-117, 2026-09-25), KI-072 (baru, Pinterest `board_id` belum dikumpulkan), ADR-112, ADR-113, ADR-114, ADR-115, ADR-116, ADR-117 (`PROJECT_STATE.md` § Blockers/Known Issues) |
 | **Depends**   | T-028 ✅ (port + factory sudah ada) · kredensial Outstand asli |
 | **Baca dulu** | `05-architecture/integration-layer.md`                        |
 
@@ -370,7 +370,7 @@ di-deploy** (`bun run db:deploy` pending King Rezi, lihat `PROJECT_STATE.md`
 endpoint reply Outstand menerima `account_username`/`platform_post_id`
 opsional untuk disambiguasi post yang publish ke >1 akun di network sama —
 signature `replyToComment` yang dikonfirmasi tidak membawa field itu,
-dicatat **KI-071** (baru, tidak memblokir penutupan KI-068).
+dicatat **KI-071** (baru, tidak memblokir penutupan KI-068). **Update (2026-09-25):** KI-071 Resolved via **ADR-117** (`replyToComment` wajib `accountUsername`).
 
 **Update (2026-09-24, Elon Backend Engineer, lolos review Ridwan 0
 temuan):** **KI-069 Resolved** — `OutstandPostTargetInput` ditambah field
@@ -477,14 +477,15 @@ selesai, bukan membuka ulang seluruh task):
 9. Sync comments: hanya published, limit 50, try/catch per-post.
 10. Test CSRF untuk aksi list/confirm Facebook; factory trim API key.
 
-**KI-071** dan **KI-072** tetap **Open** (gap yang diterima King Rezi,
-bukan bug yang diperbaiki di putaran ini).
+**KI-071** sudah **Resolved via ADR-117 (2026-09-25)** — lihat catatan
+update KI-068 / T-025.6 di atas. **KI-072** tetap **Open** (gap yang
+diterima King Rezi, bukan bug yang diperbaiki di putaran hardening PR #133).
 
 **Masih gap arsitektur (sengaja throw eksplisit `OutstandIntegrationError`,
 bukan silent bug, butuh keputusan King Rezi + kemungkinan amandemen ADR):**
 
-- **KI-071** (gap disambiguasi reply multi-akun) — lihat catatan
-  update di atas; tetap Open.
+- **KI-071** — **Resolved via ADR-117 (2026-09-25)** (`replyToComment`
+  wajib `accountUsername`; `platform_post_id` tidak masuk kontrak).
 - **KI-072** (sisa scope KI-069) — Pinterest `board_id` (wajib di API
   resmi Outstand) tidak pernah dikumpulkan di domain/UI kita — override
   Pinterest sengaja tidak dikirim ke Outstand (aman, tidak break publish

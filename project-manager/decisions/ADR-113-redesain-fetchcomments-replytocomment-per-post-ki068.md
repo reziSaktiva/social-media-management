@@ -8,7 +8,7 @@ Redesain `IOutstandAdapter.fetchComments`/`replyToComment` — scope PER POST
 
 ### Status
 
-Accepted — Amends ADR-110
+Accepted — Amended by ADR-117 (2026-09-25)
 
 ### Date
 
