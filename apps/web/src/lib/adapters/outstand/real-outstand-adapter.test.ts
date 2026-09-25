@@ -651,7 +651,7 @@ describe("RealOutstandAdapter.fetchComments / replyToComment (T-025.6, redesain 
     expect(result.comments[0].outstandCommentId).toBe("reply-valid");
   });
 
-  it("replyToComment calls POST /v1/posts/{id}/replies with content + parent_comment_id and maps reply_id", async () => {
+  it("replyToComment calls POST /v1/posts/{id}/replies with content + account_username + parent_comment_id and maps reply_id", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(
@@ -662,6 +662,7 @@ describe("RealOutstandAdapter.fetchComments / replyToComment (T-025.6, redesain 
     const result = await adapter.replyToComment({
       outstandPostId: "post-123",
       content: "Great post! I agree with you.",
+      accountUsername: "mycompany",
       parentOutstandCommentId: "comment-abc",
     });
 
@@ -673,11 +674,12 @@ describe("RealOutstandAdapter.fetchComments / replyToComment (T-025.6, redesain 
     const body = JSON.parse(init.body);
     expect(body).toEqual({
       content: "Great post! I agree with you.",
+      account_username: "mycompany",
       parent_comment_id: "comment-abc",
     });
   });
 
-  it("replyToComment omits parent_comment_id when parentOutstandCommentId is not given", async () => {
+  it("replyToComment always sends account_username even when parent_comment_id is omitted", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(
@@ -688,11 +690,15 @@ describe("RealOutstandAdapter.fetchComments / replyToComment (T-025.6, redesain 
     await adapter.replyToComment({
       outstandPostId: "post-123",
       content: "No threading here.",
+      accountUsername: "brand_handle",
     });
 
     const [, init] = fetchImpl.mock.calls[0];
     const body = JSON.parse(init.body);
-    expect(body).toEqual({ content: "No threading here." });
+    expect(body).toEqual({
+      content: "No threading here.",
+      account_username: "brand_handle",
+    });
   });
 
   it("replyToComment throws OutstandIntegrationError when response has no valid reply_id", async () => {
@@ -702,7 +708,11 @@ describe("RealOutstandAdapter.fetchComments / replyToComment (T-025.6, redesain 
     const adapter = buildAdapter(fetchImpl);
 
     await expect(
-      adapter.replyToComment({ outstandPostId: "post-123", content: "Hi" }),
+      adapter.replyToComment({
+        outstandPostId: "post-123",
+        content: "Hi",
+        accountUsername: "mycompany",
+      }),
     ).rejects.toBeInstanceOf(OutstandIntegrationError);
   });
 });

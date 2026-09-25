@@ -555,15 +555,21 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
   },
 
   /**
-   * Reply dari dalam aplikasi (T-054, redesain KI-068/ADR-113) — sama
-   * fidelitasnya dengan `schedulePost`/`publishNow`: instant always-success,
-   * `outstandReplyId` acak per panggilan (bukan deterministik — tiap reply
-   * adalah resource baru, bukan sesuatu yang perlu direproduksi identik
-   * untuk input yang sama). `outstandPostId`/`parentOutstandCommentId`
-   * diterima apa adanya tapi tidak mempengaruhi hasil (Fake tidak
-   * memvalidasi threading/post existence, ADR-059).
+   * Reply dari dalam aplikasi (T-054, redesain KI-068/ADR-113, KI-071) —
+   * sama fidelitasnya dengan `schedulePost`/`publishNow`: instant
+   * always-success, `outstandReplyId` acak per panggilan (bukan
+   * deterministik — tiap reply adalah resource baru, bukan sesuatu yang
+   * perlu direproduksi identik untuk input yang sama).
+   * `outstandPostId`/`accountUsername`/`parentOutstandCommentId` diterima
+   * apa adanya tapi tidak mempengaruhi hasil (Fake tidak memvalidasi
+   * threading/post existence/disambiguasi multi-akun, ADR-059).
    */
-  async replyToComment(): Promise<ReplyToCommentResult> {
+  async replyToComment(_input: {
+    outstandPostId: string;
+    content: string;
+    accountUsername: string;
+    parentOutstandCommentId?: string;
+  }): Promise<ReplyToCommentResult> {
     return { outstandReplyId: `fake-reply-${crypto.randomUUID()}` };
   },
 };

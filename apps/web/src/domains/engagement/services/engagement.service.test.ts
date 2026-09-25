@@ -146,6 +146,41 @@ function createFakePublishingPosts(
   };
 }
 
+/**
+ * Fake port `engagement` → `workspace` (KI-071) — resolve handle akun
+ * untuk `accountUsername`. Default mengembalikan handle `"@acme"` supaya
+ * golden path reply tidak perlu override; test ConflictError mengoverride
+ * ke `null` / handle kosong.
+ */
+function createFakeConnectedAccounts(
+  overrides: Partial<{
+    findConnectedAccountById: (
+      workspaceId: unknown,
+      connectedAccountId: unknown,
+      userId: unknown,
+    ) => Promise<{ handle: string } | null>;
+  }> = {},
+) {
+  return {
+    findConnectedAccountById: async () => ({ handle: "@acme" }),
+    ...overrides,
+  };
+}
+
+function createService(
+  repository: IEngagementRepository = createFakeRepository(),
+  adapter: IOutstandAdapter = createFakeAdapter(),
+  publishingPosts = createFakePublishingPosts(),
+  connectedAccounts = createFakeConnectedAccounts(),
+) {
+  return new EngagementService(
+    repository,
+    adapter,
+    publishingPosts,
+    connectedAccounts,
+  );
+}
+
 describe("EngagementService.listInbox", () => {
   it("meneruskan filter ke repository dan mengembalikan hasilnya apa adanya", async () => {
     const items = [makeInboxItem(), makeInboxItem({ status: "done" })];
@@ -156,11 +191,7 @@ describe("EngagementService.listInbox", () => {
         return items;
       },
     });
-    const service = new EngagementService(
-      repository,
-      createFakeAdapter(),
-      createFakePublishingPosts(),
-    );
+    const service = createService(repository);
 
     const result = await service.listInbox(
       {
@@ -200,11 +231,7 @@ describe("EngagementService.getInboxItemDetail", () => {
       findInboxItemById: async () => item,
       listRepliesByInboxItemId: async () => replies,
     });
-    const service = new EngagementService(
-      repository,
-      createFakeAdapter(),
-      createFakePublishingPosts(),
-    );
+    const service = createService(repository);
 
     const result = await service.getInboxItemDetail(
       { workspaceId: WORKSPACE_ID, inboxItemId: item.id },
@@ -218,11 +245,7 @@ describe("EngagementService.getInboxItemDetail", () => {
     const repository = createFakeRepository({
       findInboxItemById: async () => null,
     });
-    const service = new EngagementService(
-      repository,
-      createFakeAdapter(),
-      createFakePublishingPosts(),
-    );
+    const service = createService(repository);
 
     await expect(
       service.getInboxItemDetail(
@@ -243,11 +266,7 @@ describe("EngagementService.markAsDone", () => {
         return doneItem;
       },
     });
-    const service = new EngagementService(
-      repository,
-      createFakeAdapter(),
-      createFakePublishingPosts(),
-    );
+    const service = createService(repository);
 
     const result = await service.markAsDone(
       { workspaceId: WORKSPACE_ID, inboxItemId: INBOX_ITEM_ID },
@@ -266,11 +285,7 @@ describe("EngagementService.markAsDone", () => {
     const repository = createFakeRepository({
       markInboxItemStatus: async () => null,
     });
-    const service = new EngagementService(
-      repository,
-      createFakeAdapter(),
-      createFakePublishingPosts(),
-    );
+    const service = createService(repository);
 
     await expect(
       service.markAsDone(
@@ -312,10 +327,13 @@ describe("EngagementService.reply", () => {
         };
       },
     });
-    const service = new EngagementService(
+    const service = createService(
       repository,
       adapter,
       createFakePublishingPosts(),
+      createFakeConnectedAccounts({
+        findConnectedAccountById: async () => ({ handle: "@brand_ig" }),
+      }),
     );
 
     const result = await service.reply(
@@ -330,6 +348,7 @@ describe("EngagementService.reply", () => {
     expect(receivedReplyArgs).toEqual({
       outstandPostId: "fake-outstand-post-1",
       content: "Terima kasih ya!",
+      accountUsername: "@brand_ig",
       parentOutstandCommentId: "outstand-comment-1",
     });
     expect(receivedCreateReplyInput).toEqual({
@@ -342,13 +361,55 @@ describe("EngagementService.reply", () => {
     expect(result.content).toBe("Terima kasih ya!");
   });
 
-  it("throw ValidationError kalau content kosong/whitespace-only", async () => {
-    const repository = createFakeRepository();
-    const service = new EngagementService(
+  it("meneruskan handle akun terhubung sebagai accountUsername ke adapter", async () => {
+    const item = makeInboxItem({
+      connectedAccountId: asConnectedAccountId("account-special"),
+      postId: asPostId("post-1"),
+    });
+    let receivedReplyArgs: unknown;
+    let receivedLookupArgs: unknown;
+    const adapter = createFakeAdapter({
+      replyToComment: async (input) => {
+        receivedReplyArgs = input;
+        return { outstandReplyId: "fake-reply-handle" };
+      },
+    });
+    const repository = createFakeRepository({
+      findInboxItemById: async () => item,
+    });
+    const service = createService(
       repository,
-      createFakeAdapter(),
+      adapter,
       createFakePublishingPosts(),
+      createFakeConnectedAccounts({
+        findConnectedAccountById: async (
+          workspaceId,
+          connectedAccountId,
+          userId,
+        ) => {
+          receivedLookupArgs = { workspaceId, connectedAccountId, userId };
+          return { handle: "  mycompany  " };
+        },
+      }),
     );
+
+    await service.reply(
+      { workspaceId: WORKSPACE_ID, inboxItemId: item.id, content: "Halo" },
+      USER_ID,
+    );
+
+    expect(receivedLookupArgs).toEqual({
+      workspaceId: WORKSPACE_ID,
+      connectedAccountId: asConnectedAccountId("account-special"),
+      userId: USER_ID,
+    });
+    expect(receivedReplyArgs).toMatchObject({
+      accountUsername: "mycompany",
+    });
+  });
+
+  it("throw ValidationError kalau content kosong/whitespace-only", async () => {
+    const service = createService();
 
     await expect(
       service.reply(
@@ -366,11 +427,7 @@ describe("EngagementService.reply", () => {
     const repository = createFakeRepository({
       findInboxItemById: async () => null,
     });
-    const service = new EngagementService(
-      repository,
-      createFakeAdapter(),
-      createFakePublishingPosts(),
-    );
+    const service = createService(repository);
 
     await expect(
       service.reply(
@@ -389,11 +446,7 @@ describe("EngagementService.reply", () => {
     const repository = createFakeRepository({
       findInboxItemById: async () => item,
     });
-    const service = new EngagementService(
-      repository,
-      createFakeAdapter(),
-      createFakePublishingPosts(),
-    );
+    const service = createService(repository);
 
     await expect(
       service.reply(
@@ -408,10 +461,56 @@ describe("EngagementService.reply", () => {
     const repository = createFakeRepository({
       findInboxItemById: async () => item,
     });
-    const service = new EngagementService(
+    const service = createService(
       repository,
       createFakeAdapter(),
       createFakePublishingPosts({ findPostOutstandId: async () => null }),
+    );
+
+    await expect(
+      service.reply(
+        { workspaceId: WORKSPACE_ID, inboxItemId: item.id, content: "Halo" },
+        USER_ID,
+      ),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it("throw ConflictError kalau akun terhubung tidak ditemukan", async () => {
+    const item = makeInboxItem({ postId: asPostId("post-1") });
+    const repository = createFakeRepository({
+      findInboxItemById: async () => item,
+    });
+    const service = createService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts(),
+      createFakeConnectedAccounts({
+        findConnectedAccountById: async () => null,
+      }),
+    );
+
+    await expect(
+      service.reply(
+        { workspaceId: WORKSPACE_ID, inboxItemId: item.id, content: "Halo" },
+        USER_ID,
+      ),
+    ).rejects.toThrow(
+      /Komentar tidak bisa dibalas karena akun terhubung tidak ditemukan/,
+    );
+  });
+
+  it("throw ConflictError kalau handle akun terhubung kosong", async () => {
+    const item = makeInboxItem({ postId: asPostId("post-1") });
+    const repository = createFakeRepository({
+      findInboxItemById: async () => item,
+    });
+    const service = createService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts(),
+      createFakeConnectedAccounts({
+        findConnectedAccountById: async () => ({ handle: "   " }),
+      }),
     );
 
     await expect(
