@@ -152,3 +152,18 @@ describe("fakeOutstandAdapter.resolveConnectCallback (T-013/T-015.3, ADR-105, re
     ).rejects.toThrow(/state tidak valid/i);
   });
 });
+
+describe("fakeOutstandAdapter.listPinterestBoards (closes KI-072, ADR-059 pattern — instant, no delay/failure simulation)", () => {
+  it("returns a fixed set of mock boards, same list regardless of outstandAccountId", async () => {
+    const first = await fakeOutstandAdapter.listPinterestBoards("acc-pin-1");
+    const second = await fakeOutstandAdapter.listPinterestBoards("acc-pin-2");
+
+    expect(first).toEqual(second);
+    expect(first.map((board) => board.name)).toEqual([
+      "Resep & Minuman",
+      "Interior Kedai",
+      "Promo Musiman",
+    ]);
+    expect(first.every((board) => board.id.length > 0)).toBe(true);
+  });
+});

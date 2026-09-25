@@ -71,6 +71,24 @@
  * dibutuhkan body `POST /v1/posts` Outstand. Field lain di interface ini
  * sudah wajib (bukan opsional) — `platform` konsisten dengan pola itu,
  * bukan ditambahkan sebagai opsional/best-effort.
+ *
+ * **`listPinterestBoards` ditambahkan (menutup KI-072, sisa scope ADR-114) —
+ * dicatat sebagai ADR baru terpisah oleh Gibran Project Manager (nomor
+ * berikutnya setelah ADR-117).** ADR-114 sengaja tidak mengimplementasikan
+ * `board_id` Pinterest karena domain/UI belum pernah mengumpulkannya — King
+ * Rezi mengonfirmasi board dipilih **per post** di Draft Editor (bukan
+ * per-akun, TIDAK ada migrasi Prisma baru) lewat `platformOptions.boardId`
+ * yang sudah generik di `OutstandPostTargetInput` di atas. Method baru ini
+ * dipakai UI (Mark UI Engineer) untuk menampilkan dropdown board ASLI dari
+ * akun Pinterest yang terhubung, bukan text input bebas. Wire-format
+ * `GET /v1/pinterest/accounts/{id}/boards` diverifikasi via OpenAPI spec
+ * resmi Outstand (`api.outstand.so/v1/pinterest/openapi.json`) — respons
+ * `{ success, data: [{ id, name, description?, pin_count, privacy,
+ * owner: { username }, created_at }], count }`. `PinterestBoard` di sini
+ * SENGAJA hanya membawa `id`/`name` (YAGNI, sama seperti keputusan
+ * `FacebookPendingPage` hanya mengambil field yang benar-benar dibutuhkan
+ * UI) — dropdown board hanya butuh label+value, field lain (deskripsi,
+ * privacy, jumlah pin) tidak punya konsumen konkret sekarang.
  */
 import type { ContentFormat, SocialPlatform } from "../enums";
 
@@ -326,6 +344,19 @@ export interface ConfirmFacebookPagesResult {
 }
 
 /**
+ * Pinterest board (menutup KI-072, sisa scope ADR-114) — satu entri dari
+ * `GET /v1/pinterest/accounts/{id}/boards` Outstand, dipakai UI Draft Editor
+ * untuk dropdown board per post (`FacebookPendingPage.pageId` adalah
+ * preseden penamaan serupa — `id` di sini SENGAJA opaque, dikirim balik
+ * apa adanya sebagai `platformOptions.boardId` saat publish, bukan
+ * diasumsikan angka/format tertentu).
+ */
+export interface PinterestBoard {
+  id: string;
+  name: string;
+}
+
+/**
  * NOTE (2026-08-26, dicatat sebagai gap diketahui, bukan diimplementasikan
  * penuh di sini — di luar scope redesain ini, lihat draft ADR): dokumentasi
  * resmi Outstand `get-post-analytics` sebenarnya mengembalikan metrics
@@ -477,6 +508,18 @@ export interface IOutstandAdapter {
   confirmFacebookPagesConnection(
     input: ConfirmFacebookPagesInput,
   ): Promise<ConfirmFacebookPagesResult>;
+
+  /**
+   * Pinterest boards (menutup KI-072, sisa scope ADR-114) — daftar board
+   * ASLI milik akun Pinterest yang sudah terhubung (`outstandAccountId`),
+   * dipakai UI Draft Editor untuk dropdown board per post SEBELUM publish
+   * (bukan text input bebas). Murni pass-through + mapping response — tidak
+   * ada RBAC/business logic di adapter (ACL boundary, AGENTS.md #6), itu
+   * tanggung jawab `WorkspaceService.listPinterestBoards` (anti-IDOR:
+   * validasi `outstandAccountId` benar-benar milik workspace/akun yang
+   * diminta, SEBELUM dipanggil ke sini).
+   */
+  listPinterestBoards(outstandAccountId: string): Promise<PinterestBoard[]>;
 
   /**
    * Media upload working copy (T-024.3, ADR-040 poin 4, ADR-106) — minta

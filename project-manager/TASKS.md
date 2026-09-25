@@ -90,7 +90,7 @@ Subtask untuk v0.4 ke atas diisi saat release-nya mendekat. Alasannya: menyusunn
 
 **Fokus aktif:** **T-037** Perkaya aturan coding di `context/ctx-development.md` (🟡 In Progress, kontinu by design, prioritas rendah — tidak memblokir rilis) — lihat `tasks/v02-publishing-mvp.md` § T-037.
 
-**Selesai baru-baru ini** (detail lengkap per task: `tasks/vXX-*.md`; riwayat penuh: `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi): **T-025 hardening code-review PR #133 (2026-09-25, status tetap ✅ Done)** · **T-025 Real OutstandAdapter, tuntas 7/7 subtask (2026-09-24, KI-070/KI-003 Resolved)** · T-050, T-051, T-052, T-053, T-054 (v0.4 Engagement MVP, 2026-09-22) · T-044, T-045 (v0.3 Analytics MVP tuntas 8/8, 2026-09-21) · T-043 (2026-09-18) · T-027 (2026-09-17) · T-024 (2026-09-14) · T-103, T-034 (2026-09-09–10).
+**Selesai baru-baru ini** (detail lengkap per task: `tasks/vXX-*.md`; riwayat penuh: `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi): **T-025 KI-072 Pinterest `board_id` selesai via ADR-118 (2026-09-25, status tetap ✅ Done)** · T-025 hardening code-review PR #133 (2026-09-25) · T-025 Real OutstandAdapter, tuntas 7/7 subtask (2026-09-24, KI-070/KI-003 Resolved) · T-050, T-051, T-052, T-053, T-054 (v0.4 Engagement MVP, 2026-09-22) · T-044, T-045 (v0.3 Analytics MVP tuntas 8/8, 2026-09-21) · T-043 (2026-09-18) · T-027 (2026-09-17) · T-024 (2026-09-14).
 
 ---
 

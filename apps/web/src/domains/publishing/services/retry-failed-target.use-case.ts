@@ -7,6 +7,7 @@ import type {
 import type { UserId } from "@social/shared";
 import { ConflictError, NotFoundError } from "@/lib/utils/errors";
 import type { IOutstandAdapter } from "../adapters/outstand-adapter";
+import { assertPinterestBoardConstraints } from "../pinterest-board-constraints";
 import { assertActorCanPublishNow } from "../rbac";
 import type {
   IPublishingRepository,
@@ -90,6 +91,13 @@ export class RetryFailedTargetUseCase {
         "Retry hanya berlaku untuk target yang berstatus gagal.",
       );
     }
+
+    assertPinterestBoardConstraints([
+      {
+        platform: target.platform,
+        platformOptions: target.platformOptions,
+      },
+    ]);
 
     // Delete best-effort (ADR-092) — HANYA bila target ini satu-satunya
     // di post (tidak ada sibling published/scheduled/pending). Real

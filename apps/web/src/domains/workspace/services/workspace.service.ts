@@ -5,6 +5,7 @@ import {
   MemberRole,
   MemberStatus,
   NotificationType,
+  SocialPlatform,
 } from "@social/shared";
 import type {
   ConnectedAccountId,
@@ -12,7 +13,7 @@ import type {
   IOutstandAdapter,
   InvitationId,
   MemberId,
-  SocialPlatform,
+  PinterestBoard,
   UserId,
   WorkspaceId,
 } from "@social/shared";
@@ -1289,6 +1290,54 @@ export class WorkspaceService {
     }
 
     return created;
+  }
+
+  /**
+   * Pinterest boards (menutup KI-072, sisa scope ADR-114) — daftar board
+   * ASLI dari SATU akun Pinterest terhubung, dipakai UI Draft Editor untuk
+   * dropdown board per post (bukan text input bebas). Board dipilih PER
+   * POST (state Draft Editor, lewat `platformOptions.boardId`), BUKAN
+   * dipersist ke `ConnectedAccount` — method ini murni membaca daftar
+   * pilihan, tidak menulis apa pun.
+   *
+   * Anti-IDOR: `connectedAccountId` divalidasi terhadap
+   * `listConnectedAccounts` (harus benar-benar milik `workspaceId` ini)
+   * SEBELUM `outstandAccountId`-nya diteruskan ke adapter — id yang
+   * ditebak/ditamper dari client (mis. milik workspace lain) ditolak
+   * `ConflictError`, bukan diam-diam diteruskan. Akun yang bukan Pinterest
+   * juga ditolak eksplisit (`ValidationError`) — adapter tidak boleh
+   * dipanggil dengan asumsi platform yang salah.
+   *
+   * Tidak ada RBAC tambahan di luar keanggotaan workspace (pola sama
+   * `listConnectedAccounts`/`getConnectedAccountsAction`) — SEMUA member
+   * aktif boleh melihat daftar board saat menyusun post, bukan hanya
+   * Owner/Admin (beda dari `initiateConnectAccount`/
+   * `confirmFacebookPagesConnection` yang mengubah `ConnectedAccount`).
+   */
+  async listPinterestBoards(input: {
+    workspaceId: WorkspaceId;
+    actorId: UserId;
+    connectedAccountId: ConnectedAccountId;
+  }): Promise<PinterestBoard[]> {
+    const accounts = await this.repository.listConnectedAccounts(
+      input.workspaceId,
+      input.actorId,
+    );
+    const account = accounts.find((acc) => acc.id === input.connectedAccountId);
+    if (!account) {
+      throw new ConflictError(
+        "Akun terhubung tidak ditemukan atau bukan milik workspace ini.",
+      );
+    }
+    if (account.platform !== SocialPlatform.Pinterest) {
+      throw new ValidationError(
+        "Daftar board Pinterest hanya berlaku untuk akun Pinterest.",
+      );
+    }
+
+    return this.requireOutstandAdapter().listPinterestBoards(
+      account.outstandAccountId,
+    );
   }
 
   /**
