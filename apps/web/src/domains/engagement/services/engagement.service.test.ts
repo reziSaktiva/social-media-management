@@ -9,7 +9,7 @@ import {
   type IOutstandAdapter,
   type ReplyToCommentResult,
 } from "@social/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   ConflictError,
   NotFoundError,
@@ -480,9 +480,12 @@ describe("EngagementService.reply", () => {
     const repository = createFakeRepository({
       findInboxItemById: async () => item,
     });
+    const replyToComment = vi.fn(async () => ({
+      outstandReplyId: "should-not-send",
+    }));
     const service = createService(
       repository,
-      createFakeAdapter(),
+      createFakeAdapter({ replyToComment }),
       createFakePublishingPosts(),
       createFakeConnectedAccounts({
         findConnectedAccountById: async () => null,
@@ -497,6 +500,7 @@ describe("EngagementService.reply", () => {
     ).rejects.toThrow(
       /Komentar tidak bisa dibalas karena akun terhubung tidak ditemukan/,
     );
+    expect(replyToComment).not.toHaveBeenCalled();
   });
 
   it("throw ConflictError kalau handle akun terhubung kosong", async () => {
@@ -504,9 +508,12 @@ describe("EngagementService.reply", () => {
     const repository = createFakeRepository({
       findInboxItemById: async () => item,
     });
+    const replyToComment = vi.fn(async () => ({
+      outstandReplyId: "should-not-send",
+    }));
     const service = createService(
       repository,
-      createFakeAdapter(),
+      createFakeAdapter({ replyToComment }),
       createFakePublishingPosts(),
       createFakeConnectedAccounts({
         findConnectedAccountById: async () => ({ handle: "   " }),
@@ -518,6 +525,9 @@ describe("EngagementService.reply", () => {
         { workspaceId: WORKSPACE_ID, inboxItemId: item.id, content: "Halo" },
         USER_ID,
       ),
-    ).rejects.toThrow(ConflictError);
+    ).rejects.toThrow(
+      /Komentar tidak bisa dibalas karena akun terhubung tidak punya username/,
+    );
+    expect(replyToComment).not.toHaveBeenCalled();
   });
 });

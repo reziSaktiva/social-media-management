@@ -156,7 +156,7 @@ export class EngagementService {
    * pernah mengisi kolom ini, ATAU post terkait belum pernah publish di
    * Outstand) → resolve `accountUsername` dari handle
    * `WorkspaceConnectedAccount` milik `item.connectedAccountId` (KI-071,
-   * `ConflictError` kalau akun tidak ketemu / handle kosong) →
+   * `ConflictError` terpisah kalau akun tidak ketemu vs handle kosong) →
    * `IOutstandAdapter.replyToComment({ outstandPostId, content,
    * accountUsername, parentOutstandCommentId: item.externalId })`
    * (Anti-Corruption Layer — domain ini tidak pernah tahu bentuk
@@ -219,10 +219,15 @@ export class EngagementService {
         item.connectedAccountId,
         userId,
       );
-    const accountUsername = connectedAccount?.handle.trim() ?? "";
-    if (!accountUsername) {
+    if (!connectedAccount) {
       throw new ConflictError(
         "Komentar tidak bisa dibalas karena akun terhubung tidak ditemukan.",
+      );
+    }
+    const accountUsername = connectedAccount.handle.trim();
+    if (!accountUsername) {
+      throw new ConflictError(
+        "Komentar tidak bisa dibalas karena akun terhubung tidak punya username.",
       );
     }
 
