@@ -18,6 +18,7 @@ import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outst
 import {
   outstandConnectNonceCookieName,
   outstandConnectNonceCookieOptions,
+  readConnectStateFromRedirectUrl,
 } from "@/lib/workspace/outstand-connect-nonce-cookie";
 import { outstandFacebookSessionCookieName } from "@/lib/workspace/outstand-facebook-session-cookie";
 import { toActionError } from "@/lib/utils/errors";
@@ -28,16 +29,12 @@ import { toActionError } from "@/lib/utils/errors";
  * 4) — dibaca+dicocokkan kembali Route Handler callback. `redirectUrl`
  * adalah path relatif Fake (`/api/integrations/outstand/callback?...`),
  * jadi di-parse dengan base dummy murni untuk membaca `searchParams`, BUKAN
- * dipakai sebagai origin request sungguhan. Kalau `state` tidak dalam
- * format yang dikenal (mis. real adapter T-025 nanti memakai skema
- * berbeda) — skip diam-diam, bukan fatal; CSRF-nonce lokal ini murni
- * pelengkap Fake loopback (lihat catatan di `connect-state.ts`).
+ * dipakai sebagai origin request sungguhan. `state` bisa di query tingkat
+ * atas atau di dalam `redirect_uri` (Real adapter, ADR-112). Kalau format
+ * `state` tidak dikenal, skip — callback nanti menolak tanpa cookie.
  */
 async function persistConnectNonceCookie(redirectUrl: string): Promise<void> {
-  const state = new URL(
-    redirectUrl,
-    "http://outstand-connect.invalid",
-  ).searchParams.get("state");
+  const state = readConnectStateFromRedirectUrl(redirectUrl);
   if (!state) return;
 
   try {
