@@ -8,6 +8,37 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-25 — KI-071 Resolved: `replyToComment` wajib `accountUsername` via ADR-117
+
+King Rezi menutup **KI-071** (gap disambiguasi reply multi-akun network
+sama). Elon Backend Engineer mengamandemen kontrak `replyToComment`:
+`accountUsername: string` wajib; `RealOutstandAdapter` selalu mengirim
+body `account_username`; `FakeOutstandAdapter` menerima field itu (instant
+success, ADR-059). `EngagementService.reply` resolve handle lewat port
+lokal `ConnectedAccountHandlePort.findConnectedAccountById` — composition
+root menyuplai `workspaceRepository` (`WorkspaceConnectedAccount.handle`);
+handle kosong/akun tidak ketemu → `ConflictError`. `platform_post_id`
+SENGAJA tidak ditambahkan (disambiguasi sudah ditutup username, pola sama
+`fetchComments` ADR-113).
+
+Ridwan Architecture Reviewer: **0 temuan**. Najwa QA Engineer: Vitest
+**6 file / 80 tes PASS**; tidak ada perubahan UI; typecheck Elon PASS.
+Perubahan ini di-commit di branch `feature/ki-071-reply-disambiguation`
+(PR #134).
+
+**ADR baru:** `project-manager/decisions/ADR-117-replytocomment-account-username-disambiguation-ki071.md`
+(amandemen ADR-113). Status ADR-113 → `Accepted — Amended by ADR-117
+(2026-09-25)` di indeks `DECISIONS.md` + header file ADR-113.
+
+**Task:** tidak ada task baru; T-025 tetap ✅ Done (hanya prosa
+`tasks/v02-publishing-mvp.md` yang menyebut KI-071 Open diperbaiki).
+Indeks `TASKS.md` tidak diubah.
+
+**Docs:** `PROJECT_STATE.md` — KI-071 dihapus dari § Known Issues
+(Resolved + tercatat di COMPLETE_TASK); Completed Ringkasan + Recent
+Decisions diperbarui; metadata Version 1.0.94 → 1.0.95; Last Updated
+tetap 2026-09-25. Branch implementasi: `feature/ki-071-reply-disambiguation`.
+
 ## 2026-09-25 — T-106 dicatat: hapus FakeOutstandAdapter (belum dikerjakan)
 
 King Rezi meminta task atau Known Issue untuk menghilangkan

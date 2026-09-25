@@ -41,6 +41,24 @@ interface PublishingPostReferencePort {
 }
 
 /**
+ * Port lokal cross-domain `engagement` → `workspace` (KI-071) —
+ * `EngagementService.reply` butuh `accountUsername` (= handle akun
+ * terhubung) untuk disambiguasi `POST /v1/posts/{id}/replies` saat satu
+ * post publish ke >1 akun di network yang sama. Hanya lookup per id
+ * (bukan list seluruh akun). `engagement` TIDAK mengimpor
+ * `WorkspaceService`/Prisma; composition root menyuplai repository/
+ * service yang sudah punya `findConnectedAccountById` lewat structural
+ * typing (pola sama `ConnectedAccountsPort` di `refresh-inbox.use-case.ts`).
+ */
+interface ConnectedAccountHandlePort {
+  findConnectedAccountById(
+    workspaceId: WorkspaceId,
+    connectedAccountId: ConnectedAccountId,
+    userId: UserId,
+  ): Promise<{ handle: string } | null>;
+}
+
+/**
  * Detail satu inbox item + balasannya (T-050) — dipakai composition root
  * route detail Comments Inbox (T-053, belum dibangun di task ini).
  */
@@ -63,6 +81,7 @@ export class EngagementService {
     private readonly repository: IEngagementRepository,
     private readonly adapter: IOutstandAdapter,
     private readonly publishingPosts: PublishingPostReferencePort,
+    private readonly connectedAccounts: ConnectedAccountHandlePort,
   ) {}
 
   /**
@@ -135,11 +154,15 @@ export class EngagementService {
    * lewat `item.postId` (uuid internal `PublishingPost`, `ConflictError`
    * kalau `null` — data lama sebelum redesain KI-068/T-051 yang belum
    * pernah mengisi kolom ini, ATAU post terkait belum pernah publish di
-   * Outstand) → `IOutstandAdapter.replyToComment({ outstandPostId, content,
-   * parentOutstandCommentId: item.externalId })` (Anti-Corruption Layer —
-   * domain ini tidak pernah tahu bentuk request/response HTTP Outstand) →
-   * `createReply` dengan `outstandReplyId` hasil adapter ikut dipersist
-   * (kolom `EngagementReply.outstandReplyId`, ADR-040).
+   * Outstand) → resolve `accountUsername` dari handle
+   * `WorkspaceConnectedAccount` milik `item.connectedAccountId` (KI-071,
+   * `ConflictError` terpisah kalau akun tidak ketemu vs handle kosong) →
+   * `IOutstandAdapter.replyToComment({ outstandPostId, content,
+   * accountUsername, parentOutstandCommentId: item.externalId })`
+   * (Anti-Corruption Layer — domain ini tidak pernah tahu bentuk
+   * request/response HTTP Outstand) → `createReply` dengan
+   * `outstandReplyId` hasil adapter ikut dipersist (kolom
+   * `EngagementReply.outstandReplyId`, ADR-040).
    *
    * **`parentOutstandCommentId: item.externalId`** — `item.externalId`
    * adalah `outstandCommentId` (komentar eksternal Outstand yang SEDANG
@@ -190,9 +213,28 @@ export class EngagementService {
       );
     }
 
+    const connectedAccount =
+      await this.connectedAccounts.findConnectedAccountById(
+        input.workspaceId,
+        item.connectedAccountId,
+        userId,
+      );
+    if (!connectedAccount) {
+      throw new ConflictError(
+        "Komentar tidak bisa dibalas karena akun terhubung tidak ditemukan.",
+      );
+    }
+    const accountUsername = connectedAccount.handle.trim();
+    if (!accountUsername) {
+      throw new ConflictError(
+        "Komentar tidak bisa dibalas karena akun terhubung tidak punya username.",
+      );
+    }
+
     const { outstandReplyId } = await this.adapter.replyToComment({
       outstandPostId,
       content,
+      accountUsername,
       parentOutstandCommentId: item.externalId,
     });
 

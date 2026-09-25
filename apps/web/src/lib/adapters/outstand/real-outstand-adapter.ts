@@ -1088,22 +1088,20 @@ export function createRealOutstandAdapter(
     },
 
     /**
-     * Reply (T-025.6, T-054, redesain KI-068/ADR-113) — **diverifikasi
-     * terhadap OpenAPI spec resmi Outstand:** `POST /v1/posts/{postId}/replies`
-     * body `{ content, parent_comment_id? }`. Response
+     * Reply (T-025.6, T-054, redesain KI-068/ADR-113, KI-071) —
+     * **diverifikasi terhadap OpenAPI spec resmi Outstand:**
+     * `POST /v1/posts/{postId}/replies` body
+     * `{ content, account_username, parent_comment_id? }`. Response
      * `{ success, reply_id }`.
      *
-     * **Catatan (bukan bug, keputusan scope KI-068):** body request resmi
-     * juga menerima `account_username`/`platform_post_id` opsional untuk
-     * disambiguasi saat satu post publish ke >1 akun di network yang sama
-     * — kontrak `IOutstandAdapter.replyToComment` (dikonfirmasi King Rezi)
-     * SENGAJA tidak membawa field itu, jadi reply ke post multi-akun bisa
-     * gagal 400 di sisi Outstand kalau ambigu. Di luar scope perbaikan
-     * sesi ini (dilaporkan, bukan diputuskan sendiri).
+     * `account_username` di-spec Outstand opsional, tapi kita SELALU
+     * mengirimnya (pola sama `fetchComments` / query `username`) supaya
+     * reply ke post multi-akun di network yang sama tidak 400 (KI-071).
      */
     async replyToComment({
       outstandPostId,
       content,
+      accountUsername,
       parentOutstandCommentId,
     }): Promise<ReplyToCommentResult> {
       const response = await client.request<Record<string, unknown>>(
@@ -1112,6 +1110,7 @@ export function createRealOutstandAdapter(
           method: "POST",
           body: {
             content,
+            account_username: accountUsername,
             ...(parentOutstandCommentId
               ? { parent_comment_id: parentOutstandCommentId }
               : {}),

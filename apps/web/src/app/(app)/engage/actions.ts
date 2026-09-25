@@ -122,6 +122,7 @@ export async function listInboxAction(
     engagementRepository,
     getOutstandAdapter(),
     publishingRepository,
+    workspaceRepository,
   );
 
   try {
@@ -161,6 +162,7 @@ export async function getInboxItemDetailAction(
     engagementRepository,
     getOutstandAdapter(),
     publishingRepository,
+    workspaceRepository,
   );
 
   try {
@@ -193,6 +195,7 @@ export async function markAsDoneAction(
     engagementRepository,
     getOutstandAdapter(),
     publishingRepository,
+    workspaceRepository,
   );
 
   try {
@@ -209,12 +212,14 @@ export async function markAsDoneAction(
 
 /**
  * Balas komentar dari dalam aplikasi (T-054, `integration-layer.md`
- * § "Reply via Outstand API", ADR-019/ADR-040). Murni wiring — resolve
- * workspace/session (RBAC: seluruh role member aktif workspace boleh
+ * § "Reply via Outstand API", ADR-019/ADR-040, KI-071). Murni wiring —
+ * resolve workspace/session (RBAC: seluruh role member aktif workspace boleh
  * membalas, `roles-permissions.md` tidak membedakan akses Engagement per
  * role — tidak ada gating tambahan di sini selain member aktif, pola sama
  * Server Action lain), rakit `EngagementService` dengan `getOutstandAdapter()`
- * (pola sama `refreshInboxAction`), delegasi ke `EngagementService.reply`
+ * + `publishingRepository` (`PublishingPostReferencePort`) +
+ * `workspaceRepository` (`ConnectedAccountHandlePort` — lookup handle per
+ * id untuk `accountUsername`, KI-071), delegasi ke `EngagementService.reply`
  * (validasi `content` kosong/whitespace-only ada di service, bukan di sini —
  * konsisten dengan `IdentityService.updateProfile`), lalu
  * `revalidatePath("/engage")` (pola sama `markAsDoneAction`).
@@ -234,6 +239,7 @@ export async function replyToCommentAction(
     engagementRepository,
     getOutstandAdapter(),
     publishingRepository,
+    workspaceRepository,
   );
 
   try {

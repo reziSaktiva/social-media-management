@@ -644,21 +644,29 @@ export interface IOutstandAdapter {
   }): Promise<FetchCommentsResult>;
 
   /**
-   * Reply dari dalam aplikasi (T-054, redesain KI-068/ADR-113) — dipanggil
-   * `EngagementService` setelah RBAC check lolos. Endpoint resmi Outstand
-   * `POST /v1/posts/{postId}/replies` WAJIB tahu `postId` — `outstandPostId`
-   * karena itu sekarang wajib di kontrak ini (sebelumnya method ini hanya
-   * membawa `outstandCommentId`, yang TIDAK cukup untuk memanggil endpoint
-   * resmi sama sekali, root cause KI-068). `content` adalah isi balasan.
-   * `parentOutstandCommentId` opsional — kalau diisi, balasan di-thread di
-   * bawah komentar itu (`parent_comment_id`, didukung Facebook/Instagram/
-   * LinkedIn/Threads); kalau kosong, balasan langsung ke post
-   * (`EngagementService.reply` mengisinya dengan `outstandCommentId`
+   * Reply dari dalam aplikasi (T-054, redesain KI-068/ADR-113, KI-071) —
+   * dipanggil `EngagementService` setelah RBAC check lolos. Endpoint resmi
+   * Outstand `POST /v1/posts/{postId}/replies` WAJIB tahu `postId` —
+   * `outstandPostId` karena itu sekarang wajib di kontrak ini (sebelumnya
+   * method ini hanya membawa `outstandCommentId`, yang TIDAK cukup untuk
+   * memanggil endpoint resmi sama sekali, root cause KI-068). `content`
+   * adalah isi balasan. `parentOutstandCommentId` opsional — kalau diisi,
+   * balasan di-thread di bawah komentar itu (`parent_comment_id`, didukung
+   * Facebook/Instagram/LinkedIn/Threads); kalau kosong, balasan langsung
+   * ke post (`EngagementService.reply` mengisinya dengan `outstandCommentId`
    * komentar yang sedang dibalas — lihat catatan di sana).
+   *
+   * **`accountUsername` WAJIB** (KI-071, pola sama `fetchComments`) —
+   * spec Outstand menandai `account_username` opsional, tapi kita SELALU
+   * mengirimnya untuk menghindari 400 disambiguasi saat satu post publish
+   * ke >1 akun di network yang sama. Caller menyuplai handle akun
+   * (`WorkspaceConnectedAccount.handle`) dari data durable — adapter
+   * tidak menebak.
    */
   replyToComment(input: {
     outstandPostId: string;
     content: string;
+    accountUsername: string;
     parentOutstandCommentId?: string;
   }): Promise<ReplyToCommentResult>;
 }

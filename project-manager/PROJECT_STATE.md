@@ -15,7 +15,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.94     |
+| Version      | 1.0.95     |
 | Status       | Active     |
 | Last Updated | 2026-09-25 |
 
@@ -577,7 +577,7 @@ sudah tayang. Non-blocking, gap serupa pola **KI-049**
 |-------|-------|
 | Status | Resolved (2026-09-24) |
 | Domain | integration |
-| Terkait | T-025 (T-025.6), T-051, T-054, JOB-03, ADR-110, ADR-113, KI-071 |
+| Terkait | T-025 (T-025.6), T-051, T-054, JOB-03, ADR-110, ADR-113, ADR-117, KI-071 (Resolved via ADR-117) |
 
 Ditemukan Elon Backend Engineer (2026-09-23), root cause sama KI-067
 (Resolved, `connectAccount`/OAuth exchange — lihat `COMPLETE_TASK.md`) —
@@ -606,8 +606,8 @@ adapter disesuaikan (tetap ADR-059). Typecheck/lint bersih, Vitest 480
 pass/6 skip/0 fail. Migration
 `20260924090000_ki068_add_handle_to_account_owner_lookup` sudah di-deploy
 King Rezi (2026-09-24, `bun run db:deploy`, terverifikasi 37 migrations
-applied). Gap baru ditemukan (keputusan scope King Rezi, bukan bug):
-dicatat **KI-071**.
+applied). Gap disambiguasi reply multi-akun yang dicatat **KI-071** saat itu
+sudah **Resolved via ADR-117 (2026-09-25)**.
 
 ### KI-069 · Override format per-platform (Story/Reel/Pin) tidak terkirim ke Outstand
 
@@ -639,25 +639,6 @@ Backend Engineer, lolos review Ridwan Architecture Reviewer 0 temuan
 mengumpulkan `board_id`, key `pinterest` tetap tidak dikirim ke Outstand
 (sama seperti sebelumnya, tidak menambah risiko). Dicatat sebagai KI
 terpisah **KI-072** (baru, Open).
-
-### KI-071 · Reply comment tidak membawa field disambiguasi untuk post multi-akun (network sama)
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Domain | integration |
-| Terkait | T-025 (T-025.6), ADR-113, KI-068 |
-
-Ditemukan Elon Backend Engineer (2026-09-24) saat implementasi ADR-113 —
-endpoint resmi Outstand `POST /v1/posts/{id}/replies` menerima
-`account_username`/`platform_post_id` **opsional** untuk disambiguasi kalau
-satu post publish ke lebih dari satu akun di network yang sama, tapi
-signature `replyToComment` yang dikonfirmasi King Rezi (ADR-113) tidak
-membawa field itu. Reply ke post yang publish ke >1 akun pada network yang
-sama berisiko gagal 400 di sisi Outstand. **Keputusan scope eksplisit King
-Rezi** (via `AskUserQuestion`) — dicatat sebagai KI terpisah, tidak
-memblokir penutupan KI-068. Menunggu keputusan lanjutan King Rezi apakah
-field disambiguasi ini perlu ditambahkan ke kontrak.
 
 ### KI-072 · Pinterest `board_id` tidak pernah dikumpulkan — override Pinterest tidak bisa dikirim ke Outstand
 
@@ -735,22 +716,24 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
-* **T-025 hardening code-review PR #133 (2026-09-25) — status tetap ✅ Done** — Elon Backend Engineer menerapkan perbaikan dari rencana code-review PR #133 (SECURITY DEFINER webhook privileges, Facebook session httpOnly cookie, media/Story caption, deletePost/retry, engagement upsert, hide Facebook Reconnect, redact presigned URL, reelCoverUrl + 429 retryable, sync comments guard, CSRF tests). Ridwan Architecture Reviewer: 0 temuan. Vitest 130 test terkait lulus; typecheck bersih. **KI-071** / **KI-072** tetap Open. Cookie handoff = hardening ADR-115/116 (tanpa ADR baru). Detail: `COMPLETE_TASK.md` (2026-09-25), `tasks/v02-publishing-mvp.md` § T-025.
+* **KI-071 Resolved — `replyToComment` wajib `accountUsername` via ADR-117 (2026-09-25)** — Elon Backend Engineer mewajibkan `accountUsername` di `IOutstandAdapter.replyToComment`; `RealOutstandAdapter` selalu mengirim `account_username`; Fake tetap ADR-059. `EngagementService.reply` resolve handle lewat `ConnectedAccountHandlePort` (composition root → `workspaceRepository`); handle kosong/akun tidak ketemu → `ConflictError`. `platform_post_id` sengaja tidak masuk kontrak (pola sama `fetchComments` ADR-113). Ridwan Architecture Reviewer: 0 temuan. Najwa QA: Vitest 6 file / 80 tes PASS; typecheck PASS. Tidak ada perubahan UI; T-025 tetap ✅ Done. Detail: `COMPLETE_TASK.md` (2026-09-25), `decisions/ADR-117-replytocomment-account-username-disambiguation-ki071.md`.
+* **T-025 hardening code-review PR #133 (2026-09-25) — status tetap ✅ Done** — Elon Backend Engineer menerapkan perbaikan dari rencana code-review PR #133 (SECURITY DEFINER webhook privileges, Facebook session httpOnly cookie, media/Story caption, deletePost/retry, engagement upsert, hide Facebook Reconnect, redact presigned URL, reelCoverUrl + 429 retryable, sync comments guard, CSRF tests). Ridwan Architecture Reviewer: 0 temuan. Vitest 130 test terkait lulus; typecheck bersih. **KI-071** Resolved via ADR-117 (2026-09-25); **KI-072** tetap Open. Cookie handoff = hardening ADR-115/116 (tanpa ADR baru). Detail: `COMPLETE_TASK.md` (2026-09-25), `tasks/v02-publishing-mvp.md` § T-025.
 * **T-025 ✅ Done — KI-070 Resolved, UI Facebook Pages Picker + 2 bug fix + QA final PASS (2026-09-24)** — Mark UI Engineer mengimplementasikan `FacebookPagesPickerDialog.tsx` (4 state, tersambung ke 2 Server Action ADR-115/ADR-116). 2 bug ditemukan+diperbaiki Elon Backend Engineer: Bug #1 (405 POST ke Route Handler `GET`-only, fix alias `POST = GET`), Bug #2 (dialog macet di Loading — root cause artefak Fake-mode loopback domain sendiri, fix `initiateConnectAccountAction`/`initiateReconnectAccountAction` return `redirectUrl` + client `window.location.href` khusus Facebook). Ridwan 0 temuan, Najwa QA final PASS (509 passed/6 skipped). Catatan non-blocking: Reconnect Facebook Page tunggal selalu CREATE bukan UPDATE (keputusan eksplisit King Rezi, didokumentasikan sebagai keterbatasan). **KI-003 (parent) juga Resolved** — seluruh subtask T-025.1–T-025.7 tuntas. Detail: `COMPLETE_TASK.md` (2026-09-24), `tasks/v02-publishing-mvp.md` § T-025.
 * **ADR-116 Accepted — backend Facebook Pages selesai + lolos review Ridwan (2026-09-24)** — koreksi wire-format ADR-115 (query param `session` bukan `session_token`, path finalize `/finalize`, response `data.availablePages[]`/`connectedAccounts[]`) diverifikasi Elon Backend Engineer via WebFetch dokumentasi resmi Outstand. Kontrak `packages/shared` tidak berubah. Implementasi penuh: real+fake adapter, `WorkspaceService` (2 method baru), Route Handler, 2 Server Action. Vitest 498 pass/6 skip/0 fail, Ridwan 0 temuan. Detail: `COMPLETE_TASK.md` (2026-09-24), `decisions/ADR-116-facebook-pages-wire-format-koreksi-adr-115.md`, `tasks/v02-publishing-mvp.md` § T-025.
 * **ADR-115 diajukan — kontrak Connect Account Facebook Pages session-token, menutup gap KI-070 (2026-09-24)** — `listPendingFacebookPages`/`confirmFacebookPagesConnection` (method baru `IOutstandAdapter`, `resolveConnectCallback` tidak diubah), percabangan Route Handler callback existing, 2 method baru `WorkspaceService` (RBAC reuse, skip-bukan-gagal untuk Page sudah terhubung). Status **Proposed** (bukan Accepted) — wire-format persis belum terverifikasi terhadap OpenAPI spec resmi Outstand, wajib dicek Elon Backend Engineer sebelum implementasi. Detail: `COMPLETE_TASK.md` (2026-09-24), `decisions/ADR-115-facebook-pages-session-token-connect-ki070.md`, `tasks/v02-publishing-mvp.md` § T-025.
-* **KI-069 Resolved — override format platform-specific (Story/Reel) via ADR-114 (2026-09-24)** — `OutstandPostTargetInput` ditambah field `platform`, `RealOutstandAdapter` memetakan `contentFormat` ke shape asli Outstand per network. Diimplementasikan Elon Backend Engineer, lolos review Ridwan 0 temuan (typecheck/lint bersih, Vitest 487 pass/6 skip/0 fail). Pinterest `board_id` sengaja belum diimplementasikan, dicatat **KI-072 baru** (Open). Detail: `COMPLETE_TASK.md` (2026-09-24), `decisions/ADR-114-outstand-post-target-platform-override-ki069.md`, `tasks/v02-publishing-mvp.md` § T-025.
+
 ---
 
 ## Recent Decisions (Ringkasan)
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-117** — `replyToComment` wajib `accountUsername` (amandemen ADR-113, menutup KI-071): `accountUsername` wajib di kontrak; selalu dikirim sebagai `account_username`; `platform_post_id` tidak masuk kontrak. Resolve handle via port lokal di `EngagementService.reply`. Detail: `decisions/ADR-117-replytocomment-account-username-disambiguation-ki071.md`.
 * **ADR-116** — Koreksi Wire-Format Facebook Pages Session-Token Connect (Amandemen ADR-115, menutup verifikasi KI-070): Elon Backend Engineer memverifikasi wire-format asli lewat WebFetch dokumentasi resmi Outstand, menemukan 4 dari 4 asumsi ADR-115 salah (query param `session` bukan `session_token`, path finalize `/finalize`, response `data.availablePages[]`/`connectedAccounts[]`). Kontrak `packages/shared` tidak berubah — koreksi murni mapping wire↔domain. Diimplementasikan penuh, lolos review Ridwan Architecture Reviewer 0 temuan. Detail: `decisions/ADR-116-facebook-pages-wire-format-koreksi-adr-115.md`.
 * **ADR-115** — Connect Account — Facebook Pages via Session-Token + Page-Selection (Amandemen ADR-112, menutup KI-070): kontrak baru `listPendingFacebookPages`/`confirmFacebookPagesConnection` di `IOutstandAdapter` (method baru, `resolveConnectCallback` tidak diubah), percabangan Route Handler callback existing, 2 method baru `WorkspaceService`. Status **Proposed — Amended by ADR-116** — wire-format sudah dikoreksi ADR-116, kontrak tidak berubah. Detail: `decisions/ADR-115-facebook-pages-session-token-connect-ki070.md`.
 * **ADR-114** — Redesain `OutstandPostTargetInput` — Tambah Field `platform` untuk Override Format Platform-specific (Story/Reel): KI-069 menemukan `OutstandPostTargetInput` tidak membawa `platform`/network per target, padahal body resmi Outstand `POST /v1/posts` butuh override format (Story/Reel) dikirim sebagai key top-level bernama network. Ditambah field wajib `platform: SocialPlatform`, diteruskan dari data yang sudah ada di scope caller. Pinterest `board_id` sengaja tidak diimplementasikan, dicatat **KI-072** baru. Detail: `decisions/ADR-114-outstand-post-target-platform-override-ki069.md`.
-* **ADR-113** — Redesain `IOutstandAdapter.fetchComments`/`replyToComment` — Scope Per Post (Amandemen ADR-110): KI-068 menemukan kontrak per-akun+cursor (ADR-110) tidak cocok API resmi Outstand (`/v1/posts/{id}/replies`, per-post, tanpa cursor). Diganti `fetchComments`/`replyToComment` per-post, `SyncCommentsUseCase` (T-051) diredesain loop per-post via port lokal `PublishingPostsPort`. Gap disambiguasi reply multi-akun dicatat **KI-071** baru. Detail: `decisions/ADR-113-redesain-fetchcomments-replytocomment-per-post-ki068.md`.
-* **ADR-112** — Single-page Connect Callback tanpa Code Exchange (Amandemen ADR-105): KI-067 menemukan kontrak `exchangeConnectCode({code, state})` tidak cocok realita Outstand — redirect balik langsung dengan query param `account_id`/`username`/`network_unique_id`, bukan `code` untuk di-exchange. Diganti `resolveConnectCallback(ConnectCallbackInput)`, scope dipersempit ke single-page saja (King Rezi), Facebook Pages multi-halaman di-split jadi KI-070. Detail: `decisions/ADR-112-single-page-connect-callback-tanpa-code-exchange-amandemen-adr-105.md`.
+* **ADR-113** — Redesain `IOutstandAdapter.fetchComments`/`replyToComment` — Scope Per Post (Amandemen ADR-110): KI-068 menemukan kontrak per-akun+cursor (ADR-110) tidak cocok API resmi Outstand (`/v1/posts/{id}/replies`, per-post, tanpa cursor). Diganti `fetchComments`/`replyToComment` per-post, `SyncCommentsUseCase` (T-051) diredesain loop per-post via port lokal `PublishingPostsPort`. Gap disambiguasi reply multi-akun (**KI-071**) kemudian Resolved via ADR-117 (2026-09-25). Detail: `decisions/ADR-113-redesain-fetchcomments-replytocomment-per-post-ki068.md`.
+
 ---
 
 ## Related Documents
