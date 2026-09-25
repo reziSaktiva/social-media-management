@@ -19,6 +19,7 @@ import {
   type OutstandPostMediaInput,
   type OutstandPostTargetInput,
   type OutstandPostTargetStatus,
+  type PinterestBoard,
   type PostTargetOutcome,
   type PublishNowOutstandPostInput,
   type PublishNowOutstandPostResult,
@@ -74,16 +75,19 @@ import { parseBase64UrlJson } from "./connect-state";
  *    cocok dengan API resmi Outstand (`GET/POST /v1/posts/{id}/replies`) —
  *    lihat implementasi kedua method di bawah.
  * 3. ~~Platform-specific overrides (Story/Reel/Pin, ADR-039)~~ —
- *    **DISELESAIKAN SEBAGIAN (ADR-114, 2026-09-24, resolusi KI-069).**
- *    `OutstandPostTargetInput` sekarang membawa `platform` per target, jadi
- *    `buildPostRequestBody` di bawah bisa membentuk top-level key BERNAMA
- *    NETWORK (`instagram`/`facebook`/dst) untuk override format. Instagram
- *    Story dan Facebook Story/Reel sudah dikirim (field-nya sudah ada di
- *    domain kita). **Pinterest `board_id` (wajib di API Outstand) SENGAJA
- *    TIDAK diimplementasikan** — domain/UI kita belum mengumpulkan
- *    `board_id` sama sekali, jadi key `pinterest` tetap TIDAK PERNAH
- *    dikirim (bukan lupa, keputusan eksplisit King Rezi) — dicatat sebagai
- *    KI baru terpisah oleh Gibran Project Manager, di luar scope ADR-114.
+ *    **DISELESAIKAN (ADR-114, 2026-09-24, resolusi KI-069; Pinterest
+ *    `board_id` menyusul menutup KI-072, ADR baru dicatat Gibran Project
+ *    Manager).** `OutstandPostTargetInput` sekarang membawa `platform` per
+ *    target, jadi `buildPostRequestBody` di bawah bisa membentuk top-level
+ *    key BERNAMA NETWORK (`instagram`/`facebook`/`pinterest`/dst) untuk
+ *    override format. Instagram Story dan Facebook Story/Reel sudah
+ *    dikirim (field-nya sudah ada di domain kita). Pinterest `board_id`
+ *    (wajib di API Outstand) sekarang dikirim KALAU
+ *    `platformOptions.boardId` non-kosong (diisi UI board-picker Draft
+ *    Editor, per post — bukan per akun, TIDAK ada migrasi Prisma baru,
+ *    scope dikonfirmasi King Rezi 2026-09-25); kalau kosong, key
+ *    `pinterest` tetap TIDAK dikirim (perilaku lama, aman — post tetap
+ *    terkirim tanpa override Pinterest).
  */
 export interface RealOutstandAdapterOptions extends OutstandHttpClientOptions {
   /**
@@ -300,9 +304,18 @@ export function createRealOutstandAdapter(
    *   `instagram` sama sekali (tidak ada yang perlu diisi).
    * - Facebook: `Story` → `publishAsStory: true`, `Reel` →
    *   `publishAsReel: true`. `Post` tidak mengirim key `facebook`.
-   * - Pinterest: SENGAJA tidak diimplementasikan (`board_id` wajib di API
-   *   Outstand, domain/UI kita belum mengumpulkan field itu sama sekali,
-   *   ADR-114) — selalu `null`, dicatat sebagai KI baru terpisah.
+   * - Pinterest (menutup KI-072, sisa scope ADR-114): `board_id` WAJIB di
+   *   API Outstand — kalau `platformOptions.boardId` kosong/tidak ada,
+   *   `null` (aman, key `pinterest` tidak dikirim sama sekali, perilaku
+   *   lama). Kalau ada, kirim `{ board_id, title?, link? }` — `title`/
+   *   `link` diteruskan dari `platformOptions.pinTitle`/`pinLink` (field
+   *   yang SUDAH ada di UI Draft Editor sejak sebelum KI-072, sebelumnya
+   *   selalu diabaikan adapter). `alt_text`/`cover_image_url` (field valid
+   *   lain di skema `pinterest` Outstand, diverifikasi lewat MCP resmi
+   *   `create_post` + OpenAPI spec `api.outstand.so/v1/posts/openapi.json`)
+   *   TIDAK diteruskan — domain/UI kita tidak mengumpulkan keduanya untuk
+   *   Pinterest sama sekali (YAGNI, konsisten pola `reelCoverUrl` Instagram
+   *   yang juga hanya dikirim kalau datanya ada).
    * - Platform lain: belum ada override yang didesain ADR-039/ADR-107,
    *   `null`.
    *
@@ -339,8 +352,36 @@ export function createRealOutstandAdapter(
       }
       return null;
     }
-    // Pinterest (board_id wajib, belum dikumpulkan — KI-072): JANGAN kirim
-    // key `pinterest` walau `pinTitle`/`pinLink` ada di platformOptions.
+    if (platform === SocialPlatform.Pinterest) {
+      const boardId =
+        typeof platformOptions?.boardId === "string" &&
+        platformOptions.boardId.trim().length > 0
+          ? platformOptions.boardId.trim()
+          : undefined;
+      if (!boardId) {
+        // `board_id` wajib di API Outstand — tanpa itu JANGAN kirim key
+        // `pinterest` sama sekali (perilaku lama, aman: post tetap
+        // terkirim tanpa override Pinterest).
+        return null;
+      }
+
+      const override: Record<string, unknown> = { board_id: boardId };
+      const title =
+        typeof platformOptions?.pinTitle === "string"
+          ? platformOptions.pinTitle.trim()
+          : "";
+      if (title.length > 0) {
+        override.title = title;
+      }
+      const link =
+        typeof platformOptions?.pinLink === "string"
+          ? platformOptions.pinLink.trim()
+          : "";
+      if (link.length > 0) {
+        override.link = link;
+      }
+      return override;
+    }
     // Platform lain: belum ada override yang didesain.
     return null;
   }
@@ -1027,6 +1068,40 @@ export function createRealOutstandAdapter(
         totalEngagements,
         avgEngagementRate: 0,
       };
+    },
+
+    /**
+     * Pinterest boards (menutup KI-072, sisa scope ADR-114) — **diverifikasi
+     * terhadap OpenAPI spec resmi Outstand**
+     * (`GET https://api.outstand.so/v1/pinterest/accounts/{id}/boards`,
+     * diambil 2026-09-25 lewat WebFetch `api.outstand.so/v1/pinterest/openapi.json`
+     * + cross-check MCP resmi `list_pinterest_boards`): response
+     * `{ success, data: [{ id, name, description?, pin_count, privacy,
+     * owner: { username }, created_at }], count }`. Dipetakan minimal
+     * (`id`/`name`) — field lain (`description`/`pin_count`/`privacy`/
+     * `owner`/`created_at`) tidak dibutuhkan kontrak `PinterestBoard`
+     * (YAGNI, dropdown board hanya perlu label+value).
+     */
+    async listPinterestBoards(
+      outstandAccountId: string,
+    ): Promise<PinterestBoard[]> {
+      const response = await client.request<Record<string, unknown>>(
+        `/v1/pinterest/accounts/${encodeURIComponent(outstandAccountId)}/boards`,
+        { method: "GET" },
+      );
+
+      const rawBoards = Array.isArray(response.data)
+        ? (response.data as Record<string, unknown>[])
+        : [];
+
+      const boards: PinterestBoard[] = [];
+      for (const raw of rawBoards) {
+        if (typeof raw.id !== "string" || raw.id.length === 0) continue;
+        if (typeof raw.name !== "string" || raw.name.length === 0) continue;
+        boards.push({ id: raw.id, name: raw.name });
+      }
+
+      return boards;
     },
 
     /**

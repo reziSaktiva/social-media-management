@@ -333,7 +333,7 @@ describe("RealOutstandAdapter.schedulePost — platform-specific overrides (KI-0
     expect(body.facebook).toBeUndefined();
   });
 
-  it("NEVER sends a `pinterest` key, even for ContentFormat.Pin (board_id not collected by our domain/UI yet — deliberate, KI-069/ADR-114)", async () => {
+  it("sends NO `pinterest` key when `platformOptions.boardId` is absent (KI-072 — safe fallback, board_id is required by Outstand so we must not send a partial override)", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(
@@ -349,6 +349,71 @@ describe("RealOutstandAdapter.schedulePost — platform-specific overrides (KI-0
     ]);
 
     expect(body.pinterest).toBeUndefined();
+  });
+
+  it("sends NO `pinterest` key when `platformOptions.boardId` is an empty/whitespace string (KI-072)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+
+    const body = await schedulePostAndGetBody(fetchImpl, [
+      {
+        outstandAccountId: "acc-pin-1",
+        platform: SocialPlatform.Pinterest,
+        contentFormat: ContentFormat.Pin,
+        platformOptions: { boardId: "   " },
+      },
+    ]);
+
+    expect(body.pinterest).toBeUndefined();
+  });
+
+  it("sends `pinterest: { board_id, title, link }` when `platformOptions.boardId` is present (closes KI-072)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+
+    const body = await schedulePostAndGetBody(fetchImpl, [
+      {
+        outstandAccountId: "acc-pin-1",
+        platform: SocialPlatform.Pinterest,
+        contentFormat: ContentFormat.Pin,
+        platformOptions: {
+          boardId: "987654321098765432",
+          pinTitle: "Resep Kopi Susu",
+          pinLink: "https://example.com/resep-kopi-susu",
+        },
+      },
+    ]);
+
+    expect(body.pinterest).toEqual({
+      board_id: "987654321098765432",
+      title: "Resep Kopi Susu",
+      link: "https://example.com/resep-kopi-susu",
+    });
+  });
+
+  it("sends `pinterest: { board_id }` only, omitting `title`/`link` when pinTitle/pinLink are absent (closes KI-072)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { success: true, post: { id: "post-1" } }),
+      );
+
+    const body = await schedulePostAndGetBody(fetchImpl, [
+      {
+        outstandAccountId: "acc-pin-1",
+        platform: SocialPlatform.Pinterest,
+        contentFormat: ContentFormat.Pin,
+        platformOptions: { boardId: "987654321098765432" },
+      },
+    ]);
+
+    expect(body.pinterest).toEqual({ board_id: "987654321098765432" });
   });
 
   it("first-match-wins + warns on a same-network contentFormat conflict across multiple targets", async () => {
@@ -1060,6 +1125,66 @@ describe("RealOutstandAdapter.listPendingFacebookPages / confirmFacebookPagesCon
         selectedPageIds: ["fb-page-1"],
       }),
     ).rejects.toBeInstanceOf(OutstandIntegrationError);
+  });
+});
+
+describe("RealOutstandAdapter.listPinterestBoards (closes KI-072, sisa scope ADR-114)", () => {
+  it("calls GET /v1/pinterest/accounts/{id}/boards and maps id/name, ignoring extra fields", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        count: 2,
+        data: [
+          {
+            id: "987654321098765432",
+            name: "Resep & Minuman",
+            description: "My favourite recipes",
+            pin_count: 42,
+            privacy: "PUBLIC",
+            owner: { username: "myaccount" },
+            created_at: "2026-01-01T00:00:00.000Z",
+          },
+          {
+            id: "111222333444555666",
+            name: "Interior Kedai",
+            privacy: "PUBLIC",
+          },
+        ],
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.listPinterestBoards("acc-pin-1");
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(String(url)).toBe(
+      "https://api.outstand.so/v1/pinterest/accounts/acc-pin-1/boards",
+    );
+    expect(init.method).toBe("GET");
+    expect(result).toEqual([
+      { id: "987654321098765432", name: "Resep & Minuman" },
+      { id: "111222333444555666", name: "Interior Kedai" },
+    ]);
+  });
+
+  it("skips entries missing a valid id/name and returns an empty list when data is missing", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        data: [{ id: "", name: "Invalid" }, { id: "valid-no-name" }],
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.listPinterestBoards("acc-pin-1");
+    expect(result).toEqual([]);
+
+    const fetchImplNoData = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { success: true }));
+    const adapterNoData = buildAdapter(fetchImplNoData);
+    expect(await adapterNoData.listPinterestBoards("acc-pin-1")).toEqual([]);
   });
 });
 

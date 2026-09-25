@@ -8,6 +8,88 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-25 — KI-072 Resolved: `listPinterestBoards` + `board_id` per-post via ADR-118 (backend + UI + review + QA)
+
+King Rezi menutup **KI-072** (Pinterest `board_id` tidak pernah
+dikumpulkan). Sesi ini menuntaskan implementasi kode di atas rancangan UI
+yang sudah dikunci di sesi sebelumnya (lihat entri di bawah,
+"KI-072: rancangan UI board-picker Pinterest selesai di Claude Design").
+
+**Backend (Elon Backend Engineer):**
+
+- Kontrak `IOutstandAdapter` (`packages/shared/src/contracts/outstand-adapter.ts`)
+  — tambah type `PinterestBoard { id: string; name: string }` + method baru
+  `listPinterestBoards(outstandAccountId: string): Promise<PinterestBoard[]>`.
+- `RealOutstandAdapter` (`apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts`)
+  — `computePlatformOverride` untuk Pinterest sekarang mengirim
+  `{ board_id, title?, link? }` ke Outstand kalau `platformOptions.boardId`
+  non-kosong (sebelumnya SELALU `null`, tidak pernah kirim key `pinterest`
+  — itulah gap asli KI-072). Kalau `boardId` kosong, tetap `null`
+  (perilaku lama, tidak regresi). Tambah implementasi `listPinterestBoards`
+  (`GET https://api.outstand.so/v1/pinterest/accounts/{id}/boards`).
+- Wire-format diverifikasi via WebFetch OpenAPI spec resmi Outstand
+  (`api.outstand.so/v1/posts/openapi.json`,
+  `api.outstand.so/v1/pinterest/openapi.json`), bukan tebakan.
+- `FakeOutstandAdapter` — `listPinterestBoards` mock instan (pola ADR-059):
+  3 board tetap ("Resep & Minuman", "Interior Kedai", "Promo Musiman"),
+  selaras mock yang dipakai di Claude Design.
+- `WorkspaceService` — method baru `listPinterestBoards(workspaceId,
+  actorId, connectedAccountId)`: anti-IDOR (`connectedAccountId` harus
+  milik workspace, platform harus Pinterest) sebelum delegasi ke adapter;
+  semua member aktif boleh akses.
+- Server Action baru `listPinterestBoardsAction`
+  (`apps/web/src/app/(app)/components/draft-editor/actions.ts`).
+
+**Review arsitektur (Ridwan Architecture Reviewer):** 0 temuan — entry
+point bersih, domain logic tidak import Prisma/Supabase/HTTP langsung,
+anti-IDOR terverifikasi test, kontrak type-safe. Vitest full suite 547
+pass/6 skip/0 fail, typecheck bersih.
+
+**UI (Mark UI Engineer):** `Modal.tsx` — dropdown `<Select>` shadcn untuk
+Board Pinterest (3 state: loading, error+"Coba lagi", sukses), state
+`boardIdByAccount: Record<connectedAccountId, string | undefined>`
+**per-akun** (bukan global — fix bug QA, lihat di bawah), `buildTargetsPayload()`
+mengirim `boardId` per akun. Urutan field final: Pin Title → Destination
+Link → Board (sesuai Claude Design `templates/draft-editor.html`).
+
+**QA (Najwa QA Engineer), 2 putaran:**
+
+- Putaran 1: menemukan bug kritis — state board awalnya SATU variabel
+  global, menyebabkan pilihan board di 1 akun Pinterest menimpa dropdown
+  akun Pinterest lain kalau 2+ dicentang bersamaan. Diperbaiki Mark UI
+  Engineer (`boardIdByAccount` per-akun). Urutan field tidak sesuai Claude
+  Design (Board di awal, seharusnya di akhir) juga ditemukan+diperbaiki.
+  Golden path, edge case board kosong (opsional), role Creator, tidak ada
+  regresi platform lain — semua PASS.
+- Putaran 2 (retest fix): kode fix diverifikasi BENAR (typecheck/lint/547
+  test hijau, pola `boardIdByAccount` identik pola `formatByAccount` yang
+  sudah teruji lama). **Verifikasi visual browser untuk skenario 2-akun-
+  Pinterest tidak bisa diselesaikan** — blocker: `apps/web/.env.local`
+  berisi `OUTSTAND_API_KEY` asli saat sesi ini, dev server otomatis pakai
+  `RealOutstandAdapter`, Outstand API asli menolak akun Pinterest palsu
+  (`HTTP 400: Invalid social account ID`) — bukan bug kode, murni
+  keterbatasan environment lokal.
+
+**Keputusan King Rezi (dikonfirmasi via `AskUserQuestion`):** lanjut commit
+berdasarkan verifikasi kode (typecheck/lint/test/architecture review) tanpa
+menunggu retest visual browser skenario 2-akun tersebut — keputusan sadar,
+dicatat eksplisit sebagai limitasi known (bukan skip diam-diam), supaya
+kalau ada bug production terkait ini jejaknya jelas.
+
+**ADR baru:**
+`project-manager/decisions/ADR-118-listpinterestboards-board-id-per-post-ki072.md`.
+
+**Docs:** `PROJECT_STATE.md` — KI-072 dihapus dari § Known Issues
+(Resolved + tercatat di COMPLETE_TASK); Completed Ringkasan + Recent
+Decisions diperbarui; metadata Version 1.0.95 → 1.0.96.
+`tasks/v02-publishing-mvp.md` § T-025 — status kembali ke `✅ Done`.
+`TASKS.md` § Fokus sekarang — baris "Selesai baru-baru ini" diperbarui.
+
+Detail: `PROJECT_STATE.md` § Completed (Ringkasan), `tasks/v02-publishing-mvp.md`
+§ T-025.
+
+---
+
 ## 2026-09-25 — KI-072: rancangan UI board-picker Pinterest selesai di Claude Design, scope per-post dikonfirmasi
 
 Gibran Project Manager mendokumentasikan hasil sesi desain KI-072 (Pinterest

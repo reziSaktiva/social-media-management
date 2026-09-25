@@ -9,6 +9,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 
+import type { PinterestBoard } from "@social/shared";
 import { ContentFormat, ContentStatus, SocialPlatform } from "@social/shared";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -28,6 +29,13 @@ import { FieldDescription } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
@@ -47,6 +55,7 @@ import {
   deleteMediaAction,
   getConnectedAccountsAction,
   getDraftAction,
+  listPinterestBoardsAction,
   publishNowAction,
   saveDraftAction,
   scheduleDraftAction,
@@ -264,6 +273,28 @@ function DraftEditorForm({
   const [isDraggingMedia, setIsDraggingMedia] = useState(false);
   const [pinTitle, setPinTitle] = useState("");
   const [pinLink, setPinLink] = useState("");
+  // Board Pinterest (KI-072) dipilih PER POST tapi PER AKUN (bug fix QA
+  // 2026-09-25) — keyed by `connectedAccountId`, sama pola dengan
+  // `formatByAccount`/`pinterestBoardsByAccount`, supaya board yang dipilih
+  // di satu akun Pinterest tidak ikut menimpa akun Pinterest lain yang
+  // dicentang bersamaan dalam post yang sama. Opsional: `undefined` = belum
+  // dipilih, backend (`computePlatformOverride`) sudah aman menangani ini
+  // (tidak mengirim override sama sekali).
+  const [boardIdByAccount, setBoardIdByAccount] = useState<
+    Record<string, string | undefined>
+  >({});
+  // Daftar board ASLI per akun Pinterest (bukan mock) — di-fetch saat akun
+  // Pinterest dicentang di form akun tujuan (lihat `toggleAccount`), keyed by
+  // `connectedAccountId` supaya beberapa akun Pinterest yang dicentang
+  // bersamaan tidak saling menimpa status loading/error satu sama lain.
+  const [pinterestBoardsByAccount, setPinterestBoardsByAccount] = useState<
+    Record<
+      string,
+      | { status: "loading" }
+      | { status: "success"; boards: PinterestBoard[] }
+      | { status: "error"; message: string }
+    >
+  >({});
   const [scheduleDate, setScheduleDate] = useState<string | undefined>();
   const [scheduleTime, setScheduleTime] = useState<string | undefined>();
   // A step *within* this same Dialog (regardless of variant) — NOT a
@@ -427,6 +458,42 @@ function DraftEditorForm({
       }
       return prev;
     });
+    if (
+      checked &&
+      account.platform === SocialPlatform.Pinterest &&
+      !isAccountDisconnected(account)
+    ) {
+      fetchPinterestBoards(account.id);
+    }
+  }
+
+  /** Fetch daftar board Pinterest asli (KI-072) — dipanggil saat akun
+   * Pinterest dicentang di `toggleAccount`, dan sebagai retry manual dari
+   * tombol "Coba lagi" pada state error. */
+  function fetchPinterestBoards(connectedAccountId: string) {
+    setPinterestBoardsByAccount((prev) => ({
+      ...prev,
+      [connectedAccountId]: { status: "loading" },
+    }));
+    listPinterestBoardsAction(connectedAccountId)
+      .then((boards) => {
+        setPinterestBoardsByAccount((prev) => ({
+          ...prev,
+          [connectedAccountId]: { status: "success", boards },
+        }));
+      })
+      .catch((error) => {
+        setPinterestBoardsByAccount((prev) => ({
+          ...prev,
+          [connectedAccountId]: {
+            status: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Gagal memuat daftar board.",
+          },
+        }));
+      });
   }
 
   /**
@@ -580,7 +647,7 @@ function DraftEditorForm({
         formatByAccount[account.id] ?? getDefaultFormat(account.platform),
       platformOptions:
         account.platform === SocialPlatform.Pinterest
-          ? { pinTitle, pinLink }
+          ? { pinTitle, pinLink, boardId: boardIdByAccount[account.id] }
           : undefined,
     }));
   }
@@ -1037,6 +1104,93 @@ function DraftEditorForm({
                                     setPinLink(event.target.value)
                                   }
                                 />
+                                <Label htmlFor={`${checkboxId}-board`}>
+                                  Board{" "}
+                                  <span className="text-muted-foreground">
+                                    (opsional)
+                                  </span>
+                                </Label>
+                                {(() => {
+                                  const boardState =
+                                    pinterestBoardsByAccount[account.id];
+                                  if (!boardState) {
+                                    return (
+                                      <Select disabled value="">
+                                        <SelectTrigger
+                                          id={`${checkboxId}-board`}
+                                          className="w-full"
+                                        >
+                                          <SelectValue placeholder="Pilih board…" />
+                                        </SelectTrigger>
+                                        <SelectContent />
+                                      </Select>
+                                    );
+                                  }
+                                  if (boardState.status === "loading") {
+                                    return (
+                                      <Select disabled value="">
+                                        <SelectTrigger
+                                          id={`${checkboxId}-board`}
+                                          className="w-full"
+                                        >
+                                          <SelectValue placeholder="Memuat board..." />
+                                        </SelectTrigger>
+                                        <SelectContent />
+                                      </Select>
+                                    );
+                                  }
+                                  if (boardState.status === "error") {
+                                    return (
+                                      // eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx HStack, murni Tailwind flex.
+                                      <div className="flex items-center gap-2">
+                                        <Text
+                                          variant="muted"
+                                          className="text-destructive"
+                                        >
+                                          {boardState.message}
+                                        </Text>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            fetchPinterestBoards(account.id)
+                                          }
+                                        >
+                                          Coba lagi
+                                        </Button>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <Select
+                                      value={boardIdByAccount[account.id] ?? ""}
+                                      onValueChange={(value) =>
+                                        setBoardIdByAccount((prev) => ({
+                                          ...prev,
+                                          [account.id]: value || undefined,
+                                        }))
+                                      }
+                                    >
+                                      <SelectTrigger
+                                        id={`${checkboxId}-board`}
+                                        className="w-full"
+                                      >
+                                        <SelectValue placeholder="Pilih board…" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {boardState.boards.map((board) => (
+                                          <SelectItem
+                                            key={board.id}
+                                            value={board.id}
+                                          >
+                                            {board.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  );
+                                })()}
                               </div>
                             ) : null}
 

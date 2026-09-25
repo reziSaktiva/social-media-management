@@ -9,6 +9,7 @@ import type {
   IOutstandAdapter,
   InboxCommentData,
   ListPendingFacebookPagesResult,
+  PinterestBoard,
   PostTargetOutcome,
   ReplyToCommentResult,
   UploadMediaWorkingCopyResult,
@@ -524,6 +525,24 @@ export const fakeOutstandAdapter: IOutstandAdapter = {
       totalEngagements,
       avgEngagementRate,
     };
+  },
+
+  /**
+   * Pinterest boards (menutup KI-072, sisa scope ADR-114) — Fake instant
+   * always-success (ADR-059, tanpa simulasi delay/failure): mengembalikan
+   * SATU set board mock TETAP, sama untuk `outstandAccountId` mana pun
+   * (konsisten dengan preseden `FacebookPendingPage` Fake — daftar tetap,
+   * bukan dihasilkan dari hash id). Nama board disamakan dengan mock yang
+   * sudah dipakai Claude Design (`templates/draft-editor.html`,
+   * `components/forms.html`) supaya demo/QA tidak membingungkan (label
+   * yang terlihat di UI persis sama dengan yang dirancang designer).
+   */
+  async listPinterestBoards(): Promise<PinterestBoard[]> {
+    return [
+      { id: "fake-pinterest-board-resep-minuman", name: "Resep & Minuman" },
+      { id: "fake-pinterest-board-interior-kedai", name: "Interior Kedai" },
+      { id: "fake-pinterest-board-promo-musiman", name: "Promo Musiman" },
+    ];
   },
 
   /**

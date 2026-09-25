@@ -747,7 +747,7 @@ describe("WorkspaceService.disconnectAccount", () => {
   });
 });
 
-/** Fake `IOutstandAdapter` minimal — hanya `connectAccount`/`resolveConnectCallback`/`listPendingFacebookPages`/`confirmFacebookPagesConnection` dipakai test-test terkait Connect Account/Facebook Pages di file ini, method lain sengaja tidak dipanggil (mock, bukan dipakai). */
+/** Fake `IOutstandAdapter` minimal — hanya `connectAccount`/`resolveConnectCallback`/`listPendingFacebookPages`/`confirmFacebookPagesConnection`/`listPinterestBoards` dipakai test-test terkait Connect Account/Facebook Pages/Pinterest boards di file ini, method lain sengaja tidak dipanggil (mock, bukan dipakai). */
 function fakeOutstandAdapter(
   overrides: Partial<IOutstandAdapter> = {},
 ): IOutstandAdapter {
@@ -778,6 +778,9 @@ function fakeOutstandAdapter(
         },
       ],
     }),
+    listPinterestBoards: async () => [
+      { id: "fake-board-1", name: "Fake Board 1" },
+    ],
     uploadMediaWorkingCopy: async () => ({
       outstandMediaId: "unused",
       outstandMediaUrl: "https://fake.outstand.local/media/unused",
@@ -1351,6 +1354,142 @@ describe("WorkspaceService.listFacebookPendingPages (T-025.4, ADR-115)", () => {
         sessionToken: "session-token-1",
       }),
     ).rejects.toThrow(AuthorizationError);
+  });
+});
+
+describe("WorkspaceService.listPinterestBoards (menutup KI-072, sisa scope ADR-114)", () => {
+  const OWNER_USER = asUserId("lpb-owner-user");
+  const OTHER_USER = asUserId("lpb-other-user");
+  const OWNER_MEMBER_ID = asMemberId("lpb-member-owner");
+  const PINTEREST_CONNECTED_ACCOUNT_ID = asConnectedAccountId("lpb-conn-pin-1");
+  const TWITTER_CONNECTED_ACCOUNT_ID = asConnectedAccountId("lpb-conn-tw-1");
+
+  function baseSeed(): WorkspaceMemberRecord[] {
+    return [member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner)];
+  }
+
+  function pinterestAccount(): ConnectedAccountRecord {
+    return {
+      id: PINTEREST_CONNECTED_ACCOUNT_ID,
+      workspaceId: WORKSPACE_ID,
+      platform: SocialPlatform.Pinterest,
+      outstandAccountId: "outstand-account-pinterest-1",
+      handle: "@dapurselasar",
+      status: "active",
+      reconnectRequired: false,
+      connectedAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+  }
+
+  function twitterAccount(): ConnectedAccountRecord {
+    return {
+      id: TWITTER_CONNECTED_ACCOUNT_ID,
+      workspaceId: WORKSPACE_ID,
+      platform: SocialPlatform.Twitter,
+      outstandAccountId: "outstand-account-twitter-1",
+      handle: "@selasar",
+      status: "active",
+      reconnectRequired: false,
+      connectedAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+  }
+
+  it("delegates to IOutstandAdapter.listPinterestBoards using the resolved outstandAccountId", async () => {
+    const listPinterestBoards = vi.fn(async () => [
+      { id: "board-1", name: "Resep & Minuman" },
+    ]);
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        listConnectedAccounts: async () => [
+          pinterestAccount(),
+          twitterAccount(),
+        ],
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter({ listPinterestBoards }),
+    );
+
+    const boards = await service.listPinterestBoards({
+      workspaceId: WORKSPACE_ID,
+      actorId: OWNER_USER,
+      connectedAccountId: PINTEREST_CONNECTED_ACCOUNT_ID,
+    });
+
+    expect(listPinterestBoards).toHaveBeenCalledWith(
+      "outstand-account-pinterest-1",
+    );
+    expect(boards).toEqual([{ id: "board-1", name: "Resep & Minuman" }]);
+  });
+
+  it("throws ConflictError when connectedAccountId does not belong to this workspace/user (anti-IDOR)", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        listConnectedAccounts: async () => [pinterestAccount()],
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter(),
+    );
+
+    await expect(
+      service.listPinterestBoards({
+        workspaceId: WORKSPACE_ID,
+        actorId: OWNER_USER,
+        connectedAccountId: asConnectedAccountId("not-owned-account"),
+      }),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it("throws ValidationError when connectedAccountId is not a Pinterest account", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        listConnectedAccounts: async () => [twitterAccount()],
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter(),
+    );
+
+    await expect(
+      service.listPinterestBoards({
+        workspaceId: WORKSPACE_ID,
+        actorId: OWNER_USER,
+        connectedAccountId: TWITTER_CONNECTED_ACCOUNT_ID,
+      }),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("does not require Owner/Admin — any active member can list boards while composing a post", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers([
+          ...baseSeed(),
+          member(
+            OTHER_USER,
+            asMemberId("lpb-member-other"),
+            MemberRole.Creator,
+          ),
+        ]),
+        listConnectedAccounts: async () => [pinterestAccount()],
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter({
+        listPinterestBoards: async () => [{ id: "board-1", name: "Board" }],
+      }),
+    );
+
+    await expect(
+      service.listPinterestBoards({
+        workspaceId: WORKSPACE_ID,
+        actorId: OTHER_USER,
+        connectedAccountId: PINTEREST_CONNECTED_ACCOUNT_ID,
+      }),
+    ).resolves.toEqual([{ id: "board-1", name: "Board" }]);
   });
 });
 

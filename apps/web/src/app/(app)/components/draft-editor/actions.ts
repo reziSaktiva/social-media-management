@@ -3,11 +3,17 @@
 import type {
   ContentFormat,
   MediaId,
+  PinterestBoard,
   SocialPlatform,
   UserId,
   WorkspaceId,
 } from "@social/shared";
-import { asMediaId, asPostId, asUserId } from "@social/shared";
+import {
+  asConnectedAccountId,
+  asMediaId,
+  asPostId,
+  asUserId,
+} from "@social/shared";
 import { redirect } from "next/navigation";
 import type { ScheduleTargetRequest } from "@/domains/publishing";
 import {
@@ -363,6 +369,50 @@ export async function getConnectedAccountsAction(): Promise<
     handle: account.handle,
     status: account.status,
   }));
+}
+
+/**
+ * Pinterest board picker (menutup KI-072, sisa scope ADR-114) — dipanggil
+ * UI Draft Editor (Mark UI Engineer) saat user memilih akun target Pinterest
+ * di composer, untuk mengisi dropdown board ASLI (bukan text input bebas).
+ * Board dipilih PER POST (state Draft Editor), tidak dipersist ke
+ * `ConnectedAccount` — hasil method ini murni dibaca, lalu id board yang
+ * dipilih dikirim balik lewat `ScheduleDraftTargetInput.platformOptions.boardId`
+ * saat schedule/publish (lihat `computePlatformOverride` di
+ * `real-outstand-adapter.ts`).
+ *
+ * Business logic (anti-IDOR + validasi platform Pinterest) hidup di
+ * `WorkspaceService.listPinterestBoards` — action ini hanya resolve
+ * workspace context/session lalu delegasikan (pola sama
+ * `getConnectedAccountsAction`). `WorkspaceService` dikonstruksi langsung
+ * dengan `getOutstandAdapter()` (BUKAN
+ * `createWorkspaceServiceWithOutstandAdapter()`, composition-root helper di
+ * `@/lib/workspace/outstand-workspace-service`) — helper itu juga menarik
+ * `backgroundJobStore`/Prisma client (untuk seeding JOB-03 di
+ * `completeAccountConnection`, tidak relevan di sini) yang butuh
+ * `DATABASE_URL` bahkan hanya untuk di-import, dan action ini tidak
+ * menyentuh `completeAccountConnection` sama sekali.
+ */
+export async function listPinterestBoardsAction(
+  connectedAccountId: string,
+): Promise<PinterestBoard[]> {
+  const { workspaceId } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const workspaceService = new WorkspaceService(
+    workspaceRepository,
+    undefined,
+    undefined,
+    getOutstandAdapter(),
+  );
+  return workspaceService.listPinterestBoards({
+    workspaceId,
+    actorId: asUserId(session.user.id),
+    connectedAccountId: asConnectedAccountId(connectedAccountId),
+  });
 }
 
 /**
