@@ -7,6 +7,7 @@ import {
 import type { IMediaRepository, MediaItemRecord } from "@/domains/media";
 import type { MediaItem } from "@/generated/prisma/client";
 import { withCurrentUser } from "@/lib/prisma/with-current-user";
+import { NotFoundError } from "@/lib/utils/errors";
 
 function toRecord(item: MediaItem): MediaItemRecord {
   return {
@@ -139,6 +140,32 @@ export const mediaRepository: IMediaRepository = {
       });
 
       return toRecord(deleted);
+    });
+  },
+
+  async saveOutstandWorkingCopy(
+    {
+      workspaceId,
+      mediaId,
+      outstandMediaId,
+      outstandMediaUrl,
+      outstandExpiresAt,
+    },
+    userId,
+  ) {
+    await withCurrentUser(userId, async (tx) => {
+      const { count } = await tx.mediaItem.updateMany({
+        where: { id: mediaId, workspaceId },
+        data: {
+          outstandMediaId,
+          outstandMediaUrl,
+          outstandExpiresAt,
+          outstandUploadedAt: new Date(),
+        },
+      });
+      if (count === 0) {
+        throw new NotFoundError("Media tidak ditemukan.");
+      }
     });
   },
 };

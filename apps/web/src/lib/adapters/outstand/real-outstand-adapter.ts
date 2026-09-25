@@ -245,6 +245,43 @@ function buildPendingOutcome(outstandAccountId: string): PostTargetOutcome {
   };
 }
 
+/**
+ * `connectedAccounts[].id` di response finalize adalah id akun Outstand
+ * (contoh `9dyJS`), bukan Facebook page id yang dikirim di `selectedPageIds`
+ * (contoh `abc123`). Kalau ada irisan, buang akun di luar pilihan. Kalau
+ * tidak ada irisan, simpan akun ber-handle selama jumlahnya tidak melebihi
+ * pilihan — memotong berdasarkan id yang beda namespace akan mengosongkan
+ * hasil connect yang sah.
+ */
+function selectConfirmedFacebookAccounts(
+  accounts: ConnectedAccountData[],
+  selectedPageIds: string[],
+): ConnectedAccountData[] {
+  if (accounts.length === 0) {
+    throw new OutstandIntegrationError({
+      type: "client_error",
+      message:
+        "OutstandAdapter: finalize Facebook tidak mengembalikan akun dengan handle yang valid.",
+      retryable: false,
+    });
+  }
+
+  const selected = new Set(selectedPageIds);
+  const matched = accounts.filter((account) =>
+    selected.has(account.outstandAccountId),
+  );
+  const chosen = matched.length > 0 ? matched : accounts;
+  if (chosen.length > selectedPageIds.length) {
+    throw new OutstandIntegrationError({
+      type: "client_error",
+      message:
+        "OutstandAdapter: finalize Facebook mengembalikan lebih banyak akun daripada Page yang dipilih.",
+      retryable: false,
+    });
+  }
+  return chosen;
+}
+
 export function createRealOutstandAdapter(
   apiKey: string,
   options: RealOutstandAdapterOptions,
@@ -657,6 +694,7 @@ export function createRealOutstandAdapter(
           (typeof raw.username === "string" && raw.username) ||
           (typeof raw.nickname === "string" && raw.nickname) ||
           "";
+        if (handle.trim().length === 0) continue;
         accounts.push({
           outstandAccountId: raw.id,
           platform: SocialPlatform.Facebook,
@@ -665,7 +703,9 @@ export function createRealOutstandAdapter(
         });
       }
 
-      return { accounts };
+      return {
+        accounts: selectConfirmedFacebookAccounts(accounts, selectedPageIds),
+      };
     },
 
     /**

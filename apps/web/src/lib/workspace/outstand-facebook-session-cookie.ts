@@ -19,7 +19,7 @@ export function outstandFacebookSessionCookieName(nonce: string): string {
 }
 
 /** ~30 menit — selaras TTL session Outstand untuk page-selection. */
-const OUTSTAND_FACEBOOK_SESSION_COOKIE_MAX_AGE = 60 * 30;
+export const OUTSTAND_FACEBOOK_SESSION_COOKIE_MAX_AGE = 60 * 30;
 
 export function outstandFacebookSessionCookieOptions(): {
   httpOnly: true;

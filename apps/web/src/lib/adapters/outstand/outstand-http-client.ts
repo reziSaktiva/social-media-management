@@ -1,6 +1,7 @@
 import {
   mapHttpErrorToIntegrationError,
   mapNetworkErrorToIntegrationError,
+  redactSensitiveOutstandText,
 } from "./outstand-integration-error";
 
 /**
@@ -28,8 +29,18 @@ import {
  */
 const DEFAULT_BASE_URL = "https://api.outstand.so";
 
-/** Timeout wajar per request (T-025.1) — 15 detik, di bawah batas 30 detik Railway per request (BG-D05). */
+/**
+ * Timeout request JSON (T-025.1) — 15 detik. Batas 30 detik di BG-D05
+ * berlaku untuk SATU run job runner, bukan untuk unggah byte media.
+ */
 const DEFAULT_TIMEOUT_MS = 15_000;
+
+/**
+ * Timeout `PUT` byte media. Video/gambar besar tidak selesai dalam 15 detik.
+ * Terpisah dari timeout JSON supaya publish bermedia tidak gagal lebih dulu
+ * di langkah unggah.
+ */
+const DEFAULT_MEDIA_UPLOAD_TIMEOUT_MS = 120_000;
 
 /**
  * Label aman untuk error context — jangan log/leak full presigned URL
@@ -37,14 +48,15 @@ const DEFAULT_TIMEOUT_MS = 15_000;
  * label tetap `media-upload` kalau parse gagal.
  */
 export function redactUrlForErrorContext(urlOrPath: string): string {
-  if (urlOrPath.startsWith("/") && !urlOrPath.includes("://")) {
-    return urlOrPath;
+  const withoutToken = redactSensitiveOutstandText(urlOrPath);
+  if (withoutToken.startsWith("/") && !withoutToken.includes("://")) {
+    return withoutToken;
   }
   try {
-    const parsed = new URL(urlOrPath);
+    const parsed = new URL(withoutToken);
     return parsed.pathname || "media-upload";
   } catch {
-    return "media-upload";
+    return withoutToken.includes("pending") ? withoutToken : "media-upload";
   }
 }
 
@@ -63,6 +75,8 @@ export type FetchLike = (
 export interface OutstandHttpClientOptions {
   baseUrl?: string;
   timeoutMs?: number;
+  /** Timeout khusus `PUT` byte media. Default 120 detik. */
+  uploadTimeoutMs?: number;
   /** Injectable untuk unit test (T-025.7) — default `globalThis.fetch`. */
   fetchImpl?: FetchLike;
 }
@@ -78,6 +92,7 @@ export interface OutstandRequestInit {
 export class OutstandHttpClient {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
+  private readonly uploadTimeoutMs: number;
   private readonly fetchImpl: FetchLike;
 
   constructor(
@@ -86,6 +101,8 @@ export class OutstandHttpClient {
   ) {
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.uploadTimeoutMs =
+      options.uploadTimeoutMs ?? DEFAULT_MEDIA_UPLOAD_TIMEOUT_MS;
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
@@ -95,6 +112,7 @@ export class OutstandHttpClient {
    */
   async request<T>(path: string, init: OutstandRequestInit): Promise<T> {
     const url = this.buildUrl(path, init.query);
+    const safePath = redactSensitiveOutstandText(path);
     const controller = new AbortController();
     const timeoutHandle = setTimeout(() => controller.abort(), this.timeoutMs);
 
@@ -113,7 +131,7 @@ export class OutstandHttpClient {
         signal: controller.signal,
       });
     } catch (rawError) {
-      throw mapNetworkErrorToIntegrationError(rawError, { path });
+      throw mapNetworkErrorToIntegrationError(rawError, { path: safePath });
     } finally {
       clearTimeout(timeoutHandle);
     }
@@ -122,7 +140,7 @@ export class OutstandHttpClient {
 
     if (!response.ok) {
       throw mapHttpErrorToIntegrationError(response.status, parsedBody, {
-        path,
+        path: safePath,
       });
     }
 
@@ -147,7 +165,10 @@ export class OutstandHttpClient {
     contentType: string,
   ): Promise<void> {
     const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timeoutHandle = setTimeout(
+      () => controller.abort(),
+      this.uploadTimeoutMs,
+    );
 
     let response: Response;
     try {

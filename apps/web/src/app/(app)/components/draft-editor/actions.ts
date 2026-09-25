@@ -43,6 +43,8 @@ function createPostMediaLookup(): PostMediaLookupPort {
     listByIds: (input, userId) => mediaService.listByIds(input, userId),
     downloadBytes: (storagePath) =>
       supabaseMediaStorageAdapter.downloadMedia(storagePath),
+    saveOutstandWorkingCopy: (input, userId) =>
+      mediaService.saveOutstandWorkingCopy(input, userId),
   };
 }
 

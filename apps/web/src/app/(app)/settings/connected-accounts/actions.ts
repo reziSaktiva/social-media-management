@@ -310,8 +310,10 @@ export async function listFacebookPendingPagesAction(
  * Facebook Pages — confirm selected Pages (T-025.4, ADR-115) — dipanggil
  * saat user submit dialog Page-selection (tombol "Hubungkan N Page
  * Terpilih"). `state` di-decode LAGI + cookie CSRF/session dicocokkan LAGI
- * (defense-in-depth) — **cookie nonce + session DIHAPUS DI SINI** (baik
- * sukses maupun gagal CSRF, titik akhir flow).
+ * (defense-in-depth). Cookie nonce + session dihapus hanya setelah
+ * finalize dan simpan Page berhasil, atau kalau CSRF sudah tidak valid.
+ * Kegagalan jaringan/DB membiarkan cookie supaya user bisa mengulang
+ * tanpa OAuth dari awal.
  */
 export async function confirmFacebookPagesConnectionAction(
   state: string,
@@ -334,9 +336,9 @@ export async function confirmFacebookPagesConnectionAction(
   const nonceCookieName = outstandConnectNonceCookieName(decoded.nonce);
   const hasNonce = cookieStore.has(nonceCookieName);
   const sessionToken = await readFacebookSessionTokenFromCookie(decoded.nonce);
-  clearFacebookConnectCookies(cookieStore, decoded.nonce);
 
   if (!hasNonce || !sessionToken) {
+    clearFacebookConnectCookies(cookieStore, decoded.nonce);
     return { error: "Sesi koneksi Facebook tidak valid atau kedaluwarsa." };
   }
 
@@ -348,6 +350,7 @@ export async function confirmFacebookPagesConnectionAction(
       sessionToken,
       selectedPageIds,
     });
+    clearFacebookConnectCookies(cookieStore, decoded.nonce);
     revalidatePath("/settings/connected-accounts");
     return { connectedCount: created.length };
   } catch (error) {

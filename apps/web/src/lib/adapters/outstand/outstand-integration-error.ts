@@ -1,5 +1,16 @@
 import { ExternalServiceError } from "@/lib/utils/errors";
 
+/** Session token Facebook duduk di path `/social-accounts/pending/{token}`. */
+const PENDING_SESSION_TOKEN = /\/social-accounts\/pending\/[^/?#\s]+/g;
+
+/** Hapus bearer session Facebook dari path atau pesan error sebelum di-log/dikembalikan ke UI. */
+export function redactSensitiveOutstandText(text: string): string {
+  return text.replace(
+    PENDING_SESSION_TOKEN,
+    "/social-accounts/pending/[redacted]",
+  );
+}
+
 /**
  * `IntegrationError` (T-025.1, ACL error translation) — implementasi
  * konkret dari klasifikasi error yang didefinisikan
@@ -112,10 +123,13 @@ export function mapHttpErrorToIntegrationError(
   body: unknown,
   context: { path: string },
 ): OutstandIntegrationError {
+  const safePath = redactSensitiveOutstandText(context.path);
   const outstandErrorCode = extractErrorCode(body);
-  const baseMessage = extractErrorMessage(
-    body,
-    `Outstand API mengembalikan HTTP ${status} pada ${context.path}`,
+  const baseMessage = redactSensitiveOutstandText(
+    extractErrorMessage(
+      body,
+      `Outstand API mengembalikan HTTP ${status} pada ${safePath}`,
+    ),
   );
 
   if (status === 401) {
@@ -174,14 +188,16 @@ export function mapNetworkErrorToIntegrationError(
   context: { path: string },
 ): OutstandIntegrationError {
   const isAbort = rawError instanceof Error && rawError.name === "AbortError";
-  const detail =
-    rawError instanceof Error ? rawError.message : String(rawError);
+  const safePath = redactSensitiveOutstandText(context.path);
+  const detail = redactSensitiveOutstandText(
+    rawError instanceof Error ? rawError.message : String(rawError),
+  );
 
   return new OutstandIntegrationError({
     type: "transient",
     message: isAbort
-      ? `Outstand API request timeout pada ${context.path}`
-      : `Outstand API network error pada ${context.path}: ${detail}`,
+      ? `Outstand API request timeout pada ${safePath}`
+      : `Outstand API network error pada ${safePath}: ${detail}`,
     retryable: true,
   });
 }

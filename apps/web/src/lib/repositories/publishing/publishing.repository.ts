@@ -1004,6 +1004,7 @@ export const publishingRepository: IPublishingRepository = {
         select: {
           postId: true,
           platform: true,
+          retryOutstandPostId: true,
           post: {
             select: {
               outstandPostId: true,
@@ -1020,33 +1021,52 @@ export const publishingRepository: IPublishingRepository = {
       }),
     );
 
-    return targets
-      .filter(
-        (
-          target,
-        ): target is typeof target & { post: { outstandPostId: string } } =>
-          target.post.outstandPostId !== null,
-      )
-      .map((target) => ({
-        postId: asPostId(target.postId),
-        outstandPostId: target.post.outstandPostId,
-        platform: target.platform as SocialPlatform,
-      }));
+    return targets.flatMap((target) => {
+      const outstandPostId =
+        target.retryOutstandPostId ?? target.post.outstandPostId;
+      if (!outstandPostId) return [];
+      return [
+        {
+          postId: asPostId(target.postId),
+          outstandPostId,
+          platform: target.platform as SocialPlatform,
+        },
+      ];
+    });
   },
 
   /**
    * Reply Engagement (T-054, redesain KI-068/ADR-113) — lihat
    * `IPublishingRepository.findPostOutstandId`.
    */
-  async findPostOutstandId({ workspaceId, postId }, userId) {
-    const post = await withCurrentUser(userId, (tx) =>
-      tx.publishingPost.findFirst({
+  async findPostOutstandId(
+    { workspaceId, postId, connectedAccountId },
+    userId,
+  ) {
+    return withCurrentUser(userId, async (tx) => {
+      if (connectedAccountId) {
+        const target = await tx.publishingPostTarget.findFirst({
+          where: {
+            postId,
+            connectedAccountId,
+            post: { workspaceId, deletedAt: null },
+          },
+          select: {
+            retryOutstandPostId: true,
+            post: { select: { outstandPostId: true } },
+          },
+        });
+        if (!target) return null;
+        return target.retryOutstandPostId ?? target.post.outstandPostId;
+      }
+
+      const post = await tx.publishingPost.findFirst({
         where: { id: postId, workspaceId, deletedAt: null },
         select: { outstandPostId: true },
-      }),
-    );
+      });
 
-    return post?.outstandPostId ?? null;
+      return post?.outstandPostId ?? null;
+    });
   },
 };
 

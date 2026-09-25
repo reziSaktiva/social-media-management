@@ -780,6 +780,39 @@ export const workspaceRepository: IWorkspaceRepository = {
     }
   },
 
+  async createConnectedAccounts({ workspaceId, actingUserId, accounts }) {
+    return withCurrentUser(actingUserId, async (tx) => {
+      const existing = await tx.workspaceConnectedAccount.findMany({
+        where: {
+          workspaceId,
+          outstandAccountId: {
+            in: accounts.map((account) => account.outstandAccountId),
+          },
+        },
+        select: { outstandAccountId: true },
+      });
+      const existingIds = new Set(
+        existing.map((account) => account.outstandAccountId),
+      );
+
+      const created = [];
+      for (const account of accounts) {
+        if (existingIds.has(account.outstandAccountId)) continue;
+        const row = await tx.workspaceConnectedAccount.create({
+          data: {
+            workspaceId,
+            platform: account.platform,
+            outstandAccountId: account.outstandAccountId,
+            handle: account.handle,
+            status: "active",
+          },
+        });
+        created.push(toConnectedAccountRecord(row));
+      }
+      return created;
+    });
+  },
+
   async reconnectAccount({
     workspaceId,
     connectedAccountId,

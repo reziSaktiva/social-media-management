@@ -5,6 +5,7 @@ import type {
   WorkspaceId,
 } from "@social/shared";
 import type { IOutstandAdapter } from "../adapters/outstand-adapter";
+import { ValidationError } from "@/lib/utils/errors";
 
 /**
  * Satu MediaItem minimal untuk resolve URL publishing — structural typing
@@ -25,8 +26,7 @@ export interface PostMediaItemForPublish {
  * Port lookup media + unduh bytes (composition root menyuplai
  * `MediaService.listByIds` + `IMediaStorageAdapter.downloadMedia`).
  * Opsional di use-case — kalau tidak disuplai dan post punya `mediaIds`,
- * media di-skip (text-only) dengan warn; jangan diam-diam throw di path
- * tanpa media.
+ * publish dibatalkan (jangan tayang sebagai text-only).
  */
 export interface PostMediaLookupPort {
   listByIds(
@@ -34,6 +34,16 @@ export interface PostMediaLookupPort {
     userId: UserId,
   ): Promise<PostMediaItemForPublish[]>;
   downloadBytes(storagePath: string): Promise<Buffer>;
+  saveOutstandWorkingCopy(
+    input: {
+      workspaceId: WorkspaceId;
+      mediaId: MediaId;
+      outstandMediaId: string;
+      outstandMediaUrl: string;
+      outstandExpiresAt: Date;
+    },
+    userId: UserId,
+  ): Promise<void>;
 }
 
 function isUsableOutstandUrl(
@@ -65,24 +75,30 @@ export async function resolveOutstandPostMedia(input: {
   }
 
   if (!input.mediaLookup) {
-    console.warn(
-      `[resolveOutstandPostMedia] post punya ${mediaIds.length} mediaIds tapi PostMediaLookupPort tidak di-wire — media di-skip (text-only).`,
+    throw new ValidationError(
+      "Post ini punya media, tetapi penyimpanan media tidak terhubung. Publish dibatalkan supaya konten tidak tayang tanpa medianya.",
     );
-    return undefined;
   }
 
   const items = await input.mediaLookup.listByIds(
     { workspaceId: input.workspaceId, mediaIds },
     input.actingUserId,
   );
-
-  if (items.length === 0) {
-    return undefined;
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  const ordered: PostMediaItemForPublish[] = [];
+  for (const mediaId of mediaIds) {
+    const item = itemById.get(mediaId);
+    if (!item) {
+      throw new ValidationError(
+        "Sebagian media pada post ini tidak ditemukan. Publish dibatalkan supaya urutan dan isi media tidak berubah.",
+      );
+    }
+    ordered.push(item);
   }
 
   const resolved: OutstandPostMediaInput[] = [];
 
-  for (const item of items) {
+  for (const item of ordered) {
     if (isUsableOutstandUrl(item.outstandMediaUrl, item.outstandExpiresAt)) {
       resolved.push({ url: item.outstandMediaUrl, filename: item.filename });
       continue;
@@ -93,6 +109,16 @@ export async function resolveOutstandPostMedia(input: {
       fileBuffer: bytes,
       mimeType: item.mimeType,
     });
+    await input.mediaLookup.saveOutstandWorkingCopy(
+      {
+        workspaceId: input.workspaceId,
+        mediaId: item.id,
+        outstandMediaId: uploaded.outstandMediaId,
+        outstandMediaUrl: uploaded.outstandMediaUrl,
+        outstandExpiresAt: uploaded.expiresAt,
+      },
+      input.actingUserId,
+    );
     resolved.push({
       url: uploaded.outstandMediaUrl,
       filename: item.filename,

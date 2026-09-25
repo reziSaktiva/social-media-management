@@ -34,8 +34,9 @@ function createFakeRepository(
 ): IWorkspaceRepository {
   const members = new Map<string, WorkspaceMemberRecord>();
   const invitations = new Map<string, WorkspaceInvitationRecord>();
+  const holder: { repo?: IWorkspaceRepository } = {};
 
-  return {
+  const repo: IWorkspaceRepository = {
     createWithOwner: async ({ name, slug }): Promise<WorkspaceRecord> => ({
       id: asWorkspaceId("workspace-1"),
       name,
@@ -185,7 +186,34 @@ function createFakeRepository(
       return newMember;
     },
     ...overrides,
+    createConnectedAccounts: async (input) => {
+      const current = holder.repo;
+      if (!current) {
+        throw new Error("Fake repository belum siap.");
+      }
+      const created: ConnectedAccountRecord[] = [];
+      for (const account of input.accounts) {
+        try {
+          created.push(
+            await current.createConnectedAccount({
+              workspaceId: input.workspaceId,
+              actingUserId: input.actingUserId,
+              platform: account.platform,
+              outstandAccountId: account.outstandAccountId,
+              handle: account.handle,
+            }),
+          );
+        } catch (error) {
+          if (error instanceof ConflictError) continue;
+          throw error;
+        }
+      }
+      return created;
+    },
   };
+
+  holder.repo = repo;
+  return repo;
 }
 
 /** Helper — daftarkan member fake langsung ke Map internal via seed override. */

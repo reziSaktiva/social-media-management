@@ -43,6 +43,7 @@ function createFakeRepository(
     findByWorkspace: async () => [],
     findByIds: async () => [],
     delete: async () => fakeRecord(),
+    saveOutstandWorkingCopy: async () => undefined,
     ...overrides,
   };
 }

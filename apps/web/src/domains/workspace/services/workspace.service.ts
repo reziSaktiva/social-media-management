@@ -1233,14 +1233,11 @@ export class WorkspaceService {
    *
    * SATU panggilan `IOutstandAdapter.confirmFacebookPagesConnection` untuk
    * SEMUA Page yang dipilih (bukan N panggilan — bentuk endpoint Outstand
-   * sendiri, ADR-115 poin 8). Hasilnya di-loop untuk
-   * `createConnectedAccount` SATU PER Page (reuse method existing) —
-   * **kalau Page itu sudah pernah terhubung sebelumnya** (`ConflictError`,
-   * unique constraint `[workspaceId, outstandAccountId]`), **skip
-   * (idempoten, bukan gagal total)** dan lanjut ke Page berikutnya, pola
-   * sama idempotent-guard ADR-109. Return value HANYA berisi Page yang
-   * BENAR-BENAR baru dibuat (Page yang di-skip tidak ikut) — caller/UI
-   * merangkum "N Page terhubung" dari panjang array ini.
+   * sendiri, ADR-115 poin 8). Hasilnya disimpan lewat
+   * `createConnectedAccounts` dalam SATU transaksi — Page yang sudah
+   * terhubung (`outstandAccountId` sama) di-skip, kegagalan di tengah
+   * membatalkan seluruh batch. Return value HANYA berisi Page yang
+   * BENAR-BENAR baru dibuat.
    *
    * JOB-03 engagement sync seeding (`engagementSyncSeeder?.onAccountConnected`,
    * Temuan #1 Ridwan, pola sama `completeAccountConnection`) dipanggil
@@ -1273,34 +1270,22 @@ export class WorkspaceService {
         selectedPageIds: input.selectedPageIds,
       });
 
-    const created: ConnectedAccountRecord[] = [];
-    for (const account of accounts) {
-      let record: ConnectedAccountRecord;
-      try {
-        record = await this.repository.createConnectedAccount({
-          workspaceId: input.workspaceId,
-          platform: account.platform,
-          outstandAccountId: account.outstandAccountId,
-          handle: account.handle,
-          actingUserId: input.actorId,
-        });
-      } catch (error) {
-        if (error instanceof ConflictError) {
-          // Idempotent-guard (ADR-109) — Page ini sudah pernah terhubung
-          // sebelumnya, skip dan lanjut ke Page berikutnya (bukan gagal
-          // total untuk seluruh batch).
-          continue;
-        }
-        throw error;
-      }
+    const created = await this.repository.createConnectedAccounts({
+      workspaceId: input.workspaceId,
+      actingUserId: input.actorId,
+      accounts: accounts.map((account) => ({
+        platform: account.platform,
+        outstandAccountId: account.outstandAccountId,
+        handle: account.handle,
+      })),
+    });
 
+    for (const record of created) {
       await this.engagementSyncSeeder?.onAccountConnected({
         workspaceId: record.workspaceId,
         connectedAccountId: record.id,
         outstandAccountId: record.outstandAccountId,
       });
-
-      created.push(record);
     }
 
     return created;

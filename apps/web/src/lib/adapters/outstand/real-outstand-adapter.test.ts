@@ -975,6 +975,82 @@ describe("RealOutstandAdapter.listPendingFacebookPages / confirmFacebookPagesCon
     ).rejects.toBeInstanceOf(OutstandIntegrationError);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
+
+  it("drops accounts outside selectedPageIds when at least one id matches", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        connectedAccounts: [
+          { id: "fb-page-1", username: "kept" },
+          { id: "not-selected", username: "dropped" },
+        ],
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.confirmFacebookPagesConnection({
+      sessionToken: "session-token-1",
+      selectedPageIds: ["fb-page-1"],
+    });
+
+    expect(result.accounts.map((account) => account.outstandAccountId)).toEqual(
+      ["fb-page-1"],
+    );
+  });
+
+  it("keeps Outstand account ids that do not share the Facebook page id namespace", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        connectedAccounts: [{ id: "9dyJS", username: "johndoe" }],
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.confirmFacebookPagesConnection({
+      sessionToken: "session-token-1",
+      selectedPageIds: ["abc123"],
+    });
+
+    expect(result.accounts[0]?.outstandAccountId).toBe("9dyJS");
+  });
+
+  it("throws when finalize returns more accounts than selected pages", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        connectedAccounts: [
+          { id: "9dyJS", username: "one" },
+          { id: "other", username: "two" },
+        ],
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    await expect(
+      adapter.confirmFacebookPagesConnection({
+        sessionToken: "session-token-1",
+        selectedPageIds: ["abc123"],
+      }),
+    ).rejects.toBeInstanceOf(OutstandIntegrationError);
+  });
+
+  it("throws when every connected account is missing a handle", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        connectedAccounts: [{ id: "fb-page-1" }],
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    await expect(
+      adapter.confirmFacebookPagesConnection({
+        sessionToken: "session-token-1",
+        selectedPageIds: ["fb-page-1"],
+      }),
+    ).rejects.toBeInstanceOf(OutstandIntegrationError);
+  });
 });
 
 describe("RealOutstandAdapter.uploadMediaWorkingCopy (T-025.5, ADR-106)", () => {

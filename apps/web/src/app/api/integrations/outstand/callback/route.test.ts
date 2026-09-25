@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ConflictError } from "@/lib/utils/errors";
+import { getCachedSession } from "@/lib/better-auth/session";
+import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
+import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
 
 import { outstandConnectNonceCookieName } from "@/lib/workspace/outstand-connect-nonce-cookie";
 
@@ -111,6 +115,8 @@ describe("POST /api/integrations/outstand/callback (alias GET, Bug #1)", () => {
     const setCookie = postResponse.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain(`outstandFacebookSession_${nonce}=`);
     expect(setCookie).toContain("fake-fb-session-123");
+    expect(setCookie).toContain(`outstand-connect-nonce-${nonce}=1`);
+    expect(setCookie.toLowerCase()).toContain("max-age=1800");
   });
 
   it("POST dengan session token tapi TANPA nonce cookie (CSRF invalid) redirect ke ?connect=error — identik dengan GET", async () => {
@@ -147,5 +153,33 @@ describe("POST /api/integrations/outstand/callback (alias GET, Bug #1)", () => {
     expect(postLocation.pathname).toBe(getLocation.pathname);
     expect(postLocation.search).toBe("");
     expect(getLocation.search).toBe("");
+  });
+
+  it("akun yang sudah terhubung (ConflictError) tetap redirect ?connect=success", async () => {
+    vi.mocked(getCachedSession).mockResolvedValue({
+      user: { id: "user-1" },
+    } as never);
+    vi.mocked(getWorkspaceContext).mockResolvedValue({
+      workspaceId: "workspace-1",
+    } as never);
+    vi.mocked(createWorkspaceServiceWithOutstandAdapter).mockReturnValue({
+      completeAccountConnection: vi
+        .fn()
+        .mockRejectedValue(
+          new ConflictError("Akun ini sudah terhubung di workspace ini."),
+        ),
+    } as never);
+
+    const nonce = "nonce-dup";
+    const state = encodeState({ nonce });
+    const request = makeRequest(
+      "GET",
+      { account_id: "acc-1", username: "ada", state },
+      `${outstandConnectNonceCookieName(nonce)}=1`,
+    );
+
+    const response = await GET(request);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.searchParams.get("connect")).toBe("success");
   });
 });

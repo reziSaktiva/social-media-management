@@ -282,4 +282,57 @@ describe("OutstandHttpClient.putBytes (T-025.5, media upload working copy)", () 
     expect(message).not.toContain(presigned);
     expect(message).toContain("/media/abc");
   });
+
+  it("uses uploadTimeoutMs for PUT bytes, not the JSON request timeout", async () => {
+    const fetchImpl = vi.fn().mockImplementation(
+      (_url: string, init: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener("abort", () => {
+            const abortError = new Error("The operation was aborted");
+            abortError.name = "AbortError";
+            reject(abortError);
+          });
+        }),
+    );
+    const client = new OutstandHttpClient(API_KEY, {
+      fetchImpl,
+      timeoutMs: 60_000,
+      uploadTimeoutMs: 15,
+    });
+
+    await expect(
+      client.putBytes(
+        "https://uploads.outstand.example/abc",
+        Buffer.from("x"),
+        "video/mp4",
+      ),
+    ).rejects.toMatchObject({ type: "transient", retryable: true });
+  });
+});
+
+describe("OutstandHttpClient session token redaction", () => {
+  it("does not include the Facebook session token in network errors", async () => {
+    const token = "super-secret-session";
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          `connect ECONNRESET https://api.outstand.so/v1/social-accounts/pending/${token}`,
+        ),
+      );
+    const client = new OutstandHttpClient(API_KEY, { fetchImpl });
+
+    await expect(
+      client.request(`/v1/social-accounts/pending/${token}`, { method: "GET" }),
+    ).rejects.toThrow(/\[redacted\]/);
+
+    try {
+      await client.request(`/v1/social-accounts/pending/${token}/finalize`, {
+        method: "POST",
+        body: { selectedPageIds: ["p1"] },
+      });
+    } catch (error) {
+      expect((error as Error).message).not.toContain(token);
+    }
+  });
 });

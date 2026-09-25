@@ -465,6 +465,22 @@ export interface IWorkspaceRepository {
   }): Promise<ConnectedAccountRecord>;
 
   /**
+   * CREATE beberapa `WorkspaceConnectedAccount` dalam SATU transaksi.
+   * Akun yang `outstandAccountId`-nya sudah ada di workspace ini di-skip
+   * (idempoten). Kegagalan di tengah membatalkan seluruh batch, bukan
+   * menyisakan sebagian Page.
+   */
+  createConnectedAccounts(input: {
+    workspaceId: WorkspaceId;
+    actingUserId: UserId;
+    accounts: {
+      platform: SocialPlatform;
+      outstandAccountId: string;
+      handle: string;
+    }[];
+  }): Promise<ConnectedAccountRecord[]>;
+
+  /**
    * UPDATE akun existing (T-015.3, Reconnect, ADR-105, redesain ADR-112)
    * — refresh `outstandAccountId`/`handle` dari hasil
    * `resolveConnectCallback` terbaru,

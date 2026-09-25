@@ -1,5 +1,6 @@
 import { SocialPlatform } from "@social/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ValidationError } from "@/lib/utils/errors";
 
 const {
   getSessionMock,
@@ -252,5 +253,25 @@ describe("listFacebookPendingPagesAction / confirmFacebookPagesConnectionAction 
     expect(cookiesDeleteMock).toHaveBeenCalledWith(
       `outstandFacebookSession_${nonce}`,
     );
+  });
+
+  it("confirmFacebookPagesConnectionAction tidak menghapus cookie kalau finalize gagal", async () => {
+    const nonce = "nonce-confirm-retry";
+    const state = encodeState(nonce);
+    cookiesHasMock.mockReturnValue(true);
+    cookiesGetMock.mockImplementation((name: string) => {
+      if (name === `outstandFacebookSession_${nonce}`) {
+        return { value: "session-confirm" };
+      }
+      return undefined;
+    });
+    confirmFacebookPagesConnectionMock.mockRejectedValue(
+      new ValidationError("Finalize gagal, coba lagi."),
+    );
+
+    const result = await confirmFacebookPagesConnectionAction(state, ["p1"]);
+
+    expect(result.error).toBeTruthy();
+    expect(cookiesDeleteMock).not.toHaveBeenCalled();
   });
 });

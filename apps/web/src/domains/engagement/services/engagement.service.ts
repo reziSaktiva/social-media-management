@@ -2,6 +2,7 @@ import type {
   IOutstandAdapter,
   InboxItemId,
   PostId,
+  ConnectedAccountId,
   UserId,
   WorkspaceId,
 } from "@social/shared";
@@ -30,7 +31,11 @@ import type {
  */
 interface PublishingPostReferencePort {
   findPostOutstandId(
-    input: { workspaceId: WorkspaceId; postId: PostId },
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      connectedAccountId?: ConnectedAccountId;
+    },
     userId: UserId,
   ): Promise<string | null>;
 }
@@ -172,7 +177,11 @@ export class EngagementService {
     }
 
     const outstandPostId = await this.publishingPosts.findPostOutstandId(
-      { workspaceId: input.workspaceId, postId: item.postId },
+      {
+        workspaceId: input.workspaceId,
+        postId: item.postId,
+        connectedAccountId: item.connectedAccountId,
+      },
       userId,
     );
     if (!outstandPostId) {

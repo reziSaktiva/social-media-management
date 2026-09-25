@@ -896,7 +896,12 @@ export interface IPublishingRepository {
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   findPostOutstandId(
-    input: { workspaceId: WorkspaceId; postId: PostId },
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      /** Kalau diisi, utamakan `retryOutstandPostId` target akun ini. */
+      connectedAccountId?: ConnectedAccountId;
+    },
     userId: UserId,
   ): Promise<string | null>;
 }

@@ -4,13 +4,17 @@ import { asConnectedAccountId, asUserId } from "@social/shared";
 import { decodeConnectAccountState } from "@/lib/adapters/outstand/connect-state";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getServerEnv } from "@/lib/env";
-import { ApplicationError } from "@/lib/utils/errors";
+import { ApplicationError, ConflictError } from "@/lib/utils/errors";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
-import { outstandConnectNonceCookieName } from "@/lib/workspace/outstand-connect-nonce-cookie";
+import {
+  outstandConnectNonceCookieName,
+  outstandConnectNonceCookieOptions,
+} from "@/lib/workspace/outstand-connect-nonce-cookie";
 import {
   outstandFacebookSessionCookieName,
   outstandFacebookSessionCookieOptions,
+  OUTSTAND_FACEBOOK_SESSION_COOKIE_MAX_AGE,
 } from "@/lib/workspace/outstand-facebook-session-cookie";
 
 const CONNECTED_ACCOUNTS_PATH = "/settings/connected-accounts";
@@ -123,6 +127,15 @@ export async function GET(request: NextRequest): Promise<Response> {
       facebookSessionToken,
       outstandFacebookSessionCookieOptions(),
     );
+    // Nonce awal berumur 10 menit sejak klik Connect. Page-picker butuh
+    // sisa waktu yang sama dengan session token (30 menit) setelah OAuth.
+    response.cookies.set(
+      facebookNonceCookieName,
+      "1",
+      outstandConnectNonceCookieOptions(
+        OUTSTAND_FACEBOOK_SESSION_COOKIE_MAX_AGE,
+      ),
+    );
     return response;
   }
 
@@ -208,6 +221,11 @@ export async function GET(request: NextRequest): Promise<Response> {
         : undefined,
     });
   } catch (error) {
+    if (error instanceof ConflictError) {
+      // Request kedua (POST alias GET, atau double-submit) untuk akun yang
+      // baru saja terhubung — unique constraint, bukan kegagalan connect.
+      return redirectWithStatus("success");
+    }
     if (error instanceof ApplicationError) {
       return redirectWithStatus("error");
     }
