@@ -8,6 +8,10 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-25 — KI-072 code review PR #135: board Pinterest wajib, satu akun per create-post
+
+Review PR #135 menemukan `board_id` akun Pinterest pertama bisa menempel ke akun kedua (body Outstand hanya punya satu key `pinterest`), board bertanda opsional tetap dikirim tanpa `board_id`, dan fetch board bisa ketimpa respons yang lebih lama. Perbaikan: `assertPinterestBoardConstraints` menolak sebelum persist (schedule, publish now, retry); `RealOutstandAdapter` menolak sebelum HTTP; Draft Editor mewajibkan board, menonaktifkan Schedule/Publish Now kalau aturan dilanggar, dan mengabaikan respons fetch kadaluarsa. ADR-118 diamendemen di poin 2.
+
 ## 2026-09-25 — KI-072 Resolved: `listPinterestBoards` + `board_id` per-post via ADR-118 (backend + UI + review + QA)
 
 King Rezi menutup **KI-072** (Pinterest `board_id` tidak pernah

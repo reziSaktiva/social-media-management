@@ -2,8 +2,8 @@
 
 ### Title
 
-`listPinterestBoards` di `IOutstandAdapter` + `board_id` opsional per-post
-di override Pinterest — menutup KI-072
+`listPinterestBoards` di `IOutstandAdapter` + `board_id` wajib, satu akun
+Pinterest per create-post — menutup KI-072
 
 ### Status
 
@@ -46,6 +46,23 @@ lama sejak ADR-114, tidak ada regresi) — `board_id` diperlakukan opsional
 di sisi kita meski wajib di sisi Outstand, konsisten dengan filosofi
 best-effort override sekunder yang sudah dipakai untuk Story/Reel
 (ADR-114).
+
+**Amandemen (2026-09-25, code review PR #135).** Paragraf di atas tidak
+berlaku lagi. Review menemukan dua akibat dari "opsional + satu key
+`pinterest` per post": akun Pinterest tanpa board tetap masuk `accounts`
+dan gagal di Outstand, dan dua akun Pinterest dalam satu post membuat
+`board_id` akun pertama menempel ke akun kedua (first-match-wins, hanya
+`console.warn`). Keputusan pengganti, tanpa schema baru:
+
+- Board **wajib** sebelum Schedule atau Publish Now.
+- Satu create-post hanya boleh memuat **satu** akun Pinterest. Akun
+  Pinterest lain dijadwalkan sebagai post terpisah, karena body Outstand
+  tidak bisa membawa dua `board_id`.
+- Penolakan terjadi di domain (`assertPinterestBoardConstraints`) sebelum
+  persist, dan lagi di `RealOutstandAdapter` sebelum HTTP.
+- Form menonaktifkan Schedule dan Publish Now dan menampilkan alasan yang
+  sama. State `boardIdByAccount` tetap per akun supaya pilihan tidak
+  bocor saat user berganti akun.
 
 #### 3. Wire-format diverifikasi via OpenAPI resmi, bukan tebakan
 

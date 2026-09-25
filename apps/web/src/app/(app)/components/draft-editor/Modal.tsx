@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import type { PinterestBoard } from "@social/shared";
 import { ContentFormat, ContentStatus, SocialPlatform } from "@social/shared";
+import { pinterestBoardConstraintMessage } from "@/domains/publishing/pinterest-board-constraints";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -295,6 +296,9 @@ function DraftEditorForm({
       | { status: "error"; message: string }
     >
   >({});
+  // Respons fetch yang lebih lama tidak boleh menimpa hasil request yang
+  // lebih baru (retry sukses, lalu error request sebelumnya datang belakangan).
+  const pinterestBoardRequestSeq = useRef<Record<string, number>>({});
   const [scheduleDate, setScheduleDate] = useState<string | undefined>();
   const [scheduleTime, setScheduleTime] = useState<string | undefined>();
   // A step *within* this same Dialog (regardless of variant) — NOT a
@@ -400,16 +404,29 @@ function DraftEditorForm({
     [accounts, selectedAccountIds],
   );
 
+  const pinterestConstraintMessage = pinterestBoardConstraintMessage(
+    selectedAccounts.map((account) => ({
+      platform: account.platform,
+      platformOptions:
+        account.platform === SocialPlatform.Pinterest
+          ? { boardId: boardIdByAccount[account.id] }
+          : undefined,
+    })),
+  );
+
   const isReadyToSchedule =
     caption.trim().length > 0 &&
     selectedAccounts.length > 0 &&
     Boolean(scheduleDate) &&
-    Boolean(scheduleTime);
+    Boolean(scheduleTime) &&
+    pinterestConstraintMessage === null;
 
   // Publish Now (KSP-05-F12) skips the Schedule Picker entirely — tanggal/
   // waktu tidak relevan sama sekali, beda dari `isReadyToSchedule`.
   const isReadyToPublishNow =
-    caption.trim().length > 0 && selectedAccounts.length > 0;
+    caption.trim().length > 0 &&
+    selectedAccounts.length > 0 &&
+    pinterestConstraintMessage === null;
 
   // Publish Now dari Queue (T-032.4) — lompat otomatis ke step konfirmasi
   // begitu draft (caption/status) DAN daftar akun terhubung selesai dimuat,
@@ -471,18 +488,31 @@ function DraftEditorForm({
    * Pinterest dicentang di `toggleAccount`, dan sebagai retry manual dari
    * tombol "Coba lagi" pada state error. */
   function fetchPinterestBoards(connectedAccountId: string) {
+    const requestSeq =
+      (pinterestBoardRequestSeq.current[connectedAccountId] ?? 0) + 1;
+    pinterestBoardRequestSeq.current[connectedAccountId] = requestSeq;
     setPinterestBoardsByAccount((prev) => ({
       ...prev,
       [connectedAccountId]: { status: "loading" },
     }));
     listPinterestBoardsAction(connectedAccountId)
       .then((boards) => {
+        if (
+          pinterestBoardRequestSeq.current[connectedAccountId] !== requestSeq
+        ) {
+          return;
+        }
         setPinterestBoardsByAccount((prev) => ({
           ...prev,
           [connectedAccountId]: { status: "success", boards },
         }));
       })
       .catch((error) => {
+        if (
+          pinterestBoardRequestSeq.current[connectedAccountId] !== requestSeq
+        ) {
+          return;
+        }
         setPinterestBoardsByAccount((prev) => ({
           ...prev,
           [connectedAccountId]: {
@@ -802,6 +832,11 @@ function DraftEditorForm({
         ) : (
           // eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex.
           <div className="flex flex-col gap-4">
+            {pinterestConstraintMessage ? (
+              <Alert variant="destructive">
+                <AlertTitle>{pinterestConstraintMessage}</AlertTitle>
+              </Alert>
+            ) : null}
             {notice ? (
               <Alert
                 variant={notice.status === "error" ? "destructive" : "default"}
@@ -1105,11 +1140,11 @@ function DraftEditorForm({
                                   }
                                 />
                                 <Label htmlFor={`${checkboxId}-board`}>
-                                  Board{" "}
-                                  <span className="text-muted-foreground">
-                                    (opsional)
-                                  </span>
+                                  Board
                                 </Label>
+                                <FieldDescription>
+                                  Wajib. Pin tidak terkirim tanpa board.
+                                </FieldDescription>
                                 {(() => {
                                   const boardState =
                                     pinterestBoardsByAccount[account.id];
@@ -1163,32 +1198,42 @@ function DraftEditorForm({
                                     );
                                   }
                                   return (
-                                    <Select
-                                      value={boardIdByAccount[account.id] ?? ""}
-                                      onValueChange={(value) =>
-                                        setBoardIdByAccount((prev) => ({
-                                          ...prev,
-                                          [account.id]: value || undefined,
-                                        }))
-                                      }
-                                    >
-                                      <SelectTrigger
-                                        id={`${checkboxId}-board`}
-                                        className="w-full"
+                                    <>
+                                      {boardState.boards.length === 0 ? (
+                                        <FieldDescription>
+                                          Akun ini belum punya board, jadi pin
+                                          belum bisa dijadwalkan.
+                                        </FieldDescription>
+                                      ) : null}
+                                      <Select
+                                        value={
+                                          boardIdByAccount[account.id] ?? ""
+                                        }
+                                        onValueChange={(value) =>
+                                          setBoardIdByAccount((prev) => ({
+                                            ...prev,
+                                            [account.id]: value || undefined,
+                                          }))
+                                        }
                                       >
-                                        <SelectValue placeholder="Pilih board…" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {boardState.boards.map((board) => (
-                                          <SelectItem
-                                            key={board.id}
-                                            value={board.id}
-                                          >
-                                            {board.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
+                                        <SelectTrigger
+                                          id={`${checkboxId}-board`}
+                                          className="w-full"
+                                        >
+                                          <SelectValue placeholder="Pilih board…" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {boardState.boards.map((board) => (
+                                            <SelectItem
+                                              key={board.id}
+                                              value={board.id}
+                                            >
+                                              {board.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </>
                                   );
                                 })()}
                               </div>

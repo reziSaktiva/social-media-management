@@ -84,10 +84,11 @@ import { parseBase64UrlJson } from "./connect-state";
  *    dikirim (field-nya sudah ada di domain kita). Pinterest `board_id`
  *    (wajib di API Outstand) sekarang dikirim KALAU
  *    `platformOptions.boardId` non-kosong (diisi UI board-picker Draft
- *    Editor, per post — bukan per akun, TIDAK ada migrasi Prisma baru,
- *    scope dikonfirmasi King Rezi 2026-09-25); kalau kosong, key
- *    `pinterest` tetap TIDAK dikirim (perilaku lama, aman — post tetap
- *    terkirim tanpa override Pinterest).
+ *    Editor). Satu create-post hanya boleh memuat SATU akun Pinterest:
+ *    body hanya punya satu key `pinterest.board_id`, dan board itu milik
+ *    satu akun. Tanpa `boardId`, atau kalau ada lebih dari satu akun
+ *    Pinterest, call ditolak sebelum request dikirim — akun tidak masuk
+ *    ke `accounts` tanpa `board_id`.
  */
 export interface RealOutstandAdapterOptions extends OutstandHttpClientOptions {
   /**
@@ -286,6 +287,41 @@ function selectConfirmedFacebookAccounts(
   return chosen;
 }
 
+/**
+ * `POST /v1/posts` hanya punya satu key `pinterest`. Dua akun Pinterest
+ * dalam satu call akan menempelkan `board_id` akun pertama ke akun lain.
+ * Tanpa `board_id`, akun tetap masuk `accounts` dan Outstand menolak pin.
+ * Keduanya ditolak di sini, sebelum request dikirim.
+ */
+function assertSinglePinterestTargetWithBoard(
+  targets: OutstandPostTargetInput[],
+): void {
+  const pinterestTargets = targets.filter(
+    (target) => target.platform === SocialPlatform.Pinterest,
+  );
+  if (pinterestTargets.length > 1) {
+    throw new OutstandIntegrationError({
+      type: "client_error",
+      message:
+        "OutstandAdapter: satu create-post hanya bisa memuat satu akun Pinterest. Body POST /v1/posts hanya punya satu board_id, jadi akun Pinterest lain harus dikirim sebagai post terpisah.",
+      retryable: false,
+    });
+  }
+  const pinterestTarget = pinterestTargets[0];
+  if (!pinterestTarget) return;
+
+  const boardId = pinterestTarget.platformOptions?.boardId;
+  const hasBoard = typeof boardId === "string" && boardId.trim().length > 0;
+  if (!hasBoard) {
+    throw new OutstandIntegrationError({
+      type: "client_error",
+      message:
+        "OutstandAdapter: akun Pinterest wajib punya board_id. Tanpa board, request tidak dikirim.",
+      retryable: false,
+    });
+  }
+}
+
 export function createRealOutstandAdapter(
   apiKey: string,
   options: RealOutstandAdapterOptions,
@@ -305,9 +341,11 @@ export function createRealOutstandAdapter(
    * - Facebook: `Story` → `publishAsStory: true`, `Reel` →
    *   `publishAsReel: true`. `Post` tidak mengirim key `facebook`.
    * - Pinterest (menutup KI-072, sisa scope ADR-114): `board_id` WAJIB di
-   *   API Outstand — kalau `platformOptions.boardId` kosong/tidak ada,
-   *   `null` (aman, key `pinterest` tidak dikirim sama sekali, perilaku
-   *   lama). Kalau ada, kirim `{ board_id, title?, link? }` — `title`/
+   *   API Outstand. Guard di `buildPostRequestBody` menolak target
+   *   Pinterest tanpa `boardId`, dan menolak lebih dari satu akun
+   *   Pinterest dalam satu call (satu key `pinterest` tidak boleh
+   *   mewakili dua board). Kalau lolos, kirim `{ board_id, title?, link? }`
+   *   — `title`/
    *   `link` diteruskan dari `platformOptions.pinTitle`/`pinLink` (field
    *   yang SUDAH ada di UI Draft Editor sejak sebelum KI-072, sebelumnya
    *   selalu diabaikan adapter). `alt_text`/`cover_image_url` (field valid
@@ -359,9 +397,6 @@ export function createRealOutstandAdapter(
           ? platformOptions.boardId.trim()
           : undefined;
       if (!boardId) {
-        // `board_id` wajib di API Outstand — tanpa itu JANGAN kirim key
-        // `pinterest` sama sekali (perilaku lama, aman: post tetap
-        // terkirim tanpa override Pinterest).
         return null;
       }
 
@@ -429,6 +464,8 @@ export function createRealOutstandAdapter(
 
     // Story-only (atau Story + target lain tanpa caption) → content kosong.
     const contentForBody = hasStoryTarget ? "" : input.caption;
+
+    assertSinglePinterestTargetWithBoard(input.targets);
 
     const overridesByNetwork: Record<string, Record<string, unknown>> = {};
 

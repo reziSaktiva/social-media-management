@@ -8,6 +8,7 @@ import type {
 import { ConflictError } from "@/lib/utils/errors";
 import type { IOutstandAdapter } from "../adapters/outstand-adapter";
 import { assertContentFormatAllowed } from "../content-format-matrix";
+import { assertPinterestBoardConstraints } from "../pinterest-board-constraints";
 import { assertActorCanPublishNow } from "../rbac";
 import type {
   IPublishingRepository,
@@ -74,6 +75,7 @@ export class PublishNowUseCase {
     for (const target of input.targets) {
       assertContentFormatAllowed(target.platform, target.contentFormat);
     }
+    assertPinterestBoardConstraints(input.targets);
 
     const record = await this.repository.publishNow(
       {

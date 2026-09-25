@@ -10,6 +10,7 @@ import { ConflictError } from "@/lib/utils/errors";
 import type { IOutstandAdapter } from "../adapters/outstand-adapter";
 import type { IJobScheduler } from "../adapters/job-scheduler";
 import { assertContentFormatAllowed } from "../content-format-matrix";
+import { assertPinterestBoardConstraints } from "../pinterest-board-constraints";
 import { RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE } from "./resolve-scheduled-post-outcome-job-handler";
 import type {
   IPublishingRepository,
@@ -109,6 +110,7 @@ export class SchedulePostsUseCase {
     for (const target of input.targets) {
       assertContentFormatAllowed(target.platform, target.contentFormat);
     }
+    assertPinterestBoardConstraints(input.targets);
 
     const record = await this.repository.schedulePost(
       {
