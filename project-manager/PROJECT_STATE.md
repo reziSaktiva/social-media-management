@@ -572,6 +572,44 @@ tapi data historis `publishedAt` di DB tetap kosong untuk seluruh post yang
 sudah tayang. Non-blocking, gap serupa pola **KI-049**
 (`failedAt`/`failureReason` juga tidak pernah ditulis). Tidak memblokir M8.
 
+### KI-064 · Deploy Railway staging (`web`) gagal — Node.js 18 EOL, tidak ada version pin
+
+| Field | Value |
+|-------|-------|
+| Status | Resolved (2026-09-26) |
+| Kategori | Infra/CI-CD |
+| Terkait | PR #136 (`feature/t-106-remove-fake-outstand-adapter` → `staging`), CI-D03, branch `fix/pin-node-version` |
+
+Ditemukan lewat Railway MCP (2026-09-26) saat cek kenapa deploy staging
+service `web` gagal setelah merge PR #136 ke `staging` (commit
+`d1570191...`, "refactor(outstand): require API key and remove Fake
+adapter"). **Bukan bug dari kode PR #136** — dua deployment gagal
+(`3f82eb21`, `96b91002`, keduanya 2026-09-26 ~02:20 UTC) di tahap
+`BUILD_IMAGE`, sebelum kode aplikasi sempat di-build:
+
+```
+error: Node.js 18.x has reached End-Of-Life and has been removed
+[stage-0 4/10] RUN nix-env -if .nixpacks/nixpkgs-<hash>.nix && nix-collect-garbage -d
+exit code: 1
+```
+
+Root cause: builder `NIXPACKS` (`railway.json`) tidak punya pin versi Node
+eksplisit — tidak ada `.nvmrc` maupun `engines.node` di `package.json` root
+atau `apps/web/package.json` — sehingga Nixpacks fallback ke default lama
+(Node 18) yang paketnya sudah dihapus total dari nixpkgs karena EOL. Live
+deployment saat ini masih yang lama (`e29d7ce5`, SUCCESS, 2026-09-17) jadi
+staging **belum down**, tapi setiap push baru ke `staging` akan gagal
+build sampai ini di-fix.
+
+**Fix (2026-09-26):** tambah `"engines": { "node": ">=22" }` di
+`package.json` root dan `apps/web/package.json` (Next.js 16.2 butuh
+Node ≥20; pilih 22 sebagai current LTS), plus set variable Railway
+`NIXPACKS_NODE_VERSION=22` di service `web` staging sebagai pin eksplisit
+supaya Nixpacks tidak fallback ke default lagi. Redeploy staging
+(`1a98e7c1`) terverifikasi **SUCCESS** — build lewat step Nixpacks/Node
+tanpa error, `next build` (Turbopack) selesai normal. Perubahan ada di
+branch `fix/pin-node-version` → PR ke `staging`.
+
 ---
 
 ## Blockers
