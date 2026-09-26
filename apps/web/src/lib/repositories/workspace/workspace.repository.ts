@@ -760,6 +760,19 @@ export const workspaceRepository: IWorkspaceRepository = {
     return account ? toConnectedAccountRecord(account) : null;
   },
 
+  async findConnectedAccountByOutstandId(
+    workspaceId,
+    outstandAccountId,
+    actingUserId,
+  ) {
+    const account = await withCurrentUser(actingUserId, (tx) =>
+      tx.workspaceConnectedAccount.findFirst({
+        where: { workspaceId, outstandAccountId },
+      }),
+    );
+    return account ? toConnectedAccountRecord(account) : null;
+  },
+
   async createConnectedAccount({
     workspaceId,
     platform,

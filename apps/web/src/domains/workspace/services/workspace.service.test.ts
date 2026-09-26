@@ -12,6 +12,7 @@ import {
 import type { IOutstandAdapter, MemberId, UserId } from "@social/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
+  AlreadyConnectedError,
   AuthorizationError,
   ConflictError,
   NotFoundError,
@@ -59,6 +60,7 @@ function createFakeRepository(
     findAccountOwnerByOutstandAccountId: async () => null,
     disconnectAccount: async () => undefined,
     findConnectedAccountById: async () => null,
+    findConnectedAccountByOutstandId: async () => null,
     createConnectedAccount: async ({
       workspaceId,
       platform,
@@ -1075,6 +1077,87 @@ describe("WorkspaceService.completeAccountConnection", () => {
       actingUserId: OWNER_USER,
     });
     expect(reconnectAccount).not.toHaveBeenCalled();
+  });
+
+  it("KI-079: recovers (returns existing row) when the conflicting account was just created — genuine double-submit", async () => {
+    const conflictingRow: ConnectedAccountRecord = {
+      ...existingAccount(),
+      id: asConnectedAccountId("cac-conn-recent"),
+      outstandAccountId: "outstand-account-1",
+      handle: "@fake",
+      status: "active",
+      reconnectRequired: false,
+      // Dibuat 2 detik lalu — di dalam DOUBLE_SUBMIT_RECOVERY_WINDOW_MS
+      // (15 detik), jadi harus diperlakukan sebagai request susulan yang
+      // aman, bukan percobaan connect terpisah.
+      connectedAt: new Date(Date.now() - 2_000),
+    };
+    const createConnectedAccount = vi.fn(async () => {
+      throw new ConflictError("Akun ini sudah terhubung di workspace ini.");
+    });
+    const findConnectedAccountByOutstandId = vi.fn(async () => conflictingRow);
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        createConnectedAccount,
+        findConnectedAccountByOutstandId,
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter(),
+    );
+
+    const result = await service.completeAccountConnection({
+      workspaceId: WORKSPACE_ID,
+      actorId: OWNER_USER,
+      accountId: "fake-account-id",
+      username: "fake-username",
+      state: "fake-state",
+    });
+
+    expect(result).toEqual(conflictingRow);
+    expect(findConnectedAccountByOutstandId).toHaveBeenCalledWith(
+      WORKSPACE_ID,
+      "outstand-account-1",
+      OWNER_USER,
+    );
+  });
+
+  it("KI-079: throws AlreadyConnectedError when the conflicting account is not recent — separate connect attempt", async () => {
+    const conflictingRow: ConnectedAccountRecord = {
+      ...existingAccount(),
+      id: asConnectedAccountId("cac-conn-old"),
+      outstandAccountId: "outstand-account-1",
+      handle: "@fake",
+      status: "active",
+      reconnectRequired: false,
+      // Dibuat jauh sebelumnya (di luar DOUBLE_SUBMIT_RECOVERY_WINDOW_MS) —
+      // ini akun yang genuinely sudah terhubung, bukan double-submit.
+      connectedAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    const createConnectedAccount = vi.fn(async () => {
+      throw new ConflictError("Akun ini sudah terhubung di workspace ini.");
+    });
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        createConnectedAccount,
+        findConnectedAccountByOutstandId: async () => conflictingRow,
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter(),
+    );
+
+    await expect(
+      service.completeAccountConnection({
+        workspaceId: WORKSPACE_ID,
+        actorId: OWNER_USER,
+        accountId: "fake-account-id",
+        username: "fake-username",
+        state: "fake-state",
+      }),
+    ).rejects.toBeInstanceOf(AlreadyConnectedError);
   });
 
   it("updates the existing ConnectedAccount (preserving connectedAt) when redirectAccountId is present", async () => {

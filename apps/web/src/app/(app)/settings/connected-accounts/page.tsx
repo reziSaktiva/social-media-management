@@ -51,7 +51,11 @@ export default async function Page({
     <ConnectedAccountsList
       accounts={accounts}
       connectResult={
-        connect === "success" || connect === "error" ? connect : null
+        connect === "success" ||
+        connect === "error" ||
+        connect === "already-connected"
+          ? connect
+          : null
       }
       facebookPagesPicker={
         connectFacebook === "1" && connectFacebookState

@@ -137,15 +137,26 @@ function ReconnectButton({ account }: { account: ConnectedAccountRecord }) {
 
 /**
  * Tombol aksi per baris ditentukan dari `displayStatus` penuh (3 state),
- * bukan cuma boolean `reconnectRequired` — akun yang sudah `disconnected`
- * (bukan `reconnect-required`) tidak punya aksi yang relevan untuk
- * ditampilkan di sini (bukan "Disconnect" lagi, karena sudah disconnected).
+ * bukan cuma boolean `reconnectRequired`.
  *
  * T-014.3: "Disconnect" (state `active`) — membuka dialog konfirmasi Tier 2
  * (ADR-049) lewat `onRequestDisconnect`, pola persis `QueueScreen.tsx`
  * (Cancel Schedule) / `MembersTable.tsx` (Remove member).
- * T-015.3: "Reconnect" (state `reconnect-required`) sekarang aktif —
- * lihat `ReconnectButton` di atas.
+ * T-015.3: "Reconnect" (state `reconnect-required`) — lihat `ReconnectButton`
+ * di atas.
+ * **KI-078 (2026-09-26):** `disconnected` (disconnect eksplisit oleh user,
+ * beda dari `reconnect-required`/token kadaluarsa) SEBELUMNYA sengaja
+ * dirender tanpa aksi apa pun — membuat disconnect jadi FINAL/permanen,
+ * tidak sesuai ekspektasi umum (Claude Design `templates/settings-connected-
+ * accounts.html`, baris "X (Twitter)": chip disconnected berpasangan dengan
+ * tombol "Reconnect", pola yang sama persis dipakai di sini). Digabung ke
+ * cabang yang sama dengan `reconnect-required` — `ReconnectButton` sudah
+ * memanggil `initiateReconnectAccountAction` dengan `redirectAccountId`
+ * terisi apa pun status akunnya, yang di `WorkspaceService.
+ * completeAccountConnection` diarahkan ke `IWorkspaceRepository.
+ * reconnectAccount` (UPDATE baris existing) — BUKAN `createConnectedAccount`
+ * (INSERT), sehingga tidak lagi menabrak unique constraint
+ * `[workspaceId, outstandAccountId]` dari baris `disconnected` yang lama.
  */
 function ConnectedAccountAction({
   account,
@@ -158,6 +169,7 @@ function ConnectedAccountAction({
 }) {
   switch (displayStatus) {
     case "reconnect-required":
+    case "disconnected":
       // Facebook Pages reconnect multi-page belum punya UPDATE path —
       // sembunyikan tombol supaya tidak silent 0-page "sukses" toast.
       if (account.platform === SocialPlatform.Facebook) {
@@ -175,8 +187,6 @@ function ConnectedAccountAction({
           Disconnect
         </Button>
       );
-    case "disconnected":
-      return null;
   }
 }
 
@@ -258,7 +268,7 @@ export function ConnectedAccountsList({
    * history) supaya refresh halaman tidak menampilkan toast yang sama
    * berulang.
    */
-  connectResult?: "success" | "error" | null;
+  connectResult?: "success" | "error" | "already-connected" | null;
   /**
    * Facebook Pages flow (T-025.4, KI-070, ADR-115 §7/§10; review fix) —
    * diteruskan dari `page.tsx` (`?connectFacebook=1` +
@@ -276,6 +286,13 @@ export function ConnectedAccountsList({
     if (!connectResult) return;
     if (connectResult === "success") {
       toast("Akun berhasil terhubung");
+    } else if (connectResult === "already-connected") {
+      // KI-079 — dibedakan dari "error" generik: ini BUKAN kegagalan
+      // transient yang bisa diperbaiki dengan retry, jadi tidak memakai
+      // copy "Coba lagi" yang menyesatkan.
+      toast.error(
+        "Akun ini sudah terhubung di workspace ini. Gunakan tombol Reconnect di baris akun yang sudah ada.",
+      );
     } else {
       toast.error("Gagal menghubungkan akun. Coba lagi.");
     }
