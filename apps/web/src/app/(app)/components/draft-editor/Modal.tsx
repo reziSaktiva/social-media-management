@@ -49,7 +49,10 @@ import {
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
-import { maxMediaCountForFormats } from "@/domains/publishing";
+import {
+  maxMediaCountForFormats,
+  minMediaCountConstraintMessage,
+} from "@/domains/publishing";
 
 import type { ConnectedAccountDto, DraftMediaDto } from "./actions";
 import {
@@ -414,19 +417,45 @@ function DraftEditorForm({
     })),
   );
 
+  // KI-073: caption HANYA wajib kalau ada minimal satu target NON-Story
+  // yang dipilih — Story justru MENOLAK caption di Outstand
+  // (`buildPostRequestBody`, `real-outstand-adapter.ts`:
+  // `contentForBody = hasStoryTarget ? "" : input.caption`). Kombinasi
+  // Story + non-Story ber-caption tetap ditolak adapter (throw
+  // `client_error`) — `hasNonStoryTarget` sudah mencakup kasus campuran
+  // ini juga (bukan cuma non-Story murni), jadi caption tetap wajib untuk
+  // kombinasi itu supaya submit tidak lolos di UI lalu gagal di adapter.
+  const activeFormatsForGate = getActiveFormats();
+  const hasNonStoryTarget = activeFormatsForGate.some(
+    (format) => format !== ContentFormat.Story,
+  );
+  const isCaptionRequired = hasNonStoryTarget;
+
+  // KI-074: Story/Reel/Pin secara native selalu berbasis media — tanpa
+  // guard ini, target Story/Reel/Pin bisa "berhasil" terpublish tapi
+  // tayang kosong (caption-nya sendiri juga sudah dikosongkan untuk
+  // Story, KI-073 di atas). Mirror server: `assertMediaCountMeetsMinimum`
+  // (`content-format-matrix.ts`).
+  const mediaMinimumMessage = minMediaCountConstraintMessage(
+    mediaItems.length,
+    activeFormatsForGate,
+  );
+
   const isReadyToSchedule =
-    caption.trim().length > 0 &&
+    (!isCaptionRequired || caption.trim().length > 0) &&
     selectedAccounts.length > 0 &&
     Boolean(scheduleDate) &&
     Boolean(scheduleTime) &&
-    pinterestConstraintMessage === null;
+    pinterestConstraintMessage === null &&
+    mediaMinimumMessage === null;
 
   // Publish Now (KSP-05-F12) skips the Schedule Picker entirely — tanggal/
   // waktu tidak relevan sama sekali, beda dari `isReadyToSchedule`.
   const isReadyToPublishNow =
-    caption.trim().length > 0 &&
+    (!isCaptionRequired || caption.trim().length > 0) &&
     selectedAccounts.length > 0 &&
-    pinterestConstraintMessage === null;
+    pinterestConstraintMessage === null &&
+    mediaMinimumMessage === null;
 
   // Publish Now dari Queue (T-032.4) — lompat otomatis ke step konfirmasi
   // begitu draft (caption/status) DAN daftar akun terhubung selesai dimuat,
@@ -835,6 +864,11 @@ function DraftEditorForm({
             {pinterestConstraintMessage ? (
               <Alert variant="destructive">
                 <AlertTitle>{pinterestConstraintMessage}</AlertTitle>
+              </Alert>
+            ) : null}
+            {mediaMinimumMessage ? (
+              <Alert variant="destructive">
+                <AlertTitle>{mediaMinimumMessage}</AlertTitle>
               </Alert>
             ) : null}
             {notice ? (

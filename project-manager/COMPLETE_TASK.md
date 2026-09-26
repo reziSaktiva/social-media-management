@@ -8,6 +8,118 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-26 — KI-073–076 Resolved: 4 bug publish Instagram diperbaiki + diverifikasi live; ADR-120; 2 KI baru; koreksi duplikat ID KI-064
+
+Lanjutan dari investigasi sesi sebelumnya (commit `349290d`, belum
+ter-merge ke branch ini — root cause 4 bug sudah dianalisis di sana, sesi
+ini yang mengimplementasikan fix-nya). Diimplementasikan Prabowo Feature
+Engineer (KI-073/074), Elon Backend Engineer (backend KI-076), Mark UI
+Engineer (UI KI-076), direview Ridwan Architecture Reviewer (clean, 1
+temuan governance — index ADR belum didaftarkan, sudah diperbaiki di sesi
+ini), diverifikasi end-to-end King Rezi + AI langsung di browser dengan
+akun Instagram (`turanilkerl`)/Facebook real (bukan Najwa QA Engineer).
+
+**KI-073 Resolved** — caption wajib walau target Story. Fix:
+`apps/web/src/app/(app)/components/draft-editor/Modal.tsx` —
+`isReadyToSchedule`/`isReadyToPublishNow` sekarang caption hanya wajib
+kalau ada target non-Story. Diverifikasi live: publish Story tanpa caption
+ke akun Instagram real `turanilkerl` — berhasil, tayang di History dengan
+label "(Tanpa caption)".
+
+**KI-074 Resolved** — Story bisa publish tanpa media (tayang kosong di
+Instagram). Fix: `apps/web/src/domains/publishing/content-format-matrix.ts`
+(tambah `MIN_MEDIA_COUNT_BY_FORMAT`/`assertMediaCountMeetsMinimum`/
+`minMediaCountConstraintMessage`), dipanggil di `Modal.tsx` (client gate)
+dan `draft-editor/actions.ts` (`scheduleDraftAction`/`publishNowAction`).
+Diverifikasi live: tombol Publish Now ter-disable dengan pesan "butuh
+minimal 1 media" sebelum media di-attach, aktif setelah media di-attach;
+publish sungguhan berhasil.
+
+**KI-075 Resolved** — upload media >1MB gagal (Next.js Server Action
+default body limit 1MB, gejala salah dikira "cuma jpg yang bisa"). Fix:
+`apps/web/next.config.ts` — tambah
+`experimental.serverActions.bodySizeLimit: "50mb"` (sinkron
+`MAX_MEDIA_FILE_SIZE_BYTES`). Diverifikasi live: upload file PNG nyata
+1.47MB berhasil tanpa error (sebelumnya gagal 500 "Body exceeded 1 MB
+limit").
+
+**KI-076 Resolved (backend + UI)** — avatar akun Instagram/Facebook tidak
+pernah tampil di sidebar Channels. Fix 5 lapisan, dikunci **ADR-120**
+(amandemen ADR-112): kontrak ACL `packages/shared/src/contracts/outstand-adapter.ts`
+(`ConnectedAccountData.avatarUrl?`); adapter
+`apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts` (fetch avatar
+via `GET /v1/social-accounts/{id}`, field `profile_picture_url` —
+diverifikasi langsung ke API Outstand asli via MCP resmi, endpoint+field
+terkonfirmasi benar untuk single-page; path exact untuk kasus ini
+diinferensi, best-effort, gagal → `null`, tidak menggagalkan connect);
+Prisma schema (`apps/web/prisma/schema.prisma` + migration
+`20260926090000_ki076_add_avatar_url_to_workspace_connected_accounts`,
+migration sudah **diterapkan** ke database via `bun run db:deploy`, King
+Rezi sudah menjalankan); domain type `apps/web/src/domains/workspace/types.ts`
+(`SidebarChannelAccount.avatarUrl`, wajib non-optional); UI
+`ChannelsSection.tsx` + `ConnectedAccountsList.tsx` (tambah
+`<AvatarImage>`). Verifikasi API real: akun Facebook Page "Cook It Real
+Good" punya `profile_picture_url` asli (foto CDN Facebook); akun Instagram
+test `turanilkerl` genuinely `null` (belum ada foto di akun itu sendiri,
+bukan bug). Render UI belum sempat diverifikasi visual penuh (akun test
+butuh reconnect untuk backfill `avatarUrl`, tapi reconnect akun aktif
+tidak accessible lewat UI — lihat **KI-078** di bawah) — kode+test+review
+solid, risiko render rendah (pola `AvatarImage`/`AvatarFallback` shadcn
+standar, sudah dipakai persis di tempat sama).
+
+**Governance — perbaikan temuan Ridwan:** `decisions/ADR-120-connectedaccountdata-avatarurl-sidebar-channels-ki076.md`
+sudah ada di disk tapi belum terdaftar di index `DECISIONS.md`, dan baris
+ADR-112 di index yang sama belum ditandai amended. Diperbaiki: baris
+ADR-120 ditambahkan ke index (di atas ADR-119, sebagai entri terbaru);
+baris ADR-112 diubah jadi "Accepted — Amended by ADR-120 (2026-09-26)";
+header `### Status` di file `ADR-112-...md` ditandai sama.
+
+**Governance — koreksi duplikat ID `KI-064`:** ditemukan dua Known Issue
+berbeda memakai ID `KI-064` yang sama di `PROJECT_STATE.md` (pelanggaran
+ADR-066/067 "ID global, tidak pernah didaur ulang") — kemungkinan besar
+akibat dua sesi independen menomori Known Issue baru dengan ID yang sudah
+lama terpakai ("`application-layer.md` § Peta Dependency Antar Domain",
+dicatat 2026-09-18, direferensikan luas di `tasks/v02-publishing-mvp.md`/
+`tasks/v03-analytics-mvp.md`) vs "Deploy Railway staging gagal — Node.js 18
+EOL" (dicatat + Resolved 2026-09-26 via commit `2541037`/`fix(deploy): pin
+Node 22 for Railway Nixpacks build (KI-064)`, hanya direferensikan di
+`PROJECT_STATE.md` sendiri). ID pertama (application-layer.md, masih Open)
+dipertahankan sebagai `KI-064` yang sah. ID kedua (Deploy Railway, sudah
+Resolved) di-**renumber jadi `KI-077`** — karena statusnya Resolved dan kini
+dicatat di sini, per guardrail ukuran (`AGENTS.md`) entrinya dihapus dari
+`PROJECT_STATE.md` § Known Issues (bukan dibiarkan menumpuk dengan label
+Resolved). Ringkasan isinya untuk arsip: builder Nixpacks Railway tidak
+punya pin versi Node eksplisit, fallback ke Node 18 (sudah EOL, dihapus
+dari nixpkgs) — fix tambah `"engines": { "node": ">=22" }` di
+`package.json` root + `apps/web/package.json`, plus set variable Railway
+`NIXPACKS_NODE_VERSION=22` di service `web` staging. Redeploy staging
+terverifikasi SUCCESS. Tidak ada perubahan kode tambahan di sesi ini untuk
+temuan ini — murni penomoran ulang + housekeeping dokumentasi.
+
+**2 Known Issue baru ditemukan saat verifikasi live (status Open):**
+
+- **KI-078** — akun `disconnected` (bukan `reconnect-required`) tidak
+  punya jalur UI apa pun untuk reconnect
+  (`ConnectedAccountsList.tsx`, `case "disconnected": return null`).
+  Ditemukan tanpa sengaja saat disconnect akun test `turanilkerl` untuk
+  keperluan verifikasi KI-076 — harus diperbaiki manual lewat SQL langsung
+  (`UPDATE workspace_connected_accounts SET status='active'`) karena unique
+  constraint `outstandAccountId` mencegah reconnect via tombol Connect
+  generik.
+- **KI-079** — Route Handler callback Outstand
+  (`api/integrations/outstand/callback/route.ts`, `redirectWithStatus`)
+  memperlakukan `ConflictError` SELALU sebagai redirect "success" (didesain
+  untuk double-submit, tapi juga menutupi kegagalan genuine seperti
+  skenario KI-078 — user melihat "success" padahal data tidak berubah).
+
+Detail lengkap ketiga governance-fix + 2 KI baru: `PROJECT_STATE.md` §
+Known Issues + § Recent Decisions. File yang diubah sesi ini (governance
+only): `project-manager/PROJECT_STATE.md`, `project-manager/DECISIONS.md`,
+`project-manager/decisions/ADR-112-single-page-connect-callback-tanpa-code-exchange-amandemen-adr-105.md`
+(header Status).
+
+---
+
 ## 2026-09-25 — T-106.5 ✅ Done: sisa akun dan post Fake/mock dihapus
 
 Di DB bersama `ndcrkzqgqukqfmekgoze`: 23 `workspace_connected_accounts` (`outstand_account_id` `fake-%` atau `mock-%`) dan 9 `publishing_posts` yang menempel dihapus. Target ikut cascade. Inbox (13) dan urutan channel (2) ikut terhapus bersama akun. Verifikasi: 0 akun, 0 target, 0 inbox. 19 draft tanpa channel tidak dihapus — tidak menempel ke akun Fake/mock.

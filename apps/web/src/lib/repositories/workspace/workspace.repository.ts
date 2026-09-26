@@ -85,6 +85,8 @@ function toConnectedAccountRecord(
     status: account.status,
     reconnectRequired: account.reconnectRequired,
     connectedAt: account.connectedAt,
+    // KI-076/ADR-120 — lihat docstring `ConnectedAccountRecord.avatarUrl`.
+    avatarUrl: account.avatarUrl,
   };
 }
 
@@ -757,6 +759,7 @@ export const workspaceRepository: IWorkspaceRepository = {
     platform,
     outstandAccountId,
     handle,
+    avatarUrl,
     actingUserId,
   }) {
     try {
@@ -767,6 +770,7 @@ export const workspaceRepository: IWorkspaceRepository = {
             platform,
             outstandAccountId,
             handle,
+            avatarUrl: avatarUrl ?? null,
             status: "active",
           },
         }),
@@ -804,6 +808,7 @@ export const workspaceRepository: IWorkspaceRepository = {
             platform: account.platform,
             outstandAccountId: account.outstandAccountId,
             handle: account.handle,
+            avatarUrl: account.avatarUrl ?? null,
             status: "active",
           },
         });
@@ -818,6 +823,7 @@ export const workspaceRepository: IWorkspaceRepository = {
     connectedAccountId,
     outstandAccountId,
     handle,
+    avatarUrl,
     actingUserId,
   }) {
     return withCurrentUser(actingUserId, async (tx) => {
@@ -832,6 +838,7 @@ export const workspaceRepository: IWorkspaceRepository = {
         data: {
           outstandAccountId,
           handle,
+          avatarUrl: avatarUrl ?? null,
           status: "active",
           reconnectRequired: false,
         },

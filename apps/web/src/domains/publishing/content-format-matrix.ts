@@ -100,3 +100,80 @@ export function assertMediaCountWithinLimit(
     );
   }
 }
+
+/**
+ * Batas MINIMUM jumlah media per `ContentFormat` (KI-074) — ADR-039/ADR-107
+ * di atas hanya menegakkan batas MAKSIMUM, tidak pernah ada batas MINIMUM.
+ * Story/Reel/Pin di Instagram/Facebook/Pinterest secara native SELALU
+ * berbasis media (tidak ada "Story tanpa gambar/video", "Reel tanpa video",
+ * atau "Pin tanpa gambar") — beda dari `Post` yang tetap valid caption-only
+ * (native text-only feed post). Tanpa batas ini, target Story bisa
+ * "berhasil" terpublish (tidak ada error) tapi tayang benar-benar kosong di
+ * Instagram — caption-nya sendiri sudah dikosongkan untuk Story (KI-073,
+ * `buildPostRequestBody` di `real-outstand-adapter.ts`), jadi kalau media
+ * juga kosong, isi post yang benar-benar terkirim ke Outstand tidak ada
+ * sama sekali. Mirror client-side WAJIB dijaga sinkron: `Modal.tsx`.
+ */
+const MIN_MEDIA_COUNT_BY_FORMAT: Record<ContentFormat, number> = {
+  [ContentFormat.Post]: 0,
+  [ContentFormat.Reel]: 1,
+  [ContentFormat.Story]: 1,
+  [ContentFormat.Pin]: 1,
+};
+
+/** Batas minimum media untuk SATU `ContentFormat` — lihat `MIN_MEDIA_COUNT_BY_FORMAT`. */
+export function minMediaCountForFormat(format: ContentFormat): number {
+  return MIN_MEDIA_COUNT_BY_FORMAT[format];
+}
+
+/**
+ * Batas minimum EFEKTIF untuk seluruh post — kebalikan dari
+ * `maxMediaCountForFormats` (yang pakai MINIMUM antar format yang sedang
+ * dipilih): di sini pakai MAKSIMUM antar format, supaya format yang lebih
+ * ketat (mis. Story butuh ≥1 media) tidak kalah oleh format yang lebih
+ * longgar (Post butuh ≥0) dalam satu post gabungan yang sama (`mediaIds`
+ * satu set untuk seluruh post, ADR-107). Array kosong (belum ada akun
+ * dipilih sama sekali) → 0, supaya user tetap bisa mulai upload media
+ * sebelum memilih akun tujuan (konsisten filosofi `maxMediaCountForFormats`).
+ */
+export function minMediaCountForFormats(formats: ContentFormat[]): number {
+  if (formats.length === 0) {
+    return 0;
+  }
+  return Math.max(
+    ...formats.map((format) => MIN_MEDIA_COUNT_BY_FORMAT[format]),
+  );
+}
+
+/**
+ * Pesan constraint minimum media (KI-074) — `null` kalau `mediaCount` sudah
+ * memenuhi batas minimum efektif untuk `formats` yang sedang dipilih. Pola
+ * sama `pinterestBoardConstraintMessage` (`pinterest-board-constraints.ts`)
+ * — satu implementasi dipakai bersama oleh client (gating tombol Publish
+ * Now/Schedule + tampilan pesan, `Modal.tsx`) dan
+ * `assertMediaCountMeetsMinimum` (server, throw).
+ */
+export function minMediaCountConstraintMessage(
+  mediaCount: number,
+  formats: ContentFormat[],
+): string | null {
+  const min = minMediaCountForFormats(formats);
+  if (mediaCount < min) {
+    return `Target ini butuh minimal ${min} media — Story/Reel/Pin tidak bisa dipublish tanpa media (jumlah media saat ini: ${mediaCount}).`;
+  }
+  return null;
+}
+
+/**
+ * Throws `PublishingDomainError` kalau `mediaCount` kurang dari batas
+ * minimum (KI-074) untuk `formats` yang sedang dipilih.
+ */
+export function assertMediaCountMeetsMinimum(
+  mediaCount: number,
+  formats: ContentFormat[],
+): void {
+  const message = minMediaCountConstraintMessage(mediaCount, formats);
+  if (message) {
+    throw new PublishingDomainError(message);
+  }
+}

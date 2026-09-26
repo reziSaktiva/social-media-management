@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -205,6 +205,10 @@ function ConnectedAccountRow({
         {/* eslint-disable-next-line no-restricted-syntax -- T-099.3: file ini sudah dimigrasi ke komposisi Tailwind shadcn (ADR-097) */}
         <div className="flex items-center gap-3">
           <Avatar>
+            <AvatarImage
+              src={account.avatarUrl ?? undefined}
+              alt={account.handle}
+            />
             <AvatarFallback>{getInitials(account.handle)}</AvatarFallback>
             <PlatformStatusDot platform={account.platform} />
           </Avatar>

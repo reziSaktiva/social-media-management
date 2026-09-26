@@ -18,6 +18,33 @@ Dokumen ini berisi log percakapan penting antar sesi yang memiliki dampak terhad
 
 ---
 
+## 2026-09-26 — Supabase MCP `read_only=true` dihapus sementara untuk keperluan fix data live (KI-073–076)
+
+**Phase:** Phase 6 / M8 Development
+
+**Summary:** Saat verifikasi live KI-073–076, akun test Instagram
+`turanilkerl` tanpa sengaja ter-*Disconnect* (lihat **KI-078** baru) dan
+tidak ada jalur UI untuk reconnect (unique constraint `outstandAccountId`
+menahan). King Rezi memutuskan memperbaikinya langsung lewat SQL manual
+(`UPDATE workspace_connected_accounts SET status='active'`) supaya
+verifikasi bisa lanjut, sehingga parameter `&read_only=true` di URL MCP
+Supabase (yang tadinya mencegah write lewat MCP) dihapus atas permintaan
+eksplisit King Rezi.
+
+**Key Insight / Decision:** Perubahan dilakukan di **kedua** file kembar
+sekaligus (`.mcp.json` dan `.cursor/mcp.json`, konsisten aturan
+kompatibilitas tool ADR-064) — bukan cuma satu, supaya Claude Code dan
+Cursor tidak divergen soal proteksi write MCP. Ini pengecualian sesaat
+untuk kebutuhan operasional (fix data), bukan keputusan permanen menghapus
+proteksi read-only — perlu dipertimbangkan ulang apakah `read_only=true`
+mau dikembalikan di sesi berikutnya sekarang datanya sudah beres.
+
+**Impact:** `.mcp.json`, `.cursor/mcp.json` (URL Supabase MCP kehilangan
+`&read_only=true`). Tidak ada perubahan skema/dokumen governance lain dari
+keputusan ini sendiri.
+
+---
+
 ## 2026-09-25 — Sisa channel dan post Fake di luar filter T-106.4
 
 **Phase:** Phase 6 / M8 Development

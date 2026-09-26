@@ -271,6 +271,28 @@ describe("draft-editor actions — mediaIds undefined vs [] (T-024.4 fix)", () =
       const callArg = saveDraftSpy.mock.calls[0][0];
       expect(callArg.mediaIds).toEqual([mediaId]);
     });
+
+    it("(d) target Story tanpa media → menolak (KI-074), tidak sampai memanggil use-case", async () => {
+      vi.spyOn(PublishingService.prototype, "saveDraft").mockResolvedValue(
+        fakePost() as never,
+      );
+      const executeSpy = vi.spyOn(SchedulePostsUseCase.prototype, "execute");
+
+      await expect(
+        scheduleDraftAction({
+          caption: "",
+          scheduledAt: new Date().toISOString(),
+          targets: [
+            {
+              connectedAccountId: "account-1",
+              contentFormat: ContentFormat.Story,
+            },
+          ],
+          mediaIds: [],
+        }),
+      ).rejects.toThrow(/minimal 1 media/);
+      expect(executeSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe("publishNowAction", () => {
@@ -327,6 +349,27 @@ describe("draft-editor actions — mediaIds undefined vs [] (T-024.4 fix)", () =
 
       const callArg = saveDraftSpy.mock.calls[0][0];
       expect(callArg.mediaIds).toEqual([mediaId]);
+    });
+
+    it("(d) target Story tanpa media → menolak (KI-074), tidak sampai memanggil use-case", async () => {
+      vi.spyOn(PublishingService.prototype, "saveDraft").mockResolvedValue(
+        fakePost() as never,
+      );
+      const executeSpy = vi.spyOn(PublishNowUseCase.prototype, "execute");
+
+      await expect(
+        publishNowAction({
+          caption: "",
+          targets: [
+            {
+              connectedAccountId: "account-1",
+              contentFormat: ContentFormat.Story,
+            },
+          ],
+          mediaIds: [],
+        }),
+      ).rejects.toThrow(/minimal 1 media/);
+      expect(executeSpy).not.toHaveBeenCalled();
     });
   });
 });

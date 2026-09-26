@@ -259,12 +259,35 @@ export interface ConnectCallbackInput {
  * lewat webhook/aksi disconnect, bukan hasil connect yang baru saja
  * berhasil. `platform` diambil dari `state` (bukan dari Outstand — lihat
  * ADR-112), bukan dari `ConnectCallbackInput` secara langsung.
+ *
+ * **`avatarUrl` (menutup KI-076, ADR-120)** — foto profil akun yang baru
+ * terhubung, `null` kalau Outstand tidak punya/tidak mengembalikan foto
+ * untuk akun ini. **Field opsional di level TypeScript** (`avatarUrl?:`,
+ * bukan `avatarUrl:`) supaya penambahan field ini tidak memaksa update
+ * mekanis di puluhan mock `IOutstandAdapter` di domain LAIN
+ * (engagement/analytics/publishing) yang tidak peduli avatar sama sekali —
+ * blast radius yang tidak sepadan untuk field non-kritikal. **Kedua
+ * implementasi nyata (`resolveConnectCallback`,
+ * `confirmFacebookPagesConnection`) di `real-outstand-adapter.ts` TETAP
+ * WAJIB mengisinya secara eksplisit** (`null` atau URL nyata) — opsional di
+ * sini murni untuk kompatibilitas mock lama, bukan izin mengabaikannya di
+ * implementasi baru. Untuk single-page account
+ * (`resolveConnectCallback`), diisi dari network call TAMBAHAN
+ * `GET /v1/social-accounts/{id}` (field wire `profile_picture_url`,
+ * diverifikasi langsung lewat MCP resmi `mcp.outstand.so`, ADR-120). Untuk
+ * Facebook Pages (`confirmFacebookPagesConnection`), method itu SENDIRI
+ * tidak bisa mengisi field ini (response `finalize` tidak membawa foto —
+ * lihat docstring `ConfirmFacebookPagesResult`) — `WorkspaceService` yang
+ * menggabungkannya kembali dari `FacebookPendingPage.pictureUrl` (hasil
+ * `listPendingFacebookPages` yang sudah lebih dulu dipanggil), BUKAN
+ * adapter.
  */
 export interface ConnectedAccountData {
   outstandAccountId: string;
   platform: SocialPlatform;
   handle: string;
   status: "active";
+  avatarUrl?: string | null;
 }
 
 /**
@@ -339,7 +362,18 @@ export interface ConfirmFacebookPagesInput {
 }
 
 export interface ConfirmFacebookPagesResult {
-  /** Satu entri per Page yang berhasil dikonfirmasi Outstand — `platform` SELALU `SocialPlatform.Facebook` untuk tiap entri. */
+  /**
+   * Satu entri per Page yang berhasil dikonfirmasi Outstand — `platform`
+   * SELALU `SocialPlatform.Facebook` untuk tiap entri. **`avatarUrl` SELALU
+   * `null` di sini** (menutup KI-076, ADR-120) — response
+   * `POST .../finalize` tidak membawa foto profil sama sekali (beda dari
+   * response `GET .../pending/{sessionToken}` yang membawa
+   * `profilePictureUrl`, lihat `FacebookPendingPage.pictureUrl`). Adapter
+   * TIDAK menggabungkannya sendiri (dua response beda call, adapter tidak
+   * boleh menyimpan state lintas panggilan) — `WorkspaceService` yang
+   * bertanggung jawab join balik `pictureUrl` dari hasil
+   * `listPendingFacebookPages` sebelumnya, per `pageId`/`outstandAccountId`.
+   */
   accounts: ConnectedAccountData[];
 }
 

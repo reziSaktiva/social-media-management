@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
     // Pin workspace root so parent lockfiles outside the repo are ignored.
     root: monorepoRoot,
   },
+  experimental: {
+    serverActions: {
+      // Sinkron dengan MAX_MEDIA_FILE_SIZE_BYTES (domains/media/validation.ts).
+      // Next.js default 1MB memotong upload media sebelum validasi aplikasi
+      // sempat jalan (KI-075).
+      bodySizeLimit: "50mb",
+    },
+  },
 };
 
 export default nextConfig;
