@@ -7,7 +7,7 @@
 * **Top Next Tasks:** **T-106 ✅ Done (2026-09-25, ADR-119, termasuk T-106.5)** — lihat **Completed (Ringkasan)** di bawah. Fokus aktif sekarang: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 5/6 task** (2026-09-22, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 1 blocker aktif (env var Google OAuth belum diisi, KI-015) — lihat section **Blockers** di bawah. Blocker Outstand (KI-003, `OUTSTAND_API_KEY` + Real OutstandAdapter) sudah **Resolved (2026-09-24)**. Railway staging sudah live & terverifikasi (2026-08-14); JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 91 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
-* **KI-073–076 Resolved (2026-09-26)** — 4 bug publish Instagram (caption wajib untuk Story, Story publish tanpa media, upload media >1MB gagal, avatar akun tidak tampil di sidebar) diperbaiki + diverifikasi live ke akun Instagram/Facebook real. ADR-120 baru (avatar, amandemen ADR-112). 2 bug baru ditemukan saat verifikasi: **KI-078**, **KI-079** (Open) — lihat **Known Issues**.
+* **KI-073–080 Resolved (2026-09-26)** — 4 bug publish Instagram (caption wajib untuk Story, Story publish tanpa media, upload media >1MB gagal, avatar akun tidak tampil di sidebar) diperbaiki + diverifikasi live ke akun Instagram/Facebook real (ADR-120). 2 bug turunan ditemukan saat verifikasi (akun `disconnected` tidak bisa reconnect; callback OAuth silent-success untuk conflict genuine) diperbaiki via **ADR-122**. Plus **KI-080** (baru+langsung Resolved) — Railway staging build gagal (`next.config.ts` tidak bisa resolve import workspace `@social/shared`) diperbaiki di branch terpisah sebelum masuk ke fix KI-078/079.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
 ---
@@ -16,7 +16,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.97     |
+| Version      | 1.0.98     |
 | Status       | Active     |
 | Last Updated | 2026-09-26 |
 
@@ -573,51 +573,6 @@ tapi data historis `publishedAt` di DB tetap kosong untuk seluruh post yang
 sudah tayang. Non-blocking, gap serupa pola **KI-049**
 (`failedAt`/`failureReason` juga tidak pernah ditulis). Tidak memblokir M8.
 
-### KI-078 · Akun `disconnected` tidak punya jalur UI untuk reconnect — disconnect bersifat final
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Bug/UX Gap |
-| Terkait | KI-076 (ditemukan tanpa sengaja saat verifikasi live), KI-079, `apps/web/src/app/(app)/settings/connected-accounts/components/ConnectedAccountsList.tsx` (`ConnectedAccountAction`, `case "disconnected": return null`) |
-
-Ditemukan King Rezi + AI (2026-09-26) saat verifikasi live KI-076 — akun
-Instagram test `turanilkerl` tidak sengaja ter-*Disconnect*, dan ternyata
-**tidak ada jalur UI apa pun** untuk reconnect-nya kembali. Berbeda dari
-status `reconnect-required` (yang punya tombol "Reconnect"), status
-`disconnected` sengaja dirender tanpa aksi apa pun
-(`ConnectedAccountAction`, `case "disconnected": return null`). Klik
-"Connect Account" generik untuk platform yang sama selalu gagal karena
-unique constraint `outstandAccountId` yang sama masih ada di DB (row lama
-tidak dihapus saat disconnect). Harus diperbaiki manual lewat SQL langsung
-(`UPDATE workspace_connected_accounts SET status='active'`) untuk
-melanjutkan verifikasi. Dampak: disconnect akun jadi FINAL/permanen dari
-sisi user, tidak sesuai ekspektasi umum (user biasanya berharap bisa
-reconnect kembali). Tidak memblokir M8, belum ada task formal.
-
-### KI-079 · Callback OAuth memperlakukan `ConflictError` genuine sebagai "success" — silent failure
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Bug |
-| Terkait | KI-078 (skenario pemicu utama), `apps/web/src/app/api/integrations/outstand/callback/route.ts` (`redirectWithStatus`, `if (error instanceof ConflictError) return redirectWithStatus("success")`) |
-
-Ditemukan King Rezi + AI (2026-09-26), turunan langsung dari **KI-078**:
-saat `WorkspaceService.completeAccountConnection`/`createConnectedAccount`
-gagal karena `ConflictError` (unique constraint), Route Handler callback
-Outstand SENGAJA memperlakukan ini sebagai redirect "success" — awalnya
-didesain untuk menangani double-submit request (POST/GET alias
-idiosyncrasy Next.js, sudah didokumentasikan di komentar kode). Tapi pola
-ini juga menutupi kegagalan GENUINE: user mencoba reconnect ke akun yang
-sudah `active` lewat tombol Connect generik (mis. skenario KI-078) akan
-selalu melihat toast/redirect "success" padahal data (termasuk `avatarUrl`
-dkk dari KI-076) TIDAK berubah sama sekali. Perlu dibedakan dua kasus:
-double-submit genuine (aman diabaikan, perilaku sekarang benar) vs
-percobaan connect ke akun yang sudah connected dari alur BEDA (harus
-diberi tahu user secara eksplisit, bukan silent success). Tidak memblokir
-M8, belum ada task formal.
-
 ### KI-073 · Tombol Publish Now/Schedule mewajibkan caption non-kosong walau target Story (yang justru menolak caption)
 
 | Field | Value |
@@ -813,22 +768,22 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
-* **KI-073–076 Resolved — 4 bug publish Instagram diperbaiki + diverifikasi live (2026-09-26)** — caption tidak lagi wajib untuk target Story (`Modal.tsx`); validasi minimum media Story (`content-format-matrix.ts`); body limit Server Action dinaikkan ke 50mb (`next.config.ts`, fix upload media >1MB); `avatarUrl` ditambahkan di 5 lapisan kontrak ACL→adapter→Prisma→domain→UI (ADR-120, amandemen ADR-112). Diverifikasi langsung ke akun Instagram/Facebook real. Ridwan: 1 temuan governance (index ADR-120 belum terdaftar) — sudah diperbaiki. **KI-064 duplikat ID ditemukan+diperbaiki** (di-renumber jadi **KI-077**, Resolved, dirapikan dari daftar). 2 bug baru: **KI-078**, **KI-079** (Open). Detail: `COMPLETE_TASK.md` (2026-09-26), `decisions/ADR-120-connectedaccountdata-avatarurl-sidebar-channels-ki076.md`.
+* **KI-078/KI-079 Resolved via ADR-122 (2026-09-26)** — akun `disconnected` sekarang bisa direconnect (digabung ke cabang `ReconnectButton` yang sama dengan `reconnect-required`, sesuai pola Claude Design; jalur ini pakai `reconnectAccount` UPDATE, bukan INSERT, jadi tidak lagi menabrak unique constraint). Route Handler callback Outstand sekarang membedakan double-submit genuine (idempotent, diserap diam-diam via jendela 15 detik pada `connectedAt`) dari percobaan Connect ke akun yang sudah terhubung dari flow terpisah (`AlreadyConnectedError` baru → toast eksplisit `?connect=already-connected`, bukan silent "success"). Repository dapat method baru `findConnectedAccountByOutstandId`. Vitest 120 test relevan PASS (2 test baru). Detail: `decisions/ADR-122-reconnect-disconnected-accounts-plus-already-connected-conflict-ki078-079.md`.
+* **KI-080 Resolved — Railway staging build gagal, `next.config.ts` tidak bisa resolve import workspace (2026-09-26)** — fix KI-075 (body size limit) menambah import `MAX_MEDIA_FILE_SIZE_BYTES` dari `validation.ts` ke `next.config.ts`, tapi `validation.ts` juga mengimpor `@social/shared` (workspace package, source `.ts`) — `next-config-ts` mentranspile/me-require config lewat Node `require()` biasa yang tidak bisa resolve source package itu, build gagal (`Cannot find module '../../packages/shared'`). Fix: konstanta diisolasi ke file baru `apps/web/src/domains/media/constants.ts` tanpa import `@social/shared`; `next.config.ts` diarahkan ke situ. Diverifikasi: `bun run build`/`typecheck` lokal PASS. Branch terpisah `fix/next-config-ts-workspace-import-ki075-followup` (belum di-PR-kan).
+* **KI-073–076 Resolved — 4 bug publish Instagram diperbaiki + diverifikasi live (2026-09-26)** — caption tidak lagi wajib untuk target Story (`Modal.tsx`); validasi minimum media Story (`content-format-matrix.ts`); body limit Server Action dinaikkan ke 50mb (`next.config.ts`, fix upload media >1MB); `avatarUrl` ditambahkan di 5 lapisan kontrak ACL→adapter→Prisma→domain→UI (ADR-120, amandemen ADR-112). Diverifikasi langsung ke akun Instagram/Facebook real. Ridwan: 1 temuan governance (index ADR-120 belum terdaftar) — sudah diperbaiki. **KI-064 duplikat ID ditemukan+diperbaiki** (di-renumber jadi **KI-077**, Resolved, dirapikan dari daftar). 2 bug turunan (**KI-078**, **KI-079**) Resolved via **ADR-122** (lihat bullet di atas). Detail: `COMPLETE_TASK.md` (2026-09-26), `decisions/ADR-120-connectedaccountdata-avatarurl-sidebar-channels-ki076.md`.
 * **T-106.1–.4 ✅ — Hapus FakeOutstandAdapter dari jalur produksi via ADR-119 (2026-09-25)** — Factory `getOutstandAdapter()` hanya Real; key kosong throw jelas; `fake-outstand-adapter.ts` dihapus. Double lokal di tes tetap; Rule 19 `AGENTS.md` + `ctx-development.md` diselaraskan. Data cleanup DB bersama: 24 `publishing_posts` ber-id `fake-post-%` (+ targets cascade) dihapus; 0 remaining `fake-post-%` / `fake.outstand.local`. **T-106.5:** 23 akun `fake-%`/`mock-%` dan 9 post yang menempel dihapus; inbox dan urutan channel ikut cascade. 19 draft tanpa channel tetap ada. Ridwan Architecture Reviewer: 0 temuan. Najwa QA: Vitest 17 file / 283 tes PASS. Commit `0ce9371`. Detail: `COMPLETE_TASK.md` (2026-09-25), `decisions/ADR-119-hapus-fake-outstand-adapter-wajib-api-key.md`, `tasks/v02-publishing-mvp.md` § T-106.
 * **KI-072 Resolved — Pinterest `board_id` selesai diimplementasikan via ADR-118 (2026-09-25)** — kontrak baru `listPinterestBoards` di `IOutstandAdapter`; `RealOutstandAdapter` mengirim `{board_id, title?, link?}` ke Outstand hanya kalau `platformOptions.boardId` terisi; wire-format diverifikasi via OpenAPI resmi Outstand. UI `Modal.tsx` dropdown `<Select>` + state `boardIdByAccount` per-akun. Ridwan Architecture Reviewer: 0 temuan. Detail: `COMPLETE_TASK.md` (2026-09-25), `decisions/ADR-118-listpinterestboards-board-id-per-post-ki072.md`, `tasks/v02-publishing-mvp.md` § T-025.
-* **KI-071 Resolved — `replyToComment` wajib `accountUsername` via ADR-117 (2026-09-25)** — Elon Backend Engineer mewajibkan `accountUsername` di `IOutstandAdapter.replyToComment`; `RealOutstandAdapter` selalu mengirim `account_username`. `EngagementService.reply` resolve handle lewat `ConnectedAccountHandlePort`. Ridwan Architecture Reviewer: 0 temuan. Najwa QA: Vitest 6 file / 80 tes PASS. Detail: `COMPLETE_TASK.md` (2026-09-25), `decisions/ADR-117-replytocomment-account-username-disambiguation-ki071.md`.
-* **T-025 hardening code-review PR #133 (2026-09-25) — status tetap ✅ Done** — Elon Backend Engineer menerapkan perbaikan dari rencana code-review PR #133. Ridwan Architecture Reviewer: 0 temuan. Vitest 130 test terkait lulus. **KI-071** Resolved via ADR-117; **KI-072** Resolved via ADR-118. Detail: `COMPLETE_TASK.md` (2026-09-25), `tasks/v02-publishing-mvp.md` § T-025.
 ---
 
 ## Recent Decisions (Ringkasan)
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-122** — Reconnect untuk akun `disconnected` + disambiguasi `AlreadyConnectedError` vs double-submit (menutup KI-078/KI-079): `ConnectedAccountAction` digabung ke `ReconnectButton` untuk status `disconnected` (bukan hanya `reconnect-required`); `WorkspaceService.createOrRecoverConnectedAccount` membedakan double-submit genuine (jendela 15 detik pada `connectedAt`) dari percobaan connect ke akun yang sudah terhubung dari flow terpisah (`AlreadyConnectedError` baru). Detail: `decisions/ADR-122-reconnect-disconnected-accounts-plus-already-connected-conflict-ki078-079.md`.
+* **ADR-121** — Batas Minimum Jumlah Media per `ContentFormat` (Amandemen ADR-107/ADR-039, menutup KI-074): `MIN_MEDIA_COUNT_BY_FORMAT` baru (`Post` 0, `Reel`/`Story`/`Pin` masing-masing 1); batas efektif untuk beberapa target format = MAKSIMUM dari batas minimum semua format dipilih (kebalikan ADR-107 poin 2); ditegakkan hanya di `scheduleDraftAction`/`publishNowAction`, bukan draft. Detail: `decisions/ADR-121-batas-minimum-jumlah-media-per-content-format-ki074.md`.
 * **ADR-120** — `avatarUrl` di `ConnectedAccountData`/`ConnectedAccountRecord`/`SidebarChannelAccount` + network call tambahan `resolveConnectCallback` (amandemen ADR-112, menutup backend KI-076): kontrak ACL `avatarUrl?` opsional; `resolveConnectCallback` sekarang panggil `GET /v1/social-accounts/{id}` best-effort untuk foto profil; Facebook Pages join balik `pictureUrl` dari `listPendingFacebookPages`; kolom Prisma baru `avatar_url`; `SidebarChannelAccount.avatarUrl` wajib sebagai kontrak akhir ke UI. Detail: `decisions/ADR-120-connectedaccountdata-avatarurl-sidebar-channels-ki076.md`.
 * **ADR-119** — Hapus `FakeOutstandAdapter` dari jalur produksi — `OUTSTAND_API_KEY` wajib (amandemen ADR-059): `getOutstandAdapter()` hanya Real; key kosong throw jelas; kelas Fake produksi dihapus; double lokal di tes tetap; Rule 19 `AGENTS.md` diganti. Menutup T-106. Detail: `decisions/ADR-119-hapus-fake-outstand-adapter-wajib-api-key.md`.
 * **ADR-118** — `listPinterestBoards` + `board_id` opsional per-post di override Pinterest (menutup KI-072): kontrak baru `listPinterestBoards(outstandAccountId)` di `IOutstandAdapter`; `RealOutstandAdapter` mengirim `{board_id, title?, link?}` hanya kalau `platformOptions.boardId` terisi; wire-format diverifikasi via OpenAPI resmi Outstand. Detail: `decisions/ADR-118-listpinterestboards-board-id-per-post-ki072.md`.
-* **ADR-117** — `replyToComment` wajib `accountUsername` (amandemen ADR-113, menutup KI-071): `accountUsername` wajib di kontrak; selalu dikirim sebagai `account_username`; `platform_post_id` tidak masuk kontrak. Detail: `decisions/ADR-117-replytocomment-account-username-disambiguation-ki071.md`.
-* **ADR-116** — Koreksi Wire-Format Facebook Pages Session-Token Connect (Amandemen ADR-115, menutup verifikasi KI-070): koreksi mapping wire↔domain setelah verifikasi dokumentasi resmi Outstand; kontrak `packages/shared` tidak berubah. Detail: `decisions/ADR-116-facebook-pages-wire-format-koreksi-adr-115.md`.
 
 ---
 

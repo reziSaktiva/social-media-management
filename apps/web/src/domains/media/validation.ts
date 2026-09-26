@@ -1,5 +1,7 @@
 import { MediaType } from "@social/shared";
 
+export { MAX_MEDIA_FILE_SIZE_BYTES } from "./constants";
+
 /**
  * MIME type yang diizinkan untuk upload media di Draft Editor → extension +
  * `MediaType` yang dipetakan. Tidak ada baseline eksplisit di
@@ -20,15 +22,3 @@ export const ALLOWED_MEDIA_MIME_TYPES: Record<
   "video/mp4": { extension: "mp4", type: MediaType.Video },
   "video/quicktime": { extension: "mov", type: MediaType.Video },
 };
-
-/**
- * Batas ukuran file maksimum untuk media MVP: 50 MB (52428800 bytes).
- * Dikonfirmasi King Rezi via `AskUserQuestion` (follow-up T-024.2 — gap yang
- * sebelumnya ditandai belum ada baseline eksplisit). Ditegakkan di dua
- * tempat yang HARUS tetap sinkron:
- * 1. Level aplikasi — `UploadMediaUseCase.execute` menolak upload sebelum
- *    memanggil storage adapter kalau `fileBuffer.byteLength` melebihi ini.
- * 2. Level Storage — `file_size_limit` bucket `media`, migration
- *    `20260914090000_t024_2_create_media_bucket`.
- */
-export const MAX_MEDIA_FILE_SIZE_BYTES = 52_428_800;

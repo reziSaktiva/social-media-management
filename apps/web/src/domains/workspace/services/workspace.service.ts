@@ -18,6 +18,7 @@ import type {
   WorkspaceId,
 } from "@social/shared";
 import {
+  AlreadyConnectedError,
   AuthorizationError,
   ConflictError,
   NotFoundError,
@@ -41,6 +42,17 @@ import type {
 
 const MAX_NAME_LENGTH = 100;
 const MAX_SLUG_ATTEMPTS = 6;
+/**
+ * KI-079 — jendela toleransi untuk membedakan double-submit genuine (request
+ * susulan Next.js untuk akun yang BARU SAJA dibuat, lihat docstring Route
+ * Handler callback `/api/integrations/outstand/callback`) dari percobaan
+ * Connect ke akun yang sudah terhubung dari alur/waktu yang berbeda. Request
+ * susulan yang didokumentasikan terjadi nyaris seketika (prefetch/revalidasi
+ * bawaan Next.js) — 15 detik memberi headroom besar untuk itu tanpa
+ * menyamarkan percobaan connect genuinely terpisah (menit/jam/hari
+ * kemudian) sebagai "aman diabaikan".
+ */
+const DOUBLE_SUBMIT_RECOVERY_WINDOW_MS = 15_000;
 /** ADR-072 & ADR-080 — copy "Undangan berlaku 7 hari" di dialog Claude Design. */
 const INVITATION_EXPIRY_DAYS = 7;
 /**
@@ -1176,7 +1188,7 @@ export class WorkspaceService {
           avatarUrl: exchanged.avatarUrl,
           actingUserId: input.actorId,
         })
-      : await this.repository.createConnectedAccount({
+      : await this.createOrRecoverConnectedAccount({
           workspaceId: input.workspaceId,
           platform: exchanged.platform,
           outstandAccountId: exchanged.outstandAccountId,
@@ -1202,6 +1214,61 @@ export class WorkspaceService {
     });
 
     return record;
+  }
+
+  /**
+   * Wrapper `createConnectedAccount` (KI-079) — membedakan double-submit
+   * genuine dari percobaan Connect ke akun yang sudah terhubung dari
+   * alur/waktu yang berbeda, setelah `createConnectedAccount` melempar
+   * `ConflictError` (unique constraint `[workspaceId, outstandAccountId]`).
+   *
+   * Sinyalnya `connectedAt` baris yang bentrok, yang TIDAK PERNAH berubah
+   * setelah dibuat (`reconnectAccount` sengaja mempertahankannya, lihat
+   * docstring method itu) — jadi selalu mencerminkan momen `create`
+   * ASLINYA, bukan aktivitas connect/reconnect terakhir:
+   * - Baru dibuat dalam `DOUBLE_SUBMIT_RECOVERY_WINDOW_MS` terakhir →
+   *   nyaris pasti request susulan dari percobaan connect YANG SAMA
+   *   (idempotent) — kembalikan baris yang sudah ada sebagai sukses,
+   *   JANGAN lempar error (mencegah toast error palsu di atas toast
+   *   sukses dari request asli, pola sama komentar di Route Handler).
+   * - Lebih lama dari itu → genuinely percobaan connect ke akun yang
+   *   sudah pernah terhubung (aktif ATAU disconnected — keduanya sama-sama
+   *   menabrak constraint yang sama) dari flow terpisah — lempar
+   *   `AlreadyConnectedError` supaya Route Handler bisa memberi tahu user
+   *   secara eksplisit, bukan diam-diam "success".
+   */
+  private async createOrRecoverConnectedAccount(input: {
+    workspaceId: WorkspaceId;
+    platform: SocialPlatform;
+    outstandAccountId: string;
+    handle: string;
+    avatarUrl?: string | null;
+    actingUserId: UserId;
+  }): Promise<ConnectedAccountRecord> {
+    try {
+      return await this.repository.createConnectedAccount(input);
+    } catch (error) {
+      if (!(error instanceof ConflictError)) {
+        throw error;
+      }
+
+      const existing = await this.repository.findConnectedAccountByOutstandId(
+        input.workspaceId,
+        input.outstandAccountId,
+        input.actingUserId,
+      );
+      if (
+        existing &&
+        Date.now() - existing.connectedAt.getTime() <=
+          DOUBLE_SUBMIT_RECOVERY_WINDOW_MS
+      ) {
+        return existing;
+      }
+
+      throw new AlreadyConnectedError(
+        "Akun ini sudah terhubung di workspace ini. Gunakan tombol Reconnect di baris akun yang sudah ada untuk menyambungkan kembali.",
+      );
+    }
   }
 
   /**

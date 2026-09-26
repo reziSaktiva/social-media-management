@@ -461,6 +461,22 @@ export interface IWorkspaceRepository {
   ): Promise<ConnectedAccountRecord | null>;
 
   /**
+   * Lookup satu akun by `outstandAccountId` di dalam `workspaceId` ini
+   * (KI-079) — dipakai `WorkspaceService.completeAccountConnection` untuk
+   * membedakan double-submit genuine (request susulan Next.js untuk akun
+   * yang BARU SAJA dibuat, lihat docstring Route Handler callback) dari
+   * percobaan Connect ke akun yang SUDAH terhubung dari alur/waktu yang
+   * berbeda, setelah `createConnectedAccount` melempar `ConflictError`
+   * (unique constraint `[workspaceId, outstandAccountId]`). Returns
+   * `null` kalau tidak ditemukan di workspace ini.
+   */
+  findConnectedAccountByOutstandId(
+    workspaceId: WorkspaceId,
+    outstandAccountId: string,
+    actingUserId: UserId,
+  ): Promise<ConnectedAccountRecord | null>;
+
+  /**
    * CREATE `WorkspaceConnectedAccount` baru (T-013.1/T-013.2, Connect
    * Account, ADR-105) — dipanggil `WorkspaceService.completeAccountConnection`
    * saat `redirectAccountId` kosong (bukan reconnect). `connectedAt`

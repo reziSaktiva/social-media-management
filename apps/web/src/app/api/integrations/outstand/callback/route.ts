@@ -4,7 +4,7 @@ import { asConnectedAccountId, asUserId } from "@social/shared";
 import { decodeConnectAccountState } from "@/lib/adapters/outstand/connect-state";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getServerEnv } from "@/lib/env";
-import { ApplicationError, ConflictError } from "@/lib/utils/errors";
+import { AlreadyConnectedError, ApplicationError } from "@/lib/utils/errors";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
 import {
@@ -178,7 +178,9 @@ export async function GET(request: NextRequest): Promise<Response> {
   // callback-nya sendiri (lihat docstring di `outstand-connect-nonce-cookie.ts`).
   const nonceCookieName = outstandConnectNonceCookieName(decoded.nonce);
 
-  function redirectWithStatus(status: "success" | "error"): NextResponse {
+  function redirectWithStatus(
+    status: "success" | "error" | "already-connected",
+  ): NextResponse {
     const response = NextResponse.redirect(
       new URL(`${CONNECTED_ACCOUNTS_PATH}?connect=${status}`, appOrigin),
     );
@@ -221,17 +223,13 @@ export async function GET(request: NextRequest): Promise<Response> {
         : undefined,
     });
   } catch (error) {
-    if (error instanceof ConflictError) {
-      // Request kedua (POST alias GET, atau double-submit) untuk akun yang
-      // baru saja terhubung — unique constraint, bukan kegagalan connect.
-      //
-      // KNOWN ISSUE (KI-079, lihat project-manager/PROJECT_STATE.md): cabang
-      // ini JUGA kena kalau user mencoba "Connect Account" generik ke akun
-      // yang statusnya `disconnected` (bukan double-submit genuine) — data
-      // TIDAK berubah sama sekali tapi user tetap melihat redirect
-      // "success". Belum diperbaiki di sini — jangan asumsikan status
-      // `success` di titik ini selalu berarti akun benar-benar aktif.
-      return redirectWithStatus("success");
+    if (error instanceof AlreadyConnectedError) {
+      // KI-079 — `WorkspaceService.createOrRecoverConnectedAccount` sudah
+      // membedakan double-submit genuine (diserap diam-diam, tidak sampai
+      // ke sini) dari percobaan Connect ke akun yang SUDAH terhubung dari
+      // alur/waktu berbeda. Hanya kasus KEDUA yang tiba di sini — beri
+      // tahu user secara eksplisit, JANGAN redirect "success" diam-diam.
+      return redirectWithStatus("already-connected");
     }
     if (error instanceof ApplicationError) {
       return redirectWithStatus("error");
