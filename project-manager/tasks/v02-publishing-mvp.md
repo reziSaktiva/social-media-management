@@ -1533,32 +1533,36 @@ task/subtask formal baru di sini.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done (2026-09-25) — T-106.5 menutup sisa data Fake/mock    |
 | **Domain**    | integration                                                  |
-| **ADR**       | ADR baru wajib sebelum kode — mengamendemen ADR-059 (dan catatan switch di ADR-079, ADR-105, ADR-106, ADR-108, ADR-110) |
+| **ADR**       | ADR-119 (amandemen ADR-059)                                  |
 | **Terkait**   | T-025 ✅ (real adapter sudah ada) · T-028 (factory + Fake awal) |
 | **Depends**   | T-025 ✅ · `OUTSTAND_API_KEY` terisi di setiap proses yang menjalankan app (lokal, Railway staging, cron) |
-| **Baca dulu** | `decisions/ADR-059-fake-outstandadapter-persistensi-nyata-schedule-tanpa-kredensial-outstand-asli.md` · `apps/web/src/lib/adapters/outstand/index.ts` · `AGENTS.md` aturan 19 |
+| **Baca dulu** | `decisions/ADR-119-hapus-fake-outstand-adapter-wajib-api-key.md` · `decisions/ADR-059-fake-outstandadapter-persistensi-nyata-schedule-tanpa-kredensial-outstand-asli.md` · `apps/web/src/lib/adapters/outstand/index.ts` · `AGENTS.md` aturan 19 |
 
-King Rezi meminta (2026-09-25) `FakeOutstandAdapter` dihilangkan dari project.
-Adapter itu masih jalur produksi: `getOutstandAdapter()` memakainya selama
-`OUTSTAND_API_KEY` kosong (ADR-059). Real adapter (T-025) berdiri di
-sampingnya, tidak menggantikannya.
+King Rezi meminta (2026-09-25) `FakeOutstandAdapter` dihilangkan dari jalur
+produksi. Sebelumnya `getOutstandAdapter()` fallback ke Fake saat
+`OUTSTAND_API_KEY` kosong (ADR-059); Real adapter (T-025) berdiri di
+sampingnya tanpa menggantikannya.
 
-Menghapus kelas ini **tidak** menghapus post yang sudah tersimpan. Di DB
-dev (cek 2026-09-25) ada 22 `publishing_posts` ber-id `fake-post-…` dan 19
-target ber-URL `https://fake.outstand.local/…`, sisa QA sampai 17 September
-2026. Subtask data membersihkan baris itu; history membacanya dari tabel,
-bukan dari Outstand.
+**Implementasi (2026-09-25, commit `0ce9371`):** ADR-119 Accepted + ADR-059
+diamendemen. Factory `getOutstandAdapter()` hanya mengembalikan
+`RealOutstandAdapter`; key kosong/whitespace → throw jelas (sebut nama env
+var). File `fake-outstand-adapter.ts` dihapus dari jalur produksi. Tes unit
+memakai double lokal di file tes (bukan singleton Fake). Rule 19 `AGENTS.md`
++ `ctx-development.md` diselaraskan. Data cleanup di DB bersama
+(`ndcrkzqgqukqfmekgoze`): 24 `publishing_posts` ber-`outstand_post_id`
+`fake-post-%` (+ targets cascade) dihapus; verifikasi 0 remaining
+`fake-post-%` / `fake.outstand.local`. Sisa yang tidak kena filter itu
+(channel + post tanpa id `fake-post-`) dilacak di **T-106.5**. Ridwan
+Architecture Reviewer: LOLOS, 0 temuan. Najwa QA: Vitest PASS — 17 file /
+283 tes.
 
-Implementasi kode dilarang sebelum ADR pengganti berstatus Accepted
-(aturan 4 `AGENTS.md`). Selama task ini belum selesai, publish baru dengan
-key terisi tetap memakai real adapter dan tidak menambah id `fake-post-`.
-
-- [ ] **T-106.1** ADR baru: jalur produksi wajib `OUTSTAND_API_KEY`; key kosong throw jelas, bukan fallback ke Fake. Amendemen ADR-059.
-- [ ] **T-106.2** Hapus `fake-outstand-adapter.ts` dari factory `getOutstandAdapter()` dan dari jalur produksi.
-- [ ] **T-106.3** Pindahkan tes yang memakai singleton Fake ke double lokal; perbarui aturan 19 `AGENTS.md` supaya tidak lagi menyuruh membangun Fake di domain baru.
-- [ ] **T-106.4** Bersihkan baris dev `fake-post-…` / `https://fake.outstand.local/…` di `publishing_posts` dan `publishing_post_targets` (dan metrik/komentar yang menggantung padanya, kalau ada).
+- [x] **T-106.1** ✅ Done — ADR-119: jalur produksi wajib `OUTSTAND_API_KEY`; key kosong throw jelas, bukan fallback ke Fake. Amendemen ADR-059.
+- [x] **T-106.2** ✅ Done — Hapus `fake-outstand-adapter.ts` dari factory `getOutstandAdapter()` dan dari jalur produksi.
+- [x] **T-106.3** ✅ Done — Double lokal di tes tetap; aturan 19 `AGENTS.md` + `ctx-development.md` diselaraskan (jangan Fake di jalur produksi).
+- [x] **T-106.4** ✅ Done — Bersihkan 24 baris dev `fake-post-…` (+ targets cascade) di DB bersama; verifikasi 0 remaining `fake-post-%` / `fake.outstand.local`.
+- [x] **T-106.5** ✅ Done — Hapus 23 `workspace_connected_accounts` (`fake-%` / `mock-%`) dan 9 `publishing_posts` yang menempel (target cascade). Inbox 13 dan urutan channel 2 ikut terhapus lewat cascade. Verifikasi: 0 akun, 0 target, 0 inbox. 19 draft tanpa channel tidak masuk cakupan (tidak menempel ke akun Fake/mock).
 
 ---
 

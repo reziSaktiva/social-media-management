@@ -39,10 +39,8 @@ import { parseBase64UrlJson } from "./connect-state";
 /**
  * Real `OutstandAdapter` — implementasi HTTP client sungguhan dari
  * `IOutstandAdapter` (T-025), dipasang oleh factory `getOutstandAdapter()`
- * (`./index.ts`) begitu `OUTSTAND_API_KEY` terisi. Menggantikan
- * `FakeOutstandAdapter` (ADR-059) di jalur produksi — Fake tetap dipakai
- * untuk dev/test tanpa kredensial (rule 19 AGENTS.md, factory switch tidak
- * berubah).
+ * (`./index.ts`) — `OUTSTAND_API_KEY` wajib (ADR-119; tanpa key factory
+ * throw, tidak ada fallback Fake di jalur produksi).
  *
  * **CATATAN PENTING (update 2026-09-23):** Sesi sebelumnya menulis file ini
  * berdasarkan TEBAKAN best-effort (base URL/endpoint/shape belum pernah
@@ -909,8 +907,9 @@ export function createRealOutstandAdapter(
      * (ADR-108) dipakai untuk memastikan SETIAP akun yang caller harapkan
      * tetap punya baris outcome di hasil — default `pending` kalau Outstand
      * belum/tidak mengembalikan baris untuk akun tsb (real API TIDAK butuh
-     * parameter ini secara fungsional, berbeda dari Fake — lihat docstring
-     * parameter ini di `packages/shared/src/contracts/outstand-adapter.ts`).
+     * parameter ini secara fungsional untuk "mengingat" target — caller
+     * yang menyuplai daftar lewat ADR-108; lihat docstring parameter di
+     * `packages/shared/src/contracts/outstand-adapter.ts`).
      */
     async fetchPostOutcome(
       outstandPostId: string,

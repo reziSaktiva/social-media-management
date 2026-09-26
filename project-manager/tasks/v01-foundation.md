@@ -240,7 +240,7 @@ Quick-glance daftar akun terhubung di sidebar: avatar bulat + badge logo brand o
 | **Depends**   | T-006 ✅                                                      |
 | **Baca dulu** | `05-architecture/integration-layer.md`                        |
 
-OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Saat ini connected account **hanya bisa didapat lewat seed manual** (`apps/web/prisma/seed-connected-accounts.ts`) — ini blocker rantai untuk banyak fitur lain.
+OAuth flow dikelola Outstand; access token tidak disimpan di DB internal. Seed mock `apps/web/prisma/seed-connected-accounts.ts` dihentikan (ADR-119) — script itu sekarang gagal keras dan tidak menulis akun palsu ke database bersama. Akun terhubung lewat OAuth Outstand sungguhan.
 
 - [x] **T-013.1** `OutstandAdapter.connectAccount` — inisiasi redirect flow. Diselesaikan lewat Fake adapter (ADR-105, ADR-059 pattern) tanpa menunggu T-025 (Real OutstandAdapter, kredensial Outstand belum ada) — `WorkspaceService.initiateConnectAccount` memanggil `IOutstandAdapter.connectAccount`, Fake loopback redirect ke callback route kita sendiri.
 - [x] **T-013.2** Route Handler callback + persist `WorkspaceConnectedAccount` — `/api/integrations/outstand/callback` (entry point tanpa business logic) memanggil `WorkspaceService.completeAccountConnection`.

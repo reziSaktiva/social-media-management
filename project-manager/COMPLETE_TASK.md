@@ -8,6 +8,39 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-25 — T-106.5 ✅ Done: sisa akun dan post Fake/mock dihapus
+
+Di DB bersama `ndcrkzqgqukqfmekgoze`: 23 `workspace_connected_accounts` (`outstand_account_id` `fake-%` atau `mock-%`) dan 9 `publishing_posts` yang menempel dihapus. Target ikut cascade. Inbox (13) dan urutan channel (2) ikut terhapus bersama akun. Verifikasi: 0 akun, 0 target, 0 inbox. 19 draft tanpa channel tidak dihapus — tidak menempel ke akun Fake/mock.
+
+Status T-106 kembali ✅ Done. Indeks v0.2: `20 ✅ · 2 🟡 · 2 ⏳`. Total selesai 58.
+
+## 2026-09-25 — T-106 dibuka lagi: subtask T-106.5 sisa data Fake/mock
+
+King Rezi masih melihat post dan channel palsu di browser setelah T-106.1–.4.
+T-106.4 hanya menghapus `publishing_posts` ber-`outstand_post_id` `fake-post-%`
+dan URL `fake.outstand.local`. Channel di `workspace_connected_accounts`
+(`fake-%` / `mock-%`) dan post yang `outstand_post_id`-nya kosong tidak ikut.
+
+### Added
+- **T-106.5** di `tasks/v02-publishing-mvp.md`: hapus seluruh sisa data Fake/mock Outstand di DB bersama dev/staging (channel, post yang menempel, metrik, komentar, urutan channel).
+
+### Changed
+- Status T-106: ✅ Done → 🟡 In Progress. Indeks v0.2 di `TASKS.md`: `19 ✅ · 3 🟡 · 2 ⏳`. Total selesai 57. Subtask terdefinisi 226.
+
+## 2026-09-25 — T-106 ✅ Done: Hapus FakeOutstandAdapter dari jalur produksi (ADR-119)
+
+King Rezi menutup **T-106**. Fake OutstandAdapter tidak lagi jalur produksi.
+
+**Keputusan:** ADR-119 Accepted; ADR-059 diamendemen (`Accepted — Amended by ADR-119`).
+
+**Kode (commit `0ce9371`):** `getOutstandAdapter()` hanya `RealOutstandAdapter`; `OUTSTAND_API_KEY` kosong/whitespace → throw jelas; `fake-outstand-adapter.ts` dihapus. Tes memakai double lokal. Rule 19 `AGENTS.md` + `ctx-development.md` diselaraskan.
+
+**Data cleanup (DB bersama `ndcrkzqgqukqfmekgoze`):** 24 `publishing_posts` fake (+ targets cascade) dihapus; verifikasi 0 remaining `fake-post-%` / `fake.outstand.local`; 33 post sungguhan tersisa.
+
+**Review/QA:** Ridwan Architecture Reviewer LOLOS (0 temuan). Najwa QA Vitest PASS — 17 file / 283 tes.
+
+**Dokumentasi tutup:** `tasks/v02-publishing-mvp.md` § T-106 → ✅ Done; `TASKS.md` indeks v0.2 → `20 ✅ · 2 🟡 · 2 ⏳` (Total 58 selesai); Snapshot/Completed di `PROJECT_STATE.md` diperbarui (Fake production path diganti Real wajib).
+
 ## 2026-09-25 — KI-072 code review PR #135: board Pinterest wajib, satu akun per create-post
 
 Review PR #135 menemukan `board_id` akun Pinterest pertama bisa menempel ke akun kedua (body Outstand hanya punya satu key `pinterest`), board bertanda opsional tetap dikirim tanpa `board_id`, dan fetch board bisa ketimpa respons yang lebih lama. Perbaikan: `assertPinterestBoardConstraints` menolak sebelum persist (schedule, publish now, retry); `RealOutstandAdapter` menolak sebelum HTTP; Draft Editor mewajibkan board, menonaktifkan Schedule/Publish Now kalau aturan dilanggar, dan mengabaikan respons fetch kadaluarsa. ADR-118 diamendemen di poin 2.

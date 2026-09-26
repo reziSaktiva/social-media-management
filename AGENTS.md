@@ -220,14 +220,13 @@ Detail: `project-manager/PROJECT_OVERVIEW.md` dan `product-discovery/06-engineer
     `feature/* → PR → staging → PR → main`, bukan commit langsung ke
     keduanya. Berlaku simetris untuk `main` dan `staging` — jangan cuma
     diterapkan ke `main`.
-19. Untuk task yang terhambat kredensial Outstand yang belum ada
-    (`OUTSTAND_API_KEY`, `OUTSTAND_WEBHOOK_SECRET`) — jangan biarkan mandek.
-    Bangun Fake/mock adapter dulu mengikuti pola ADR-059 (auto-switch lewat
-    env var, throw loud kalau env terisi tapi kode real adapter belum ada,
-    fidelity instan tanpa simulasi delay/failure). Setiap kali pola ini
-    dipakai di domain/task baru itu tetap keputusan arsitektur — catat ADR
-    baru (nomor berurutan, mis. ADR-059 → ADR-079 sudah jadi presedennya),
-    jangan diam-diam diperluas tanpa dicatat.
+19. Untuk kapabilitas Outstand baru: **jangan** membangun Fake adapter di
+    jalur produksi. `OUTSTAND_API_KEY` wajib (`getOutstandAdapter()` throw
+    kalau kosong — ADR-119). Tes unit/use-case memakai **double lokal** di
+    file tes (bukan singleton produksi). Kalau kredensial/webhook secret
+    belum ada dan pekerjaan terhambat, selesaikan lewat double di tes +
+    stub/throw jelas di Real adapter untuk method yang belum di-wire —
+    jangan menghidupkan lagi fallback Fake di factory.
 
 ## Workflow shadcn/ui wajib (ADR-097)
 
