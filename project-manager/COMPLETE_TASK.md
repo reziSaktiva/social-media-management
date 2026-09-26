@@ -10,9 +10,9 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ## 2026-09-26 — KI-073–076 Resolved: 4 bug publish Instagram diperbaiki + diverifikasi live; ADR-120; 2 KI baru; koreksi duplikat ID KI-064
 
-Lanjutan dari investigasi sesi sebelumnya (commit `349290d`, belum
-ter-merge ke branch ini — root cause 4 bug sudah dianalisis di sana, sesi
-ini yang mengimplementasikan fix-nya). Diimplementasikan Prabowo Feature
+Lanjutan dari investigasi sesi sebelumnya (entri tepat di bawah ini,
+commit `349290d` — root cause 4 bug sudah dianalisis di sana, sesi ini yang
+mengimplementasikan fix-nya). Diimplementasikan Prabowo Feature
 Engineer (KI-073/074), Elon Backend Engineer (backend KI-076), Mark UI
 Engineer (UI KI-076), direview Ridwan Architecture Reviewer (clean, 1
 temuan governance — index ADR belum didaftarkan, sudah diperbaiki di sesi
@@ -117,6 +117,54 @@ Known Issues + § Recent Decisions. File yang diubah sesi ini (governance
 only): `project-manager/PROJECT_STATE.md`, `project-manager/DECISIONS.md`,
 `project-manager/decisions/ADR-112-single-page-connect-callback-tanpa-code-exchange-amandemen-adr-105.md`
 (header Status).
+
+---
+
+## 2026-09-26 — Retest publish Instagram real account: 4 bug baru ditemukan & dikonfirmasi live (KI-073–KI-076)
+
+King Rezi laporkan 5 gejala dari sesi publish manual nyata (2026-09-25) ke
+Instagram real account: (1) Story wajib caption, (2) Story ke-upload tapi
+kosong di Instagram, (3) tidak bisa upload `.mp4`, (4) tidak bisa upload
+image selain `.jpg`, (5) avatar Facebook/Instagram tidak muncul di avatar
+channel. Diminta retest ulang di `localhost:3000` (bukan staging), pakai
+akun yang sudah authenticated di browser, Instagram only (tidak post ke
+Facebook).
+
+Investigasi gabungan (baca source code langsung + reproduksi live lewat
+Browser pane + file media asli/real, termasuk video story asli King Rezi
+dari Downloads) menemukan 4 root cause konkret (gejala #3/#4 ternyata satu
+root cause yang sama):
+
+- **KI-073**: gate `isReadyToPublishNow`/`isReadyToSchedule`
+  (`draft-editor/Modal.tsx:417-429`) mewajibkan caption non-kosong
+  unconditional, padahal backend (`real-outstand-adapter.ts:432-464`) sudah
+  benar mengosongkan caption untuk Story.
+- **KI-074**: tidak ada validasi minimum 1 media untuk Story
+  (`content-format-matrix.ts` hanya menegakkan MAKSIMUM), jadi kalau media
+  gagal ter-attach, request ke Outstand tetap terkirim dengan
+  `content: ""` dan tanpa media — post "berhasil" tapi kosong di Instagram.
+- **KI-075**: `apps/web/next.config.ts` tidak override
+  `experimental.serverActions.bodySizeLimit` → Next.js pakai default 1MB
+  untuk Server Action `uploadMediaAction`. File di atas 1MB (video apa pun,
+  image resolusi tinggi non-kompresi) ditolak Next.js sebelum validasi MIME
+  aplikasi sempat jalan. Dikonfirmasi live: video story asli 6.7MB dan PNG
+  3MB sama-sama gagal dengan network response persis "Body exceeded 1 MB
+  limit"; JPG 12KB berhasil upload DAN publish ke Instagram real
+  (`turanilkerl`) — post [TEST QA Jokowi] sengaja dibiarkan live di akun
+  (captionnya eksplisit menandai test, King Rezi bisa hapus manual dari
+  Instagram kalau mau).
+- **KI-076**: field avatar/foto profil tidak pernah didesain masuk sistem
+  di 5 lapisan (kontrak ACL `ConnectedAccountData`, adapter
+  `resolveConnectCallback`/`confirmFacebookPagesConnection`, Prisma
+  `WorkspaceConnectedAccount`, domain type `SidebarChannelAccount`,
+  komponen `ChannelsSection.tsx` yang cuma render `<AvatarFallback>` tanpa
+  `<AvatarImage>`). Untuk Facebook, `pictureUrl` sempat tertangkap di
+  `listPendingFacebookPages` tapi dibuang di langkah finalize.
+
+Detail lengkap tiap KI (file/line, kutipan kode, langkah reproduksi) ada di
+`PROJECT_STATE.md` § Known Issues. Semua status **Open**, belum ada fix —
+sesi ini murni investigasi + dokumentasi, tidak ada perubahan kode
+produksi.
 
 ---
 
