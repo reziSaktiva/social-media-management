@@ -8,6 +8,54 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-26 — Retest publish Instagram real account: 4 bug baru ditemukan & dikonfirmasi live (KI-073–KI-076)
+
+King Rezi laporkan 5 gejala dari sesi publish manual nyata (2026-09-25) ke
+Instagram real account: (1) Story wajib caption, (2) Story ke-upload tapi
+kosong di Instagram, (3) tidak bisa upload `.mp4`, (4) tidak bisa upload
+image selain `.jpg`, (5) avatar Facebook/Instagram tidak muncul di avatar
+channel. Diminta retest ulang di `localhost:3000` (bukan staging), pakai
+akun yang sudah authenticated di browser, Instagram only (tidak post ke
+Facebook).
+
+Investigasi gabungan (baca source code langsung + reproduksi live lewat
+Browser pane + file media asli/real, termasuk video story asli King Rezi
+dari Downloads) menemukan 4 root cause konkret (gejala #3/#4 ternyata satu
+root cause yang sama):
+
+- **KI-073**: gate `isReadyToPublishNow`/`isReadyToSchedule`
+  (`draft-editor/Modal.tsx:417-429`) mewajibkan caption non-kosong
+  unconditional, padahal backend (`real-outstand-adapter.ts:432-464`) sudah
+  benar mengosongkan caption untuk Story.
+- **KI-074**: tidak ada validasi minimum 1 media untuk Story
+  (`content-format-matrix.ts` hanya menegakkan MAKSIMUM), jadi kalau media
+  gagal ter-attach, request ke Outstand tetap terkirim dengan
+  `content: ""` dan tanpa media — post "berhasil" tapi kosong di Instagram.
+- **KI-075**: `apps/web/next.config.ts` tidak override
+  `experimental.serverActions.bodySizeLimit` → Next.js pakai default 1MB
+  untuk Server Action `uploadMediaAction`. File di atas 1MB (video apa pun,
+  image resolusi tinggi non-kompresi) ditolak Next.js sebelum validasi MIME
+  aplikasi sempat jalan. Dikonfirmasi live: video story asli 6.7MB dan PNG
+  3MB sama-sama gagal dengan network response persis "Body exceeded 1 MB
+  limit"; JPG 12KB berhasil upload DAN publish ke Instagram real
+  (`turanilkerl`) — post [TEST QA Jokowi] sengaja dibiarkan live di akun
+  (captionnya eksplisit menandai test, King Rezi bisa hapus manual dari
+  Instagram kalau mau).
+- **KI-076**: field avatar/foto profil tidak pernah didesain masuk sistem
+  di 5 lapisan (kontrak ACL `ConnectedAccountData`, adapter
+  `resolveConnectCallback`/`confirmFacebookPagesConnection`, Prisma
+  `WorkspaceConnectedAccount`, domain type `SidebarChannelAccount`,
+  komponen `ChannelsSection.tsx` yang cuma render `<AvatarFallback>` tanpa
+  `<AvatarImage>`). Untuk Facebook, `pictureUrl` sempat tertangkap di
+  `listPendingFacebookPages` tapi dibuang di langkah finalize.
+
+Detail lengkap tiap KI (file/line, kutipan kode, langkah reproduksi) ada di
+`PROJECT_STATE.md` § Known Issues. Semua status **Open**, belum ada fix —
+sesi ini murni investigasi + dokumentasi, tidak ada perubahan kode
+produksi.
+
+---
+
 ## 2026-09-25 — T-106.5 ✅ Done: sisa akun dan post Fake/mock dihapus
 
 Di DB bersama `ndcrkzqgqukqfmekgoze`: 23 `workspace_connected_accounts` (`outstand_account_id` `fake-%` atau `mock-%`) dan 9 `publishing_posts` yang menempel dihapus. Target ikut cascade. Inbox (13) dan urutan channel (2) ikut terhapus bersama akun. Verifikasi: 0 akun, 0 target, 0 inbox. 19 draft tanpa channel tidak dihapus — tidak menempel ke akun Fake/mock.

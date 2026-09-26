@@ -7,6 +7,7 @@
 * **Top Next Tasks:** **T-106 ✅ Done (2026-09-25, ADR-119, termasuk T-106.5)** — lihat **Completed (Ringkasan)** di bawah. Fokus aktif sekarang: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 5/6 task** (2026-09-22, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 1 blocker aktif (env var Google OAuth belum diisi, KI-015) — lihat section **Blockers** di bawah. Blocker Outstand (KI-003, `OUTSTAND_API_KEY` + Real OutstandAdapter) sudah **Resolved (2026-09-24)**. Railway staging sudah live & terverifikasi (2026-08-14); JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 91 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
+* **Publishing Instagram — 4 bug baru (2026-09-26):** King Rezi retest publish nyata ke Instagram real account menemukan 4 bug live di jalur publish (**KI-073** caption wajib untuk Story, **KI-074** Story bisa publish tanpa media/tayang kosong, **KI-075** upload media >1MB gagal karena Next.js Server Action body limit 1MB — root cause sebenarnya dari keluhan "mp4/non-jpg tidak bisa diupload", **KI-076** avatar Instagram/Facebook tidak pernah tampil di sidebar Channels). Semua **Open**, belum ada fix — lihat section **Known Issues** di bawah untuk detail + file/line.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
 ---
@@ -15,9 +16,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.96     |
+| Version      | 1.0.97     |
 | Status       | Active     |
-| Last Updated | 2026-09-25 |
+| Last Updated | 2026-09-26 |
 
 ---
 
@@ -609,6 +610,152 @@ supaya Nixpacks tidak fallback ke default lagi. Redeploy staging
 (`1a98e7c1`) terverifikasi **SUCCESS** — build lewat step Nixpacks/Node
 tanpa error, `next build` (Turbopack) selesai normal. Perubahan ada di
 branch `fix/pin-node-version` → PR ke `staging`.
+
+### KI-073 · Tombol Publish Now/Schedule mewajibkan caption non-kosong walau target Story (yang justru menolak caption)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug |
+| Terkait | KI-074, `apps/web/src/app/(app)/components/draft-editor/Modal.tsx:417-429`, `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts:432-464` |
+
+Ditemukan King Rezi (2026-09-25) saat publish nyata ke Instagram real
+account: Story seharusnya bisa diupload tanpa caption, tapi form menahan
+tombol Publish Now/Schedule tetap disabled kalau caption kosong.
+
+Root cause (dikonfirmasi baca kode langsung, retest 2026-09-26):
+`isReadyToPublishNow`/`isReadyToSchedule` (`Modal.tsx:417-429`) mensyaratkan
+`caption.trim().length > 0` **unconditional** — tidak ada percabangan
+berdasarkan `ContentFormat` (Story vs Post/Reel). Ini kontradiksi dengan
+`buildPostRequestBody` (`real-outstand-adapter.ts:432-464`) yang justru
+SUDAH benar menganggap Story tidak boleh punya caption (`contentForBody =
+hasStoryTarget ? "" : input.caption`, dan menolak kombinasi Story +
+target ber-caption dalam satu call). Jadi backend sudah didesain benar,
+tapi gate UI-nya yang salah — caption seharusnya hanya wajib untuk
+Post/Reel, bukan Story. Tidak ada validasi non-empty caption di server
+(`saveDraftAction`/`scheduleDraftAction`/`publishNowAction`,
+`draft-editor/actions.ts`), jadi perbaikannya murni di dua baris
+`isReadyToSchedule`/`isReadyToPublishNow`.
+
+### KI-074 · Story bisa terpublish tanpa media (tidak ada validasi minimum 1 media) — hasil: Story kosong di Instagram
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug |
+| Terkait | KI-073, KI-075, `apps/web/src/domains/publishing/content-format-matrix.ts:53-102`, `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts:493-523` |
+
+Ditemukan King Rezi (2026-09-25): Story berhasil "terpublish" (tidak ada
+error) tapi tayang kosong di Instagram (tanpa media).
+
+Root cause: `content-format-matrix.ts` (`MAX_MEDIA_COUNT_BY_FORMAT`,
+`assertMediaCountWithinLimit`, baris 53-102) hanya menegakkan batas
+MAKSIMUM media per format (Story/Reel/Pin = 1), **tidak pernah menegakkan
+batas MINIMUM** — tidak ada guard "Story wajib punya ≥1 media" di client
+(`Modal.tsx`) maupun server (use-case publish/schedule). Kalau media gagal
+ter-attach (lihat **KI-075** — upload media >1MB gagal diam-diam) atau
+user lupa attach, form tetap bisa disubmit selama caption terisi (gate
+hanya mengecek caption, **KI-073**). Untuk target Story-only tanpa media,
+`buildPostRequestBody` (`real-outstand-adapter.ts:493-523`) fallback ke
+`{ ...base, content: contentForBody }` — dan `contentForBody` untuk Story
+selalu `""` (lihat KI-073) — sehingga body yang benar-benar dikirim ke
+Outstand `POST /v1/posts` adalah request valid secara sintaks tapi **isinya
+benar-benar kosong** (tanpa caption, tanpa media). Ini yang menjelaskan
+gejala "berhasil ke-upload tapi jadi kosong di Instagram". Test suite
+adapter (`real-outstand-adapter.test.ts`) juga tidak punya kasus Story +
+media sama sekali — gap ini belum pernah diverifikasi end-to-end sebelum
+sekarang.
+
+### KI-075 · Upload media >1MB gagal (Server Action Next.js dibatasi 1MB default) — gejala salah dikira "cuma jpg yang bisa"/"mp4 tidak bisa"
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug |
+| Terkait | KI-074, `apps/web/next.config.ts`, `apps/web/src/app/(app)/components/draft-editor/actions.ts:257-302`, `apps/web/src/domains/media/validation.ts` |
+
+Ditemukan King Rezi (2026-09-25): tidak bisa upload `.mp4`, tidak bisa
+upload image selain `.jpg`. **Retest 2026-09-26 (Najwa-style, live, akun
+Instagram real `turanilkerl`, TIDAK post ke Facebook):** dikonfirmasi
+LANGSUNG lewat browser — bukan masalah whitelist tipe file (`ALLOWED_MEDIA_MIME_TYPES`
+di `apps/web/src/domains/media/validation.ts` sudah benar mencakup
+`image/jpeg, image/png, image/webp, image/gif, video/mp4,
+video/quicktime`, dan `accept` attribute dropzone `Modal.tsx:887` juga
+sudah lengkap sama).
+
+Root cause konkret: `apps/web/next.config.ts` **tidak mengonfigurasi**
+`experimental.serverActions.bodySizeLimit`, jadi Next.js pakai default
+**1 MB** untuk semua Server Action — termasuk `uploadMediaAction`
+(`draft-editor/actions.ts:257-302`) yang menerima `FormData` berisi file
+mentah langsung dari client. Body di atas 1MB ditolak Next.js SEBELUM kode
+aplikasi (validasi MIME, `UploadMediaUseCase`) sempat jalan sama sekali.
+
+Reproduksi live (2026-09-26, dropzone di-drive lewat file nyata, bukan
+mock):
+- Video story asli dari King Rezi ("Scrambled Eggs in Air Fryer - story
+  with music.mp4", 6.7MB, `.mp4`) → upload gagal, toast "Gagal
+  mengunggah salah satu file. Coba lagi.", network response `500` dengan
+  body persis: `"Body exceeded 1 MB limit. To configure the body size
+  limit for Server Actions, see:
+  https://nextjs.org/docs/app/api-reference/next-config-js/serverActions#bodysizelimit"`.
+- PNG generated 3MB (noise pattern, bukan solid color) → gagal identik
+  (500, error message sama persis).
+- JPG generated 12KB (di bawah 1MB) → **berhasil** upload + publish, post
+  live di Instagram real (`turanilkerl`, caption "[TEST QA Jokowi] Uji
+  upload JPG - mohon abaikan", terverifikasi tampil di
+  instagram.com/turanilkerl/ setelah publish).
+
+Kesimpulan: bukan MIME yang ditolak, tapi UKURAN file di atas 1MB. `.jpg`
+hasil kompresi kamera HP/medsos kebetulan sering <1MB (jadi "kebetulan
+lolos"), sementara `.mp4` dan `.png`/`.webp` resolusi tinggi hampir selalu
+>1MB → selalu gagal, terlihat seperti "cuma jpg yang bisa". Aplikasi
+sendiri sudah didesain untuk 50MB (`MAX_MEDIA_FILE_SIZE_BYTES`,
+`media/validation.ts`) tapi batas itu tidak pernah tercapai karena
+Next.js sudah memotong duluan di 1MB. Fix: set
+`experimental.serverActions.bodySizeLimit` (mis. `"50mb"`, sinkron dengan
+`MAX_MEDIA_FILE_SIZE_BYTES`) di `next.config.ts`.
+
+### KI-076 · Avatar/foto profil akun Instagram & Facebook tidak pernah tampil di sidebar Channels (field avatar tidak ada di seluruh pipeline)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug/Gap |
+| Terkait | `packages/shared/src/contracts/outstand-adapter.ts:263-268`, `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts:626-677,693-785`, `apps/web/prisma/schema.prisma:164-184`, `apps/web/src/domains/workspace/types.ts:23-30`, `apps/web/src/app/(app)/components/sidebar-channels/ChannelsSection.tsx:138-141` |
+
+Ditemukan King Rezi (2026-09-25): setelah connect akun Instagram & Facebook,
+foto profil tidak muncul di avatar channel sidebar — hanya inisial huruf
+(fallback) yang tampil. Dikonfirmasi live (retest 2026-09-26): DOM channel
+list tidak punya elemen `<img>` sama sekali (0 `<img>` di seluruh halaman
+Home), murni fallback inisial.
+
+Root cause: field avatar/profile picture **tidak pernah didesain masuk ke
+sistem** di 5 lapisan sekaligus, bukan sekadar "tidak ditampilkan":
+1. Kontrak ACL `ConnectedAccountData` (`outstand-adapter.ts:263-268`) —
+   hanya `{ outstandAccountId, platform, handle, status }`, tidak ada
+   `avatarUrl`.
+2. `resolveConnectCallback` (Instagram/single-page,
+   `real-outstand-adapter.ts:626-677`) tidak pernah request/membaca foto
+   profil dari Outstand sama sekali.
+3. Untuk Facebook Pages, foto SEMPAT tertangkap —
+   `listPendingFacebookPages` (`:693-725`) memetakan
+   `raw.profilePictureUrl` → `pictureUrl` di `FacebookPendingPage` (dipakai
+   di dialog picker Page) — tapi **dibuang**: `confirmFacebookPagesConnection`
+   (`:744-785`) membangun ulang `ConnectedAccountData` dari response
+   `finalize` yang tidak membawa `pictureUrl`, dan tidak menggabungkannya
+   kembali dari langkah sebelumnya.
+4. Skema Prisma `WorkspaceConnectedAccount` (`schema.prisma:164-184`) tidak
+   punya kolom `avatar_url`/`profile_picture_url` (pola field ini sudah ada
+   di codebase untuk model lain, mis. `StartPagePage.avatarUrl`, tapi tidak
+   diterapkan di sini).
+5. Domain type UI `SidebarChannelAccount` (`workspace/types.ts:23-30`) juga
+   tidak punya `avatarUrl`, dan komponen `ChannelsSection.tsx:138-141`
+   hanya merender `<AvatarFallback>` — tidak pernah ada `<AvatarImage>`.
+
+Perbaikan perlu menyentuh kelima titik ini (kontrak ACL → adapter → Prisma
+migration → domain type → komponen UI), bukan cuma 1 file. Titik termudah
+untuk mulai: reuse `pictureUrl` yang sudah tertangkap di
+`listPendingFacebookPages` (poin 3) alih-alih membuang begitu saja.
 
 ---
 
