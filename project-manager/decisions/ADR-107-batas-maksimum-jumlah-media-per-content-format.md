@@ -6,7 +6,7 @@ Batas Maksimum Jumlah Media per `ContentFormat` (Carousel) — Amandemen ADR-039
 
 ### Status
 
-Accepted
+Accepted — Amends ADR-039 — Amended by ADR-121 (2026-09-26)
 
 ### Date
 

@@ -324,6 +324,11 @@ export class WorkspaceService {
       status: account.status,
       reconnectRequired: account.reconnectRequired,
       scheduledCount: counts.get(account.id) ?? 0,
+      // KI-076/ADR-120 — `ConnectedAccountRecord.avatarUrl` opsional (lihat
+      // docstring-nya), `SidebarChannelAccount.avatarUrl` WAJIB (UI butuh
+      // field yang selalu ada) — `?? null` menormalkan `undefined` (mock
+      // lama di domain lain yang belum mengisinya) jadi `null`.
+      avatarUrl: account.avatarUrl ?? null,
     }));
   }
 
@@ -1168,6 +1173,7 @@ export class WorkspaceService {
           connectedAccountId: input.redirectAccountId,
           outstandAccountId: exchanged.outstandAccountId,
           handle: exchanged.handle,
+          avatarUrl: exchanged.avatarUrl,
           actingUserId: input.actorId,
         })
       : await this.repository.createConnectedAccount({
@@ -1175,6 +1181,7 @@ export class WorkspaceService {
           platform: exchanged.platform,
           outstandAccountId: exchanged.outstandAccountId,
           handle: exchanged.handle,
+          avatarUrl: exchanged.avatarUrl,
           actingUserId: input.actorId,
         });
 
@@ -1246,6 +1253,25 @@ export class WorkspaceService {
    *
    * **Reconnect Facebook Page tunggal — DI LUAR SCOPE** (ADR-115 poin 8):
    * method ini SELALU CREATE, tidak menerima `redirectAccountId`.
+   *
+   * **`avatarUrl` join balik (menutup KI-076, ADR-120)** —
+   * `IOutstandAdapter.confirmFacebookPagesConnection` (endpoint
+   * `.../finalize`) TIDAK PERNAH membawa foto profil (lihat docstring
+   * `ConfirmFacebookPagesResult`). Method ini karena itu memanggil
+   * `listPendingFacebookPages` LAGI dengan `sessionToken` yang sama SETELAH
+   * finalize (bukan sebelum — finalize adalah langkah kritis, GET avatar
+   * ini murni best-effort dan tidak boleh berisiko menunda/mengganggu
+   * finalize kalau `sessionToken` ternyata sensitif terhadap urutan/waktu,
+   * sesuatu yang belum terverifikasi ke OpenAPI spec resmi Outstand) untuk
+   * mendapatkan `FacebookPendingPage.pictureUrl` PER `pageId`, lalu
+   * men-join-kan ke `ConnectedAccountData.outstandAccountId` hasil
+   * finalize. Kalau sesi sudah tidak valid lagi di titik ini, re-fetch
+   * gagal dan avatar cukup kosong (`null`) — sudah ditangani `catch` di
+   * bawah, konsisten dengan degradasi best-effort yang sama. Asumsi
+   * `pageId === outstandAccountId` (list vs confirm) ini SAMA PERSIS dengan
+   * yang sudah dipakai `selectConfirmedFacebookAccounts` di real adapter
+   * (irisan pertama, fallback ke tidak ketemu → `avatarUrl: null` — tidak
+   * pernah menggagalkan connect).
    */
   async confirmFacebookPagesConnection(input: {
     workspaceId: WorkspaceId;
@@ -1265,11 +1291,36 @@ export class WorkspaceService {
       );
     }
 
-    const { accounts } =
-      await this.requireOutstandAdapter().confirmFacebookPagesConnection({
+    const adapter = this.requireOutstandAdapter();
+
+    // Finalize (kritis) dijalankan DULU, sebelum re-fetch avatar best-effort
+    // di bawah — supaya request read-only tambahan untuk avatar tidak
+    // pernah bisa menunda/mengganggu langkah finalize yang sebenarnya kalau
+    // ternyata `sessionToken` Outstand sensitif terhadap urutan/waktu
+    // (belum terverifikasi ke OpenAPI spec resmi, lihat catatan di atas).
+    const { accounts } = await adapter.confirmFacebookPagesConnection({
+      sessionToken: input.sessionToken,
+      selectedPageIds: input.selectedPageIds,
+    });
+
+    // KI-076/ADR-120 — best-effort, DIJALANKAN SETELAH finalize: kalau
+    // re-fetch daftar pending Page gagal (mis. sesi sudah kedaluwarsa
+    // setelah finalize mengonsumsinya), avatar cukup kosong (`null`) untuk
+    // semua Page — TIDAK boleh menggagalkan proses connect Page yang
+    // sebenarnya (finalize di atas sudah selesai lebih dulu).
+    let pictureUrlByPageId = new Map<string, string>();
+    try {
+      const pending = await adapter.listPendingFacebookPages({
         sessionToken: input.sessionToken,
-        selectedPageIds: input.selectedPageIds,
       });
+      pictureUrlByPageId = new Map(
+        pending.pages
+          .filter((page) => typeof page.pictureUrl === "string")
+          .map((page) => [page.pageId, page.pictureUrl as string]),
+      );
+    } catch {
+      pictureUrlByPageId = new Map();
+    }
 
     const created = await this.repository.createConnectedAccounts({
       workspaceId: input.workspaceId,
@@ -1278,6 +1329,7 @@ export class WorkspaceService {
         platform: account.platform,
         outstandAccountId: account.outstandAccountId,
         handle: account.handle,
+        avatarUrl: pictureUrlByPageId.get(account.outstandAccountId) ?? null,
       })),
     });
 

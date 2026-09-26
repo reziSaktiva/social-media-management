@@ -168,6 +168,16 @@ model WorkspaceConnectedAccount {
   outstandAccountId String   @map("outstand_account_id")
   handle            String
   status            String   @default("active")
+  /**
+   * Foto profil akun terhubung (menutup KI-076, ADR-120) — nullable karena
+   * Outstand tidak selalu punya/mengembalikan foto (mis. Instagram
+   * single-page tanpa profile picture di sisi platform aslinya). Diisi
+   * `WorkspaceService` dari `ConnectedAccountData.avatarUrl` (single-page,
+   * `resolveConnectCallback`) atau hasil join `listPendingFacebookPages`
+   * (Facebook Pages, `confirmFacebookPagesConnection`) — lihat
+   * `packages/shared/src/contracts/outstand-adapter.ts`.
+   */
+  avatarUrl         String?  @map("avatar_url")
   reconnectRequired Boolean  @default(false) @map("reconnect_required")
   connectedAt       DateTime @default(now()) @map("connected_at") @db.Timestamptz(6)
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

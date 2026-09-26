@@ -64,6 +64,7 @@ function createFakeRepository(
       platform,
       outstandAccountId,
       handle,
+      avatarUrl,
     }): Promise<ConnectedAccountRecord> => ({
       id: asConnectedAccountId(`conn-created-${outstandAccountId}`),
       workspaceId,
@@ -73,12 +74,17 @@ function createFakeRepository(
       status: "active",
       reconnectRequired: false,
       connectedAt: new Date(),
+      // KI-076/ADR-120 — thread through so `createConnectedAccounts`'
+      // default wrapper below (which delegates to this method) doesn't
+      // silently drop avatarUrl for tests that don't override either.
+      avatarUrl: avatarUrl ?? null,
     }),
     reconnectAccount: async ({
       workspaceId,
       connectedAccountId,
       outstandAccountId,
       handle,
+      avatarUrl,
     }): Promise<ConnectedAccountRecord> => ({
       id: connectedAccountId,
       workspaceId,
@@ -88,6 +94,7 @@ function createFakeRepository(
       status: "active",
       reconnectRequired: false,
       connectedAt: new Date(),
+      avatarUrl: avatarUrl ?? null,
     }),
     renameWorkspace: async (workspaceId, name) => ({
       id: workspaceId,
@@ -201,6 +208,7 @@ function createFakeRepository(
               platform: account.platform,
               outstandAccountId: account.outstandAccountId,
               handle: account.handle,
+              avatarUrl: account.avatarUrl,
             }),
           );
         } catch (error) {
@@ -1195,6 +1203,107 @@ describe("WorkspaceService.completeAccountConnection", () => {
     ).rejects.toThrow(AuthorizationError);
   });
 
+  // KI-076/ADR-120 — `resolveConnectCallback().avatarUrl` harus mengalir
+  // sampai `IWorkspaceRepository.createConnectedAccount`/`reconnectAccount`,
+  // bukan cuma ditambahkan ke tipe tanpa pernah benar-benar diisi.
+  it("forwards avatarUrl from resolveConnectCallback to createConnectedAccount (KI-076)", async () => {
+    const createConnectedAccount = vi.fn(
+      async (input: {
+        workspaceId: typeof WORKSPACE_ID;
+        platform: (typeof SocialPlatform)["Twitter"];
+        outstandAccountId: string;
+        handle: string;
+        avatarUrl?: string | null;
+        actingUserId: typeof OWNER_USER;
+      }): Promise<ConnectedAccountRecord> => ({
+        id: asConnectedAccountId("cac-conn-new"),
+        workspaceId: input.workspaceId,
+        platform: input.platform,
+        outstandAccountId: input.outstandAccountId,
+        handle: input.handle,
+        status: "active",
+        reconnectRequired: false,
+        connectedAt: new Date(),
+        avatarUrl: input.avatarUrl ?? null,
+      }),
+    );
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        createConnectedAccount,
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter({
+        resolveConnectCallback: async () => ({
+          outstandAccountId: "outstand-account-1",
+          platform: SocialPlatform.Twitter,
+          handle: "@fake",
+          status: "active",
+          avatarUrl: "https://cdn.example.com/ig-avatar.jpg",
+        }),
+      }),
+    );
+
+    await service.completeAccountConnection({
+      workspaceId: WORKSPACE_ID,
+      actorId: OWNER_USER,
+      accountId: "fake-account-id",
+      username: "fake-username",
+      state: "fake-state",
+    });
+
+    expect(createConnectedAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        avatarUrl: "https://cdn.example.com/ig-avatar.jpg",
+      }),
+    );
+  });
+
+  it("forwards avatarUrl from resolveConnectCallback to reconnectAccount (KI-076)", async () => {
+    const reconnectAccount = vi.fn(async () => ({
+      ...existingAccount(),
+      outstandAccountId: "outstand-account-1",
+      handle: "@fake",
+      status: "active",
+      reconnectRequired: false,
+      avatarUrl: "https://cdn.example.com/ig-avatar.jpg",
+    }));
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        findConnectedAccountById: async () => existingAccount(),
+        reconnectAccount,
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter({
+        resolveConnectCallback: async () => ({
+          outstandAccountId: "outstand-account-1",
+          platform: SocialPlatform.Twitter,
+          handle: "@fake",
+          status: "active",
+          avatarUrl: "https://cdn.example.com/ig-avatar.jpg",
+        }),
+      }),
+    );
+
+    await service.completeAccountConnection({
+      workspaceId: WORKSPACE_ID,
+      actorId: OWNER_USER,
+      accountId: "fake-account-id",
+      username: "fake-username",
+      state: "fake-state",
+      redirectAccountId: CONNECTED_ACCOUNT_ID,
+    });
+
+    expect(reconnectAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        avatarUrl: "https://cdn.example.com/ig-avatar.jpg",
+      }),
+    );
+  });
+
   // Temuan #1 (review Ridwan Architecture Reviewer, T-051) — seeding JOB-03
   // pertama lewat `EngagementSyncSeederPort` (parameter ke-5).
   it("calls engagementSyncSeeder.onAccountConnected after creating a new ConnectedAccount", async () => {
@@ -1608,6 +1717,88 @@ describe("WorkspaceService.confirmFacebookPagesConnection (T-025.4, ADR-115)", (
     expect(result).toHaveLength(1);
     expect(result[0]?.outstandAccountId).toBe("fb-page-2");
     expect(onAccountConnected).toHaveBeenCalledTimes(1);
+  });
+
+  // KI-076/ADR-120 — `confirmFacebookPagesConnection` (finalize) TIDAK
+  // PERNAH membawa foto profil; `WorkspaceService` harus re-fetch
+  // `listPendingFacebookPages` dan join balik `pictureUrl` per pageId
+  // SEBELUM menyimpan lewat `createConnectedAccounts`.
+  it("joins pictureUrl from listPendingFacebookPages into avatarUrl, matched by pageId/outstandAccountId (KI-076)", async () => {
+    const listPendingFacebookPages = vi.fn(async () => ({
+      pages: [
+        {
+          pageId: "fb-page-1",
+          name: "Kopi Selasar",
+          pictureUrl: "https://cdn.example.com/kopi-selasar.jpg",
+        },
+        { pageId: "fb-page-2", name: "Roti Selasar" },
+      ],
+    }));
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter({
+        listPendingFacebookPages,
+        confirmFacebookPagesConnection: async () => ({
+          accounts: [
+            fakePage("fb-page-1", "Kopi Selasar"),
+            fakePage("fb-page-2", "Roti Selasar"),
+          ],
+        }),
+      }),
+    );
+
+    const result = await service.confirmFacebookPagesConnection({
+      workspaceId: WORKSPACE_ID,
+      actorId: OWNER_USER,
+      sessionToken: "session-token-1",
+      selectedPageIds: ["fb-page-1", "fb-page-2"],
+    });
+
+    // list re-fetch harus terjadi SEBELUM finalize (avatar didapat sebelum
+    // Page benar-benar dikonfirmasi/disimpan).
+    expect(listPendingFacebookPages).toHaveBeenCalledWith({
+      sessionToken: "session-token-1",
+    });
+    expect(
+      result.find((account) => account.outstandAccountId === "fb-page-1")
+        ?.avatarUrl,
+    ).toBe("https://cdn.example.com/kopi-selasar.jpg");
+    expect(
+      result.find((account) => account.outstandAccountId === "fb-page-2")
+        ?.avatarUrl,
+    ).toBeNull();
+  });
+
+  it("falls back to avatarUrl: null for all Pages (best-effort) when the listPendingFacebookPages re-fetch fails, WITHOUT failing the connect (KI-076)", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter({
+        listPendingFacebookPages: async () => {
+          throw new Error("session expired");
+        },
+        confirmFacebookPagesConnection: async () => ({
+          accounts: [fakePage("fb-page-1", "Kopi Selasar")],
+        }),
+      }),
+    );
+
+    const result = await service.confirmFacebookPagesConnection({
+      workspaceId: WORKSPACE_ID,
+      actorId: OWNER_USER,
+      sessionToken: "session-token-1",
+      selectedPageIds: ["fb-page-1"],
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.avatarUrl).toBeNull();
   });
 
   it("throws ValidationError for an empty selectedPageIds (defense-in-depth, does not trust the client)", async () => {
@@ -2848,7 +3039,11 @@ describe("WorkspaceService.switchWorkspace", () => {
 });
 
 describe("WorkspaceService.listSidebarChannels", () => {
-  function account(id: string, connectedAt: string): ConnectedAccountRecord {
+  function account(
+    id: string,
+    connectedAt: string,
+    avatarUrl: string | null = null,
+  ): ConnectedAccountRecord {
     return {
       id: asConnectedAccountId(id),
       workspaceId: WORKSPACE_ID,
@@ -2858,6 +3053,7 @@ describe("WorkspaceService.listSidebarChannels", () => {
       status: "active",
       reconnectRequired: false,
       connectedAt: new Date(connectedAt),
+      avatarUrl,
     };
   }
 
@@ -2895,8 +3091,33 @@ describe("WorkspaceService.listSidebarChannels", () => {
         status: acc.status,
         reconnectRequired: acc.reconnectRequired,
         scheduledCount: 0,
+        avatarUrl: null,
       },
     ]);
+  });
+
+  // KI-076/ADR-120 — avatar/foto profil tidak pernah tampil di sidebar
+  // Channels karena field ini tidak pernah mengalir dari repository ke
+  // shape yang dikonsumsi UI. Regression test langsung untuk mapping ini.
+  it("maps ConnectedAccountRecord.avatarUrl through to SidebarChannelAccount.avatarUrl (KI-076)", async () => {
+    const withPhoto = account(
+      "conn-a",
+      "2026-01-01T00:00:00Z",
+      "https://cdn.example.com/avatar.jpg",
+    );
+    const withoutPhoto = account("conn-b", "2026-01-02T00:00:00Z", null);
+    const service = new WorkspaceService(
+      createFakeRepository({
+        listConnectedAccounts: async () => [withPhoto, withoutPhoto],
+      }),
+    );
+
+    const result = await service.listSidebarChannels(WORKSPACE_ID, USER_ID);
+
+    expect(result.find((c) => c.id === withPhoto.id)?.avatarUrl).toBe(
+      "https://cdn.example.com/avatar.jpg",
+    );
+    expect(result.find((c) => c.id === withoutPhoto.id)?.avatarUrl).toBeNull();
   });
 
   it("fills scheduledCount from the provided ScheduledCountsPort", async () => {

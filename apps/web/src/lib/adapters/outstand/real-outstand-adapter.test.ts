@@ -890,8 +890,13 @@ describe("RealOutstandAdapter.connectAccount / resolveConnectCallback (T-025.4, 
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("resolveConnectCallback maps account_id/username directly to ConnectedAccountData (ADR-112 — no exchange/HTTP call, platform from state)", async () => {
-    const fetchImpl = vi.fn();
+  it("resolveConnectCallback maps account_id/username directly to ConnectedAccountData, WITHOUT an exchange call (ADR-112 — platform from state)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        data: { id: "acc-ig-1", profile_picture_url: null },
+      }),
+    );
     const adapter = buildAdapter(fetchImpl);
     const state = buildState({
       workspaceId: "ws-1",
@@ -905,12 +910,69 @@ describe("RealOutstandAdapter.connectAccount / resolveConnectCallback (T-025.4, 
       username: "@realuser",
     });
 
-    expect(fetchImpl).not.toHaveBeenCalled();
     expect(result).toEqual({
       outstandAccountId: "acc-ig-1",
       platform: SocialPlatform.Instagram,
       handle: "@realuser",
       status: "active",
+      avatarUrl: null,
+    });
+  });
+
+  it("resolveConnectCallback fetches GET /v1/social-accounts/{id} for the avatar (KI-076/ADR-120) and maps profile_picture_url to avatarUrl", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        data: {
+          id: "acc-ig-1",
+          profile_picture_url: "https://cdn.example.com/avatar.jpg",
+        },
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+    const state = buildState({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Instagram,
+      nonce: "nonce-1",
+    });
+
+    const result = await adapter.resolveConnectCallback({
+      state,
+      outstandAccountId: "acc-ig-1",
+      username: "@realuser",
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [calledUrl, calledInit] = fetchImpl.mock.calls[0] as [
+      string | URL,
+      RequestInit,
+    ];
+    expect(String(calledUrl)).toContain("/v1/social-accounts/acc-ig-1");
+    expect(calledInit.method).toBe("GET");
+    expect(result.avatarUrl).toBe("https://cdn.example.com/avatar.jpg");
+  });
+
+  it("resolveConnectCallback falls back to avatarUrl: null (best-effort) when the avatar fetch fails, WITHOUT failing the connect itself (KI-076/ADR-120)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(jsonResponse(404, {}));
+    const adapter = buildAdapter(fetchImpl);
+    const state = buildState({
+      workspaceId: "ws-1",
+      platform: SocialPlatform.Instagram,
+      nonce: "nonce-1",
+    });
+
+    const result = await adapter.resolveConnectCallback({
+      state,
+      outstandAccountId: "acc-ig-1",
+      username: "@realuser",
+    });
+
+    expect(result).toEqual({
+      outstandAccountId: "acc-ig-1",
+      platform: SocialPlatform.Instagram,
+      handle: "@realuser",
+      status: "active",
+      avatarUrl: null,
     });
   });
 
@@ -1070,6 +1132,10 @@ describe("RealOutstandAdapter.listPendingFacebookPages / confirmFacebookPagesCon
           platform: SocialPlatform.Facebook,
           handle: "kopi.selasar",
           status: "active",
+          // KI-076/ADR-120 — response finalize TIDAK PERNAH membawa foto
+          // profil; join balik dari `listPendingFacebookPages` adalah
+          // tanggung jawab WorkspaceService, bukan adapter ini.
+          avatarUrl: null,
         },
       ],
     });

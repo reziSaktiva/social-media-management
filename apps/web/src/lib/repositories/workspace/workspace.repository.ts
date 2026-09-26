@@ -85,6 +85,14 @@ function toConnectedAccountRecord(
     status: account.status,
     reconnectRequired: account.reconnectRequired,
     connectedAt: account.connectedAt,
+    // KI-076/ADR-120 — lihat docstring `ConnectedAccountRecord.avatarUrl`.
+    // KNOWN ISSUE (KI-078): avatar hanya di-backfill saat connect/reconnect
+    // BARU — akun yang sudah terhubung SEBELUM ADR-120 diterapkan akan
+    // selalu `null` di sini selamanya kecuali di-reconnect, dan (KI-078)
+    // saat ini tidak ada jalur UI untuk reconnect akun yang statusnya
+    // `disconnected`. Kalau field ini `null` untuk akun yang "seharusnya"
+    // punya foto, ini gap yang sudah diketahui, bukan bug baru.
+    avatarUrl: account.avatarUrl,
   };
 }
 
@@ -757,6 +765,7 @@ export const workspaceRepository: IWorkspaceRepository = {
     platform,
     outstandAccountId,
     handle,
+    avatarUrl,
     actingUserId,
   }) {
     try {
@@ -767,6 +776,7 @@ export const workspaceRepository: IWorkspaceRepository = {
             platform,
             outstandAccountId,
             handle,
+            avatarUrl: avatarUrl ?? null,
             status: "active",
           },
         }),
@@ -804,6 +814,7 @@ export const workspaceRepository: IWorkspaceRepository = {
             platform: account.platform,
             outstandAccountId: account.outstandAccountId,
             handle: account.handle,
+            avatarUrl: account.avatarUrl ?? null,
             status: "active",
           },
         });
@@ -818,6 +829,7 @@ export const workspaceRepository: IWorkspaceRepository = {
     connectedAccountId,
     outstandAccountId,
     handle,
+    avatarUrl,
     actingUserId,
   }) {
     return withCurrentUser(actingUserId, async (tx) => {
@@ -832,6 +844,16 @@ export const workspaceRepository: IWorkspaceRepository = {
         data: {
           outstandAccountId,
           handle,
+          // `avatarUrl` HANYA ditulis kalau fetch-nya berhasil dapat nilai
+          // (bukan `null`/`undefined`) — `fetchSocialAccountAvatarUrl`
+          // best-effort mengembalikan `null` untuk DUA kasus yang beda
+          // (akun genuinely tidak punya foto, ATAU fetch gagal transient),
+          // jadi tulis-selalu di sini bisa menghapus avatar yang sudah
+          // benar tersimpan hanya karena satu request avatar gagal saat
+          // reconnect. Konsekuensi: avatar lama tetap tampil kalau user
+          // BENAR-BENAR menghapus foto profilnya di platform asli — trade-off
+          // yang lebih aman daripada silent data loss pada kegagalan network.
+          ...(avatarUrl ? { avatarUrl } : {}),
           status: "active",
           reconnectRequired: false,
         },

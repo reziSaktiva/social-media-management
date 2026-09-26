@@ -18,6 +18,7 @@ import { redirect } from "next/navigation";
 import type { ScheduleTargetRequest } from "@/domains/publishing";
 import {
   assertActorCanPublishNow,
+  assertMediaCountMeetsMinimum,
   assertMediaCountWithinLimit,
   PublishingService,
   PublishNowUseCase,
@@ -495,17 +496,29 @@ export async function scheduleDraftAction(
   // dipersist sebelumnya (lihat catatan `resolveAndValidateMediaIds`) — batas
   // ADR-107 tetap wajib ditegakkan terhadap `activeFormats` yang baru saja
   // di-resolve, bukan hanya saat client mengirim `mediaIds` eksplisit.
+  let effectiveMediaCount = mediaIds?.length ?? 0;
   if (mediaIds === undefined && input.postId) {
     const existingDraft = await publishingService.getDraftById(
       workspaceId,
       asPostId(input.postId),
       actingUserId,
     );
-    assertMediaCountWithinLimit(
-      existingDraft.mediaIds?.length ?? 0,
-      activeFormats,
-    );
+    effectiveMediaCount = existingDraft.mediaIds?.length ?? 0;
+    assertMediaCountWithinLimit(effectiveMediaCount, activeFormats);
   }
+  // KI-074: batas MINIMUM (Story/Reel/Pin butuh ≥1 media) — beda dari
+  // `assertMediaCountWithinLimit` di atas (yang cuma menegakkan batas
+  // maksimum), ini SENGAJA dievaluasi terhadap `effectiveMediaCount` untuk
+  // KETIGA kasus sekaligus (mediaIds baru dikirim client, mediaIds
+  // dipertahankan dari draft yang sudah ada, ATAU draft baru tanpa media
+  // sama sekali) — bukan hanya di dalam blok `if` di atas, supaya post baru
+  // yang tidak pernah mengirim `mediaIds` (effectiveMediaCount tetap 0)
+  // juga ikut tertangkap. Hanya ditegakkan di sini (schedule/publish),
+  // BUKAN di `resolveAndValidateMediaIds`/`resolveMediaIdsAgainstFormats`
+  // yang juga dipakai `saveDraftAction`/`updateDraftAction` — draft yang
+  // masih disusun (belum siap dijadwalkan/dipublish) boleh belum punya
+  // media sama sekali.
+  assertMediaCountMeetsMinimum(effectiveMediaCount, activeFormats);
 
   const post = input.postId
     ? await publishingService.updateDraft(
@@ -609,17 +622,29 @@ export async function publishNowAction(
   // dipersist sebelumnya (lihat catatan `resolveAndValidateMediaIds`) — batas
   // ADR-107 tetap wajib ditegakkan terhadap `activeFormats` yang baru saja
   // di-resolve, bukan hanya saat client mengirim `mediaIds` eksplisit.
+  let effectiveMediaCount = mediaIds?.length ?? 0;
   if (mediaIds === undefined && input.postId) {
     const existingDraft = await publishingService.getDraftById(
       workspaceId,
       asPostId(input.postId),
       actingUserId,
     );
-    assertMediaCountWithinLimit(
-      existingDraft.mediaIds?.length ?? 0,
-      activeFormats,
-    );
+    effectiveMediaCount = existingDraft.mediaIds?.length ?? 0;
+    assertMediaCountWithinLimit(effectiveMediaCount, activeFormats);
   }
+  // KI-074: batas MINIMUM (Story/Reel/Pin butuh ≥1 media) — beda dari
+  // `assertMediaCountWithinLimit` di atas (yang cuma menegakkan batas
+  // maksimum), ini SENGAJA dievaluasi terhadap `effectiveMediaCount` untuk
+  // KETIGA kasus sekaligus (mediaIds baru dikirim client, mediaIds
+  // dipertahankan dari draft yang sudah ada, ATAU draft baru tanpa media
+  // sama sekali) — bukan hanya di dalam blok `if` di atas, supaya post baru
+  // yang tidak pernah mengirim `mediaIds` (effectiveMediaCount tetap 0)
+  // juga ikut tertangkap. Hanya ditegakkan di sini (schedule/publish),
+  // BUKAN di `resolveAndValidateMediaIds`/`resolveMediaIdsAgainstFormats`
+  // yang juga dipakai `saveDraftAction`/`updateDraftAction` — draft yang
+  // masih disusun (belum siap dijadwalkan/dipublish) boleh belum punya
+  // media sama sekali.
+  assertMediaCountMeetsMinimum(effectiveMediaCount, activeFormats);
 
   const post = input.postId
     ? await publishingService.updateDraft(

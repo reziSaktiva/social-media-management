@@ -7,6 +7,7 @@
 * **Top Next Tasks:** **T-106 ✅ Done (2026-09-25, ADR-119, termasuk T-106.5)** — lihat **Completed (Ringkasan)** di bawah. Fokus aktif sekarang: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 5/6 task** (2026-09-22, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 1 blocker aktif (env var Google OAuth belum diisi, KI-015) — lihat section **Blockers** di bawah. Blocker Outstand (KI-003, `OUTSTAND_API_KEY` + Real OutstandAdapter) sudah **Resolved (2026-09-24)**. Railway staging sudah live & terverifikasi (2026-08-14); JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 91 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
+* **KI-073–076 Resolved (2026-09-26)** — 4 bug publish Instagram (caption wajib untuk Story, Story publish tanpa media, upload media >1MB gagal, avatar akun tidak tampil di sidebar) diperbaiki + diverifikasi live ke akun Instagram/Facebook real. ADR-120 baru (avatar, amandemen ADR-112). 2 bug baru ditemukan saat verifikasi: **KI-078**, **KI-079** (Open) — lihat **Known Issues**.
 * Detail phase/mode/issue ada di section di bawah. Riwayat completed/ADR lengkap: lihat `COMPLETE_TASK.md` (⚠️ jangan dibaca AI kecuali diperintah)/`DECISIONS.md`.
 
 ---
@@ -15,9 +16,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.96     |
+| Version      | 1.0.97     |
 | Status       | Active     |
-| Last Updated | 2026-09-25 |
+| Last Updated | 2026-09-26 |
 
 ---
 
@@ -572,43 +573,196 @@ tapi data historis `publishedAt` di DB tetap kosong untuk seluruh post yang
 sudah tayang. Non-blocking, gap serupa pola **KI-049**
 (`failedAt`/`failureReason` juga tidak pernah ditulis). Tidak memblokir M8.
 
-### KI-064 · Deploy Railway staging (`web`) gagal — Node.js 18 EOL, tidak ada version pin
+### KI-078 · Akun `disconnected` tidak punya jalur UI untuk reconnect — disconnect bersifat final
 
 | Field | Value |
 |-------|-------|
-| Status | Resolved (2026-09-26) |
-| Kategori | Infra/CI-CD |
-| Terkait | PR #136 (`feature/t-106-remove-fake-outstand-adapter` → `staging`), CI-D03, branch `fix/pin-node-version` |
+| Status | Open |
+| Kategori | Bug/UX Gap |
+| Terkait | KI-076 (ditemukan tanpa sengaja saat verifikasi live), KI-079, `apps/web/src/app/(app)/settings/connected-accounts/components/ConnectedAccountsList.tsx` (`ConnectedAccountAction`, `case "disconnected": return null`) |
 
-Ditemukan lewat Railway MCP (2026-09-26) saat cek kenapa deploy staging
-service `web` gagal setelah merge PR #136 ke `staging` (commit
-`d1570191...`, "refactor(outstand): require API key and remove Fake
-adapter"). **Bukan bug dari kode PR #136** — dua deployment gagal
-(`3f82eb21`, `96b91002`, keduanya 2026-09-26 ~02:20 UTC) di tahap
-`BUILD_IMAGE`, sebelum kode aplikasi sempat di-build:
+Ditemukan King Rezi + AI (2026-09-26) saat verifikasi live KI-076 — akun
+Instagram test `turanilkerl` tidak sengaja ter-*Disconnect*, dan ternyata
+**tidak ada jalur UI apa pun** untuk reconnect-nya kembali. Berbeda dari
+status `reconnect-required` (yang punya tombol "Reconnect"), status
+`disconnected` sengaja dirender tanpa aksi apa pun
+(`ConnectedAccountAction`, `case "disconnected": return null`). Klik
+"Connect Account" generik untuk platform yang sama selalu gagal karena
+unique constraint `outstandAccountId` yang sama masih ada di DB (row lama
+tidak dihapus saat disconnect). Harus diperbaiki manual lewat SQL langsung
+(`UPDATE workspace_connected_accounts SET status='active'`) untuk
+melanjutkan verifikasi. Dampak: disconnect akun jadi FINAL/permanen dari
+sisi user, tidak sesuai ekspektasi umum (user biasanya berharap bisa
+reconnect kembali). Tidak memblokir M8, belum ada task formal.
 
-```
-error: Node.js 18.x has reached End-Of-Life and has been removed
-[stage-0 4/10] RUN nix-env -if .nixpacks/nixpkgs-<hash>.nix && nix-collect-garbage -d
-exit code: 1
-```
+### KI-079 · Callback OAuth memperlakukan `ConflictError` genuine sebagai "success" — silent failure
 
-Root cause: builder `NIXPACKS` (`railway.json`) tidak punya pin versi Node
-eksplisit — tidak ada `.nvmrc` maupun `engines.node` di `package.json` root
-atau `apps/web/package.json` — sehingga Nixpacks fallback ke default lama
-(Node 18) yang paketnya sudah dihapus total dari nixpkgs karena EOL. Live
-deployment saat ini masih yang lama (`e29d7ce5`, SUCCESS, 2026-09-17) jadi
-staging **belum down**, tapi setiap push baru ke `staging` akan gagal
-build sampai ini di-fix.
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug |
+| Terkait | KI-078 (skenario pemicu utama), `apps/web/src/app/api/integrations/outstand/callback/route.ts` (`redirectWithStatus`, `if (error instanceof ConflictError) return redirectWithStatus("success")`) |
 
-**Fix (2026-09-26):** tambah `"engines": { "node": ">=22" }` di
-`package.json` root dan `apps/web/package.json` (Next.js 16.2 butuh
-Node ≥20; pilih 22 sebagai current LTS), plus set variable Railway
-`NIXPACKS_NODE_VERSION=22` di service `web` staging sebagai pin eksplisit
-supaya Nixpacks tidak fallback ke default lagi. Redeploy staging
-(`1a98e7c1`) terverifikasi **SUCCESS** — build lewat step Nixpacks/Node
-tanpa error, `next build` (Turbopack) selesai normal. Perubahan ada di
-branch `fix/pin-node-version` → PR ke `staging`.
+Ditemukan King Rezi + AI (2026-09-26), turunan langsung dari **KI-078**:
+saat `WorkspaceService.completeAccountConnection`/`createConnectedAccount`
+gagal karena `ConflictError` (unique constraint), Route Handler callback
+Outstand SENGAJA memperlakukan ini sebagai redirect "success" — awalnya
+didesain untuk menangani double-submit request (POST/GET alias
+idiosyncrasy Next.js, sudah didokumentasikan di komentar kode). Tapi pola
+ini juga menutupi kegagalan GENUINE: user mencoba reconnect ke akun yang
+sudah `active` lewat tombol Connect generik (mis. skenario KI-078) akan
+selalu melihat toast/redirect "success" padahal data (termasuk `avatarUrl`
+dkk dari KI-076) TIDAK berubah sama sekali. Perlu dibedakan dua kasus:
+double-submit genuine (aman diabaikan, perilaku sekarang benar) vs
+percobaan connect ke akun yang sudah connected dari alur BEDA (harus
+diberi tahu user secara eksplisit, bukan silent success). Tidak memblokir
+M8, belum ada task formal.
+
+### KI-073 · Tombol Publish Now/Schedule mewajibkan caption non-kosong walau target Story (yang justru menolak caption)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug |
+| Terkait | KI-074, `apps/web/src/app/(app)/components/draft-editor/Modal.tsx:417-429`, `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts:432-464` |
+
+Ditemukan King Rezi (2026-09-25) saat publish nyata ke Instagram real
+account: Story seharusnya bisa diupload tanpa caption, tapi form menahan
+tombol Publish Now/Schedule tetap disabled kalau caption kosong.
+
+Root cause (dikonfirmasi baca kode langsung, retest 2026-09-26):
+`isReadyToPublishNow`/`isReadyToSchedule` (`Modal.tsx:417-429`) mensyaratkan
+`caption.trim().length > 0` **unconditional** — tidak ada percabangan
+berdasarkan `ContentFormat` (Story vs Post/Reel). Ini kontradiksi dengan
+`buildPostRequestBody` (`real-outstand-adapter.ts:432-464`) yang justru
+SUDAH benar menganggap Story tidak boleh punya caption (`contentForBody =
+hasStoryTarget ? "" : input.caption`, dan menolak kombinasi Story +
+target ber-caption dalam satu call). Jadi backend sudah didesain benar,
+tapi gate UI-nya yang salah — caption seharusnya hanya wajib untuk
+Post/Reel, bukan Story. Tidak ada validasi non-empty caption di server
+(`saveDraftAction`/`scheduleDraftAction`/`publishNowAction`,
+`draft-editor/actions.ts`), jadi perbaikannya murni di dua baris
+`isReadyToSchedule`/`isReadyToPublishNow`.
+
+### KI-074 · Story bisa terpublish tanpa media (tidak ada validasi minimum 1 media) — hasil: Story kosong di Instagram
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug |
+| Terkait | KI-073, KI-075, `apps/web/src/domains/publishing/content-format-matrix.ts:53-102`, `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts:493-523` |
+
+Ditemukan King Rezi (2026-09-25): Story berhasil "terpublish" (tidak ada
+error) tapi tayang kosong di Instagram (tanpa media).
+
+Root cause: `content-format-matrix.ts` (`MAX_MEDIA_COUNT_BY_FORMAT`,
+`assertMediaCountWithinLimit`, baris 53-102) hanya menegakkan batas
+MAKSIMUM media per format (Story/Reel/Pin = 1), **tidak pernah menegakkan
+batas MINIMUM** — tidak ada guard "Story wajib punya ≥1 media" di client
+(`Modal.tsx`) maupun server (use-case publish/schedule). Kalau media gagal
+ter-attach (lihat **KI-075** — upload media >1MB gagal diam-diam) atau
+user lupa attach, form tetap bisa disubmit selama caption terisi (gate
+hanya mengecek caption, **KI-073**). Untuk target Story-only tanpa media,
+`buildPostRequestBody` (`real-outstand-adapter.ts:493-523`) fallback ke
+`{ ...base, content: contentForBody }` — dan `contentForBody` untuk Story
+selalu `""` (lihat KI-073) — sehingga body yang benar-benar dikirim ke
+Outstand `POST /v1/posts` adalah request valid secara sintaks tapi **isinya
+benar-benar kosong** (tanpa caption, tanpa media). Ini yang menjelaskan
+gejala "berhasil ke-upload tapi jadi kosong di Instagram". Test suite
+adapter (`real-outstand-adapter.test.ts`) juga tidak punya kasus Story +
+media sama sekali — gap ini belum pernah diverifikasi end-to-end sebelum
+sekarang.
+
+### KI-075 · Upload media >1MB gagal (Server Action Next.js dibatasi 1MB default) — gejala salah dikira "cuma jpg yang bisa"/"mp4 tidak bisa"
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug |
+| Terkait | KI-074, `apps/web/next.config.ts`, `apps/web/src/app/(app)/components/draft-editor/actions.ts:257-302`, `apps/web/src/domains/media/validation.ts` |
+
+Ditemukan King Rezi (2026-09-25): tidak bisa upload `.mp4`, tidak bisa
+upload image selain `.jpg`. **Retest 2026-09-26 (Najwa-style, live, akun
+Instagram real `turanilkerl`, TIDAK post ke Facebook):** dikonfirmasi
+LANGSUNG lewat browser — bukan masalah whitelist tipe file (`ALLOWED_MEDIA_MIME_TYPES`
+di `apps/web/src/domains/media/validation.ts` sudah benar mencakup
+`image/jpeg, image/png, image/webp, image/gif, video/mp4,
+video/quicktime`, dan `accept` attribute dropzone `Modal.tsx:887` juga
+sudah lengkap sama).
+
+Root cause konkret: `apps/web/next.config.ts` **tidak mengonfigurasi**
+`experimental.serverActions.bodySizeLimit`, jadi Next.js pakai default
+**1 MB** untuk semua Server Action — termasuk `uploadMediaAction`
+(`draft-editor/actions.ts:257-302`) yang menerima `FormData` berisi file
+mentah langsung dari client. Body di atas 1MB ditolak Next.js SEBELUM kode
+aplikasi (validasi MIME, `UploadMediaUseCase`) sempat jalan sama sekali.
+
+Reproduksi live (2026-09-26, dropzone di-drive lewat file nyata, bukan
+mock):
+- Video story asli dari King Rezi ("Scrambled Eggs in Air Fryer - story
+  with music.mp4", 6.7MB, `.mp4`) → upload gagal, toast "Gagal
+  mengunggah salah satu file. Coba lagi.", network response `500` dengan
+  body persis: `"Body exceeded 1 MB limit. To configure the body size
+  limit for Server Actions, see:
+  https://nextjs.org/docs/app/api-reference/next-config-js/serverActions#bodysizelimit"`.
+- PNG generated 3MB (noise pattern, bukan solid color) → gagal identik
+  (500, error message sama persis).
+- JPG generated 12KB (di bawah 1MB) → **berhasil** upload + publish, post
+  live di Instagram real (`turanilkerl`, caption "[TEST QA Jokowi] Uji
+  upload JPG - mohon abaikan", terverifikasi tampil di
+  instagram.com/turanilkerl/ setelah publish).
+
+Kesimpulan: bukan MIME yang ditolak, tapi UKURAN file di atas 1MB. `.jpg`
+hasil kompresi kamera HP/medsos kebetulan sering <1MB (jadi "kebetulan
+lolos"), sementara `.mp4` dan `.png`/`.webp` resolusi tinggi hampir selalu
+>1MB → selalu gagal, terlihat seperti "cuma jpg yang bisa". Aplikasi
+sendiri sudah didesain untuk 50MB (`MAX_MEDIA_FILE_SIZE_BYTES`,
+`media/validation.ts`) tapi batas itu tidak pernah tercapai karena
+Next.js sudah memotong duluan di 1MB. Fix: set
+`experimental.serverActions.bodySizeLimit` (mis. `"50mb"`, sinkron dengan
+`MAX_MEDIA_FILE_SIZE_BYTES`) di `next.config.ts`.
+
+### KI-076 · Avatar/foto profil akun Instagram & Facebook tidak pernah tampil di sidebar Channels (field avatar tidak ada di seluruh pipeline)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug/Gap |
+| Terkait | `packages/shared/src/contracts/outstand-adapter.ts:263-268`, `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts:626-677,693-785`, `apps/web/prisma/schema.prisma:164-184`, `apps/web/src/domains/workspace/types.ts:23-30`, `apps/web/src/app/(app)/components/sidebar-channels/ChannelsSection.tsx:138-141` |
+
+Ditemukan King Rezi (2026-09-25): setelah connect akun Instagram & Facebook,
+foto profil tidak muncul di avatar channel sidebar — hanya inisial huruf
+(fallback) yang tampil. Dikonfirmasi live (retest 2026-09-26): DOM channel
+list tidak punya elemen `<img>` sama sekali (0 `<img>` di seluruh halaman
+Home), murni fallback inisial.
+
+Root cause: field avatar/profile picture **tidak pernah didesain masuk ke
+sistem** di 5 lapisan sekaligus, bukan sekadar "tidak ditampilkan":
+1. Kontrak ACL `ConnectedAccountData` (`outstand-adapter.ts:263-268`) —
+   hanya `{ outstandAccountId, platform, handle, status }`, tidak ada
+   `avatarUrl`.
+2. `resolveConnectCallback` (Instagram/single-page,
+   `real-outstand-adapter.ts:626-677`) tidak pernah request/membaca foto
+   profil dari Outstand sama sekali.
+3. Untuk Facebook Pages, foto SEMPAT tertangkap —
+   `listPendingFacebookPages` (`:693-725`) memetakan
+   `raw.profilePictureUrl` → `pictureUrl` di `FacebookPendingPage` (dipakai
+   di dialog picker Page) — tapi **dibuang**: `confirmFacebookPagesConnection`
+   (`:744-785`) membangun ulang `ConnectedAccountData` dari response
+   `finalize` yang tidak membawa `pictureUrl`, dan tidak menggabungkannya
+   kembali dari langkah sebelumnya.
+4. Skema Prisma `WorkspaceConnectedAccount` (`schema.prisma:164-184`) tidak
+   punya kolom `avatar_url`/`profile_picture_url` (pola field ini sudah ada
+   di codebase untuk model lain, mis. `StartPagePage.avatarUrl`, tapi tidak
+   diterapkan di sini).
+5. Domain type UI `SidebarChannelAccount` (`workspace/types.ts:23-30`) juga
+   tidak punya `avatarUrl`, dan komponen `ChannelsSection.tsx:138-141`
+   hanya merender `<AvatarFallback>` — tidak pernah ada `<AvatarImage>`.
+
+Perbaikan perlu menyentuh kelima titik ini (kontrak ACL → adapter → Prisma
+migration → domain type → komponen UI), bukan cuma 1 file. Titik termudah
+untuk mulai: reuse `pictureUrl` yang sudah tertangkap di
+`listPendingFacebookPages` (poin 3) alih-alih membuang begitu saja.
 
 ---
 
@@ -659,22 +813,22 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **KI-073–076 Resolved — 4 bug publish Instagram diperbaiki + diverifikasi live (2026-09-26)** — caption tidak lagi wajib untuk target Story (`Modal.tsx`); validasi minimum media Story (`content-format-matrix.ts`); body limit Server Action dinaikkan ke 50mb (`next.config.ts`, fix upload media >1MB); `avatarUrl` ditambahkan di 5 lapisan kontrak ACL→adapter→Prisma→domain→UI (ADR-120, amandemen ADR-112). Diverifikasi langsung ke akun Instagram/Facebook real. Ridwan: 1 temuan governance (index ADR-120 belum terdaftar) — sudah diperbaiki. **KI-064 duplikat ID ditemukan+diperbaiki** (di-renumber jadi **KI-077**, Resolved, dirapikan dari daftar). 2 bug baru: **KI-078**, **KI-079** (Open). Detail: `COMPLETE_TASK.md` (2026-09-26), `decisions/ADR-120-connectedaccountdata-avatarurl-sidebar-channels-ki076.md`.
 * **T-106.1–.4 ✅ — Hapus FakeOutstandAdapter dari jalur produksi via ADR-119 (2026-09-25)** — Factory `getOutstandAdapter()` hanya Real; key kosong throw jelas; `fake-outstand-adapter.ts` dihapus. Double lokal di tes tetap; Rule 19 `AGENTS.md` + `ctx-development.md` diselaraskan. Data cleanup DB bersama: 24 `publishing_posts` ber-id `fake-post-%` (+ targets cascade) dihapus; 0 remaining `fake-post-%` / `fake.outstand.local`. **T-106.5:** 23 akun `fake-%`/`mock-%` dan 9 post yang menempel dihapus; inbox dan urutan channel ikut cascade. 19 draft tanpa channel tetap ada. Ridwan Architecture Reviewer: 0 temuan. Najwa QA: Vitest 17 file / 283 tes PASS. Commit `0ce9371`. Detail: `COMPLETE_TASK.md` (2026-09-25), `decisions/ADR-119-hapus-fake-outstand-adapter-wajib-api-key.md`, `tasks/v02-publishing-mvp.md` § T-106.
 * **KI-072 Resolved — Pinterest `board_id` selesai diimplementasikan via ADR-118 (2026-09-25)** — kontrak baru `listPinterestBoards` di `IOutstandAdapter`; `RealOutstandAdapter` mengirim `{board_id, title?, link?}` ke Outstand hanya kalau `platformOptions.boardId` terisi; wire-format diverifikasi via OpenAPI resmi Outstand. UI `Modal.tsx` dropdown `<Select>` + state `boardIdByAccount` per-akun. Ridwan Architecture Reviewer: 0 temuan. Detail: `COMPLETE_TASK.md` (2026-09-25), `decisions/ADR-118-listpinterestboards-board-id-per-post-ki072.md`, `tasks/v02-publishing-mvp.md` § T-025.
 * **KI-071 Resolved — `replyToComment` wajib `accountUsername` via ADR-117 (2026-09-25)** — Elon Backend Engineer mewajibkan `accountUsername` di `IOutstandAdapter.replyToComment`; `RealOutstandAdapter` selalu mengirim `account_username`. `EngagementService.reply` resolve handle lewat `ConnectedAccountHandlePort`. Ridwan Architecture Reviewer: 0 temuan. Najwa QA: Vitest 6 file / 80 tes PASS. Detail: `COMPLETE_TASK.md` (2026-09-25), `decisions/ADR-117-replytocomment-account-username-disambiguation-ki071.md`.
 * **T-025 hardening code-review PR #133 (2026-09-25) — status tetap ✅ Done** — Elon Backend Engineer menerapkan perbaikan dari rencana code-review PR #133. Ridwan Architecture Reviewer: 0 temuan. Vitest 130 test terkait lulus. **KI-071** Resolved via ADR-117; **KI-072** Resolved via ADR-118. Detail: `COMPLETE_TASK.md` (2026-09-25), `tasks/v02-publishing-mvp.md` § T-025.
-* **T-025 ✅ Done — KI-070 Resolved, UI Facebook Pages Picker + 2 bug fix + QA final PASS (2026-09-24)** — Mark UI Engineer mengimplementasikan `FacebookPagesPickerDialog.tsx`. 2 bug ditemukan+diperbaiki Elon Backend Engineer. Ridwan 0 temuan, Najwa QA final PASS (509 passed/6 skipped). **KI-003 (parent) juga Resolved**. Detail: `COMPLETE_TASK.md` (2026-09-24), `tasks/v02-publishing-mvp.md` § T-025.
 ---
 
 ## Recent Decisions (Ringkasan)
 
 5 ADR terakhir. Daftar lengkap (indeks + link ke tiap ADR): lihat `DECISIONS.md`.
 
+* **ADR-120** — `avatarUrl` di `ConnectedAccountData`/`ConnectedAccountRecord`/`SidebarChannelAccount` + network call tambahan `resolveConnectCallback` (amandemen ADR-112, menutup backend KI-076): kontrak ACL `avatarUrl?` opsional; `resolveConnectCallback` sekarang panggil `GET /v1/social-accounts/{id}` best-effort untuk foto profil; Facebook Pages join balik `pictureUrl` dari `listPendingFacebookPages`; kolom Prisma baru `avatar_url`; `SidebarChannelAccount.avatarUrl` wajib sebagai kontrak akhir ke UI. Detail: `decisions/ADR-120-connectedaccountdata-avatarurl-sidebar-channels-ki076.md`.
 * **ADR-119** — Hapus `FakeOutstandAdapter` dari jalur produksi — `OUTSTAND_API_KEY` wajib (amandemen ADR-059): `getOutstandAdapter()` hanya Real; key kosong throw jelas; kelas Fake produksi dihapus; double lokal di tes tetap; Rule 19 `AGENTS.md` diganti. Menutup T-106. Detail: `decisions/ADR-119-hapus-fake-outstand-adapter-wajib-api-key.md`.
 * **ADR-118** — `listPinterestBoards` + `board_id` opsional per-post di override Pinterest (menutup KI-072): kontrak baru `listPinterestBoards(outstandAccountId)` di `IOutstandAdapter`; `RealOutstandAdapter` mengirim `{board_id, title?, link?}` hanya kalau `platformOptions.boardId` terisi; wire-format diverifikasi via OpenAPI resmi Outstand. Detail: `decisions/ADR-118-listpinterestboards-board-id-per-post-ki072.md`.
 * **ADR-117** — `replyToComment` wajib `accountUsername` (amandemen ADR-113, menutup KI-071): `accountUsername` wajib di kontrak; selalu dikirim sebagai `account_username`; `platform_post_id` tidak masuk kontrak. Detail: `decisions/ADR-117-replytocomment-account-username-disambiguation-ki071.md`.
 * **ADR-116** — Koreksi Wire-Format Facebook Pages Session-Token Connect (Amandemen ADR-115, menutup verifikasi KI-070): koreksi mapping wire↔domain setelah verifikasi dokumentasi resmi Outstand; kontrak `packages/shared` tidak berubah. Detail: `decisions/ADR-116-facebook-pages-wire-format-koreksi-adr-115.md`.
-* **ADR-115** — Connect Account — Facebook Pages via Session-Token + Page-Selection (Amandemen ADR-112, menutup KI-070): kontrak baru `listPendingFacebookPages`/`confirmFacebookPagesConnection`; Status **Proposed — Amended by ADR-116**. Detail: `decisions/ADR-115-facebook-pages-session-token-connect-ki070.md`.
 
 ---
 

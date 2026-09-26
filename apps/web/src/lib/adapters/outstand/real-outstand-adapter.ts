@@ -237,6 +237,63 @@ function mimeTypeToFilename(mimeType: string): string {
   return `upload-${crypto.randomUUID()}.${extension}`;
 }
 
+/**
+ * Foto profil satu social account (menutup KI-076, ADR-120) —
+ * `GET /v1/social-accounts/{id}`, dipakai `resolveConnectCallback` sebagai
+ * network call TAMBAHAN (lihat docstring method itu untuk alasan lengkap
+ * kenapa ini mengubah invariant "tanpa network call" ADR-112). Path exact
+ * DIINFERENSI dari konvensi REST (list resmi `GET /v1/social-accounts`,
+ * `docs.outstand.so`) — OpenAPI JSON tetap tidak bisa diakses (limitasi
+ * sama seperti ADR-116). Field `profile_picture_url` DIVERIFIKASI LANGSUNG
+ * lewat MCP resmi `mcp.outstand.so` (tool `get_social_account`) terhadap
+ * data akun nyata (2026-09-26) — response `{ success, data: {
+ * profile_picture_url: string | null, ... } }`.
+ *
+ * **Best-effort — SELALU mengembalikan `null` alih-alih melempar error**
+ * kalau path ternyata salah, network gagal, atau field tidak ada/bukan
+ * string. Foto profil bukan data kritikal untuk connect account berhasil
+ * (lihat AGENTS.md-style reasoning yang sama seperti retry/cancel
+ * best-effort di kontrak ini) — gagal diam-diam ke `null` DISENGAJA di
+ * sini, bukan silent bug: dicatat eksplisit di docstring
+ * `resolveConnectCallback` + laporan kerja sesi ini.
+ *
+ * **Timeout lokal jauh lebih pendek dari timeout default client
+ * (`OutstandHttpClient.DEFAULT_TIMEOUT_MS` 15s)** — panggilan ini duduk di
+ * jalur redirect callback OAuth yang langsung dilihat user, untuk nilai
+ * yang cuma kosmetik. Kegagalan/lambat pada endpoint ini tidak boleh
+ * membuat user menunggu sampai 15 detik demi foto profil; lebih baik cepat
+ * menyerah ke `null` (avatar tetap bisa terisi lain kali lewat reconnect).
+ */
+const AVATAR_FETCH_TIMEOUT_MS = 3_000;
+
+async function fetchSocialAccountAvatarUrl(
+  client: OutstandHttpClient,
+  outstandAccountId: string,
+): Promise<string | null> {
+  try {
+    const response = await Promise.race([
+      client.request<Record<string, unknown>>(
+        `/v1/social-accounts/${encodeURIComponent(outstandAccountId)}`,
+        { method: "GET" },
+      ),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("fetchSocialAccountAvatarUrl timed out")),
+          AVATAR_FETCH_TIMEOUT_MS,
+        ),
+      ),
+    ]);
+    const data =
+      typeof response.data === "object" && response.data !== null
+        ? (response.data as Record<string, unknown>)
+        : null;
+    const picture = data?.profile_picture_url;
+    return typeof picture === "string" && picture.length > 0 ? picture : null;
+  } catch {
+    return null;
+  }
+}
+
 function buildPendingOutcome(outstandAccountId: string): PostTargetOutcome {
   return {
     outstandAccountId,
@@ -622,6 +679,38 @@ export function createRealOutstandAdapter(
      * berbeda sama sekali); kalaupun terjadi, itu bug di tempat lain yang
      * harus gagal keras, bukan diam-diam diterima sebagai data yang
      * mungkin salah bentuk.
+     *
+     * **`avatarUrl` (menutup KI-076, ADR-120, amandemen ADR-112) — SATU
+     * network call tambahan `GET /v1/social-accounts/{outstandAccountId}`
+     * dilakukan DI SINI, setelah seluruh validasi di atas lolos.** Ini
+     * mengubah invariant asli ADR-112 ("TIDAK ada network call ke Outstand
+     * di sini sama sekali") — perubahan disengaja, dicatat ADR-120, BUKAN
+     * regresi diam-diam: ADR-112 benar bahwa Outstand tidak punya endpoint
+     * "exchange code", tapi ada endpoint TERPISAH untuk detail akun
+     * (dipakai di sini murni untuk foto profil, bukan untuk data yang
+     * sudah didapat dari query param).
+     *
+     * Field foto profil (`profile_picture_url`) DIVERIFIKASI LANGSUNG lewat
+     * MCP resmi `mcp.outstand.so` (tool `get_social_account`/
+     * `list_social_accounts`, sesi 2026-09-26, ADR-120) terhadap data akun
+     * NYATA di org Outstand — bukan tebakan. Shape response:
+     * `{ success, data: { ..., profile_picture_url: string | null, ... } }`
+     * (wrapper `data` sama seperti `listPendingFacebookPages`). Path exact
+     * `GET /v1/social-accounts/{id}` DIINFERENSI dari konvensi REST endpoint
+     * list yang sudah dikonfirmasi resmi (`GET /v1/social-accounts`,
+     * `docs.outstand.so`) + shape MCP tool yang menerima `account_id`
+     * tunggal — OpenAPI JSON `api.outstand.so/openapi.json` TETAP tidak
+     * bisa diakses (limitasi yang sama seperti sesi-sesi sebelumnya,
+     * ADR-116). Kalau path ini ternyata salah, kegagalan panggilan
+     * DITELAN (lihat try/catch di bawah) — connect account tetap berhasil
+     * TANPA foto, bukan gagal total.
+     *
+     * **Best-effort, bukan wajib** — kegagalan panggilan foto profil (404,
+     * timeout, network error, field tidak ada) TIDAK BOLEH menggagalkan
+     * connect account itu sendiri (fungsi inti). `avatarUrl` fallback ke
+     * `null`, error tidak dilempar ke atas. Keputusan ini murni teknis
+     * (ketahanan alur connect), bukan keputusan arsitektur/ADR — dicatat di
+     * sini + laporan kerja.
      */
     async resolveConnectCallback({
       state,
@@ -668,11 +757,17 @@ export function createRealOutstandAdapter(
         });
       }
 
+      const avatarUrl = await fetchSocialAccountAvatarUrl(
+        client,
+        outstandAccountId,
+      );
+
       return {
         outstandAccountId,
         platform,
         handle: username,
         status: "active",
+        avatarUrl,
       };
     },
 
@@ -740,6 +835,11 @@ export function createRealOutstandAdapter(
      * menyatakan ini eksplisit). Validasi `selectedPageIds` tidak kosong
      * diulang di sini (defense-in-depth, ADR-115 — jangan cuma percaya
      * `WorkspaceService`/UI).
+     *
+     * **`avatarUrl` SELALU `null` di sini (menutup KI-076, ADR-120)** —
+     * response finalize tidak membawa foto profil. `WorkspaceService`
+     * (bukan method ini) yang bertanggung jawab join balik dari hasil
+     * `listPendingFacebookPages`, lihat docstring `ConfirmFacebookPagesResult`.
      */
     async confirmFacebookPagesConnection({
       sessionToken,
@@ -776,6 +876,14 @@ export function createRealOutstandAdapter(
           platform: SocialPlatform.Facebook,
           handle,
           status: "active",
+          // KI-076/ADR-120 — response finalize TIDAK membawa foto profil
+          // sama sekali (beda dari response pending/list yang membawa
+          // `profilePictureUrl`). SELALU `null` di sini secara sengaja —
+          // `WorkspaceService.confirmFacebookPagesConnection` yang
+          // menggabungkan balik dari hasil `listPendingFacebookPages`,
+          // BUKAN adapter (adapter tidak boleh menyimpan state lintas
+          // panggilan, ACL boundary).
+          avatarUrl: null,
         });
       }
 

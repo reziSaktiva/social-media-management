@@ -49,7 +49,10 @@ import {
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
-import { maxMediaCountForFormats } from "@/domains/publishing";
+import {
+  maxMediaCountForFormats,
+  minMediaCountConstraintMessage,
+} from "@/domains/publishing";
 
 import type { ConnectedAccountDto, DraftMediaDto } from "./actions";
 import {
@@ -414,19 +417,55 @@ function DraftEditorForm({
     })),
   );
 
+  // KI-073: caption HANYA wajib kalau TIDAK ADA target Story sama sekali —
+  // Story justru MENOLAK caption di Outstand (`buildPostRequestBody`,
+  // `real-outstand-adapter.ts`: `contentForBody = hasStoryTarget ? "" :
+  // input.caption`). Kombinasi Story + non-Story ber-caption ditolak
+  // adapter secara TERPISAH (throw `client_error`) — ditangani di bawah
+  // sebagai constraint sendiri (`mixedStoryCaptionMessage`), BUKAN dilipat
+  // ke gate caption-required (versi sebelumnya salah: mewajibkan caption
+  // untuk kombinasi campuran justru menjamin submit gagal di adapter,
+  // padahal versi caption-kosong itu yang sebenarnya diterima).
+  const activeFormatsForGate = getActiveFormats();
+  const hasStoryTarget = activeFormatsForGate.some(
+    (format) => format === ContentFormat.Story,
+  );
+  const hasNonStoryTarget = activeFormatsForGate.some(
+    (format) => format !== ContentFormat.Story,
+  );
+  const isCaptionRequired = !hasStoryTarget;
+  const mixedStoryCaptionMessage =
+    hasStoryTarget && hasNonStoryTarget && caption.trim().length > 0
+      ? "Story tidak bisa digabung dengan target lain selama caption terisi — kosongkan caption atau publish Story secara terpisah dari target lainnya."
+      : null;
+
+  // KI-074: Story/Reel/Pin secara native selalu berbasis media — tanpa
+  // guard ini, target Story/Reel/Pin bisa "berhasil" terpublish tapi
+  // tayang kosong (caption-nya sendiri juga sudah dikosongkan untuk
+  // Story, KI-073 di atas). Mirror server: `assertMediaCountMeetsMinimum`
+  // (`content-format-matrix.ts`).
+  const mediaMinimumMessage = minMediaCountConstraintMessage(
+    mediaItems.length,
+    activeFormatsForGate,
+  );
+
   const isReadyToSchedule =
-    caption.trim().length > 0 &&
+    (!isCaptionRequired || caption.trim().length > 0) &&
     selectedAccounts.length > 0 &&
     Boolean(scheduleDate) &&
     Boolean(scheduleTime) &&
-    pinterestConstraintMessage === null;
+    pinterestConstraintMessage === null &&
+    mediaMinimumMessage === null &&
+    mixedStoryCaptionMessage === null;
 
   // Publish Now (KSP-05-F12) skips the Schedule Picker entirely — tanggal/
   // waktu tidak relevan sama sekali, beda dari `isReadyToSchedule`.
   const isReadyToPublishNow =
-    caption.trim().length > 0 &&
+    (!isCaptionRequired || caption.trim().length > 0) &&
     selectedAccounts.length > 0 &&
-    pinterestConstraintMessage === null;
+    pinterestConstraintMessage === null &&
+    mediaMinimumMessage === null &&
+    mixedStoryCaptionMessage === null;
 
   // Publish Now dari Queue (T-032.4) — lompat otomatis ke step konfirmasi
   // begitu draft (caption/status) DAN daftar akun terhubung selesai dimuat,
@@ -837,6 +876,16 @@ function DraftEditorForm({
                 <AlertTitle>{pinterestConstraintMessage}</AlertTitle>
               </Alert>
             ) : null}
+            {mediaMinimumMessage ? (
+              <Alert variant="destructive">
+                <AlertTitle>{mediaMinimumMessage}</AlertTitle>
+              </Alert>
+            ) : null}
+            {mixedStoryCaptionMessage ? (
+              <Alert variant="destructive">
+                <AlertTitle>{mixedStoryCaptionMessage}</AlertTitle>
+              </Alert>
+            ) : null}
             {notice ? (
               <Alert
                 variant={notice.status === "error" ? "destructive" : "default"}
@@ -869,6 +918,14 @@ function DraftEditorForm({
                     <FieldDescription>
                       AI Caption Assist belum termasuk revisi ini.
                     </FieldDescription>
+                    {hasStoryTarget &&
+                    !hasNonStoryTarget &&
+                    caption.trim().length > 0 ? (
+                      <FieldDescription>
+                        Story menolak caption — teks di atas TIDAK akan ikut
+                        terpublish ke Instagram/Facebook.
+                      </FieldDescription>
+                    ) : null}
                   </div>
 
                   {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}

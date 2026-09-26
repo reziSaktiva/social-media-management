@@ -33,6 +33,20 @@ export interface ConnectedAccountRecord {
   status: string;
   reconnectRequired: boolean;
   connectedAt: Date;
+  /**
+   * Foto profil akun (menutup KI-076, ADR-120) — kolom `avatar_url`
+   * (`WorkspaceConnectedAccount`, migrasi
+   * `20260926090000_ki076_add_avatar_url_to_workspace_connected_accounts`).
+   * `null` berarti Outstand tidak punya/tidak mengembalikan foto untuk akun
+   * ini. **Opsional di level TypeScript** (bukan `avatarUrl: string | null`)
+   * supaya penambahan field ini tidak memaksa update mekanis di seluruh
+   * fixture test lintas domain (publishing/engagement/analytics) yang
+   * membangun `ConnectedAccountRecord` tapi tidak peduli avatar sama
+   * sekali — implementasi Prisma nyata (`workspace.repository.ts` di
+   * `lib/repositories/workspace/`) TETAP SELALU mengisinya (kolom DB selalu
+   * ada, `null` atau string), opsional di sini murni kompatibilitas mock.
+   */
+  avatarUrl?: string | null;
 }
 
 export interface WorkspaceMemberRecord {
@@ -461,6 +475,8 @@ export interface IWorkspaceRepository {
     platform: SocialPlatform;
     outstandAccountId: string;
     handle: string;
+    /** KI-076/ADR-120 — lihat docstring `ConnectedAccountRecord.avatarUrl`. */
+    avatarUrl?: string | null;
     actingUserId: UserId;
   }): Promise<ConnectedAccountRecord>;
 
@@ -477,6 +493,8 @@ export interface IWorkspaceRepository {
       platform: SocialPlatform;
       outstandAccountId: string;
       handle: string;
+      /** KI-076/ADR-120 — lihat docstring `ConnectedAccountRecord.avatarUrl`. */
+      avatarUrl?: string | null;
     }[];
   }): Promise<ConnectedAccountRecord[]>;
 
@@ -499,6 +517,12 @@ export interface IWorkspaceRepository {
     connectedAccountId: ConnectedAccountId;
     outstandAccountId: string;
     handle: string;
+    /**
+     * KI-076/ADR-120 — refresh foto profil sekalian saat reconnect (foto
+     * lama bisa sudah berubah/berbeda dari akun yang di-reconnect-kan).
+     * Lihat docstring `ConnectedAccountRecord.avatarUrl`.
+     */
+    avatarUrl?: string | null;
     actingUserId: UserId;
   }): Promise<ConnectedAccountRecord>;
 }
