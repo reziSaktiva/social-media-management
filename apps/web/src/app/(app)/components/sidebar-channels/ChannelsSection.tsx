@@ -154,7 +154,7 @@ function ChannelRow({
             </Badge>
           </Link>
         ) : (
-          <Badge variant="secondary">{getConnectionStatusLabel(account)}</Badge>
+          <Badge variant="success">{getConnectionStatusLabel(account)}</Badge>
         )}
       </div>
 

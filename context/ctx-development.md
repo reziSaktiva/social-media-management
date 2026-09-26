@@ -105,9 +105,9 @@ Aturan di bawah melengkapi hard rules di [`../AGENTS.md`](../AGENTS.md). Detail 
     yang mengembalikan objek literal `implements IXxxRepository` dengan
     default no-op per method, lalu `overrides: Partial<IXxxRepository>`
     di-spread untuk test case tertentu. Preseden:
-    `domains/publishing/services/publishing.service.test.ts`. Ini analog
-    dengan pola `FakeOutstandAdapter` (ADR-059) tapi untuk repository,
-    bukan adapter eksternal.
+    `domains/publishing/services/publishing.service.test.ts`. Pola yang sama
+    dipakai untuk double lokal `IOutstandAdapter` di use-case test (bukan
+    singleton produksi — Fake produksi sudah dihapus, ADR-119).
 
 ### Git / PR (saat diminta user)
 

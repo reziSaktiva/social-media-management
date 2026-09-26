@@ -54,7 +54,15 @@ function createFakeOutstandAdapter(
 ): IOutstandAdapter {
   return {
     connectAccount: async () => ({ redirectUrl: "/unused" }),
-    exchangeConnectCode: async () => ({
+    listPendingFacebookPages: async () => ({ pages: [] }),
+    confirmFacebookPagesConnection: async () => ({ accounts: [] }),
+    listPinterestBoards: async () => [],
+    uploadMediaWorkingCopy: async () => ({
+      outstandMediaId: "unused",
+      outstandMediaUrl: "https://fake.outstand.local/media/unused",
+      expiresAt: new Date(),
+    }),
+    resolveConnectCallback: async () => ({
       outstandAccountId: "unused",
       platform: "instagram" as never,
       handle: "unused",
@@ -80,6 +88,8 @@ function createFakeOutstandAdapter(
       totalEngagements: 200,
       avgEngagementRate: 0.1,
     }),
+    fetchComments: async () => ({ comments: [], nextCursor: null }),
+    replyToComment: async () => ({ outstandReplyId: "fake-reply" }),
     ...overrides,
   };
 }

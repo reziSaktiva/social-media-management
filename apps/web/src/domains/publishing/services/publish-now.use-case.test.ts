@@ -9,7 +9,7 @@ import {
   MemberRole,
   SocialPlatform,
 } from "@social/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AuthorizationError, ConflictError } from "@/lib/utils/errors";
 import type {
   IOutstandAdapter,
@@ -59,12 +59,15 @@ function createFakeRepository(
     getHistoryPostById: async () => null,
     cancelSchedule: async () => null,
     markPostFailed: async () => undefined,
+    markPostPublished: async () => undefined,
     getRetryTarget: async () => null,
     resetTargetForRetry: async () => undefined,
     setRetryOutstandPostId: async () => undefined,
     reconcilePostStatusAfterRetry: async () => undefined,
     findPostTargetsByOutstandPostId: async () => null,
     softDeletePost: async () => null,
+    listSyncablePostsByConnectedAccount: async () => [],
+    findPostOutstandId: async () => null,
     ...overrides,
   };
 }
@@ -99,7 +102,15 @@ function createFakeOutstandAdapter(
 ): IOutstandAdapter {
   return {
     connectAccount: async () => ({ redirectUrl: "/unused" }),
-    exchangeConnectCode: async () => ({
+    listPendingFacebookPages: async () => ({ pages: [] }),
+    confirmFacebookPagesConnection: async () => ({ accounts: [] }),
+    listPinterestBoards: async () => [],
+    uploadMediaWorkingCopy: async () => ({
+      outstandMediaId: "unused",
+      outstandMediaUrl: "https://fake.outstand.local/media/unused",
+      expiresAt: new Date(),
+    }),
+    resolveConnectCallback: async () => ({
       outstandAccountId: "unused",
       platform: "instagram" as never,
       handle: "unused",
@@ -125,6 +136,8 @@ function createFakeOutstandAdapter(
       totalEngagements: 0,
       avgEngagementRate: 0,
     }),
+    fetchComments: async () => ({ comments: [], nextCursor: null }),
+    replyToComment: async () => ({ outstandReplyId: "fake-reply" }),
     ...overrides,
   };
 }
@@ -169,6 +182,7 @@ describe("PublishNowUseCase.execute", () => {
       IPublishingRepository["setOutstandPostId"]
     >[0][] = [];
     let publishNowCallCount = 0;
+    const markPostPublished = vi.fn(async () => undefined);
     const repository = createFakeRepository({
       publishNow: async () => publishRecord,
       updateTargetOutcome: async (input) => {
@@ -177,6 +191,7 @@ describe("PublishNowUseCase.execute", () => {
       setOutstandPostId: async (input) => {
         outstandPostIdCalls.push(input);
       },
+      markPostPublished,
     });
     const adapter = createFakeOutstandAdapter({
       publishNow: async ({ targets }) => {
@@ -184,8 +199,16 @@ describe("PublishNowUseCase.execute", () => {
         expect(targets).toHaveLength(2);
         return { outstandPostId: "fake-post-shared" };
       },
-      fetchPostOutcome: async (outstandPostId) => {
+      fetchPostOutcome: async (outstandPostId, expectedOutstandAccountIds) => {
         expect(outstandPostId).toBe("fake-post-shared");
+        // T-027 bug fix (root-cause) — daftar akun WAJIB datang dari
+        // `input.targets` yang use-case sudah tahu, BUKAN dari adapter
+        // "mengingat" panggilan `publishNow` sebelumnya (lihat catatan
+        // panjang di `IOutstandAdapter.fetchPostOutcome`).
+        expect(expectedOutstandAccountIds.slice().sort()).toEqual([
+          "outstand-acc-1",
+          "outstand-acc-2",
+        ]);
         return [
           publishedOutcome("outstand-acc-1"),
           publishedOutcome("outstand-acc-2"),
@@ -245,6 +268,14 @@ describe("PublishNowUseCase.execute", () => {
       ]),
     );
     expect(outcomes).toHaveLength(2);
+    // T-027 bug fix (koreksi gap post-level status, scoped ke jalur
+    // Schedule/`resolvePostOutcome`) — `PublishNowUseCase` TIDAK PERNAH
+    // memanggil `resolvePostOutcome`/`markPostPublished` sama sekali: ia
+    // sudah menandai `Published` DI MUKA lewat `repository.publishNow`
+    // sebelum outcome diketahui. Regression guard eksplisit supaya
+    // penambahan `markPostPublished` ke interface tidak diam-diam
+    // "bocor" ke use-case ini.
+    expect(markPostPublished).not.toHaveBeenCalled();
   });
 
   it("marks the post Failed when the single adapter call rejects (all targets fail together, bug fix 2026-08-26)", async () => {

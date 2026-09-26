@@ -7,7 +7,10 @@ import {
   InvitationStatus,
   MemberRole,
   MemberStatus,
+  type ConnectedAccountId,
   type SocialPlatform,
+  type UserId,
+  type WorkspaceId,
 } from "@social/shared";
 import type {
   ConnectedAccountRecord,
@@ -646,37 +649,12 @@ export const workspaceRepository: IWorkspaceRepository = {
   },
 
   async markAccountReconnectRequired(outstandAccountId) {
-    // System-context read (T-026.5, webhook Outstand) — bypasses RLS via a
-    // narrow SECURITY DEFINER SQL function (migration
-    // `20260907120000_t026_outstand_webhook_system_lookups`), NOT
-    // `withCurrentUser` — sama alasan seperti
-    // `publishingRepository.findPostTargetsByOutstandPostId`, lihat catatan
-    // lengkap di interface method ini.
-    const rows = await prisma.$queryRaw<AccountOwnerLookupRow[]>`
-      SELECT * FROM "public"."webhook_find_account_owner_by_outstand_account_id"(${outstandAccountId})
-    `;
-
-    if (rows.length === 0) {
+    const lookup =
+      await lookupAccountOwnerByOutstandAccountId(outstandAccountId);
+    if (!lookup) {
       return null;
     }
-
-    // `outstand_account_id` cuma unique PER WORKSPACE — kalau akun yang
-    // sama kebetulan ter-connect di lebih dari satu workspace (skenario
-    // agency), fungsi SQL di atas mengembalikan SEMUA baris (tidak lagi
-    // `LIMIT 1`). Jangan tebak salah satu secara diam-diam — refuse dan
-    // biarkan route.ts menandai receipt `failed` (defense-in-depth yang
-    // sama dengan guard di `publishingRepository.findPostTargetsByOutstandPostId`).
-    const distinctWorkspaceIds = new Set(rows.map((row) => row.workspace_id));
-    if (distinctWorkspaceIds.size > 1) {
-      throw new Error(
-        `markAccountReconnectRequired: outstandAccountId=${outstandAccountId} cocok dengan ${distinctWorkspaceIds.size} workspace berbeda — menolak menebak salah satu.`,
-      );
-    }
-
-    const [row] = rows;
-    const workspaceId = asWorkspaceId(row.workspace_id);
-    const connectedAccountId = asConnectedAccountId(row.connected_account_id);
-    const ownerUserId = asUserId(row.owner_user_id);
+    const { workspaceId, connectedAccountId, ownerUserId } = lookup;
 
     // Write path tetap RLS-safe seperti method lain di file ini —
     // `ownerUserId` (Owner workspace ini, dibaca lewat bypass di atas)
@@ -697,6 +675,46 @@ export const workspaceRepository: IWorkspaceRepository = {
     );
 
     return { workspaceId, connectedAccountId, ownerUserId };
+  },
+
+  async findAccountOwnerByOutstandAccountId(outstandAccountId) {
+    // Read-only (T-051, JOB-03) — lihat catatan lengkap di interface
+    // method ini untuk kenapa `engagement` butuh lookup ini. Reuse HELPER
+    // yang sama dengan `markAccountReconnectRequired`, TANPA langkah tulis
+    // `reconnectRequired` (beda tujuan pemanggilan sepenuhnya).
+    //
+    // Eskalasi review Ridwan (T-051, disconnect→reconnect job leak) —
+    // `disconnectAccount` tidak pernah membatalkan chain self-reschedule
+    // `engagement.sync` yang sedang berjalan untuk akun itu (tidak ada
+    // mekanisme cancel/deleteByCriteria di `IJobScheduler`/
+    // `background-job-store.ts`). Fix-nya di sini, bukan menambah cancel
+    // job baru: akun berstatus BUKAN `active` (mis. `disconnected`)
+    // diperlakukan SAMA seperti "akun tidak ditemukan" — return `null`
+    // supaya `EngagementSyncJobHandler.handle` throw SEBELUM memanggil
+    // `SyncCommentsUseCase.sync` dan SEBELUM self-reschedule (jalur
+    // dead-letter yang SUDAH ada & sudah ditest, lihat docstring class
+    // `EngagementSyncJobHandler`) — chain job untuk akun yang di-disconnect
+    // mati sendiri begitu invocation berikutnya berjalan, tanpa pernah
+    // menyentuh Outstand lagi atau memicu notifikasi `engagement_new`.
+    // `markAccountReconnectRequired` (webhook path, T-026.5) TIDAK
+    // dipengaruhi — ia memakai helper yang sama tapi tidak memeriksa field
+    // `status` ini sama sekali, jadi behaviornya persis seperti sebelumnya.
+    // `reconnectRequired` bisa true sementara `status` masih `active`
+    // (token expired lewat webhook, `markAccountReconnectRequired` tidak
+    // mengubah `status`) — diperlakukan sama seperti "tidak ditemukan"
+    // supaya JOB-03 berhenti sync akun yang butuh reconnect, bukan terus
+    // memanggil Outstand dengan token yang sudah ditolak.
+    const lookup =
+      await lookupAccountOwnerByOutstandAccountId(outstandAccountId);
+    if (!lookup || lookup.status !== "active" || lookup.reconnectRequired) {
+      return null;
+    }
+    return {
+      workspaceId: lookup.workspaceId,
+      connectedAccountId: lookup.connectedAccountId,
+      ownerUserId: lookup.ownerUserId,
+      handle: lookup.handle,
+    };
   },
 
   async disconnectAccount(workspaceId, connectedAccountId, actingUserId) {
@@ -762,6 +780,39 @@ export const workspaceRepository: IWorkspaceRepository = {
     }
   },
 
+  async createConnectedAccounts({ workspaceId, actingUserId, accounts }) {
+    return withCurrentUser(actingUserId, async (tx) => {
+      const existing = await tx.workspaceConnectedAccount.findMany({
+        where: {
+          workspaceId,
+          outstandAccountId: {
+            in: accounts.map((account) => account.outstandAccountId),
+          },
+        },
+        select: { outstandAccountId: true },
+      });
+      const existingIds = new Set(
+        existing.map((account) => account.outstandAccountId),
+      );
+
+      const created = [];
+      for (const account of accounts) {
+        if (existingIds.has(account.outstandAccountId)) continue;
+        const row = await tx.workspaceConnectedAccount.create({
+          data: {
+            workspaceId,
+            platform: account.platform,
+            outstandAccountId: account.outstandAccountId,
+            handle: account.handle,
+            status: "active",
+          },
+        });
+        created.push(toConnectedAccountRecord(row));
+      }
+      return created;
+    });
+  },
+
   async reconnectAccount({
     workspaceId,
     connectedAccountId,
@@ -815,4 +866,81 @@ interface AccountOwnerLookupRow {
   workspace_id: string;
   connected_account_id: string;
   owner_user_id: string;
+  /**
+   * `WorkspaceConnectedAccount.status` (T-051 fix, migration
+   * `20260922110000_t051_filter_active_status_engagement_sync_lookup`) —
+   * ditambahkan sebagai kolom output SQL function, TIDAK mengubah SELECT-nya
+   * (masih mengembalikan akun status apa pun). Konsumen yang butuh guard
+   * status (`findAccountOwnerByOutstandAccountId`) memeriksa field ini
+   * sendiri; `markAccountReconnectRequired` mengabaikannya (behavior tidak
+   * berubah).
+   */
+  status: string;
+  /**
+   * `WorkspaceConnectedAccount.reconnectRequired` — flag terpisah dari
+   * `status` (token expired bisa terjadi sambil `status` masih `active`,
+   * lihat `markAccountReconnectRequired`). `findAccountOwnerByOutstandAccountId`
+   * ikut memeriksa ini supaya JOB-03 tidak terus sync akun yang butuh
+   * reconnect.
+   */
+  reconnect_required: boolean;
+  /**
+   * Redesain KI-068/ADR-113 — kolom baru (migration
+   * `20260924090000_ki068_add_handle_to_account_owner_lookup`), dipakai
+   * `findAccountOwnerByOutstandAccountId` untuk menyuplai `accountUsername`
+   * ke `SyncCommentsUseCase`. `markAccountReconnectRequired` mengabaikannya
+   * (behavior tidak berubah).
+   */
+  handle: string;
+}
+
+/**
+ * Helper bersama `markAccountReconnectRequired` (T-026.5) DAN
+ * `findAccountOwnerByOutstandAccountId` (T-051, JOB-03) — keduanya butuh
+ * lookup identik (SECURITY DEFINER SQL function
+ * `webhook_find_account_owner_by_outstand_account_id`), beda hanya di
+ * langkah SETELAHNYA (satu menulis `reconnectRequired`, satu lagi murni
+ * baca). Diekstrak supaya guard "outstand_account_id cocok >1 workspace"
+ * tidak diduplikasi.
+ */
+async function lookupAccountOwnerByOutstandAccountId(
+  outstandAccountId: string,
+): Promise<{
+  workspaceId: WorkspaceId;
+  connectedAccountId: ConnectedAccountId;
+  ownerUserId: UserId;
+  status: string;
+  reconnectRequired: boolean;
+  handle: string;
+} | null> {
+  const rows = await prisma.$queryRaw<AccountOwnerLookupRow[]>`
+    SELECT * FROM "public"."webhook_find_account_owner_by_outstand_account_id"(${outstandAccountId})
+  `;
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  // `outstand_account_id` cuma unique PER WORKSPACE — kalau akun yang sama
+  // kebetulan ter-connect di lebih dari satu workspace (skenario agency),
+  // fungsi SQL di atas mengembalikan SEMUA baris (tidak lagi `LIMIT 1`).
+  // Jangan tebak salah satu secara diam-diam — refuse dan biarkan caller
+  // menandai kegagalan (defense-in-depth yang sama dengan guard di
+  // `publishingRepository.findPostTargetsByOutstandPostId`).
+  const distinctWorkspaceIds = new Set(rows.map((row) => row.workspace_id));
+  if (distinctWorkspaceIds.size > 1) {
+    throw new Error(
+      `lookupAccountOwnerByOutstandAccountId: outstandAccountId=${outstandAccountId} cocok dengan ${distinctWorkspaceIds.size} workspace berbeda — menolak menebak salah satu.`,
+    );
+  }
+
+  const [row] = rows;
+  return {
+    workspaceId: asWorkspaceId(row.workspace_id),
+    connectedAccountId: asConnectedAccountId(row.connected_account_id),
+    ownerUserId: asUserId(row.owner_user_id),
+    status: row.status,
+    reconnectRequired: row.reconnect_required,
+    handle: row.handle,
+  };
 }

@@ -371,6 +371,38 @@ export interface IWorkspaceRepository {
   } | null>;
 
   /**
+   * Read-only variant of `markAccountReconnectRequired`'s lookup (T-051,
+   * JOB-03 Engagement Sync) — reuses the SAME SECURITY DEFINER SQL function
+   * (`webhook_find_account_owner_by_outstand_account_id`, migration
+   * `20260907120000_t026_outstand_webhook_system_lookups`), no write.
+   *
+   * **Why `engagement` needs this:** JOB-03's periodic sync job has no
+   * Better Auth session (same chicken-and-egg as T-026's webhook route),
+   * so it has no legitimate `userId` to pass into `withCurrentUser` for
+   * `EngagementInboxItem` writes until it resolves ONE. The job payload
+   * already carries `outstandAccountId` (`background-jobs.md` § JOB-03),
+   * so resolving the workspace Owner here — guaranteed an active member of
+   * their own workspace — gives `EngagementSyncJobHandler` a safe acting
+   * user, exactly the same pattern `markAccountReconnectRequired` already
+   * established for T-026.5. Returns `null` kalau tidak ada akun dengan
+   * `outstandAccountId` itu (job handler menganggap ini anomali — retry
+   * lewat job runner, TIDAK self-reschedule).
+   *
+   * **`handle` (redesain KI-068/ADR-113)** — ditambahkan supaya
+   * `EngagementSyncJobHandler` bisa menyuplai `accountUsername` ke
+   * `SyncCommentsUseCase.sync` tanpa lookup terpisah (API resmi Outstand
+   * butuh username untuk `fetchComments`/disambiguasi multi-akun — lihat
+   * `outstand-adapter.ts`). Diimplementasikan lewat kolom baru pada fungsi
+   * SQL yang sama, migration `20260924090000_ki068_add_handle_to_account_owner_lookup`.
+   */
+  findAccountOwnerByOutstandAccountId(outstandAccountId: string): Promise<{
+    workspaceId: WorkspaceId;
+    connectedAccountId: ConnectedAccountId;
+    ownerUserId: UserId;
+    handle: string;
+  } | null>;
+
+  /**
    * Disconnect akun (T-014.2, ADR-048/ADR-049) — set
    * `WorkspaceConnectedAccount.status` jadi `"disconnected"` DAN
    * `reconnectRequired` jadi `false` (state "perlu reconnect" tidak relevan
@@ -433,8 +465,25 @@ export interface IWorkspaceRepository {
   }): Promise<ConnectedAccountRecord>;
 
   /**
-   * UPDATE akun existing (T-015.3, Reconnect, ADR-105) — refresh
-   * `outstandAccountId`/`handle` dari hasil `exchangeConnectCode` terbaru,
+   * CREATE beberapa `WorkspaceConnectedAccount` dalam SATU transaksi.
+   * Akun yang `outstandAccountId`-nya sudah ada di workspace ini di-skip
+   * (idempoten). Kegagalan di tengah membatalkan seluruh batch, bukan
+   * menyisakan sebagian Page.
+   */
+  createConnectedAccounts(input: {
+    workspaceId: WorkspaceId;
+    actingUserId: UserId;
+    accounts: {
+      platform: SocialPlatform;
+      outstandAccountId: string;
+      handle: string;
+    }[];
+  }): Promise<ConnectedAccountRecord[]>;
+
+  /**
+   * UPDATE akun existing (T-015.3, Reconnect, ADR-105, redesain ADR-112)
+   * — refresh `outstandAccountId`/`handle` dari hasil
+   * `resolveConnectCallback` terbaru,
    * set `status: "active"` dan `reconnectRequired: false`. `connectedAt`
    * TIDAK direset — reconnect bukan re-create, riwayat
    * `PublishingPostTarget`/`EngagementInboxItem` yang merujuk row

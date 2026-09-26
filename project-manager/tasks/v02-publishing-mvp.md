@@ -5,7 +5,7 @@
 **Tujuan rilis:** Memungkinkan pengguna membuat dan menjadwalkan konten.
 **Baseline rilis:** `product-discovery/02-product/release-roadmap.md` → v0.2
 
-**Rantai blocker rilis ini:** Real OutstandAdapter (T-025) belum ada → schedule hanya jalan lewat Fake · Connect account (T-013) belum ada → connected account harus di-seed · job runner (T-027) masih 501 → **belum ada transisi status post otomatis saat waktunya tiba** (webhook T-026 sudah ✅ Done 2026-09-07 — menangani transisi status pasca-publish/error/token-expired, tapi trigger-nya masih inbound webhook Outstand, bukan job scheduler). Task-task ini membuka hampir semua sisa rilis ini.
+**Rantai blocker rilis ini:** Real OutstandAdapter (T-025) belum ada → schedule hanya jalan lewat Fake · Connect account (T-013) belum ada → connected account harus di-seed · **job runner (T-027) sudah ✅ Done (2026-09-17)** — transisi status post terjadwal sekarang otomatis lewat job baru `publishing.scheduled_post.resolve_outcome` (JOB-07) begitu due, melengkapi webhook T-026 (✅ Done 2026-09-07) yang menangani transisi status pasca-publish/error/token-expired lewat inbound webhook Outstand. Provisioning Railway Cron project sungguhan masih blocked (KI-025) — job runner baru config-as-code (`railway.json`/`railway.cron.json`), belum ada service `cron` sungguhan live. Sisa rantai blocker rilis ini sekarang T-025 dan T-013.
 
 ---
 
@@ -41,19 +41,225 @@ Matriks format per platform (IG/FB: Post/Reel/Story · TikTok: video feed tanpa 
 
 | Field         | Value                                                          |
 | ------------- | -------------------------------------------------------------- |
-| **Status**    | ⏳ Not Started                                                  |
+| **Status**    | ✅ Done (5/5 subtask)                                            |
 | **Domain**    | media · publishing                                             |
-| **ADR**       | ADR-040 (media upload working copy)                            |
-| **Depends**   | T-025 (Media API adapter)                                      |
+| **ADR**       | ADR-040 (media upload working copy) · ADR-107 (batas maksimum jumlah media per `ContentFormat`, T-024.4) |
+| **Depends**   | T-025 (Media API adapter) — **di-bypass sebagian** lewat pola Fake (rule 19 AGENTS.md, lihat catatan di bawah) |
+| **Terkait**   | KI-059 Resolved (verifikasi manual browser T-024.4 & T-024.5, 2026-09-15) · KI-060 baru (Account Selector tidak ter-restore saat edit, di luar scope T-024) · KI-061 baru (tidak ada warning UI saat media over-limit setelah ganti target akun/format, ADR-107) |
 | **Baca dulu** | `05-architecture/integration-layer.md` · `06-engineering/environment-management.md` |
 
 Kontrol lampiran media di Draft Editor sudah ada tapi **disabled** dengan keterangan "Lampiran media akan tersedia setelah OutstandAdapter Media API siap".
 
-- [ ] **T-024.1** Domain `media` skeleton (service + repository, model `MediaItem` sudah ada di schema)
-- [ ] **T-024.2** Upload ke Supabase Storage (Supabase JS client **hanya** untuk Storage/Realtime — CRUD tetap Prisma)
-- [ ] **T-024.3** `OutstandAdapter` media upload working copy (ADR-040)
-- [ ] **T-024.4** Aktifkan kontrol lampiran di Draft Editor + preview
-- [ ] **T-024.5** Delete Media + dialog konfirmasi (ADR-049 Tier 2)
+**Feasibility check (2026-09-14):** T-024 sebelumnya tercatat depends penuh
+pada T-025.5 (Real OutstandAdapter Media API) yang terhenti karena
+`OUTSTAND_API_KEY`/`OUTSTAND_WEBHOOK_SECRET` asli belum ada. Diputuskan T-024
+**tetap bisa dikerjakan sekarang** mengikuti rule 19 AGENTS.md (pola
+ADR-059/ADR-105) — subtask yang tidak butuh kredensial asli (T-024.1 domain
+skeleton, T-024.2 Supabase Storage, T-024.4 UI, T-024.5 delete) jalan duluan;
+hanya T-024.3 (`OutstandAdapter` media upload working copy) yang tetap
+menunggu real adapter, dan akan dibangun via `FakeOutstandAdapter` dulu
+mengikuti pola yang sama saat waktunya tiba — bukan ADR baru, murni
+penerapan pola yang sudah ada.
+
+Sebelum implementasi, dicek ke Claude Design (rule 17) — rancangan Draft
+Editor (`templates/draft-editor.html`) sudah punya section Media
+(`.media-drop` dropzone + `.media-thumb` preview), tapi pola ini **belum
+dikunci** ke primitive shadcn konkret (readme.md Claude Design: "no
+dedicated FileInput primitives installed yet"; dikonfirmasi juga tidak ada
+komponen file-upload/dropzone di registry shadcn resmi via MCP). King Rezi
+dikonfirmasi 2 keputusan lewat `AskUserQuestion`:
+
+1. Dropzone media di Draft Editor (T-024.4) akan dibangun sebagai **custom
+   drag-drop zone** (bukan native file input polos).
+2. Scope T-024 dipersempit: hanya **upload file baru + preview + delete**.
+   **"Pilih dari Media Library" (browse existing media) ditunda**, tidak
+   masuk scope T-024 manapun untuk saat ini.
+
+**T-024.1 selesai (2026-09-14, Elon Backend Engineer):** skeleton domain
+`media` — `apps/web/src/domains/media/types.ts` (`MediaItemRecord`),
+`repositories/media.repository.ts` (interface `IMediaRepository`,
+`create`/`findById`/`findByWorkspace`/`delete`, di-scope `workspaceId`+
+`userId`), `services/media.service.ts` (`MediaService`, murni orchestrate
+repository — **tanpa** upload fisik Storage/T-024.2 dan **tanpa**
+OutstandAdapter/T-024.3) + 6 unit test baru. Implementasi Prisma di
+`apps/web/src/lib/repositories/media/media.repository.ts` (pola sama
+`notificationRepository`, guard `workspaceId` di level repository, RLS via
+`withCurrentUser`). Shared types baru: `MediaType` enum
+(`packages/shared/src/enums.ts`, sesuai `domain-model.md` § BC-08 yang sudah
+lama mendefinisikan field ini) + helper `asMediaId()`
+(`packages/shared/src/ids.ts`). Entity domain sengaja diletakkan di
+`types.ts` (bukan file class terpisah di `entities/`) mengikuti pola anemic
+model yang konsisten di seluruh 8 domain lain di repo ini. Error handling
+pakai `NotFoundError`/`ConflictError` dari `@/lib/utils/errors` (bukan
+`MediaDomainError` scaffold domain ini yang memang tidak pernah dipakai
+domain manapun). Verifikasi: `bun run typecheck` 0 error, `bunx vitest run`
+338 pass/5 skip, tanpa regresi. Review arsitektur Ridwan Architecture
+Reviewer: **0 temuan** — domain tidak import Prisma/Supabase langsung, guard
+ownership `workspaceId` di level repository (anti-IDOR), shared types murni
+value object, tidak ada over-scoping ke T-024.2/T-024.3/T-024.4/T-024.5.
+
+**T-024.2 selesai (2026-09-14, Elon Backend Engineer):** upload ke Supabase
+Storage — port `IMediaStorageAdapter`
+(`apps/web/src/domains/media/adapters/media-storage-adapter.ts`, mirror pola
+`IAvatarStorageAdapter`), `ALLOWED_MEDIA_MIME_TYPES`/`MAX_MEDIA_FILE_SIZE_BYTES`
+(`apps/web/src/domains/media/validation.ts`), `UploadMediaUseCase`
+(`apps/web/src/domains/media/services/upload-media.use-case.ts`) sebagai use
+case terpisah (pola ADR-059/`SchedulePostsUseCase`, constructor
+`IMediaRepository` + `IMediaStorageAdapter`) — validasi mime type + ukuran
+file sebelum upload, upload ke storage, create record DB, cleanup best-effort
+(hapus file storage) kalau create DB gagal setelah upload sukses (rethrow
+error asli, bukan error cleanup). Implementasi Supabase:
+`SupabaseMediaStorageAdapter`
+(`apps/web/src/lib/adapters/media-storage/supabase-media-storage-adapter.ts`)
+— bucket `media` **Private** (beda dari `avatars` yang public), pakai
+**signed URL**, path `{workspaceId}/{year}/{month}/{uuid}.{ext}`. Migration
+`apps/web/prisma/migrations/20260914090000_t024_2_create_media_bucket/migration.sql`
+membuat bucket `media` (idempotent, pola sama bucket `avatars`) — **sudah
+dibuat tapi belum dijalankan**, perlu `bun run db:deploy` oleh King Rezi
+sebelum fitur ini bisa diuji end-to-end. Review Ridwan Architecture Reviewer:
+**0 temuan pelanggaran arsitektur** (verifikasi independen: `typecheck` 0
+error, 343 test pass/5 skip saat itu); satu catatan non-blocking: bucket
+awalnya dibuat tanpa `file_size_limit` (gap baseline dibanding `avatars` yang
+eksplisit 2MB), diteruskan sebagai rekomendasi butuh keputusan King Rezi.
+King Rezi dikonfirmasi via `AskUserQuestion`: **batas ukuran file maksimum
+media MVP = 50 MB (52.428.800 bytes)** — bukan keputusan arsitektural,
+murni parameter konfigurasi operasional (sama seperti batas 2MB avatar yang
+juga tidak punya ADR khusus), sehingga cukup dicatat di sini, tanpa ADR baru.
+Elon menerapkan keputusan itu sebagai follow-up: `file_size_limit` migration
+diisi 50MB, `MAX_MEDIA_FILE_SIZE_BYTES` di `validation.ts`, validasi ukuran
+file di `UploadMediaUseCase.execute` (menolak sebelum panggil storage
+adapter), 1 unit test baru. Verifikasi akhir: `bun run typecheck` 0 error,
+`bunx vitest run` **344 pass/5 skip**, tidak ada regresi.
+
+**T-024.3 selesai (2026-09-14, Elon Backend Engineer):** `OutstandAdapter`
+media upload working copy via `FakeOutstandAdapter` — kontrak
+`UploadMediaWorkingCopyInput`/`UploadMediaWorkingCopyResult` + method
+`uploadMediaWorkingCopy` ditambahkan ke `IOutstandAdapter`
+(`packages/shared/src/contracts/outstand-adapter.ts`). Implementasi Fake di
+`apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts` — instant
+always-success (pola ADR-059), `outstandMediaId` unik per panggilan
+(`crypto.randomUUID()`), `expiresAt` mock +24 jam, 2 unit test baru. 7 file
+test lain (mock `IOutstandAdapter`) ditambah stub field baru supaya tetap
+type-safe, tanpa mengubah behavior test yang sudah ada. **ADR-106 baru**
+dibuat: keputusan menggabungkan 3 langkah Outstand Media API (request upload
+URL → PUT → confirm) jadi **1 method ACL gabungan** (bukan split 2-method
+seperti `connectAccount`/`exchangeConnectCode` di ADR-105) — karena tidak
+ada redirect browser yang perlu diuji terpisah di sini, murni server-to-server
+berurutan. Detail lengkap:
+[`decisions/ADR-106-fake-media-upload-working-copy-1-method-gabungan.md`](../decisions/ADR-106-fake-media-upload-working-copy-1-method-gabungan.md).
+Scope SENGAJA tidak menyentuh `UploadMediaUseCase`/`MediaService`/UI —
+method baru murni kontrak+Fake, belum di-wire ke manapun. Review Ridwan
+Architecture Reviewer: **0 temuan pelanggaran** (verifikasi independen
+`typecheck` 0 error, **346 test pass/5 skip**, naik dari baseline 344/5).
+Ridwan mencatat 1 risiko forward-looking (non-blocking, dicatat di ADR-106
+sendiri): kalau Real adapter (T-025.5) nanti butuh retry granular per-langkah
+(mis. PUT gagal terpisah dari request URL), kontrak 1-method gabungan ini
+mungkin perlu di-split lagi lewat ADR baru.
+
+**T-024.4 selesai (2026-09-14, Prabowo Feature Engineer):** kontrol lampiran
+media di Draft Editor diaktifkan penuh + preview — full-stack (Server
+Action → service → repository → UI). Sebelum implementasi, King Rezi
+mengonfirmasi 2 keputusan baru lewat `AskUserQuestion`: (1) Draft Editor
+mendukung **multi-media (carousel)**, batas jumlah TERGANTUNG
+`ContentFormat` (`Post` maks 10, `Reel`/`Story`/`Pin` maks 1; kalau draft
+menargetkan beberapa akun dengan format berbeda sekaligus, batas efektif =
+**MINIMUM** dari batas semua format yang dipilih) — mengamandemen ADR-039 →
+**ADR-107 baru**
+([`decisions/ADR-107-batas-maksimum-jumlah-media-per-content-format.md`](../decisions/ADR-107-batas-maksimum-jumlah-media-per-content-format.md)).
+(2) "Pilih dari Media Library" (browse existing) tetap ditunda sesuai
+keputusan sebelumnya — ditampilkan sebagai link **disabled dengan tooltip
+"Coming soon"**, bukan disembunyikan total. Implementasi:
+`content-format-matrix.ts` (`MAX_MEDIA_COUNT_BY_FORMAT`,
+`maxMediaCountForFormat(s)`, `assertMediaCountWithinLimit`, ADR-107);
+`resolve-draft-media-ids.ts` baru (validasi ownership `mediaIds`,
+workspace-scoped, anti-IDOR, pola sama `resolveScheduleTargets`);
+`PublishingService.saveDraft`/`updateDraft` + `IPublishingRepository` +
+implementasi Prisma — kolom `media_ids` (dead sejak schema dibuat) di-wire
+penuh dengan partial-update semantics (`mediaIds: undefined` = kolom tidak
+disentuh, `[]` = kolom dikosongkan); `MediaService`/`IMediaRepository`
+method baru `findByIds`/`listByIds` (batch fetch, workspace-scoped); Server
+Action baru `uploadMediaAction`
+(`apps/web/src/app/(app)/components/draft-editor/actions.ts`) — pertama
+kalinya domain `media` (T-024.1–.3) benar-benar disambungkan ke UI;
+`saveDraftAction`/`updateDraftAction`/`getDraftAction`/`scheduleDraftAction`/
+`publishNowAction` diperluas dengan `mediaIds`. UI (`Modal.tsx`): blok Media
+disabled diganti custom dropzone (drag-drop + click-browse), grid preview
+thumbnail multi-media, tombol hapus-per-item (unlink dari draft, **bukan**
+delete permanent — itu tetap T-024.5), enforce batas count di client
+(mirror server, ADR-107). Review Ridwan Architecture Reviewer (2 putaran):
+putaran 1 — **1 temuan MEDIUM**: `resolveAndValidateMediaIds` dkk selalu
+meng-collapse "field tidak dikirim" jadi `[]` (`?? []`), sehingga partial-
+update semantics (`undefined` = kolom tidak disentuh) tidak pernah benar-
+benar tereksekusi dari caller yang ada — bukan bug aktif hari ini (satu-
+satunya caller, `Modal.tsx`, selalu kirim array konkret), tapi berisiko
+silent data loss untuk entry point masa depan (mis. Route Handler `/api/v1`
+yang tidak kirim `mediaIds`). Diperbaiki: bedakan `undefined` vs `[]` dari
+titik paling awal (`resolveAndValidateMediaIds`, resolusi di
+`scheduleDraftAction`/`publishNowAction`) sampai ke `PublishingService`, 12
+unit test baru menguji 3 skenario di 4 Server Action. Putaran 2 (verifikasi
+ulang): **0 temuan**, fix dikonfirmasi benar di level kode, `Modal.tsx`
+tidak berubah/tidak regresi. Verifikasi akhir: `typecheck` 0 error, `lint`
+0 error/warning, `vitest` **374 pass/5 skip** (naik dari baseline 362,
+346 sebelum T-024.4 mulai).
+
+**Gap verifikasi (KI-059, Resolved 2026-09-15):** verifikasi manual browser
+end-to-end (upload → save draft → reopen edit → preview restore → validasi
+batas count per format) sempat tercatat belum bisa dilakukan karena
+`DATABASE_URL` tidak terbaca di worktree — root cause ternyata dev server
+sempat start dari `cwd` repo `main` yang salah, bukan env var yang
+benar-benar hilang. Setelah dijalankan dengan `cwd` worktree yang benar,
+seluruh kriteria PASS (detail: `COMPLETE_TASK.md` 2026-09-15). T-024.4
+sekarang teruji penuh end-to-end, bukan hanya verifikasi kode.
+
+**T-024.5 selesai (2026-09-14, Prabowo Feature Engineer):** Delete Media +
+dialog konfirmasi Tier 2 (ADR-049) — subtask **terakhir** T-024, menutup
+task ini **5/5**. King Rezi mengonfirmasi lewat `AskUserQuestion`: tombol
+"hapus dari post ini" yang dibangun T-024.4 (unlink-only dari draft, tanpa
+dialog, tidak menghapus data) diganti **total** jadi aksi destruktif — klik
+→ dialog konfirmasi Tier 2 → kalau dikonfirmasi, hapus file Storage + record
+`MediaItem` DB secara **permanen**. Implementasi: `DeleteMediaUseCase` baru
+(`apps/web/src/domains/media/services/delete-media.use-case.ts`) — urutan
+operasi hapus record DB dulu (`MediaService.deleteMediaItem`, throws
+`NotFoundError` kalau tidak ada/bukan milik workspace, Storage tidak
+disentuh kalau ini gagal), baru best-effort hapus file Storage (swallow
+error — orphan file di Storage tanpa record dianggap harmless dibanding
+record menunjuk file hilang yang broken/user-visible); Server Action baru
+`deleteMediaAction` — wiring tipis ke use case, `workspaceId` dari session
+(anti-IDOR, bukan input client); UI `Modal.tsx` — `handleRemoveMedia` lama
+(unlink) dihapus total, diganti wiring **reuse komponen existing**
+`ConfirmActionDialog`/`useConfirmAction` (pola sama persis "Hapus Draft" di
+`DraftsList.tsx`, bukan dialog baru dari nol). Review Ridwan Architecture
+Reviewer: **0 temuan** — urutan operasi delete (DB dulu, Storage
+best-effort) diverifikasi benar di kode+test, anti-IDOR terjaga
+(workspace-scoped di level repository, konsisten pola T-024.1), reuse
+komponen Tier 2 genuine dikonfirmasi (bukan duplikat), tidak ada dead code
+path lama yang tersisa. Verifikasi akhir: `bun run typecheck` 0 error,
+`bun run --cwd apps/web lint` 0 error/warning, `bunx vitest run` **377
+pass/5 skip** (naik dari baseline 374, +3 test baru). Gap verifikasi manual
+browser yang sempat berlaku sama untuk T-024.5 sudah ditutup — lihat
+**KI-059 Resolved** di atas (cakupannya meliputi seluruh T-024, bukan cuma
+T-024.4).
+
+**Penutup T-024 (5/5 subtask, ✅ Done):** seluruh rangkaian ini dikerjakan
+lintas beberapa sesi — T-024.1 (domain `media` skeleton), T-024.2 (upload
+Supabase Storage), T-024.3 (`OutstandAdapter` media upload working copy via
+`FakeOutstandAdapter`, ADR-106), T-024.4 (aktifkan lampiran + preview di
+Draft Editor, ADR-107), dan T-024.5 (Delete Media Tier 2, di atas). Semua
+5 subtask lolos review Ridwan Architecture Reviewer; satu-satunya temuan
+sepanjang task ini adalah **1 temuan MEDIUM di T-024.4** (partial-update
+semantics `mediaIds`), sudah diperbaiki dan diverifikasi ulang (putaran 2:
+0 temuan). Verifikasi kode akhir keseluruhan: `typecheck`/`lint` bersih,
+`vitest` 377 pass/5 skip. Verifikasi manual browser end-to-end
+(**KI-059**) sudah **Resolved** (2026-09-15) — seluruh 6 kriteria PASS,
+T-024 sekarang teruji penuh end-to-end, bukan hanya verifikasi kode.
+Satu temuan baru di luar scope selama verifikasi ini: **KI-060** (Account
+Selector tidak ter-restore saat reopen edit draft, bukan regresi T-024).
+
+- [x] **T-024.1** Domain `media` skeleton (service + repository, model `MediaItem` sudah ada di schema)
+- [x] **T-024.2** Upload ke Supabase Storage (Supabase JS client **hanya** untuk Storage/Realtime — CRUD tetap Prisma)
+- [x] **T-024.3** `OutstandAdapter` media upload working copy (ADR-040) — via `FakeOutstandAdapter` (ADR-106), belum di-wire ke `UploadMediaUseCase`/UI
+- [x] **T-024.4** Aktifkan kontrol lampiran di Draft Editor + preview — dropzone **custom** (bukan native file input), sesuai keputusan `AskUserQuestion` di atas
+- [x] **T-024.5** Delete Media + dialog konfirmasi (ADR-049 Tier 2) — scope: upload file baru + preview + delete saja; "Pilih dari Media Library" (browse existing) ditunda
 
 ### T-038 · Toggle Fullscreen/Standard resmi di Draft Editor
 
@@ -91,24 +297,243 @@ ADR-065. Tidak ada perubahan kode di sesi ini — murni koreksi status.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done — KI-072 (Pinterest `board_id`) selesai diimplementasikan via ADR-118 (2026-09-25), 7/7 subtask tetap selesai |
 | **Domain**    | integration                                                  |
 | **ADR**       | ADR-005, ADR-019, ADR-040, ADR-059                           |
-| **Terkait**   | KI-003, KI-015 (`PROJECT_STATE.md` § Blockers)                |
+| **Terkait**   | KI-003, KI-015, KI-067 (sebagian resolved via ADR-112, sisa scope KI-070 Resolved), KI-068 (Resolved via ADR-113), KI-069 (Resolved via ADR-114), KI-070 (Resolved 2026-09-24 — flow multi-halaman Facebook Pages via ADR-115/ADR-116, UI Mark UI Engineer, 2 bug fix Elon Backend Engineer), KI-071 (Resolved via ADR-117, 2026-09-25), KI-072 (Resolved via ADR-118, 2026-09-25 — `listPinterestBoards` + `board_id` opsional per-post), ADR-112, ADR-113, ADR-114, ADR-115, ADR-116, ADR-117, ADR-118 (`PROJECT_STATE.md` § Known Issues) |
 | **Depends**   | T-028 ✅ (port + factory sudah ada) · kredensial Outstand asli |
 | **Baca dulu** | `05-architecture/integration-layer.md`                        |
 
 Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **sengaja throw** jika `OUTSTAND_API_KEY` terisi tapi kode real adapter belum ada — bukan silent fallback ke Fake.
 
-- [ ] **T-025.1** HTTP client + auth header + error mapping ke domain error (Anti-Corruption Layer)
-- [ ] **T-025.2** `schedulePost` real (menggantikan Fake pada jalur produksi)
-- [ ] **T-025.3** `publishNow` real (dipakai T-029)
-- [ ] **T-025.4** `connectAccount` redirect flow (dipakai T-013)
-- [ ] **T-025.5** Media API (dipakai T-024)
-- [ ] **T-025.6** Engagement fetch/reply (dipakai v0.4)
-- [ ] **T-025.7** Unit test adapter dengan HTTP mock — belum ada test adapter sama sekali
+- [x] **T-025.1** HTTP client + auth header + error mapping ke domain error (Anti-Corruption Layer)
+- [x] **T-025.2** `schedulePost` real (menggantikan Fake pada jalur produksi)
+- [x] **T-025.3** `publishNow` real (dipakai T-029)
+- [x] **T-025.4** `connectAccount` redirect flow (dipakai T-013) — flow **single-page** (Instagram/X/LinkedIn/Threads/TikTok/YouTube/Pinterest dkk) sudah selesai lewat **ADR-112** (`resolveConnectCallback` menggantikan `exchangeConnectCode`). Flow **multi-halaman Facebook Pages** (session-token, **KI-070, Resolved 2026-09-24**): desain UI **CONFIRMED King Rezi** (`templates/settings-connect-facebook-pages.html`), kontrak backend **ADR-115** (Proposed) dikoreksi wire-format-nya via **ADR-116** (Accepted), backend diimplementasikan penuh dan lolos review Ridwan Architecture Reviewer (0 temuan), lalu **UI dialog `FacebookPagesPickerDialog.tsx` diimplementasikan Mark UI Engineer** (4 state Loading/Default/Selected/Empty + Error, shadcn `Dialog`/`Checkbox`/`Item`/`ItemGroup`/`Empty`/`Alert`/`Skeleton`, row Page full-row click sesuai gate desain terverifikasi). **2 bug kritis ditemukan + diperbaiki Elon Backend Engineer** saat verifikasi end-to-end klik natural (detail lengkap di catatan "Update (2026-09-24, penutupan KI-070)" di bawah), lolos review Ridwan putaran final (0 temuan) dan **QA final Najwa PASS** (Connect + Reconnect Facebook via klik natural, regresi platform lain aman). Subtask ditutup selesai
+- [x] **T-025.5** Media API (dipakai T-024)
+- [x] **T-025.6** Engagement fetch/reply (dipakai v0.4) — redesain per-post via **ADR-113**, KI-068 Resolved (2026-09-24)
+- [x] **T-025.7** Unit test adapter dengan HTTP mock — belum ada test adapter sama sekali
 
 > Kredensial `OUTSTAND_API_KEY` / `OUTSTAND_WEBHOOK_SECRET` asli belum dimiliki King Rezi. Fake adapter (T-028) sengaja dibuat supaya rilis ini tidak berhenti menunggu.
+
+**Catatan (2026-09-23, 2 putaran Elon Backend Engineer):** Putaran 1
+implementasi best-effort tanpa dokumentasi resmi Outstand. King Rezi lalu
+setup MCP resmi Outstand (`mcp.outstand.so`), dari situ ditemukan dokumentasi
+REST API publik resmi (`https://api.outstand.so/v1/*/openapi.json`) — Elon
+mengoreksi seluruh implementasi berdasarkan spec resmi di putaran 2. Ridwan
+Architecture Reviewer audit independen: 0 temuan pelanggaran arsitektur,
+`bun run typecheck`/`lint`/`test` hijau (486 pass, 6 skip, 0 fail), ACL
+boundary terjaga.
+
+Selesai dan terverifikasi terhadap API resmi: HTTP client + auth + error
+mapping (T-025.1), `schedulePost`/`publishNow` real via `POST /v1/posts`
+(T-025.2/T-025.3), Media API 3-langkah upload→PUT→confirm (T-025.5), unit
+test HTTP mock 82 test (T-025.7), plus analytics (`fetchPostMetrics`/
+`fetchWorkspaceMetrics`, kontrak T-041) yang dikoreksi ke
+`GET /v1/posts/{id}/analytics` dan `GET /v1/social-accounts/{id}/metrics`,
+dan cancel/delete post (`DELETE /v1/posts/{id}`,
+`DELETE /v1/posts/{id}/remote`).
+
+**Update (2026-09-23, Elon Backend Engineer, lolos review Ridwan 0 temuan):**
+**KI-067 sebagian resolved** — flow **single-page** (Instagram/X/LinkedIn/
+Threads/TikTok/YouTube/Pinterest dkk) sudah diimplementasikan penuh lewat
+**ADR-112**: kontrak `exchangeConnectCode({code, state})` diganti
+`resolveConnectCallback(ConnectCallbackInput)` (`state`, `outstandAccountId`,
+`username`, `networkUniqueId?`) karena Outstand ternyata redirect balik
+langsung dengan query param akun, bukan `code` untuk di-exchange. Perubahan:
+`packages/shared/src/contracts/outstand-adapter.ts`,
+`fake-outstand-adapter.ts`/`real-outstand-adapter.ts` (+test),
+`connect-state.ts`, Route Handler
+`apps/web/src/app/api/integrations/outstand/callback/route.ts`,
+`workspace.service.ts`/`workspace.repository.ts` (+test), `env.ts`, dan 8
+file test domain lain (rename stub mock). Typecheck bersih, 474 test
+passed/6 skipped (full suite), Ridwan re-verifikasi 129 test terkait
+langsung — 0 temuan arsitektur. T-013/T-015 **tidak perlu rework** (ADR-112
+§6 — perubahan murni di boundary parameter, bukan alur bisnis).
+
+**Update (2026-09-24, Elon Backend Engineer, lolos review Ridwan 0 temuan):**
+**KI-068 Resolved** — kontrak `fetchComments`/`replyToComment` diredesain
+per-post sesuai API resmi Outstand lewat **ADR-113** (amandemen ADR-110):
+`fetchComments` sekarang menerima `outstandPostId`/`platform`/
+`accountUsername` (tanpa cursor, `FetchCommentsResult.nextCursor` dihapus
+total); `replyToComment` menerima `outstandPostId` (wajib) +
+`parentOutstandCommentId` (opsional, threading). `SyncCommentsUseCase`
+(T-051, JOB-03) diredesain loop per-post lewat port lokal
+`PublishingPostsPort` (cross-domain via composition root, bukan import file
+internal domain lain — dikonfirmasi bersih oleh Ridwan). Real adapter
+diimplementasikan penuh (menggantikan throw gap sebelumnya), Fake adapter
+disesuaikan (tetap instant/deterministic, ADR-059). Typecheck bersih, lint
+bersih, Vitest 480 pass/6 skip/0 fail. Migration baru
+`20260924090000_ki068_add_handle_to_account_owner_lookup` **belum
+di-deploy** (`bun run db:deploy` pending King Rezi, lihat `PROJECT_STATE.md`
+§ Blockers). Gap baru ditemukan (bukan bug, keputusan scope King Rezi):
+endpoint reply Outstand menerima `account_username`/`platform_post_id`
+opsional untuk disambiguasi post yang publish ke >1 akun di network sama —
+signature `replyToComment` yang dikonfirmasi tidak membawa field itu,
+dicatat **KI-071** (baru, tidak memblokir penutupan KI-068). **Update (2026-09-25):** KI-071 Resolved via **ADR-117** (`replyToComment` wajib `accountUsername`).
+
+**Update (2026-09-24, Elon Backend Engineer, lolos review Ridwan 0
+temuan):** **KI-069 Resolved** — `OutstandPostTargetInput` ditambah field
+wajib `platform: SocialPlatform` lewat **ADR-114**, diteruskan dari data
+yang sudah ada di scope caller (`schedule-posts.use-case.ts`,
+`publish-now.use-case.ts`, `retry-failed-target.use-case.ts`).
+`RealOutstandAdapter` menambah fungsi baru `computePlatformOverride`
+(memetakan `contentFormat` ke shape asli Outstand per network — Instagram
+Story → `publishAsStory`, Facebook Story/Reel → `publishAsStory`/
+`publishAsReel`, edge case konflik same-network `contentFormat` berbeda
+ditangani first-match-wins + `console.warn`). Typecheck/lint bersih, Vitest
+487 pass/6 skip/0 fail (full suite). **Pinterest `board_id` sengaja belum
+diimplementasikan** (domain/UI tidak pernah mengumpulkannya) — key
+`pinterest` tetap tidak dikirim ke Outstand, dicatat **KI-072** (baru).
+**Update (2026-09-25):** rancangan UI board-picker sudah selesai di Claude
+Design (scope per-post, tidak butuh schema Prisma baru) — lihat catatan
+lengkap di bawah dan di `PROJECT_STATE.md` § KI-072. Implementasi kode
+masih pending.
+
+**Update (2026-09-24, Elon Backend Engineer, lolos review Ridwan 0
+temuan):** **Backend Facebook Pages (KI-070) selesai diimplementasikan** —
+kontrak ADR-115 diverifikasi wire-formatnya lewat WebFetch dokumentasi
+resmi Outstand, ditemukan 4 dari 4 asumsi ADR-115 salah (query param
+callback `session` bukan `session_token`; path finalize
+`POST /v1/social-accounts/pending/{sessionToken}/finalize`, ada suffix
+`/finalize`; response GET dibungkus `data.availablePages[]` field
+`id`/`profilePictureUrl`; response POST `connectedAccounts[]` field
+`id`/`username`/`nickname`) — dicatat sebagai amandemen **ADR-116**
+(Accepted). Kontrak `packages/shared` tidak berubah, koreksi murni mapping
+wire↔domain di `real-outstand-adapter.ts`. Perubahan: kontrak
+`outstand-adapter.ts`, `real-outstand-adapter.ts`, `fake-outstand-adapter.ts`
+(3 fixture Page), `workspace.service.ts` (2 method baru:
+`listFacebookPendingPages`/`confirmFacebookPagesConnection`, RBAC reuse,
+skip-bukan-gagal per Page, JOB-03 seeding), Route Handler callback
+(percabangan baca `session`), 2 Server Action baru di
+`connected-accounts/actions.ts`, plus test baru + stub minimal di 10 file
+test lain. Typecheck/lint bersih, Vitest 498 pass/6 skip/0 fail. Ridwan
+Architecture Reviewer: **0 temuan** (satu catatan non-blocking — strip
+query param `session` dari address bar, didelegasikan ke Mark UI Engineer
+saat implementasi dialog). **Update lanjutan di bawah** — UI dialog
+Facebook Pages Picker (Mark UI Engineer) sudah dikerjakan setelahnya,
+subtask T-025.4 ditutup selesai.
+
+**Update (2026-09-24, penutupan KI-070) — UI dialog + 2 bug fix + QA final
+PASS, KI-070 Resolved:** Mark UI Engineer mengimplementasikan
+`FacebookPagesPickerDialog.tsx` (4 state Loading/Default/Selected/Empty +
+Error) di `apps/web/src/app/(app)/settings/connected-accounts/`, wire ke
+`listFacebookPendingPagesAction`/`confirmFacebookPagesConnectionAction`
+yang sudah ada, row Page full-row click sesuai gate desain (diverifikasi
+langsung terhadap Claude Design, cocok). QA Najwa putaran 1 menemukan
+`FakeOutstandAdapter.connectAccount()` belum bercabang untuk Facebook
+(diperbaiki Elon) — lalu ditemukan **Bug #1**: klik natural "Connect
+Account → Facebook" gagal 405 (browser POST ke Route Handler
+`GET`-only di `apps/web/src/app/api/integrations/outstand/callback/route.ts`,
+padahal navigasi URL manual berhasil) — fix permanen: alias
+`export const POST = GET`. Retest mengungkap **Bug #2**: dialog terbuka
+tapi macet selamanya di Loading (`listFacebookPendingPagesAction` tidak
+pernah terpanggil) — root cause: `FakeOutstandAdapter` Facebook loopback
+ke domain kita sendiri (bukan domain eksternal seperti platform lain),
+sehingga redirect chain Server Action → Route Handler → balik ke halaman
+diperlakukan Next.js App Router sebagai satu transisi client-side yang
+membuat action-dispatch queue macet — **murni artefak Fake-mode testing,
+tidak terjadi di produksi** (Real adapter selalu redirect ke domain
+eksternal `outstand.so` di hop pertama). Fix: `initiateConnectAccountAction`/
+`initiateReconnectAccountAction`
+(`connected-accounts/actions.ts`) khusus `platform === Facebook` tidak lagi
+`redirect()` di server — return `{ redirectUrl }`, client
+(`ConnectPlatformMenu.tsx`, `ReconnectButton` di
+`ConnectedAccountsList.tsx`, `FacebookPagesPickerDialog.tsx`) melakukan
+`window.location.href` (hard navigation); platform lain tidak berubah.
+Test baru `route.test.ts` (4 test) + `actions.test.ts` (4 test), total
+naik ke **509 passed/6 skipped**. Ridwan Architecture Reviewer putaran
+final: **0 temuan** (rule #5 AGENTS.md tidak dilanggar — perubahan murni
+"siapa memicu navigasi browser", bukan business logic baru). **Najwa QA
+final: PASS** — Connect Facebook via klik natural, **Reconnect Facebook**
+(jalur baru, berhasil teknis), regresi platform lain (Instagram/X) dan
+screen lain aman. **Catatan non-blocking (keputusan eksplisit King
+Rezi):** Reconnect Facebook Page tunggal selalu **CREATE**, bukan
+**UPDATE** (sudah di luar scope sejak ADR-115 poin 8) — badge "Perlu
+Reconnect" di akun asal tidak hilang setelah reconnect. Didokumentasikan
+sebagai keterbatasan, **tidak** ada task susulan yang dibuat untuk ini
+sekarang.
+
+**Update (2026-09-25, Elon Backend Engineer, hardening code-review PR #133
+— T-025 tetap `✅ Done`, bukan reopen):** King Rezi meminta implementasi
+rencana perbaikan dari code-review PR #133. Elon Backend Engineer
+menerapkan perbaikan; Ridwan Architecture Reviewer: **0 temuan**; Vitest
+**130** test terkait lulus; typecheck bersih. Tidak ada commit/push di
+sesi ini. Perbaikan (follow-up hardening di atas T-025 yang sudah
+selesai, bukan membuka ulang seluruh task):
+
+1. **CRITICAL** — migration
+   `20260925094500_restore_webhook_lookup_privileges`: `REVOKE` dari
+   `PUBLIC` + `GRANT` ke `app_runtime` pada fungsi SECURITY DEFINER
+   webhook lookup (regresi setelah `DROP`/`CREATE` di migrasi KI-068).
+2. Facebook session token tidak lagi di URL halaman — cookie httpOnly
+   `outstandFacebookSession_<nonce>`; query hanya
+   `connectFacebook=1&connectFacebookState` (hardening implementasi
+   ADR-115/ADR-116, tanpa ADR baru).
+3. Media di-wire ke create-post lewat containers; Story tanpa caption;
+   campuran Story + feed ber-caption throw keras.
+4. `deletePost` dengan `accountIds` throw; `RetryFailedTargetUseCase`
+   skip wipe bila sibling target masih live.
+5. Upsert inbox engagement backfill `postId` pada update.
+6. Tombol Facebook Reconnect disembunyikan (belum ada jalur UPDATE).
+7. Presigned upload URL di-redact dari pesan error.
+8. IG Reel `coverImageUrl` → `reelCoverUrl`; HTTP 429 retryable.
+9. Sync comments: hanya published, limit 50, try/catch per-post.
+10. Test CSRF untuk aksi list/confirm Facebook; factory trim API key.
+
+**KI-071** sudah **Resolved via ADR-117 (2026-09-25)** — lihat catatan
+update KI-068 / T-025.6 di atas. **KI-072** tetap **Open** (gap yang
+diterima King Rezi, bukan bug yang diperbaiki di putaran hardening PR #133).
+
+**Update (2026-09-25, Gibran Project Manager) — KI-072 rancangan UI
+selesai, implementasi kode masih pending:** King Rezi mengonfirmasi 2
+keputusan scope lewat `AskUserQuestion` — (1) board Pinterest dipilih
+**per post** (di Draft Editor saja), bukan per akun/Connected Accounts,
+bukan hybrid, sehingga implementasi nanti **tidak butuh schema Prisma
+baru**; (2) rancangan board-picker sudah selesai di Claude Design (project
+"Social Media Management"): field "Board" Pinterest di
+`templates/draft-editor.html` diganti dari free-text `<input>` jadi native
+`<select class="select">` bergaya sama seperti "Filter Akun" di
+`components/forms.html` (opsi mock: "Pilih board…"/"Resep &
+Minuman"/"Interior Kedai"/"Promo Musiman"), disamakan juga di showcase
+`components/forms.html` dan 2 occurrence markup `.pin-fields` di
+`templates/app-prototype/AppPrototype.dc.html`. Status KI-072 **tetap
+Open** — yang selesai baru rancangan UI; implementasi kode (fetch board
+list dari Outstand `list_pinterest_boards` saat compose + kirim `board_id`
+terpilih di request publish Pinterest, domain/UI `apps/web`) masih task
+terpisah yang belum dikerjakan.
+
+**Update (2026-09-25, Elon Backend Engineer + Mark UI Engineer, lolos
+review Ridwan 0 temuan) — KI-072 Resolved via ADR-118:** kontrak
+`IOutstandAdapter` ditambah `listPinterestBoards(outstandAccountId):
+Promise<PinterestBoard[]>` (type `PinterestBoard{id,name}`).
+`RealOutstandAdapter.computePlatformOverride` sekarang mengirim
+`{board_id, title?, link?}` ke Outstand kalau `platformOptions.boardId`
+terisi (kosong tetap `null`, tidak regresi); wire-format diverifikasi via
+WebFetch OpenAPI resmi Outstand (`api.outstand.so/v1/posts/openapi.json`,
+`api.outstand.so/v1/pinterest/openapi.json`) — endpoint list board
+`GET /v1/pinterest/accounts/{id}/boards`. `FakeOutstandAdapter` mock 3
+board tetap (ADR-059), selaras Claude Design. `WorkspaceService
+.listPinterestBoards` anti-IDOR (validasi `connectedAccountId` milik
+workspace + platform Pinterest) sebelum delegasi adapter, semua member
+aktif boleh akses. Server Action baru `listPinterestBoardsAction`. UI
+`Modal.tsx`: dropdown `<Select>` shadcn 3 state (loading/error+retry/sukses),
+state `boardIdByAccount` **per-akun** (bukan global — fix dari bug QA
+putaran 1: satu state global membuat pilihan board 1 akun menimpa akun
+Pinterest lain saat 2+ dicentang bersamaan), urutan field final Pin Title →
+Destination Link → Board sesuai Claude Design. Typecheck/lint bersih,
+Vitest 547 pass/6 skip/0 fail, Ridwan Architecture Reviewer 0 temuan.
+**Catatan non-blocking (dikonfirmasi King Rezi via `AskUserQuestion`):**
+retest visual browser skenario 2+ akun Pinterest dipilih bersamaan (pilih
+board berbeda per akun) belum sempat dilakukan — blocker environment lokal
+(`.env.local` berisi `OUTSTAND_API_KEY` asli saat sesi QA, dev server
+otomatis pakai `RealOutstandAdapter` yang menolak akun Pinterest palsu
+`HTTP 400`), bukan bug kode. King Rezi mengonfirmasi lanjut berdasarkan
+verifikasi kode (typecheck/lint/test/architecture review) tanpa menunggu
+retest tersebut. Detail lengkap: `decisions/ADR-118-listpinterestboards-board-id-per-post-ki072.md`.
+
+Detail teknis lengkap ada di docstring
+`apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts`.
 
 ### T-026 · Webhook handler Outstand
 
@@ -116,12 +541,26 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 | ------------- | ------------------------------------------------------------------ |
 | **Status**    | ✅ Done                                                            |
 | **Domain**    | integration                                                        |
-| **ADR**       | ADR-020, ADR-040, ADR-099                                          |
-| **Terkait**   | KI-003 (via T-025), KI-015                                         |
+| **ADR**       | ADR-020, ADR-040, ADR-099, ADR-108, ADR-109                        |
+| **Terkait**   | KI-003 (via T-025), KI-015, KI-063 (baru, `publishedAt` tidak diisi) |
 | **Depends**   | T-025                                                              |
 | **Baca dulu** | `05-architecture/integration-layer.md`                              |
 
 `/api/webhooks/outstand` masih return 501. Model `OutstandWebhookEvent` sudah ada di schema, `OUTSTAND_WEBHOOK_SECRET` sudah didefinisikan di `src/lib/env.ts` tapi belum dipakai.
+
+**Catatan tambahan (2026-09-17, T-027):** 2 gap pre-existing task ini
+diperbaiki sebagai bagian implementasi T-027 (bukan reopen status task ini)
+— `resolvePostOutcome` di-extract dari method private jadi public supaya
+dipakai bersama job baru T-027.5 (**ADR-108**: kontrak `fetchPostOutcome`
+diredesain menambah `expectedOutstandAccountIds`; **ADR-109**: method baru
+`markPostPublished` melengkapi transisi status level-post yang sebelumnya
+hilang). Prediksi di catatan 2026-09-07 di bawah ("saat T-027 dikerjakan,
+webhook processing ini semestinya dipindah ke enqueue+async") **belum
+terealisasi** — pemrosesan webhook `/api/webhooks/outstand` tetap inline
+sinkron; T-027 hanya menambah job type terpisah (**JOB-07**) untuk resolve
+outcome post terjadwal, bukan mengubah cara webhook ini diproses. Migrasi
+webhook ke enqueue+async tetap technical debt terbuka, belum ada task
+formal untuk itu.
 
 - [x] **T-026.1** Verifikasi HMAC-SHA256 signature sebelum setiap pemrosesan
 - [x] **T-026.2** Durable-before-ACK — persist event dulu, baru ACK, baru proses
@@ -138,20 +577,38 @@ Port `IOutstandAdapter` dan factory `getOutstandAdapter()` sudah ada. Factory **
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done (5/5 subtask)                                          |
 | **Domain**    | platform                                                     |
-| **ADR**       | ADR-022, ADR-028, ADR-032, ADR-040                           |
-| **Terkait**   | KI-003 (via T-025), KI-015, KI-025 (Railway belum pernah dibuat, `PROJECT_STATE.md` § Blockers) |
+| **ADR**       | ADR-022, ADR-028, ADR-032, ADR-040, ADR-108, ADR-109         |
+| **Terkait**   | KI-003 (via T-025), KI-015, KI-025 (Railway belum pernah dibuat — job runner ini baru config-as-code, provisioning aktual masih blocked), KI-062 (baru, formula backoff `background-jobs.md` self-contradictory), KI-063 (baru, `PublishingPost.publishedAt` tidak diisi) |
 | **Depends**   | T-025                                                        |
 | **Baca dulu** | `05-architecture/background-jobs.md` · `06-engineering/deployment-infrastructure.md` |
 
-`/api/jobs/run` masih return 501. Model `BackgroundJob` ada di schema tapi **nol referensi** di kode aplikasi. Tidak ada cron config apapun di repo.
+**Selesai (2026-09-17, Elon Backend Engineer → Ridwan Architecture Reviewer 2 putaran → Najwa QA Engineer):** seluruh 5/5 subtask tuntas.
 
-- [ ] **T-027.1** Job runner: klaim job dari `BackgroundJob` (locking aman untuk eksekusi paralel)
-- [ ] **T-027.2** Autentikasi endpoint via `JOB_SECRET` (sudah ada di env, belum dipakai)
-- [ ] **T-027.3** Retry internal dengan backoff + dead-letter state
-- [ ] **T-027.4** Konfigurasi Railway Cron (service cron terpisah dari web)
-- [ ] **T-027.5** Job handler: publish scheduled post saat waktunya tiba
+- **T-027.1** Job runner generik — `apps/web/src/lib/jobs/{background-job-store,backoff,job-runner,job-scheduler}.ts`: klaim job via `SELECT FOR UPDATE SKIP LOCKED` (pola sama ADR-099/T-026), registry handler per job type (bukan hardcode 1 tipe) sehingga job type baru bisa ditambah tanpa mengubah runner.
+- **T-027.2** Autentikasi `X-Job-Secret` di `POST /api/jobs/run` — memakai `JOB_SECRET` yang sudah ada di env sejak awal tapi sebelumnya nol referensi di kode.
+- **T-027.3** Retry backoff 5m/15m/60m + dead-letter (status `failed` di tabel `BackgroundJob` yang sama, bukan tabel terpisah).
+- **T-027.4** Railway Cron config-as-code — `railway.json` (service `web`), `railway.cron.json` (service `cron`), `scripts/trigger-job-run.ts`. **Provisioning aktual Railway project untuk cron masih blocked (KI-025)** — ini baru config-as-code di repo, belum ada service `cron` sungguhan berjalan; env `JOB_RUNNER_URL`/`JOB_SECRET` di service tersebut masih perlu di-set manual di dashboard Railway setelah project dibuat.
+- **T-027.5** Job handler `ResolveScheduledPostOutcomeJobHandler` (`apps/web/src/domains/publishing/services/resolve-scheduled-post-outcome-job-handler.ts`) — dipicu saat post terjadwal (`SchedulePostsUseCase`) sudah due, meng-enqueue job type baru `publishing.scheduled_post.resolve_outcome` (**JOB-07**, sudah ditambahkan ke `background-jobs.md` § Job Type Registry) lewat port baru `IJobScheduler` (payload `{ outstandPostId }`), lalu reuse `OutstandWebhookProcessor.resolvePostOutcome` (di-extract dari method private T-026 jadi public, sekarang dipakai bersama webhook DAN job) untuk resolve outcome per target.
+
+**2 keputusan desain material selama implementasi, dicatat sebagai ADR baru:**
+
+1. **ADR-108** — Redesain kontrak `IOutstandAdapter.fetchPostOutcome` dari `fetchPostOutcome(outstandPostId)` menjadi `fetchPostOutcome(outstandPostId, expectedOutstandAccountIds: string[])`. Ditemukan Najwa QA Engineer: post terjadwal tidak pernah selesai resolve outcome-nya karena `FakeOutstandAdapter` (ADR-059) sebelumnya mengandalkan `Map` in-memory level-modul untuk "mengingat" target akun dari panggilan `schedulePost`/`publishNow` sebelumnya — valid untuk `PublishNowUseCase` (kedua panggilan dalam 1 request yang sama), tapi RUSAK untuk T-027.5 karena `schedulePost` dipanggil dari Server Action sedangkan `fetchPostOutcome` (lewat job) dipanggil belakangan dari Route Handler `/api/jobs/run` TERPISAH — Next.js membundle keduanya jadi module chunk terpisah dengan instance `Map` sendiri-sendiri, dikonfirmasi Elon Backend Engineer nyata di production build (`.next/server`), bukan cuma artefak dev/Turbopack. King Rezi memilih root-cause fix (ubah kontrak, bukan band-aid `globalThis`) lewat `AskUserQuestion`. `FakeOutstandAdapter` sekarang pure function tanpa state sama sekali (`Map`/`rememberTargets`/`MAX_REMEMBERED_POSTS` dihapus total, `deletePost` jadi no-op murni). 3 call site diupdate (`PublishNowUseCase`, `RetryFailedTargetUseCase`, `OutstandWebhookProcessor.resolvePostOutcome`); domain `analytics` dikonfirmasi tidak terdampak. Detail: `decisions/ADR-108-redesain-fetchpostoutcome-expected-account-ids.md`.
+2. **ADR-109** — Method baru `IPublishingRepository.markPostPublished`. Gap pre-existing sejak T-026 (✅ Done) baru kentara sekarang: `PublishingPost.status` tidak pernah ditransisikan ke `Published` walau semua target sudah resolved sukses (hanya `PublishingPostTarget.status` yang ter-update) — post stuck selamanya di `Scheduled` secara post-level. Fix: `markPostPublished` (simetris `markPostFailed`, idempoten via `updateMany` guard status `Scheduled`, tidak throw kalau 0 baris) dipanggil di `OutstandWebhookProcessor.resolvePostOutcome` persis saat semua target sudah resolved (tidak ada `pending` lagi) DAN tidak semua `failed` — konsisten aturan baseline `integration-layer.md` ("post.error hanya kalau SEMUA target gagal; tetap Published kalau minimal satu sukses"). Ini bug-fix yang melengkapi T-026 (bukan reopen status T-026, cukup catatan tambahan ini). `PublishNowUseCase` tidak disentuh (sudah punya jalur `Published` sendiri di muka). Detail: `decisions/ADR-109-markpostpublished-post-level-status-transition.md`.
+
+**Gap ditemukan, sengaja tidak diperbaiki sekarang (dicatat sebagai Known Issue baru):**
+- **KI-062** — `background-jobs.md` self-contradictory soal formula backoff: tabel bilang 5m/15m/60m, formula tertulis di dokumen yang sama (`5 * 2^(attempts-1)`) menghasilkan 5/10/20 menit. Implementasi kode memakai angka tabel (5/15/60), benar secara fungsional — dokumentasi baseline yang perlu dikoreksi, bukan kode.
+- **KI-063** — kolom `PublishingPost.publishedAt` tidak diisi oleh `markPostPublished` maupun `markPostFailed` (pola lama, bukan regresi baru dari T-027). UI sudah punya fallback (`item.publishedAt ?? item.updatedAt`) jadi tidak berdampak visual, tapi data historis `publishedAt` kosong.
+- **KI-025 tetap terbuka** — Railway project belum pernah dibuat, jadi `railway.json`/`railway.cron.json` baru config-as-code, belum ada service `cron` sungguhan.
+
+**Verifikasi akhir:** `bunx tsc --noEmit` bersih, `eslint .` bersih, `prettier --check` bersih, `vitest run` **396 pass / 5 skip**. Review arsitektur Ridwan Architecture Reviewer (2 putaran — putaran 1: 1 temuan bug correctness, sudah diperbaiki; putaran 2: fokus 2 perubahan besar tambahan ADR-108/ADR-109, 0 temuan; juga merekomendasikan JOB-07 ditambahkan ke `background-jobs.md`, sudah ditindaklanjuti). QA end-to-end Najwa QA Engineer (browser real + `curl` manual simulasi Railway Cron): golden path Schedule → job runner → History Published, diulang 2x konsisten; regresi Publish Now dan Retry manual (T-034.4) keduanya PASS.
+
+- [x] **T-027.1** Job runner: klaim job dari `BackgroundJob` (locking aman untuk eksekusi paralel)
+- [x] **T-027.2** Autentikasi endpoint via `JOB_SECRET` (sudah ada di env, belum dipakai)
+- [x] **T-027.3** Retry internal dengan backoff + dead-letter state
+- [x] **T-027.4** Konfigurasi Railway Cron (service cron terpisah dari web) — config-as-code selesai, provisioning aktual masih blocked KI-025
+- [x] **T-027.5** Job handler: publish scheduled post saat waktunya tiba
 
 ---
 
@@ -296,6 +753,8 @@ Data kalender **tidak** realtime — pakai manual refresh (ADR-023 membatasi Rea
 **Selesai T-033.5/.6 (2026-08-27, branch `feature/calendar-design-system`):** navigasi periode + filter di atas grid diimplementasikan nyata. **T-033.5**: `CalendarToolbar.tsx` (baru, client component) — tombol Today/‹/›, label periode (format lintas-bulan untuk Week), toggle Minggu/Bulan, semua Astryx (`Button`, `IconButton`); util `addMonths(date, months)` ditambah ke `calendar-grid-shared.ts` untuk navigasi Month. **T-033.6**: filter status (dropdown 7 opsi: All Posts + 6 `ContentStatus`, reuse `CONTENT_STATUS_LABEL`) dan filter Channels (akun asli workspace via `WorkspaceService.listConnectedAccounts`, cross-domain lewat public API `@/domains/workspace`) — filter dieksekusi **server-side** lewat query Prisma (bukan client-side), state via URL query param `?status=&accounts=` (comma-separated), konsisten dengan pola `?view=&date=` dari T-033.2. `CalendarViewState` (`parse-calendar-view-state.ts`) diperluas: field `statuses: ContentStatus[]`, `connectedAccountIds: ConnectedAccountId[]`, drop token invalid diam-diam saat parsing (+ test baru, semua pass). `useCalendarPeriodState.ts` `setPeriod` diperluas untuk update `statuses`/`connectedAccountIds` di URL (dihapus dari URL kalau array kosong). `page.tsx` meneruskan `statuses`/`connectedAccountIds` ke `PublishingService.listCalendarPosts`; `CalendarScreen.tsx` render `CalendarToolbar` di atas grid, terima prop baru `accounts: ConnectedAccountRecord[]`. Review arsitektur Ridwan — tanpa temuan (entry point bersih, domain logic tanpa Prisma/Supabase, cross-domain lewat public API, shared types konsisten). QA Najwa — semua golden path pass (navigasi lintas-bulan, toggle Minggu/Bulan mempertahankan anchor date, filter status+akun kombinasi, reload URL dengan query filter ter-restore benar, regresi ke Queue/Drafts/History bersih, dark mode oke); satu gap kecil ditemukan & ditutup di sesi yang sama: Month view (`CalendarMonthGrid.tsx`) belum punya `EmptyState` saat filter menghasilkan 0 post (beda dari Week view yang sudah punya sejak T-033.3) — sudah ditambahkan (`EmptyState` "Belum ada post di bulan ini"). Diverifikasi: `bun run typecheck`/`lint`/`test` (root) bersih, 209 test pass/3 skipped. Sisa terbuka: T-033.7 (manual refresh), T-033.8 (Popover klik item).
 
 **Selesai T-033.8 (2026-08-27, branch `feature/calendar-design-system`):** klik kartu post di grid Week/Month sekarang membuka Popover ringkasan (`CalendarPostPopover.tsx`, baru, client component) — Astryx `Popover` (bukan HoverCard, ADR-090/ADR-091), controlled `isOpen` lokal per kartu, exclusive (kartu lain/klik luar/Escape menutup). Isi: header account+platform, avatar+status chip, caption, media placeholder (domain belum punya field media), 4 tile metrik untuk status Published (Views→`impressions`, Reach→`reach`, Replies→`comments`, Eng. Rate→`engagementRate`, format "–" kalau belum ada data), link "Go to post" (kalau `platformPostUrl` ada), CTA "Buka Draft Editor" (reuse `useDraftEditor().openEditDraft`, pola sama Queue). `CalendarWeekGrid.tsx`/`CalendarMonthGrid.tsx` — TODO/no-op onClick sebelumnya diganti wrap `ClickableCard` dengan `CalendarPostPopover`. Data-wiring: interface baru `CalendarItemTargetRecord extends QueueItemTargetRecord` + field `platformPostUrl: string | null` di `publishing.repository.ts` (dari kolom Prisma `PublishingPostTarget.platformPostUrl` yang sudah ada tapi belum pernah di-expose ke domain — bukan migrasi baru), dipetakan di implementasi Prisma (`mapCalendarItem`). `page.tsx` composition root sekarang instansiasi `AnalyticsService` dan pass sebagai `PostMetricsPort` ke `PublishingService` (sebelumnya tanpa argumen kedua, jadi `metrics` selalu kosong) — supaya metrik Published benar-benar terisi. `calendar-grid-shared.ts` — `CalendarCardEntry` diperluas `connectedAccountId`, `metrics: PostMetricsRecord | null` (dicocokkan per `connectedAccountId` target), `platformPostUrl: string | null`. Review arsitektur Ridwan — tanpa temuan. QA Najwa — tanpa bug fungsional (satu catatan inconclusive soal emulasi mobile viewport di tooling browser pane, bukan bug aplikasi); QA manual gabungan (main agent + Najwa) mencakup Week & Month view, popover Scheduled & Published, exclusivity/dismiss, regresi toolbar, regresi Queue & Drafts (tetap langsung buka Draft Editor tanpa Popover — scope Popover khusus Calendar), dark mode, multi-target post (data tidak tertukar antar kartu). Diverifikasi: `bun run typecheck`/`lint`/`test` (root) bersih, 209 test pass/3 skipped (tidak ada test baru — pola project ini tidak unit-test file di folder "components" app-router, verifikasi lewat browser preview manual, konsisten T-033.3–.6). Sisa terbuka: **T-033.7** (manual refresh) — **blocked**, tidak ada rancangan sama sekali di Claude Design, menunggu King Rezi.
+
+**Catatan (2026-09-18, ditemukan review T-043):** kontrak `PostMetricsPort` (arah dependency `publishing→analytics`) yang diperkenalkan di sini ternyata tidak pernah dicantumkan di `application-layer.md` § Peta Dependency Antar Domain — gap dokumentasi lama, baru ketahuan saat review arsitektur T-043 (`tasks/v03-analytics-mvp.md`). Dicatat **KI-064** (`PROJECT_STATE.md`), belum ditambal.
 
 **Polishing UI selesai (2026-08-27, branch `feature/calendar-design-system`, di atas T-033.1–.6/.8 yang sudah `[x]` — bukan subtask baru, tidak mengubah checklist di atas):**
 
@@ -1070,6 +1529,41 @@ Sudah dicatat sebagai chip task terpisah oleh Prabowo Feature Engineer
 (`task_6b93cfb5`) — menunggu King Rezi memilihnya sendiri, tidak dibuatkan
 task/subtask formal baru di sini.
 
+### T-106 · Hapus `FakeOutstandAdapter` dari jalur produksi
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ✅ Done (2026-09-25) — T-106.5 menutup sisa data Fake/mock    |
+| **Domain**    | integration                                                  |
+| **ADR**       | ADR-119 (amandemen ADR-059)                                  |
+| **Terkait**   | T-025 ✅ (real adapter sudah ada) · T-028 (factory + Fake awal) |
+| **Depends**   | T-025 ✅ · `OUTSTAND_API_KEY` terisi di setiap proses yang menjalankan app (lokal, Railway staging, cron) |
+| **Baca dulu** | `decisions/ADR-119-hapus-fake-outstand-adapter-wajib-api-key.md` · `decisions/ADR-059-fake-outstandadapter-persistensi-nyata-schedule-tanpa-kredensial-outstand-asli.md` · `apps/web/src/lib/adapters/outstand/index.ts` · `AGENTS.md` aturan 19 |
+
+King Rezi meminta (2026-09-25) `FakeOutstandAdapter` dihilangkan dari jalur
+produksi. Sebelumnya `getOutstandAdapter()` fallback ke Fake saat
+`OUTSTAND_API_KEY` kosong (ADR-059); Real adapter (T-025) berdiri di
+sampingnya tanpa menggantikannya.
+
+**Implementasi (2026-09-25, commit `0ce9371`):** ADR-119 Accepted + ADR-059
+diamendemen. Factory `getOutstandAdapter()` hanya mengembalikan
+`RealOutstandAdapter`; key kosong/whitespace → throw jelas (sebut nama env
+var). File `fake-outstand-adapter.ts` dihapus dari jalur produksi. Tes unit
+memakai double lokal di file tes (bukan singleton Fake). Rule 19 `AGENTS.md`
++ `ctx-development.md` diselaraskan. Data cleanup di DB bersama
+(`ndcrkzqgqukqfmekgoze`): 24 `publishing_posts` ber-`outstand_post_id`
+`fake-post-%` (+ targets cascade) dihapus; verifikasi 0 remaining
+`fake-post-%` / `fake.outstand.local`. Sisa yang tidak kena filter itu
+(channel + post tanpa id `fake-post-`) dilacak di **T-106.5**. Ridwan
+Architecture Reviewer: LOLOS, 0 temuan. Najwa QA: Vitest PASS — 17 file /
+283 tes.
+
+- [x] **T-106.1** ✅ Done — ADR-119: jalur produksi wajib `OUTSTAND_API_KEY`; key kosong throw jelas, bukan fallback ke Fake. Amendemen ADR-059.
+- [x] **T-106.2** ✅ Done — Hapus `fake-outstand-adapter.ts` dari factory `getOutstandAdapter()` dan dari jalur produksi.
+- [x] **T-106.3** ✅ Done — Double lokal di tes tetap; aturan 19 `AGENTS.md` + `ctx-development.md` diselaraskan (jangan Fake di jalur produksi).
+- [x] **T-106.4** ✅ Done — Bersihkan 24 baris dev `fake-post-…` (+ targets cascade) di DB bersama; verifikasi 0 remaining `fake-post-%` / `fake.outstand.local`.
+- [x] **T-106.5** ✅ Done — Hapus 23 `workspace_connected_accounts` (`fake-%` / `mock-%`) dan 9 `publishing_posts` yang menempel (target cascade). Inbox 13 dan urutan channel 2 ikut terhapus lewat cascade. Verifikasi: 0 akun, 0 target, 0 inbox. 19 draft tanpa channel tidak masuk cakupan (tidak menempel ke akun Fake/mock).
+
 ---
 
 ## Catatan Rilis
@@ -1078,4 +1572,5 @@ task/subtask formal baru di sini.
 * **T-090** dan **T-091** (ditambah 2026-08-28, sesi diskusi ADR-093) memakai pola yang sama seperti footnote di atas — nomor kosong v0.2 (T-020–T-038) sudah habis, jadi keduanya memakai nomor global berikutnya yang belum pernah dipakai (090, 091), sama seperti presedan **T-039**/**T-089** di `tasks/v01-foundation.md`. Ditempatkan di file ini (bukan file release lain) karena keduanya domain `publishing`, lahir dari diskusi Calendar/T-033.
 * **T-092** (ditambah 2026-08-28, sesi diskusi ADR-094) memakai pola nomor global yang sama lagi — berikutnya setelah T-091.
 * **T-104** (ditambah 2026-09-11, gap ditemukan saat implementasi T-092.5) memakai ID global berikutnya yang belum pernah dipakai (terakhir T-103, di `tasks/v07-astryx-shadcn-migration.md`) — ditempatkan di file ini karena domain `publishing`, terkait langsung T-092.
+* **T-106** (ditambah 2026-09-25, permintaan King Rezi setelah T-025) memakai ID global berikutnya setelah T-105 — ditempatkan di file ini karena domain `integration`, kelanjutan T-025/ADR-059.
 * **Definition of Done rilis ini** (dari `release-roadmap.md`): pengguna dapat mengelola proses publikasi dari awal hingga selesai — draft → format per akun → schedule/publish → lihat queue/calendar → lihat hasil di history.

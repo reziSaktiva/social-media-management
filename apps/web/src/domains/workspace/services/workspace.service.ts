@@ -5,13 +5,15 @@ import {
   MemberRole,
   MemberStatus,
   NotificationType,
+  SocialPlatform,
 } from "@social/shared";
 import type {
   ConnectedAccountId,
+  FacebookPendingPage,
   IOutstandAdapter,
   InvitationId,
   MemberId,
-  SocialPlatform,
+  PinterestBoard,
   UserId,
   WorkspaceId,
 } from "@social/shared";
@@ -86,6 +88,37 @@ interface NotificationPort {
   }): Promise<unknown>;
 }
 
+/**
+ * Port lokal untuk cross-domain `workspace` → `engagement` (Temuan #1
+ * review Ridwan Architecture Reviewer, T-051, `background-jobs.md` §
+ * "Workspace BC → Background Job": "ConnectedAccount created/activated →
+ * JobScheduler.scheduleEngagementSync(connectedAccount)"). Sebelum
+ * perbaikan ini, JOB-03 pertama untuk sebuah `ConnectedAccount` TIDAK
+ * PERNAH dibuat — `EngagementSyncJobHandler` hanya self-reschedule
+ * SETELAH sebuah job sudah ada, tidak ada apa pun yang men-seed job
+ * pertama, sehingga siklus sync 30 menit tidak pernah mulai berjalan
+ * sendiri.
+ *
+ * `workspace` TIDAK BOLEH mengimpor apa pun dari domain `engagement`
+ * (dependency terdokumentasi HANYA satu arah: `engagement` → `workspace`,
+ * `application-layer.md` § "Peta Dependency Antar Domain") — pola sama
+ * `ScheduledCountsPort`/`NotificationPort` di atas: `WorkspaceService`
+ * hanya tahu "akun ini baru terhubung/reconnect, panggil hook ini",
+ * TIDAK tahu apa pun soal tipe job/`ENGAGEMENT_SYNC_JOB_TYPE`. Composition
+ * root (`createWorkspaceServiceWithOutstandAdapter`) menyuplai
+ * implementasi konkret yang mengimpor `ENGAGEMENT_SYNC_JOB_TYPE` dari
+ * `@/domains/engagement` dan meng-enqueue lewat `IJobScheduler`. Opsional
+ * (`undefined` di test/caller lama) — kalau tidak disuplai, seeding
+ * di-skip diam-diam (pola sama `NotificationPort`), bukan throw.
+ */
+interface EngagementSyncSeederPort {
+  onAccountConnected(input: {
+    workspaceId: WorkspaceId;
+    connectedAccountId: ConnectedAccountId;
+    outstandAccountId: string;
+  }): Promise<void>;
+}
+
 export class WorkspaceService {
   constructor(
     private readonly repository: IWorkspaceRepository,
@@ -105,6 +138,15 @@ export class WorkspaceService {
      * `requireOutstandAdapter()`.
      */
     private readonly outstandAdapter?: IOutstandAdapter,
+    /**
+     * Seed JOB-03 pertama saat `ConnectedAccount` created/activated
+     * (Temuan #1 review Ridwan, T-051) — lihat docstring
+     * `EngagementSyncSeederPort`. Opsional, sama pola `scheduledCounts`/
+     * `notifications` — caller lama (Server Action yang tidak menyentuh
+     * `completeAccountConnection`, mis. `disconnectAccount`) tidak perlu
+     * berubah.
+     */
+    private readonly engagementSyncSeeder?: EngagementSyncSeederPort,
   ) {}
 
   async createWorkspace(input: {
@@ -1047,12 +1089,15 @@ export class WorkspaceService {
 
   /**
    * Connect Account (T-013.1/T-013.2) / Reconnect (T-015.3) — langkah 2
-   * (ADR-105), dipanggil Route Handler `/api/integrations/outstand/callback`
-   * setelah user diarahkan balik dengan `code`+`state`.
+   * (ADR-105, redesain ADR-112), dipanggil Route Handler
+   * `/api/integrations/outstand/callback` setelah user diarahkan balik
+   * dengan `accountId`/`username`/`state` (ADR-112 — Outstand tidak
+   * mengirim `code` untuk single-page account, lihat KI-070 untuk
+   * Facebook Pages di luar scope).
    *
    * **Keputusan desain CREATE vs UPDATE (Prabowo, T-015.3/T-013.1/2):**
-   * `ConnectedAccountData` hasil `exchangeConnectCode` (kontrak ADR-105
-   * final, TIDAK diubah) tidak membawa `redirectAccountId` — Route Handler
+   * `ConnectedAccountData` hasil `resolveConnectCallback` (kontrak
+   * ADR-105/ADR-112, TIDAK membawa `redirectAccountId`) — Route Handler
    * yang men-decode `state` (`lib/adapters/outstand/connect-state.ts`,
    * detail wire-format adapter) dan meneruskan `redirectAccountId` di sini
    * sebagai parameter EKSPLISIT, supaya method ini sendiri tetap tidak
@@ -1060,11 +1105,12 @@ export class WorkspaceService {
    * docstring lengkap di `connect-state.ts`).
    *
    * RBAC Owner/Admin ditegakkan LAGI di sini (bukan cuma di
-   * `initiateConnectAccount`) — `code`/`state`/`redirectAccountId`
-   * round-trip lewat browser (query param publik, bisa ditamper) sebelum
-   * callback ini dipanggil, jadi tidak cukup dipercaya dari validasi
-   * inisiasi saja. `redirectAccountId` diverifikasi ulang kepemilikannya ke
-   * `workspaceId` ini (defense-in-depth yang sama, IDOR).
+   * `initiateConnectAccount`) — `accountId`/`username`/`state`/
+   * `redirectAccountId` round-trip lewat browser (query param publik,
+   * bisa ditamper) sebelum callback ini dipanggil, jadi tidak cukup
+   * dipercaya dari validasi inisiasi saja. `redirectAccountId`
+   * diverifikasi ulang kepemilikannya ke `workspaceId` ini
+   * (defense-in-depth yang sama, IDOR).
    *
    * CREATE `WorkspaceConnectedAccount` baru kalau `redirectAccountId`
    * kosong (connect baru, T-013). UPDATE akun existing kalau diisi
@@ -1075,7 +1121,9 @@ export class WorkspaceService {
   async completeAccountConnection(input: {
     workspaceId: WorkspaceId;
     actorId: UserId;
-    code: string;
+    accountId: string;
+    username: string;
+    networkUniqueId?: string;
     state: string;
     redirectAccountId?: ConnectedAccountId;
   }): Promise<ConnectedAccountRecord> {
@@ -1097,10 +1145,13 @@ export class WorkspaceService {
       }
     }
 
-    const exchanged = await this.requireOutstandAdapter().exchangeConnectCode({
-      code: input.code,
-      state: input.state,
-    });
+    const exchanged =
+      await this.requireOutstandAdapter().resolveConnectCallback({
+        state: input.state,
+        outstandAccountId: input.accountId,
+        username: input.username,
+        networkUniqueId: input.networkUniqueId,
+      });
 
     if (
       existingRedirectAccount &&
@@ -1111,23 +1162,182 @@ export class WorkspaceService {
       );
     }
 
-    if (input.redirectAccountId) {
-      return this.repository.reconnectAccount({
-        workspaceId: input.workspaceId,
-        connectedAccountId: input.redirectAccountId,
-        outstandAccountId: exchanged.outstandAccountId,
-        handle: exchanged.handle,
-        actingUserId: input.actorId,
+    const record = input.redirectAccountId
+      ? await this.repository.reconnectAccount({
+          workspaceId: input.workspaceId,
+          connectedAccountId: input.redirectAccountId,
+          outstandAccountId: exchanged.outstandAccountId,
+          handle: exchanged.handle,
+          actingUserId: input.actorId,
+        })
+      : await this.repository.createConnectedAccount({
+          workspaceId: input.workspaceId,
+          platform: exchanged.platform,
+          outstandAccountId: exchanged.outstandAccountId,
+          handle: exchanged.handle,
+          actingUserId: input.actorId,
+        });
+
+    // Temuan #1 (Ridwan) — seed JOB-03 di titik "created/activated" persis
+    // sesuai `background-jobs.md` § "Workspace BC → Background Job", untuk
+    // KEDUA cabang (create maupun reconnect): dokumen itu menyebut
+    // "created/activated", dan reconnect adalah bentuk "activated" untuk
+    // akun yang sebelumnya `reconnect-required`/`disconnected`. Gagal
+    // seeding TIDAK boleh menggagalkan connect account itu sendiri (akun
+    // sudah berhasil dibuat/di-update di atas) — tapi juga tidak boleh
+    // gagal diam-diam tanpa jejak, jadi kegagalan tetap dilempar ke atas
+    // (caller/`ApplicationError` handling di Route Handler callback tetap
+    // konsisten dengan error path lain di sana).
+    await this.engagementSyncSeeder?.onAccountConnected({
+      workspaceId: record.workspaceId,
+      connectedAccountId: record.id,
+      outstandAccountId: record.outstandAccountId,
+    });
+
+    return record;
+  }
+
+  /**
+   * Facebook Pages — list pending Pages (T-025.4, ADR-115, wire-format
+   * dikoreksi ADR-116) — dipanggil `listFacebookPendingPagesAction` setelah
+   * Route Handler callback redirect ke Connected Accounts dengan
+   * `sessionToken` (dialog Page-selection mount, state Loading → Default).
+   * RBAC Owner/Admin sama dengan `initiateConnectAccount`/
+   * `completeAccountConnection` (gate yang sama, bukan RBAC baru). Tidak
+   * ada IDOR check tambahan di sini — belum ada `ConnectedAccount` yang
+   * disentuh, murni membaca daftar Page dari Outstand lewat adapter.
+   */
+  async listFacebookPendingPages(input: {
+    workspaceId: WorkspaceId;
+    actorId: UserId;
+    sessionToken: string;
+  }): Promise<FacebookPendingPage[]> {
+    await this.assertActorCanManageConnectedAccounts(
+      input.workspaceId,
+      input.actorId,
+      "Hanya Owner atau Admin yang bisa menghubungkan akun.",
+    );
+
+    const result = await this.requireOutstandAdapter().listPendingFacebookPages(
+      { sessionToken: input.sessionToken },
+    );
+    return result.pages;
+  }
+
+  /**
+   * Facebook Pages — confirm selected Pages (T-025.4, ADR-115, wire-format
+   * dikoreksi ADR-116) — dipanggil `confirmFacebookPagesConnectionAction`
+   * saat user submit dialog Page-selection. RBAC Owner/Admin (gate sama).
+   * Validasi `selectedPageIds.length >= 1` diulang di sini (defense-in-depth
+   * — UI sudah disable tombol di 0 dipilih, tapi Server Action/adapter
+   * tidak boleh dipercaya sendirian).
+   *
+   * SATU panggilan `IOutstandAdapter.confirmFacebookPagesConnection` untuk
+   * SEMUA Page yang dipilih (bukan N panggilan — bentuk endpoint Outstand
+   * sendiri, ADR-115 poin 8). Hasilnya disimpan lewat
+   * `createConnectedAccounts` dalam SATU transaksi — Page yang sudah
+   * terhubung (`outstandAccountId` sama) di-skip, kegagalan di tengah
+   * membatalkan seluruh batch. Return value HANYA berisi Page yang
+   * BENAR-BENAR baru dibuat.
+   *
+   * JOB-03 engagement sync seeding (`engagementSyncSeeder?.onAccountConnected`,
+   * Temuan #1 Ridwan, pola sama `completeAccountConnection`) dipanggil
+   * SEKALI PER Page yang berhasil dibuat.
+   *
+   * **Reconnect Facebook Page tunggal — DI LUAR SCOPE** (ADR-115 poin 8):
+   * method ini SELALU CREATE, tidak menerima `redirectAccountId`.
+   */
+  async confirmFacebookPagesConnection(input: {
+    workspaceId: WorkspaceId;
+    actorId: UserId;
+    sessionToken: string;
+    selectedPageIds: string[];
+  }): Promise<ConnectedAccountRecord[]> {
+    await this.assertActorCanManageConnectedAccounts(
+      input.workspaceId,
+      input.actorId,
+      "Hanya Owner atau Admin yang bisa menghubungkan akun.",
+    );
+
+    if (input.selectedPageIds.length === 0) {
+      throw new ValidationError(
+        "Pilih minimal satu Page Facebook untuk dihubungkan.",
+      );
+    }
+
+    const { accounts } =
+      await this.requireOutstandAdapter().confirmFacebookPagesConnection({
+        sessionToken: input.sessionToken,
+        selectedPageIds: input.selectedPageIds,
+      });
+
+    const created = await this.repository.createConnectedAccounts({
+      workspaceId: input.workspaceId,
+      actingUserId: input.actorId,
+      accounts: accounts.map((account) => ({
+        platform: account.platform,
+        outstandAccountId: account.outstandAccountId,
+        handle: account.handle,
+      })),
+    });
+
+    for (const record of created) {
+      await this.engagementSyncSeeder?.onAccountConnected({
+        workspaceId: record.workspaceId,
+        connectedAccountId: record.id,
+        outstandAccountId: record.outstandAccountId,
       });
     }
 
-    return this.repository.createConnectedAccount({
-      workspaceId: input.workspaceId,
-      platform: exchanged.platform,
-      outstandAccountId: exchanged.outstandAccountId,
-      handle: exchanged.handle,
-      actingUserId: input.actorId,
-    });
+    return created;
+  }
+
+  /**
+   * Pinterest boards (menutup KI-072, sisa scope ADR-114) — daftar board
+   * ASLI dari SATU akun Pinterest terhubung, dipakai UI Draft Editor untuk
+   * dropdown board per post (bukan text input bebas). Board dipilih PER
+   * POST (state Draft Editor, lewat `platformOptions.boardId`), BUKAN
+   * dipersist ke `ConnectedAccount` — method ini murni membaca daftar
+   * pilihan, tidak menulis apa pun.
+   *
+   * Anti-IDOR: `connectedAccountId` divalidasi terhadap
+   * `listConnectedAccounts` (harus benar-benar milik `workspaceId` ini)
+   * SEBELUM `outstandAccountId`-nya diteruskan ke adapter — id yang
+   * ditebak/ditamper dari client (mis. milik workspace lain) ditolak
+   * `ConflictError`, bukan diam-diam diteruskan. Akun yang bukan Pinterest
+   * juga ditolak eksplisit (`ValidationError`) — adapter tidak boleh
+   * dipanggil dengan asumsi platform yang salah.
+   *
+   * Tidak ada RBAC tambahan di luar keanggotaan workspace (pola sama
+   * `listConnectedAccounts`/`getConnectedAccountsAction`) — SEMUA member
+   * aktif boleh melihat daftar board saat menyusun post, bukan hanya
+   * Owner/Admin (beda dari `initiateConnectAccount`/
+   * `confirmFacebookPagesConnection` yang mengubah `ConnectedAccount`).
+   */
+  async listPinterestBoards(input: {
+    workspaceId: WorkspaceId;
+    actorId: UserId;
+    connectedAccountId: ConnectedAccountId;
+  }): Promise<PinterestBoard[]> {
+    const accounts = await this.repository.listConnectedAccounts(
+      input.workspaceId,
+      input.actorId,
+    );
+    const account = accounts.find((acc) => acc.id === input.connectedAccountId);
+    if (!account) {
+      throw new ConflictError(
+        "Akun terhubung tidak ditemukan atau bukan milik workspace ini.",
+      );
+    }
+    if (account.platform !== SocialPlatform.Pinterest) {
+      throw new ValidationError(
+        "Daftar board Pinterest hanya berlaku untuk akun Pinterest.",
+      );
+    }
+
+    return this.requireOutstandAdapter().listPinterestBoards(
+      account.outstandAccountId,
+    );
   }
 
   /**

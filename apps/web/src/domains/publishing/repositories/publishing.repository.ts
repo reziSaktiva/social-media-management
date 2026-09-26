@@ -1,6 +1,7 @@
 import type {
   ConnectedAccountId,
   ContentFormat,
+  MediaId,
   PostId,
   PostTargetId,
   SocialPlatform,
@@ -15,6 +16,16 @@ export interface PublishingPostRecord {
   authorId: UserId;
   caption: string;
   status: ContentStatus;
+  /**
+   * Media (T-024.4) yang di-attach ke post ini — SATU set untuk seluruh
+   * post (bukan per-target/per-akun, ADR-107). Opsional di level tipe
+   * (bukan `MediaId[]` wajib) supaya banyak fake repository di test
+   * lain (schedule/publish/cancel/retry use-case, tidak menyentuh media
+   * sama sekali) tidak wajib ikut diubah — `undefined` diperlakukan sama
+   * dengan array kosong oleh seluruh caller (`getDraftAction`,
+   * `resolveDraftMediaIds`, dst.).
+   */
+  mediaIds?: MediaId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -228,6 +239,8 @@ export interface RetryTargetRecord {
   workspaceId: WorkspaceId;
   postOutstandPostId: string | null;
   caption: string;
+  /** Media post-level (satu set untuk seluruh post, ADR-107) — dipakai recreate. */
+  mediaIds: MediaId[];
   targetId: PostTargetId;
   targetStatus: PublishingPostTargetStatus;
   connectedAccountId: ConnectedAccountId;
@@ -235,6 +248,12 @@ export interface RetryTargetRecord {
   platform: SocialPlatform;
   contentFormat: ContentFormat;
   platformOptions: Record<string, unknown> | null;
+  /**
+   * True kalau post punya target SAUDARA berstatus published/scheduled/
+   * pending — Real `deletePost` dengan accountIds akan wipe SEMUA remote
+   * (API tidak scoped). Retry harus SKIP `deletePost` bila true.
+   */
+  hasSiblingLiveTargets: boolean;
 }
 
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/publishing. */
@@ -243,6 +262,8 @@ export interface IPublishingRepository {
     workspaceId: WorkspaceId;
     authorId: UserId;
     caption: string;
+    /** T-024.4 — `undefined` sama dengan tidak melampirkan media sama sekali (kolom DB default `[]`). */
+    mediaIds?: MediaId[];
   }): Promise<PublishingPostRecord>;
 
   /**
@@ -285,7 +306,20 @@ export interface IPublishingRepository {
    * (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   updateDraftCaption(
-    input: { workspaceId: WorkspaceId; postId: PostId; caption: string },
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      caption: string;
+      /**
+       * T-024.4 — partial update semantics: `undefined` berarti kolom
+       * `mediaIds` TIDAK disentuh sama sekali (mempertahankan nilai yang
+       * sudah dipersist sebelumnya, mis. dari `saveDraftAction` sebelum
+       * `scheduleDraftAction`/`publishNowAction` dipanggil) — beda dari
+       * array kosong `[]` yang secara eksplisit mengosongkan lampiran
+       * media post ini.
+       */
+      mediaIds?: MediaId[];
+    },
     userId: UserId,
   ): Promise<PublishingPostRecord | null>;
 
@@ -503,6 +537,12 @@ export interface IPublishingRepository {
       workspaceId: WorkspaceId;
       statuses?: ContentStatus[];
       connectedAccountIds?: ConnectedAccountId[];
+      // Opsional — filter `publishedAt` di level query (T-045/T-046/T-047,
+      // dipakai `PublishingService.getPostPerformance`) supaya caller yang
+      // cuma butuh satu `period` tidak perlu fetch seluruh riwayat
+      // workspace lalu filter di JS. Caller lain (mis. `/publish/history`)
+      // tetap boleh mengabaikannya untuk dapat riwayat penuh.
+      publishedAtRange?: { from: Date; to: Date };
     },
     userId: UserId,
   ): Promise<HistoryItemRecord[]>;
@@ -619,9 +659,67 @@ export interface IPublishingRepository {
    * target sudah ditulis oleh `updateTargetOutcome` sebelum method ini
    * dipanggil.
    *
+   * **TIDAK throw kalau 0 baris ter-update** (bug fix T-027 — sama seperti
+   * `markPostPublished` di bawah): `resolvePostOutcome` (dipakai BERSAMA
+   * webhook T-026 dan job polling T-027) bisa sah dipanggil lebih dari
+   * sekali untuk `outstandPostId` yang sama, dan panggilan kedua yang
+   * menemukan post SUDAH `Failed` harus diam-diam no-op, bukan dianggap
+   * kegagalan internal.
+   *
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   markPostFailed(
+    input: { workspaceId: WorkspaceId; postId: PostId },
+    userId: UserId,
+  ): Promise<void>;
+
+  /**
+   * T-027 bug fix (gap ditemukan Elon Backend Engineer saat verifikasi
+   * end-to-end T-027, dikonfirmasi King Rezi: scoped bug-fix, boleh
+   * langsung dieksekusi) — kebalikan `markPostFailed` untuk sisi SUKSES.
+   * Dipanggil `OutstandWebhookProcessor.resolvePostOutcome` (dipakai
+   * BERSAMA oleh webhook T-026 dan job polling T-027) pada titik yang SAMA
+   * PERSIS dengan keputusan "semua target sudah resolved, tidak ada yang
+   * `pending` lagi" — kalau TIDAK semua target diketahui gagal (berarti
+   * minimal satu sukses/partial success), post naik dari `Scheduled` ke
+   * `Published`.
+   *
+   * **Kenapa method ini baru ditambahkan sekarang:** semantik
+   * "post.error hanya kalau SEMUA target gagal; post tetap Published kalau
+   * minimal satu target sukses/partial success" SUDAH eksplisit di baseline
+   * (`integration-layer.md:269-270,305`) sejak T-026 — tapi implementasinya
+   * SELAMA INI hanya menjalankan SISI GAGAL (`markPostFailed`). Tidak ada
+   * kode yang menjalankan sisi SUKSES untuk jalur Schedule (`schedulePost`
+   * menandai `Scheduled` di muka, BUKAN `Published` — beda dari
+   * `publishNow`/`PublishNowUseCase` yang menandai `Published` di muka).
+   * Akibatnya post yang outcome target-nya SUDAH benar (published, via
+   * webhook ATAU job T-027) tidak pernah terlihat pindah ke History/
+   * Calendar sebagai selesai — targetnya benar, level POST-nya tidak
+   * pernah diupdate. Baru ketahuan saat QA end-to-end T-027 (query DB
+   * langsung membuktikan `PublishingPostTarget.status = "published"` tapi
+   * `PublishingPost.status` tetap `"scheduled"` selamanya).
+   *
+   * **TIDAK dipakai `PublishNowUseCase`** (dan tidak boleh disentuh untuk
+   * itu) — use-case itu sudah menandai `Published` DI MUKA lewat
+   * `repository.publishNow` SEBELUM outcome diketahui, dan tidak pernah
+   * memanggil `resolvePostOutcome` sama sekali; koreksinya kalau semua
+   * target gagal tetap lewat `markPostFailed` seperti sebelumnya, tidak
+   * berubah.
+   *
+   * **Sama seperti `markPostFailed`: method ini TIDAK throw kalau 0
+   * baris ter-update** (implementasi Prisma harus no-op diam-diam, bukan
+   * error) — `resolvePostOutcome` bisa dipanggil lebih dari sekali untuk
+   * `outstandPostId` yang sama secara sah (mis. dua webhook event Outstand
+   * BERBEDA — bukan duplikat receipt — untuk akun berbeda pada post yang
+   * sama, yang keduanya bisa saja masing-masing melihat "semua target
+   * sudah resolved" begitu `fetchPostOutcome` sudah mengembalikan status
+   * penuh). Panggilan kedua yang menemukan post SUDAH `Published` harus
+   * diam-diam no-op, bukan dianggap kegagalan internal.
+   *
+   * Idempoten (`updateMany` hanya menyentuh baris yang masih `Scheduled`).
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  markPostPublished(
     input: { workspaceId: WorkspaceId; postId: PostId },
     userId: UserId,
   ): Promise<void>;
@@ -759,4 +857,65 @@ export interface IPublishingRepository {
     input: { workspaceId: WorkspaceId; postId: PostId },
     userId: UserId,
   ): Promise<PublishingPostRecord | null>;
+
+  /**
+   * Engagement Sync (JOB-03, T-051, redesain KI-068/ADR-113) — daftar post
+   * yang sudah punya `outstandPostId` (pernah publish/dijadwalkan lewat
+   * Outstand) untuk SATU `connectedAccountId`, dipakai
+   * `SyncCommentsUseCase` untuk tahu `outstandPostId`+`platform` mana saja
+   * yang perlu di-`IOutstandAdapter.fetchComments` — API resmi Outstand
+   * men-scope replies PER POST, bukan per akun (root cause KI-068, lihat
+   * `ctx-architecture.md`/`PROJECT_STATE.md`), jadi sumber daftar post yang
+   * di-sync adalah DB kita sendiri (`PublishingPost`/`PublishingPostTarget`),
+   * BUKAN endpoint list-posts Outstand (keputusan eksplisit King Rezi).
+   *
+   * Post yang belum pernah publish (`outstandPostId` masih `null`) TIDAK
+   * ikut — tidak ada apa pun di Outstand untuk di-fetch. Soft-deleted post
+   * (`deletedAt` terisi) juga tidak ikut, pola sama `listDrafts`/`listQueue`.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  listSyncablePostsByConnectedAccount(
+    input: {
+      workspaceId: WorkspaceId;
+      connectedAccountId: ConnectedAccountId;
+    },
+    userId: UserId,
+  ): Promise<SyncablePostRecord[]>;
+
+  /**
+   * Reply Engagement (T-054, redesain KI-068/ADR-113) — resolve
+   * `outstandPostId` post-level untuk SATU `postId` internal, dipakai
+   * `EngagementService.reply` untuk membentuk
+   * `IOutstandAdapter.replyToComment` (endpoint resmi Outstand WAJIB tahu
+   * `postId`, bukan cuma `outstandCommentId` — root cause KI-068). Returns
+   * `null` kalau post tidak ditemukan di `workspaceId` ini, sudah
+   * di-soft-delete, ATAU belum pernah publish (`outstandPostId` masih
+   * `null`) — caller memperlakukan ketiganya sama (tidak bisa reply).
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  findPostOutstandId(
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      /** Kalau diisi, utamakan `retryOutstandPostId` target akun ini. */
+      connectedAccountId?: ConnectedAccountId;
+    },
+    userId: UserId,
+  ): Promise<string | null>;
+}
+
+/**
+ * Satu post yang punya `outstandPostId` untuk SATU `connectedAccountId`
+ * (Engagement Sync, JOB-03, T-051, redesain KI-068/ADR-113) — hasil
+ * `listSyncablePostsByConnectedAccount`. `platform` diambil dari
+ * `PublishingPostTarget.platform` (per-target, bukan per-post) karena satu
+ * post bisa punya target di platform berbeda-beda; baris ini SATU target
+ * spesifik untuk `connectedAccountId` yang diminta.
+ */
+export interface SyncablePostRecord {
+  postId: PostId;
+  outstandPostId: string;
+  platform: SocialPlatform;
 }

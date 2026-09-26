@@ -4,7 +4,11 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 import { ContentStatus } from "@social/shared";
-import type { HistoryItemRecord } from "@/domains/publishing";
+import type { PostMetricsRecord } from "@/domains/analytics";
+import type {
+  HistoryDetailItem,
+  HistoryItemRecord,
+} from "@/domains/publishing";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +23,11 @@ import {
 } from "@/components/ui/tooltip";
 
 import { PLATFORM_ICON } from "../../../../components/platform-icons";
+import {
+  formatEngagementRate,
+  formatMetricCount,
+  MetricTile,
+} from "../../../../components/post-metric-tile";
 import {
   HISTORY_STATUS_BADGE_VARIANT,
   HISTORY_STATUS_LABEL,
@@ -90,8 +99,40 @@ function ViewOriginalPostLink({ url }: { url: string | null }) {
   );
 }
 
+/**
+ * Metrik ringkas per target (T-043.3) — mapping label sama seperti Popover
+ * Calendar (T-033.8): Views→`impressions`, Reach→`reach`,
+ * Replies→`comments`, Eng. Rate→`engagementRate`. `metric` bernilai `null`
+ * kalau `item.metrics` (array) tidak punya baris untuk `connectedAccountId`
+ * target ini — post Published tapi belum ada `AnalyticsPostMetric`
+ * ter-ingest untuk akun spesifik ini (pola sama T-043.4 di
+ * `AnalyzeDashboard.tsx`: "Belum ada data", bukan nol).
+ */
+function TargetMetrics({ metric }: { metric: PostMetricsRecord | null }) {
+  if (!metric) {
+    return (
+      <Text variant="muted" as="span" className="text-xs">
+        Belum ada data
+      </Text>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line no-restricted-syntax -- layout-only, konsisten pola shadcn+Tailwind lain di publish/
+    <div className="flex flex-wrap gap-2">
+      <MetricTile label="Views" value={formatMetricCount(metric.impressions)} />
+      <MetricTile label="Reach" value={formatMetricCount(metric.reach)} />
+      <MetricTile label="Replies" value={formatMetricCount(metric.comments)} />
+      <MetricTile
+        label="Eng. Rate"
+        value={formatEngagementRate(metric.engagementRate)}
+      />
+    </div>
+  );
+}
+
 export interface HistoryDetailProps {
-  item: HistoryItemRecord;
+  item: HistoryDetailItem;
 }
 
 /**
@@ -178,7 +219,25 @@ export function HistoryDetail({ item }: HistoryDetailProps) {
                     </div>
 
                     {target.status === "published" && (
-                      <ViewOriginalPostLink url={target.platformPostUrl} />
+                      <>
+                        <ViewOriginalPostLink url={target.platformPostUrl} />
+                        {/* Guard defensif (rule brief T-043.3, poin 2): `item.metrics`
+                            seharusnya tidak pernah `null` untuk target published
+                            (metrik hanya `null` untuk post non-Published), tapi
+                            tetap di-guard eksplisit — jangan render apapun soal
+                            metrik kalau ternyata null. */}
+                        {item.metrics !== null && (
+                          <TargetMetrics
+                            metric={
+                              item.metrics.find(
+                                (metric) =>
+                                  metric.connectedAccountId ===
+                                  target.connectedAccountId,
+                              ) ?? null
+                            }
+                          />
+                        )}
+                      </>
                     )}
 
                     {target.status === "failed" && (

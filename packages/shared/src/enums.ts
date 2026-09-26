@@ -78,4 +78,23 @@ export enum NotificationType {
   PostPublishFailed = "post_publish_failed",
   /** Webhook Outstand `account.token_expired` (T-026.5) — akun butuh reconnect. */
   AccountReconnectRequired = "account_reconnect_required",
+  /**
+   * JOB-03 Engagement Sync (`background-jobs.md` § JOB-03, T-051) — satu
+   * notifikasi aggregate per sync run kalau ada komentar baru ditemukan
+   * (bukan per-komentar). Nilai string persis sama dengan narasi resmi
+   * `background-jobs.md` (`type: 'engagement_new'`).
+   */
+  EngagementNewComments = "engagement_new",
+}
+
+/**
+ * Jenis `MediaItem` (BC-08, `domain-model.md` § BC-08 — Media). Disimpan
+ * mentah sebagai `String` di kolom `media_items.type` (bukan Postgres enum
+ * — konsisten pola `PublishingPost.status`/`ContentStatus`), dipetakan ke
+ * union ini di boundary repository (`toRecord`).
+ */
+export enum MediaType {
+  Image = "image",
+  Video = "video",
+  Gif = "gif",
 }
