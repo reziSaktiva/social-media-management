@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { MAX_MEDIA_FILE_SIZE_BYTES } from "./src/domains/media/validation";
+import { MAX_MEDIA_FILE_SIZE_BYTES } from "./src/domains/media/constants";
 
 const appDir = path.dirname(fileURLToPath(import.meta.url));
 const monorepoRoot = path.join(appDir, "../..");
