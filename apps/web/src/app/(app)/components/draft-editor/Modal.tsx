@@ -417,19 +417,27 @@ function DraftEditorForm({
     })),
   );
 
-  // KI-073: caption HANYA wajib kalau ada minimal satu target NON-Story
-  // yang dipilih — Story justru MENOLAK caption di Outstand
-  // (`buildPostRequestBody`, `real-outstand-adapter.ts`:
-  // `contentForBody = hasStoryTarget ? "" : input.caption`). Kombinasi
-  // Story + non-Story ber-caption tetap ditolak adapter (throw
-  // `client_error`) — `hasNonStoryTarget` sudah mencakup kasus campuran
-  // ini juga (bukan cuma non-Story murni), jadi caption tetap wajib untuk
-  // kombinasi itu supaya submit tidak lolos di UI lalu gagal di adapter.
+  // KI-073: caption HANYA wajib kalau TIDAK ADA target Story sama sekali —
+  // Story justru MENOLAK caption di Outstand (`buildPostRequestBody`,
+  // `real-outstand-adapter.ts`: `contentForBody = hasStoryTarget ? "" :
+  // input.caption`). Kombinasi Story + non-Story ber-caption ditolak
+  // adapter secara TERPISAH (throw `client_error`) — ditangani di bawah
+  // sebagai constraint sendiri (`mixedStoryCaptionMessage`), BUKAN dilipat
+  // ke gate caption-required (versi sebelumnya salah: mewajibkan caption
+  // untuk kombinasi campuran justru menjamin submit gagal di adapter,
+  // padahal versi caption-kosong itu yang sebenarnya diterima).
   const activeFormatsForGate = getActiveFormats();
+  const hasStoryTarget = activeFormatsForGate.some(
+    (format) => format === ContentFormat.Story,
+  );
   const hasNonStoryTarget = activeFormatsForGate.some(
     (format) => format !== ContentFormat.Story,
   );
-  const isCaptionRequired = hasNonStoryTarget;
+  const isCaptionRequired = !hasStoryTarget;
+  const mixedStoryCaptionMessage =
+    hasStoryTarget && hasNonStoryTarget && caption.trim().length > 0
+      ? "Story tidak bisa digabung dengan target lain selama caption terisi — kosongkan caption atau publish Story secara terpisah dari target lainnya."
+      : null;
 
   // KI-074: Story/Reel/Pin secara native selalu berbasis media — tanpa
   // guard ini, target Story/Reel/Pin bisa "berhasil" terpublish tapi
@@ -447,7 +455,8 @@ function DraftEditorForm({
     Boolean(scheduleDate) &&
     Boolean(scheduleTime) &&
     pinterestConstraintMessage === null &&
-    mediaMinimumMessage === null;
+    mediaMinimumMessage === null &&
+    mixedStoryCaptionMessage === null;
 
   // Publish Now (KSP-05-F12) skips the Schedule Picker entirely — tanggal/
   // waktu tidak relevan sama sekali, beda dari `isReadyToSchedule`.
@@ -455,7 +464,8 @@ function DraftEditorForm({
     (!isCaptionRequired || caption.trim().length > 0) &&
     selectedAccounts.length > 0 &&
     pinterestConstraintMessage === null &&
-    mediaMinimumMessage === null;
+    mediaMinimumMessage === null &&
+    mixedStoryCaptionMessage === null;
 
   // Publish Now dari Queue (T-032.4) — lompat otomatis ke step konfirmasi
   // begitu draft (caption/status) DAN daftar akun terhubung selesai dimuat,
@@ -871,6 +881,11 @@ function DraftEditorForm({
                 <AlertTitle>{mediaMinimumMessage}</AlertTitle>
               </Alert>
             ) : null}
+            {mixedStoryCaptionMessage ? (
+              <Alert variant="destructive">
+                <AlertTitle>{mixedStoryCaptionMessage}</AlertTitle>
+              </Alert>
+            ) : null}
             {notice ? (
               <Alert
                 variant={notice.status === "error" ? "destructive" : "default"}
@@ -903,6 +918,14 @@ function DraftEditorForm({
                     <FieldDescription>
                       AI Caption Assist belum termasuk revisi ini.
                     </FieldDescription>
+                    {hasStoryTarget &&
+                    !hasNonStoryTarget &&
+                    caption.trim().length > 0 ? (
+                      <FieldDescription>
+                        Story menolak caption — teks di atas TIDAK akan ikut
+                        terpublish ke Instagram/Facebook.
+                      </FieldDescription>
+                    ) : null}
                   </div>
 
                   {/* eslint-disable-next-line no-restricted-syntax -- T-102: padanan Astryx VStack, murni Tailwind flex. */}

@@ -1258,12 +1258,16 @@ export class WorkspaceService {
    * `IOutstandAdapter.confirmFacebookPagesConnection` (endpoint
    * `.../finalize`) TIDAK PERNAH membawa foto profil (lihat docstring
    * `ConfirmFacebookPagesResult`). Method ini karena itu memanggil
-   * `listPendingFacebookPages` LAGI dengan `sessionToken` yang sama SEBELUM
-   * finalize (GET, read-only, tidak menghabiskan sesi — dialog picker
-   * sudah memanggilnya sekali sebelumnya di render awal tanpa
-   * menginvalidasi sesi untuk finalize berikutnya) untuk mendapatkan
-   * `FacebookPendingPage.pictureUrl` PER `pageId`, lalu men-join-kan ke
-   * `ConnectedAccountData.outstandAccountId` hasil finalize. Asumsi
+   * `listPendingFacebookPages` LAGI dengan `sessionToken` yang sama SETELAH
+   * finalize (bukan sebelum — finalize adalah langkah kritis, GET avatar
+   * ini murni best-effort dan tidak boleh berisiko menunda/mengganggu
+   * finalize kalau `sessionToken` ternyata sensitif terhadap urutan/waktu,
+   * sesuatu yang belum terverifikasi ke OpenAPI spec resmi Outstand) untuk
+   * mendapatkan `FacebookPendingPage.pictureUrl` PER `pageId`, lalu
+   * men-join-kan ke `ConnectedAccountData.outstandAccountId` hasil
+   * finalize. Kalau sesi sudah tidak valid lagi di titik ini, re-fetch
+   * gagal dan avatar cukup kosong (`null`) — sudah ditangani `catch` di
+   * bawah, konsisten dengan degradasi best-effort yang sama. Asumsi
    * `pageId === outstandAccountId` (list vs confirm) ini SAMA PERSIS dengan
    * yang sudah dipakai `selectConfirmedFacebookAccounts` di real adapter
    * (irisan pertama, fallback ke tidak ketemu → `avatarUrl: null` — tidak
@@ -1289,10 +1293,21 @@ export class WorkspaceService {
 
     const adapter = this.requireOutstandAdapter();
 
-    // KI-076/ADR-120 — best-effort: kalau re-fetch daftar pending Page
-    // gagal (mis. sesi sudah kedaluwarsa di antara langkah ini), avatar
-    // cukup kosong (`null`) untuk semua Page — TIDAK boleh menggagalkan
-    // proses connect Page yang sebenarnya (finalize di bawah tetap jalan).
+    // Finalize (kritis) dijalankan DULU, sebelum re-fetch avatar best-effort
+    // di bawah — supaya request read-only tambahan untuk avatar tidak
+    // pernah bisa menunda/mengganggu langkah finalize yang sebenarnya kalau
+    // ternyata `sessionToken` Outstand sensitif terhadap urutan/waktu
+    // (belum terverifikasi ke OpenAPI spec resmi, lihat catatan di atas).
+    const { accounts } = await adapter.confirmFacebookPagesConnection({
+      sessionToken: input.sessionToken,
+      selectedPageIds: input.selectedPageIds,
+    });
+
+    // KI-076/ADR-120 — best-effort, DIJALANKAN SETELAH finalize: kalau
+    // re-fetch daftar pending Page gagal (mis. sesi sudah kedaluwarsa
+    // setelah finalize mengonsumsinya), avatar cukup kosong (`null`) untuk
+    // semua Page — TIDAK boleh menggagalkan proses connect Page yang
+    // sebenarnya (finalize di atas sudah selesai lebih dulu).
     let pictureUrlByPageId = new Map<string, string>();
     try {
       const pending = await adapter.listPendingFacebookPages({
@@ -1306,11 +1321,6 @@ export class WorkspaceService {
     } catch {
       pictureUrlByPageId = new Map();
     }
-
-    const { accounts } = await adapter.confirmFacebookPagesConnection({
-      sessionToken: input.sessionToken,
-      selectedPageIds: input.selectedPageIds,
-    });
 
     const created = await this.repository.createConnectedAccounts({
       workspaceId: input.workspaceId,

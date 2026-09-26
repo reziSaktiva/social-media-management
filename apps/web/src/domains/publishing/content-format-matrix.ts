@@ -48,22 +48,29 @@ export function assertContentFormatAllowed(
 }
 
 /**
- * Batas maksimum jumlah media (carousel) per `ContentFormat` (T-024.4,
- * ADR-107 — amandemen ADR-039) — batas native platform: IG/FB carousel
- * (Post) maks 10 media, Reel/Story/Pin selalu single media. Mirror
- * client-side WAJIB dijaga sinkron: `maxMediaCountFor` di
+ * Batas minimum & maksimum jumlah media per `ContentFormat` (T-024.4,
+ * ADR-107 — amandemen ADR-039; batas minimum ADR-121 — amandemen ADR-107,
+ * KI-074) — satu config gabungan supaya kedua bound tiap format SELALU
+ * dideklarasikan & di-review bersama (bukan dua `Record` paralel yang bisa
+ * drift kalau format baru ditambahkan dan salah satu bound lupa diisi).
+ * Batas native platform: IG/FB carousel (Post) maks 10 media, min 0 (boleh
+ * caption-only); Reel/Story/Pin selalu single media DAN wajib punya media
+ * (tidak ada mode text-only). Mirror client-side WAJIB dijaga sinkron:
  * `apps/web/src/app/(app)/components/draft-editor/Modal.tsx`.
  */
-const MAX_MEDIA_COUNT_BY_FORMAT: Record<ContentFormat, number> = {
-  [ContentFormat.Post]: 10,
-  [ContentFormat.Reel]: 1,
-  [ContentFormat.Story]: 1,
-  [ContentFormat.Pin]: 1,
+const MEDIA_COUNT_BOUNDS_BY_FORMAT: Record<
+  ContentFormat,
+  { min: number; max: number }
+> = {
+  [ContentFormat.Post]: { min: 0, max: 10 },
+  [ContentFormat.Reel]: { min: 1, max: 1 },
+  [ContentFormat.Story]: { min: 1, max: 1 },
+  [ContentFormat.Pin]: { min: 1, max: 1 },
 };
 
-/** Batas maksimum media untuk SATU `ContentFormat` — lihat `MAX_MEDIA_COUNT_BY_FORMAT`. */
+/** Batas maksimum media untuk SATU `ContentFormat` — lihat `MEDIA_COUNT_BOUNDS_BY_FORMAT`. */
 export function maxMediaCountForFormat(format: ContentFormat): number {
-  return MAX_MEDIA_COUNT_BY_FORMAT[format];
+  return MEDIA_COUNT_BOUNDS_BY_FORMAT[format].max;
 }
 
 /**
@@ -78,10 +85,10 @@ export function maxMediaCountForFormat(format: ContentFormat): number {
  */
 export function maxMediaCountForFormats(formats: ContentFormat[]): number {
   if (formats.length === 0) {
-    return MAX_MEDIA_COUNT_BY_FORMAT[ContentFormat.Post];
+    return MEDIA_COUNT_BOUNDS_BY_FORMAT[ContentFormat.Post].max;
   }
   return Math.min(
-    ...formats.map((format) => MAX_MEDIA_COUNT_BY_FORMAT[format]),
+    ...formats.map((format) => MEDIA_COUNT_BOUNDS_BY_FORMAT[format].max),
   );
 }
 
@@ -101,29 +108,9 @@ export function assertMediaCountWithinLimit(
   }
 }
 
-/**
- * Batas MINIMUM jumlah media per `ContentFormat` (KI-074) — ADR-039/ADR-107
- * di atas hanya menegakkan batas MAKSIMUM, tidak pernah ada batas MINIMUM.
- * Story/Reel/Pin di Instagram/Facebook/Pinterest secara native SELALU
- * berbasis media (tidak ada "Story tanpa gambar/video", "Reel tanpa video",
- * atau "Pin tanpa gambar") — beda dari `Post` yang tetap valid caption-only
- * (native text-only feed post). Tanpa batas ini, target Story bisa
- * "berhasil" terpublish (tidak ada error) tapi tayang benar-benar kosong di
- * Instagram — caption-nya sendiri sudah dikosongkan untuk Story (KI-073,
- * `buildPostRequestBody` di `real-outstand-adapter.ts`), jadi kalau media
- * juga kosong, isi post yang benar-benar terkirim ke Outstand tidak ada
- * sama sekali. Mirror client-side WAJIB dijaga sinkron: `Modal.tsx`.
- */
-const MIN_MEDIA_COUNT_BY_FORMAT: Record<ContentFormat, number> = {
-  [ContentFormat.Post]: 0,
-  [ContentFormat.Reel]: 1,
-  [ContentFormat.Story]: 1,
-  [ContentFormat.Pin]: 1,
-};
-
-/** Batas minimum media untuk SATU `ContentFormat` — lihat `MIN_MEDIA_COUNT_BY_FORMAT`. */
+/** Batas minimum media untuk SATU `ContentFormat` — lihat `MEDIA_COUNT_BOUNDS_BY_FORMAT`. */
 export function minMediaCountForFormat(format: ContentFormat): number {
-  return MIN_MEDIA_COUNT_BY_FORMAT[format];
+  return MEDIA_COUNT_BOUNDS_BY_FORMAT[format].min;
 }
 
 /**
@@ -141,7 +128,7 @@ export function minMediaCountForFormats(formats: ContentFormat[]): number {
     return 0;
   }
   return Math.max(
-    ...formats.map((format) => MIN_MEDIA_COUNT_BY_FORMAT[format]),
+    ...formats.map((format) => MEDIA_COUNT_BOUNDS_BY_FORMAT[format].min),
   );
 }
 

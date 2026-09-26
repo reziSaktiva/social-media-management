@@ -293,6 +293,31 @@ describe("draft-editor actions — mediaIds undefined vs [] (T-024.4 fix)", () =
       ).rejects.toThrow(/minimal 1 media/);
       expect(executeSpy).not.toHaveBeenCalled();
     });
+
+    it("(e) target Story, field mediaIds tidak dikirim sama sekali (undefined) DAN tanpa postId → tetap menolak (effectiveMediaCount 0), tidak sampai memanggil use-case", async () => {
+      vi.spyOn(PublishingService.prototype, "saveDraft").mockResolvedValue(
+        fakePost() as never,
+      );
+      const executeSpy = vi.spyOn(SchedulePostsUseCase.prototype, "execute");
+
+      await expect(
+        scheduleDraftAction({
+          caption: "",
+          scheduledAt: new Date().toISOString(),
+          targets: [
+            {
+              connectedAccountId: "account-1",
+              contentFormat: ContentFormat.Story,
+            },
+          ],
+          // `mediaIds` SENGAJA tidak diisi (bukan `[]`) — post baru tanpa
+          // `postId`, jadi tidak ada draft existing untuk di-lookup;
+          // `effectiveMediaCount` harus tetap dievaluasi sebagai 0, bukan
+          // silently lolos karena field-nya undefined.
+        }),
+      ).rejects.toThrow(/minimal 1 media/);
+      expect(executeSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe("publishNowAction", () => {

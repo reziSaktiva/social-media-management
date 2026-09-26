@@ -224,6 +224,13 @@ export async function GET(request: NextRequest): Promise<Response> {
     if (error instanceof ConflictError) {
       // Request kedua (POST alias GET, atau double-submit) untuk akun yang
       // baru saja terhubung — unique constraint, bukan kegagalan connect.
+      //
+      // KNOWN ISSUE (KI-079, lihat project-manager/PROJECT_STATE.md): cabang
+      // ini JUGA kena kalau user mencoba "Connect Account" generik ke akun
+      // yang statusnya `disconnected` (bukan double-submit genuine) — data
+      // TIDAK berubah sama sekali tapi user tetap melihat redirect
+      // "success". Belum diperbaiki di sini — jangan asumsikan status
+      // `success` di titik ini selalu berarti akun benar-benar aktif.
       return redirectWithStatus("success");
     }
     if (error instanceof ApplicationError) {

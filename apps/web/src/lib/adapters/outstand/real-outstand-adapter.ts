@@ -256,16 +256,33 @@ function mimeTypeToFilename(mimeType: string): string {
  * best-effort di kontrak ini) — gagal diam-diam ke `null` DISENGAJA di
  * sini, bukan silent bug: dicatat eksplisit di docstring
  * `resolveConnectCallback` + laporan kerja sesi ini.
+ *
+ * **Timeout lokal jauh lebih pendek dari timeout default client
+ * (`OutstandHttpClient.DEFAULT_TIMEOUT_MS` 15s)** — panggilan ini duduk di
+ * jalur redirect callback OAuth yang langsung dilihat user, untuk nilai
+ * yang cuma kosmetik. Kegagalan/lambat pada endpoint ini tidak boleh
+ * membuat user menunggu sampai 15 detik demi foto profil; lebih baik cepat
+ * menyerah ke `null` (avatar tetap bisa terisi lain kali lewat reconnect).
  */
+const AVATAR_FETCH_TIMEOUT_MS = 3_000;
+
 async function fetchSocialAccountAvatarUrl(
   client: OutstandHttpClient,
   outstandAccountId: string,
 ): Promise<string | null> {
   try {
-    const response = await client.request<Record<string, unknown>>(
-      `/v1/social-accounts/${encodeURIComponent(outstandAccountId)}`,
-      { method: "GET" },
-    );
+    const response = await Promise.race([
+      client.request<Record<string, unknown>>(
+        `/v1/social-accounts/${encodeURIComponent(outstandAccountId)}`,
+        { method: "GET" },
+      ),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("fetchSocialAccountAvatarUrl timed out")),
+          AVATAR_FETCH_TIMEOUT_MS,
+        ),
+      ),
+    ]);
     const data =
       typeof response.data === "object" && response.data !== null
         ? (response.data as Record<string, unknown>)
