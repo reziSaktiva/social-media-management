@@ -72,7 +72,13 @@ setiap kali. **2026-09-28:** kejadian yang sama juga terjadi di sesi
 Connected Accounts) — kejadian **pertama** untuk Najwa (sebelumnya
 limitasi ini hanya tercatat di sesi Neymar Product Designer, 7 kali).
 Ditangani dengan pola yang sama: gate dijalankan ulang di sesi utama,
-`DesignSync` termuat normal di sana, hasil PASS.
+`DesignSync` termuat normal di sana, hasil PASS. **Hari yang sama**,
+kejadian kedelapan untuk **Neymar Product Designer** sendiri (task design-prep
+T-110, state baru "menunggu verifikasi email" di `accept-invite.html`,
+KI-053) — `ToolSearch` beberapa query termasuk `select:DesignSync` lagi-lagi
+tidak menemukan apa pun di sesi Neymar. Ditangani sama: King Rezi memberi
+izin eksplisit, dikerjakan di sesi utama, `DesignSync` termuat normal di
+sana.
 
 **Ini pengecualian sementara terhadap mandat WAJIB di
 `neymar-product-designer.md`, bukan pembatalannya.** Selama keterbatasan ini
