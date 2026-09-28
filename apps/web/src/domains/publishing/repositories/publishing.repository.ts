@@ -512,8 +512,9 @@ export interface IPublishingRepository {
    * History (T-034.1, KSP-D10) — post berstatus `Published`/`Failed`
    * (percobaan publish sudah selesai, KSP-03) milik workspace, diurutkan
    * `updatedAt` descending (paling baru berubah status duluan — proksi
-   * "waktu selesai" karena `PublishingPost.failedAt` tidak pernah diisi
-   * oleh jalur manapun saat ini, lihat gap di bawah).
+   * "waktu selesai" dipertahankan APA ADANYA meski `PublishingPost.failedAt`
+   * sekarang diisi T-107 — lihat catatan update di bawah kenapa sorting
+   * TIDAK ikut diubah ke `failedAt`/`publishedAt`).
    *
    * `statuses` — caller (`PublishingService.listHistory`) WAJIB sudah
    * mempersempitnya ke subset `HISTORY_TERMINAL_STATUSES` sebelum
@@ -522,13 +523,18 @@ export interface IPublishingRepository {
    * terfilter, sama pola dengan `listCalendarPosts`/`listQueue`.
    * `connectedAccountIds` opsional, sama pola dengan `listCalendarPosts`.
    *
-   * **Gap diketahui (dilaporkan ke King Rezi, bukan diperbaiki di sini):**
-   * `PublishingPost.failedAt`/`.failureReason` ada di schema tapi TIDAK
-   * PERNAH ditulis oleh jalur manapun (`markPostFailed` hanya mengubah
-   * `status`) — sengaja tidak dimasukkan ke `HistoryItemRecord` supaya
-   * tidak menyesatkan UI dengan field yang selalu `null`. Pesan error
-   * final per akun tetap tersedia lewat `HistoryItemTargetRecord.error`
-   * (diisi `updateTargetOutcome`), sumber data yang benar-benar terisi.
+   * **Update T-107 (koreksi KI-049/KI-063):** `PublishingPost.failedAt`/
+   * `.failureReason` SEKARANG diisi oleh `markPostFailed` (sebelumnya
+   * tidak pernah ditulis sama sekali) — tapi TETAP SENGAJA tidak
+   * dimasukkan ke `HistoryItemRecord` di sini (keputusan review Ridwan
+   * Architecture Reviewer dipertahankan, bukan di-superscede diam-diam):
+   * `updatedAt` tetap dipakai sebagai proksi "waktu selesai" untuk
+   * `orderBy` supaya scope T-107 murni bug-fix data layer, tidak
+   * mengubah kontrak `HistoryItemRecord`/sorting History (itu perubahan
+   * terpisah yang perlu keputusan produk sendiri kalau memang diinginkan
+   * nanti). Pesan error final per akun tetap tersedia lewat
+   * `HistoryItemTargetRecord.error` (diisi `updateTargetOutcome`) — TIDAK
+   * berubah oleh T-107.
    *
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
@@ -666,10 +672,22 @@ export interface IPublishingRepository {
    * menemukan post SUDAH `Failed` harus diam-diam no-op, bukan dianggap
    * kegagalan internal.
    *
+   * **`reason` (T-107, koreksi KI-049/KI-063)** — mengisi `failedAt`
+   * (`new Date()`) dan `failureReason` (string ini apa adanya), yang
+   * sebelumnya TIDAK PERNAH ditulis oleh method ini (hanya `status`).
+   * Caller wajib menyediakan ringkasan penyebab kegagalan level-post —
+   * pola tiap caller: pesan exception adapter (network/HTTP gagal total),
+   * atau gabungan `PostTargetOutcome.error` unik dari seluruh target yang
+   * diketahui gagal (dipisah `"; "`), dengan fallback teks generik kalau
+   * tidak ada satu pun pesan error spesifik tersedia. Ini TIDAK
+   * menggantikan `HistoryItemTargetRecord.error` (tetap sumber kebenaran
+   * pesan error FINAL PER AKUN) — field level-post ini murni ringkasan
+   * post secara keseluruhan.
+   *
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   markPostFailed(
-    input: { workspaceId: WorkspaceId; postId: PostId },
+    input: { workspaceId: WorkspaceId; postId: PostId; reason: string },
     userId: UserId,
   ): Promise<void>;
 
@@ -717,6 +735,13 @@ export interface IPublishingRepository {
    * diam-diam no-op, bukan dianggap kegagalan internal.
    *
    * Idempoten (`updateMany` hanya menyentuh baris yang masih `Scheduled`).
+   *
+   * **T-107 (koreksi KI-049)** — sekarang juga mengisi `publishedAt`
+   * (`new Date()`), yang sebelumnya TIDAK PERNAH ditulis oleh method ini
+   * (hanya `status`) — beda dari `publishNow` (`IPublishingRepository`
+   * di bawah) yang SUDAH mengisi `publishedAt` sejak awal karena menandai
+   * `Published` di muka, sebelum outcome diketahui.
+   *
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   markPostPublished(

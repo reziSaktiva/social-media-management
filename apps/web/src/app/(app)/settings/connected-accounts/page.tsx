@@ -42,14 +42,21 @@ export default async function Page({
   const { connect, connectFacebook, connectFacebookState } = await searchParams;
 
   const workspaceService = new WorkspaceService(workspaceRepository);
-  const accounts = await workspaceService.listConnectedAccounts(
-    workspaceId,
-    asUserId(session.user.id),
-  );
+  const actorUserId = asUserId(session.user.id);
+  const [accounts, canManage] = await Promise.all([
+    workspaceService.listConnectedAccounts(workspaceId, actorUserId),
+    // T-109 (KI-058): halaman ini TETAP diakses Creator (read-only, beda
+    // dari Members/Organization Settings yang redirect seluruh halaman) —
+    // boolean ini cuma dipakai `ConnectedAccountsList` untuk
+    // menyembunyikan tombol Connect/Disconnect/Reconnect, bukan gate akses
+    // halaman.
+    workspaceService.canManageConnectedAccounts(workspaceId, actorUserId),
+  ]);
 
   return (
     <ConnectedAccountsList
       accounts={accounts}
+      canManageConnections={canManage}
       connectResult={asConnectResult(connect)}
       facebookPagesPicker={
         connectFacebook === "1" && connectFacebookState

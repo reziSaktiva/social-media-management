@@ -162,12 +162,22 @@ function ReconnectButton({ account }: { account: ConnectedAccountRecord }) {
 function ConnectedAccountAction({
   account,
   displayStatus,
+  canManage,
   onRequestDisconnect,
 }: {
   account: ConnectedAccountRecord;
   displayStatus: ConnectionDisplayStatus;
+  canManage: boolean;
   onRequestDisconnect: () => void;
 }) {
+  // T-109 (KI-058): Creator "Baca saja" (roles-permissions.md § Connected
+  // Accounts) — tombol disembunyikan total, sama seperti pola Danger Zone
+  // di `WorkspaceGeneralSettings.tsx` (`{isOwner ? <Card>...</Card> : null}`),
+  // bukan cuma disabled. RBAC server (`assertActorCanManageConnectedAccounts`)
+  // tidak berubah — ini murni kontrol render UI.
+  if (!canManage) {
+    return null;
+  }
   switch (displayStatus) {
     case "reconnect-required":
     case "disconnected":
@@ -201,9 +211,11 @@ function ConnectedAccountAction({
  */
 function ConnectedAccountRow({
   account,
+  canManage,
   onRequestDisconnect,
 }: {
   account: ConnectedAccountRecord;
+  canManage: boolean;
   onRequestDisconnect: (account: ConnectedAccountRecord) => void;
 }) {
   const displayStatus = resolveConnectionDisplayStatus(account);
@@ -242,6 +254,7 @@ function ConnectedAccountRow({
           <ConnectedAccountAction
             account={account}
             displayStatus={displayStatus}
+            canManage={canManage}
             onRequestDisconnect={() => onRequestDisconnect(account)}
           />
         </div>
@@ -257,10 +270,22 @@ function ConnectedAccountRow({
  */
 export function ConnectedAccountsList({
   accounts,
+  canManageConnections,
   connectResult = null,
   facebookPagesPicker = null,
 }: {
   accounts: ConnectedAccountRecord[];
+  /**
+   * T-109 (KI-058) — dihitung `page.tsx` lewat `WorkspaceService.
+   * canManageConnectedAccounts` (Owner/Admin aktif → true, Creator →
+   * false). Halaman ini sendiri TETAP diakses Creator (read-only, matrix
+   * `roles-permissions.md` § Connected Accounts) — beda dari Members/
+   * Organization Settings yang redirect seluruh halaman untuk role yang
+   * tidak berhak. Dipakai untuk menyembunyikan tombol "Connect Account"
+   * (header) dan "Disconnect"/"Reconnect" (tiap baris) untuk Creator, pola
+   * sama dengan `isOwner` di `WorkspaceGeneralSettings.tsx`.
+   */
+  canManageConnections: boolean;
   /**
    * Hasil Connect/Reconnect Account (T-013.1/T-013.2, T-015.3, ADR-105) —
    * diteruskan dari `page.tsx` (dibaca dari `?connect=` yang diset Route
@@ -334,7 +359,7 @@ export function ConnectedAccountsList({
       <SettingsPageHead
         pageName="Connected Accounts"
         breadcrumb={`${SETTINGS_BREADCRUMB_GROUP.organization} / Connected Accounts`}
-        action={<ConnectPlatformMenu />}
+        action={canManageConnections ? <ConnectPlatformMenu /> : null}
       />
 
       {disconnectConfirm.error ? (
@@ -367,6 +392,7 @@ export function ConnectedAccountsList({
                 <ConnectedAccountRow
                   key={account.id}
                   account={account}
+                  canManage={canManageConnections}
                   onRequestDisconnect={(requested) =>
                     disconnectConfirm.open(requested)
                   }

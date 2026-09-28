@@ -648,6 +648,8 @@ Jadi T-029.4/.5/.6 di bawah **desainnya sudah tersedia** — sisa pekerjaan murn
 
 **Bug fix korektnes (2026-08-26, ditemukan saat verifikasi T-033):** `PublishNowUseCase` tidak pernah men-set `PublishingPost.status` jadi `Failed` walau SEMUA target gagal publish — melanggar aturan `integration-layer.md:269-270,305` ("post.error" hanya kalau semua target gagal; post tetap `Published` kalau minimal satu target sukses/partial success). Diperbaiki oleh Prabowo Feature Engineer: method baru `markPostFailed` di `IPublishingRepository` (idempoten, hanya update baris yang masih status `Published`) — interface `apps/web/src/domains/publishing/repositories/publishing.repository.ts`, implementasi Prisma `apps/web/src/lib/repositories/publishing/publishing.repository.ts`; `apps/web/src/domains/publishing/services/publish-now.use-case.ts` memanggil `markPostFailed` setelah `Promise.all` publish ke semua target selesai kalau seluruh outcome gagal, tanpa mengubah perilaku partial/full success. 3 skenario test baru (semua gagal, partial, semua sukses) — semua pass; `tsc`/`eslint` bersih, tidak ada regresi (151 test lain tetap pass). Fitur inti T-029 tetap dianggap selesai — ini murni koreksi bug, bukan perubahan status task.
 
+**Terkait KI-081 (`PROJECT_STATE.md`, Open, ditemukan 2026-09-28 saat T-107):** `publishedAt` diisi di muka lewat `repository.publishNow` sebelum outcome per-target diketahui — kalau `markPostFailed` di atas mengoreksi `status` ke `Failed`, `publishedAt` yang sudah kadung terisi tidak ikut di-null-kan, sehingga post `Failed` bisa punya `publishedAt` keliru. Belum diperbaiki, di luar scope T-029 maupun T-107.
+
 ### T-030 · Cancel Schedule + dialog konfirmasi
 
 | Field         | Value                                            |
@@ -1566,6 +1568,71 @@ Architecture Reviewer: LOLOS, 0 temuan. Najwa QA: Vitest PASS — 17 file /
 
 ---
 
+## Post Outcome & Schedule Fixes
+
+### T-107 · Isi `PublishingPost.publishedAt`/`failedAt`/`failureReason` di jalur mark outcome
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ✅ Done (2026-09-28)                                          |
+| **Domain**    | publishing                                                   |
+| **ADR**       | —                                                             |
+| **Depends**   | T-027 ✅, T-029 ✅, T-034 ✅                                  |
+| **Baca dulu** | `05-architecture/domain-model.md` · `apps/web/src/domains/publishing/repositories/publishing.repository.ts` (`markPostPublished`/`markPostFailed`) |
+| **Ditemukan** | KI-049 (2026-09-08, Ridwan Architecture Reviewer, review T-034.1) + KI-063 (2026-09-17, Najwa QA Engineer, verifikasi T-027) — digabung satu task karena root cause & lokasi kode sama persis. |
+
+**Gap:** kolom `publishedAt`/`failedAt`/`failureReason` ada di schema Prisma `PublishingPost` tapi tidak pernah ditulis — `markPostPublished` hanya meng-update `status`, begitu juga `markPostFailed`. UI History punya fallback (`item.publishedAt ?? item.updatedAt`) jadi tidak berdampak visual sekarang, tapi data historis kosong permanen untuk seluruh post yang sudah tayang/gagal. Pesan error final per akun tetap ada lewat `HistoryItemTargetRecord.error` (KI-049 catat ini sebagai sumber data yang benar untuk sekarang) — task ini tidak mengubah itu, hanya mengisi field level-post yang selama ini kosong.
+
+**Implementasi (selesai, 2026-09-28):** signature `markPostFailed` berubah
+(tambah param `reason: string`); implementasi Prisma sekarang set
+`publishedAt`/`failedAt`/`failureReason`. 3 call-site
+(`schedule-posts.use-case.ts`, `publish-now.use-case.ts`,
+`outstand-webhook-processor.ts`) menyediakan `reason` dari
+`PostTargetOutcome.error` unik per target (join `"; "`, fallback teks
+generik). Ridwan Architecture Reviewer: **0 temuan**. Najwa QA Engineer:
+verifikasi code-trace + schema (tidak ada jalur publish/fail nyata
+tersedia di data dev untuk uji end-to-end browser — dicatat sebagai
+keterbatasan, bukan kegagalan). Full suite **593 passed/6 skipped**.
+
+**Gap baru ditemukan (di luar scope, tidak diperbaiki di sini):**
+**KI-081** (`PROJECT_STATE.md`) — `PublishNowUseCase` (T-029) bisa
+membuat post `Failed` dengan `publishedAt` terisi keliru, karena
+`publishedAt` diisi di muka sebelum outcome per-target diketahui dan tidak
+di-null-kan saat `markPostFailed` mengoreksi `status`. Bug pre-existing,
+independen dari T-107.
+
+- [x] **T-107.1** `markPostPublished` mengisi `publishedAt` (bukan hanya `status`)
+- [x] **T-107.2** `markPostFailed` mengisi `failedAt` + `failureReason` (bukan hanya `status`)
+- [x] **T-107.3** Verifikasi UI History (`HistoryList`/`HistoryDetail`) tidak regresi — fallback `item.publishedAt ?? item.updatedAt` yang sudah ada harus tetap benar setelah field asli terisi
+
+### T-108 · Validasi Schedule tidak boleh ke waktu yang sudah lewat pada tanggal hari ini
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ✅ Done (2026-09-28)                                          |
+| **Domain**    | publishing · UI                                              |
+| **ADR**       | —                                                             |
+| **Depends**   | T-100 ✅ (Draft Editor `Modal.tsx` saat ini)                  |
+| **Baca dulu** | `apps/web/src/app/(app)/components/draft-editor/Modal.tsx` (step Schedule) |
+| **Ditemukan** | KI-044 (2026-09-03, Najwa QA Engineer, verifikasi T-100.3) — sudah ada sejak sebelum migrasi shadcn, bukan regresi. |
+
+**Gap:** tidak ada validasi yang mencegah user men-Schedule post ke waktu yang sudah lewat pada tanggal hari ini (mis. jadwalkan jam 08:00 padahal sekarang sudah jam 11:48) — post berhasil masuk Queue tanpa penolakan/warning apa pun.
+
+**Implementasi (selesai, 2026-09-28):** modul domain baru
+`schedule-time-constraints.ts` (pola sama
+`pinterest-board-constraints.ts`), dipanggil dari client (`Modal.tsx`,
+reuse `Alert variant="destructive"`) dan server
+(`schedule-posts.use-case.ts`, defense-in-depth). Najwa QA Engineer
+verifikasi browser: golden path PASS (tanggal hari ini + jam lewat →
+`Alert` muncul + tombol submit disabled), edge case tanggal masa depan
+PASS (tidak regresi), boundary case PASS.
+
+- [x] **T-108.1** Validasi client: disable submit/tampilkan warning kalau tanggal = hari ini dan jam yang dipilih sudah lewat waktu saat ini
+- [x] **T-108.2** Validasi server (defense in depth) di use-case/Server Action Schedule terkait — jangan hanya andalkan client
+- [x] **T-108.3** Pesan error jelas ke user (bukan silent reject/masuk Queue diam-diam)
+
+---
+
 ## Catatan Rilis
 
 * Ruang kosong v0.2 sebelumnya mencakup T-039, tapi nomor itu sudah dipakai untuk **T-039** (Migrasi Routing & Settings, ADR-076) di `tasks/v01-foundation.md`, bukan task v0.2 — lihat Catatan Rilis file tersebut. Tidak ada lagi ruang kosong tersisa untuk task v0.2 baru; task v0.2 berikutnya memakai nomor global berikutnya yang belum pernah dipakai (cek Indeks release di `TASKS.md`).
@@ -1573,4 +1640,5 @@ Architecture Reviewer: LOLOS, 0 temuan. Najwa QA: Vitest PASS — 17 file /
 * **T-092** (ditambah 2026-08-28, sesi diskusi ADR-094) memakai pola nomor global yang sama lagi — berikutnya setelah T-091.
 * **T-104** (ditambah 2026-09-11, gap ditemukan saat implementasi T-092.5) memakai ID global berikutnya yang belum pernah dipakai (terakhir T-103, di `tasks/v07-astryx-shadcn-migration.md`) — ditempatkan di file ini karena domain `publishing`, terkait langsung T-092.
 * **T-106** (ditambah 2026-09-25, permintaan King Rezi setelah T-025) memakai ID global berikutnya setelah T-105 — ditempatkan di file ini karena domain `integration`, kelanjutan T-025/ADR-059.
+* **T-107**/**T-108** (ditambah 2026-09-28, promosi dari Known Issues KI-049/KI-063/KI-044 setelah audit aplikasi menyeluruh atas permintaan King Rezi) memakai ID global berikutnya setelah T-106 — ditempatkan di file ini karena domain `publishing`.
 * **Definition of Done rilis ini** (dari `release-roadmap.md`): pengguna dapat mengelola proses publikasi dari awal hingga selesai — draft → format per akun → schedule/publish → lihat queue/calendar → lihat hasil di history.

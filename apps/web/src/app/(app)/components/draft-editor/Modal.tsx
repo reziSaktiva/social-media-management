@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import type { PinterestBoard } from "@social/shared";
 import { ContentFormat, ContentStatus, SocialPlatform } from "@social/shared";
 import { pinterestBoardConstraintMessage } from "@/domains/publishing/pinterest-board-constraints";
+import { scheduleTimeConstraintMessage } from "@/domains/publishing/schedule-time-constraints";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -449,6 +450,22 @@ function DraftEditorForm({
     activeFormatsForGate,
   );
 
+  // T-108 (KI-044): tidak ada validasi yang mencegah user men-Schedule post
+  // ke waktu yang sudah lewat (mis. jadwalkan jam 08:00 padahal sekarang
+  // sudah jam 11:48, atau tanggal yang sudah lewat sama sekali — date input
+  // di bawah tidak punya batas `min`). Dievaluasi HANYA kalau tanggal DAN
+  // jam sudah dipilih keduanya (draft yang belum lengkap sudah tertahan
+  // lewat `Boolean(scheduleDate) && Boolean(scheduleTime)` di bawah, jangan
+  // tampilkan pesan ini sebelum itu). Dihitung ulang setiap render (sama
+  // seperti `pinterestConstraintMessage`/`mediaMinimumMessage` di atas) jadi
+  // otomatis re-evaluate begitu waktu berjalan lewat titik yang dipilih user.
+  const scheduleTimeMessage =
+    scheduleDate && scheduleTime
+      ? scheduleTimeConstraintMessage(
+          new Date(`${scheduleDate}T${scheduleTime}`),
+        )
+      : null;
+
   const isReadyToSchedule =
     (!isCaptionRequired || caption.trim().length > 0) &&
     selectedAccounts.length > 0 &&
@@ -456,7 +473,8 @@ function DraftEditorForm({
     Boolean(scheduleTime) &&
     pinterestConstraintMessage === null &&
     mediaMinimumMessage === null &&
-    mixedStoryCaptionMessage === null;
+    mixedStoryCaptionMessage === null &&
+    scheduleTimeMessage === null;
 
   // Publish Now (KSP-05-F12) skips the Schedule Picker entirely — tanggal/
   // waktu tidak relevan sama sekali, beda dari `isReadyToSchedule`.
@@ -884,6 +902,11 @@ function DraftEditorForm({
             {mixedStoryCaptionMessage ? (
               <Alert variant="destructive">
                 <AlertTitle>{mixedStoryCaptionMessage}</AlertTitle>
+              </Alert>
+            ) : null}
+            {scheduleTimeMessage ? (
+              <Alert variant="destructive">
+                <AlertTitle>{scheduleTimeMessage}</AlertTitle>
               </Alert>
             ) : null}
             {notice ? (

@@ -2051,6 +2051,94 @@ describe("WorkspaceService.canManageMembers", () => {
   });
 });
 
+describe("WorkspaceService.canManageConnectedAccounts", () => {
+  const OWNER_USER = asUserId("cmca-owner-user");
+  const ADMIN_USER = asUserId("cmca-admin-user");
+  const CREATOR_USER = asUserId("cmca-creator-user");
+
+  const OWNER_MEMBER_ID = asMemberId("cmca-member-owner");
+  const ADMIN_MEMBER_ID = asMemberId("cmca-member-admin");
+  const CREATOR_MEMBER_ID = asMemberId("cmca-member-creator");
+
+  function baseSeed(): WorkspaceMemberRecord[] {
+    return [
+      member(OWNER_USER, OWNER_MEMBER_ID, MemberRole.Owner),
+      member(ADMIN_USER, ADMIN_MEMBER_ID, MemberRole.Admin),
+      member(CREATOR_USER, CREATOR_MEMBER_ID, MemberRole.Creator),
+    ];
+  }
+
+  // T-109 (KI-058): gate UI aksi Connect/Disconnect/Reconnect di halaman
+  // Connected Accounts — beda dari canManageMembers, Creator TETAP `false`
+  // di sini tapi halaman itu sendiri tidak di-redirect (read-only per
+  // roles-permissions.md § Connected Accounts) — page.tsx tidak memanggil
+  // ini untuk gating akses halaman, hanya untuk kontrol render tombol.
+  it("returns true for Owner", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.canManageConnectedAccounts(WORKSPACE_ID, OWNER_USER),
+    ).resolves.toBe(true);
+  });
+
+  it("returns true for Admin", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.canManageConnectedAccounts(WORKSPACE_ID, ADMIN_USER),
+    ).resolves.toBe(true);
+  });
+
+  it("returns false for Creator", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.canManageConnectedAccounts(WORKSPACE_ID, CREATOR_USER),
+    ).resolves.toBe(false);
+  });
+
+  it("returns false for a non-member / stranger", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(baseSeed())),
+    );
+
+    await expect(
+      service.canManageConnectedAccounts(
+        WORKSPACE_ID,
+        asUserId("cmca-stranger"),
+      ),
+    ).resolves.toBe(false);
+  });
+
+  it("returns false when the actor's membership is not Active", async () => {
+    const seed = baseSeed();
+    seed.push(
+      member(
+        asUserId("cmca-pending-user"),
+        asMemberId("cmca-member-pending"),
+        MemberRole.Admin,
+        MemberStatus.Pending,
+      ),
+    );
+    const service = new WorkspaceService(
+      createFakeRepository(seedMembers(seed)),
+    );
+
+    await expect(
+      service.canManageConnectedAccounts(
+        WORKSPACE_ID,
+        asUserId("cmca-pending-user"),
+      ),
+    ).resolves.toBe(false);
+  });
+});
+
 describe("WorkspaceService.updateMemberRole", () => {
   const OWNER_USER = asUserId("owner-user");
   const ADMIN_USER = asUserId("admin-user");

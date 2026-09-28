@@ -540,13 +540,18 @@ export const publishingRepository: IPublishingRepository = {
     return record;
   },
 
-  async markPostFailed({ workspaceId, postId }, userId) {
+  async markPostFailed({ workspaceId, postId, reason }, userId) {
     // T-027 bug fix — SENGAJA TIDAK throw kalau 0 baris ter-update, sama
     // seperti `markPostPublished` di bawah: `resolvePostOutcome` bisa sah
     // dipanggil lebih dari sekali untuk `outstandPostId` yang sama (job
     // polling T-027 dan webhook T-026 bisa sama-sama menyimpulkan "semua
     // target gagal" untuk post yang sama), dan panggilan kedua yang
     // menemukan post SUDAH `Failed` harus diam-diam no-op, bukan throw.
+    //
+    // T-107 (koreksi KI-049/KI-063) — `failedAt`/`failureReason` sekarang
+    // benar-benar ditulis (sebelumnya hanya `status`). Lihat catatan
+    // panjang di `IPublishingRepository.markPostFailed` untuk kontrak
+    // `reason` per caller.
     await withCurrentUser(userId, (tx) =>
       tx.publishingPost.updateMany({
         where: {
@@ -558,7 +563,11 @@ export const publishingRepository: IPublishingRepository = {
           status: { in: [ContentStatus.Published, ContentStatus.Scheduled] },
           deletedAt: null,
         },
-        data: { status: ContentStatus.Failed },
+        data: {
+          status: ContentStatus.Failed,
+          failedAt: new Date(),
+          failureReason: reason,
+        },
       }),
     );
   },
@@ -571,6 +580,10 @@ export const publishingRepository: IPublishingRepository = {
     // `outstandPostId` yang sama (dua webhook event Outstand berbeda,
     // bukan duplikat receipt), dan panggilan kedua yang menemukan post
     // SUDAH `Published` harus diam-diam no-op.
+    //
+    // T-107 (koreksi KI-049) — `publishedAt` sekarang benar-benar ditulis
+    // (sebelumnya hanya `status`), konsisten dengan `publishNow` di bawah
+    // yang sudah mengisi field ini sejak awal.
     await withCurrentUser(userId, (tx) =>
       tx.publishingPost.updateMany({
         where: {
@@ -579,7 +592,7 @@ export const publishingRepository: IPublishingRepository = {
           status: ContentStatus.Scheduled,
           deletedAt: null,
         },
-        data: { status: ContentStatus.Published },
+        data: { status: ContentStatus.Published, publishedAt: new Date() },
       }),
     );
   },

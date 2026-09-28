@@ -212,10 +212,28 @@ Hasil: Overview tab = konten existing `analyze-dashboard.html`, TIDAK diubah sam
 
 **Verifikasi akhir:** `bun run typecheck`/`bun run lint` bersih, `bun run test` **426 pass/5 skip** (42 file, tidak ada regresi dari 422 sebelumnya + 4 test baru T-045). Detail lengkap: `COMPLETE_TASK.md`.
 
+### T-048 · Wire JOB-04 Analytics Sync ke job runner + Railway Cron harian
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | analytics · integration                                      |
+| **ADR**       | —                                                             |
+| **Depends**   | T-041 ✅ (Use Case ingestion sudah ada), T-027 ✅ (job runner `/api/jobs/run` sudah ada) |
+| **Baca dulu** | `05-architecture/background-jobs.md` § JOB-04 · `apps/web/src/app/api/jobs/run/route.ts` · `apps/web/src/domains/analytics/services/analytics-ingestion.use-case.ts` |
+| **Ditemukan** | 2026-09-28 — investigasi kenapa Home (T-042) masih menampilkan empty state "Belum ada data metrik" meski T-025 (Real OutstandAdapter) sudah selesai. |
+
+**Gap:** `AnalyticsIngestionUseCase.syncPostMetrics`/`syncWorkspaceSnapshot` (T-041) sudah lengkap dan ditest, tapi baris kode T-041 sendiri mencatat eksplisit "cron/job scheduler asli Railway (tetap T-027) di luar scope". Setelah T-027 selesai, tidak ada task lanjutan yang benar-benar mendaftarkan JOB-04 ke registry — `handlers` di `/api/jobs/run/route.ts` saat ini hanya berisi `RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE` (JOB-01/05) dan `ENGAGEMENT_SYNC_JOB_TYPE` (JOB-03). Akibatnya `AnalyticsWorkspaceSnapshot` tidak pernah terisi di production, dan Home/`/analyze` selalu jatuh ke jalur empty state (bukan bug UI — datanya memang tidak pernah disinkronkan).
+
+- [ ] **T-048.1** Job type constant + handler baru (`AnalyticsSyncJobHandler`, pola sama `EngagementSyncJobHandler`) yang memanggil `AnalyticsIngestionUseCase` — daftarkan ke `handlers` registry di `/api/jobs/run/route.ts`
+- [ ] **T-048.2** Enqueue job per `ConnectedAccount` aktif (`syncPostMetrics` untuk post yang belum ada snapshot + `syncWorkspaceSnapshot` agregat workspace) — ikuti alur `background-jobs.md` § JOB-04 langkah 1–3
+- [ ] **T-048.3** Jadwal Railway Cron **harian** terpisah dari interval JOB-03 (30 menit) — sesuai keputusan frekuensi T-041.3, update `railway.cron.json`/config Railway Cron yang relevan
+- [ ] **T-048.4** Verifikasi end-to-end: setelah job jalan sekali di environment nyata (staging), Home (T-042) dan `/analyze` (T-043/T-046/T-047) menampilkan angka asli — bukan empty state
+
 ---
 
 ## Catatan Rilis
 
-* T-046–T-049 sengaja dikosongkan sebagai ruang penambahan task v0.3. **Update 2026-09-18:** T-046 (Account Overview) dan T-047 (Summary row /analyze) sudah terpakai — gap perencanaan murni ditemukan saat implementasi T-043 (dua section `analyze-dashboard.html` yang sengaja dikecualikan dari scope T-043 ternyata belum pernah dapat nomor task). Tersisa **T-048–T-049** sebagai ruang kosong.
+* T-046–T-049 sengaja dikosongkan sebagai ruang penambahan task v0.3. **Update 2026-09-18:** T-046 (Account Overview) dan T-047 (Summary row /analyze) sudah terpakai — gap perencanaan murni ditemukan saat implementasi T-043 (dua section `analyze-dashboard.html` yang sengaja dikecualikan dari scope T-043 ternyata belum pernah dapat nomor task). **Update 2026-09-28:** T-048 (wire JOB-04 Analytics Sync) sudah terpakai — gap ditemukan saat investigasi Home masih empty state meski T-025/T-027 sudah selesai. Tersisa **T-049** sebagai ruang kosong.
 * **Definition of Done rilis ini:** pengguna dapat mengevaluasi hasil publikasi.
 * **Yang sengaja di luar rilis ini:** Custom Reports, AI Insights, Enterprise Analytics (`feature-priority.md`).

@@ -1029,6 +1029,32 @@ export class WorkspaceService {
     );
   }
 
+  /**
+   * Gate UI aksi mutasi Connect/Disconnect/Reconnect di halaman Connected
+   * Accounts (T-109, KI-058) — true untuk Owner/Admin aktif, false untuk
+   * Creator. Kondisi role IDENTIK dengan `canManageWorkspaceSettings`/
+   * `canManageMembers` (Owner/Admin aktif), tapi method ini SENGAJA tidak
+   * dipakai untuk redirect seluruh halaman seperti dua method itu — matrix
+   * `roles-permissions.md` § Connected Accounts memberi Creator "Baca saja"
+   * (read-only), bukan "Tidak ada akses" sama sekali. Dipakai Server
+   * Component (`connected-accounts/page.tsx`) untuk menentukan apakah
+   * tombol Connect/Disconnect/Reconnect dirender di `ConnectedAccountsList`
+   * (Client Component) — bukan gate baru, murni mengekspos kondisi yang
+   * sudah ditegakkan `assertActorCanManageConnectedAccounts` di bawah
+   * sebagai boolean non-throwing supaya bisa dipakai untuk kontrol render.
+   */
+  async canManageConnectedAccounts(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<boolean> {
+    const actor = await this.getMembership(workspaceId, actorUserId);
+    return (
+      !!actor &&
+      actor.status === MemberStatus.Active &&
+      (actor.role === MemberRole.Owner || actor.role === MemberRole.Admin)
+    );
+  }
+
   /** Owner/Admin only; dipakai disconnectAccount. Reuse `assertActorHasOwnerOrAdminRole` (dedup, bukan gate RBAC baru). */
   private async assertActorCanManageConnectedAccounts(
     workspaceId: WorkspaceId,

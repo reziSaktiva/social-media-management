@@ -8,7 +8,7 @@ import {
   ContentStatus,
   SocialPlatform,
 } from "@social/shared";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ConflictError } from "@/lib/utils/errors";
 import type { IOutstandAdapter } from "../adapters/outstand-adapter";
 import type { IJobScheduler } from "../adapters/job-scheduler";
@@ -124,6 +124,21 @@ function createFakeJobScheduler(
 }
 
 describe("SchedulePostsUseCase.execute", () => {
+  // T-108.2 (KI-044): `assertScheduledAtNotInPast` membandingkan `SCHEDULED_AT`
+  // di bawah terhadap `new Date()` sungguhan. `SCHEDULED_AT` adalah tanggal
+  // tetap (fixture lama, dari sebelum T-108 ada) — tanpa fake timers, fixture
+  // itu perlahan jadi "masa lalu" seiring waktu berjalan dan seluruh test di
+  // file ini gagal karena guard yang baru ditambah, bukan karena regresi
+  // sungguhan. `beforeAll`/`afterAll` mengunci "now" ke satu titik SEBELUM
+  // `SCHEDULED_AT` supaya deterministik selamanya.
+  beforeAll(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-01T00:00:00Z"));
+  });
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   const POST_ID = asPostId("post-1");
   const SCHEDULED_AT = new Date("2026-08-10T10:00:00Z");
   const CONNECTED_ACCOUNT_1 = asConnectedAccountId("conn-1");
@@ -429,6 +444,50 @@ describe("SchedulePostsUseCase.execute", () => {
             // ADR-039 — hanya Post yang diizinkan, Story harus ditolak.
             platform: SocialPlatform.TikTok,
             contentFormat: ContentFormat.Story,
+            outstandAccountId: "outstand-acc-1",
+          },
+        ],
+        actingUserId: AUTHOR_ID,
+      }),
+    ).rejects.toThrow(PublishingDomainError);
+
+    expect(repositoryCalled).toBe(false);
+    expect(adapterCalled).toBe(false);
+  });
+
+  it("T-108.2 (KI-044): rejects a scheduledAt already in the past before calling repository or adapter", async () => {
+    let repositoryCalled = false;
+    let adapterCalled = false;
+    const repository = createFakeRepository({
+      schedulePost: async () => {
+        repositoryCalled = true;
+        return null;
+      },
+    });
+    const adapter = createFakeOutstandAdapter({
+      schedulePost: async () => {
+        adapterCalled = true;
+        return { outstandPostId: "should-not-happen" };
+      },
+    });
+    const useCase = new SchedulePostsUseCase(
+      repository,
+      adapter,
+      createFakeJobScheduler(),
+    );
+
+    await expect(
+      useCase.execute({
+        workspaceId: WORKSPACE_ID,
+        postId: POST_ID,
+        // "now" terkunci ke 2026-08-01 (lihat beforeAll di atas) — tanggal
+        // ini sudah lewat relatif terhadap itu.
+        scheduledAt: new Date("2026-07-01T08:00:00Z"),
+        targets: [
+          {
+            connectedAccountId: CONNECTED_ACCOUNT_1,
+            platform: SocialPlatform.Instagram,
+            contentFormat: ContentFormat.Post,
             outstandAccountId: "outstand-acc-1",
           },
         ],

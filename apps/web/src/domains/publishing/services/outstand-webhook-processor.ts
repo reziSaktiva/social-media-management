@@ -261,8 +261,27 @@ export class OutstandWebhookProcessor {
       );
 
     if (allKnownFailed) {
+      // T-107 (koreksi KI-049/KI-063) — `reason` diringkas dari
+      // `PostTargetOutcome.error` unik seluruh target yang diketahui
+      // gagal (`targetsToUpdate` sudah difilter non-"pending" di atas),
+      // dengan fallback teks generik kalau Outstand tidak melaporkan
+      // pesan error spesifik apa pun.
+      const failureReasons = Array.from(
+        new Set(
+          targetsToUpdate
+            .filter(
+              ({ outcome }) => outcome.status === "failed" && outcome.error,
+            )
+            .map(({ outcome }) => outcome.error as string),
+        ),
+      );
+      const reason =
+        failureReasons.length > 0
+          ? failureReasons.join("; ")
+          : "Semua target gagal mempublikasikan post ini.";
+
       await this.repository.markPostFailed(
-        { workspaceId: post.workspaceId, postId: post.postId },
+        { workspaceId: post.workspaceId, postId: post.postId, reason },
         post.authorId,
       );
 

@@ -67,7 +67,12 @@ persis: `ToolSearch` beberapa query termasuk `select:DesignSync` tidak
 menemukan apa pun di sesi Neymar; lalu 2026-09-24, task drafting UI
 page-selection Facebook Pages KI-070 — kejadian ketujuh, pola sama persis),
 padahal tool yang sama berhasil di sesi utama pada waktu yang berdekatan
-setiap kali.
+setiap kali. **2026-09-28:** kejadian yang sama juga terjadi di sesi
+**Najwa QA Engineer** (gate T-103.3 saat QA task T-109, RBAC UI Creator
+Connected Accounts) — kejadian **pertama** untuk Najwa (sebelumnya
+limitasi ini hanya tercatat di sesi Neymar Product Designer, 7 kali).
+Ditangani dengan pola yang sama: gate dijalankan ulang di sesi utama,
+`DesignSync` termuat normal di sana, hasil PASS.
 
 **Ini pengecualian sementara terhadap mandat WAJIB di
 `neymar-product-designer.md`, bukan pembatalannya.** Selama keterbatasan ini

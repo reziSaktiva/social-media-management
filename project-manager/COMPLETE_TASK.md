@@ -8,6 +8,66 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-28 — T-107/T-108/T-109 ✅ Done: promosi Known Issues KI-049/KI-063/KI-044/KI-058; 1 KI baru (KI-081)
+
+Audit aplikasi menyeluruh atas permintaan King Rezi mempromosikan 4 Known
+Issue jadi 3 task resmi, semuanya selesai diimplementasikan, direview
+Ridwan Architecture Reviewer (0 temuan), dan di-QA Najwa QA Engineer
+(semua golden path/edge case PASS).
+
+**T-107** (promosi KI-049 + KI-063, digabung karena root cause & lokasi
+kode sama persis) — `PublishingPost.publishedAt`/`failedAt`/`failureReason`
+tidak pernah ditulis oleh `markPostPublished`/`markPostFailed`. Fix:
+signature `markPostFailed` berubah (tambah param `reason: string`);
+implementasi Prisma sekarang set ketiga kolom itu. 3 call-site
+(`schedule-posts.use-case.ts`, `publish-now.use-case.ts`,
+`outstand-webhook-processor.ts`) menyediakan `reason` dari
+`PostTargetOutcome.error` unik per target (join `"; "`, fallback teks
+generik). Najwa verifikasi code-trace + schema (tidak ada jalur
+publish/fail nyata tersedia di data dev untuk uji end-to-end browser —
+dicatat sebagai keterbatasan, bukan kegagalan).
+
+**T-108** (promosi KI-044) — tidak ada validasi mencegah Schedule ke waktu
+yang sudah lewat pada tanggal hari ini. Fix: modul domain baru
+`schedule-time-constraints.ts` (pola sama `pinterest-board-constraints.ts`),
+dipanggil client (`Modal.tsx`, reuse `Alert variant="destructive"`) dan
+server (`schedule-posts.use-case.ts`, defense-in-depth). Najwa verifikasi
+browser: golden path PASS (tanggal hari ini + jam lewat → Alert + tombol
+disabled), edge case tanggal masa depan PASS (tidak regresi), boundary
+case PASS.
+
+**T-109** (promosi KI-058) — `ConnectedAccountsList.tsx` tidak
+menyembunyikan/men-disable aksi Connect/Disconnect/Reconnect untuk role
+Creator. Fix: `WorkspaceService.canManageConnectedAccounts` baru (reuse
+pola `canManageWorkspaceSettings`), UI menyembunyikan **total** (bukan
+disabled) tombol untuk Creator. Najwa verifikasi browser dengan akun real
+(Sinta=Creator tombol hilang, Raka=Owner tetap ada — PASS keduanya). Gate
+T-103.3 sempat gagal di sesi Najwa (`DesignSync` tidak termuat — kejadian
+**pertama** di sesi Najwa QA Engineer; sebelumnya limitasi ini hanya
+tercatat 7 kali di sesi Neymar Product Designer, lihat
+`.claude/agents/README.md`) — dijalankan ulang di sesi utama, hasil PASS
+(diff murni membungkus struktur "SYNCED"
+`templates/settings-connected-accounts.html` dengan kondisi role, tidak
+mengubah markup yang dikunci).
+
+**Dikerjakan:** Prabowo Feature Engineer ×2 (T-107, T-108) + Mark UI
+Engineer (T-109), review Ridwan Architecture Reviewer (0 temuan untuk
+ketiganya), QA Najwa QA Engineer (PASS semua skenario).
+
+**1 Known Issue baru ditemukan (KI-081, Open):** `PublishNowUseCase`
+mengisi `publishedAt` di muka (lewat `repository.publishNow`) sebelum
+outcome per-target diketahui — kalau semua target gagal dan
+`markPostFailed` mengoreksi `status` ke `Failed`, `publishedAt` yang sudah
+kadung terisi tidak ikut di-null-kan, sehingga post `Failed` bisa punya
+`publishedAt` keliru. Bug pre-existing, independen dari T-107, sengaja
+tidak diperbaiki otomatis karena butuh keputusan perilaku tambahan.
+
+**Verifikasi akhir:** `bun run typecheck` bersih, `bun run lint` bersih,
+`bunx vitest run` **593 passed/6 skipped**. Tidak ada commit/push di sesi
+ini.
+
+---
+
 ## 2026-09-26 — KI-080 Resolved: fix build Railway (`next.config.ts` workspace import); KI-078/KI-079 Resolved via ADR-122
 
 Lanjutan sesi sebelumnya (entri tepat di bawah ini, commit `d0286fd`/

@@ -227,7 +227,12 @@ describe("ResolveScheduledPostOutcomeJobHandler.handle (T-027.5)", () => {
     await handler.handle({ outstandPostId: OUTSTAND_POST_ID });
 
     expect(markPostFailed).toHaveBeenCalledWith(
-      { workspaceId: WORKSPACE_ID, postId: POST_ID },
+      {
+        workspaceId: WORKSPACE_ID,
+        postId: POST_ID,
+        // T-107 — reason gabungan unik dari error tiap target gagal.
+        reason: "quota exceeded; token invalid",
+      },
       AUTHOR_ID,
     );
     expect(notify).toHaveBeenCalledTimes(1);

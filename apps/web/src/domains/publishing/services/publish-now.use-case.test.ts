@@ -299,6 +299,8 @@ describe("PublishNowUseCase.execute", () => {
         expect(input).toEqual({
           workspaceId: WORKSPACE_ID,
           postId: POST_ID,
+          // T-107 — reason diambil dari pesan exception adapter.
+          reason: "outstand down",
         });
       },
     });
