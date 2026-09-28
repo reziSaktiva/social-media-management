@@ -61,6 +61,7 @@ function createFakeRepository(
     disconnectAccount: async () => undefined,
     findConnectedAccountById: async () => null,
     findConnectedAccountByOutstandId: async () => null,
+    isConnectedAccountWithinWindow: async () => false,
     createConnectedAccount: async ({
       workspaceId,
       platform,
@@ -1087,20 +1088,24 @@ describe("WorkspaceService.completeAccountConnection", () => {
       handle: "@fake",
       status: "active",
       reconnectRequired: false,
-      // Dibuat 2 detik lalu — di dalam DOUBLE_SUBMIT_RECOVERY_WINDOW_MS
-      // (15 detik), jadi harus diperlakukan sebagai request susulan yang
-      // aman, bukan percobaan connect terpisah.
       connectedAt: new Date(Date.now() - 2_000),
     };
     const createConnectedAccount = vi.fn(async () => {
       throw new ConflictError("Akun ini sudah terhubung di workspace ini.");
     });
     const findConnectedAccountByOutstandId = vi.fn(async () => conflictingRow);
+    // Code review PR #139 (Opsi B) — window check dihitung di sisi
+    // repository (Postgres `now()`), bukan lagi dari `connectedAt` yang
+    // dibandingkan `Date.now()` di service. Fake ini mensimulasikan baris
+    // yang MASIH di dalam window (`true`), simulasi request susulan yang
+    // aman dari double-submit genuine.
+    const isConnectedAccountWithinWindow = vi.fn(async () => true);
     const service = new WorkspaceService(
       createFakeRepository({
         ...seedMembers(baseSeed()),
         createConnectedAccount,
         findConnectedAccountByOutstandId,
+        isConnectedAccountWithinWindow,
       }),
       undefined,
       undefined,
@@ -1121,6 +1126,11 @@ describe("WorkspaceService.completeAccountConnection", () => {
       "outstand-account-1",
       OWNER_USER,
     );
+    expect(isConnectedAccountWithinWindow).toHaveBeenCalledWith(
+      conflictingRow.id,
+      expect.any(Number),
+      OWNER_USER,
+    );
   });
 
   it("KI-079: throws AlreadyConnectedError when the conflicting account is not recent — separate connect attempt", async () => {
@@ -1131,8 +1141,6 @@ describe("WorkspaceService.completeAccountConnection", () => {
       handle: "@fake",
       status: "active",
       reconnectRequired: false,
-      // Dibuat jauh sebelumnya (di luar DOUBLE_SUBMIT_RECOVERY_WINDOW_MS) —
-      // ini akun yang genuinely sudah terhubung, bukan double-submit.
       connectedAt: new Date("2026-01-01T00:00:00.000Z"),
     };
     const createConnectedAccount = vi.fn(async () => {
@@ -1143,6 +1151,46 @@ describe("WorkspaceService.completeAccountConnection", () => {
         ...seedMembers(baseSeed()),
         createConnectedAccount,
         findConnectedAccountByOutstandId: async () => conflictingRow,
+        // Baris di luar window (code review PR #139 — Opsi B: keputusan ini
+        // sekarang datang dari repository, bukan dihitung dari `connectedAt`
+        // di sini).
+        isConnectedAccountWithinWindow: async () => false,
+      }),
+      undefined,
+      undefined,
+      fakeOutstandAdapter(),
+    );
+
+    await expect(
+      service.completeAccountConnection({
+        workspaceId: WORKSPACE_ID,
+        actorId: OWNER_USER,
+        accountId: "fake-account-id",
+        username: "fake-username",
+        state: "fake-state",
+      }),
+    ).rejects.toBeInstanceOf(AlreadyConnectedError);
+  });
+
+  it("KI-079 (code review PR #139): throws AlreadyConnectedError when the conflicting row is within window but no longer active (disconnected/reconnect-required)", async () => {
+    const conflictingRow: ConnectedAccountRecord = {
+      ...existingAccount(),
+      id: asConnectedAccountId("cac-conn-disconnected"),
+      outstandAccountId: "outstand-account-1",
+      handle: "@fake",
+      status: "disconnected",
+      reconnectRequired: false,
+      connectedAt: new Date(Date.now() - 2_000),
+    };
+    const createConnectedAccount = vi.fn(async () => {
+      throw new ConflictError("Akun ini sudah terhubung di workspace ini.");
+    });
+    const service = new WorkspaceService(
+      createFakeRepository({
+        ...seedMembers(baseSeed()),
+        createConnectedAccount,
+        findConnectedAccountByOutstandId: async () => conflictingRow,
+        isConnectedAccountWithinWindow: async () => true,
       }),
       undefined,
       undefined,

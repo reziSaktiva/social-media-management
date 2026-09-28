@@ -1237,7 +1237,13 @@ export class WorkspaceService {
    * Sinyalnya `connectedAt` baris yang bentrok, yang TIDAK PERNAH berubah
    * setelah dibuat (`reconnectAccount` sengaja mempertahankannya, lihat
    * docstring method itu) — jadi selalu mencerminkan momen `create`
-   * ASLINYA, bukan aktivitas connect/reconnect terakhir:
+   * ASLINYA, bukan aktivitas connect/reconnect terakhir. Perbandingan
+   * "baru berapa lama" dilakukan `IWorkspaceRepository.
+   * isConnectedAccountWithinWindow` di sisi Postgres (`now() -
+   * connected_at`), BUKAN `Date.now()` di sini (code review PR #139) —
+   * domain ini tidak boleh mengimpor Prisma (rule 6 `AGENTS.md`), dan
+   * perbandingan lintas jam app-server vs database rawan drift kalau
+   * dihitung di Node:
    * - Baru dibuat dalam `DOUBLE_SUBMIT_RECOVERY_WINDOW_MS` terakhir DAN
    *   masih `status === "active"` (bukan `reconnectRequired`) →
    *   nyaris pasti request susulan dari percobaan connect YANG SAMA
@@ -1276,12 +1282,18 @@ export class WorkspaceService {
         input.outstandAccountId,
         input.actingUserId,
       );
+      const isRecent =
+        existing &&
+        (await this.repository.isConnectedAccountWithinWindow(
+          existing.id,
+          DOUBLE_SUBMIT_RECOVERY_WINDOW_MS,
+          input.actingUserId,
+        ));
       if (
         existing &&
         existing.status === "active" &&
         !existing.reconnectRequired &&
-        Date.now() - existing.connectedAt.getTime() <=
-          DOUBLE_SUBMIT_RECOVERY_WINDOW_MS
+        isRecent
       ) {
         // `recovered: true` — akun ini sudah di-seed JOB-03 oleh request
         // asli (yang menang create); caller TIDAK boleh seed lagi di sini

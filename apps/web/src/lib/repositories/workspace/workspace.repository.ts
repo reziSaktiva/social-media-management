@@ -775,6 +775,28 @@ export const workspaceRepository: IWorkspaceRepository = {
     return account ? toConnectedAccountRecord(account) : null;
   },
 
+  async isConnectedAccountWithinWindow(
+    connectedAccountId,
+    windowMs,
+    actingUserId,
+  ) {
+    // Perbandingan waktu di sisi Postgres (`now() - connected_at`), BUKAN
+    // `Date.now()` di Node (code review PR #139) — menghindari drift jam
+    // app-server (Railway) vs database (Supabase). `make_interval(secs =>
+    // ...)` menerima pecahan detik jadi `windowMs` bisa langsung dibagi
+    // 1000 tanpa pembulatan.
+    const rows = await withCurrentUser(
+      actingUserId,
+      (tx) =>
+        tx.$queryRaw<{ within_window: boolean }[]>`
+        SELECT (now() - connected_at) <= make_interval(secs => ${windowMs / 1000}::float8) AS within_window
+        FROM "workspace_connected_accounts"
+        WHERE id = ${connectedAccountId}::uuid
+      `,
+    );
+    return rows[0]?.within_window ?? false;
+  },
+
   async createConnectedAccount({
     workspaceId,
     platform,

@@ -98,6 +98,14 @@ terkait (constraint `[workspaceId, outstandAccountId]` yang sama).
   yang menangani `ConflictError` secara umum (mis. `toActionError`, kalau
   ada jalur lain yang memanggilnya) tetap bekerja tanpa perubahan;
   Route Handler cukup memeriksa subclass yang lebih spesifik LEBIH DULU.
+* **Update (code review PR #139):** jendela 15 detik semula dihitung
+  `Date.now() - connectedAt.getTime()` di `WorkspaceService` (Node) — rawan
+  drift kalau jam app-server (Railway) dan database (Supabase) tidak
+  presisi sama. Diperbaiki jadi `IWorkspaceRepository.
+  isConnectedAccountWithinWindow` yang menghitung `now() - connected_at` di
+  sisi Postgres lewat `$queryRaw` — jendela 15 detik dan pilihan sinyal
+  `connectedAt` TIDAK berubah, cuma lokasi perbandingan waktunya dipindah
+  supaya kedua sisi pembanding berasal dari jam yang sama.
 
 ### Alternatives Considered
 

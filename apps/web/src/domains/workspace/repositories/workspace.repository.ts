@@ -477,6 +477,26 @@ export interface IWorkspaceRepository {
   ): Promise<ConnectedAccountRecord | null>;
 
   /**
+   * Cek apakah `connectedAt` baris ini masih di dalam `windowMs` terakhir
+   * — dipakai `WorkspaceService.createOrRecoverConnectedAccount` (KI-079)
+   * untuk keputusan double-submit-recovery yang SAMA seperti
+   * `findConnectedAccountByOutstandId` di atas, tapi perbandingan waktu
+   * dilakukan di sisi Postgres (`now() - connected_at`), BUKAN
+   * `Date.now()` di Node (code review PR #139) — kalau jam app-server
+   * (Railway) drift dari jam database (Supabase), perbandingan lintas-jam
+   * bisa salah klasifikasi genuine double-submit sebagai percobaan
+   * terpisah, atau sebaliknya. Domain (`WorkspaceService`) tidak boleh
+   * mengimpor Prisma (rule 6 `AGENTS.md`), jadi perbandingan waktu ini
+   * WAJIB di lapisan repository, bukan dihitung dari `connectedAt` yang
+   * sudah di-fetch ke Node. Returns `false` kalau baris tidak ditemukan.
+   */
+  isConnectedAccountWithinWindow(
+    connectedAccountId: ConnectedAccountId,
+    windowMs: number,
+    actingUserId: UserId,
+  ): Promise<boolean>;
+
+  /**
    * CREATE `WorkspaceConnectedAccount` baru (T-013.1/T-013.2, Connect
    * Account, ADR-105) — dipanggil `WorkspaceService.completeAccountConnection`
    * saat `redirectAccountId` kosong (bukan reconnect). `connectedAt`
