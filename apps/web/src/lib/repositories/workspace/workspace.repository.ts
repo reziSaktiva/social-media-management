@@ -766,8 +766,10 @@ export const workspaceRepository: IWorkspaceRepository = {
     actingUserId,
   ) {
     const account = await withCurrentUser(actingUserId, (tx) =>
-      tx.workspaceConnectedAccount.findFirst({
-        where: { workspaceId, outstandAccountId },
+      tx.workspaceConnectedAccount.findUnique({
+        where: {
+          workspaceId_outstandAccountId: { workspaceId, outstandAccountId },
+        },
       }),
     );
     return account ? toConnectedAccountRecord(account) : null;
@@ -852,25 +854,41 @@ export const workspaceRepository: IWorkspaceRepository = {
       // `connectedAccountId` yang bukan milik `workspaceId` ini, walau
       // `WorkspaceService` sudah memvalidasi lewat `findConnectedAccountById`
       // sebelum memanggil method ini).
-      const result = await tx.workspaceConnectedAccount.updateMany({
-        where: { id: connectedAccountId, workspaceId },
-        data: {
-          outstandAccountId,
-          handle,
-          // `avatarUrl` HANYA ditulis kalau fetch-nya berhasil dapat nilai
-          // (bukan `null`/`undefined`) — `fetchSocialAccountAvatarUrl`
-          // best-effort mengembalikan `null` untuk DUA kasus yang beda
-          // (akun genuinely tidak punya foto, ATAU fetch gagal transient),
-          // jadi tulis-selalu di sini bisa menghapus avatar yang sudah
-          // benar tersimpan hanya karena satu request avatar gagal saat
-          // reconnect. Konsekuensi: avatar lama tetap tampil kalau user
-          // BENAR-BENAR menghapus foto profilnya di platform asli — trade-off
-          // yang lebih aman daripada silent data loss pada kegagalan network.
-          ...(avatarUrl ? { avatarUrl } : {}),
-          status: "active",
-          reconnectRequired: false,
-        },
-      });
+      let result;
+      try {
+        result = await tx.workspaceConnectedAccount.updateMany({
+          where: { id: connectedAccountId, workspaceId },
+          data: {
+            outstandAccountId,
+            handle,
+            // `avatarUrl` HANYA ditulis kalau fetch-nya berhasil dapat nilai
+            // (bukan `null`/`undefined`) — `fetchSocialAccountAvatarUrl`
+            // best-effort mengembalikan `null` untuk DUA kasus yang beda
+            // (akun genuinely tidak punya foto, ATAU fetch gagal transient),
+            // jadi tulis-selalu di sini bisa menghapus avatar yang sudah
+            // benar tersimpan hanya karena satu request avatar gagal saat
+            // reconnect. Konsekuensi: avatar lama tetap tampil kalau user
+            // BENAR-BENAR menghapus foto profilnya di platform asli — trade-off
+            // yang lebih aman daripada silent data loss pada kegagalan network.
+            ...(avatarUrl ? { avatarUrl } : {}),
+            status: "active",
+            reconnectRequired: false,
+          },
+        });
+      } catch (error) {
+        // KI-078 follow-up (code review PR #139) — `case "disconnected"`
+        // sekarang juga merender `ReconnectButton`, jadi path ini bisa
+        // menabrak `[workspaceId, outstandAccountId]` kalau OAuth-nya
+        // diarahkan ke akun outstand lain yang SUDAH terhubung di
+        // workspace ini (bukan cuma akun `redirectAccountId` itu sendiri).
+        // Map ke `ConflictError` yang sama seperti `createConnectedAccount`,
+        // bukan biarkan P2002 mentah lolos ke Route Handler (yang cuma
+        // menangani `AlreadyConnectedError`/`ApplicationError`).
+        if (isConnectedAccountConflict(error)) {
+          throw new ConflictError("Akun ini sudah terhubung di workspace ini.");
+        }
+        throw error;
+      }
 
       if (result.count === 0) {
         throw new NotFoundError("Akun terhubung tidak ditemukan.");

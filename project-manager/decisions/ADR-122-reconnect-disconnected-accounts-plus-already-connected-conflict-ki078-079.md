@@ -36,6 +36,14 @@ terkait (constraint `[workspaceId, outstandAccountId]` yang sama).
    `createConnectedAccount` (INSERT) — sehingga tidak lagi menabrak unique
    constraint dari baris `disconnected` lama.
 
+   **Batasan yang TIDAK ditutup (ditemukan code review PR #139):** guard
+   `if (account.platform === SocialPlatform.Facebook) return null` di
+   `ConnectedAccountAction` berlaku untuk KEDUA case yang digabung di sini
+   — Facebook Pages disconnected TETAP tidak punya jalur reconnect apa pun
+   (alasan lama: reconnect multi-page belum punya UPDATE path). KI-078
+   HANYA resolved untuk platform non-Facebook; belum ada task formal untuk
+   Facebook Pages reconnect.
+
 2. **KI-079 — Disambiguasi `ConflictError` genuine.** Route Handler callback
    (`/api/integrations/outstand/callback`) sebelumnya memperlakukan SEMUA
    `ConflictError` dari `createConnectedAccount` sebagai redirect

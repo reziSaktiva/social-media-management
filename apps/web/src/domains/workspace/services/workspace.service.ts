@@ -1179,23 +1179,29 @@ export class WorkspaceService {
       );
     }
 
-    const record = input.redirectAccountId
-      ? await this.repository.reconnectAccount({
-          workspaceId: input.workspaceId,
-          connectedAccountId: input.redirectAccountId,
-          outstandAccountId: exchanged.outstandAccountId,
-          handle: exchanged.handle,
-          avatarUrl: exchanged.avatarUrl,
-          actingUserId: input.actorId,
-        })
-      : await this.createOrRecoverConnectedAccount({
-          workspaceId: input.workspaceId,
-          platform: exchanged.platform,
-          outstandAccountId: exchanged.outstandAccountId,
-          handle: exchanged.handle,
-          avatarUrl: exchanged.avatarUrl,
-          actingUserId: input.actorId,
-        });
+    let record: ConnectedAccountRecord;
+    let skipSeeding = false;
+    if (input.redirectAccountId) {
+      record = await this.repository.reconnectAccount({
+        workspaceId: input.workspaceId,
+        connectedAccountId: input.redirectAccountId,
+        outstandAccountId: exchanged.outstandAccountId,
+        handle: exchanged.handle,
+        avatarUrl: exchanged.avatarUrl,
+        actingUserId: input.actorId,
+      });
+    } else {
+      const result = await this.createOrRecoverConnectedAccount({
+        workspaceId: input.workspaceId,
+        platform: exchanged.platform,
+        outstandAccountId: exchanged.outstandAccountId,
+        handle: exchanged.handle,
+        avatarUrl: exchanged.avatarUrl,
+        actingUserId: input.actorId,
+      });
+      record = result.record;
+      skipSeeding = result.recovered;
+    }
 
     // Temuan #1 (Ridwan) — seed JOB-03 di titik "created/activated" persis
     // sesuai `background-jobs.md` § "Workspace BC → Background Job", untuk
@@ -1207,11 +1213,17 @@ export class WorkspaceService {
     // gagal diam-diam tanpa jejak, jadi kegagalan tetap dilempar ke atas
     // (caller/`ApplicationError` handling di Route Handler callback tetap
     // konsisten dengan error path lain di sana).
-    await this.engagementSyncSeeder?.onAccountConnected({
-      workspaceId: record.workspaceId,
-      connectedAccountId: record.id,
-      outstandAccountId: record.outstandAccountId,
-    });
+    // `skipSeeding` (code review PR #139) — cabang double-submit recovery
+    // TIDAK membuat/mengaktifkan apa pun baru (baris sudah di-seed oleh
+    // request asli yang menang create), jadi seed di sini akan jadi job
+    // chain kedua yang paralel untuk akun yang sama.
+    if (!skipSeeding) {
+      await this.engagementSyncSeeder?.onAccountConnected({
+        workspaceId: record.workspaceId,
+        connectedAccountId: record.id,
+        outstandAccountId: record.outstandAccountId,
+      });
+    }
 
     return record;
   }
@@ -1226,12 +1238,16 @@ export class WorkspaceService {
    * setelah dibuat (`reconnectAccount` sengaja mempertahankannya, lihat
    * docstring method itu) — jadi selalu mencerminkan momen `create`
    * ASLINYA, bukan aktivitas connect/reconnect terakhir:
-   * - Baru dibuat dalam `DOUBLE_SUBMIT_RECOVERY_WINDOW_MS` terakhir →
+   * - Baru dibuat dalam `DOUBLE_SUBMIT_RECOVERY_WINDOW_MS` terakhir DAN
+   *   masih `status === "active"` (bukan `reconnectRequired`) →
    *   nyaris pasti request susulan dari percobaan connect YANG SAMA
    *   (idempotent) — kembalikan baris yang sudah ada sebagai sukses,
    *   JANGAN lempar error (mencegah toast error palsu di atas toast
    *   sukses dari request asli, pola sama komentar di Route Handler).
-   * - Lebih lama dari itu → genuinely percobaan connect ke akun yang
+   *   Guard status (code review PR #139) — tanpa ini, baris yang
+   *   di-disconnect/reconnect-required lagi dalam window yang sama tetap
+   *   dilaporkan "sukses" walau datanya sudah tidak aktif (regresi KI-079).
+   * - Lebih lama dari itu, atau statusnya bukan `active` → genuinely percobaan connect ke akun yang
    *   sudah pernah terhubung (aktif ATAU disconnected — keduanya sama-sama
    *   menabrak constraint yang sama) dari flow terpisah — lempar
    *   `AlreadyConnectedError` supaya Route Handler bisa memberi tahu user
@@ -1244,9 +1260,12 @@ export class WorkspaceService {
     handle: string;
     avatarUrl?: string | null;
     actingUserId: UserId;
-  }): Promise<ConnectedAccountRecord> {
+  }): Promise<{ record: ConnectedAccountRecord; recovered: boolean }> {
     try {
-      return await this.repository.createConnectedAccount(input);
+      return {
+        record: await this.repository.createConnectedAccount(input),
+        recovered: false,
+      };
     } catch (error) {
       if (!(error instanceof ConflictError)) {
         throw error;
@@ -1259,14 +1278,27 @@ export class WorkspaceService {
       );
       if (
         existing &&
+        existing.status === "active" &&
+        !existing.reconnectRequired &&
         Date.now() - existing.connectedAt.getTime() <=
           DOUBLE_SUBMIT_RECOVERY_WINDOW_MS
       ) {
-        return existing;
+        // `recovered: true` — akun ini sudah di-seed JOB-03 oleh request
+        // asli (yang menang create); caller TIDAK boleh seed lagi di sini
+        // (code review PR #139 — sebelumnya request kalah ini ikut memanggil
+        // `engagementSyncSeeder.onAccountConnected` juga, race dengan
+        // request asli menghasilkan 2 job chain paralel untuk 1 akun).
+        return { record: existing, recovered: true };
       }
 
+      // Copy generik (code review PR #139) — TIDAK menyebut tombol
+      // "Reconnect" di sini. Route Handler callback (`route.ts`) membuang
+      // `error.message` ini sepenuhnya dan hanya meneruskan status
+      // `?connect=already-connected` — copy yang benar-benar tampil ke user
+      // ada di `ConnectedAccountsList.tsx`, bukan string ini. Lihat catatan
+      // di sana soal kenapa copy itu juga tidak lagi menyebut Reconnect.
       throw new AlreadyConnectedError(
-        "Akun ini sudah terhubung di workspace ini. Gunakan tombol Reconnect di baris akun yang sudah ada untuk menyambungkan kembali.",
+        "Akun ini sudah terhubung di workspace ini.",
       );
     }
   }

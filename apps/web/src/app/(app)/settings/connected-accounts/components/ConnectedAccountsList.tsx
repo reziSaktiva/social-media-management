@@ -25,6 +25,7 @@ import {
   resolveConnectionDisplayStatus,
   type ConnectedAccountRecord,
   type ConnectionDisplayStatus,
+  type ConnectResult,
 } from "@/domains/workspace";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
 import { formatConnectedDate } from "@/lib/utils/format-date";
@@ -268,7 +269,7 @@ export function ConnectedAccountsList({
    * history) supaya refresh halaman tidak menampilkan toast yang sama
    * berulang.
    */
-  connectResult?: "success" | "error" | "already-connected" | null;
+  connectResult?: ConnectResult | null;
   /**
    * Facebook Pages flow (T-025.4, KI-070, ADR-115 §7/§10; review fix) —
    * diteruskan dari `page.tsx` (`?connectFacebook=1` +
@@ -290,9 +291,13 @@ export function ConnectedAccountsList({
       // KI-079 — dibedakan dari "error" generik: ini BUKAN kegagalan
       // transient yang bisa diperbaiki dengan retry, jadi tidak memakai
       // copy "Coba lagi" yang menyesatkan.
-      toast.error(
-        "Akun ini sudah terhubung di workspace ini. Gunakan tombol Reconnect di baris akun yang sudah ada.",
-      );
+      //
+      // Copy TIDAK menyebut tombol "Reconnect" (code review PR #139) — kasus
+      // paling umum untuk toast ini adalah Connect ke akun yang statusnya
+      // sudah `active`, dan baris `active` cuma punya tombol "Disconnect"
+      // (lihat `ConnectedAccountAction`), jadi menunjuk ke "Reconnect" di
+      // situ menunjuk ke kontrol yang tidak ada di baris itu.
+      toast.error("Akun ini sudah terhubung di workspace ini.");
     } else {
       toast.error("Gagal menghubungkan akun. Coba lagi.");
     }

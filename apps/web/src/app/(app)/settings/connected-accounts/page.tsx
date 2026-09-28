@@ -1,7 +1,7 @@
 import { asUserId } from "@social/shared";
 import { redirect } from "next/navigation";
 
-import { WorkspaceService } from "@/domains/workspace";
+import { asConnectResult, WorkspaceService } from "@/domains/workspace";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
@@ -50,13 +50,7 @@ export default async function Page({
   return (
     <ConnectedAccountsList
       accounts={accounts}
-      connectResult={
-        connect === "success" ||
-        connect === "error" ||
-        connect === "already-connected"
-          ? connect
-          : null
-      }
+      connectResult={asConnectResult(connect)}
       facebookPagesPicker={
         connectFacebook === "1" && connectFacebookState
           ? { state: connectFacebookState }

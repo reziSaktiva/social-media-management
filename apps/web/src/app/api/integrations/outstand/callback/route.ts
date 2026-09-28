@@ -5,6 +5,7 @@ import { decodeConnectAccountState } from "@/lib/adapters/outstand/connect-state
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getServerEnv } from "@/lib/env";
 import { AlreadyConnectedError, ApplicationError } from "@/lib/utils/errors";
+import type { ConnectResult } from "@/domains/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
 import {
@@ -178,9 +179,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   // callback-nya sendiri (lihat docstring di `outstand-connect-nonce-cookie.ts`).
   const nonceCookieName = outstandConnectNonceCookieName(decoded.nonce);
 
-  function redirectWithStatus(
-    status: "success" | "error" | "already-connected",
-  ): NextResponse {
+  function redirectWithStatus(status: ConnectResult): NextResponse {
     const response = NextResponse.redirect(
       new URL(`${CONNECTED_ACCOUNTS_PATH}?connect=${status}`, appOrigin),
     );
