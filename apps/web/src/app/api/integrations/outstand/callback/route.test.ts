@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ConflictError } from "@/lib/utils/errors";
+import { AlreadyConnectedError, ConflictError } from "@/lib/utils/errors";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
@@ -155,7 +155,7 @@ describe("POST /api/integrations/outstand/callback (alias GET, Bug #1)", () => {
     expect(getLocation.search).toBe("");
   });
 
-  it("akun yang sudah terhubung (ConflictError) tetap redirect ?connect=success", async () => {
+  it("akun yang sudah terhubung dari flow terpisah (AlreadyConnectedError, KI-079) redirect ?connect=already-connected — BUKAN success diam-diam", async () => {
     vi.mocked(getCachedSession).mockResolvedValue({
       user: { id: "user-1" },
     } as never);
@@ -166,7 +166,9 @@ describe("POST /api/integrations/outstand/callback (alias GET, Bug #1)", () => {
       completeAccountConnection: vi
         .fn()
         .mockRejectedValue(
-          new ConflictError("Akun ini sudah terhubung di workspace ini."),
+          new AlreadyConnectedError(
+            "Akun ini sudah terhubung di workspace ini.",
+          ),
         ),
     } as never);
 
@@ -180,6 +182,36 @@ describe("POST /api/integrations/outstand/callback (alias GET, Bug #1)", () => {
 
     const response = await GET(request);
     const location = new URL(response.headers.get("location")!);
-    expect(location.searchParams.get("connect")).toBe("success");
+    expect(location.searchParams.get("connect")).toBe("already-connected");
+  });
+
+  it("ConflictError generik lain (BUKAN AlreadyConnectedError) redirect ?connect=error, bukan lagi diserap sebagai success (KI-079 memindah disambiguasi double-submit ke WorkspaceService, route.ts tidak lagi menangani ConflictError generik secara khusus)", async () => {
+    vi.mocked(getCachedSession).mockResolvedValue({
+      user: { id: "user-1" },
+    } as never);
+    vi.mocked(getWorkspaceContext).mockResolvedValue({
+      workspaceId: "workspace-1",
+    } as never);
+    vi.mocked(createWorkspaceServiceWithOutstandAdapter).mockReturnValue({
+      completeAccountConnection: vi
+        .fn()
+        .mockRejectedValue(
+          new ConflictError(
+            "Conflict lain yang tidak terkait double-submit connect.",
+          ),
+        ),
+    } as never);
+
+    const nonce = "nonce-other-conflict";
+    const state = encodeState({ nonce });
+    const request = makeRequest(
+      "GET",
+      { account_id: "acc-1", username: "ada", state },
+      `${outstandConnectNonceCookieName(nonce)}=1`,
+    );
+
+    const response = await GET(request);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.searchParams.get("connect")).toBe("error");
   });
 });

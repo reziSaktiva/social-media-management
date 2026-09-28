@@ -8,6 +8,104 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-26 — KI-080 Resolved: fix build Railway (`next.config.ts` workspace import); KI-078/KI-079 Resolved via ADR-122
+
+Lanjutan sesi sebelumnya (entri tepat di bawah ini, commit `d0286fd`/
+`349290d` — fix KI-073–076 & 2 KI baru KI-078/079). Sesi ini: (1) King
+Rezi meminta cek kenapa Railway staging gagal build setelah PR #138
+(fix KI-073–076) di-merge ke `staging`; (2) setelah itu, kerjakan
+KI-078/KI-079.
+
+**KI-080 Resolved (baru, ditemukan+diperbaiki sesi ini)** — Railway
+staging build gagal (`FAILED`, deployment `6798220d`, commit `71c90a3` —
+merge PR #138) dengan `Error: Cannot find module '../../packages/shared'`
+saat tahap `next build` (`⨯ Failed to load next.config.ts`). Root cause:
+fix KI-075 (body size limit) menambah
+`import { MAX_MEDIA_FILE_SIZE_BYTES } from "./src/domains/media/validation"`
+di `apps/web/next.config.ts` — tapi `validation.ts` juga mengimpor
+`MediaType` dari `@social/shared` (workspace package, `main: "./index.ts"`,
+source langsung tanpa build step). Next.js `next-config-ts` mentranspile
+lalu me-`require()` `next.config.ts` lewat Node CJS biasa (bukan
+resolver bundler Next/Turbopack yang biasa dipakai untuk source app) —
+`require()` polos tidak bisa resolve source package workspace itu.
+Direproduksi identik secara lokal (`bun run build` di `apps/web`, error
+sama persis). Fix: konstanta `MAX_MEDIA_FILE_SIZE_BYTES` diisolasi ke file
+baru `apps/web/src/domains/media/constants.ts` (nol import
+`@social/shared`); `validation.ts` re-export dari situ (caller lain tidak
+berubah); `next.config.ts` diarahkan ke `constants.ts`, bukan
+`validation.ts`. Diverifikasi: `bun run build` (full, termasuk generate
+static pages) + `bun run typecheck` + `bun test src/domains/media` (17
+test) semua PASS lokal. **Dikerjakan di branch terpisah**
+`fix/next-config-ts-workspace-import-ki075-followup` (belum di-PR-kan ke
+`staging` — menunggu instruksi King Rezi), supaya tidak tercampur dengan
+commit KI-078/079 di bawah.
+
+**KI-078 Resolved via ADR-122** — akun `disconnected` tidak punya jalur
+UI untuk reconnect. Fix murni UI: `ConnectedAccountAction`
+(`ConnectedAccountsList.tsx`) digabung — `case "reconnect-required":` dan
+`case "disconnected":` sekarang sama-sama merender `ReconnectButton`
+(kecuali Facebook, guard lama tetap). Dicek dulu ke Claude Design (rule 17
+`AGENTS.md`) sebelum menulis kode UI: `templates/settings-connected-
+accounts.html` sudah menunjukkan pola ini (chip status "Disconnected"
+berpasangan tombol "Reconnect"), jadi tidak perlu `AskUserQuestion`
+tambahan. Backend TIDAK perlu diubah — `WorkspaceService.
+initiateConnectAccount` sudah generik menerima `redirectAccountId` untuk
+akun `reconnect-required`/`disconnected` apa pun (docstring method itu
+sudah menyebut keduanya sebelum sesi ini). Karena `ReconnectButton` mengisi
+`redirectAccountId`, `completeAccountConnection` memakai
+`IWorkspaceRepository.reconnectAccount` (UPDATE baris existing) — bukan
+`createConnectedAccount` (INSERT) — sehingga tidak lagi menabrak unique
+constraint `[workspaceId, outstandAccountId]` dari baris `disconnected`
+lama.
+
+**KI-079 Resolved via ADR-122** — Route Handler callback Outstand
+sebelumnya memperlakukan SEMUA `ConflictError` dari `createConnectedAccount`
+sebagai redirect "success" diam-diam. Fix: `WorkspaceService` dapat method
+baru `createOrRecoverConnectedAccount` (wrapper `createConnectedAccount`)
+yang membedakan dua kasus lewat `connectedAt` baris yang bentrok (kolom
+ini immutable setelah `create`, termasuk lewat `reconnectAccount`) — dibuat
+dalam 15 detik terakhir (`DOUBLE_SUBMIT_RECOVERY_WINDOW_MS`) →
+idempotent, kembalikan baris existing sebagai sukses (perilaku lama
+dipertahankan untuk double-submit genuine); lebih lama → `AlreadyConnectedError`
+baru (subclass `ConflictError`, `@/lib/utils/errors`) dilempar. Route
+Handler memetakan `AlreadyConnectedError` ke status redirect baru
+`?connect=already-connected` (bukan `success` atau `error` generik);
+`ConnectedAccountsList.tsx` menampilkan toast spesifik ("sudah terhubung
+... gunakan tombol Reconnect"), bukan copy "Coba lagi" yang menyesatkan.
+Repository dapat method baru `findConnectedAccountByOutstandId`
+(interface `IWorkspaceRepository` + implementasi Prisma).
+
+**Verifikasi (KI-078/079):** `bun run typecheck` PASS; `bun run lint`
+PASS; `bun test src/domains/workspace` 126 test PASS (2 test baru khusus
+`createOrRecoverConnectedAccount`: recovery dalam window & throw di luar
+window); `bun run build` PASS. Belum ada verifikasi browser end-to-end
+(tidak ada kredensial Outstand real yang bisa dipakai ulang di sesi ini)
+— murni verifikasi kode + unit test, sama seperti disclaimer yang sama
+berlaku untuk perubahan backend lain di project ini tanpa akses langsung
+ke akun test.
+
+File yang diubah — KI-080 (branch terpisah):
+`apps/web/next.config.ts`,
+`apps/web/src/domains/media/constants.ts` (baru),
+`apps/web/src/domains/media/validation.ts`.
+
+File yang diubah — KI-078/079:
+`apps/web/src/app/(app)/settings/connected-accounts/components/ConnectedAccountsList.tsx`,
+`apps/web/src/app/(app)/settings/connected-accounts/page.tsx`,
+`apps/web/src/app/api/integrations/outstand/callback/route.ts`,
+`apps/web/src/domains/workspace/repositories/workspace.repository.ts`,
+`apps/web/src/domains/workspace/services/workspace.service.ts`,
+`apps/web/src/domains/workspace/services/workspace.service.test.ts`,
+`apps/web/src/lib/repositories/workspace/workspace.repository.ts`,
+`apps/web/src/lib/utils/errors.ts`.
+
+Detail lengkap: `PROJECT_STATE.md` § Known Issues (KI-080 tidak
+didaftarkan Open — ditemukan+Resolved sesi ini, langsung diarsipkan di
+sini) + § Recent Decisions, `decisions/ADR-122-reconnect-disconnected-
+accounts-plus-already-connected-conflict-ki078-079.md`, `DECISIONS.md`.
+
+---
+
 ## 2026-09-26 — KI-073–076 Resolved: 4 bug publish Instagram diperbaiki + diverifikasi live; ADR-120; 2 KI baru; koreksi duplikat ID KI-064
 
 Lanjutan dari investigasi sesi sebelumnya (entri tepat di bawah ini,

@@ -18,6 +18,7 @@ import type {
   WorkspaceId,
 } from "@social/shared";
 import {
+  AlreadyConnectedError,
   AuthorizationError,
   ConflictError,
   NotFoundError,
@@ -41,6 +42,17 @@ import type {
 
 const MAX_NAME_LENGTH = 100;
 const MAX_SLUG_ATTEMPTS = 6;
+/**
+ * KI-079 — jendela toleransi untuk membedakan double-submit genuine (request
+ * susulan Next.js untuk akun yang BARU SAJA dibuat, lihat docstring Route
+ * Handler callback `/api/integrations/outstand/callback`) dari percobaan
+ * Connect ke akun yang sudah terhubung dari alur/waktu yang berbeda. Request
+ * susulan yang didokumentasikan terjadi nyaris seketika (prefetch/revalidasi
+ * bawaan Next.js) — 15 detik memberi headroom besar untuk itu tanpa
+ * menyamarkan percobaan connect genuinely terpisah (menit/jam/hari
+ * kemudian) sebagai "aman diabaikan".
+ */
+const DOUBLE_SUBMIT_RECOVERY_WINDOW_MS = 15_000;
 /** ADR-072 & ADR-080 — copy "Undangan berlaku 7 hari" di dialog Claude Design. */
 const INVITATION_EXPIRY_DAYS = 7;
 /**
@@ -1167,23 +1179,29 @@ export class WorkspaceService {
       );
     }
 
-    const record = input.redirectAccountId
-      ? await this.repository.reconnectAccount({
-          workspaceId: input.workspaceId,
-          connectedAccountId: input.redirectAccountId,
-          outstandAccountId: exchanged.outstandAccountId,
-          handle: exchanged.handle,
-          avatarUrl: exchanged.avatarUrl,
-          actingUserId: input.actorId,
-        })
-      : await this.repository.createConnectedAccount({
-          workspaceId: input.workspaceId,
-          platform: exchanged.platform,
-          outstandAccountId: exchanged.outstandAccountId,
-          handle: exchanged.handle,
-          avatarUrl: exchanged.avatarUrl,
-          actingUserId: input.actorId,
-        });
+    let record: ConnectedAccountRecord;
+    let skipSeeding = false;
+    if (input.redirectAccountId) {
+      record = await this.repository.reconnectAccount({
+        workspaceId: input.workspaceId,
+        connectedAccountId: input.redirectAccountId,
+        outstandAccountId: exchanged.outstandAccountId,
+        handle: exchanged.handle,
+        avatarUrl: exchanged.avatarUrl,
+        actingUserId: input.actorId,
+      });
+    } else {
+      const result = await this.createOrRecoverConnectedAccount({
+        workspaceId: input.workspaceId,
+        platform: exchanged.platform,
+        outstandAccountId: exchanged.outstandAccountId,
+        handle: exchanged.handle,
+        avatarUrl: exchanged.avatarUrl,
+        actingUserId: input.actorId,
+      });
+      record = result.record;
+      skipSeeding = result.recovered;
+    }
 
     // Temuan #1 (Ridwan) — seed JOB-03 di titik "created/activated" persis
     // sesuai `background-jobs.md` § "Workspace BC → Background Job", untuk
@@ -1195,13 +1213,106 @@ export class WorkspaceService {
     // gagal diam-diam tanpa jejak, jadi kegagalan tetap dilempar ke atas
     // (caller/`ApplicationError` handling di Route Handler callback tetap
     // konsisten dengan error path lain di sana).
-    await this.engagementSyncSeeder?.onAccountConnected({
-      workspaceId: record.workspaceId,
-      connectedAccountId: record.id,
-      outstandAccountId: record.outstandAccountId,
-    });
+    // `skipSeeding` (code review PR #139) — cabang double-submit recovery
+    // TIDAK membuat/mengaktifkan apa pun baru (baris sudah di-seed oleh
+    // request asli yang menang create), jadi seed di sini akan jadi job
+    // chain kedua yang paralel untuk akun yang sama.
+    if (!skipSeeding) {
+      await this.engagementSyncSeeder?.onAccountConnected({
+        workspaceId: record.workspaceId,
+        connectedAccountId: record.id,
+        outstandAccountId: record.outstandAccountId,
+      });
+    }
 
     return record;
+  }
+
+  /**
+   * Wrapper `createConnectedAccount` (KI-079) — membedakan double-submit
+   * genuine dari percobaan Connect ke akun yang sudah terhubung dari
+   * alur/waktu yang berbeda, setelah `createConnectedAccount` melempar
+   * `ConflictError` (unique constraint `[workspaceId, outstandAccountId]`).
+   *
+   * Sinyalnya `connectedAt` baris yang bentrok, yang TIDAK PERNAH berubah
+   * setelah dibuat (`reconnectAccount` sengaja mempertahankannya, lihat
+   * docstring method itu) — jadi selalu mencerminkan momen `create`
+   * ASLINYA, bukan aktivitas connect/reconnect terakhir. Perbandingan
+   * "baru berapa lama" dilakukan `IWorkspaceRepository.
+   * isConnectedAccountWithinWindow` di sisi Postgres (`now() -
+   * connected_at`), BUKAN `Date.now()` di sini (code review PR #139) —
+   * domain ini tidak boleh mengimpor Prisma (rule 6 `AGENTS.md`), dan
+   * perbandingan lintas jam app-server vs database rawan drift kalau
+   * dihitung di Node:
+   * - Baru dibuat dalam `DOUBLE_SUBMIT_RECOVERY_WINDOW_MS` terakhir DAN
+   *   masih `status === "active"` (bukan `reconnectRequired`) →
+   *   nyaris pasti request susulan dari percobaan connect YANG SAMA
+   *   (idempotent) — kembalikan baris yang sudah ada sebagai sukses,
+   *   JANGAN lempar error (mencegah toast error palsu di atas toast
+   *   sukses dari request asli, pola sama komentar di Route Handler).
+   *   Guard status (code review PR #139) — tanpa ini, baris yang
+   *   di-disconnect/reconnect-required lagi dalam window yang sama tetap
+   *   dilaporkan "sukses" walau datanya sudah tidak aktif (regresi KI-079).
+   * - Lebih lama dari itu, atau statusnya bukan `active` → genuinely percobaan connect ke akun yang
+   *   sudah pernah terhubung (aktif ATAU disconnected — keduanya sama-sama
+   *   menabrak constraint yang sama) dari flow terpisah — lempar
+   *   `AlreadyConnectedError` supaya Route Handler bisa memberi tahu user
+   *   secara eksplisit, bukan diam-diam "success".
+   */
+  private async createOrRecoverConnectedAccount(input: {
+    workspaceId: WorkspaceId;
+    platform: SocialPlatform;
+    outstandAccountId: string;
+    handle: string;
+    avatarUrl?: string | null;
+    actingUserId: UserId;
+  }): Promise<{ record: ConnectedAccountRecord; recovered: boolean }> {
+    try {
+      return {
+        record: await this.repository.createConnectedAccount(input),
+        recovered: false,
+      };
+    } catch (error) {
+      if (!(error instanceof ConflictError)) {
+        throw error;
+      }
+
+      const existing = await this.repository.findConnectedAccountByOutstandId(
+        input.workspaceId,
+        input.outstandAccountId,
+        input.actingUserId,
+      );
+      const isRecent =
+        existing &&
+        (await this.repository.isConnectedAccountWithinWindow(
+          existing.id,
+          DOUBLE_SUBMIT_RECOVERY_WINDOW_MS,
+          input.actingUserId,
+        ));
+      if (
+        existing &&
+        existing.status === "active" &&
+        !existing.reconnectRequired &&
+        isRecent
+      ) {
+        // `recovered: true` — akun ini sudah di-seed JOB-03 oleh request
+        // asli (yang menang create); caller TIDAK boleh seed lagi di sini
+        // (code review PR #139 — sebelumnya request kalah ini ikut memanggil
+        // `engagementSyncSeeder.onAccountConnected` juga, race dengan
+        // request asli menghasilkan 2 job chain paralel untuk 1 akun).
+        return { record: existing, recovered: true };
+      }
+
+      // Copy generik (code review PR #139) — TIDAK menyebut tombol
+      // "Reconnect" di sini. Route Handler callback (`route.ts`) membuang
+      // `error.message` ini sepenuhnya dan hanya meneruskan status
+      // `?connect=already-connected` — copy yang benar-benar tampil ke user
+      // ada di `ConnectedAccountsList.tsx`, bukan string ini. Lihat catatan
+      // di sana soal kenapa copy itu juga tidak lagi menyebut Reconnect.
+      throw new AlreadyConnectedError(
+        "Akun ini sudah terhubung di workspace ini.",
+      );
+    }
   }
 
   /**
