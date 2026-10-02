@@ -754,6 +754,11 @@ function DraftEditorForm({
         mediaIds,
       });
 
+      if ("error" in result) {
+        setNotice({ status: "error", title: result.error });
+        return;
+      }
+
       setSavedPostId(result.postId);
       setStatus(ContentStatus.Scheduled);
       setPendingAction(null);
@@ -784,6 +789,11 @@ function DraftEditorForm({
         targets: buildTargetsPayload(),
         mediaIds,
       });
+
+      if ("error" in result) {
+        setNotice({ status: "error", title: result.error });
+        return;
+      }
 
       setSavedPostId(result.postId);
       setStatus(ContentStatus.Published);

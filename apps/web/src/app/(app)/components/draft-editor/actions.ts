@@ -42,6 +42,28 @@ import { publishingRepository } from "@/lib/repositories/publishing";
 import { mediaRepository } from "@/lib/repositories/media";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { ApplicationError } from "@/lib/utils/errors";
+import { PublishingDomainError } from "@/domains/publishing";
+
+/**
+ * `PublishingDomainError` (constraint-message asserts: format matrix,
+ * Pinterest board, T-108 schedule-time) sengaja TIDAK extend
+ * `ApplicationError` (`errors.ts` — isolasi domain errors dari lib app-level,
+ * pola sama `WorkspaceDomainError`), jadi entry point yang bisa memicu
+ * keduanya harus cek dua class terpisah. Tanpa ini, exception lolos tanpa
+ * ditangkap sampai boundary Server Action Next.js, yang MEN-MASK pesan error
+ * asli di production build (jadi pesan generik tanpa detail) — temuan
+ * code-review PR #140, celah ini sudah ada sejak `assertMediaCountWithinLimit`/
+ * `assertMediaCountMeetsMinimum` dipanggil tanpa try/catch di
+ * `scheduleDraftAction`/`publishNowAction`, T-108 cuma menambah satu throw
+ * site lagi (`assertScheduledAtNotInPast`) ke celah yang sama.
+ */
+function isKnownActionError(
+  error: unknown,
+): error is ApplicationError | PublishingDomainError {
+  return (
+    error instanceof ApplicationError || error instanceof PublishingDomainError
+  );
+}
 
 /** Composition root — MediaService + Storage download untuk schedule/publish. */
 function createPostMediaLookup(): PostMediaLookupPort {
@@ -453,7 +475,7 @@ export interface ScheduleDraftInput {
  */
 export async function scheduleDraftAction(
   input: ScheduleDraftInput,
-): Promise<{ postId: string }> {
+): Promise<{ postId: string } | { error: string }> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
@@ -465,92 +487,108 @@ export async function scheduleDraftAction(
   const mediaService = new MediaService(mediaRepository);
 
   const actingUserId = asUserId(session.user.id);
-  // T-024.4 (koreksi review Ridwan, temuan MEDIUM): `undefined` (field
-  // `mediaIds` tidak dikirim client) HARUS dibedakan dari `[]` (client
-  // eksplisit mengosongkan media) — `?? []` di sini akan meng-collapse
-  // keduanya dan membuat kolom `media_ids` di DB ikut terhapus diam-diam
-  // untuk caller yang sengaja tidak mengirim field ini.
-  const requestedMediaIds = input.mediaIds?.map((id) => asMediaId(id));
 
-  const [connectedAccounts, foundMedia] = await Promise.all([
-    workspaceService.listConnectedAccounts(workspaceId, actingUserId),
-    requestedMediaIds && requestedMediaIds.length > 0
-      ? mediaService.listByIds(
-          { workspaceId, mediaIds: requestedMediaIds },
+  // T-108 code-review (PR #140, finding #1): seluruh validasi/use-case di
+  // bawah ini bisa melempar `ApplicationError` ATAU `PublishingDomainError`
+  // (`assertMediaCountWithinLimit`/`assertMediaCountMeetsMinimum`/
+  // `assertScheduledAtNotInPast` di dalam `SchedulePostsUseCase.execute`) —
+  // tanpa try/catch di sini, exception lolos sampai boundary Server Action
+  // Next.js, yang MEN-MASK pesan error asli di production build (klien
+  // hanya menerima pesan generik, bukan "Waktu yang dipilih sudah lewat..."
+  // dkk). Bungkus di sini, pola sama `uploadMediaAction`/`deleteMediaAction`.
+  try {
+    // T-024.4 (koreksi review Ridwan, temuan MEDIUM): `undefined` (field
+    // `mediaIds` tidak dikirim client) HARUS dibedakan dari `[]` (client
+    // eksplisit mengosongkan media) — `?? []` di sini akan meng-collapse
+    // keduanya dan membuat kolom `media_ids` di DB ikut terhapus diam-diam
+    // untuk caller yang sengaja tidak mengirim field ini.
+    const requestedMediaIds = input.mediaIds?.map((id) => asMediaId(id));
+
+    const [connectedAccounts, foundMedia] = await Promise.all([
+      workspaceService.listConnectedAccounts(workspaceId, actingUserId),
+      requestedMediaIds && requestedMediaIds.length > 0
+        ? mediaService.listByIds(
+            { workspaceId, mediaIds: requestedMediaIds },
+            actingUserId,
+          )
+        : Promise.resolve([]),
+    ]);
+    const targets = resolveScheduleTargets(connectedAccounts, input.targets);
+    const activeFormats = targets.map((target) => target.contentFormat);
+    const mediaIds =
+      requestedMediaIds !== undefined
+        ? resolveMediaIdsAgainstFormats(
+            foundMedia,
+            requestedMediaIds,
+            activeFormats,
+          )
+        : undefined;
+
+    // `mediaIds` undefined berarti draft ini mempertahankan media yang SUDAH
+    // dipersist sebelumnya (lihat catatan `resolveAndValidateMediaIds`) — batas
+    // ADR-107 tetap wajib ditegakkan terhadap `activeFormats` yang baru saja
+    // di-resolve, bukan hanya saat client mengirim `mediaIds` eksplisit.
+    let effectiveMediaCount = mediaIds?.length ?? 0;
+    if (mediaIds === undefined && input.postId) {
+      const existingDraft = await publishingService.getDraftById(
+        workspaceId,
+        asPostId(input.postId),
+        actingUserId,
+      );
+      effectiveMediaCount = existingDraft.mediaIds?.length ?? 0;
+      assertMediaCountWithinLimit(effectiveMediaCount, activeFormats);
+    }
+    // KI-074: batas MINIMUM (Story/Reel/Pin butuh ≥1 media) — beda dari
+    // `assertMediaCountWithinLimit` di atas (yang cuma menegakkan batas
+    // maksimum), ini SENGAJA dievaluasi terhadap `effectiveMediaCount` untuk
+    // KETIGA kasus sekaligus (mediaIds baru dikirim client, mediaIds
+    // dipertahankan dari draft yang sudah ada, ATAU draft baru tanpa media
+    // sama sekali) — bukan hanya di dalam blok `if` di atas, supaya post baru
+    // yang tidak pernah mengirim `mediaIds` (effectiveMediaCount tetap 0)
+    // juga ikut tertangkap. Hanya ditegakkan di sini (schedule/publish),
+    // BUKAN di `resolveAndValidateMediaIds`/`resolveMediaIdsAgainstFormats`
+    // yang juga dipakai `saveDraftAction`/`updateDraftAction` — draft yang
+    // masih disusun (belum siap dijadwalkan/dipublish) boleh belum punya
+    // media sama sekali.
+    assertMediaCountMeetsMinimum(effectiveMediaCount, activeFormats);
+
+    const post = input.postId
+      ? await publishingService.updateDraft(
+          {
+            workspaceId,
+            postId: asPostId(input.postId),
+            caption: input.caption,
+            mediaIds,
+          },
           actingUserId,
         )
-      : Promise.resolve([]),
-  ]);
-  const targets = resolveScheduleTargets(connectedAccounts, input.targets);
-  const activeFormats = targets.map((target) => target.contentFormat);
-  const mediaIds =
-    requestedMediaIds !== undefined
-      ? resolveMediaIdsAgainstFormats(
-          foundMedia,
-          requestedMediaIds,
-          activeFormats,
-        )
-      : undefined;
-
-  // `mediaIds` undefined berarti draft ini mempertahankan media yang SUDAH
-  // dipersist sebelumnya (lihat catatan `resolveAndValidateMediaIds`) — batas
-  // ADR-107 tetap wajib ditegakkan terhadap `activeFormats` yang baru saja
-  // di-resolve, bukan hanya saat client mengirim `mediaIds` eksplisit.
-  let effectiveMediaCount = mediaIds?.length ?? 0;
-  if (mediaIds === undefined && input.postId) {
-    const existingDraft = await publishingService.getDraftById(
-      workspaceId,
-      asPostId(input.postId),
-      actingUserId,
-    );
-    effectiveMediaCount = existingDraft.mediaIds?.length ?? 0;
-    assertMediaCountWithinLimit(effectiveMediaCount, activeFormats);
-  }
-  // KI-074: batas MINIMUM (Story/Reel/Pin butuh ≥1 media) — beda dari
-  // `assertMediaCountWithinLimit` di atas (yang cuma menegakkan batas
-  // maksimum), ini SENGAJA dievaluasi terhadap `effectiveMediaCount` untuk
-  // KETIGA kasus sekaligus (mediaIds baru dikirim client, mediaIds
-  // dipertahankan dari draft yang sudah ada, ATAU draft baru tanpa media
-  // sama sekali) — bukan hanya di dalam blok `if` di atas, supaya post baru
-  // yang tidak pernah mengirim `mediaIds` (effectiveMediaCount tetap 0)
-  // juga ikut tertangkap. Hanya ditegakkan di sini (schedule/publish),
-  // BUKAN di `resolveAndValidateMediaIds`/`resolveMediaIdsAgainstFormats`
-  // yang juga dipakai `saveDraftAction`/`updateDraftAction` — draft yang
-  // masih disusun (belum siap dijadwalkan/dipublish) boleh belum punya
-  // media sama sekali.
-  assertMediaCountMeetsMinimum(effectiveMediaCount, activeFormats);
-
-  const post = input.postId
-    ? await publishingService.updateDraft(
-        {
+      : await publishingService.saveDraft({
           workspaceId,
-          postId: asPostId(input.postId),
+          authorId: actingUserId,
           caption: input.caption,
           mediaIds,
-        },
-        actingUserId,
-      )
-    : await publishingService.saveDraft({
-        workspaceId,
-        authorId: actingUserId,
-        caption: input.caption,
-        mediaIds,
-      });
+        });
 
-  const scheduled = await new SchedulePostsUseCase(
-    publishingRepository,
-    getOutstandAdapter(),
-    backgroundJobScheduler,
-    createPostMediaLookup(),
-  ).execute({
-    workspaceId,
-    postId: post.id,
-    scheduledAt: new Date(input.scheduledAt),
-    targets,
-    actingUserId,
-  });
+    const scheduled = await new SchedulePostsUseCase(
+      publishingRepository,
+      getOutstandAdapter(),
+      backgroundJobScheduler,
+      createPostMediaLookup(),
+    ).execute({
+      workspaceId,
+      postId: post.id,
+      scheduledAt: new Date(input.scheduledAt),
+      targets,
+      actingUserId,
+    });
 
-  return { postId: scheduled.id };
+    return { postId: scheduled.id };
+  } catch (error) {
+    if (isKnownActionError(error)) {
+      return { error: error.message };
+    }
+    throw error;
+  }
 }
 
 export interface PublishNowInput {
@@ -574,13 +612,8 @@ export interface PublishNowInput {
  */
 export async function publishNowAction(
   input: PublishNowInput,
-): Promise<{ postId: string }> {
+): Promise<{ postId: string } | { error: string }> {
   const { workspaceId, role } = await getWorkspaceContext();
-  // RBAC dulu, sebelum side effect apapun (saveDraft/updateDraft) — supaya
-  // actor yang tidak berhak tidak sempat mempersist perubahan caption
-  // walau `PublishNowUseCase.execute` juga mengulang guard yang sama.
-  assertActorCanPublishNow(role);
-
   const session = await getCachedSession();
   if (!session) {
     redirect("/login");
@@ -591,89 +624,108 @@ export async function publishNowAction(
   const mediaService = new MediaService(mediaRepository);
 
   const actingUserId = asUserId(session.user.id);
-  // T-024.4 (koreksi review Ridwan, temuan MEDIUM): `undefined` (field
-  // `mediaIds` tidak dikirim client) HARUS dibedakan dari `[]` (client
-  // eksplisit mengosongkan media) — `?? []` di sini akan meng-collapse
-  // keduanya dan membuat kolom `media_ids` di DB ikut terhapus diam-diam
-  // untuk caller yang sengaja tidak mengirim field ini.
-  const requestedMediaIds = input.mediaIds?.map((id) => asMediaId(id));
 
-  const [connectedAccounts, foundMedia] = await Promise.all([
-    workspaceService.listConnectedAccounts(workspaceId, actingUserId),
-    requestedMediaIds && requestedMediaIds.length > 0
-      ? mediaService.listByIds(
-          { workspaceId, mediaIds: requestedMediaIds },
+  // T-108 code-review (PR #140, finding #1) — lihat catatan identik di
+  // `scheduleDraftAction`. Dipindah ke dalam try/catch ini juga
+  // `assertActorCanPublishNow` (RBAC), yang sebelumnya dipanggil DI LUAR
+  // blok ini — gap yang sama (exception lolos tanpa map ke `{error}`,
+  // ter-mask di production) berlaku untuknya juga, bukan cuma throw site
+  // baru T-108.
+  try {
+    // RBAC dulu, sebelum side effect apapun (saveDraft/updateDraft) — supaya
+    // actor yang tidak berhak tidak sempat mempersist perubahan caption
+    // walau `PublishNowUseCase.execute` juga mengulang guard yang sama.
+    assertActorCanPublishNow(role);
+
+    // T-024.4 (koreksi review Ridwan, temuan MEDIUM): `undefined` (field
+    // `mediaIds` tidak dikirim client) HARUS dibedakan dari `[]` (client
+    // eksplisit mengosongkan media) — `?? []` di sini akan meng-collapse
+    // keduanya dan membuat kolom `media_ids` di DB ikut terhapus diam-diam
+    // untuk caller yang sengaja tidak mengirim field ini.
+    const requestedMediaIds = input.mediaIds?.map((id) => asMediaId(id));
+
+    const [connectedAccounts, foundMedia] = await Promise.all([
+      workspaceService.listConnectedAccounts(workspaceId, actingUserId),
+      requestedMediaIds && requestedMediaIds.length > 0
+        ? mediaService.listByIds(
+            { workspaceId, mediaIds: requestedMediaIds },
+            actingUserId,
+          )
+        : Promise.resolve([]),
+    ]);
+    const targets = resolveScheduleTargets(connectedAccounts, input.targets);
+    const activeFormats = targets.map((target) => target.contentFormat);
+    const mediaIds =
+      requestedMediaIds !== undefined
+        ? resolveMediaIdsAgainstFormats(
+            foundMedia,
+            requestedMediaIds,
+            activeFormats,
+          )
+        : undefined;
+
+    // `mediaIds` undefined berarti draft ini mempertahankan media yang SUDAH
+    // dipersist sebelumnya (lihat catatan `resolveAndValidateMediaIds`) — batas
+    // ADR-107 tetap wajib ditegakkan terhadap `activeFormats` yang baru saja
+    // di-resolve, bukan hanya saat client mengirim `mediaIds` eksplisit.
+    let effectiveMediaCount = mediaIds?.length ?? 0;
+    if (mediaIds === undefined && input.postId) {
+      const existingDraft = await publishingService.getDraftById(
+        workspaceId,
+        asPostId(input.postId),
+        actingUserId,
+      );
+      effectiveMediaCount = existingDraft.mediaIds?.length ?? 0;
+      assertMediaCountWithinLimit(effectiveMediaCount, activeFormats);
+    }
+    // KI-074: batas MINIMUM (Story/Reel/Pin butuh ≥1 media) — beda dari
+    // `assertMediaCountWithinLimit` di atas (yang cuma menegakkan batas
+    // maksimum), ini SENGAJA dievaluasi terhadap `effectiveMediaCount` untuk
+    // KETIGA kasus sekaligus (mediaIds baru dikirim client, mediaIds
+    // dipertahankan dari draft yang sudah ada, ATAU draft baru tanpa media
+    // sama sekali) — bukan hanya di dalam blok `if` di atas, supaya post baru
+    // yang tidak pernah mengirim `mediaIds` (effectiveMediaCount tetap 0)
+    // juga ikut tertangkap. Hanya ditegakkan di sini (schedule/publish),
+    // BUKAN di `resolveAndValidateMediaIds`/`resolveMediaIdsAgainstFormats`
+    // yang juga dipakai `saveDraftAction`/`updateDraftAction` — draft yang
+    // masih disusun (belum siap dijadwalkan/dipublish) boleh belum punya
+    // media sama sekali.
+    assertMediaCountMeetsMinimum(effectiveMediaCount, activeFormats);
+
+    const post = input.postId
+      ? await publishingService.updateDraft(
+          {
+            workspaceId,
+            postId: asPostId(input.postId),
+            caption: input.caption,
+            mediaIds,
+          },
           actingUserId,
         )
-      : Promise.resolve([]),
-  ]);
-  const targets = resolveScheduleTargets(connectedAccounts, input.targets);
-  const activeFormats = targets.map((target) => target.contentFormat);
-  const mediaIds =
-    requestedMediaIds !== undefined
-      ? resolveMediaIdsAgainstFormats(
-          foundMedia,
-          requestedMediaIds,
-          activeFormats,
-        )
-      : undefined;
-
-  // `mediaIds` undefined berarti draft ini mempertahankan media yang SUDAH
-  // dipersist sebelumnya (lihat catatan `resolveAndValidateMediaIds`) — batas
-  // ADR-107 tetap wajib ditegakkan terhadap `activeFormats` yang baru saja
-  // di-resolve, bukan hanya saat client mengirim `mediaIds` eksplisit.
-  let effectiveMediaCount = mediaIds?.length ?? 0;
-  if (mediaIds === undefined && input.postId) {
-    const existingDraft = await publishingService.getDraftById(
-      workspaceId,
-      asPostId(input.postId),
-      actingUserId,
-    );
-    effectiveMediaCount = existingDraft.mediaIds?.length ?? 0;
-    assertMediaCountWithinLimit(effectiveMediaCount, activeFormats);
-  }
-  // KI-074: batas MINIMUM (Story/Reel/Pin butuh ≥1 media) — beda dari
-  // `assertMediaCountWithinLimit` di atas (yang cuma menegakkan batas
-  // maksimum), ini SENGAJA dievaluasi terhadap `effectiveMediaCount` untuk
-  // KETIGA kasus sekaligus (mediaIds baru dikirim client, mediaIds
-  // dipertahankan dari draft yang sudah ada, ATAU draft baru tanpa media
-  // sama sekali) — bukan hanya di dalam blok `if` di atas, supaya post baru
-  // yang tidak pernah mengirim `mediaIds` (effectiveMediaCount tetap 0)
-  // juga ikut tertangkap. Hanya ditegakkan di sini (schedule/publish),
-  // BUKAN di `resolveAndValidateMediaIds`/`resolveMediaIdsAgainstFormats`
-  // yang juga dipakai `saveDraftAction`/`updateDraftAction` — draft yang
-  // masih disusun (belum siap dijadwalkan/dipublish) boleh belum punya
-  // media sama sekali.
-  assertMediaCountMeetsMinimum(effectiveMediaCount, activeFormats);
-
-  const post = input.postId
-    ? await publishingService.updateDraft(
-        {
+      : await publishingService.saveDraft({
           workspaceId,
-          postId: asPostId(input.postId),
+          authorId: actingUserId,
           caption: input.caption,
           mediaIds,
-        },
-        actingUserId,
-      )
-    : await publishingService.saveDraft({
-        workspaceId,
-        authorId: actingUserId,
-        caption: input.caption,
-        mediaIds,
-      });
+        });
 
-  const published = await new PublishNowUseCase(
-    publishingRepository,
-    getOutstandAdapter(),
-    createPostMediaLookup(),
-  ).execute({
-    workspaceId,
-    postId: post.id,
-    targets,
-    actorRole: role,
-    actingUserId,
-  });
+    const published = await new PublishNowUseCase(
+      publishingRepository,
+      getOutstandAdapter(),
+      createPostMediaLookup(),
+    ).execute({
+      workspaceId,
+      postId: post.id,
+      targets,
+      actorRole: role,
+      actingUserId,
+    });
 
-  return { postId: published.id };
+    return { postId: published.id };
+  } catch (error) {
+    if (isKnownActionError(error)) {
+      return { error: error.message };
+    }
+    throw error;
+  }
 }

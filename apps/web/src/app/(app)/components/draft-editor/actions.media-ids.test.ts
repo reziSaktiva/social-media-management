@@ -278,19 +278,25 @@ describe("draft-editor actions — mediaIds undefined vs [] (T-024.4 fix)", () =
       );
       const executeSpy = vi.spyOn(SchedulePostsUseCase.prototype, "execute");
 
-      await expect(
-        scheduleDraftAction({
-          caption: "",
-          scheduledAt: new Date().toISOString(),
-          targets: [
-            {
-              connectedAccountId: "account-1",
-              contentFormat: ContentFormat.Story,
-            },
-          ],
-          mediaIds: [],
-        }),
-      ).rejects.toThrow(/minimal 1 media/);
+      // T-108 code-review (PR #140, finding #1): `scheduleDraftAction`
+      // sekarang menangkap `PublishingDomainError`/`ApplicationError` dan
+      // mengembalikannya sebagai `{ error }` (bukan reject) — menghindari
+      // Next.js men-mask pesan error di production build. Lihat
+      // `isKnownActionError` di `actions.ts`.
+      const result = await scheduleDraftAction({
+        caption: "",
+        scheduledAt: new Date().toISOString(),
+        targets: [
+          {
+            connectedAccountId: "account-1",
+            contentFormat: ContentFormat.Story,
+          },
+        ],
+        mediaIds: [],
+      });
+      expect(result).toMatchObject({
+        error: expect.stringMatching(/minimal 1 media/),
+      });
       expect(executeSpy).not.toHaveBeenCalled();
     });
 
@@ -300,22 +306,23 @@ describe("draft-editor actions — mediaIds undefined vs [] (T-024.4 fix)", () =
       );
       const executeSpy = vi.spyOn(SchedulePostsUseCase.prototype, "execute");
 
-      await expect(
-        scheduleDraftAction({
-          caption: "",
-          scheduledAt: new Date().toISOString(),
-          targets: [
-            {
-              connectedAccountId: "account-1",
-              contentFormat: ContentFormat.Story,
-            },
-          ],
-          // `mediaIds` SENGAJA tidak diisi (bukan `[]`) — post baru tanpa
-          // `postId`, jadi tidak ada draft existing untuk di-lookup;
-          // `effectiveMediaCount` harus tetap dievaluasi sebagai 0, bukan
-          // silently lolos karena field-nya undefined.
-        }),
-      ).rejects.toThrow(/minimal 1 media/);
+      const result = await scheduleDraftAction({
+        caption: "",
+        scheduledAt: new Date().toISOString(),
+        targets: [
+          {
+            connectedAccountId: "account-1",
+            contentFormat: ContentFormat.Story,
+          },
+        ],
+        // `mediaIds` SENGAJA tidak diisi (bukan `[]`) — post baru tanpa
+        // `postId`, jadi tidak ada draft existing untuk di-lookup;
+        // `effectiveMediaCount` harus tetap dievaluasi sebagai 0, bukan
+        // silently lolos karena field-nya undefined.
+      });
+      expect(result).toMatchObject({
+        error: expect.stringMatching(/minimal 1 media/),
+      });
       expect(executeSpy).not.toHaveBeenCalled();
     });
   });
@@ -382,18 +389,19 @@ describe("draft-editor actions — mediaIds undefined vs [] (T-024.4 fix)", () =
       );
       const executeSpy = vi.spyOn(PublishNowUseCase.prototype, "execute");
 
-      await expect(
-        publishNowAction({
-          caption: "",
-          targets: [
-            {
-              connectedAccountId: "account-1",
-              contentFormat: ContentFormat.Story,
-            },
-          ],
-          mediaIds: [],
-        }),
-      ).rejects.toThrow(/minimal 1 media/);
+      const result = await publishNowAction({
+        caption: "",
+        targets: [
+          {
+            connectedAccountId: "account-1",
+            contentFormat: ContentFormat.Story,
+          },
+        ],
+        mediaIds: [],
+      });
+      expect(result).toMatchObject({
+        error: expect.stringMatching(/minimal 1 media/),
+      });
       expect(executeSpy).not.toHaveBeenCalled();
     });
   });
