@@ -8,6 +8,7 @@ import type {
 import { ConflictError } from "@/lib/utils/errors";
 import type { IOutstandAdapter } from "../adapters/outstand-adapter";
 import { assertContentFormatAllowed } from "../content-format-matrix";
+import { summarizeFailureReasons } from "../failure-reason";
 import { assertPinterestBoardConstraints } from "../pinterest-board-constraints";
 import { assertActorCanPublishNow } from "../rbac";
 import type {
@@ -122,7 +123,8 @@ export class PublishNowUseCase {
     // di bawah punya `reason` yang berarti (bukan sekadar mengubah
     // `status`). Diisi dari exception adapter (catch di bawah, all-or-
     // nothing) ATAU dari `PostTargetOutcome.error` tiap target yang
-    // diketahui gagal (try di bawah) — union unik, join `"; "` di akhir.
+    // diketahui gagal (try di bawah) — diringkas lewat
+    // `summarizeFailureReasons` (dedup + join `"; "` + fallback generik).
     const failureMessages = new Set<string>();
 
     try {
@@ -243,10 +245,7 @@ export class PublishNowUseCase {
     // target sukses (partial atau full) → status post TETAP `Published`,
     // tidak disentuh di sini.
     if (allTargetsFailed) {
-      const reason =
-        failureMessages.size > 0
-          ? Array.from(failureMessages).join("; ")
-          : "Semua target gagal mempublikasikan post ini.";
+      const reason = summarizeFailureReasons(failureMessages);
       await this.repository.markPostFailed(
         { workspaceId: input.workspaceId, postId: input.postId, reason },
         input.actingUserId,

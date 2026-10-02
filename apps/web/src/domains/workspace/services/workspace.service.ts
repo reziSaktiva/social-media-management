@@ -490,12 +490,18 @@ export class WorkspaceService {
     return this.canActorManageMembers(workspaceId, actorUserId);
   }
 
-  /** Core boolean check — Owner/Admin aktif. Dipakai `canManageMembers` (public, tanpa pesan error) dan `assertActorCanManageMembers` (throwing wrapper, dengan pesan error spesifik per kasus). */
-  private async canActorManageMembers(
-    workspaceId: WorkspaceId,
-    actorUserId: UserId,
-  ): Promise<boolean> {
-    const actor = await this.getMembership(workspaceId, actorUserId);
+  /**
+   * Code-review PR #140 finding #5 — satu-satunya sumber kebenaran untuk
+   * kondisi "Owner/Admin aktif", dipakai oleh SEMUA gate boolean (`can*`)
+   * maupun throwing (`assert*Role`) di bawah. Sebelumnya kondisi yang sama
+   * persis (`!!actor && actor.status === Active && (Owner || Admin)`)
+   * diduplikasi independen di `canActorManageMembers`,
+   * `canManageWorkspaceSettings`, dan `canManageConnectedAccounts` — risiko
+   * salah satu lupa diupdate kalau matrix role berubah (mis. role elevated
+   * baru ditambah). Pure function, operasi di atas membership yang SUDAH
+   * di-fetch caller — tidak melakukan query sendiri.
+   */
+  private isOwnerOrAdminActive(actor: WorkspaceMemberRecord | null): boolean {
     return (
       !!actor &&
       actor.status === MemberStatus.Active &&
@@ -503,19 +509,26 @@ export class WorkspaceService {
     );
   }
 
-  /** Owner/Admin only; dipakai removeMember & updateMemberRole. */
+  /** Core boolean check — Owner/Admin aktif. Dipakai `canManageMembers` (public, tanpa pesan error) dan `assertActorCanManageMembers` (throwing wrapper, dengan pesan error spesifik per kasus). */
+  private async canActorManageMembers(
+    workspaceId: WorkspaceId,
+    actorUserId: UserId,
+  ): Promise<boolean> {
+    const actor = await this.getMembership(workspaceId, actorUserId);
+    return this.isOwnerOrAdminActive(actor);
+  }
+
+  /** Owner/Admin only; dipakai removeMember & updateMemberRole. Reuse `assertActorHasOwnerOrAdminRole` (dedup, bukan gate RBAC baru — code-review PR #140 finding #5). */
   private async assertActorCanManageMembers(
     workspaceId: WorkspaceId,
     actorUserId: UserId,
     actionErrorMessage: string,
   ): Promise<void> {
-    const actor = await this.getMembership(workspaceId, actorUserId);
-    if (!actor || actor.status !== MemberStatus.Active) {
-      throw new AuthorizationError("Anda bukan anggota aktif workspace ini.");
-    }
-    if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
-      throw new AuthorizationError(actionErrorMessage);
-    }
+    await this.assertActorHasOwnerOrAdminRole(
+      workspaceId,
+      actorUserId,
+      actionErrorMessage,
+    );
   }
 
   /**
@@ -529,11 +542,7 @@ export class WorkspaceService {
     actorUserId: UserId,
   ): Promise<boolean> {
     const actor = await this.getMembership(workspaceId, actorUserId);
-    return (
-      !!actor &&
-      actor.status === MemberStatus.Active &&
-      (actor.role === MemberRole.Owner || actor.role === MemberRole.Admin)
-    );
+    return this.isOwnerOrAdminActive(actor);
   }
 
   /**
@@ -541,7 +550,9 @@ export class WorkspaceService {
    * (renameWorkspace, Settings General, KI-045) dan
    * `assertActorCanManageConnectedAccounts` (disconnectAccount, T-014.2).
    * Kondisi role-nya identik di kedua area fitur; pesan error tetap
-   * spesifik per caller lewat `actionErrorMessage`.
+   * spesifik per caller lewat `actionErrorMessage`. Reuse `isOwnerOrAdminActive`
+   * supaya kondisi role sama dengan varian boolean (`can*`) — satu sumber
+   * kebenaran (code-review PR #140 finding #5).
    */
   private async assertActorHasOwnerOrAdminRole(
     workspaceId: WorkspaceId,
@@ -549,7 +560,7 @@ export class WorkspaceService {
     actionErrorMessage: string,
   ): Promise<void> {
     const actor = await this.assertActiveMembership(workspaceId, actorUserId);
-    if (actor.role !== MemberRole.Owner && actor.role !== MemberRole.Admin) {
+    if (!this.isOwnerOrAdminActive(actor)) {
       throw new AuthorizationError(actionErrorMessage);
     }
   }
@@ -1032,9 +1043,11 @@ export class WorkspaceService {
   /**
    * Gate UI aksi mutasi Connect/Disconnect/Reconnect di halaman Connected
    * Accounts (T-109, KI-058) — true untuk Owner/Admin aktif, false untuk
-   * Creator. Kondisi role IDENTIK dengan `canManageWorkspaceSettings`/
-   * `canManageMembers` (Owner/Admin aktif), tapi method ini SENGAJA tidak
-   * dipakai untuk redirect seluruh halaman seperti dua method itu — matrix
+   * Creator. Kondisi role sama dengan `canManageWorkspaceSettings`/
+   * `canManageMembers` — ketiganya reuse `isOwnerOrAdminActive` (code-review
+   * PR #140 finding #5, sebelumnya diduplikasi independen di tiga tempat),
+   * tapi method ini SENGAJA tidak dipakai untuk redirect seluruh halaman
+   * seperti dua method itu — matrix
    * `roles-permissions.md` § Connected Accounts memberi Creator "Baca saja"
    * (read-only), bukan "Tidak ada akses" sama sekali. Dipakai Server
    * Component (`connected-accounts/page.tsx`) untuk menentukan apakah
@@ -1048,11 +1061,7 @@ export class WorkspaceService {
     actorUserId: UserId,
   ): Promise<boolean> {
     const actor = await this.getMembership(workspaceId, actorUserId);
-    return (
-      !!actor &&
-      actor.status === MemberStatus.Active &&
-      (actor.role === MemberRole.Owner || actor.role === MemberRole.Admin)
-    );
+    return this.isOwnerOrAdminActive(actor);
   }
 
   /** Owner/Admin only; dipakai disconnectAccount. Reuse `assertActorHasOwnerOrAdminRole` (dedup, bukan gate RBAC baru). */

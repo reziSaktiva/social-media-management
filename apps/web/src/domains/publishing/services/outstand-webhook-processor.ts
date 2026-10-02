@@ -1,6 +1,7 @@
 import { NotificationType } from "@social/shared";
 import type { ConnectedAccountId, UserId, WorkspaceId } from "@social/shared";
 import type { IOutstandAdapter } from "../adapters/outstand-adapter";
+import { summarizeFailureReasons } from "../failure-reason";
 import type { IPublishingRepository } from "../repositories/publishing.repository";
 
 /**
@@ -263,22 +264,16 @@ export class OutstandWebhookProcessor {
     if (allKnownFailed) {
       // T-107 (koreksi KI-049/KI-063) — `reason` diringkas dari
       // `PostTargetOutcome.error` unik seluruh target yang diketahui
-      // gagal (`targetsToUpdate` sudah difilter non-"pending" di atas),
-      // dengan fallback teks generik kalau Outstand tidak melaporkan
-      // pesan error spesifik apa pun.
-      const failureReasons = Array.from(
-        new Set(
-          targetsToUpdate
-            .filter(
-              ({ outcome }) => outcome.status === "failed" && outcome.error,
-            )
-            .map(({ outcome }) => outcome.error as string),
-        ),
+      // gagal (`targetsToUpdate` sudah difilter non-"pending" di atas)
+      // lewat `summarizeFailureReasons` (dedup + join `"; "` + fallback
+      // generik kalau Outstand tidak melaporkan pesan error spesifik apa
+      // pun) — shared helper dengan `PublishNowUseCase` (code-review PR
+      // #140, finding #6).
+      const reason = summarizeFailureReasons(
+        targetsToUpdate
+          .filter(({ outcome }) => outcome.status === "failed" && outcome.error)
+          .map(({ outcome }) => outcome.error as string),
       );
-      const reason =
-        failureReasons.length > 0
-          ? failureReasons.join("; ")
-          : "Semua target gagal mempublikasikan post ini.";
 
       await this.repository.markPostFailed(
         { workspaceId: post.workspaceId, postId: post.postId, reason },
