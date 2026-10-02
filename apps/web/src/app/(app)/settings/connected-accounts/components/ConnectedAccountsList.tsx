@@ -330,7 +330,17 @@ export function ConnectedAccountsList({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- hanya perlu re-run saat `connectResult` (query param) berubah, bukan tiap render `router`/`pathname` (referensi baru tiap render Next.js).
   }, [connectResult]);
 
-  const [facebookSession, setFacebookSession] = useState(facebookPagesPicker);
+  // Code-review PR #140 finding #4 (T-109/KI-058) — sebelumnya state ini
+  // diisi dari `facebookPagesPicker` tanpa syarat, jadi Creator yang
+  // mendarat di halaman ini dengan query param `?connectFacebook=...` masih
+  // melihat dialog Facebook Pages Picker terbuka walau tombol Connect sudah
+  // disembunyikan untuknya. Mutasi sebenarnya tetap ditolak server
+  // (`assertActorCanManageConnectedAccounts`, tidak berubah), jadi ini
+  // murni gap konsistensi UI — ditutup di sini supaya dialog juga tidak
+  // pernah muncul sama sekali untuk role yang tidak berhak.
+  const [facebookSession, setFacebookSession] = useState(
+    canManageConnections ? facebookPagesPicker : null,
+  );
 
   useEffect(() => {
     if (!facebookPagesPicker) return;
