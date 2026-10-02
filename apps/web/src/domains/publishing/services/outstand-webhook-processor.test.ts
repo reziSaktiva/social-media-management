@@ -340,7 +340,12 @@ describe("OutstandWebhookProcessor — post.published / post.error", () => {
     expect(result.outcome).toBe("processed");
     expect(updateTargetOutcome).toHaveBeenCalledTimes(2);
     expect(markPostFailed).toHaveBeenCalledWith(
-      { workspaceId: WORKSPACE_ID, postId: POST_ID },
+      {
+        workspaceId: WORKSPACE_ID,
+        postId: POST_ID,
+        // T-107 — reason gabungan unik dari error tiap target gagal.
+        reason: "quota exceeded; token invalid",
+      },
       AUTHOR_ID,
     );
     expect(notify).toHaveBeenCalledWith(

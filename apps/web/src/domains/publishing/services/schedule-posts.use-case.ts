@@ -11,6 +11,7 @@ import type { IOutstandAdapter } from "../adapters/outstand-adapter";
 import type { IJobScheduler } from "../adapters/job-scheduler";
 import { assertContentFormatAllowed } from "../content-format-matrix";
 import { assertPinterestBoardConstraints } from "../pinterest-board-constraints";
+import { assertScheduledAtNotInPast } from "../schedule-time-constraints";
 import { RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE } from "./resolve-scheduled-post-outcome-job-handler";
 import type {
   IPublishingRepository,
@@ -111,6 +112,11 @@ export class SchedulePostsUseCase {
       assertContentFormatAllowed(target.platform, target.contentFormat);
     }
     assertPinterestBoardConstraints(input.targets);
+    // T-108.2 (KI-044) — defense-in-depth: validasi client di `Modal.tsx`
+    // bisa dilewati (request langsung ke Server Action, jam sistem client
+    // berbeda dari server, dll). Reject di sini juga, sebelum apa pun
+    // dipersist.
+    assertScheduledAtNotInPast(input.scheduledAt);
 
     const record = await this.repository.schedulePost(
       {
@@ -199,7 +205,11 @@ export class SchedulePostsUseCase {
         ),
       );
       await this.repository.markPostFailed(
-        { workspaceId: input.workspaceId, postId: input.postId },
+        {
+          workspaceId: input.workspaceId,
+          postId: input.postId,
+          reason: message,
+        },
         input.actingUserId,
       );
     }

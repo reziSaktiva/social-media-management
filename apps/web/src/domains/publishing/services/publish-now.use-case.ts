@@ -8,6 +8,7 @@ import type {
 import { ConflictError } from "@/lib/utils/errors";
 import type { IOutstandAdapter } from "../adapters/outstand-adapter";
 import { assertContentFormatAllowed } from "../content-format-matrix";
+import { summarizeFailureReasons } from "../failure-reason";
 import { assertPinterestBoardConstraints } from "../pinterest-board-constraints";
 import { assertActorCanPublishNow } from "../rbac";
 import type {
@@ -118,6 +119,13 @@ export class PublishNowUseCase {
     }
 
     let allTargetsFailed = record.targets.length > 0;
+    // T-107 (koreksi KI-049/KI-063) — dikumpulkan supaya `markPostFailed`
+    // di bawah punya `reason` yang berarti (bukan sekadar mengubah
+    // `status`). Diisi dari exception adapter (catch di bawah, all-or-
+    // nothing) ATAU dari `PostTargetOutcome.error` tiap target yang
+    // diketahui gagal (try di bawah) — diringkas lewat
+    // `summarizeFailureReasons` (dedup + join `"; "` + fallback generik).
+    const failureMessages = new Set<string>();
 
     try {
       const media = await resolveOutstandPostMedia({
@@ -198,6 +206,10 @@ export class PublishNowUseCase {
             input.actingUserId,
           );
 
+          if (outcome.status === "failed" && outcome.error) {
+            failureMessages.add(outcome.error);
+          }
+
           return outcome.status;
         }),
       );
@@ -221,6 +233,7 @@ export class PublishNowUseCase {
           ),
         ),
       );
+      failureMessages.add(message);
       allTargetsFailed = true;
     }
 
@@ -232,8 +245,9 @@ export class PublishNowUseCase {
     // target sukses (partial atau full) → status post TETAP `Published`,
     // tidak disentuh di sini.
     if (allTargetsFailed) {
+      const reason = summarizeFailureReasons(failureMessages);
       await this.repository.markPostFailed(
-        { workspaceId: input.workspaceId, postId: input.postId },
+        { workspaceId: input.workspaceId, postId: input.postId, reason },
         input.actingUserId,
       );
     }

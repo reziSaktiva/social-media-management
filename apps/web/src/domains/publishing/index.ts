@@ -4,6 +4,7 @@ export * from "./errors";
 export * from "./adapters/outstand-adapter";
 export * from "./adapters/job-scheduler";
 export * from "./content-format-matrix";
+export * from "./failure-reason";
 export * from "./rbac";
 export * from "./repositories/publishing.repository";
 export * from "./services/publishing.service";
