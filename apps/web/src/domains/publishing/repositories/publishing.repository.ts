@@ -684,6 +684,12 @@ export interface IPublishingRepository {
    * pesan error FINAL PER AKUN) — field level-post ini murni ringkasan
    * post secara keseluruhan.
    *
+   * **KI-081 (code-review PR #140, Resolved)** — implementasi sekarang
+   * JUGA men-null-kan `publishedAt`, supaya post `Failed` tidak pernah
+   * menyisakan timestamp publish keliru dari `publishNow` yang menandai
+   * `publishedAt` di muka sebelum outcome diketahui (lihat
+   * `IPublishingRepository.publishNow`).
+   *
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   markPostFailed(

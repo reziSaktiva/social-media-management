@@ -552,6 +552,17 @@ export const publishingRepository: IPublishingRepository = {
     // benar-benar ditulis (sebelumnya hanya `status`). Lihat catatan
     // panjang di `IPublishingRepository.markPostFailed` untuk kontrak
     // `reason` per caller.
+    //
+    // KI-081 (code-review PR #140, finding #2) — `publishedAt: null`
+    // ditambahkan di sini supaya status `Failed` tidak pernah menyisakan
+    // timestamp publish yang keliru. Sumber inkonsistensi: `PublishNowUseCase`
+    // menandai `publishedAt` DI MUKA lewat `publishNow` (di bawah) sebelum
+    // outcome per-target diketahui — kalau SEMUA target ternyata gagal,
+    // method ini mengoreksi `status` ke `Failed`, tapi `publishedAt` yang
+    // sudah kadung terisi tidak pernah di-null-kan. Aman di-null-kan tanpa
+    // syarat untuk SEMUA caller (termasuk `SchedulePostsUseCase`, yang
+    // tidak pernah mengisi `publishedAt` sejak awal — kolomnya sudah `null`,
+    // jadi `updateMany` ini no-op untuk jalur itu).
     await withCurrentUser(userId, (tx) =>
       tx.publishingPost.updateMany({
         where: {
@@ -567,6 +578,7 @@ export const publishingRepository: IPublishingRepository = {
           status: ContentStatus.Failed,
           failedAt: new Date(),
           failureReason: reason,
+          publishedAt: null,
         },
       }),
     );

@@ -573,25 +573,6 @@ tapi data historis `publishedAt` di DB tetap kosong untuk seluruh post yang
 sudah tayang. Non-blocking, gap serupa pola **KI-049**
 (`failedAt`/`failureReason` juga tidak pernah ditulis). Tidak memblokir M8.
 
-### KI-081 · `PublishNowUseCase` bisa membuat post `Failed` dengan `publishedAt` terisi keliru
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Bug |
-| Terkait | T-107, T-029 |
-
-Ditemukan Prabowo Feature Engineer saat implementasi T-107 (2026-09-28). Di
-`PublishNowUseCase`, `publishedAt` diisi DI MUKA lewat
-`repository.publishNow` sebelum outcome per-target diketahui. Kalau semua
-target ternyata gagal, `markPostFailed` mengoreksi `status` ke `Failed`
-(perilaku lama, tidak berubah) tapi `publishedAt` yang sudah kadung terisi
-**tidak** di-null-kan — jadi post `Failed` bisa punya `publishedAt` keliru
-(timestamp yang sebenarnya salah). Bug pre-existing, independen dari T-107
-(tidak diperkenalkan olehnya), di luar scope 3 subtask T-107.1–.3, sengaja
-tidak diperbaiki otomatis karena butuh keputusan perilaku tambahan. Tidak
-memblokir M8.
-
 ---
 
 ## Blockers

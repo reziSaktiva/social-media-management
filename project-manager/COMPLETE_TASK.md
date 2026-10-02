@@ -8,6 +8,31 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-09-28 — KI-081 Resolved: `markPostFailed` sekarang men-null-kan `publishedAt`
+
+Ditemukan via `/code-review` PR #140 (finding #2, dikonfirmasi CONFIRMED oleh
+verifier): `PublishNowUseCase` menandai `publishedAt` DI MUKA lewat
+`repository.publishNow` sebelum outcome per-target diketahui. Kalau semua
+target ternyata gagal, `markPostFailed` mengoreksi `status` ke `Failed` tapi
+sebelumnya tidak pernah men-null-kan `publishedAt` yang sudah kadung terisi —
+post `Failed` bisa punya timestamp publish keliru.
+
+**Fix:** `apps/web/src/lib/repositories/publishing/publishing.repository.ts`
+— `markPostFailed` sekarang menyertakan `publishedAt: null` di `data`
+`updateMany`. Aman untuk SEMUA caller (`PublishNowUseCase`, di mana field ini
+butuh dikoreksi, DAN `SchedulePostsUseCase`/`OutstandWebhookProcessor`, di
+mana field ini sudah `null` sejak awal — jadi no-op untuk jalur itu).
+`IPublishingRepository.markPostFailed` (interface) diupdate catatan
+dokumentasinya. Tidak ada test unit baru (tidak ada test khusus implementasi
+Prisma repository ini sebelumnya — pola project, verifikasi lewat
+typecheck/full suite regression + live DB smoke test manual bila diperlukan).
+
+Verifikasi: `bun run typecheck` bersih, `bun run lint` bersih, `bun run test`
+605 passed/6 skipped (tidak ada regresi, karena use-case layer di-test lewat
+fake repository yang tidak menyentuh field Prisma ini).
+
+---
+
 ## 2026-09-28 — T-107/T-108/T-109 ✅ Done: promosi Known Issues KI-049/KI-063/KI-044/KI-058; 1 KI baru (KI-081)
 
 Audit aplikasi menyeluruh atas permintaan King Rezi mempromosikan 4 Known
