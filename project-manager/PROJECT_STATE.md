@@ -345,9 +345,9 @@ Static Reference.
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
+| Status | Promoted to T-056 (2026-10-06) |
 | Kategori | Design Gap / Tech-Debt |
-| Terkait | T-053, T-050 |
+| Terkait | T-053, T-050, T-056 |
 
 Ditemukan saat implementasi T-053 (Comments Inbox UI, 2026-09-22): kotak
 "Post asal" di panel detail `/engage` hanya menampilkan label generik
@@ -358,9 +358,11 @@ caption/media post — menambah join lintas domain `engagement → publishing`
 di luar scope UI-only task T-053. Bukan bug (perilaku sesuai kontrak data
 T-050 saat ini, dikonfirmasi Najwa QA Engineer sebagai expected), tapi gap
 terhadap mockup Claude Design yang mengasumsikan preview post asli tampil.
-Perlu keputusan/task lanjutan King Rezi apakah field ini wajib ditampilkan
-(kemungkinan butuh port/field baru, mirip pola KI-050). Tidak memblokir
-M8.
+Tidak memblokir M8.
+
+**Update (2026-10-06):** King Rezi mengonfirmasi scope — kotak ini wajib
+menampilkan caption + thumbnail media (kalau ada) + link ke post asli.
+Dipromosikan jadi **T-056** (`tasks/v04-engagement-mvp.md`).
 
 ### KI-053 · Invite via Copy Link — email tidak diverifikasi kepemilikan inbox, rawan identity takeover
 
@@ -588,7 +590,7 @@ benar.
 | ---------- | --------------------------------------------------------------- | ------------------------------------ |
 | **KI-015** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` belum diisi (JOB_SECRET sudah resolved 2026-08-14 di Railway staging) | Google OAuth sign-in |
 | **—**      | Migration `20260922110000_t051_filter_active_status_engagement_sync_lookup` **belum di-deploy** (`bun run db:deploy` pending King Rezi) — bukan kredensial eksternal, murni menunggu eksekusi manual King Rezi | T-051 job `engagement.sync` (JOB-03) — sampai migration ter-apply, fungsi SQL yang dipakai job ini masih versi lama dan job **gagal untuk SEMUA akun** (bukan cuma akun yang disconnect) |
-| **KI-025 (follow-up)** | Ditemukan 2026-10-02 saat King Rezi menguji Comments Inbox manual (komentar di post Instagram akun `turanilkerl`, workspace "Lunch" tidak pernah muncul di `/engage`): tabel `background_jobs` berisi job `engagement.sync` DAN `publishing.scheduled_post.resolve_outcome` yang macet — `attempts: 0`, `started_at: null` selama berminggu-minggu, walau Railway Cron staging pernah diverifikasi 2x run sukses saat penutupan KI-025 (2026-08-14). Perlu re-verifikasi apakah service `cron` staging masih sehat (JOB_SECRET masih cocok, service masih jalan, dll) — kemungkinan regresi infra setelah verifikasi awal, bukan berarti KI-025 asli (pembuatan project Railway) keliru ditutup. **Gap kode terpisah ditemukan di jalur yang sama:** `PublishNowUseCase` (`apps/web/src/domains/publishing/services/publish-now.use-case.ts`) tidak pernah enqueue job `RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE` saat `fetchPostOutcome` mengembalikan status `"pending"` — beda dari `SchedulePostsUseCase` yang sudah benar melakukan ini (`schedule-posts.use-case.ts:225`). Constructor `PublishNowUseCase` bahkan belum menerima `jobScheduler` sama sekali. Akibatnya: post yang dipublish lewat Publish Now dan outcome-nya belum instan dari Outstand bisa stuck `PublishingPostTarget.status = "pending"` permanen, membuat post itu tidak pernah dianggap "syncable" oleh `SyncCommentsUseCase` — komentarnya ada di Outstand (dikonfirmasi langsung lewat Outstand API) tapi tidak pernah ter-pull ke app. Rencana: digabung jadi satu scope PR follow-up (bukan dipisah) — (1) re-verifikasi/health-check Railway Cron staging, (2) tambah fallback enqueue `resolve_outcome` job di `PublishNowUseCase` pola sama `SchedulePostsUseCase`, (3) backfill one-off untuk post yang sudah telanjur stuck `"pending"` saat ini. | Comments Inbox (`/engage`) tidak menerima komentar baru untuk post yang dipublish lewat Publish Now; `PublishingPostTarget.status`/`platformPostUrl` bisa stuck `"pending"` permanen untuk post tersebut |
+| **KI-025 (follow-up)** | Ditemukan 2026-10-02 saat King Rezi menguji Comments Inbox manual (komentar di post Instagram akun `turanilkerl`, workspace "Lunch" tidak pernah muncul di `/engage`): tabel `background_jobs` berisi job `engagement.sync` DAN `publishing.scheduled_post.resolve_outcome` yang macet — `attempts: 0`, `started_at: null` selama berminggu-minggu, walau Railway Cron staging pernah diverifikasi 2x run sukses saat penutupan KI-025 (2026-08-14). Perlu re-verifikasi apakah service `cron` staging masih sehat (JOB_SECRET masih cocok, service masih jalan, dll) — kemungkinan regresi infra setelah verifikasi awal, bukan berarti KI-025 asli (pembuatan project Railway) keliru ditutup. **Gap kode terpisah ditemukan di jalur yang sama:** `PublishNowUseCase` (`apps/web/src/domains/publishing/services/publish-now.use-case.ts`) tidak pernah enqueue job `RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE` saat `fetchPostOutcome` mengembalikan status `"pending"` — beda dari `SchedulePostsUseCase` yang sudah benar melakukan ini (`schedule-posts.use-case.ts:225`). Constructor `PublishNowUseCase` bahkan belum menerima `jobScheduler` sama sekali. Akibatnya: post yang dipublish lewat Publish Now dan outcome-nya belum instan dari Outstand bisa stuck `PublishingPostTarget.status = "pending"` permanen, membuat post itu tidak pernah dianggap "syncable" oleh `SyncCommentsUseCase` — komentarnya ada di Outstand (dikonfirmasi langsung lewat Outstand API) tapi tidak pernah ter-pull ke app. Rencana: digabung jadi satu scope PR follow-up (bukan dipisah) — (1) re-verifikasi/health-check Railway Cron staging, (2) ~~tambah fallback enqueue `resolve_outcome` job di `PublishNowUseCase` pola sama `SchedulePostsUseCase`~~ **✅ selesai 2026-10-05** (lihat `COMPLETE_TASK.md`), (3) backfill one-off untuk post yang sudah telanjur stuck `"pending"` saat ini. **Sisa terbuka: item (1) health-check Railway Cron staging dan item (3) backfill** — belum dikerjakan. | Comments Inbox (`/engage`) tidak menerima komentar baru untuk post yang dipublish lewat Publish Now; `PublishingPostTarget.status`/`platformPostUrl` bisa stuck `"pending"` permanen untuk post tersebut (post BARU setelah fix ini tidak lagi stuck — post LAMA yang sudah telanjur stuck masih butuh backfill item 3) |
 
 **Resolved 2026-09-07:** KI-048 (3 migration Prisma T-026 belum `prisma
 migrate deploy` ke DB dev/live) — King Rezi menjalankan `bun run

@@ -127,10 +127,24 @@ Status task ini tidak berubah (`✅ Done` sejak 2026-09-22).
 
 Berstatus **Could Have** — hanya dikerjakan bila waktu memungkinkan. Tidak memblokir rilis.
 
+### T-056 · Preview post asli di kotak "Post asal" Comments Inbox
+
+`⏳ Not Started` · **Domain** engagement · publishing · UI · **ADR** — · **Depends** T-053 ✅, T-050 ✅ · **Terkait** KI-065 (Promoted to T-056)
+
+**Baca dulu:** `05-architecture/domain-model.md` · `04-ux/key-screen-patterns.md`
+
+Isi kotak "Post asal" di detail panel `/engage` (`EngageInboxView.tsx`) yang saat ini hanya menampilkan label generik ("Komentar ini terhubung ke post terjadwal/terpublish") — known gap sejak T-053, lihat **KI-065**. Scope dikonfirmasi King Rezi (2026-10-06): kotak ini wajib menampilkan **caption** post asli, **thumbnail media** (kalau post itu punya media), DAN **link ke post asli** (`platformPostUrl`) yang bisa diklik.
+
+**Catatan task-level (subtask dirinci saat rilis ini dikerjakan, rolling wave):**
+- Extend `EngagementInboxItemRecord`/`InboxItemDetail` (domain `engagement`, T-050) dengan snapshot caption/media/`platformPostUrl` dari post asli — perlu join lintas domain `engagement → publishing` lewat public API module `publishing` (AGENTS.md #7), BUKAN import implementasi lintas folder langsung.
+- Resolve URL media (kalau post bermedia) untuk thumbnail — cek pola resolve media Outstand yang sudah ada (`resolveOutstandPostMedia`/`PostMediaLookupPort`, domain `publishing`) sebelum membuat mekanisme baru.
+- UI: render caption (truncate wajar), thumbnail (atau fallback kalau post tidak bermedia), dan link `platformPostUrl` yang bisa diklik (buka tab baru) — menggantikan label generik saat ini.
+- **Wajib AGENTS.md rule 17** sebelum menulis kode UI: cek Claude Design (`templates/engage-inbox.html`, KSP-06) apakah struktur preview post asli (caption+thumbnail+link) sudah dikunci ("SYNCED"/"LOCKED PATTERN"). Kalau belum dikunci atau mockup belum menunjukkan pola ini → STOP, tanya King Rezi via `AskUserQuestion` sebelum implementasi (persis preseden T-053).
+
 ---
 
 ## Catatan Rilis
 
-* T-056–T-059 sengaja dikosongkan sebagai ruang penambahan task v0.4.
+* T-057–T-059 sengaja dikosongkan sebagai ruang penambahan task v0.4 (T-056 sudah terpakai, 2026-10-06 — promosi KI-065).
 * **Definition of Done rilis ini:** pengguna dapat membaca dan membalas komentar tanpa berpindah platform, dengan data diperbarui setiap 30 menit atau lewat manual refresh.
 * **Yang sengaja di luar rilis ini (ADR-040 + `feature-priority.md`):** Social Listening, Direct Messages, Mentions, Engagement Webhooks.

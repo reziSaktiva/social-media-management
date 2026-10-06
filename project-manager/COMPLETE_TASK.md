@@ -8,6 +8,48 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-05 — KI-025 (follow-up) item 2/3 selesai: fallback enqueue `resolve_outcome` di `PublishNowUseCase`
+
+Gap kode ditemukan 2026-10-02 (lihat `PROJECT_STATE.md` § Blockers, entri
+"KI-025 (follow-up)"): `PublishNowUseCase` tidak pernah enqueue job
+`RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE` saat `fetchPostOutcome`
+mengembalikan status `"pending"` — beda dari `SchedulePostsUseCase` yang
+sudah benar melakukan ini. Akibatnya post yang dipublish lewat Publish Now
+dengan outcome belum instan dari Outstand bisa stuck
+`PublishingPostTarget.status = "pending"` permanen, membuat post itu tidak
+pernah dianggap "syncable" oleh `SyncCommentsUseCase` — root cause Comments
+Inbox `/engage` kosong untuk post Publish Now (dilaporkan King Rezi, kasus
+nyata: komentar Instagram akun `turanilkerl`, workspace "Lunch").
+
+**Fix** (delegasi ke Elon Backend Engineer):
+`apps/web/src/domains/publishing/services/publish-now.use-case.ts` —
+constructor `PublishNowUseCase` sekarang menerima `jobScheduler:
+IJobScheduler` sebagai parameter ketiga (pola sama persis
+`SchedulePostsUseCase`). Setelah `fetchPostOutcome` resolve, kalau ada
+target yang masih `"pending"`, SATU job `resolve_outcome` di-enqueue DI
+LUAR try/catch adapter (payload `{ outstandPostId }`, `scheduledAt: new
+Date()` — langsung eligible, beda dari Schedule yang pakai `scheduledAt`
+masa depan) — kegagalan enqueue hanya di-log, tidak menandai post/target
+`failed`. Call site `publishNowAction`
+(`apps/web/src/app/(app)/components/draft-editor/actions.ts:715`) di-wire
+untuk pass `backgroundJobScheduler` yang sudah ada di file. 2 test baru di
+`publish-now.use-case.test.ts`: job terpanggil saat ada outcome pending,
+TIDAK terpanggil saat semua outcome final (success/failed).
+
+Verifikasi: `vitest run` domain publishing 221 passed, full suite 599
+passed/6 skipped (0 regresi); `tsc --noEmit`, `eslint`, `prettier --check`
+bersih. Dikerjakan di worktree terpisah
+(`fix/ki-025-publish-now-resolve-outcome`, base `origin/staging`) supaya
+tidak bentrok dengan PR #140 yang sedang berjalan di branch lain. Belum
+commit/push (menunggu instruksi eksplisit King Rezi).
+
+**Sisa KI-025 (follow-up) yang masih terbuka:** (1) re-verifikasi/health-
+check Railway Cron staging (regresi infra kemungkinan terpisah dari gap
+kode ini), (3) backfill one-off untuk post LAMA yang sudah telanjur stuck
+`"pending"` sebelum fix ini — post baru setelah fix ini tidak lagi stuck.
+
+---
+
 ## 2026-09-28 — KI-081 Resolved: `markPostFailed` sekarang men-null-kan `publishedAt`
 
 Ditemukan via `/code-review` PR #140 (finding #2, dikonfirmasi CONFIRMED oleh
