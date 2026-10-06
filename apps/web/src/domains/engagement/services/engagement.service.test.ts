@@ -1,12 +1,14 @@
 import {
   asConnectedAccountId,
   asInboxItemId,
+  asMediaId,
   asPostId,
   asReplyId,
   asUserId,
   asWorkspaceId,
   SocialPlatform,
   type IOutstandAdapter,
+  type MediaId,
   type ReplyToCommentResult,
 } from "@social/shared";
 import { describe, expect, it, vi } from "vitest";
@@ -139,10 +141,24 @@ function createFakePublishingPosts(
       input: unknown,
       userId: unknown,
     ) => Promise<string | null>;
+    findPostSnapshotForEngagement: (
+      input: unknown,
+      userId: unknown,
+    ) => Promise<{
+      caption: string;
+      mediaIds: MediaId[];
+      platformPostUrl: string | null;
+    } | null>;
   }> = {},
 ) {
   return {
     findPostOutstandId: async () => "fake-outstand-post-1",
+    /**
+     * T-056, KI-065 — default `null` (paling umum di test lama yang tidak
+     * menguji T-056 — item biasanya `postId: null`); test T-056 mengoverride
+     * eksplisit.
+     */
+    findPostSnapshotForEngagement: async () => null,
     ...overrides,
   };
 }
@@ -239,7 +255,69 @@ describe("EngagementService.getInboxItemDetail", () => {
       USER_ID,
     );
 
-    expect(result).toEqual({ ...item, replies });
+    expect(result).toEqual({ ...item, replies, postSnapshot: null });
+  });
+
+  it("menyertakan postSnapshot kalau item.postId ada dan publishing menemukan snapshot-nya (T-056, KI-065)", async () => {
+    const item = makeInboxItem({ postId: asPostId("post-1") });
+    const repository = createFakeRepository({
+      findInboxItemById: async () => item,
+    });
+    let receivedSnapshotInput: unknown;
+    const publishingPosts = createFakePublishingPosts({
+      findPostSnapshotForEngagement: async (input) => {
+        receivedSnapshotInput = input;
+        return {
+          caption: "Caption post asli",
+          mediaIds: [asMediaId("media-1")],
+          platformPostUrl: "https://instagram.com/p/xyz",
+        };
+      },
+    });
+    const service = createService(
+      repository,
+      createFakeAdapter(),
+      publishingPosts,
+      createFakeConnectedAccounts(),
+    );
+
+    const result = await service.getInboxItemDetail(
+      { workspaceId: WORKSPACE_ID, inboxItemId: item.id },
+      USER_ID,
+    );
+
+    expect(receivedSnapshotInput).toEqual({
+      workspaceId: WORKSPACE_ID,
+      postId: item.postId,
+      connectedAccountId: item.connectedAccountId,
+    });
+    expect(result.postSnapshot).toEqual({
+      caption: "Caption post asli",
+      mediaIds: [asMediaId("media-1")],
+      platformPostUrl: "https://instagram.com/p/xyz",
+    });
+  });
+
+  it("postSnapshot null kalau publishing tidak menemukan post/target-nya (soft-deleted dll)", async () => {
+    const item = makeInboxItem({ postId: asPostId("post-1") });
+    const repository = createFakeRepository({
+      findInboxItemById: async () => item,
+    });
+    const service = createService(
+      repository,
+      createFakeAdapter(),
+      createFakePublishingPosts({
+        findPostSnapshotForEngagement: async () => null,
+      }),
+      createFakeConnectedAccounts(),
+    );
+
+    const result = await service.getInboxItemDetail(
+      { workspaceId: WORKSPACE_ID, inboxItemId: item.id },
+      USER_ID,
+    );
+
+    expect(result.postSnapshot).toBeNull();
   });
 
   it("throw NotFoundError kalau item tidak ditemukan", async () => {

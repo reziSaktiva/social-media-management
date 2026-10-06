@@ -50,6 +50,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 import { useConfirmAction } from "@/lib/hooks/use-confirm-action";
+import { MediaThumbnail } from "../media-thumbnail";
 import {
   maxMediaCountForFormats,
   minMediaCountConstraintMessage,
@@ -1056,20 +1057,11 @@ function DraftEditorForm({
                             key={item.id}
                             className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted"
                           >
-                            {item.type === "video" ? (
-                              <video
-                                src={item.url ?? undefined}
-                                className="size-full object-cover"
-                                muted
-                              />
-                            ) : (
-                              // eslint-disable-next-line @next/next/no-img-element -- signed URL Supabase Storage sementara (T-024.2), tidak cocok untuk next/image remote pattern statis.
-                              <img
-                                src={item.url ?? undefined}
-                                alt={item.filename}
-                                className="size-full object-cover"
-                              />
-                            )}
+                            <MediaThumbnail
+                              url={item.url}
+                              type={item.type}
+                              alt={item.filename}
+                            />
                             <button
                               type="button"
                               aria-label={`Hapus ${item.filename} secara permanen`}

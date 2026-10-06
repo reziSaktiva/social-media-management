@@ -9,7 +9,6 @@ import { SocialPlatform } from "@social/shared";
 import type { ConnectedAccountRecord } from "@/domains/workspace";
 import type {
   EngagementInboxItemRecord,
-  InboxItemDetail,
   InboxItemStatus,
 } from "@/domains/engagement";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
@@ -40,6 +39,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
 
+import { MediaThumbnail } from "../../components/media-thumbnail";
 import { PLATFORM_ICON } from "../../components/platform-icons";
 import {
   getInboxItemDetailAction,
@@ -47,6 +47,7 @@ import {
   markAsDoneAction,
   refreshInboxAction,
   replyToCommentAction,
+  type InboxItemDetailDto,
   type ListInboxActionFilter,
 } from "../actions";
 
@@ -107,18 +108,16 @@ export interface EngageInboxViewProps {
  * Component berikutnya — state list di client ini dipatch langsung dari
  * `data` yang dikembalikan action, pola sama `ConnectedAccountsList`).
  *
- * **Gap backend yang diketahui (dilaporkan ke King Rezi, bukan diputuskan
- * sendiri — AGENTS.md rule 16):** mockup thread-detail menampilkan
- * thumbnail + judul post asal, tapi `InboxItemDetail` (T-050) hanya
- * membawa `postId: PostId | null` — TIDAK ada join ke caption/media post
- * (`EngagementService.getInboxItemDetail` tidak menyertakannya, dan
- * menambah join lintas domain `engagement` → `publishing` di luar scope
- * UI-only task ini). Kotak "Post asal" di bawah karena itu HANYA
- * menampilkan penanda "post ini terhubung ke draft/jadwal" tanpa judul
- * asli saat `postId` tidak null — bukan generic placeholder judul yang
- * dikarang. Perlu keputusan/task lanjutan (mis. perluas
- * `EngagementInboxItemRecord`/`InboxItemDetail` dengan snapshot caption
- * post) kalau judul post asli wajib tampil persis mockup.
+ * **Kotak "Post asal" (T-056, KI-065, resolved 2026-10-06):** sebelumnya
+ * hanya label generik ("Komentar ini terhubung ke post terjadwal/
+ * terpublish") karena `InboxItemDetail` (T-050) tidak membawa snapshot
+ * caption/media post asli. Sekarang `InboxItemDetailDto.postSnapshot`
+ * (`getInboxItemDetailAction`, join `engagement` → `publishing` lewat
+ * public API module + resolve thumbnail lewat `MediaService`) mengisi
+ * caption (truncate 1 baris), thumbnail (di-omit sepenuhnya kalau post
+ * tidak bermedia — bukan kotak kosong), dan link **"Go to post →"**
+ * (`platformPostUrl`, reuse gaya `.popover-link` dari Post Preview Popover
+ * Calendar, LOCKED PATTERN Claude Design `templates/engage-inbox.html`).
  */
 export function EngageInboxView({
   initialItems,
@@ -135,7 +134,7 @@ export function EngageInboxView({
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<InboxItemDetail | null>(null);
+  const [detail, setDetail] = useState<InboxItemDetailDto | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
@@ -441,14 +440,14 @@ export function EngageInboxView({
                     asChild
                     variant={isSelected ? "muted" : "default"}
                     size="sm"
-                    className="cursor-pointer items-start gap-2 rounded-none border-b border-border p-3 last:border-b-0"
+                    className="cursor-pointer items-start gap-2 rounded-none border-b border-border p-3 text-left last:border-b-0"
                   >
                     <button
                       type="button"
                       onClick={() => setSelectedId(item.id)}
                       aria-current={isSelected ? "true" : undefined}
                     >
-                      <ItemMedia className="mt-1.5">
+                      <ItemMedia className="mt-1.5 items-start justify-start">
                         <span
                           className={cn(
                             "block size-1.5 shrink-0 rounded-full",
@@ -479,7 +478,7 @@ export function EngageInboxView({
           </div>
 
           {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thread-detail` */}
-          <div className="flex flex-col gap-4 p-5">
+          <div className="flex min-w-0 flex-col gap-4 p-5">
             {isLoadingDetail ? (
               // eslint-disable-next-line no-restricted-syntax -- T-053: layout-only
               <div className="flex flex-1 items-center justify-center">
@@ -487,12 +486,12 @@ export function EngageInboxView({
               </div>
             ) : detail ? (
               <>
-                {detail.postId ? (
-                  // eslint-disable-next-line no-restricted-syntax -- T-053: `.post-context`
+                {detail.postId && !detail.postSnapshot ? (
+                  // eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: fallback label generik (perilaku T-053 lama) saat post/target terkait sudah tidak ditemukan (mis. soft-deleted) walau `postId` masih ada.
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-muted p-3">
-                    {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thumb` placeholder, tidak ada media asli (lihat catatan gap post-context di atas) */}
+                    {/* eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: placeholder thumbnail generik, layout-only */}
                     <div className="size-11 shrink-0 rounded-md bg-muted-foreground/20" />
-                    {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only */}
+                    {/* eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.post-context-body`, layout-only */}
                     <div className="flex flex-col gap-0.5">
                       <Text variant="muted" as="span" className="text-xs">
                         Post asal
@@ -500,6 +499,50 @@ export function EngageInboxView({
                       <Text as="span" className="text-sm font-semibold">
                         Komentar ini terhubung ke post terjadwal/terpublish
                       </Text>
+                    </div>
+                  </div>
+                ) : null}
+
+                {detail.postId && detail.postSnapshot ? (
+                  // eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.post-context` (Claude Design `templates/engage-inbox.html`, LOCKED PATTERN T-056 2026-10-06) — thumbnail di-omit sepenuhnya kalau post tidak bermedia (bukan kotak kosong), kolom teks full width.
+                  <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-muted p-3">
+                    {detail.postSnapshot.thumbnail ? (
+                      // eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.thumb` — thumbnail media post asli, size tetap sama placeholder lama (size-11).
+                      <div className="size-11 shrink-0 overflow-hidden rounded-md bg-muted-foreground/20">
+                        <MediaThumbnail
+                          url={detail.postSnapshot.thumbnail.url}
+                          type={detail.postSnapshot.thumbnail.type}
+                          alt="Media post asal"
+                        />
+                      </div>
+                    ) : null}
+                    {/* eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.post-context-body` */}
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <Text variant="muted" as="span" className="text-xs">
+                        Post asal
+                      </Text>
+                      {/* `.post-context-cap` — truncate 1 baris */}
+                      <Text
+                        as="span"
+                        className="truncate text-sm font-semibold"
+                      >
+                        {detail.postSnapshot.caption || "(Tanpa caption)"}
+                      </Text>
+                      {detail.postSnapshot.platformPostUrl ? (
+                        <a
+                          href={detail.postSnapshot.platformPostUrl}
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          <Text
+                            variant="muted"
+                            as="span"
+                            className="text-xs text-primary"
+                          >
+                            Go to post →
+                          </Text>
+                        </a>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}

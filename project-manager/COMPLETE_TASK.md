@@ -8,6 +8,135 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-06 — T-056 ✅ Done: Preview post asli di kotak "Post asal" Comments Inbox (commit `e7395c7`, PR #143)
+
+Implementasi T-056 (promosi KI-065, kotak "Post asal" di detail panel
+Comments Inbox `/engage` kini menampilkan caption, thumbnail, dan link post
+asli alih-alih label generik) selesai, direview, dan lulus QA. Branch
+`feature/t056-engage-post-asal-preview` → PR #143 ke `staging`.
+
+- **Implementasi (Prabowo Feature Engineer):** extend
+  `EngagementInboxItemRecord`/`InboxItemDetail` dengan field `postSnapshot`
+  (caption, thumbnail, `platformPostUrl`), join `engagement → publishing`
+  lewat port lokal structural-typing (`PublishingPostSnapshotPort`, pola sama
+  `PublishingPostReferencePort` yang sudah ada) — bukan import tipe konkret
+  lintas domain. Thumbnail diresolve lewat `MediaService.listByIds` (bukan
+  `resolveOutstandPostMedia`, yang khusus upload-prep ke Outstand).
+- **Review arsitektur (Ridwan):** 0 pelanggaran hard rule. 1 temuan perilaku
+  dikonfirmasi King Rezi via `AskUserQuestion`: kotak "Post asal" sengaja
+  hilang total (bukan fallback label generik) kalau `postId` ada tapi
+  `postSnapshot` gagal di-resolve — keputusan final, bukan bug.
+- **QA round 1 (Najwa):** 2 bug ditemukan — (a) caption tidak truncate, box
+  melebar keluar viewport; (b) thumbnail broken karena signed URL Supabase
+  Storage (TTL 1 jam) di-cache permanen di `MediaItem.url`, tidak pernah
+  di-generate ulang.
+- **Fix (a) — Mark UI Engineer:** tambah `min-w-0` di `.thread-detail` DAN
+  `.post-context` (dua lapis penyebab).
+- **Fix (b) — Elon Backend Engineer**, keputusan King Rezi (generate ulang
+  signed URL saat request, dipilih dari 3 opsi): `IMediaStorageAdapter`
+  ditambah method `getSignedUrl`; `MediaService` regenerate signed URL fresh
+  di `getMediaItem`/`listMediaItems`/`listByIds` kalau storage adapter
+  disuplai. Diterapkan juga di `getDraftAction` (titik rawan sama). Jalur
+  validasi-only (`resolveAndValidateMediaIds`, `scheduleDraftAction`,
+  `publishNowAction`) sengaja tidak disuplai storage adapter. Kolom
+  `MediaItem.url` TIDAK dihapus, tetap fallback.
+- **QA round 2 (Najwa, independen):** PASS semua — 620 test pass/6 skip,
+  typecheck/lint bersih, tidak ada regresi.
+- **Gate T-103.3** (verifikasi struktur vs Claude Design): PASS.
+- **Catatan masa depan:** thumbnail untuk post hasil Import Posts
+  (T-090/T-091, ADR-093) belum relevan — fitur itu belum diimplementasikan
+  sama sekali. Perlu didesain ulang nanti karena `PublishingPost.mediaIds`
+  saat ini hanya menunjuk `MediaItem` lokal hasil upload sendiri.
+
+**KI-065 Resolved (2026-10-06)** — ditutup oleh penyelesaian T-056 di atas.
+Detail lengkap: `tasks/v04-engagement-mvp.md` § T-056.
+
+---
+
+## 2026-10-06 — KI-082 dicatat + Claude Design `publish-history-detail.html` di-update (media preview)
+
+Setelah lock Claude Design T-056, King Rezi menemukan gap serupa (media post
+asli tidak tampil) di dua lokasi lain: History Detail Post dan Calendar Post
+Preview Popover — dicatat sebagai **KI-082** di `PROJECT_STATE.md` (root cause:
+domain type `publishing` — `PublishingPost`/`CalendarItemRecord`/
+`HistoryItemRecord`/`HistoryDetailItem` — belum punya field media sama sekali,
+diverifikasi langsung ke kode `apps/web` lewat subagent Explore).
+
+**Keputusan scope:** KI-082 TIDAK digabung ke T-056 karena lokasi/fitur beda
+(T-056 = domain `engagement`/Comments Inbox; KI-082 = domain `publishing`).
+Tetap Open sebagai item terpisah.
+
+**Claude Design (project "Social Media Management") di-update sebagian untuk
+KI-082** oleh main agent session langsung (DesignSync, sama seperti T-056):
+- `templates/publish-history-detail.html` — ditambah media/thumbnail post
+  asli, reuse `.popover-thumb` persis dari `components/popover.html` (bukan
+  `.thumb` dari `templates/engage-inbox.html` — dua pola existing, King Rezi
+  pilih `.popover-thumb` via `AskUserQuestion`), ditempatkan sekali per post
+  di kartu caption atas (bukan per `.history-target-row`, karena media milik
+  post bukan per-target). Dikunci komentar "LOCKED PATTERN (KI-082,
+  2026-10-06)".
+- `components/popover.html` (Calendar Post Preview Popover) **sengaja TIDAK
+  diubah** — King Rezi konfirmasi via `AskUserQuestion` placeholder
+  `.popover-thumb` yang sudah ada di sana sudah cukup.
+- `readme.md` — bullet baru ditambahkan untuk `templates/publish-history-detail.html`
+  (sebelumnya belum ada entri terpisah untuk file ini) mendokumentasikan lock
+  di atas.
+
+Semua perubahan diverifikasi ulang dari remote (diff bersih). Implementasi
+kode `apps/web` (field media di domain `publishing`) **belum dimulai** — KI-082
+tetap status Open.
+
+---
+
+## 2026-10-06 — Claude Design T-056/KI-065 di-lock (desain saja, implementasi kode belum mulai)
+
+Update Claude Design (project "Social Media Management",
+projectId `84aded99-bb23-49b1-be9f-dd8f21c6873e`) untuk menutup gap desain
+KI-065 / scope T-056 (preview post asli di kotak "Post asal" Comments Inbox).
+Dikerjakan oleh **main agent session langsung** (bukan Neymar Product
+Designer — Neymar gagal karena DesignSync tidak ter-load di sesi subagent-nya,
+limitasi sudah tercatat di `.claude/agents/README.md`).
+
+Perubahan (semua sudah diverifikasi ulang dari remote, diff bersih, tidak ada
+perubahan tak diminta):
+1. `templates/engage-inbox.html` (KSP-06) — kotak `.thread-detail .post-context`
+   diubah dari label generik ("Post asal" + judul, tanpa link) menjadi:
+   caption asli (`.post-context-cap`, class baru, truncate 1 baris, di dalam
+   `.post-context-body`, class baru) + link **"Go to post →"** yang reuse
+   class `.popover-link` persis dari `components/popover.html` (Post Preview
+   Popover) — bukan gaya ikon+"Lihat post asli" dari
+   `publish-history-detail.html`. Dua pola existing ini ambigu secara teknis
+   per AGENTS.md rule 17; King Rezi memilih eksplisit via `AskUserQuestion`:
+   reuse `components/popover.html` ("Go to post →", tanpa ikon, teks Inggris).
+   Komentar HTML **"LOCKED PATTERN (T-056, 2026-10-06, King Rezi confirmed
+   via AskUserQuestion)"** ditambahkan tepat di atas blok `.post-context`,
+   termasuk aturan fallback: post tanpa media → elemen `.thumb` di-omit
+   sepenuhnya (bukan kotak kosong), kolom teks jadi full width (keputusan ini
+   dibuat main agent sendiri, tanpa tanya King Rezi, karena dianggap bukan
+   fork pola struktural seperti dimaksud rule 17 — cuma soal perlu-tidaknya
+   duplikasi mockup dua-state).
+2. `styles.css` — 2 rule baru ditambahkan tepat setelah rule `.thumb` (baris
+   ~774): `.post-context-body { flex: 1; min-width: 0; }` dan
+   `.post-context-cap { ...; overflow:hidden; text-overflow:ellipsis;
+   white-space:nowrap; ... }`. Tidak ada rule lain yang diubah.
+3. `readme.md` — bullet `templates/engage-inbox.html` (sekitar baris lama 246)
+   diperluas dengan catatan **LOCKED PATTERN (T-056, 2026-10-06, King Rezi
+   confirmed via AskUserQuestion)** menjelaskan perubahan di atas secara
+   naratif, termasuk menyebut eksplisit ada dua pola link existing dan mana
+   yang dipilih.
+
+Dokumentasi project di-update menyertai ini: `tasks/v04-engagement-mvp.md`
+§ T-056 (catatan lock ditambahkan, status task **tetap** `⏳ Not Started` —
+desain selesai, kode belum) dan `PROJECT_STATE.md` § KI-065 (catatan
+sinkronisasi desain ditambahkan, status KI tetap "Promoted to T-056").
+
+Branch kerja `feature/t056-engage-post-asal-preview` sudah dibuat dari
+`origin/staging` untuk lanjut implementasi, tapi **belum ada commit kode
+apps/web** sama sekali — baru perubahan Claude Design yang selesai di sesi
+ini.
+
+---
+
 ## 2026-10-05 — KI-025 (follow-up) item 2/3 selesai: fallback enqueue `resolve_outcome` di `PublishNowUseCase`
 
 Gap kode ditemukan 2026-10-02 (lihat `PROJECT_STATE.md` § Blockers, entri

@@ -1,6 +1,7 @@
 import type {
   IOutstandAdapter,
   InboxItemId,
+  MediaId,
   PostId,
   ConnectedAccountId,
   UserId,
@@ -38,6 +39,27 @@ interface PublishingPostReferencePort {
     },
     userId: UserId,
   ): Promise<string | null>;
+
+  /**
+   * T-056, KI-065 — snapshot caption/media/`platformPostUrl` post asli untuk
+   * kotak "Post asal" di detail panel Comments Inbox. Digabung ke port yang
+   * sama dengan `findPostOutstandId` (bukan port terpisah) karena keduanya
+   * SELALU disuplai oleh instance `publishingRepository` yang sama di
+   * composition root — port terpisah hanya menambah satu constructor
+   * parameter berulang tanpa manfaat decoupling nyata (lihat review PR #143).
+   */
+  findPostSnapshotForEngagement(
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      connectedAccountId: ConnectedAccountId;
+    },
+    userId: UserId,
+  ): Promise<{
+    caption: string;
+    mediaIds: MediaId[];
+    platformPostUrl: string | null;
+  } | null>;
 }
 
 /**
@@ -59,11 +81,28 @@ interface ConnectedAccountHandlePort {
 }
 
 /**
+ * Snapshot post asli (T-056, KI-065) — `null` kalau `item.postId` kosong
+ * (komentar belum terhubung ke post manapun, data lama) ATAU post/target
+ * terkait tidak ditemukan lagi di `publishing` (mis. sudah di-soft-delete).
+ * `mediaIds` dibawa mentah — resolusi URL thumbnail (domain `media`) bukan
+ * tanggung jawab `engagement`, dilakukan composition root.
+ */
+export interface InboxItemPostSnapshot {
+  caption: string;
+  mediaIds: MediaId[];
+  platformPostUrl: string | null;
+}
+
+/**
  * Detail satu inbox item + balasannya (T-050) — dipakai composition root
  * route detail Comments Inbox (T-053, belum dibangun di task ini).
+ *
+ * **`postSnapshot` (T-056, KI-065)** — ditambahkan untuk mengisi kotak
+ * "Post asal" yang sebelumnya hanya label generik (gap sejak T-053).
  */
 export interface InboxItemDetail extends EngagementInboxItemRecord {
   replies: EngagementReplyRecord[];
+  postSnapshot: InboxItemPostSnapshot | null;
 }
 
 /**
@@ -110,12 +149,21 @@ export class EngagementService {
       throw new NotFoundError("Komentar tidak ditemukan.");
     }
 
-    const replies = await this.repository.listRepliesByInboxItemId(
-      item.id,
-      userId,
-    );
+    const [replies, postSnapshot] = await Promise.all([
+      this.repository.listRepliesByInboxItemId(item.id, userId),
+      item.postId
+        ? this.publishingPosts.findPostSnapshotForEngagement(
+            {
+              workspaceId: input.workspaceId,
+              postId: item.postId,
+              connectedAccountId: item.connectedAccountId,
+            },
+            userId,
+          )
+        : Promise.resolve(null),
+    ]);
 
-    return { ...item, replies };
+    return { ...item, replies, postSnapshot };
   }
 
   /**

@@ -1,5 +1,6 @@
 import type { MediaId, MediaType, UserId, WorkspaceId } from "@social/shared";
 import { NotFoundError } from "@/lib/utils/errors";
+import type { IMediaStorageAdapter } from "../adapters/media-storage-adapter";
 import type { IMediaRepository } from "../repositories/media.repository";
 import type { MediaItemRecord } from "../types";
 
@@ -24,7 +25,57 @@ import type { MediaItemRecord } from "../types";
  * scaffold yang belum diadopsi.
  */
 export class MediaService {
-  constructor(private readonly repository: IMediaRepository) {}
+  /**
+   * `storageAdapter` opsional (bug fix QA T-056, 2026-10-06) — kalau
+   * disuplai, `getMediaItem`/`listMediaItems`/`listByIds` SELALU
+   * meregenerate `url` dari `storagePath` lewat `getSignedUrl` sebelum
+   * mengembalikan record, menggantikan kolom `url` yang di-cache permanen
+   * sejak upload (root cause thumbnail broken: signed URL expired 1 jam
+   * setelah upload, tapi dibaca apa adanya tanpa regenerate — lihat
+   * `IMediaStorageAdapter.getSignedUrl` untuk detail). Dibuat opsional
+   * (bukan wajib di constructor) supaya caller yang hanya butuh data
+   * domain murni tanpa display (mis. validasi ownership
+   * `resolveDraftMediaIds`, atau test unit yang pakai fake repository
+   * saja) tidak perlu menyuplai storage adapter sungguhan — kalau tidak
+   * disuplai, `url` dikembalikan apa adanya dari repository (perilaku
+   * lama, backward compatible).
+   */
+  constructor(
+    private readonly repository: IMediaRepository,
+    private readonly storageAdapter?: IMediaStorageAdapter,
+  ) {}
+
+  /**
+   * Regenerate `url` tiap record dari `storagePath` lewat
+   * `storageAdapter.getSignedUrl` (paralel, `Promise.all`). Kegagalan
+   * regenerate SATU item (mis. file sudah terhapus manual di Storage)
+   * tidak melempar untuk seluruh batch — item itu kembali dengan `url:
+   * null` (caller treat sebagai "media tanpa thumbnail", pola sama
+   * `mediaItem?.url` guard yang sudah ada di `engage/actions.ts`), bukan
+   * menggagalkan seluruh list/detail hanya karena satu media bermasalah.
+   */
+  private async withFreshUrls(
+    items: MediaItemRecord[],
+  ): Promise<MediaItemRecord[]> {
+    if (!this.storageAdapter || items.length === 0) {
+      return items;
+    }
+    const adapter = this.storageAdapter;
+    return Promise.all(
+      items.map(async (item) => {
+        try {
+          const url = await adapter.getSignedUrl(item.storagePath);
+          return { ...item, url };
+        } catch (error) {
+          console.error(
+            `MediaService.withFreshUrls: gagal regenerate signed URL untuk storagePath=${item.storagePath}`,
+            error,
+          );
+          return { ...item, url: null };
+        }
+      }),
+    );
+  }
 
   /**
    * Buat record `MediaItem` baru. Dipanggil SETELAH file fisik sudah
@@ -64,15 +115,17 @@ export class MediaService {
     if (!item) {
       throw new NotFoundError("Media tidak ditemukan.");
     }
-    return item;
+    const [fresh] = await this.withFreshUrls([item]);
+    return fresh;
   }
 
-  /** Daftar seluruh `MediaItem` milik satu workspace — delegasi tipis ke repository. */
+  /** Daftar seluruh `MediaItem` milik satu workspace — delegasi tipis ke repository, `url` diregenerate (lihat `withFreshUrls`). */
   async listMediaItems(
     input: { workspaceId: WorkspaceId },
     userId: UserId,
   ): Promise<MediaItemRecord[]> {
-    return this.repository.findByWorkspace(input, userId);
+    const items = await this.repository.findByWorkspace(input, userId);
+    return this.withFreshUrls(items);
   }
 
   /**
@@ -95,7 +148,8 @@ export class MediaService {
     if (input.mediaIds.length === 0) {
       return [];
     }
-    return this.repository.findByIds(input, userId);
+    const items = await this.repository.findByIds(input, userId);
+    return this.withFreshUrls(items);
   }
 
   /**

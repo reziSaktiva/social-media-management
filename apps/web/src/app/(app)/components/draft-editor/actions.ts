@@ -241,7 +241,14 @@ export async function getDraftAction(postId: string): Promise<{
     actingUserId,
   );
 
-  const mediaService = new MediaService(mediaRepository);
+  // `supabaseMediaStorageAdapter` disuplai (bug fix QA T-056, 2026-10-06) —
+  // draft bisa dibuka lagi lama setelah upload, jadi `url` di-cache dari
+  // waktu upload hampir pasti sudah expired; `MediaService.listByIds`
+  // meregenerate signed URL baru dari `storagePath` setiap panggilan.
+  const mediaService = new MediaService(
+    mediaRepository,
+    supabaseMediaStorageAdapter,
+  );
   const mediaItems =
     post.mediaIds && post.mediaIds.length > 0
       ? await mediaService.listByIds(

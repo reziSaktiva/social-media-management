@@ -19,11 +19,14 @@ import {
   type InboxItemFilter,
   type InboxItemStatus,
 } from "@/domains/engagement";
+import { MediaService, type MediaItemRecord } from "@/domains/media";
 import { NotificationService } from "@/domains/notification";
 import { WorkspaceService } from "@/domains/workspace";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
+import { supabaseMediaStorageAdapter } from "@/lib/adapters/media-storage/supabase-media-storage-adapter";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { engagementRepository } from "@/lib/repositories/engagement";
+import { mediaRepository } from "@/lib/repositories/media";
 import { notificationRepository } from "@/lib/repositories/notification";
 import { publishingRepository } from "@/lib/repositories/publishing";
 import { workspaceRepository } from "@/lib/repositories/workspace";
@@ -143,14 +146,38 @@ export async function listInboxAction(
   }
 }
 
+/** Thumbnail post asli (T-056, KI-065) — media PERTAMA saja (kotak "Post asal" menampilkan satu thumbnail, bukan galeri), pola sama `.thumb`/`.popover-thumb` di Claude Design. `url` di sini adalah URL Supabase Storage aplikasi kita (`MediaItemRecord.url`, sama field yang dipakai `getDraftAction`/`Modal.tsx` untuk preview) — BUKAN `outstandMediaUrl`/`resolveOutstandPostMedia` (itu untuk menyiapkan upload ke Outstand sebelum publish, bukan untuk menampilkan media yang sudah ada di storage kita sendiri). */
+export interface InboxDetailThumbnailDto {
+  url: string;
+  type: MediaItemRecord["type"];
+}
+
+/** Snapshot post asli (T-056, KI-065) siap-render — `mediaIds` domain diganti `thumbnail` tunggal yang sudah di-resolve URL-nya. */
+export interface InboxDetailPostSnapshotDto {
+  caption: string;
+  platformPostUrl: string | null;
+  thumbnail: InboxDetailThumbnailDto | null;
+}
+
+/** `InboxItemDetail` domain + `postSnapshot` yang sudah dipetakan ke bentuk siap-render (T-056). */
+export type InboxItemDetailDto = Omit<InboxItemDetail, "postSnapshot"> & {
+  postSnapshot: InboxDetailPostSnapshotDto | null;
+};
+
 /**
- * Detail satu inbox item + seluruh balasannya (T-053). Murni wiring —
+ * Detail satu inbox item + seluruh balasannya (T-053; T-056/KI-065 menambah
+ * `postSnapshot` siap-render untuk kotak "Post asal"). Murni wiring —
  * resolve workspace/session, delegasi ke
- * `EngagementService.getInboxItemDetail`.
+ * `EngagementService.getInboxItemDetail` untuk data domain, lalu (kalau
+ * `postSnapshot.mediaIds` tidak kosong) resolve media PERTAMA ke URL
+ * tampil lewat `MediaService.listByIds` (domain `media`, BC-08) — pola
+ * sama `getDraftAction` (`draft-editor/actions.ts`): kombinasi dua
+ * Application Service lalu dipetakan jadi DTO siap-konsumsi client, BUKAN
+ * keputusan bisnis baru (AGENTS.md #5).
  */
 export async function getInboxItemDetailAction(
   inboxItemId: string,
-): Promise<{ data?: InboxItemDetail; error?: string }> {
+): Promise<{ data?: InboxItemDetailDto; error?: string }> {
   const { workspaceId } = await getWorkspaceContext();
   const session = await getCachedSession();
   if (!session) {
@@ -166,10 +193,43 @@ export async function getInboxItemDetailAction(
   );
 
   try {
-    const data = await engagementService.getInboxItemDetail(
+    const detail = await engagementService.getInboxItemDetail(
       { workspaceId, inboxItemId: asInboxItemId(inboxItemId) },
       userId,
     );
+
+    let thumbnail: InboxDetailThumbnailDto | null = null;
+    const firstMediaId = detail.postSnapshot?.mediaIds[0];
+    if (firstMediaId) {
+      // `supabaseMediaStorageAdapter` disuplai (bug fix QA T-056,
+      // 2026-10-06) — komentar inbox bisa dilihat lama setelah post
+      // dipublish, jadi `url` yang di-cache dari waktu upload media hampir
+      // pasti sudah expired; `MediaService.listByIds` meregenerate signed
+      // URL baru dari `storagePath` setiap panggilan supaya thumbnail
+      // "Post asal" selalu valid.
+      const mediaService = new MediaService(
+        mediaRepository,
+        supabaseMediaStorageAdapter,
+      );
+      const [mediaItem] = await mediaService.listByIds(
+        { workspaceId, mediaIds: [firstMediaId] },
+        userId,
+      );
+      if (mediaItem?.url) {
+        thumbnail = { url: mediaItem.url, type: mediaItem.type };
+      }
+    }
+
+    const data: InboxItemDetailDto = {
+      ...detail,
+      postSnapshot: detail.postSnapshot
+        ? {
+            caption: detail.postSnapshot.caption,
+            platformPostUrl: detail.postSnapshot.platformPostUrl,
+            thumbnail,
+          }
+        : null,
+    };
     return { data };
   } catch (error) {
     return toActionError(error);
