@@ -420,6 +420,87 @@ describe("PublishNowUseCase.execute", () => {
     expect(scheduleJob).not.toHaveBeenCalled();
   });
 
+  it("code-review PR #141: does NOT mark targets/post failed when publishNow succeeds but fetchPostOutcome itself throws — still enqueues the resolve_outcome fallback job", async () => {
+    const publishRecord = basePublishRecord([
+      {
+        id: asPostTargetId("target-1"),
+        connectedAccountId: CONNECTED_ACCOUNT_1,
+      },
+      {
+        id: asPostTargetId("target-2"),
+        connectedAccountId: CONNECTED_ACCOUNT_2,
+      },
+    ]);
+
+    let markPostFailedCalls = 0;
+    let updateTargetOutcomeFailedCalls = 0;
+    const repository = createFakeRepository({
+      publishNow: async () => publishRecord,
+      setOutstandPostId: async () => undefined,
+      updateTargetOutcome: async (input) => {
+        if (input.status === "failed") {
+          updateTargetOutcomeFailedCalls += 1;
+        }
+      },
+      markPostFailed: async () => {
+        markPostFailedCalls += 1;
+      },
+    });
+    const adapter = createFakeOutstandAdapter({
+      publishNow: async () => ({ outstandPostId: "fake-post-shared" }),
+      // publishNow + setOutstandPostId sukses (Outstand SUDAH menerima post),
+      // tapi fetchPostOutcome sendiri throw (mis. network error transient).
+      fetchPostOutcome: async () => {
+        throw new Error("outstand fetchPostOutcome network timeout");
+      },
+    });
+    const scheduledJobs: Parameters<IJobScheduler["scheduleJob"]>[0][] = [];
+    const jobScheduler = createFakeJobScheduler({
+      scheduleJob: async (input) => {
+        scheduledJobs.push(input);
+      },
+    });
+
+    const useCase = new PublishNowUseCase(repository, adapter, jobScheduler);
+
+    await useCase.execute({
+      workspaceId: WORKSPACE_ID,
+      postId: POST_ID,
+      targets: [
+        {
+          connectedAccountId: CONNECTED_ACCOUNT_1,
+          platform: SocialPlatform.Instagram,
+          contentFormat: ContentFormat.Post,
+          outstandAccountId: "outstand-acc-1",
+        },
+        {
+          connectedAccountId: CONNECTED_ACCOUNT_2,
+          platform: SocialPlatform.Facebook,
+          contentFormat: ContentFormat.Reel,
+          outstandAccountId: "outstand-acc-2",
+        },
+      ],
+      actorRole: MemberRole.Creator,
+      actingUserId: AUTHOR_ID,
+    });
+
+    // Outstand sudah benar-benar menerima post ini — BUKAN kegagalan
+    // publish, jadi target/post TIDAK boleh ditandai failed.
+    expect(updateTargetOutcomeFailedCalls).toBe(0);
+    expect(markPostFailedCalls).toBe(0);
+    // Tapi fallback job tetap WAJIB di-enqueue supaya outcome-nya di-resolve
+    // ulang belakangan (bug yang sama kelasnya dengan KI-025 asli, kalau
+    // tidak diperbaiki post ini stuck "pending" tanpa job polling sama
+    // sekali).
+    expect(scheduledJobs).toEqual([
+      {
+        type: "publishing.scheduled_post.resolve_outcome",
+        payload: { outstandPostId: "fake-post-shared" },
+        scheduledAt: expect.any(Date),
+      },
+    ]);
+  });
+
   it("marks the post Failed when the single adapter call rejects (all targets fail together, bug fix 2026-08-26)", async () => {
     const publishRecord = basePublishRecord([
       {

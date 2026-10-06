@@ -12,7 +12,7 @@ import type { IJobScheduler } from "../adapters/job-scheduler";
 import { assertContentFormatAllowed } from "../content-format-matrix";
 import { assertPinterestBoardConstraints } from "../pinterest-board-constraints";
 import { assertScheduledAtNotInPast } from "../schedule-time-constraints";
-import { RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE } from "./resolve-scheduled-post-outcome-job-handler";
+import { enqueueResolveOutcomeFallback } from "./enqueue-resolve-outcome-fallback";
 import type {
   IPublishingRepository,
   PublishingPostRecord,
@@ -221,29 +221,21 @@ export class SchedulePostsUseCase {
     // sebagai `failed` — post itu sudah benar-benar terjadwal di Outstand,
     // ini murni gagal mencatat job internal untuk polling belakangan.
     if (scheduleResult) {
-      try {
-        await this.jobScheduler.scheduleJob({
-          type: RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE,
-          payload: { outstandPostId: scheduleResult.outstandPostId },
-          scheduledAt: input.scheduledAt,
-        });
-      } catch (jobError) {
-        const message =
-          jobError instanceof Error ? jobError.message : String(jobError);
-        // Log-only (pola sama dengan kegagalan pemrosesan non-fatal
-        // lain di codebase ini, mis. `OutstandWebhookProcessor` di
-        // `/api/webhooks/outstand/route.ts`) — post TETAP `Scheduled`,
-        // TIDAK di-`markPostFailed`. Outcome post ini masih bisa
-        // terselesaikan lewat webhook `post.published`/`post.error`
-        // (T-026, independen dari job polling T-027); kegagalan enqueue
-        // ini perlu diinvestigasi manual (MVP monitoring, BG-D06) kalau
-        // webhook juga tidak kunjung datang.
-        console.error(
-          `[SchedulePostsUseCase] gagal enqueue job resolve-outcome ` +
-            `(postId=${input.postId}, outstandPostId=${scheduleResult.outstandPostId}): ` +
-            `${message} — post TETAP berstatus Scheduled, BUKAN ditandai gagal.`,
-        );
-      }
+      // Log-only kalau gagal enqueue (pola sama dengan kegagalan pemrosesan
+      // non-fatal lain di codebase ini, mis. `OutstandWebhookProcessor` di
+      // `/api/webhooks/outstand/route.ts`) — post TETAP `Scheduled`, TIDAK
+      // di-`markPostFailed`. Outcome post ini masih bisa terselesaikan lewat
+      // webhook `post.published`/`post.error` (T-026, independen dari job
+      // polling T-027); kegagalan enqueue perlu diinvestigasi manual (MVP
+      // monitoring, BG-D06) kalau webhook juga tidak kunjung datang.
+      await enqueueResolveOutcomeFallback({
+        jobScheduler: this.jobScheduler,
+        outstandPostId: scheduleResult.outstandPostId,
+        scheduledAt: input.scheduledAt,
+        callerLabel: "SchedulePostsUseCase",
+        postId: input.postId,
+        onFailureNote: "post TETAP berstatus Scheduled, BUKAN ditandai gagal.",
+      });
     }
 
     return record;
