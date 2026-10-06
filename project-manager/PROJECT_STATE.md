@@ -372,6 +372,55 @@ dipilih eksplisit oleh King Rezi via `AskUserQuestion`. Implementasi kode
 desainnya yang selesai. Detail: `tasks/v04-engagement-mvp.md` § T-056,
 `COMPLETE_TASK.md` entri 2026-10-06.
 
+### KI-082 · Media/thumbnail post asli tidak tampil di beberapa preview post (History Detail, Calendar Popover, Claude Design)
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Data Gap (domain model) |
+| Terkait | KI-065, T-056, T-033.8, T-034.3 |
+
+Ditemukan King Rezi (2026-10-06) saat review Claude Design untuk T-056: selain
+kotak "Post asal" di Comments Inbox (KI-065, sudah dipromosikan ke T-056), ada
+dua tempat lain di produk yang juga tidak menampilkan media/thumbnail post
+asli, plus Claude Design sendiri konsisten belum menggambarkannya:
+
+1. **History Detail Post** (`apps/web/src/app/(app)/publish/history/[postId]/components/HistoryDetail.tsx`,
+   T-034.3) — tidak ada render media/thumbnail sama sekali, hanya caption,
+   badge status, waktu, link "Lihat post asli", dan metrik per target. Tidak
+   ada TODO eksplisit soal media, tapi pola gap-nya sama seperti author name
+   yang juga sengaja dihilangkan karena domain type `HistoryItemRecord`/
+   `HistoryDetailItem` tidak membawa field itu.
+2. **Calendar Post Preview Popover** (`apps/web/src/app/(app)/publish/calendar/components/CalendarPostPopover.tsx`,
+   T-033.8) — punya placeholder eksplisit ("Media belum tersedia untuk
+   preview") dengan JSDoc yang menyebut ini **permanen, bukan loading state**,
+   karena domain model `PublishingPost`/`CalendarItemRecord` belum punya
+   field media sama sekali.
+3. **Claude Design** sendiri konsisten belum pernah menggambarkan media asli
+   di preview manapun — `components/popover.html` (Post Preview Popover)
+   cuma punya `.popover-thumb` berisi teks literal "media placeholder", dan
+   `publish-history-detail.html` tidak merender elemen media apapun. Bukan
+   oversight Claude Design — mengikuti kenyataan domain model yang memang
+   belum expose field media.
+
+Root cause sama di ketiga tempat: domain type publishing (`PublishingPost`/
+`CalendarItemRecord`/`HistoryItemRecord`/`HistoryDetailItem`) **belum punya
+field media sama sekali** — bukan masalah UI/rendering, tapi gap di layer
+domain/repository. Belum dicek apakah ini memang menunggu integrasi resolve
+media Outstand (`resolveOutstandPostMedia`/`PostMediaLookupPort`, dipakai di
+T-056) di task terpisah, atau benar-benar belum direncanakan di manapun —
+perlu investigasi lanjutan sebelum ditentukan jadi task baru.
+
+**Keputusan King Rezi (2026-10-06): TIDAK digabung ke T-056.** Aturannya:
+gabung hanya kalau lokasi/fitur gap-nya sama dengan T-056. T-056 scope-nya
+domain `engagement` (Comments Inbox `/engage`), sedangkan ketiga lokasi di
+KI-082 ada di domain `publishing` (History Detail, Calendar Popover) atau di
+Claude Design saja — lokasi/fitur berbeda, jadi KI-082 tetap **Open**
+terpisah, tidak memblokir T-056. Kalau nanti ada task baru untuk menambah
+field media di domain `publishing`, task itu bisa reuse pola resolve media
+yang dibangun T-056 untuk domain `engagement`, tapi itu keputusan terpisah
+saat task tersebut dibuat.
+
 ### KI-053 · Invite via Copy Link — email tidak diverifikasi kepemilikan inbox, rawan identity takeover
 
 | Field | Value |
