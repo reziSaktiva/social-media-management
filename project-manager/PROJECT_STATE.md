@@ -421,6 +421,18 @@ field media di domain `publishing`, task itu bisa reuse pola resolve media
 yang dibangun T-056 untuk domain `engagement`, tapi itu keputusan terpisah
 saat task tersebut dibuat.
 
+**Update (2026-10-06, lanjutan) — Claude Design sebagian di-update:**
+`templates/publish-history-detail.html` sekarang punya media/thumbnail post
+asli — reuse `.popover-thumb` persis dari `components/popover.html` (bukan
+`.thumb` dari `templates/engage-inbox.html`; dua pola existing, King Rezi
+pilih `.popover-thumb` via `AskUserQuestion`), ditempatkan sekali per post di
+kartu caption atas (bukan per `.history-target-row`). Dikunci dengan komentar
+"LOCKED PATTERN (KI-082, 2026-10-06)". `components/popover.html` (Calendar
+Post Preview Popover) **sengaja tidak diubah** — King Rezi konfirmasi
+placeholder `.popover-thumb` yang sudah ada di sana sudah cukup. Implementasi
+kode `apps/web` (field media di domain `publishing`) **masih belum ada** —
+KI-082 tetap **Open**, baru Claude Design-nya yang sebagian tertutup.
+
 ### KI-053 · Invite via Copy Link — email tidak diverifikasi kepemilikan inbox, rawan identity takeover
 
 | Field | Value |

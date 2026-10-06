@@ -8,6 +8,41 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-06 — KI-082 dicatat + Claude Design `publish-history-detail.html` di-update (media preview)
+
+Setelah lock Claude Design T-056, King Rezi menemukan gap serupa (media post
+asli tidak tampil) di dua lokasi lain: History Detail Post dan Calendar Post
+Preview Popover — dicatat sebagai **KI-082** di `PROJECT_STATE.md` (root cause:
+domain type `publishing` — `PublishingPost`/`CalendarItemRecord`/
+`HistoryItemRecord`/`HistoryDetailItem` — belum punya field media sama sekali,
+diverifikasi langsung ke kode `apps/web` lewat subagent Explore).
+
+**Keputusan scope:** KI-082 TIDAK digabung ke T-056 karena lokasi/fitur beda
+(T-056 = domain `engagement`/Comments Inbox; KI-082 = domain `publishing`).
+Tetap Open sebagai item terpisah.
+
+**Claude Design (project "Social Media Management") di-update sebagian untuk
+KI-082** oleh main agent session langsung (DesignSync, sama seperti T-056):
+- `templates/publish-history-detail.html` — ditambah media/thumbnail post
+  asli, reuse `.popover-thumb` persis dari `components/popover.html` (bukan
+  `.thumb` dari `templates/engage-inbox.html` — dua pola existing, King Rezi
+  pilih `.popover-thumb` via `AskUserQuestion`), ditempatkan sekali per post
+  di kartu caption atas (bukan per `.history-target-row`, karena media milik
+  post bukan per-target). Dikunci komentar "LOCKED PATTERN (KI-082,
+  2026-10-06)".
+- `components/popover.html` (Calendar Post Preview Popover) **sengaja TIDAK
+  diubah** — King Rezi konfirmasi via `AskUserQuestion` placeholder
+  `.popover-thumb` yang sudah ada di sana sudah cukup.
+- `readme.md` — bullet baru ditambahkan untuk `templates/publish-history-detail.html`
+  (sebelumnya belum ada entri terpisah untuk file ini) mendokumentasikan lock
+  di atas.
+
+Semua perubahan diverifikasi ulang dari remote (diff bersih). Implementasi
+kode `apps/web` (field media di domain `publishing`) **belum dimulai** — KI-082
+tetap status Open.
+
+---
+
 ## 2026-10-06 — Claude Design T-056/KI-065 di-lock (desain saja, implementasi kode belum mulai)
 
 Update Claude Design (project "Social Media Management",
