@@ -2979,6 +2979,12 @@ describe("WorkspaceService.confirmInviteEmailVerification (T-110.3, KI-053)", ()
             verificationCodeExpiresAt: new Date(Date.now() + 60_000),
             verificationAttempts: 2,
           }),
+        // Code-review PR #142 fix — reservasi atomic sekarang SELALU
+        // dipanggil sebelum membandingkan kode (lihat
+        // confirmInviteEmailVerification), termasuk saat kodenya benar.
+        // Double lokal: naikkan attempts persis seperti repository
+        // Prisma sungguhan untuk kasus "masih di bawah cap" (3 <= 5).
+        incrementInvitationVerificationAttempts: async () => 3,
         markInvitationEmailVerified: async () => {
           markedVerified = true;
         },
@@ -2987,6 +2993,39 @@ describe("WorkspaceService.confirmInviteEmailVerification (T-110.3, KI-053)", ()
 
     await service.confirmInviteEmailVerification("token", "111111");
     expect(markedVerified).toBe(true);
+  });
+
+  it("code-review PR #142: rejects WITHOUT verifying when the atomic reservation reports the cap already reached (race-condition fix)", async () => {
+    // Simulasi race: baca awal (findInvitationByToken) masih melihat
+    // attempts=4 (di bawah cap), TAPI repository (Prisma sungguhan, lewat
+    // `UPDATE ... WHERE verification_attempts < max` atomic) melaporkan
+    // reservasi GAGAL karena request konkuren lain baru saja mengisi slot
+    // terakhir — sentinel `maxAttempts + 1` (lihat
+    // `incrementInvitationVerificationAttempts` di
+    // `lib/repositories/workspace/workspace.repository.ts`). Kode yang
+    // dikirim BENAR, tapi harus tetap ditolak TANPA pernah dibandingkan —
+    // membuktikan reservasi-dulu-baru-bandingkan menutup race, bukan
+    // sekadar percaya baca awal yang sudah basi.
+    let markedVerified = false;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({
+            verificationCodeHash: hashInviteVerificationCode("111111"),
+            verificationCodeExpiresAt: new Date(Date.now() + 60_000),
+            verificationAttempts: 4,
+          }),
+        incrementInvitationVerificationAttempts: async () => 6, // sentinel: maxAttempts(5) + 1
+        markInvitationEmailVerified: async () => {
+          markedVerified = true;
+        },
+      }),
+    );
+
+    await expect(
+      service.confirmInviteEmailVerification("token", "111111"),
+    ).rejects.toThrow(ValidationError);
+    expect(markedVerified).toBe(false);
   });
 });
 

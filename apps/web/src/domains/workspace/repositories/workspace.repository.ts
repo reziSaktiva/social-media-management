@@ -290,12 +290,22 @@ export interface IWorkspaceRepository {
   markInvitationEmailVerified(token: string): Promise<void>;
 
   /**
-   * Increment percobaan verifikasi kode yang GAGAL (T-110.3, anti
-   * brute-force) — return jumlah percobaan SETELAH increment supaya
-   * `WorkspaceService.confirmInviteEmailVerification` bisa menyusun pesan
-   * "sisa X percobaan" tanpa round-trip kedua.
+   * Reservasi SATU slot percobaan verifikasi kode secara atomic, capped di
+   * `maxAttempts` (T-110.3, anti brute-force — code-review PR #142 finding:
+   * pengecekan+increment yang dulu terpisah dua round-trip punya celah race
+   * condition, N request konkuren bisa lolos cap yang sama). `UPDATE ...
+   * WHERE verification_attempts < maxAttempts` membuat Postgres
+   * men-serialize baris ini — hanya `maxAttempts` reservasi yang bisa
+   * pernah berhasil berapa pun banyaknya request konkuren. Return jumlah
+   * percobaan SETELAH increment, ATAU `maxAttempts + 1` sebagai sentinel
+   * kalau reservasi gagal karena cap sudah tercapai (termasuk race dengan
+   * request lain yang baru saja mengisi slot terakhir) — caller
+   * membedakan via `attempts > maxAttempts`.
    */
-  incrementInvitationVerificationAttempts(token: string): Promise<number>;
+  incrementInvitationVerificationAttempts(
+    token: string,
+    maxAttempts: number,
+  ): Promise<number>;
 
   /**
    * Undangan `pending` yang belum melewati `expiresAt` (T-007.8, ADR-101) —

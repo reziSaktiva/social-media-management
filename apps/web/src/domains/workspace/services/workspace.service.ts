@@ -1,9 +1,4 @@
-import {
-  createHash,
-  randomBytes,
-  randomInt,
-  timingSafeEqual,
-} from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import {
   EMAIL_PATTERN,
   InvitationStatus,
@@ -29,6 +24,7 @@ import {
   NotFoundError,
   ValidationError,
 } from "@/lib/utils/errors";
+import { timingSafeEqualString } from "@/lib/utils/timing-safe-equal-string";
 import { slugify } from "../value-objects/slugify";
 import type {
   ConnectedAccountRecord,
@@ -191,14 +187,16 @@ export function hashInviteVerificationCode(code: string): string {
   return createHash("sha256").update(code).digest("hex");
 }
 
-/** Timing-safe compare (hindari timing attack pada perbandingan hash). */
+/**
+ * Timing-safe compare (hindari timing attack pada perbandingan hash) —
+ * code-review PR #142 finding: reuse `timingSafeEqualString` yang sudah
+ * ada (dipakai juga `/api/jobs/run/route.ts`) alih-alih menulis ulang
+ * decode-hex + `timingSafeEqual` sendiri. Kedua hex digest sha256 sama
+ * panjang (64 char), jadi membandingkannya sebagai string tetap
+ * constant-time — tidak perlu decode ke `Buffer` byte mentah lebih dulu.
+ */
 function matchesInviteVerificationCode(code: string, hash: string): boolean {
-  const candidate = Buffer.from(hashInviteVerificationCode(code), "hex");
-  const expected = Buffer.from(hash, "hex");
-  if (candidate.length !== expected.length) {
-    return false;
-  }
-  return timingSafeEqual(candidate, expected);
+  return timingSafeEqualString(hashInviteVerificationCode(code), hash);
 }
 
 export class WorkspaceService {
@@ -934,9 +932,26 @@ export class WorkspaceService {
       );
     }
 
+    // Code-review PR #142 finding — reservasi slot percobaan atomic DULU,
+    // SEBELUM membandingkan kode (bukan increment belakangan cuma kalau
+    // salah seperti sebelumnya). Pengecekan `verificationAttempts` di atas
+    // tetap fast-path (hindari round-trip kalau sudah jelas mentok dari
+    // baca awal), tapi penegakan SESUNGGUHNYA ada di repository
+    // (`UPDATE ... WHERE verification_attempts < max`, atomic) — supaya N
+    // request konkuren tidak bisa sama-sama lolos cap dari baca yang sudah
+    // basi (race condition yang diperbaiki di sini).
+    const attempts =
+      await this.repository.incrementInvitationVerificationAttempts(
+        token,
+        INVITE_VERIFICATION_MAX_ATTEMPTS,
+      );
+    if (attempts > INVITE_VERIFICATION_MAX_ATTEMPTS) {
+      throw new ValidationError(
+        'Batas percobaan verifikasi tercapai. Klik "Kirim ulang" untuk kode baru.',
+      );
+    }
+
     if (!matchesInviteVerificationCode(code, invitation.verificationCodeHash)) {
-      const attempts =
-        await this.repository.incrementInvitationVerificationAttempts(token);
       const remaining = Math.max(
         INVITE_VERIFICATION_MAX_ATTEMPTS - attempts,
         0,

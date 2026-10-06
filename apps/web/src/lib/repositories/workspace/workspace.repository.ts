@@ -467,31 +467,51 @@ export const workspaceRepository: IWorkspaceRepository = {
   },
 
   /**
-   * T-110.3 — `updateMany` (bukan `update`) supaya baris yang gagal
-   * RLS/guard `status: pending` tidak melempar P2025 "Record not found"
-   * (perilaku `update` non-many terhadap unique key) — konsisten dengan
-   * pola compare-and-swap method lain di file ini. Read-back
-   * `findUnique` di transaksi yang sama untuk mengembalikan angka
-   * terbaru (tercakup policy SELECT existing, status tetap `pending`).
+   * Code-review PR #142 finding — `updateMany` (bukan `update`, alasan
+   * sama seperti sebelumnya: P2025 avoidance) sekarang JUGA menyertakan
+   * `verificationAttempts: { lt: maxAttempts }` di `WHERE` supaya cap
+   * ditegakkan ATOMIC oleh Postgres (UPDATE pada baris yang sama
+   * di-serialize — request konkuren yang mencoba increment setelah slot
+   * terakhir terisi akan gagal match `WHERE` begitu melihat versi baris
+   * ter-commit terbaru), bukan dicek terpisah dari increment seperti
+   * sebelumnya (celah race: N request konkuren bisa sama-sama baca
+   * attempts lama sebelum salah satu commit). `updated.count === 0` bisa
+   * berarti DUA hal berbeda — disambiguasi lewat read-back status: kalau
+   * invitation sudah tidak `pending` sama sekali → `ConflictError` (pola
+   * lama tetap berlaku); kalau masih `pending` tapi `count === 0` berarti
+   * cap sudah tercapai (termasuk race ini) → return sentinel
+   * `maxAttempts + 1` (lihat docstring `IWorkspaceRepository`).
    */
-  async incrementInvitationVerificationAttempts(token) {
+  async incrementInvitationVerificationAttempts(token, maxAttempts) {
     return prisma.$transaction(async (tx) => {
       await setInviteLookupToken(tx, token);
       const updated = await tx.workspaceInvitation.updateMany({
-        where: { token, status: InvitationStatus.Pending },
+        where: {
+          token,
+          status: InvitationStatus.Pending,
+          verificationAttempts: { lt: maxAttempts },
+        },
         data: { verificationAttempts: { increment: 1 } },
       });
+
       if (updated.count === 0) {
-        throw new ConflictError(
-          "Undangan ini sudah tidak berlaku — tidak bisa mencatat percobaan verifikasi.",
-        );
+        const invitation = await tx.workspaceInvitation.findUnique({
+          where: { token },
+          select: { status: true },
+        });
+        if (!invitation || invitation.status !== InvitationStatus.Pending) {
+          throw new ConflictError(
+            "Undangan ini sudah tidak berlaku — tidak bisa mencatat percobaan verifikasi.",
+          );
+        }
+        return maxAttempts + 1;
       }
 
       const invitation = await tx.workspaceInvitation.findUnique({
         where: { token },
         select: { verificationAttempts: true },
       });
-      return invitation?.verificationAttempts ?? 0;
+      return invitation?.verificationAttempts ?? maxAttempts;
     });
   },
 
