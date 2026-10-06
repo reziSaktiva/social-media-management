@@ -8,6 +8,51 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-06 — T-056 ✅ Done: Preview post asli di kotak "Post asal" Comments Inbox (commit `e7395c7`, PR #143)
+
+Implementasi T-056 (promosi KI-065, kotak "Post asal" di detail panel
+Comments Inbox `/engage` kini menampilkan caption, thumbnail, dan link post
+asli alih-alih label generik) selesai, direview, dan lulus QA. Branch
+`feature/t056-engage-post-asal-preview` → PR #143 ke `staging`.
+
+- **Implementasi (Prabowo Feature Engineer):** extend
+  `EngagementInboxItemRecord`/`InboxItemDetail` dengan field `postSnapshot`
+  (caption, thumbnail, `platformPostUrl`), join `engagement → publishing`
+  lewat port lokal structural-typing (`PublishingPostSnapshotPort`, pola sama
+  `PublishingPostReferencePort` yang sudah ada) — bukan import tipe konkret
+  lintas domain. Thumbnail diresolve lewat `MediaService.listByIds` (bukan
+  `resolveOutstandPostMedia`, yang khusus upload-prep ke Outstand).
+- **Review arsitektur (Ridwan):** 0 pelanggaran hard rule. 1 temuan perilaku
+  dikonfirmasi King Rezi via `AskUserQuestion`: kotak "Post asal" sengaja
+  hilang total (bukan fallback label generik) kalau `postId` ada tapi
+  `postSnapshot` gagal di-resolve — keputusan final, bukan bug.
+- **QA round 1 (Najwa):** 2 bug ditemukan — (a) caption tidak truncate, box
+  melebar keluar viewport; (b) thumbnail broken karena signed URL Supabase
+  Storage (TTL 1 jam) di-cache permanen di `MediaItem.url`, tidak pernah
+  di-generate ulang.
+- **Fix (a) — Mark UI Engineer:** tambah `min-w-0` di `.thread-detail` DAN
+  `.post-context` (dua lapis penyebab).
+- **Fix (b) — Elon Backend Engineer**, keputusan King Rezi (generate ulang
+  signed URL saat request, dipilih dari 3 opsi): `IMediaStorageAdapter`
+  ditambah method `getSignedUrl`; `MediaService` regenerate signed URL fresh
+  di `getMediaItem`/`listMediaItems`/`listByIds` kalau storage adapter
+  disuplai. Diterapkan juga di `getDraftAction` (titik rawan sama). Jalur
+  validasi-only (`resolveAndValidateMediaIds`, `scheduleDraftAction`,
+  `publishNowAction`) sengaja tidak disuplai storage adapter. Kolom
+  `MediaItem.url` TIDAK dihapus, tetap fallback.
+- **QA round 2 (Najwa, independen):** PASS semua — 620 test pass/6 skip,
+  typecheck/lint bersih, tidak ada regresi.
+- **Gate T-103.3** (verifikasi struktur vs Claude Design): PASS.
+- **Catatan masa depan:** thumbnail untuk post hasil Import Posts
+  (T-090/T-091, ADR-093) belum relevan — fitur itu belum diimplementasikan
+  sama sekali. Perlu didesain ulang nanti karena `PublishingPost.mediaIds`
+  saat ini hanya menunjuk `MediaItem` lokal hasil upload sendiri.
+
+**KI-065 Resolved (2026-10-06)** — ditutup oleh penyelesaian T-056 di atas.
+Detail lengkap: `tasks/v04-engagement-mvp.md` § T-056.
+
+---
+
 ## 2026-10-06 — KI-082 dicatat + Claude Design `publish-history-detail.html` di-update (media preview)
 
 Setelah lock Claude Design T-056, King Rezi menemukan gap serupa (media post

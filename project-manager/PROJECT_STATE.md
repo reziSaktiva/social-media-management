@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-106 ✅ Done (2026-09-25, ADR-119, termasuk T-106.5)** — lihat **Completed (Ringkasan)** di bawah. Fokus aktif sekarang: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 5/6 task** (2026-09-22, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
+* **Top Next Tasks:** **T-056 ✅ Done (2026-10-06, PR #143, menutup KI-065)** — lihat **Completed (Ringkasan)** di bawah. Fokus aktif sekarang: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 6/7 task** (2026-10-06, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 1 blocker aktif (env var Google OAuth belum diisi, KI-015) — lihat section **Blockers** di bawah. Blocker Outstand (KI-003, `OUTSTAND_API_KEY` + Real OutstandAdapter) sudah **Resolved (2026-09-24)**. Railway staging sudah live & terverifikasi (2026-08-14); JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 91 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * **KI-073–080 Resolved (2026-09-26)** — 4 bug publish Instagram (caption wajib untuk Story, Story publish tanpa media, upload media >1MB gagal, avatar akun tidak tampil di sidebar) diperbaiki + diverifikasi live ke akun Instagram/Facebook real (ADR-120). 2 bug turunan ditemukan saat verifikasi (akun `disconnected` tidak bisa reconnect; callback OAuth silent-success untuk conflict genuine) diperbaiki via **ADR-122**. Plus **KI-080** (baru+langsung Resolved) — Railway staging build gagal (`next.config.ts` tidak bisa resolve import workspace `@social/shared`) diperbaiki di branch terpisah sebelum masuk ke fix KI-078/079.
@@ -341,37 +341,6 @@ murni koreksi dokumentasi baseline (bukan keputusan arsitektur baru), tapi
 tetap wajib lewat baseline yang sama karena `application-layer.md` adalah
 Static Reference.
 
-### KI-065 · Kotak "Post asal" di Comments Inbox tidak menampilkan judul/thumbnail post asli
-
-| Field | Value |
-|-------|-------|
-| Status | Promoted to T-056 (2026-10-06) |
-| Kategori | Design Gap / Tech-Debt |
-| Terkait | T-053, T-050, T-056 |
-
-Ditemukan saat implementasi T-053 (Comments Inbox UI, 2026-09-22): kotak
-"Post asal" di panel detail `/engage` hanya menampilkan label generik
-("Komentar ini terhubung ke post terjadwal/terpublish") tanpa judul atau
-thumbnail post asli. Root cause: `InboxItemDetail`/`EngagementInboxItemRecord`
-(T-050) hanya membawa `postId` sebagai ID mentah, tanpa snapshot
-caption/media post — menambah join lintas domain `engagement → publishing`
-di luar scope UI-only task T-053. Bukan bug (perilaku sesuai kontrak data
-T-050 saat ini, dikonfirmasi Najwa QA Engineer sebagai expected), tapi gap
-terhadap mockup Claude Design yang mengasumsikan preview post asli tampil.
-Tidak memblokir M8.
-
-**Update (2026-10-06):** King Rezi mengonfirmasi scope — kotak ini wajib
-menampilkan caption + thumbnail media (kalau ada) + link ke post asli.
-Dipromosikan jadi **T-056** (`tasks/v04-engagement-mvp.md`).
-
-**Update (2026-10-06, lanjutan):** Claude Design (`templates/engage-inbox.html`,
-KSP-06) sudah disinkronkan/dikunci menutup gap desain yang KI ini
-deskripsikan — pola link "Go to post →" (reuse `components/popover.html`)
-dipilih eksplisit oleh King Rezi via `AskUserQuestion`. Implementasi kode
-`apps/web` **masih pending** di T-056 (status tetap `⏳ Not Started`); baru
-desainnya yang selesai. Detail: `tasks/v04-engagement-mvp.md` § T-056,
-`COMPLETE_TASK.md` entri 2026-10-06.
-
 ### KI-082 · Media/thumbnail post asli tidak tampil di beberapa preview post (History Detail, Calendar Popover, Claude Design)
 
 | Field | Value |
@@ -694,11 +663,12 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **T-056 ✅ Done (2026-10-06)** — kotak "Post asal" di detail panel Comments Inbox sekarang menampilkan caption, thumbnail, dan link post asli (menutup KI-065), bukan lagi label generik. Dikerjakan Prabowo+Mark+Elon, review Ridwan 0 temuan, QA Najwa 2 bug ditemukan+diperbaiki lalu PASS di round kedua. Commit `e7395c7`, PR #143.
 * **T-107/T-108/T-109 ✅ Done (2026-09-28)** — promosi dari Known Issues KI-049/KI-063/KI-044/KI-058 (audit aplikasi menyeluruh atas permintaan King Rezi). T-107: `markPostFailed` diperluas param `reason`, Prisma set `publishedAt`/`failedAt`/`failureReason`. T-108: modul domain baru `schedule-time-constraints.ts`, validasi client+server cegah Schedule ke waktu lewat pada tanggal hari ini. T-109: `WorkspaceService.canManageConnectedAccounts` baru, `ConnectedAccountsList.tsx` sembunyikan aksi Connect/Disconnect/Reconnect untuk role Creator. Dikerjakan Prabowo×2 + Mark, review Ridwan 0 temuan, QA Najwa PASS (gate T-103.3 sempat gagal di sesi Najwa — DesignSync tidak termuat, kejadian pertama untuk Najwa — retry sukses di sesi utama). 1 KI baru: **KI-081** (`PublishNowUseCase` bisa membuat post `Failed` dengan `publishedAt` keliru). Verifikasi akhir: typecheck/lint bersih, Vitest 593 passed/6 skipped.
 * **KI-078/KI-079 Resolved via ADR-122 (2026-09-26)** — akun `disconnected` sekarang bisa direconnect (digabung ke cabang `ReconnectButton` yang sama dengan `reconnect-required`, sesuai pola Claude Design; jalur ini pakai `reconnectAccount` UPDATE, bukan INSERT, jadi tidak lagi menabrak unique constraint) — **kecuali Facebook Pages** (guard lama "belum punya UPDATE path" masih berlaku untuk `disconnected` juga, lihat ADR-122). Route Handler callback Outstand sekarang membedakan double-submit genuine (idempotent, diserap diam-diam via jendela 15 detik pada `connectedAt`, plus guard status `active`) dari percobaan Connect ke akun yang sudah terhubung dari flow terpisah (`AlreadyConnectedError` baru → toast eksplisit `?connect=already-connected`, bukan silent "success"). Repository dapat method baru `findConnectedAccountByOutstandId`. Vitest 126 test relevan PASS. Ditambah 2 fix code review PR #139: `reconnectAccount` sekarang map unique-constraint conflict ke `ConflictError` (dulu P2002 mentah lolos jadi 500), dan double-submit recovery tidak lagi menjadwalkan JOB-03 engagement sync dua kali. Detail: `decisions/ADR-122-reconnect-disconnected-accounts-plus-already-connected-conflict-ki078-079.md`.
 * **KI-080 Resolved — Railway staging build gagal, `next.config.ts` tidak bisa resolve import workspace (2026-09-26)** — fix KI-075 (body size limit) menambah import `MAX_MEDIA_FILE_SIZE_BYTES` dari `validation.ts` ke `next.config.ts`, tapi `validation.ts` juga mengimpor `@social/shared` (workspace package, source `.ts`) — `next-config-ts` mentranspile/me-require config lewat Node `require()` biasa yang tidak bisa resolve source package itu, build gagal (`Cannot find module '../../packages/shared'`). Fix: konstanta diisolasi ke file baru `apps/web/src/domains/media/constants.ts` tanpa import `@social/shared`; `next.config.ts` diarahkan ke situ. Diverifikasi: `bun run build`/`typecheck` lokal PASS. Branch terpisah `fix/next-config-ts-workspace-import-ki075-followup` (belum di-PR-kan).
 * **KI-073–076 Resolved — 4 bug publish Instagram diperbaiki + diverifikasi live (2026-09-26)** — caption tidak lagi wajib untuk target Story (`Modal.tsx`); validasi minimum media Story (`content-format-matrix.ts`); body limit Server Action dinaikkan ke 50mb (`next.config.ts`, fix upload media >1MB); `avatarUrl` ditambahkan di 5 lapisan kontrak ACL→adapter→Prisma→domain→UI (ADR-120, amandemen ADR-112). Diverifikasi langsung ke akun Instagram/Facebook real. Ridwan: 1 temuan governance (index ADR-120 belum terdaftar) — sudah diperbaiki. **KI-064 duplikat ID ditemukan+diperbaiki** (di-renumber jadi **KI-077**, Resolved, dirapikan dari daftar). 2 bug turunan (**KI-078**, **KI-079**) Resolved via **ADR-122** (lihat bullet di atas). Detail: `COMPLETE_TASK.md` (2026-09-26), `decisions/ADR-120-connectedaccountdata-avatarurl-sidebar-channels-ki076.md`.
-* **T-106.1–.4 ✅ — Hapus FakeOutstandAdapter dari jalur produksi via ADR-119 (2026-09-25)** — Factory `getOutstandAdapter()` hanya Real; key kosong throw jelas; `fake-outstand-adapter.ts` dihapus. Double lokal di tes tetap; Rule 19 `AGENTS.md` + `ctx-development.md` diselaraskan. Data cleanup DB bersama: 24 `publishing_posts` ber-id `fake-post-%` (+ targets cascade) dihapus; 0 remaining `fake-post-%` / `fake.outstand.local`. **T-106.5:** 23 akun `fake-%`/`mock-%` dan 9 post yang menempel dihapus; inbox dan urutan channel ikut cascade. 19 draft tanpa channel tetap ada. Ridwan Architecture Reviewer: 0 temuan. Najwa QA: Vitest 17 file / 283 tes PASS. Commit `0ce9371`. Detail: `COMPLETE_TASK.md` (2026-09-25), `decisions/ADR-119-hapus-fake-outstand-adapter-wajib-api-key.md`, `tasks/v02-publishing-mvp.md` § T-106.
+
 ---
 
 ## Recent Decisions (Ringkasan)
