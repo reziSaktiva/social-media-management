@@ -126,7 +126,6 @@ export async function listInboxAction(
     getOutstandAdapter(),
     publishingRepository,
     workspaceRepository,
-    publishingRepository,
   );
 
   try {
@@ -191,7 +190,6 @@ export async function getInboxItemDetailAction(
     getOutstandAdapter(),
     publishingRepository,
     workspaceRepository,
-    publishingRepository,
   );
 
   try {
@@ -258,7 +256,6 @@ export async function markAsDoneAction(
     getOutstandAdapter(),
     publishingRepository,
     workspaceRepository,
-    publishingRepository,
   );
 
   try {
@@ -303,7 +300,6 @@ export async function replyToCommentAction(
     getOutstandAdapter(),
     publishingRepository,
     workspaceRepository,
-    publishingRepository,
   );
 
   try {

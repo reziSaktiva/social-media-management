@@ -43,11 +43,10 @@ export const supabaseMediaStorageAdapter: IMediaStorageAdapter = {
       );
     }
 
-    const { data, error: signError } = await supabase.storage
-      .from(MEDIA_BUCKET)
-      .createSignedUrl(path, SIGNED_URL_EXPIRES_IN_SECONDS);
-
-    if (signError || !data) {
+    try {
+      const url = await this.getSignedUrl(path);
+      return { url, storagePath: path };
+    } catch {
       // File sudah ter-upload tapi gagal generate signed URL — tetap
       // kembalikan storagePath (source of truth), url kosong string supaya
       // caller (use case) tidak menganggap upload gagal padahal file sudah
@@ -55,8 +54,6 @@ export const supabaseMediaStorageAdapter: IMediaStorageAdapter = {
       // storagePath kapan saja.
       return { url: "", storagePath: path };
     }
-
-    return { url: data.signedUrl, storagePath: path };
   },
 
   async deleteMedia(storagePath: string) {

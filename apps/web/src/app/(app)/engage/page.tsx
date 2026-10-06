@@ -42,7 +42,6 @@ export default async function Page() {
     getOutstandAdapter(),
     publishingRepository,
     workspaceRepository,
-    publishingRepository,
   );
   const workspaceService = new WorkspaceService(workspaceRepository);
 

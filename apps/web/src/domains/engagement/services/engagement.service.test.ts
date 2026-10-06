@@ -141,10 +141,24 @@ function createFakePublishingPosts(
       input: unknown,
       userId: unknown,
     ) => Promise<string | null>;
+    findPostSnapshotForEngagement: (
+      input: unknown,
+      userId: unknown,
+    ) => Promise<{
+      caption: string;
+      mediaIds: MediaId[];
+      platformPostUrl: string | null;
+    } | null>;
   }> = {},
 ) {
   return {
     findPostOutstandId: async () => "fake-outstand-post-1",
+    /**
+     * T-056, KI-065 — default `null` (paling umum di test lama yang tidak
+     * menguji T-056 — item biasanya `postId: null`); test T-056 mengoverride
+     * eksplisit.
+     */
+    findPostSnapshotForEngagement: async () => null,
     ...overrides,
   };
 }
@@ -170,43 +184,17 @@ function createFakeConnectedAccounts(
   };
 }
 
-/**
- * Fake port `engagement` → `publishing` (T-056, KI-065) — snapshot post asli
- * untuk kotak "Post asal". Default `null` (paling umum di test lama yang
- * tidak menguji T-056 — item biasanya `postId: null`); test T-056 mengoverride
- * eksplisit.
- */
-function createFakePublishingPostSnapshot(
-  overrides: Partial<{
-    findPostSnapshotForEngagement: (
-      input: unknown,
-      userId: unknown,
-    ) => Promise<{
-      caption: string;
-      mediaIds: MediaId[];
-      platformPostUrl: string | null;
-    } | null>;
-  }> = {},
-) {
-  return {
-    findPostSnapshotForEngagement: async () => null,
-    ...overrides,
-  };
-}
-
 function createService(
   repository: IEngagementRepository = createFakeRepository(),
   adapter: IOutstandAdapter = createFakeAdapter(),
   publishingPosts = createFakePublishingPosts(),
   connectedAccounts = createFakeConnectedAccounts(),
-  publishingPostSnapshot = createFakePublishingPostSnapshot(),
 ) {
   return new EngagementService(
     repository,
     adapter,
     publishingPosts,
     connectedAccounts,
-    publishingPostSnapshot,
   );
 }
 
@@ -276,7 +264,7 @@ describe("EngagementService.getInboxItemDetail", () => {
       findInboxItemById: async () => item,
     });
     let receivedSnapshotInput: unknown;
-    const publishingPostSnapshot = createFakePublishingPostSnapshot({
+    const publishingPosts = createFakePublishingPosts({
       findPostSnapshotForEngagement: async (input) => {
         receivedSnapshotInput = input;
         return {
@@ -289,9 +277,8 @@ describe("EngagementService.getInboxItemDetail", () => {
     const service = createService(
       repository,
       createFakeAdapter(),
-      createFakePublishingPosts(),
+      publishingPosts,
       createFakeConnectedAccounts(),
-      publishingPostSnapshot,
     );
 
     const result = await service.getInboxItemDetail(
@@ -319,11 +306,10 @@ describe("EngagementService.getInboxItemDetail", () => {
     const service = createService(
       repository,
       createFakeAdapter(),
-      createFakePublishingPosts(),
-      createFakeConnectedAccounts(),
-      createFakePublishingPostSnapshot({
+      createFakePublishingPosts({
         findPostSnapshotForEngagement: async () => null,
       }),
+      createFakeConnectedAccounts(),
     );
 
     const result = await service.getInboxItemDetail(

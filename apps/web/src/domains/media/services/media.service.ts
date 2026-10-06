@@ -66,7 +66,11 @@ export class MediaService {
         try {
           const url = await adapter.getSignedUrl(item.storagePath);
           return { ...item, url };
-        } catch {
+        } catch (error) {
+          console.error(
+            `MediaService.withFreshUrls: gagal regenerate signed URL untuk storagePath=${item.storagePath}`,
+            error,
+          );
           return { ...item, url: null };
         }
       }),

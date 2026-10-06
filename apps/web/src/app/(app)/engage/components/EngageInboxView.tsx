@@ -39,6 +39,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
 
+import { MediaThumbnail } from "../../components/media-thumbnail";
 import { PLATFORM_ICON } from "../../components/platform-icons";
 import {
   getInboxItemDetailAction,
@@ -485,26 +486,34 @@ export function EngageInboxView({
               </div>
             ) : detail ? (
               <>
+                {detail.postId && !detail.postSnapshot ? (
+                  // eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: fallback label generik (perilaku T-053 lama) saat post/target terkait sudah tidak ditemukan (mis. soft-deleted) walau `postId` masih ada.
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-muted p-3">
+                    {/* eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: placeholder thumbnail generik, layout-only */}
+                    <div className="size-11 shrink-0 rounded-md bg-muted-foreground/20" />
+                    {/* eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.post-context-body`, layout-only */}
+                    <div className="flex flex-col gap-0.5">
+                      <Text variant="muted" as="span" className="text-xs">
+                        Post asal
+                      </Text>
+                      <Text as="span" className="text-sm font-semibold">
+                        Komentar ini terhubung ke post terjadwal/terpublish
+                      </Text>
+                    </div>
+                  </div>
+                ) : null}
+
                 {detail.postId && detail.postSnapshot ? (
                   // eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.post-context` (Claude Design `templates/engage-inbox.html`, LOCKED PATTERN T-056 2026-10-06) — thumbnail di-omit sepenuhnya kalau post tidak bermedia (bukan kotak kosong), kolom teks full width.
                   <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-muted p-3">
                     {detail.postSnapshot.thumbnail ? (
                       // eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.thumb` — thumbnail media post asli, size tetap sama placeholder lama (size-11).
                       <div className="size-11 shrink-0 overflow-hidden rounded-md bg-muted-foreground/20">
-                        {detail.postSnapshot.thumbnail.type === "video" ? (
-                          <video
-                            src={detail.postSnapshot.thumbnail.url}
-                            className="size-full object-cover"
-                            muted
-                          />
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element -- T-056, KI-065: URL Supabase Storage (MediaItemRecord.url), pola sama draft-editor/Modal.tsx — tidak cocok next/image remote pattern statis.
-                          <img
-                            src={detail.postSnapshot.thumbnail.url}
-                            alt="Media post asal"
-                            className="size-full object-cover"
-                          />
-                        )}
+                        <MediaThumbnail
+                          url={detail.postSnapshot.thumbnail.url}
+                          type={detail.postSnapshot.thumbnail.type}
+                          alt="Media post asal"
+                        />
                       </div>
                     ) : null}
                     {/* eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.post-context-body` */}

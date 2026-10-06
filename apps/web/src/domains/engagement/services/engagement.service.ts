@@ -39,6 +39,27 @@ interface PublishingPostReferencePort {
     },
     userId: UserId,
   ): Promise<string | null>;
+
+  /**
+   * T-056, KI-065 — snapshot caption/media/`platformPostUrl` post asli untuk
+   * kotak "Post asal" di detail panel Comments Inbox. Digabung ke port yang
+   * sama dengan `findPostOutstandId` (bukan port terpisah) karena keduanya
+   * SELALU disuplai oleh instance `publishingRepository` yang sama di
+   * composition root — port terpisah hanya menambah satu constructor
+   * parameter berulang tanpa manfaat decoupling nyata (lihat review PR #143).
+   */
+  findPostSnapshotForEngagement(
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      connectedAccountId: ConnectedAccountId;
+    },
+    userId: UserId,
+  ): Promise<{
+    caption: string;
+    mediaIds: MediaId[];
+    platformPostUrl: string | null;
+  } | null>;
 }
 
 /**
@@ -57,30 +78,6 @@ interface ConnectedAccountHandlePort {
     connectedAccountId: ConnectedAccountId,
     userId: UserId,
   ): Promise<{ handle: string } | null>;
-}
-
-/**
- * Port lokal cross-domain `engagement` → `publishing` (T-056, KI-065) —
- * snapshot caption/media/`platformPostUrl` post asli untuk kotak "Post
- * asal" di detail panel Comments Inbox. Structural typing, sama pola
- * `PublishingPostReferencePort`/`ConnectedAccountHandlePort` di atas —
- * `engagement` TIDAK mengimpor `IPublishingRepository` konkret; composition
- * root (`engage/actions.ts`) menyuplai `publishingRepository` yang sudah
- * punya `findPostSnapshotForEngagement` lewat structural typing.
- */
-interface PublishingPostSnapshotPort {
-  findPostSnapshotForEngagement(
-    input: {
-      workspaceId: WorkspaceId;
-      postId: PostId;
-      connectedAccountId: ConnectedAccountId;
-    },
-    userId: UserId,
-  ): Promise<{
-    caption: string;
-    mediaIds: MediaId[];
-    platformPostUrl: string | null;
-  } | null>;
 }
 
 /**
@@ -124,8 +121,6 @@ export class EngagementService {
     private readonly adapter: IOutstandAdapter,
     private readonly publishingPosts: PublishingPostReferencePort,
     private readonly connectedAccounts: ConnectedAccountHandlePort,
-    /** T-056, KI-065 — lihat `PublishingPostSnapshotPort`. */
-    private readonly publishingPostSnapshot: PublishingPostSnapshotPort,
   ) {}
 
   /**
@@ -154,21 +149,19 @@ export class EngagementService {
       throw new NotFoundError("Komentar tidak ditemukan.");
     }
 
-    const replies = await this.repository.listRepliesByInboxItemId(
-      item.id,
-      userId,
-    );
-
-    const postSnapshot = item.postId
-      ? await this.publishingPostSnapshot.findPostSnapshotForEngagement(
-          {
-            workspaceId: input.workspaceId,
-            postId: item.postId,
-            connectedAccountId: item.connectedAccountId,
-          },
-          userId,
-        )
-      : null;
+    const [replies, postSnapshot] = await Promise.all([
+      this.repository.listRepliesByInboxItemId(item.id, userId),
+      item.postId
+        ? this.publishingPosts.findPostSnapshotForEngagement(
+            {
+              workspaceId: input.workspaceId,
+              postId: item.postId,
+              connectedAccountId: item.connectedAccountId,
+            },
+            userId,
+          )
+        : Promise.resolve(null),
+    ]);
 
     return { ...item, replies, postSnapshot };
   }
