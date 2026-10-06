@@ -192,6 +192,7 @@ export function HistoryDetail({ item, thumbnail }: HistoryDetailProps) {
                   url={thumbnail.url}
                   type={thumbnail.type}
                   alt="Media post asal"
+                  className="object-contain"
                 />
               </div>
             ) : null}
