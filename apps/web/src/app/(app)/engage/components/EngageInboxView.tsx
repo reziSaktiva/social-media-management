@@ -439,14 +439,14 @@ export function EngageInboxView({
                     asChild
                     variant={isSelected ? "muted" : "default"}
                     size="sm"
-                    className="cursor-pointer items-start gap-2 rounded-none border-b border-border p-3 last:border-b-0"
+                    className="cursor-pointer items-start gap-2 rounded-none border-b border-border p-3 text-left last:border-b-0"
                   >
                     <button
                       type="button"
                       onClick={() => setSelectedId(item.id)}
                       aria-current={isSelected ? "true" : undefined}
                     >
-                      <ItemMedia className="mt-1.5">
+                      <ItemMedia className="mt-1.5 items-start justify-start">
                         <span
                           className={cn(
                             "block size-1.5 shrink-0 rounded-full",
