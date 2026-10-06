@@ -151,6 +151,20 @@ model WorkspaceInvitation {
   invitedByUserId String    @map("invited_by_user_id")
   expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
   acceptedAt      DateTime? @map("accepted_at") @db.Timestamptz(6)
+  /**
+   * T-110 (KI-053) — verifikasi kepemilikan email accept-invite, HANYA
+   * jalur `isExistingUser: false`. Kode OTP 6 digit di-hash (sha256, lihat
+   * `workspace.service.ts`), TIDAK PERNAH disimpan plaintext.
+   * `verificationCodeHash`/`verificationCodeExpiresAt` di-clear (null)
+   * begitu kode benar dikonfirmasi (single-use) — lihat
+   * `markInvitationEmailVerified`.
+   */
+  verificationCodeHash      String?   @map("verification_code_hash")
+  verificationCodeExpiresAt DateTime? @map("verification_code_expires_at") @db.Timestamptz(6)
+  /** Reset ke 0 tiap kode baru diminta (`setInvitationVerificationCode`); increment tiap kode salah (anti brute-force, maks 5 percobaan). */
+  verificationAttempts      Int       @default(0) @map("verification_attempts")
+  /** Diisi sekali (single-use) saat kode OTP dikonfirmasi benar — dipakai `WorkspaceService.acceptInvite` sebagai guard server-side (bukan klaim dari client). */
+  emailVerifiedAt           DateTime? @map("email_verified_at") @db.Timestamptz(6)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

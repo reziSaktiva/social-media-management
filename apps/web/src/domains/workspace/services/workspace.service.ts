@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import {
   EMAIL_PATTERN,
   InvitationStatus,
@@ -24,6 +24,7 @@ import {
   NotFoundError,
   ValidationError,
 } from "@/lib/utils/errors";
+import { timingSafeEqualString } from "@/lib/utils/timing-safe-equal-string";
 import { slugify } from "../value-objects/slugify";
 import type {
   ConnectedAccountRecord,
@@ -55,6 +56,16 @@ const MAX_SLUG_ATTEMPTS = 6;
 const DOUBLE_SUBMIT_RECOVERY_WINDOW_MS = 15_000;
 /** ADR-072 & ADR-080 — copy "Undangan berlaku 7 hari" di dialog Claude Design. */
 const INVITATION_EXPIRY_DAYS = 7;
+/**
+ * T-110 (KI-053) — verifikasi kepemilikan email accept-invite, HANYA jalur
+ * `isExistingUser: false`. Kode 6 digit, TTL 10 menit (desain Claude Design
+ * dikunci, lihat task doc), maks 5 percobaan salah (ruang 1 juta kombinasi
+ * / window 10 menit — cukup ketat untuk anti brute-force tanpa terlalu
+ * ketat untuk salah ketik wajar).
+ */
+const INVITE_VERIFICATION_CODE_LENGTH = 6;
+const INVITE_VERIFICATION_CODE_TTL_MINUTES = 10;
+const INVITE_VERIFICATION_MAX_ATTEMPTS = 5;
 /**
  * Port lokal untuk cross-domain `publishing` → `workspace` (T-012.2,
  * AGENTS.md #7) — implementation detail `WorkspaceService`, bukan kontrak
@@ -131,6 +142,63 @@ interface EngagementSyncSeederPort {
   }): Promise<void>;
 }
 
+/**
+ * Port lokal untuk cross-domain/infra `workspace` → email transactional
+ * (T-110, KI-053, AGENTS.md #6) — `WorkspaceService` TIDAK BOLEH mengimpor
+ * Resend SDK/HTTP client langsung. Implementasi konkret ada di
+ * `apps/web/src/lib/adapters/email/` (pola factory sama
+ * `getOutstandAdapter()`, ADR-119 — wajib env var, tidak ada fallback Fake
+ * di produksi), disuplai composition root
+ * (`createWorkspaceServiceWithInviteEmailSender`,
+ * `lib/workspace/invite-email-workspace-service.ts`) lewat constructor.
+ * Opsional (`undefined` di caller lama/test yang tidak menyentuh
+ * `requestInviteEmailVerification`) — lihat `requireInviteEmailSender()`.
+ */
+interface InviteEmailSenderPort {
+  sendInviteVerificationCode(input: {
+    email: string;
+    code: string;
+    workspaceName: string;
+  }): Promise<void>;
+}
+
+/** T-110 — kode OTP 6 digit, `crypto.randomInt` (uniform, tidak predictable/sequential). */
+function generateInviteVerificationCode(): string {
+  return randomInt(0, 10 ** INVITE_VERIFICATION_CODE_LENGTH)
+    .toString()
+    .padStart(INVITE_VERIFICATION_CODE_LENGTH, "0");
+}
+
+/**
+ * T-110 — kode disimpan HANYA sebagai hash (sha256), tidak pernah
+ * plaintext. Tanpa salt: ruang kombinasi 6 digit (1 juta) sudah cukup
+ * kecil sehingga salt per-baris tidak menambah biaya brute-force yang
+ * berarti (kalau DB bocor, attacker brute-force sha256 tanpa salt untuk 1
+ * juta kombinasi dalam hitungan detik terlepas ada/tidaknya salt) —
+ * pertahanan sesungguhnya ada di TTL 10 menit + maks 5 percobaan
+ * (`WorkspaceService.confirmInviteEmailVerification`), bukan di hash-nya.
+ * Precedent hash sha256 sudah dipakai `parse-webhook-payload.ts` untuk
+ * kasus serupa (bukan pola baru di codebase ini). Diekspor (pola sama
+ * `fingerprintRawBody` di `parse-webhook-payload.ts`) supaya
+ * `workspace.service.test.ts` bisa menyusun hash "kode benar" tanpa
+ * duplikasi algoritma di file test.
+ */
+export function hashInviteVerificationCode(code: string): string {
+  return createHash("sha256").update(code).digest("hex");
+}
+
+/**
+ * Timing-safe compare (hindari timing attack pada perbandingan hash) —
+ * code-review PR #142 finding: reuse `timingSafeEqualString` yang sudah
+ * ada (dipakai juga `/api/jobs/run/route.ts`) alih-alih menulis ulang
+ * decode-hex + `timingSafeEqual` sendiri. Kedua hex digest sha256 sama
+ * panjang (64 char), jadi membandingkannya sebagai string tetap
+ * constant-time — tidak perlu decode ke `Buffer` byte mentah lebih dulu.
+ */
+function matchesInviteVerificationCode(code: string, hash: string): boolean {
+  return timingSafeEqualString(hashInviteVerificationCode(code), hash);
+}
+
 export class WorkspaceService {
   constructor(
     private readonly repository: IWorkspaceRepository,
@@ -159,6 +227,15 @@ export class WorkspaceService {
      * berubah.
      */
     private readonly engagementSyncSeeder?: EngagementSyncSeederPort,
+    /**
+     * Kirim kode verifikasi accept-invite (T-110, KI-053) — lihat
+     * docstring `InviteEmailSenderPort`. Opsional (`undefined` di
+     * caller/test yang tidak menyentuh `requestInviteEmailVerification`) —
+     * composition root produksi WAJIB menyuplai
+     * `createWorkspaceServiceWithInviteEmailSender()` untuk Server Action
+     * `requestAcceptInviteVerificationAction`, lihat `requireInviteEmailSender()`.
+     */
+    private readonly inviteEmailSender?: InviteEmailSenderPort,
   ) {}
 
   async createWorkspace(input: {
@@ -757,6 +834,139 @@ export class WorkspaceService {
   }
 
   /**
+   * Request kode verifikasi OTP untuk accept-invite (T-110.2, KI-053) —
+   * HANYA jalur `isExistingUser: false`. Dipanggil `AcceptInviteForm`
+   * SEBELUM `authClient.signUp.email` (akun BELUM dibuat di titik ini —
+   * beda dari `acceptInvite`, yang selalu dipanggil SETELAH sign-up/in
+   * sukses). Re-validasi invitation dari awal (pola sama `acceptInvite`) —
+   * token bisa sudah expired/dipakai/dibatalkan di antara render halaman
+   * dan submit form Nama+Password.
+   *
+   * Race condition (dijaga eksplisit sesuai desain task) — kalau email
+   * invitation SUDAH punya akun di titik ini (mis. dua tab: satu accept
+   * lewat jalur lain, atau orang lain mendaftar duluan dengan email yang
+   * sama di antara `getInviteToAccept` dan submit form ini), kode OTP
+   * TIDAK dikirim — `isExistingUser` seharusnya sudah `true` dan UI
+   * seharusnya menampilkan form Masuk, bukan form ini; kalau tetap
+   * sampai di sini berarti state UI stale, ditolak eksplisit dengan pesan
+   * jelas daripada diam-diam mengirim kode yang tidak relevan.
+   */
+  async requestInviteEmailVerification(token: string): Promise<void> {
+    const invitation = await this.repository.findInvitationByToken(token);
+    if (!invitation || invitation.status !== InvitationStatus.Pending) {
+      throw new NotFoundError(
+        "Undangan tidak ditemukan atau sudah tidak berlaku.",
+      );
+    }
+    if (invitation.expiresAt.getTime() < Date.now()) {
+      throw new ValidationError("Undangan ini sudah kedaluwarsa.");
+    }
+
+    const existingUser = await this.repository.findUserByEmail(
+      invitation.email,
+    );
+    if (existingUser) {
+      throw new ConflictError(
+        "Email ini sudah punya akun. Muat ulang halaman dan gunakan alur Masuk.",
+      );
+    }
+
+    const workspace = await this.repository.findById(invitation.workspaceId);
+
+    const code = generateInviteVerificationCode();
+    const expiresAt = new Date(
+      Date.now() + INVITE_VERIFICATION_CODE_TTL_MINUTES * 60 * 1000,
+    );
+
+    await this.repository.setInvitationVerificationCode(token, {
+      codeHash: hashInviteVerificationCode(code),
+      expiresAt,
+    });
+
+    await this.requireInviteEmailSender().sendInviteVerificationCode({
+      email: invitation.email,
+      code,
+      workspaceName: workspace?.name ?? "workspace ini",
+    });
+  }
+
+  /**
+   * Konfirmasi kode verifikasi OTP untuk accept-invite (T-110.3, KI-053).
+   * Guard urutan sebelum mencocokkan kode: invitation masih pending &
+   * belum expired (pola sama method lain), lalu ADA kode aktif
+   * (`verificationCodeHash`/`verificationCodeExpiresAt` terisi — kalau
+   * tidak, invitee belum pernah/tidak sedang meminta kode), belum melebihi
+   * batas percobaan, dan kodenya sendiri belum expired. Percobaan SALAH
+   * meng-increment `verificationAttempts` (anti brute-force) — percobaan
+   * yang sudah diblokir batas TIDAK ikut increment lagi (sudah mentok).
+   */
+  async confirmInviteEmailVerification(
+    token: string,
+    code: string,
+  ): Promise<void> {
+    const invitation = await this.repository.findInvitationByToken(token);
+    if (!invitation || invitation.status !== InvitationStatus.Pending) {
+      throw new NotFoundError(
+        "Undangan tidak ditemukan atau sudah tidak berlaku.",
+      );
+    }
+    if (invitation.expiresAt.getTime() < Date.now()) {
+      throw new ValidationError("Undangan ini sudah kedaluwarsa.");
+    }
+    if (
+      !invitation.verificationCodeHash ||
+      !invitation.verificationCodeExpiresAt
+    ) {
+      throw new ValidationError(
+        'Belum ada kode verifikasi aktif. Klik "Kirim ulang" untuk meminta kode baru.',
+      );
+    }
+    if (invitation.verificationAttempts >= INVITE_VERIFICATION_MAX_ATTEMPTS) {
+      throw new ValidationError(
+        'Batas percobaan verifikasi tercapai. Klik "Kirim ulang" untuk kode baru.',
+      );
+    }
+    if (invitation.verificationCodeExpiresAt.getTime() < Date.now()) {
+      throw new ValidationError(
+        'Kode verifikasi sudah kedaluwarsa. Klik "Kirim ulang" untuk kode baru.',
+      );
+    }
+
+    // Code-review PR #142 finding — reservasi slot percobaan atomic DULU,
+    // SEBELUM membandingkan kode (bukan increment belakangan cuma kalau
+    // salah seperti sebelumnya). Pengecekan `verificationAttempts` di atas
+    // tetap fast-path (hindari round-trip kalau sudah jelas mentok dari
+    // baca awal), tapi penegakan SESUNGGUHNYA ada di repository
+    // (`UPDATE ... WHERE verification_attempts < max`, atomic) — supaya N
+    // request konkuren tidak bisa sama-sama lolos cap dari baca yang sudah
+    // basi (race condition yang diperbaiki di sini).
+    const attempts =
+      await this.repository.incrementInvitationVerificationAttempts(
+        token,
+        INVITE_VERIFICATION_MAX_ATTEMPTS,
+      );
+    if (attempts > INVITE_VERIFICATION_MAX_ATTEMPTS) {
+      throw new ValidationError(
+        'Batas percobaan verifikasi tercapai. Klik "Kirim ulang" untuk kode baru.',
+      );
+    }
+
+    if (!matchesInviteVerificationCode(code, invitation.verificationCodeHash)) {
+      const remaining = Math.max(
+        INVITE_VERIFICATION_MAX_ATTEMPTS - attempts,
+        0,
+      );
+      throw new ValidationError(
+        remaining > 0
+          ? `Kode salah. Sisa ${remaining} percobaan.`
+          : 'Kode salah. Batas percobaan tercapai — klik "Kirim ulang" untuk kode baru.',
+      );
+    }
+
+    await this.repository.markInvitationEmailVerified(token);
+  }
+
+  /**
    * Finalisasi accept-invite (T-093.2/.3, ADR-080 poin 6) — dipanggil
    * SETELAH sign-up/sign-in Better Auth berhasil di client (composition
    * root: Server Action `acceptInviteAction`). Re-validasi token dari awal
@@ -787,6 +997,61 @@ export class WorkspaceService {
     if (input.actorEmail.trim().toLowerCase() !== invitation.email) {
       throw new AuthorizationError(
         "Email akun Anda tidak cocok dengan email undangan ini.",
+      );
+    }
+
+    // T-110.3/KI-053 — guard server-side yang TIDAK percaya klaim apa pun
+    // dari client (mis. boolean "sudah verifikasi" di body request bisa
+    // dipalsukan kalau Server Action dipanggil langsung, bypass UI).
+    // `invitation.emailVerifiedAt` murni dari state tersimpan di DB (diisi
+    // `confirmInviteEmailVerification` setelah kode OTP benar).
+    //
+    // Kalau BELUM ada `emailVerifiedAt`, TIDAK otomatis berarti ditolak —
+    // jalur existing-user (sign-in, `isExistingUser: true` di
+    // `getInviteToAccept`) TIDAK PERNAH melalui OTP sama sekali (KI-053
+    // "Scope aman": B tetap butuh password A, gap ini hanya berlaku untuk
+    // akun yang belum pernah ada) dan perilakunya SENGAJA tidak diperketat
+    // di sini.
+    //
+    // Sinyal pembeda dipilih SCOPED KE INVITATION INI, BUKAN umur akun
+    // (revisi 2026-09-28 — versi awal pakai window umur akun 30 menit,
+    // ternyata salah blokir sign-in SAH: user yang baru saja daftar lewat
+    // `/register` normal, lalu accept invite LAIN yang tidak terkait dalam
+    // 30 menit pertama, ikut tertolak padahal sudah membuktikan
+    // kepemilikan lewat password — ditemukan Najwa QA Engineer, T-110 QA).
+    //
+    // `verificationCodeHash`/`verificationAttempts` pada invitation ini
+    // hanya pernah terisi kalau `requestInviteEmailVerification` PERNAH
+    // dipanggil untuk token ini secara spesifik — dan UI SELALU memanggil
+    // itu sebelum `authClient.signUp.email()` untuk jalur `isExistingUser:
+    // false` (lihat `AcceptInviteForm.tsx`). Jadi: kalau invitation ini
+    // TIDAK PERNAH tersentuh alur OTP sama sekali, berarti acceptor
+    // memakai jalur sign-in yang sah untuk TOKEN INI — diizinkan, apa pun
+    // umur akunnya. Kalau alur OTP PERNAH dimulai untuk token ini
+    // (hash/attempts pernah terisi) tapi belum pernah dikonfirmasi
+    // (`emailVerifiedAt` masih kosong), ini pola serangan KI-053 (coba
+    // buat akun baru untuk email undangan, sengaja skip/gagal verifikasi)
+    // — ditolak.
+    //
+    // Residual risk yang SADAR diterima (dikonfirmasi King Rezi): kalau
+    // penyerang memanggil Better Auth `signUp` API langsung (bypass total
+    // UI ini, TIDAK PERNAH menyentuh `requestInviteEmailVerification` sama
+    // sekali untuk token ini), guard ini tidak punya sinyal untuk
+    // mendeteksinya. Ini butuh Better Auth hook (`databaseHooks.user
+    // .create.before`) untuk ditutup 100% — di luar scope T-110 (kandidat
+    // ADR terpisah kalau pola ini mau dipakai ulang). Diterima sebagai
+    // trade-off: menutup jalur realistis (siapa pun yang benar-benar
+    // memakai UI ini) tanpa false-positive ke user sah, dengan konsekuensi
+    // celah sempit untuk penyerang yang secara sengaja meng-craft request
+    // API mentah.
+    if (
+      !invitation.emailVerifiedAt &&
+      (invitation.verificationCodeHash !== null ||
+        invitation.verificationAttempts > 0)
+    ) {
+      throw new AuthorizationError(
+        "Verifikasi email diperlukan sebelum bergabung ke workspace ini. " +
+          "Selesaikan verifikasi kode terlebih dahulu.",
       );
     }
 
@@ -1087,6 +1352,18 @@ export class WorkspaceService {
       );
     }
     return this.outstandAdapter;
+  }
+
+  /** Dipakai `requestInviteEmailVerification` — throw jelas kalau composition root lupa menyuplai `InviteEmailSenderPort` (pola sama `requireOutstandAdapter()`). */
+  private requireInviteEmailSender(): InviteEmailSenderPort {
+    if (!this.inviteEmailSender) {
+      throw new Error(
+        "WorkspaceService: InviteEmailSenderPort tidak disuplai ke constructor — " +
+          "wajib untuk requestInviteEmailVerification (composition root harus " +
+          "memanggil createWorkspaceServiceWithInviteEmailSender()).",
+      );
+    }
+    return this.inviteEmailSender;
   }
 
   /**
