@@ -679,6 +679,7 @@ function createHistoryItem(
     publishedAt: new Date("2026-07-14T10:00:00Z"),
     createdAt: new Date("2026-07-13T00:00:00Z"),
     updatedAt: new Date("2026-07-14T10:00:00Z"),
+    mediaIds: [],
     targets: [
       {
         id: asPostTargetId("target-1"),

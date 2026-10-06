@@ -9,7 +9,10 @@ import type {
   HistoryDetailItem,
   HistoryItemRecord,
 } from "@/domains/publishing";
+import type { MediaItemRecord } from "@/domains/media";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
+
+import { MediaThumbnail } from "../../../../components/media-thumbnail";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -131,8 +134,15 @@ function TargetMetrics({ metric }: { metric: PostMetricsRecord | null }) {
   );
 }
 
+/** Thumbnail media post asli (KI-082) — satu set per post (ADR-107), bukan per target row. `url` dari Supabase Storage aplikasi kita (`MediaItemRecord.url`), sama field yang dipakai "Post asal" Comments Inbox (T-056). */
+export interface HistoryDetailThumbnailDto {
+  url: string;
+  type: MediaItemRecord["type"];
+}
+
 export interface HistoryDetailProps {
   item: HistoryDetailItem;
+  thumbnail: HistoryDetailThumbnailDto | null;
 }
 
 /**
@@ -150,7 +160,7 @@ export interface HistoryDetailProps {
  * Rezi kalau nama author memang wajib tampil — itu perubahan repository/
  * service terpisah (join ke `WorkspaceMember`/`User`), bukan T-034.2/.3.
  */
-export function HistoryDetail({ item }: HistoryDetailProps) {
+export function HistoryDetail({ item, thumbnail }: HistoryDetailProps) {
   return (
     // eslint-disable-next-line no-restricted-syntax -- layout-only, konsisten pola shadcn+Tailwind lain di publish/
     <div className="flex flex-col gap-4">
@@ -175,6 +185,16 @@ export function HistoryDetail({ item }: HistoryDetailProps) {
                 {HISTORY_STATUS_LABEL[item.status]}
               </Badge>
             </div>
+            {thumbnail ? (
+              // eslint-disable-next-line no-restricted-syntax -- KI-082: `.popover-thumb` (Claude Design `templates/publish-history-detail.html`, LOCKED PATTERN 2026-10-06) — media di-omit sepenuhnya kalau post tidak bermedia (bukan kotak kosong), sama pola T-056.
+              <div className="h-30 w-full overflow-hidden rounded-lg border border-border bg-muted">
+                <MediaThumbnail
+                  url={thumbnail.url}
+                  type={thumbnail.type}
+                  alt="Media post asal"
+                />
+              </div>
+            ) : null}
             <Text variant="muted" as="span" className="text-xs">
               {formatWhenLabel(item)} · Dibuat{" "}
               {formatRelativeTime(item.createdAt)}

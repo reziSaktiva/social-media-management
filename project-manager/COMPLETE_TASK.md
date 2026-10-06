@@ -8,6 +8,50 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-06 — KI-082 (History Detail) Resolved: media post asli tampil di `/publish/history/[postId]` (branch `fix/ki-082-history-detail-media`, belum di-PR-kan)
+
+Menindaklanjuti catatan KI-082 di bawah (Claude Design sudah di-update
+sebagian, implementasi kode `apps/web` belum ada) — dikerjakan main agent
+session langsung atas permintaan King Rezi, bukan lewat subagent (scope kecil,
+murni wiring reuse pola T-056).
+
+- **Investigasi awal (subagent Explore):** konfirmasi `Post.mediaIds` sudah
+  ada di Prisma (`schema.prisma`), tapi `HistoryItemRecord` (domain
+  `publishing`) belum membawa field itu — gap-nya murni di layer
+  domain-type/mapper, BUKAN query/join baru (Prisma query `getHistoryById`
+  sudah fetch `post` penuh).
+- **Domain (`publishing.repository.ts`):** `HistoryItemRecord` ditambah
+  `mediaIds: MediaId[]`; `mapHistoryItem` (lib repository impl) di-map dari
+  `post.mediaIds`. 2 test fixture (`group-history-items.test.ts`,
+  `publishing.service.test.ts`) disesuaikan (`mediaIds: []`).
+- **Entry point (`page.tsx`, `/publish/history/[postId]`):** resolve media
+  PERTAMA post ke thumbnail lewat `MediaService.listByIds` +
+  `supabaseMediaStorageAdapter` (signed URL fresh tiap request) — pola PERSIS
+  `getInboxItemDetailAction` T-056 (`engage/actions.ts`), dikombinasikan
+  sebagai DTO siap-render (AGENTS.md #5, bukan keputusan bisnis baru).
+- **UI (`HistoryDetail.tsx`):** thumbnail baru (`HistoryDetailThumbnailDto`)
+  dirender sekali per post (bukan per `.history-target-row`) di Card
+  ringkasan, reuse `MediaThumbnail` (`app/(app)/components/media-thumbnail.tsx`,
+  sama komponen T-056) — menerapkan LOCKED PATTERN `.popover-thumb` dari
+  Claude Design (`templates/publish-history-detail.html`, dikonfirmasi lewat
+  `DesignSync get_file`: box full-width ~120px, bukan `size-11` kecil seperti
+  `.thumb` Comments Inbox). Media di-omit total (bukan kotak kosong) kalau
+  post tidak bermedia.
+- **Verifikasi:** `tsc --noEmit` bersih, `eslint` bersih (1 arbitrary-value
+  warning `h-[120px]` diperbaiki jadi `h-30`), Vitest 66 test relevan PASS.
+  Diverifikasi visual lewat Browser pane ke dev server lokal (data real) —
+  post dengan media menampilkan thumbnail penuh, post tanpa media tidak
+  menampilkan kotak apa pun, tidak ada console error.
+- **Calendar Post Preview Popover TIDAK disentuh** — sesuai keputusan King
+  Rezi sebelumnya (lihat entri KI-082 di bawah), placeholder yang ada sudah
+  dikonfirmasi cukup, bukan gap tersisa.
+
+KI-082 ditutup sepenuhnya oleh perubahan ini (satu-satunya gap kode yang
+tersisa dari entri di bawah). Belum di-PR-kan — King Rezi sedang code review
+PR lain secara paralel saat sesi ini berjalan.
+
+---
+
 ## 2026-10-06 — T-056 ✅ Done: Preview post asli di kotak "Post asal" Comments Inbox (commit `e7395c7`, PR #143)
 
 Implementasi T-056 (promosi KI-065, kotak "Post asal" di detail panel

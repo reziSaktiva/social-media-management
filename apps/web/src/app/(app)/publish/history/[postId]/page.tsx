@@ -4,13 +4,19 @@ import { notFound, redirect } from "next/navigation";
 import { AnalyticsService } from "@/domains/analytics";
 import { PublishingService } from "@/domains/publishing";
 import type { HistoryDetailItem } from "@/domains/publishing";
+import { MediaService } from "@/domains/media";
 import { getCachedSession } from "@/lib/better-auth/session";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
 import { analyticsRepository } from "@/lib/repositories/analytics";
 import { publishingRepository } from "@/lib/repositories/publishing";
+import { mediaRepository } from "@/lib/repositories/media";
+import { supabaseMediaStorageAdapter } from "@/lib/adapters/media-storage/supabase-media-storage-adapter";
 import { NotFoundError } from "@/lib/utils/errors";
 
-import { HistoryDetail } from "./components/HistoryDetail";
+import {
+  HistoryDetail,
+  type HistoryDetailThumbnailDto,
+} from "./components/HistoryDetail";
 
 /**
  * `/publish/history/[postId]` (T-034.3, KSP-D10) — entry point tipis:
@@ -63,5 +69,28 @@ export default async function Page({
     throw error;
   }
 
-  return <HistoryDetail item={item} />;
+  // Thumbnail media post asli (KI-082) — media PERTAMA saja, satu per post
+  // (ADR-107, bukan per target row), reuse pola resolve sama
+  // `getInboxItemDetailAction` (T-056, `engage/actions.ts`): kombinasi dua
+  // Application Service lalu dipetakan jadi DTO siap-render, bukan
+  // keputusan bisnis baru (AGENTS.md #5). `supabaseMediaStorageAdapter`
+  // diteruskan supaya `url` diregenerasi (signed URL) setiap request, bukan
+  // dipakai apa adanya dari waktu upload (sudah expired untuk post lama).
+  let thumbnail: HistoryDetailThumbnailDto | null = null;
+  const firstMediaId = item.mediaIds[0];
+  if (firstMediaId) {
+    const mediaService = new MediaService(
+      mediaRepository,
+      supabaseMediaStorageAdapter,
+    );
+    const [mediaItem] = await mediaService.listByIds(
+      { workspaceId, mediaIds: [firstMediaId] },
+      userId,
+    );
+    if (mediaItem?.url) {
+      thumbnail = { url: mediaItem.url, type: mediaItem.type };
+    }
+  }
+
+  return <HistoryDetail item={item} thumbnail={thumbnail} />;
 }

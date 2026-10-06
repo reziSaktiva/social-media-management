@@ -220,6 +220,8 @@ export interface HistoryItemRecord {
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Media post asli (KI-082) — satu set per post (ADR-107, sama `PublishingPostRecord.mediaIds`), dipakai untuk resolve thumbnail "Hasil per Akun" di History Detail (`HistoryDetail.tsx`). */
+  mediaIds: MediaId[];
   targets: HistoryItemTargetRecord[];
 }
 
