@@ -25,7 +25,10 @@ import type {
   WorkspaceMemberRecord,
   WorkspaceRecord,
 } from "../repositories/workspace.repository";
-import { WorkspaceService } from "./workspace.service";
+import {
+  hashInviteVerificationCode,
+  WorkspaceService,
+} from "./workspace.service";
 
 const USER_ID = asUserId("user-1");
 const WORKSPACE_ID = asWorkspaceId("workspace-1");
@@ -133,11 +136,48 @@ function createFakeRepository(
         status: InvitationStatus.Pending,
         invitedByUserId: input.invitedByUserId,
         expiresAt: input.expiresAt,
+        verificationCodeHash: null,
+        verificationCodeExpiresAt: null,
+        verificationAttempts: 0,
+        emailVerifiedAt: null,
       };
       invitations.set(invitation.token, invitation);
       return invitation;
     },
     findInvitationByToken: async (token) => invitations.get(token) ?? null,
+    setInvitationVerificationCode: async (token, { codeHash, expiresAt }) => {
+      const invitation = invitations.get(token);
+      if (!invitation || invitation.status !== InvitationStatus.Pending) {
+        throw new ConflictError("Undangan ini sudah tidak berlaku.");
+      }
+      invitations.set(token, {
+        ...invitation,
+        verificationCodeHash: codeHash,
+        verificationCodeExpiresAt: expiresAt,
+        verificationAttempts: 0,
+      });
+    },
+    markInvitationEmailVerified: async (token) => {
+      const invitation = invitations.get(token);
+      if (!invitation || invitation.status !== InvitationStatus.Pending) {
+        throw new ConflictError("Undangan ini sudah tidak berlaku.");
+      }
+      invitations.set(token, {
+        ...invitation,
+        emailVerifiedAt: new Date(),
+        verificationCodeHash: null,
+        verificationCodeExpiresAt: null,
+      });
+    },
+    incrementInvitationVerificationAttempts: async (token) => {
+      const invitation = invitations.get(token);
+      if (!invitation || invitation.status !== InvitationStatus.Pending) {
+        throw new ConflictError("Undangan ini sudah tidak berlaku.");
+      }
+      const verificationAttempts = invitation.verificationAttempts + 1;
+      invitations.set(token, { ...invitation, verificationAttempts });
+      return verificationAttempts;
+    },
     listPendingInvitations: async (workspaceId) =>
       [...invitations.values()].filter(
         (invitation) =>
@@ -2432,6 +2472,10 @@ function pendingInvitation(
     status: InvitationStatus.Pending,
     invitedByUserId: asUserId("owner-user"),
     expiresAt: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+    verificationCodeHash: null,
+    verificationCodeExpiresAt: null,
+    verificationAttempts: 0,
+    emailVerifiedAt: null,
     ...overrides,
   };
 }
@@ -2528,7 +2572,10 @@ describe("WorkspaceService.getInviteToAccept (T-093.1)", () => {
         findUsersByIds: async () => [
           { id: asUserId("owner-user"), name: "Raka", email: "raka@acme.com" },
         ],
-        findUserByEmail: async () => ({ id: asUserId("existing-user") }),
+        findUserByEmail: async () => ({
+          id: asUserId("existing-user"),
+          createdAt: new Date(),
+        }),
       }),
     );
 
@@ -2605,14 +2652,17 @@ describe("WorkspaceService.acceptInvite (T-093.2/.3)", () => {
     ).rejects.toThrow(AuthorizationError);
   });
 
-  it("accepts a new-account signup, assigns the role from the invitation (not a default), and returns the workspace id", async () => {
+  it("accepts a new-account signup that HAS completed OTP verification (T-110), assigns the role from the invitation (not a default), and returns the workspace id", async () => {
     const captured: {
       input?: Parameters<IWorkspaceRepository["acceptInvitation"]>[0];
     } = {};
     const service = new WorkspaceService(
       createFakeRepository({
         findInvitationByToken: async () =>
-          pendingInvitation({ role: MemberRole.Admin }),
+          pendingInvitation({
+            role: MemberRole.Admin,
+            emailVerifiedAt: new Date(),
+          }),
         acceptInvitation: async (input) => {
           captured.input = input;
           return {
@@ -2647,9 +2697,18 @@ describe("WorkspaceService.acceptInvite (T-093.2/.3)", () => {
     });
   });
 
-  it("accepts an existing-account sign-in the same way as a new signup", async () => {
+  it("accepts an existing-user sign-in whose invitation never went through the OTP flow at all (T-110: no OTP required, isExistingUser: true path)", async () => {
     const service = new WorkspaceService(
       createFakeRepository({
+        // `verificationCodeHash`/`verificationAttempts` default null/0
+        // (lihat `pendingInvitation()`) — invitation ini TIDAK PERNAH
+        // tersentuh `requestInviteEmailVerification` sama sekali, persis
+        // jalur existing-user (isExistingUser: true) yang langsung sign-in
+        // tanpa pernah melalui OTP (KI-053 "Scope aman"). Guard T-110.3
+        // HARUS meloloskan ini apa pun umur akunnya — akun sengaja TIDAK
+        // dibuat "baru" di sini untuk membuktikan guard tidak lagi
+        // bergantung pada umur akun (revisi 2026-09-28, temuan Najwa QA
+        // Engineer: window umur akun salah blokir sign-in sah).
         findInvitationByToken: async () =>
           pendingInvitation({ role: MemberRole.Creator }),
         acceptInvitation: async (input) => ({
@@ -2669,6 +2728,265 @@ describe("WorkspaceService.acceptInvite (T-093.2/.3)", () => {
         actorEmail: "invitee@example.com",
       }),
     ).resolves.toEqual({ workspaceId: WORKSPACE_ID, role: MemberRole.Creator });
+  });
+
+  it("rejects an accept attempt when THIS invitation's OTP flow was started but never confirmed (T-110.3, KI-053 attack path)", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        // `verificationCodeHash` terisi (kode pernah di-generate lewat
+        // `requestInviteEmailVerification` untuk TOKEN INI) tapi
+        // `emailVerifiedAt` masih null — persis pola serangan KI-053: coba
+        // buat akun baru untuk email undangan ini, tapi verifikasi kode
+        // tidak pernah (atau belum) benar-benar dikonfirmasi. Harus
+        // ditolak, TIDAK boleh sampai memanggil repository.acceptInvitation
+        // sama sekali — TERLEPAS dari umur akunnya (guard ini scoped ke
+        // invitation, bukan umur akun, sejak revisi 2026-09-28).
+        findInvitationByToken: async () =>
+          pendingInvitation({
+            verificationCodeHash: hashInviteVerificationCode("111111"),
+            verificationCodeExpiresAt: new Date(Date.now() + 60_000),
+            verificationAttempts: 1,
+          }),
+        acceptInvitation: async () => {
+          throw new Error(
+            "acceptInvitation tidak boleh dipanggil — guard T-110.3 harus menolak lebih dulu.",
+          );
+        },
+      }),
+    );
+
+    await expect(
+      service.acceptInvite({
+        token: "token",
+        actorUserId: asUserId("new-user"),
+        actorEmail: "invitee@example.com",
+      }),
+    ).rejects.toThrow(AuthorizationError);
+  });
+});
+
+/** Double lokal untuk `InviteEmailSenderPort` (T-110, AGENTS.md rule 19 — bukan singleton produksi). */
+function fakeInviteEmailSender() {
+  const sent: { email: string; code: string; workspaceName: string }[] = [];
+  return {
+    sender: {
+      async sendInviteVerificationCode(input: {
+        email: string;
+        code: string;
+        workspaceName: string;
+      }) {
+        sent.push(input);
+      },
+    },
+    sent,
+  };
+}
+
+describe("WorkspaceService.requestInviteEmailVerification (T-110.2, KI-053)", () => {
+  it("throws NotFoundError when the token does not exist", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({ findInvitationByToken: async () => null }),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      fakeInviteEmailSender().sender,
+    );
+
+    await expect(
+      service.requestInviteEmailVerification("missing"),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws ValidationError when the invitation has expired", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({ expiresAt: new Date(Date.now() - 1000) }),
+      }),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      fakeInviteEmailSender().sender,
+    );
+
+    await expect(
+      service.requestInviteEmailVerification("token"),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("throws ConflictError (race condition) when the email already has an account by the time the code is requested", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () => pendingInvitation(),
+        findUserByEmail: async () => ({
+          id: asUserId("someone"),
+          createdAt: new Date(),
+        }),
+      }),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      fakeInviteEmailSender().sender,
+    );
+
+    await expect(
+      service.requestInviteEmailVerification("token"),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it("generates a 6-digit code, persists only its hash, and sends the plaintext code via the email port", async () => {
+    let persisted: { codeHash: string; expiresAt: Date } | undefined;
+    const { sender, sent } = fakeInviteEmailSender();
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () => pendingInvitation(),
+        findById: async () => ({
+          id: WORKSPACE_ID,
+          name: "Acme",
+          slug: "acme",
+        }),
+        setInvitationVerificationCode: async (_token, input) => {
+          persisted = input;
+        },
+      }),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      sender,
+    );
+
+    await service.requestInviteEmailVerification("token");
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      email: "invitee@example.com",
+      workspaceName: "Acme",
+    });
+    expect(sent[0].code).toMatch(/^\d{6}$/);
+    expect(persisted?.codeHash).toBe(hashInviteVerificationCode(sent[0].code));
+    expect(persisted?.expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it("throws when InviteEmailSenderPort was not supplied to the constructor (composition root forgot to wire it)", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () => pendingInvitation(),
+      }),
+    );
+
+    await expect(
+      service.requestInviteEmailVerification("token"),
+    ).rejects.toThrow();
+  });
+});
+
+describe("WorkspaceService.confirmInviteEmailVerification (T-110.3, KI-053)", () => {
+  it("throws NotFoundError when the token does not exist", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({ findInvitationByToken: async () => null }),
+    );
+
+    await expect(
+      service.confirmInviteEmailVerification("missing", "123456"),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws ValidationError when there is no active verification code", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () => pendingInvitation(),
+      }),
+    );
+
+    await expect(
+      service.confirmInviteEmailVerification("token", "123456"),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("throws ValidationError and increments verificationAttempts when the code is wrong", async () => {
+    let incrementCalls = 0;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({
+            verificationCodeHash: hashInviteVerificationCode("111111"),
+            verificationCodeExpiresAt: new Date(Date.now() + 60_000),
+            verificationAttempts: 0,
+          }),
+        incrementInvitationVerificationAttempts: async () => {
+          incrementCalls += 1;
+          return incrementCalls;
+        },
+      }),
+    );
+
+    await expect(
+      service.confirmInviteEmailVerification("token", "000000"),
+    ).rejects.toThrow(ValidationError);
+    expect(incrementCalls).toBe(1);
+  });
+
+  it("throws ValidationError WITHOUT incrementing further once the attempt limit is already reached", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({
+            verificationCodeHash: hashInviteVerificationCode("111111"),
+            verificationCodeExpiresAt: new Date(Date.now() + 60_000),
+            verificationAttempts: 5,
+          }),
+        incrementInvitationVerificationAttempts: async () => {
+          throw new Error(
+            "tidak boleh dipanggil — batas percobaan sudah tercapai.",
+          );
+        },
+      }),
+    );
+
+    await expect(
+      service.confirmInviteEmailVerification("token", "111111"),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("throws ValidationError when the code itself has expired", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({
+            verificationCodeHash: hashInviteVerificationCode("111111"),
+            verificationCodeExpiresAt: new Date(Date.now() - 1000),
+            verificationAttempts: 0,
+          }),
+      }),
+    );
+
+    await expect(
+      service.confirmInviteEmailVerification("token", "111111"),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("marks the email as verified (single-use) when the correct code is confirmed", async () => {
+    let markedVerified = false;
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findInvitationByToken: async () =>
+          pendingInvitation({
+            verificationCodeHash: hashInviteVerificationCode("111111"),
+            verificationCodeExpiresAt: new Date(Date.now() + 60_000),
+            verificationAttempts: 2,
+          }),
+        markInvitationEmailVerified: async () => {
+          markedVerified = true;
+        },
+      }),
+    );
+
+    await service.confirmInviteEmailVerification("token", "111111");
+    expect(markedVerified).toBe(true);
   });
 });
 

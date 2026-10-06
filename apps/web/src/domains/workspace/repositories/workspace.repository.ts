@@ -79,6 +79,21 @@ export interface WorkspaceInvitationRecord {
   status: InvitationStatus;
   invitedByUserId: UserId;
   expiresAt: Date;
+  /**
+   * Verifikasi kepemilikan email accept-invite (T-110, KI-053) — HANYA
+   * relevan untuk jalur `isExistingUser: false`. `verificationCodeHash`/
+   * `verificationCodeExpiresAt` selalu sepasang (`null` kalau tidak ada
+   * kode aktif — belum pernah diminta, ATAU sudah dikonfirmasi/single-use).
+   * `verificationAttempts` reset ke 0 tiap kode baru (`setInvitationVerificationCode`),
+   * increment tiap kode salah (`incrementInvitationVerificationAttempts`).
+   * `emailVerifiedAt` diisi SEKALI saat kode dikonfirmasi benar — dipakai
+   * `WorkspaceService.acceptInvite` sebagai guard server-side yang tidak
+   * percaya klaim dari client.
+   */
+  verificationCodeHash: string | null;
+  verificationCodeExpiresAt: Date | null;
+  verificationAttempts: number;
+  emailVerifiedAt: Date | null;
 }
 
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/workspace. */
@@ -220,8 +235,14 @@ export interface IWorkspaceRepository {
    * TIDAK dibungkus `withCurrentUser` — pemanggil (invitee) belum jadi
    * member workspace mana pun, sama seperti alasan `findInvitationByToken`
    * di atas tidak memakai RLS context.
+   *
+   * `createdAt` (T-110, KI-053) — dipakai `WorkspaceService.acceptInvite`
+   * untuk guard "akun baru dibuat tanpa verifikasi email" (bandingkan
+   * terhadap window waktu wajar sebelum request `acceptInvite` ini).
    */
-  findUserByEmail(email: string): Promise<{ id: UserId } | null>;
+  findUserByEmail(
+    email: string,
+  ): Promise<{ id: UserId; createdAt: Date } | null>;
 
   /**
    * Terima invitation (T-093.3) — SATU transaksi atomik: (1) flip
@@ -242,6 +263,39 @@ export interface IWorkspaceRepository {
     userId: UserId;
     role: MemberRole;
   }): Promise<WorkspaceMemberRecord>;
+
+  /**
+   * Persist kode verifikasi baru (T-110.2, KI-053) — dipanggil
+   * `WorkspaceService.requestInviteEmailVerification`. Reset
+   * `verificationAttempts` ke 0 (kode baru = jatah percobaan baru). Compare-
+   * and-swap: hanya berhasil kalau invitation masih `pending` (guard race
+   * yang sama seperti `acceptInvitation`/`revokeInvitation`) — melempar
+   * `ConflictError` bila tidak. Implementasi anonim (token-based, pola sama
+   * `findInvitationByToken` — invitee belum punya akun sama sekali di jalur
+   * `isExistingUser: false`, jadi TIDAK ADA `app.current_user_id`).
+   */
+  setInvitationVerificationCode(
+    token: string,
+    input: { codeHash: string; expiresAt: Date },
+  ): Promise<void>;
+
+  /**
+   * Tandai email invitation terverifikasi (T-110.3, KI-053) — single-use:
+   * set `emailVerifiedAt` DAN clear `verificationCodeHash`/
+   * `verificationCodeExpiresAt` sekaligus supaya kode yang sama tidak bisa
+   * dipakai ulang. Dipanggil `WorkspaceService.confirmInviteEmailVerification`
+   * SETELAH kode dicocokkan benar. Compare-and-swap sama seperti
+   * `setInvitationVerificationCode`.
+   */
+  markInvitationEmailVerified(token: string): Promise<void>;
+
+  /**
+   * Increment percobaan verifikasi kode yang GAGAL (T-110.3, anti
+   * brute-force) — return jumlah percobaan SETELAH increment supaya
+   * `WorkspaceService.confirmInviteEmailVerification` bisa menyusun pesan
+   * "sisa X percobaan" tanpa round-trip kedua.
+   */
+  incrementInvitationVerificationAttempts(token: string): Promise<number>;
 
   /**
    * Undangan `pending` yang belum melewati `expiresAt` (T-007.8, ADR-101) —

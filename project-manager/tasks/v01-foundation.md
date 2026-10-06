@@ -139,7 +139,7 @@ Ditemukan CodeRabbit saat review PR #73 (2026-08-14): halaman `/invite/[token]` 
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | 🟡 In Progress                                                |
 | **Domain**    | identity · workspace                                         |
 | **ADR**       | — (kandidat ADR baru kalau pola verifikasi ini mau dipakai ulang di alur lain — evaluasi saat implementasi) |
 | **Depends**   | T-093 ✅ (Accept Invite page) |

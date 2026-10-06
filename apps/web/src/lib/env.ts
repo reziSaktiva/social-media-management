@@ -54,6 +54,18 @@ export type ServerEnv = {
   OUTSTAND_ORG_ID?: string;
   /** Optional (mengikuti pola OUTSTAND_WEBHOOK_SECRET) — reachable 401 check di route.ts butuh ini TIDAK throw duluan lewat assertServerEnv kalau belum di-set. */
   JOB_SECRET?: string;
+  /**
+   * Wajib untuk setiap jalur yang memanggil `getInviteEmailSender()` (T-110,
+   * KI-053) — kosong/whitespace membuat factory throw, pola sama
+   * `OUTSTAND_API_KEY` (ADR-119, tidak ada fallback Fake di produksi).
+   * Sengaja tidak masuk `REQUIRED_SERVER_VARS`: scope Resend saat ini HANYA
+   * verifikasi email accept-invite (`isExistingUser: false`), bukan
+   * `requireEmailVerification` Better Auth secara global — halaman yang
+   * tidak menyentuh alur itu tetap boleh boot tanpa env var ini.
+   */
+  RESEND_API_KEY?: string;
+  /** Wajib bersamaan dengan RESEND_API_KEY — alamat pengirim email verifikasi accept-invite. */
+  RESEND_FROM_EMAIL?: string;
   NEXT_PUBLIC_SUPABASE_URL?: string;
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
 };
@@ -101,6 +113,8 @@ export function getServerEnv(): ServerEnv {
     OUTSTAND_API_BASE_URL: process.env.OUTSTAND_API_BASE_URL,
     OUTSTAND_ORG_ID: process.env.OUTSTAND_ORG_ID,
     JOB_SECRET: process.env.JOB_SECRET,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,

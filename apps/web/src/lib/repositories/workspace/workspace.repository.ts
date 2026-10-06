@@ -118,6 +118,11 @@ function toInvitationRecord(
     status: invitation.status as InvitationStatus,
     invitedByUserId: asUserId(invitation.invitedByUserId),
     expiresAt: invitation.expiresAt,
+    // T-110/KI-053 — lihat docstring WorkspaceInvitationRecord.
+    verificationCodeHash: invitation.verificationCodeHash,
+    verificationCodeExpiresAt: invitation.verificationCodeExpiresAt,
+    verificationAttempts: invitation.verificationAttempts,
+    emailVerifiedAt: invitation.emailVerifiedAt,
   };
 }
 
@@ -408,10 +413,86 @@ export const workspaceRepository: IWorkspaceRepository = {
   async findUserByEmail(email) {
     const user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true },
+      select: { id: true, createdAt: true },
     });
 
-    return user ? { id: asUserId(user.id) } : null;
+    return user ? { id: asUserId(user.id), createdAt: user.createdAt } : null;
+  },
+
+  /**
+   * T-110.2 — sama pola transaksi + GUC seperti `findInvitationByToken`
+   * (invitee anonim, tidak ada `app.current_user_id`). `updateMany` +
+   * guard `status: pending` (compare-and-swap, pola sama
+   * `revokeInvitation`/`acceptInvitation`) — kalau tidak match (race:
+   * invitation sudah di-revoke/accept/expired persis di antara service-layer
+   * check dan panggilan ini), lempar `ConflictError` generik.
+   */
+  async setInvitationVerificationCode(token, { codeHash, expiresAt }) {
+    await prisma.$transaction(async (tx) => {
+      await setInviteLookupToken(tx, token);
+      const updated = await tx.workspaceInvitation.updateMany({
+        where: { token, status: InvitationStatus.Pending },
+        data: {
+          verificationCodeHash: codeHash,
+          verificationCodeExpiresAt: expiresAt,
+          verificationAttempts: 0,
+        },
+      });
+      if (updated.count === 0) {
+        throw new ConflictError(
+          "Undangan ini sudah tidak berlaku — tidak bisa mengirim kode verifikasi.",
+        );
+      }
+    });
+  },
+
+  /** T-110.3 — single-use: clear hash+expiry sekaligus set `emailVerifiedAt`. Pola compare-and-swap sama `setInvitationVerificationCode`. */
+  async markInvitationEmailVerified(token) {
+    await prisma.$transaction(async (tx) => {
+      await setInviteLookupToken(tx, token);
+      const updated = await tx.workspaceInvitation.updateMany({
+        where: { token, status: InvitationStatus.Pending },
+        data: {
+          emailVerifiedAt: new Date(),
+          verificationCodeHash: null,
+          verificationCodeExpiresAt: null,
+        },
+      });
+      if (updated.count === 0) {
+        throw new ConflictError(
+          "Undangan ini sudah tidak berlaku — tidak bisa mengonfirmasi verifikasi.",
+        );
+      }
+    });
+  },
+
+  /**
+   * T-110.3 — `updateMany` (bukan `update`) supaya baris yang gagal
+   * RLS/guard `status: pending` tidak melempar P2025 "Record not found"
+   * (perilaku `update` non-many terhadap unique key) — konsisten dengan
+   * pola compare-and-swap method lain di file ini. Read-back
+   * `findUnique` di transaksi yang sama untuk mengembalikan angka
+   * terbaru (tercakup policy SELECT existing, status tetap `pending`).
+   */
+  async incrementInvitationVerificationAttempts(token) {
+    return prisma.$transaction(async (tx) => {
+      await setInviteLookupToken(tx, token);
+      const updated = await tx.workspaceInvitation.updateMany({
+        where: { token, status: InvitationStatus.Pending },
+        data: { verificationAttempts: { increment: 1 } },
+      });
+      if (updated.count === 0) {
+        throw new ConflictError(
+          "Undangan ini sudah tidak berlaku — tidak bisa mencatat percobaan verifikasi.",
+        );
+      }
+
+      const invitation = await tx.workspaceInvitation.findUnique({
+        where: { token },
+        select: { verificationAttempts: true },
+      });
+      return invitation?.verificationAttempts ?? 0;
+    });
   },
 
   async acceptInvitation({ workspaceId, invitationId, userId, role }) {
