@@ -513,7 +513,7 @@ export function EngageInboxView({
                           url={detail.postSnapshot.thumbnail.url}
                           type={detail.postSnapshot.thumbnail.type}
                           alt="Media post asal"
-                          className="object-contain"
+                          fit="contain"
                         />
                       </div>
                     ) : null}

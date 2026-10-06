@@ -13,10 +13,7 @@ import { mediaRepository } from "@/lib/repositories/media";
 import { supabaseMediaStorageAdapter } from "@/lib/adapters/media-storage/supabase-media-storage-adapter";
 import { NotFoundError } from "@/lib/utils/errors";
 
-import {
-  HistoryDetail,
-  type HistoryDetailThumbnailDto,
-} from "./components/HistoryDetail";
+import { HistoryDetail } from "./components/HistoryDetail";
 
 /**
  * `/publish/history/[postId]` (T-034.3, KSP-D10) — entry point tipis:
@@ -70,27 +67,25 @@ export default async function Page({
   }
 
   // Thumbnail media post asli (KI-082) — media PERTAMA saja, satu per post
-  // (ADR-107, bukan per target row), reuse pola resolve sama
-  // `getInboxItemDetailAction` (T-056, `engage/actions.ts`): kombinasi dua
+  // (ADR-107, bukan per target row). Resolve lewat
+  // `MediaService.resolveFirstThumbnail` (shared dengan
+  // `getInboxItemDetailAction`, T-056, `engage/actions.ts`): kombinasi dua
   // Application Service lalu dipetakan jadi DTO siap-render, bukan
   // keputusan bisnis baru (AGENTS.md #5). `supabaseMediaStorageAdapter`
   // diteruskan supaya `url` diregenerasi (signed URL) setiap request, bukan
   // dipakai apa adanya dari waktu upload (sudah expired untuk post lama).
-  let thumbnail: HistoryDetailThumbnailDto | null = null;
-  const firstMediaId = item.mediaIds[0];
-  if (firstMediaId) {
-    const mediaService = new MediaService(
-      mediaRepository,
-      supabaseMediaStorageAdapter,
-    );
-    const [mediaItem] = await mediaService.listByIds(
-      { workspaceId, mediaIds: [firstMediaId] },
-      userId,
-    );
-    if (mediaItem?.url) {
-      thumbnail = { url: mediaItem.url, type: mediaItem.type };
-    }
-  }
+  // Kegagalan resolve (termasuk error DB/RLS, bukan cuma signed-URL
+  // regenerate per-item) sengaja tidak melempar — lihat
+  // `MediaService.resolveFirstThumbnail` — supaya halaman ini tidak ikut
+  // gagal render hanya karena thumbnail gagal di-resolve.
+  const mediaService = new MediaService(
+    mediaRepository,
+    supabaseMediaStorageAdapter,
+  );
+  const thumbnail = await mediaService.resolveFirstThumbnail(
+    { workspaceId, mediaIds: item.mediaIds },
+    userId,
+  );
 
   return <HistoryDetail item={item} thumbnail={thumbnail} />;
 }

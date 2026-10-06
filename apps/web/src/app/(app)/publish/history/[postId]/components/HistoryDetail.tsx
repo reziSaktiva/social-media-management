@@ -9,7 +9,7 @@ import type {
   HistoryDetailItem,
   HistoryItemRecord,
 } from "@/domains/publishing";
-import type { MediaItemRecord } from "@/domains/media";
+import type { MediaThumbnailDto } from "@/domains/media";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 
 import { MediaThumbnail } from "../../../../components/media-thumbnail";
@@ -134,15 +134,9 @@ function TargetMetrics({ metric }: { metric: PostMetricsRecord | null }) {
   );
 }
 
-/** Thumbnail media post asli (KI-082) — satu set per post (ADR-107), bukan per target row. `url` dari Supabase Storage aplikasi kita (`MediaItemRecord.url`), sama field yang dipakai "Post asal" Comments Inbox (T-056). */
-export interface HistoryDetailThumbnailDto {
-  url: string;
-  type: MediaItemRecord["type"];
-}
-
 export interface HistoryDetailProps {
   item: HistoryDetailItem;
-  thumbnail: HistoryDetailThumbnailDto | null;
+  thumbnail: MediaThumbnailDto | null;
 }
 
 /**
@@ -192,7 +186,7 @@ export function HistoryDetail({ item, thumbnail }: HistoryDetailProps) {
                   url={thumbnail.url}
                   type={thumbnail.type}
                   alt="Media post asal"
-                  className="object-contain"
+                  fit="contain"
                 />
               </div>
             ) : null}
