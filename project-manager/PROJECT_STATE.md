@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **KI-082 (History Detail) Resolved (2026-10-06)** — lihat **Completed (Ringkasan)** di bawah. Fokus aktif sekarang: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 6/7 task** (2026-10-06, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
+* **Top Next Tasks:** **T-111** (promosi KI-083, baru dibuat 2026-10-06) — restrukturisasi layout preview media post asli di History Detail (T-111.1/.2) & Post asal Engage (T-111.3/.4), mulai dari Claude Design (Neymar) sebelum kode. **KI-082 (History Detail) Resolved (2026-10-06)** — lihat **Completed (Ringkasan)** di bawah. Fokus aktif lain: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 6/7 task** (2026-10-06, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 1 blocker aktif (env var Google OAuth belum diisi, KI-015) — lihat section **Blockers** di bawah. Blocker Outstand (KI-003, `OUTSTAND_API_KEY` + Real OutstandAdapter) sudah **Resolved (2026-09-24)**. Railway staging sudah live & terverifikasi (2026-08-14); JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 91 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * **KI-073–080 Resolved (2026-09-26)** — 4 bug publish Instagram (caption wajib untuk Story, Story publish tanpa media, upload media >1MB gagal, avatar akun tidak tampil di sidebar) diperbaiki + diverifikasi live ke akun Instagram/Facebook real (ADR-120). 2 bug turunan ditemukan saat verifikasi (akun `disconnected` tidak bisa reconnect; callback OAuth silent-success untuk conflict genuine) diperbaiki via **ADR-122**. Plus **KI-080** (baru+langsung Resolved) — Railway staging build gagal (`next.config.ts` tidak bisa resolve import workspace `@social/shared`) diperbaiki di branch terpisah sebelum masuk ke fix KI-078/079.
@@ -16,7 +16,7 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.1.0      |
+| Version      | 1.1.1      |
 | Status       | Active     |
 | Last Updated | 2026-10-06 |
 
@@ -340,6 +340,40 @@ Diagram perlu ditambal menambahkan `BC-03 Publishing ──→ BC-06 Analytics
 murni koreksi dokumentasi baseline (bukan keputusan arsitektur baru), tapi
 tetap wajib lewat baseline yang sama karena `application-layer.md` adalah
 Static Reference.
+
+### KI-083 · Preview media post asli di History Detail & Post asal Engage masih kotak crop kecil, bukan representasi post asli
+
+| Field | Value |
+|-------|-------|
+| Status | Promoted to T-111 (2026-10-06) |
+| Kategori | UX / Design Gap |
+| Terkait | KI-082 (Resolved), T-034.3, T-056, T-111 |
+
+Ditemukan King Rezi (2026-10-06) tak lama setelah KI-082 (History Detail)
+Resolved di atas: implementasi itu menampilkan thumbnail media di History
+Detail (box `h-30 w-full`, `object-contain`) dan Post asal Engage (box
+`size-11`, `object-contain`) — tapi King Rezi menilai ini **belum sesuai
+yang diinginkan**. Permintaan sebenarnya: media di kedua lokasi tampil
+dengan **lebar dan tinggi sesuai ukuran aslinya** (merepresentasikan post
+asli di platform sosial media), bukan dipaksa masuk ke kotak kecil tetap —
+restrukturisasi layout, bukan sekadar ganti `object-fit`.
+
+**Klarifikasi scope (King Rezi, via `AskUserQuestion`, 2026-10-06):**
+1. **Restrukturisasi total** — media jadi elemen visual utama (preview
+   menyerupai tampilan post asli di platform sosial medianya: gambar
+   besar, caption+link di bawah), bukan sekadar kotak thumbnail kecil
+   seperti sekarang. Bukan cuma ganti ukuran di struktur yang sama.
+2. **Pola visual boleh beda** antara kedua lokasi — History Detail (halaman
+   penuh, lebih leluasa) dan Post asal Engage (kotak kecil di panel detail
+   samping, ruang terbatas) tidak wajib dibuat identik, didesain sesuai
+   konteks ruang masing-masing.
+
+Promosi langsung ke **T-111** (empat subtask, dua lokasi) karena King Rezi
+sudah commit mengerjakan ini sekarang, mulai dari Claude Design (Neymar
+Product Designer, AGENTS.md rule 17) sebelum implementasi kode. King Rezi
+sudah mengonfirmasi (2026-10-06): PR #144 (KI-082) merge dulu ke `staging`
+sebelum T-111 dimulai — pekerjaan T-111 TIDAK ditumpuk di atas PR yang
+sama, tapi menunggu merge.
 
 ### KI-053 · Invite via Copy Link — email tidak diverifikasi kepemilikan inbox, rawan identity takeover
 

@@ -8,6 +8,40 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-06 — KI-083 dicatat + Promoted to T-111: restrukturisasi layout preview media post asli (History Detail & Post asal Engage)
+
+Tak lama setelah fix KI-082 di bawah (object-cover → object-contain) selesai
+dikerjakan di branch/PR yang sama, King Rezi menilai hasilnya belum sesuai
+keinginan — thumbnail masih dalam kotak crop kecil, bukan representasi post
+asli dengan lebar/tinggi sesuai aslinya. Dicatat sebagai **KI-083** dan
+langsung dipromosikan ke **T-111** karena King Rezi sudah commit
+mengerjakannya, tapi **setelah** PR #144 (KI-082) merge ke `staging` —
+dikonfirmasi eksplisit King Rezi agar T-111 tidak ditumpuk di PR yang sama,
+melainkan menunggu merge dulu.
+
+**Klarifikasi scope (via `AskUserQuestion`, 2 pertanyaan):**
+1. Restrukturisasi total (bukan sekadar ganti `object-fit`/ukuran) — media
+   jadi elemen visual utama, menyerupai tampilan post asli di platform
+   sosial medianya.
+2. Pola visual boleh beda antara History Detail (halaman penuh) dan Post
+   asal Engage (kotak kecil di panel detail samping) — tidak wajib identik.
+
+**T-111** ditambahkan di `tasks/v02-publishing-mvp.md` (4 subtask:
+T-111.1/.2 History Detail, T-111.3/.4 Post asal Engage) — ID global T-111
+(setelah T-110). Explicit gate AGENTS.md rule 17 dicatat di task: rancangan
+Claude Design SAAT INI (`publish-history-detail.html`, `engage-inbox.html`)
+masih pola lama (`.popover-thumb`/`.thumb` kotak kecil) — implementasi kode
+**STOP** sampai rancangan baru dibuat/dikunci di Claude Design dulu (Neymar
+Product Designer atau King Rezi langsung), sesuai arahan King Rezi "mulai
+dari Claude Design baru ke code seperti biasa".
+
+Dokumentasi disinkronkan: `PROJECT_STATE.md` (KI-083 block + Snapshot Top
+Next Tasks), `TASKS.md` (indeks v0.2 27 task, total 98 task/247 subtask,
+footnote ID T-111, Fokus aktif). Murni dokumentasi backlog — belum ada
+kode/Claude Design yang disentuh untuk T-111.
+
+---
+
 ## 2026-10-06 — KI-082 (History Detail) Resolved: media post asli tampil di `/publish/history/[postId]` (branch `fix/ki-082-history-detail-media`, belum di-PR-kan)
 
 Menindaklanjuti catatan KI-082 di bawah (Claude Design sudah di-update

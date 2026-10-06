@@ -1631,6 +1631,32 @@ PASS (tidak regresi), boundary case PASS.
 - [x] **T-108.2** Validasi server (defense in depth) di use-case/Server Action Schedule terkait — jangan hanya andalkan client
 - [x] **T-108.3** Pesan error jelas ke user (bukan silent reject/masuk Queue diam-diam)
 
+### T-111 · Restrukturisasi layout preview media post asli (History Detail & Post asal Engage)
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                               |
+| **Domain**    | publishing · engagement · UI                                 |
+| **ADR**       | —                                                             |
+| **Depends**   | T-034.3 ✅, T-056 ✅, KI-082 Resolved (PR #144, wajib merge ke `staging` dulu sebelum T-111 dimulai — konfirmasi King Rezi) |
+| **Baca dulu** | `04-ux/key-screen-patterns.md` · Claude Design project "Social Media Management" (`templates/publish-history-detail.html`, `templates/engage-inbox.html`) |
+| **Ditemukan** | KI-083 (2026-10-06, King Rezi, setelah review hasil KI-082) — Promoted to T-111. |
+
+**Gap:** fix KI-082 (lihat di atas) menambahkan thumbnail media di kedua lokasi, tapi dalam kotak crop kecil berukuran tetap (`h-30 w-full object-contain` di History Detail; `size-11 object-contain` di Post asal Engage). King Rezi menilai ini belum merepresentasikan post asli dengan baik — media perlu tampil dengan **lebar dan tinggi sesuai ukuran aslinya**, menyerupai tampilan post di platform sosial medianya, bukan dipaksa masuk ke kotak kecil.
+
+**Klarifikasi scope (King Rezi, via `AskUserQuestion`, 2026-10-06):**
+1. **Restrukturisasi total**, bukan sekadar ubah `object-fit`/ukuran di struktur yang sama — media jadi elemen visual utama (gambar besar, caption+link di bawahnya), pola layout baru.
+2. **Pola visual boleh beda** antara kedua lokasi — History Detail (halaman penuh, lebih leluasa) dan Post asal Engage (kotak kecil di panel detail samping `/engage`, ruang terbatas) didesain sesuai konteks masing-masing, tidak wajib identik.
+
+**Wajib AGENTS.md rule 17** sebelum menulis kode UI: kedua lokasi ini sudah punya rancangan di Claude Design (`publish-history-detail.html`, `engage-inbox.html`), tapi rancangan **saat ini merepresentasikan pola LAMA** (kotak kecil `.popover-thumb`/`.thumb`) — pola baru (restrukturisasi total) **belum ada** di Claude Design. Per rule 17: implementasi kode **STOP** sampai rancangan baru dibuat/dikunci di Claude Design (Neymar Product Designer, atau King Rezi langsung) untuk kedua subtask di bawah.
+
+**Urutan eksekusi (konfirmasi King Rezi, 2026-10-06):** PR #144 (KI-082) wajib merge ke `staging` dulu — T-111 TIDAK dikerjakan di atas branch/PR yang sama, baru dimulai setelah merge.
+
+- [ ] **T-111.1** Claude Design: rancang ulang `templates/publish-history-detail.html` — media natural-size sebagai elemen utama, lock pattern baru (gantikan `.popover-thumb` lama di konteks ini)
+- [ ] **T-111.2** Implementasi kode T-111.1 (`apps/web`, domain `publishing`, `HistoryDetail.tsx`)
+- [ ] **T-111.3** Claude Design: rancang ulang `templates/engage-inbox.html` § `.post-context` — media natural-size sesuai konteks kotak panel detail (ruang terbatas), lock pattern baru (gantikan `.thumb` lama di konteks ini)
+- [ ] **T-111.4** Implementasi kode T-111.3 (`apps/web`, domain `engagement`, `EngageInboxView.tsx`)
+
 ---
 
 ## Catatan Rilis
@@ -1641,4 +1667,5 @@ PASS (tidak regresi), boundary case PASS.
 * **T-104** (ditambah 2026-09-11, gap ditemukan saat implementasi T-092.5) memakai ID global berikutnya yang belum pernah dipakai (terakhir T-103, di `tasks/v07-astryx-shadcn-migration.md`) — ditempatkan di file ini karena domain `publishing`, terkait langsung T-092.
 * **T-106** (ditambah 2026-09-25, permintaan King Rezi setelah T-025) memakai ID global berikutnya setelah T-105 — ditempatkan di file ini karena domain `integration`, kelanjutan T-025/ADR-059.
 * **T-107**/**T-108** (ditambah 2026-09-28, promosi dari Known Issues KI-049/KI-063/KI-044 setelah audit aplikasi menyeluruh atas permintaan King Rezi) memakai ID global berikutnya setelah T-106 — ditempatkan di file ini karena domain `publishing`.
+* **T-111** (ditambah 2026-10-06, promosi KI-083, follow-up King Rezi atas hasil KI-082) memakai ID global berikutnya setelah T-110 (`tasks/v01-foundation.md`) — ditempatkan di file ini karena subtask utamanya (T-111.1/.2, History Detail) domain `publishing`, meski T-111.3/.4 domain `engagement` (Post asal Engage, lokasi kedua gap yang sama).
 * **Definition of Done rilis ini** (dari `release-roadmap.md`): pengguna dapat mengelola proses publikasi dari awal hingga selesai — draft → format per akun → schedule/publish → lihat queue/calendar → lihat hasil di history.
