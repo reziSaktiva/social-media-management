@@ -61,6 +61,7 @@ function createFakeRepository(
     softDeletePost: async () => null,
     listSyncablePostsByConnectedAccount: async () => [],
     findPostOutstandId: async () => null,
+    findPostSnapshotForEngagement: async () => null,
     ...overrides,
   };
 }

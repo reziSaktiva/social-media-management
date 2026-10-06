@@ -1093,6 +1093,37 @@ export const publishingRepository: IPublishingRepository = {
       return post?.outstandPostId ?? null;
     });
   },
+
+  /**
+   * Preview post asli (T-056, KI-065) — lihat
+   * `IPublishingRepository.findPostSnapshotForEngagement`.
+   */
+  async findPostSnapshotForEngagement(
+    { workspaceId, postId, connectedAccountId },
+    userId,
+  ) {
+    const target = await withCurrentUser(userId, (tx) =>
+      tx.publishingPostTarget.findFirst({
+        where: {
+          postId,
+          connectedAccountId,
+          post: { workspaceId, deletedAt: null },
+        },
+        select: {
+          platformPostUrl: true,
+          post: { select: { caption: true, mediaIds: true } },
+        },
+      }),
+    );
+    if (!target) return null;
+
+    return {
+      postId,
+      caption: target.post.caption,
+      mediaIds: target.post.mediaIds.map((id) => asMediaId(id)),
+      platformPostUrl: target.platformPostUrl,
+    };
+  },
 };
 
 /** Row shape returned by the raw SQL call above — snake_case, mirrors the SQL function's RETURNS TABLE. */

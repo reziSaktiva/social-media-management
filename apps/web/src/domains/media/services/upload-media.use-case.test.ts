@@ -57,6 +57,7 @@ function createFakeMediaStorage(
     }),
     deleteMedia: async () => undefined,
     downloadMedia: async () => Buffer.from(""),
+    getSignedUrl: async () => "https://storage.example/signed-url",
     ...overrides,
   };
 }

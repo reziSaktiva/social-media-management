@@ -129,7 +129,7 @@ Berstatus **Could Have** — hanya dikerjakan bila waktu memungkinkan. Tidak mem
 
 ### T-056 · Preview post asli di kotak "Post asal" Comments Inbox
 
-`⏳ Not Started` · **Domain** engagement · publishing · UI · **ADR** — · **Depends** T-053 ✅, T-050 ✅ · **Terkait** KI-065 (Promoted to T-056)
+`🟡 In Progress` · **Domain** engagement · publishing · UI · **ADR** — · **Depends** T-053 ✅, T-050 ✅ · **Terkait** KI-065 (Promoted to T-056)
 
 **Baca dulu:** `05-architecture/domain-model.md` · `04-ux/key-screen-patterns.md`
 

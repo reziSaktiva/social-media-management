@@ -83,4 +83,19 @@ export const supabaseMediaStorageAdapter: IMediaStorageAdapter = {
 
     return Buffer.from(await data.arrayBuffer());
   },
+
+  async getSignedUrl(storagePath: string) {
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase.storage
+      .from(MEDIA_BUCKET)
+      .createSignedUrl(storagePath, SIGNED_URL_EXPIRES_IN_SECONDS);
+
+    if (error || !data) {
+      throw new ExternalServiceError(
+        `Gagal generate signed URL: ${error?.message ?? "empty response"}`,
+      );
+    }
+
+    return data.signedUrl;
+  },
 };

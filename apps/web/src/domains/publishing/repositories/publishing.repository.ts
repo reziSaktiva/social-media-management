@@ -935,6 +935,49 @@ export interface IPublishingRepository {
     },
     userId: UserId,
   ): Promise<string | null>;
+
+  /**
+   * Preview post asli (T-056, KI-065) — snapshot caption/media/
+   * `platformPostUrl` untuk kotak "Post asal" di detail panel Comments
+   * Inbox (`engagement.EngagementService.getInboxItemDetail`). Query lewat
+   * `publishingPostTarget` (bukan `publishingPost`) karena `platformPostUrl`
+   * per-target (satu post bisa publish ke lebih dari satu akun, tiap akun
+   * punya URL post sendiri) — pola sama `findPostOutstandId`/
+   * `listSyncablePostsByConnectedAccount`. `connectedAccountId` WAJIB di
+   * sini (beda dari `findPostOutstandId` yang opsional) karena inbox item
+   * SELALU terikat ke satu `connectedAccountId` tertentu (tidak ada jalur
+   * "post-level saja" yang relevan untuk preview ini).
+   *
+   * Returns `null` kalau post/target tidak ditemukan, bukan milik
+   * `workspaceId` ini, atau sudah di-soft-delete — caller (`engagement`)
+   * memperlakukan ini sebagai "tidak ada snapshot untuk ditampilkan" (fallback
+   * ke label generik lama), BUKAN error.
+   *
+   * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
+   */
+  findPostSnapshotForEngagement(
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      connectedAccountId: ConnectedAccountId;
+    },
+    userId: UserId,
+  ): Promise<PostSnapshotForEngagementRecord | null>;
+}
+
+/**
+ * Hasil `findPostSnapshotForEngagement` (T-056, KI-065) — proyeksi minimal
+ * untuk kotak "Post asal" Comments Inbox. `mediaIds` dibawa mentah (bukan
+ * `MediaItemRecord[]` ter-resolve) — resolusi URL media (domain `media`,
+ * BC-08) bukan tanggung jawab domain `publishing`, dilakukan composition
+ * root (`engage/actions.ts`) lewat `MediaService.listByIds`, pola sama
+ * `getDraftAction` (draft-editor).
+ */
+export interface PostSnapshotForEngagementRecord {
+  postId: PostId;
+  caption: string;
+  mediaIds: MediaId[];
+  platformPostUrl: string | null;
 }
 
 /**

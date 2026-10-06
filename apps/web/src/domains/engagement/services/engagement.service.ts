@@ -1,6 +1,7 @@
 import type {
   IOutstandAdapter,
   InboxItemId,
+  MediaId,
   PostId,
   ConnectedAccountId,
   UserId,
@@ -59,11 +60,52 @@ interface ConnectedAccountHandlePort {
 }
 
 /**
+ * Port lokal cross-domain `engagement` → `publishing` (T-056, KI-065) —
+ * snapshot caption/media/`platformPostUrl` post asli untuk kotak "Post
+ * asal" di detail panel Comments Inbox. Structural typing, sama pola
+ * `PublishingPostReferencePort`/`ConnectedAccountHandlePort` di atas —
+ * `engagement` TIDAK mengimpor `IPublishingRepository` konkret; composition
+ * root (`engage/actions.ts`) menyuplai `publishingRepository` yang sudah
+ * punya `findPostSnapshotForEngagement` lewat structural typing.
+ */
+interface PublishingPostSnapshotPort {
+  findPostSnapshotForEngagement(
+    input: {
+      workspaceId: WorkspaceId;
+      postId: PostId;
+      connectedAccountId: ConnectedAccountId;
+    },
+    userId: UserId,
+  ): Promise<{
+    caption: string;
+    mediaIds: MediaId[];
+    platformPostUrl: string | null;
+  } | null>;
+}
+
+/**
+ * Snapshot post asli (T-056, KI-065) — `null` kalau `item.postId` kosong
+ * (komentar belum terhubung ke post manapun, data lama) ATAU post/target
+ * terkait tidak ditemukan lagi di `publishing` (mis. sudah di-soft-delete).
+ * `mediaIds` dibawa mentah — resolusi URL thumbnail (domain `media`) bukan
+ * tanggung jawab `engagement`, dilakukan composition root.
+ */
+export interface InboxItemPostSnapshot {
+  caption: string;
+  mediaIds: MediaId[];
+  platformPostUrl: string | null;
+}
+
+/**
  * Detail satu inbox item + balasannya (T-050) — dipakai composition root
  * route detail Comments Inbox (T-053, belum dibangun di task ini).
+ *
+ * **`postSnapshot` (T-056, KI-065)** — ditambahkan untuk mengisi kotak
+ * "Post asal" yang sebelumnya hanya label generik (gap sejak T-053).
  */
 export interface InboxItemDetail extends EngagementInboxItemRecord {
   replies: EngagementReplyRecord[];
+  postSnapshot: InboxItemPostSnapshot | null;
 }
 
 /**
@@ -82,6 +124,8 @@ export class EngagementService {
     private readonly adapter: IOutstandAdapter,
     private readonly publishingPosts: PublishingPostReferencePort,
     private readonly connectedAccounts: ConnectedAccountHandlePort,
+    /** T-056, KI-065 — lihat `PublishingPostSnapshotPort`. */
+    private readonly publishingPostSnapshot: PublishingPostSnapshotPort,
   ) {}
 
   /**
@@ -115,7 +159,18 @@ export class EngagementService {
       userId,
     );
 
-    return { ...item, replies };
+    const postSnapshot = item.postId
+      ? await this.publishingPostSnapshot.findPostSnapshotForEngagement(
+          {
+            workspaceId: input.workspaceId,
+            postId: item.postId,
+            connectedAccountId: item.connectedAccountId,
+          },
+          userId,
+        )
+      : null;
+
+    return { ...item, replies, postSnapshot };
   }
 
   /**

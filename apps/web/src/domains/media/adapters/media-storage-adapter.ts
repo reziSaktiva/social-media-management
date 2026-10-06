@@ -39,4 +39,18 @@ export interface IMediaStorageAdapter {
    * `uploadMediaWorkingCopy`). Throw kalau path tidak ada / Storage gagal.
    */
   downloadMedia(storagePath: string): Promise<Buffer>;
+  /**
+   * Generate signed URL BARU dari `storagePath` (bug fix QA T-056,
+   * 2026-10-06: kolom `MediaItem.url` yang di-cache permanen sejak upload
+   * expired setelah `SIGNED_URL_EXPIRES_IN_SECONDS`, bikin thumbnail broken
+   * di mana pun media ditampilkan lama setelah upload — Comments Inbox
+   * "Post asal", History Detail, draft editor yang dibuka lagi). Caller
+   * (`MediaService`) memanggil ini setiap kali me-resolve `MediaItemRecord`
+   * untuk ditampilkan — `url` yang di-cache di DB TIDAK PERNAH dipakai
+   * langsung lagi untuk display, hanya `storagePath` (source of truth)
+   * yang dipakai untuk regenerate. Throw kalau path tidak ada / Storage
+   * gagal — caller memutuskan fallback (mis. treat sebagai "media tidak
+   * punya thumbnail" alih-alih melempar ke client).
+   */
+  getSignedUrl(storagePath: string): Promise<string>;
 }
