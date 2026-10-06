@@ -37,3 +37,16 @@ export interface MediaItemRecord {
   duration: number | null;
   createdAt: Date;
 }
+
+/**
+ * Thumbnail media siap-render — `url` Supabase Storage (BUKAN
+ * `outstandMediaUrl`/`resolveOutstandPostMedia`, itu untuk upload ke
+ * Outstand) + `type` untuk memilih markup `<img>`/`<video>`. Dipakai
+ * `MediaService.resolveFirstThumbnail` (shared oleh preview "Post asal"
+ * Comments Inbox T-056 dan History Detail KI-082) supaya kedua caller tidak
+ * mendefinisikan DTO lokal yang kebetulan identik.
+ */
+export interface MediaThumbnailDto {
+  url: string;
+  type: MediaType;
+}

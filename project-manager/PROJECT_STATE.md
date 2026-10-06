@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-056 ✅ Done (2026-10-06, PR #143, menutup KI-065)** — lihat **Completed (Ringkasan)** di bawah. Fokus aktif sekarang: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 6/7 task** (2026-10-06, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
+* **Top Next Tasks:** **T-111** (promosi KI-083, baru dibuat 2026-10-06) — restrukturisasi layout preview media post asli di History Detail (T-111.1/.2) & Post asal Engage (T-111.3/.4), mulai dari Claude Design (Neymar) sebelum kode. **KI-082 (History Detail) Resolved (2026-10-06)** — lihat **Completed (Ringkasan)** di bawah. Fokus aktif lain: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 6/7 task** (2026-10-06, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 1 blocker aktif (env var Google OAuth belum diisi, KI-015) — lihat section **Blockers** di bawah. Blocker Outstand (KI-003, `OUTSTAND_API_KEY` + Real OutstandAdapter) sudah **Resolved (2026-09-24)**. Railway staging sudah live & terverifikasi (2026-08-14); JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 91 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * **KI-073–080 Resolved (2026-09-26)** — 4 bug publish Instagram (caption wajib untuk Story, Story publish tanpa media, upload media >1MB gagal, avatar akun tidak tampil di sidebar) diperbaiki + diverifikasi live ke akun Instagram/Facebook real (ADR-120). 2 bug turunan ditemukan saat verifikasi (akun `disconnected` tidak bisa reconnect; callback OAuth silent-success untuk conflict genuine) diperbaiki via **ADR-122**. Plus **KI-080** (baru+langsung Resolved) — Railway staging build gagal (`next.config.ts` tidak bisa resolve import workspace `@social/shared`) diperbaiki di branch terpisah sebelum masuk ke fix KI-078/079.
@@ -16,9 +16,9 @@
 
 | Field        | Value      |
 | ------------ | ---------- |
-| Version      | 1.0.99     |
+| Version      | 1.1.1      |
 | Status       | Active     |
-| Last Updated | 2026-09-28 |
+| Last Updated | 2026-10-06 |
 
 ---
 
@@ -341,66 +341,39 @@ murni koreksi dokumentasi baseline (bukan keputusan arsitektur baru), tapi
 tetap wajib lewat baseline yang sama karena `application-layer.md` adalah
 Static Reference.
 
-### KI-082 · Media/thumbnail post asli tidak tampil di beberapa preview post (History Detail, Calendar Popover, Claude Design)
+### KI-083 · Preview media post asli di History Detail & Post asal Engage masih kotak crop kecil, bukan representasi post asli
 
 | Field | Value |
 |-------|-------|
-| Status | Open |
-| Kategori | Data Gap (domain model) |
-| Terkait | KI-065, T-056, T-033.8, T-034.3 |
+| Status | Promoted to T-111 (2026-10-06) |
+| Kategori | UX / Design Gap |
+| Terkait | KI-082 (Resolved), T-034.3, T-056, T-111 |
 
-Ditemukan King Rezi (2026-10-06) saat review Claude Design untuk T-056: selain
-kotak "Post asal" di Comments Inbox (KI-065, sudah dipromosikan ke T-056), ada
-dua tempat lain di produk yang juga tidak menampilkan media/thumbnail post
-asli, plus Claude Design sendiri konsisten belum menggambarkannya:
+Ditemukan King Rezi (2026-10-06) tak lama setelah KI-082 (History Detail)
+Resolved di atas: implementasi itu menampilkan thumbnail media di History
+Detail (box `h-30 w-full`, `object-contain`) dan Post asal Engage (box
+`size-11`, `object-contain`) — tapi King Rezi menilai ini **belum sesuai
+yang diinginkan**. Permintaan sebenarnya: media di kedua lokasi tampil
+dengan **lebar dan tinggi sesuai ukuran aslinya** (merepresentasikan post
+asli di platform sosial media), bukan dipaksa masuk ke kotak kecil tetap —
+restrukturisasi layout, bukan sekadar ganti `object-fit`.
 
-1. **History Detail Post** (`apps/web/src/app/(app)/publish/history/[postId]/components/HistoryDetail.tsx`,
-   T-034.3) — tidak ada render media/thumbnail sama sekali, hanya caption,
-   badge status, waktu, link "Lihat post asli", dan metrik per target. Tidak
-   ada TODO eksplisit soal media, tapi pola gap-nya sama seperti author name
-   yang juga sengaja dihilangkan karena domain type `HistoryItemRecord`/
-   `HistoryDetailItem` tidak membawa field itu.
-2. **Calendar Post Preview Popover** (`apps/web/src/app/(app)/publish/calendar/components/CalendarPostPopover.tsx`,
-   T-033.8) — punya placeholder eksplisit ("Media belum tersedia untuk
-   preview") dengan JSDoc yang menyebut ini **permanen, bukan loading state**,
-   karena domain model `PublishingPost`/`CalendarItemRecord` belum punya
-   field media sama sekali.
-3. **Claude Design** sendiri konsisten belum pernah menggambarkan media asli
-   di preview manapun — `components/popover.html` (Post Preview Popover)
-   cuma punya `.popover-thumb` berisi teks literal "media placeholder", dan
-   `publish-history-detail.html` tidak merender elemen media apapun. Bukan
-   oversight Claude Design — mengikuti kenyataan domain model yang memang
-   belum expose field media.
+**Klarifikasi scope (King Rezi, via `AskUserQuestion`, 2026-10-06):**
+1. **Restrukturisasi total** — media jadi elemen visual utama (preview
+   menyerupai tampilan post asli di platform sosial medianya: gambar
+   besar, caption+link di bawah), bukan sekadar kotak thumbnail kecil
+   seperti sekarang. Bukan cuma ganti ukuran di struktur yang sama.
+2. **Pola visual boleh beda** antara kedua lokasi — History Detail (halaman
+   penuh, lebih leluasa) dan Post asal Engage (kotak kecil di panel detail
+   samping, ruang terbatas) tidak wajib dibuat identik, didesain sesuai
+   konteks ruang masing-masing.
 
-Root cause sama di ketiga tempat: domain type publishing (`PublishingPost`/
-`CalendarItemRecord`/`HistoryItemRecord`/`HistoryDetailItem`) **belum punya
-field media sama sekali** — bukan masalah UI/rendering, tapi gap di layer
-domain/repository. Belum dicek apakah ini memang menunggu integrasi resolve
-media Outstand (`resolveOutstandPostMedia`/`PostMediaLookupPort`, dipakai di
-T-056) di task terpisah, atau benar-benar belum direncanakan di manapun —
-perlu investigasi lanjutan sebelum ditentukan jadi task baru.
-
-**Keputusan King Rezi (2026-10-06): TIDAK digabung ke T-056.** Aturannya:
-gabung hanya kalau lokasi/fitur gap-nya sama dengan T-056. T-056 scope-nya
-domain `engagement` (Comments Inbox `/engage`), sedangkan ketiga lokasi di
-KI-082 ada di domain `publishing` (History Detail, Calendar Popover) atau di
-Claude Design saja — lokasi/fitur berbeda, jadi KI-082 tetap **Open**
-terpisah, tidak memblokir T-056. Kalau nanti ada task baru untuk menambah
-field media di domain `publishing`, task itu bisa reuse pola resolve media
-yang dibangun T-056 untuk domain `engagement`, tapi itu keputusan terpisah
-saat task tersebut dibuat.
-
-**Update (2026-10-06, lanjutan) — Claude Design sebagian di-update:**
-`templates/publish-history-detail.html` sekarang punya media/thumbnail post
-asli — reuse `.popover-thumb` persis dari `components/popover.html` (bukan
-`.thumb` dari `templates/engage-inbox.html`; dua pola existing, King Rezi
-pilih `.popover-thumb` via `AskUserQuestion`), ditempatkan sekali per post di
-kartu caption atas (bukan per `.history-target-row`). Dikunci dengan komentar
-"LOCKED PATTERN (KI-082, 2026-10-06)". `components/popover.html` (Calendar
-Post Preview Popover) **sengaja tidak diubah** — King Rezi konfirmasi
-placeholder `.popover-thumb` yang sudah ada di sana sudah cukup. Implementasi
-kode `apps/web` (field media di domain `publishing`) **masih belum ada** —
-KI-082 tetap **Open**, baru Claude Design-nya yang sebagian tertutup.
+Promosi langsung ke **T-111** (empat subtask, dua lokasi) karena King Rezi
+sudah commit mengerjakan ini sekarang, mulai dari Claude Design (Neymar
+Product Designer, AGENTS.md rule 17) sebelum implementasi kode. King Rezi
+sudah mengonfirmasi (2026-10-06): PR #144 (KI-082) merge dulu ke `staging`
+sebelum T-111 dimulai — pekerjaan T-111 TIDAK ditumpuk di atas PR yang
+sama, tapi menunggu merge.
 
 ### KI-053 · Invite via Copy Link — email tidak diverifikasi kepemilikan inbox, rawan identity takeover
 
@@ -663,11 +636,11 @@ seluruh daftar Known Issues.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
+* **KI-082 (History Detail) Resolved (2026-10-06)** — `HistoryItemRecord` (domain `publishing`) sekarang membawa `mediaIds`, di-mapping dari `PublishingPost.mediaIds` yang sudah ada di Prisma (tidak perlu query/join baru). `page.tsx` (`/publish/history/[postId]`) resolve media PERTAMA ke thumbnail via `MediaService.listByIds` + `supabaseMediaStorageAdapter` (signed URL fresh tiap request), pola sama T-056. `HistoryDetail.tsx` render thumbnail sekali per post (bukan per target row) pakai `MediaThumbnail` reuse, menerapkan LOCKED PATTERN `.popover-thumb` Claude Design (`templates/publish-history-detail.html`); media di-omit sepenuhnya (bukan kotak kosong) kalau post tidak bermedia — diverifikasi lewat browser preview untuk kedua kasus. **Calendar Post Preview Popover tetap TIDAK diubah** (King Rezi sudah konfirmasi placeholder-nya cukup, lihat riwayat KI-082 di `COMPLETE_TASK.md`) — bukan gap tersisa, keputusan permanen. Typecheck/lint bersih, Vitest 66 test relevan PASS.
 * **T-056 ✅ Done (2026-10-06)** — kotak "Post asal" di detail panel Comments Inbox sekarang menampilkan caption, thumbnail, dan link post asli (menutup KI-065), bukan lagi label generik. Dikerjakan Prabowo+Mark+Elon, review Ridwan 0 temuan, QA Najwa 2 bug ditemukan+diperbaiki lalu PASS di round kedua. Commit `e7395c7`, PR #143.
 * **T-107/T-108/T-109 ✅ Done (2026-09-28)** — promosi dari Known Issues KI-049/KI-063/KI-044/KI-058 (audit aplikasi menyeluruh atas permintaan King Rezi). T-107: `markPostFailed` diperluas param `reason`, Prisma set `publishedAt`/`failedAt`/`failureReason`. T-108: modul domain baru `schedule-time-constraints.ts`, validasi client+server cegah Schedule ke waktu lewat pada tanggal hari ini. T-109: `WorkspaceService.canManageConnectedAccounts` baru, `ConnectedAccountsList.tsx` sembunyikan aksi Connect/Disconnect/Reconnect untuk role Creator. Dikerjakan Prabowo×2 + Mark, review Ridwan 0 temuan, QA Najwa PASS (gate T-103.3 sempat gagal di sesi Najwa — DesignSync tidak termuat, kejadian pertama untuk Najwa — retry sukses di sesi utama). 1 KI baru: **KI-081** (`PublishNowUseCase` bisa membuat post `Failed` dengan `publishedAt` keliru). Verifikasi akhir: typecheck/lint bersih, Vitest 593 passed/6 skipped.
 * **KI-078/KI-079 Resolved via ADR-122 (2026-09-26)** — akun `disconnected` sekarang bisa direconnect (digabung ke cabang `ReconnectButton` yang sama dengan `reconnect-required`, sesuai pola Claude Design; jalur ini pakai `reconnectAccount` UPDATE, bukan INSERT, jadi tidak lagi menabrak unique constraint) — **kecuali Facebook Pages** (guard lama "belum punya UPDATE path" masih berlaku untuk `disconnected` juga, lihat ADR-122). Route Handler callback Outstand sekarang membedakan double-submit genuine (idempotent, diserap diam-diam via jendela 15 detik pada `connectedAt`, plus guard status `active`) dari percobaan Connect ke akun yang sudah terhubung dari flow terpisah (`AlreadyConnectedError` baru → toast eksplisit `?connect=already-connected`, bukan silent "success"). Repository dapat method baru `findConnectedAccountByOutstandId`. Vitest 126 test relevan PASS. Ditambah 2 fix code review PR #139: `reconnectAccount` sekarang map unique-constraint conflict ke `ConflictError` (dulu P2002 mentah lolos jadi 500), dan double-submit recovery tidak lagi menjadwalkan JOB-03 engagement sync dua kali. Detail: `decisions/ADR-122-reconnect-disconnected-accounts-plus-already-connected-conflict-ki078-079.md`.
 * **KI-080 Resolved — Railway staging build gagal, `next.config.ts` tidak bisa resolve import workspace (2026-09-26)** — fix KI-075 (body size limit) menambah import `MAX_MEDIA_FILE_SIZE_BYTES` dari `validation.ts` ke `next.config.ts`, tapi `validation.ts` juga mengimpor `@social/shared` (workspace package, source `.ts`) — `next-config-ts` mentranspile/me-require config lewat Node `require()` biasa yang tidak bisa resolve source package itu, build gagal (`Cannot find module '../../packages/shared'`). Fix: konstanta diisolasi ke file baru `apps/web/src/domains/media/constants.ts` tanpa import `@social/shared`; `next.config.ts` diarahkan ke situ. Diverifikasi: `bun run build`/`typecheck` lokal PASS. Branch terpisah `fix/next-config-ts-workspace-import-ki075-followup` (belum di-PR-kan).
-* **KI-073–076 Resolved — 4 bug publish Instagram diperbaiki + diverifikasi live (2026-09-26)** — caption tidak lagi wajib untuk target Story (`Modal.tsx`); validasi minimum media Story (`content-format-matrix.ts`); body limit Server Action dinaikkan ke 50mb (`next.config.ts`, fix upload media >1MB); `avatarUrl` ditambahkan di 5 lapisan kontrak ACL→adapter→Prisma→domain→UI (ADR-120, amandemen ADR-112). Diverifikasi langsung ke akun Instagram/Facebook real. Ridwan: 1 temuan governance (index ADR-120 belum terdaftar) — sudah diperbaiki. **KI-064 duplikat ID ditemukan+diperbaiki** (di-renumber jadi **KI-077**, Resolved, dirapikan dari daftar). 2 bug turunan (**KI-078**, **KI-079**) Resolved via **ADR-122** (lihat bullet di atas). Detail: `COMPLETE_TASK.md` (2026-09-26), `decisions/ADR-120-connectedaccountdata-avatarurl-sidebar-channels-ki076.md`.
 
 ---
 

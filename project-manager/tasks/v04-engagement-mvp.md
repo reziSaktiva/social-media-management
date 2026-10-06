@@ -152,7 +152,7 @@ Isi kotak "Post asal" di detail panel `/engage` (`EngageInboxView.tsx`) yang saa
 - QA Najwa round 2 (independen, setelah kedua fix): PASS semua — 620 test pass/6 skip, typecheck/lint bersih, tidak ada regresi (termasuk draft editor, filter Comments Inbox, Mark as Done, reply box).
 - Gate T-103.3 (verifikasi struktur vs Claude Design): PASS, dicek langsung sesi utama via `DesignSync`.
 - **Catatan untuk masa depan:** King Rezi sempat tanya soal thumbnail untuk post yang BUKAN dibuat lewat app kita (post hasil import) — investigasi menemukan fitur Import Posts (T-090/T-091, ADR-093) belum diimplementasikan sama sekali, jadi skenario ini belum relevan sekarang. Kalau T-090/T-091 dikerjakan nanti, perlu didesain ulang bagaimana post hasil import mendapat referensi media (saat ini `PublishingPost.mediaIds` cuma menunjuk `MediaItem` lokal hasil upload kita sendiri, tidak ada field untuk URL media platform asli).
-- Status task: **✅ Done**. Terkait juga **KI-082** (media/thumbnail tidak tampil di beberapa preview post lain — History Detail, Calendar Popover — masih Open, di luar scope T-056).
+- Status task: **✅ Done**. Terkait juga **KI-082** (media/thumbnail tidak tampil di beberapa preview post lain — History Detail, Calendar Popover — di luar scope T-056). **KI-082 Resolved (2026-10-06)**: History Detail sudah diimplementasikan (reuse pola resolve media T-056), lihat `COMPLETE_TASK.md`; Calendar Popover sengaja tidak diubah (keputusan King Rezi, placeholder sudah cukup).
 
 ---
 

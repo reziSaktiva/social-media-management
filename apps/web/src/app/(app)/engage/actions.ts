@@ -19,7 +19,7 @@ import {
   type InboxItemFilter,
   type InboxItemStatus,
 } from "@/domains/engagement";
-import { MediaService, type MediaItemRecord } from "@/domains/media";
+import { MediaService, type MediaThumbnailDto } from "@/domains/media";
 import { NotificationService } from "@/domains/notification";
 import { WorkspaceService } from "@/domains/workspace";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
@@ -146,17 +146,11 @@ export async function listInboxAction(
   }
 }
 
-/** Thumbnail post asli (T-056, KI-065) — media PERTAMA saja (kotak "Post asal" menampilkan satu thumbnail, bukan galeri), pola sama `.thumb`/`.popover-thumb` di Claude Design. `url` di sini adalah URL Supabase Storage aplikasi kita (`MediaItemRecord.url`, sama field yang dipakai `getDraftAction`/`Modal.tsx` untuk preview) — BUKAN `outstandMediaUrl`/`resolveOutstandPostMedia` (itu untuk menyiapkan upload ke Outstand sebelum publish, bukan untuk menampilkan media yang sudah ada di storage kita sendiri). */
-export interface InboxDetailThumbnailDto {
-  url: string;
-  type: MediaItemRecord["type"];
-}
-
 /** Snapshot post asli (T-056, KI-065) siap-render — `mediaIds` domain diganti `thumbnail` tunggal yang sudah di-resolve URL-nya. */
 export interface InboxDetailPostSnapshotDto {
   caption: string;
   platformPostUrl: string | null;
-  thumbnail: InboxDetailThumbnailDto | null;
+  thumbnail: MediaThumbnailDto | null;
 }
 
 /** `InboxItemDetail` domain + `postSnapshot` yang sudah dipetakan ke bentuk siap-render (T-056). */
@@ -198,27 +192,20 @@ export async function getInboxItemDetailAction(
       userId,
     );
 
-    let thumbnail: InboxDetailThumbnailDto | null = null;
-    const firstMediaId = detail.postSnapshot?.mediaIds[0];
-    if (firstMediaId) {
-      // `supabaseMediaStorageAdapter` disuplai (bug fix QA T-056,
-      // 2026-10-06) — komentar inbox bisa dilihat lama setelah post
-      // dipublish, jadi `url` yang di-cache dari waktu upload media hampir
-      // pasti sudah expired; `MediaService.listByIds` meregenerate signed
-      // URL baru dari `storagePath` setiap panggilan supaya thumbnail
-      // "Post asal" selalu valid.
-      const mediaService = new MediaService(
-        mediaRepository,
-        supabaseMediaStorageAdapter,
-      );
-      const [mediaItem] = await mediaService.listByIds(
-        { workspaceId, mediaIds: [firstMediaId] },
-        userId,
-      );
-      if (mediaItem?.url) {
-        thumbnail = { url: mediaItem.url, type: mediaItem.type };
-      }
-    }
+    // `supabaseMediaStorageAdapter` disuplai (bug fix QA T-056, 2026-10-06)
+    // — komentar inbox bisa dilihat lama setelah post dipublish, jadi `url`
+    // yang di-cache dari waktu upload media hampir pasti sudah expired;
+    // `MediaService.resolveFirstThumbnail` meregenerate signed URL baru
+    // dari `storagePath` setiap panggilan supaya thumbnail "Post asal"
+    // selalu valid (shared dengan History Detail, KI-082/KI-083).
+    const mediaService = new MediaService(
+      mediaRepository,
+      supabaseMediaStorageAdapter,
+    );
+    const thumbnail = await mediaService.resolveFirstThumbnail(
+      { workspaceId, mediaIds: detail.postSnapshot?.mediaIds ?? [] },
+      userId,
+    );
 
     const data: InboxItemDetailDto = {
       ...detail,

@@ -134,6 +134,7 @@ function mapHistoryItem(post: QueuePostWithTargets): HistoryItemRecord {
     publishedAt: post.publishedAt,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
+    mediaIds: post.mediaIds.map((id) => asMediaId(id)),
     targets: post.targets.map((target): HistoryItemTargetRecord => ({
       id: asPostTargetId(target.id),
       connectedAccountId: asConnectedAccountId(target.connectedAccountId),

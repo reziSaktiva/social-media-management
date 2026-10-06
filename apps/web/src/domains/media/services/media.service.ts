@@ -2,7 +2,7 @@ import type { MediaId, MediaType, UserId, WorkspaceId } from "@social/shared";
 import { NotFoundError } from "@/lib/utils/errors";
 import type { IMediaStorageAdapter } from "../adapters/media-storage-adapter";
 import type { IMediaRepository } from "../repositories/media.repository";
-import type { MediaItemRecord } from "../types";
+import type { MediaItemRecord, MediaThumbnailDto } from "../types";
 
 /**
  * `MediaService` (BC-08, Application Service) — T-024.1 skeleton.
@@ -150,6 +150,44 @@ export class MediaService {
     }
     const items = await this.repository.findByIds(input, userId);
     return this.withFreshUrls(items);
+  }
+
+  /**
+   * Resolve media PERTAMA dari satu set `mediaIds` jadi thumbnail
+   * siap-render — satu tempat untuk pola "ambil media pertama, regenerate
+   * signed URL, map ke `{url, type}`" yang sebelumnya diduplikasi di
+   * `getInboxItemDetailAction` (T-056) dan History Detail (KI-082).
+   * Kegagalan apa pun saat resolve (termasuk error dari `listByIds`
+   * sendiri, bukan cuma regenerate-URL per-item yang sudah di-guard
+   * `withFreshUrls`) TIDAK dilempar ke caller — dikembalikan `null`
+   * (caller treat sebagai "media tanpa thumbnail"), supaya kegagalan
+   * transient (mis. DB/RLS) saat resolve thumbnail tidak ikut
+   * menggagalkan render halaman/Server Action yang data utamanya (post/
+   * inbox item) sudah berhasil diambil.
+   */
+  async resolveFirstThumbnail(
+    input: { workspaceId: WorkspaceId; mediaIds: MediaId[] },
+    userId: UserId,
+  ): Promise<MediaThumbnailDto | null> {
+    const firstMediaId = input.mediaIds[0];
+    if (!firstMediaId) {
+      return null;
+    }
+    try {
+      const [mediaItem] = await this.listByIds(
+        { workspaceId: input.workspaceId, mediaIds: [firstMediaId] },
+        userId,
+      );
+      return mediaItem?.url
+        ? { url: mediaItem.url, type: mediaItem.type }
+        : null;
+    } catch (error) {
+      console.error(
+        `MediaService.resolveFirstThumbnail: gagal resolve thumbnail untuk mediaId=${firstMediaId}`,
+        error,
+      );
+      return null;
+    }
   }
 
   /**
