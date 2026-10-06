@@ -8,6 +8,55 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-06 — Claude Design T-056/KI-065 di-lock (desain saja, implementasi kode belum mulai)
+
+Update Claude Design (project "Social Media Management",
+projectId `84aded99-bb23-49b1-be9f-dd8f21c6873e`) untuk menutup gap desain
+KI-065 / scope T-056 (preview post asli di kotak "Post asal" Comments Inbox).
+Dikerjakan oleh **main agent session langsung** (bukan Neymar Product
+Designer — Neymar gagal karena DesignSync tidak ter-load di sesi subagent-nya,
+limitasi sudah tercatat di `.claude/agents/README.md`).
+
+Perubahan (semua sudah diverifikasi ulang dari remote, diff bersih, tidak ada
+perubahan tak diminta):
+1. `templates/engage-inbox.html` (KSP-06) — kotak `.thread-detail .post-context`
+   diubah dari label generik ("Post asal" + judul, tanpa link) menjadi:
+   caption asli (`.post-context-cap`, class baru, truncate 1 baris, di dalam
+   `.post-context-body`, class baru) + link **"Go to post →"** yang reuse
+   class `.popover-link` persis dari `components/popover.html` (Post Preview
+   Popover) — bukan gaya ikon+"Lihat post asli" dari
+   `publish-history-detail.html`. Dua pola existing ini ambigu secara teknis
+   per AGENTS.md rule 17; King Rezi memilih eksplisit via `AskUserQuestion`:
+   reuse `components/popover.html` ("Go to post →", tanpa ikon, teks Inggris).
+   Komentar HTML **"LOCKED PATTERN (T-056, 2026-10-06, King Rezi confirmed
+   via AskUserQuestion)"** ditambahkan tepat di atas blok `.post-context`,
+   termasuk aturan fallback: post tanpa media → elemen `.thumb` di-omit
+   sepenuhnya (bukan kotak kosong), kolom teks jadi full width (keputusan ini
+   dibuat main agent sendiri, tanpa tanya King Rezi, karena dianggap bukan
+   fork pola struktural seperti dimaksud rule 17 — cuma soal perlu-tidaknya
+   duplikasi mockup dua-state).
+2. `styles.css` — 2 rule baru ditambahkan tepat setelah rule `.thumb` (baris
+   ~774): `.post-context-body { flex: 1; min-width: 0; }` dan
+   `.post-context-cap { ...; overflow:hidden; text-overflow:ellipsis;
+   white-space:nowrap; ... }`. Tidak ada rule lain yang diubah.
+3. `readme.md` — bullet `templates/engage-inbox.html` (sekitar baris lama 246)
+   diperluas dengan catatan **LOCKED PATTERN (T-056, 2026-10-06, King Rezi
+   confirmed via AskUserQuestion)** menjelaskan perubahan di atas secara
+   naratif, termasuk menyebut eksplisit ada dua pola link existing dan mana
+   yang dipilih.
+
+Dokumentasi project di-update menyertai ini: `tasks/v04-engagement-mvp.md`
+§ T-056 (catatan lock ditambahkan, status task **tetap** `⏳ Not Started` —
+desain selesai, kode belum) dan `PROJECT_STATE.md` § KI-065 (catatan
+sinkronisasi desain ditambahkan, status KI tetap "Promoted to T-056").
+
+Branch kerja `feature/t056-engage-post-asal-preview` sudah dibuat dari
+`origin/staging` untuk lanjut implementasi, tapi **belum ada commit kode
+apps/web** sama sekali — baru perubahan Claude Design yang selesai di sesi
+ini.
+
+---
+
 ## 2026-10-05 — KI-025 (follow-up) item 2/3 selesai: fallback enqueue `resolve_outcome` di `PublishNowUseCase`
 
 Gap kode ditemukan 2026-10-02 (lihat `PROJECT_STATE.md` § Blockers, entri

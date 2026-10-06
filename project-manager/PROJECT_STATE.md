@@ -364,6 +364,14 @@ Tidak memblokir M8.
 menampilkan caption + thumbnail media (kalau ada) + link ke post asli.
 Dipromosikan jadi **T-056** (`tasks/v04-engagement-mvp.md`).
 
+**Update (2026-10-06, lanjutan):** Claude Design (`templates/engage-inbox.html`,
+KSP-06) sudah disinkronkan/dikunci menutup gap desain yang KI ini
+deskripsikan — pola link "Go to post →" (reuse `components/popover.html`)
+dipilih eksplisit oleh King Rezi via `AskUserQuestion`. Implementasi kode
+`apps/web` **masih pending** di T-056 (status tetap `⏳ Not Started`); baru
+desainnya yang selesai. Detail: `tasks/v04-engagement-mvp.md` § T-056,
+`COMPLETE_TASK.md` entri 2026-10-06.
+
 ### KI-053 · Invite via Copy Link — email tidak diverifikasi kepemilikan inbox, rawan identity takeover
 
 | Field | Value |
