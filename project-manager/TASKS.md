@@ -44,7 +44,7 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 * **Task:** `T-001` … `T-089`, nomor global berurutan. ID **tidak** memuat kode release, supaya task bisa berpindah antar release tanpa penomoran ulang dan tanpa membuat referensi lama jadi salah.
 * **Subtask:** `T-021.4` — nomor task diikuti nomor urut subtask.
 * ID **tidak pernah didaur ulang**. Task yang dibatalkan ditandai `⏸️ Deferred` beserta alasannya, bukan dihapus.
-* Setiap release menyisakan beberapa nomor kosong di akhir sebagai ruang tumbuh (per 2026-09-28: **T-049** untuk v0.3 — T-046/T-047/T-048 sudah terpakai; T-056–T-059 untuk v0.4, T-066–T-069 untuk v0.5, T-075–T-079 untuk v0.6 — v0.1/v0.2 sudah habis, lihat catatan kaki ¹).
+* Setiap release menyisakan beberapa nomor kosong di akhir sebagai ruang tumbuh (per 2026-09-28: **T-049** untuk v0.3 — T-046/T-047/T-048 sudah terpakai; T-057–T-059 untuk v0.4 (T-056 terpakai 2026-10-06, promosi KI-065), T-066–T-069 untuk v0.5, T-075–T-079 untuk v0.6 — v0.1/v0.2 sudah habis, lihat catatan kaki ¹).
 
 ---
 
@@ -55,13 +55,13 @@ Ini penting untuk aturan `PROJECT_RULES.md` "Hindari implementasi fitur di luar 
 | **v0.1** Foundation        | Setup, Auth, Workspace, Connect Account, Settings  | T-001–T-019, T-039¹, T-089¹, T-093¹, T-094¹, T-109¹, T-110¹ | 25   | 17 ✅ · 1 🚫 · 5 🟡 · 1 ⏸️ · 1 ⏳ | [tasks/v01-foundation.md](tasks/v01-foundation.md)         |
 | **v0.2** Publishing MVP    | Draft, Format, Schedule, Queue, Calendar, History  | T-020–T-038, T-090¹–T-092¹, T-104¹, T-106¹–T-108¹ | 26   | 22 ✅ · 2 🟡 · 2 ⏳ | [tasks/v02-publishing-mvp.md](tasks/v02-publishing-mvp.md) |
 | **v0.3** Analytics MVP     | Dashboard, Metrics, Engagement Summary, Reports    | T-040–T-048 | 9    | 8 ✅ · 1 ⏳          | [tasks/v03-analytics-mvp.md](tasks/v03-analytics-mvp.md)   |
-| **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-055 | 6    | 🟡 5 ✅ · 1 ⏳ (Could Have) | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
+| **v0.4** Engagement MVP    | Comment sync 30 menit, Inbox, Reply                | T-050–T-056 | 7    | 🟡 5 ✅ · 2 ⏳ (1 Could Have) | [tasks/v04-engagement-mvp.md](tasks/v04-engagement-mvp.md) |
 | **v0.5** AI Assistant MVP  | Caption generation, improvement, rewrite           | T-060–T-065 | 6    | ⏳ 0 / 6             | [tasks/v05-ai-assistant-mvp.md](tasks/v05-ai-assistant-mvp.md) |
 | **v0.6** Start Page MVP    | Public profile, Link management, Theme             | T-070–T-074 | 5    | ⏳ 0 / 5             | [tasks/v06-start-page-mvp.md](tasks/v06-start-page-mvp.md) |
 | **v1.0** Public Launch     | Stabilitas, Performance, Security, Docs            | T-080–T-088 | 9    | ⏳ 0 / 9             | [tasks/v10-public-launch.md](tasks/v10-public-launch.md)   |
 | **v0.7** Migrasi Astryx → shadcn/ui | Cross-cutting: ganti fondasi UI component system (ADR-097) | T-095–T-103, T-105¹ | 10   | 🟡 9 ✅ · 1 ⏳ | [tasks/v07-astryx-shadcn-migration.md](tasks/v07-astryx-shadcn-migration.md) |
 
-**Total:** 96 task · 61 selesai · 243 subtask terdefinisi (v0.1–v0.3, v0.7).
+**Total:** 97 task · 61 selesai · 243 subtask terdefinisi (v0.1–v0.3, v0.7).
 
 > Riwayat perubahan indeks (kapan & kenapa tiap hitungan/status berubah) dicatat lengkap di `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi. Status per-task terkini: lihat tabel di atas + `tasks/vXX-*.md`.
 

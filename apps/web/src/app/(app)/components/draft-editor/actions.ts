@@ -712,6 +712,7 @@ export async function publishNowAction(
     const published = await new PublishNowUseCase(
       publishingRepository,
       getOutstandAdapter(),
+      backgroundJobScheduler,
       createPostMediaLookup(),
     ).execute({
       workspaceId,

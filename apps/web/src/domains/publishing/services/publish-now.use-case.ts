@@ -7,6 +7,7 @@ import type {
 } from "@social/shared";
 import { ConflictError } from "@/lib/utils/errors";
 import type { IOutstandAdapter } from "../adapters/outstand-adapter";
+import type { IJobScheduler } from "../adapters/job-scheduler";
 import { assertContentFormatAllowed } from "../content-format-matrix";
 import { summarizeFailureReasons } from "../failure-reason";
 import { assertPinterestBoardConstraints } from "../pinterest-board-constraints";
@@ -16,6 +17,7 @@ import type {
   PublishingPostRecord,
 } from "../repositories/publishing.repository";
 import type { SchedulePostsTargetInput } from "./schedule-posts.use-case";
+import { RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE } from "./resolve-scheduled-post-outcome-job-handler";
 import {
   resolveOutstandPostMedia,
   type PostMediaLookupPort,
@@ -53,11 +55,36 @@ import {
  * adapter real nanti (T-025): Outstand memang bisa menyelesaikan publish
  * instan sangat cepat untuk aksi tanpa jadwal, walau responsnya tetap async
  * secara kontrak.
+ *
+ * **Follow-up KI-025 (2026-10-05) — fallback enqueue `resolve_outcome`
+ * kalau `fetchPostOutcome` masih "pending":** sebelum perbaikan ini, kalau
+ * Outstand belum punya outcome instan untuk SATU/LEBIH target saat
+ * `fetchPostOutcome` dipanggil di atas, target itu dibiarkan `pending` di
+ * DB SELAMANYA — tidak ada job polling/webhook lanjutan yang pernah
+ * di-enqueue khusus untuknya (beda dari `SchedulePostsUseCase` yang SELALU
+ * enqueue job ini). Akibatnya `PublishingPostTarget.status` stuck
+ * `"pending"` permanen dan post itu tidak pernah dianggap "syncable" oleh
+ * `SyncCommentsUseCase` — komentar yang sebenarnya ada di Outstand tidak
+ * pernah ter-pull ke app (root cause Comments Inbox `/engage` kosong untuk
+ * post Publish Now). Fix: pola sama persis `SchedulePostsUseCase` — kalau
+ * SETELAH `fetchPostOutcome` resolve masih ada target berstatus "pending",
+ * enqueue SATU `BackgroundJob` (`RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE`)
+ * via `jobScheduler` (port, constructor param ketiga — wajib di-pass sama
+ * seperti `IOutstandAdapter`), payload `{ outstandPostId }`, `scheduledAt`
+ * = `new Date()` (beda dari Schedule yang punya `scheduledAt` masa depan —
+ * di sini publish-nya sendiri sudah terjadi SEKARANG, jadi job polling
+ * boleh langsung dieksekusi job runner secepat tick berikutnya). Enqueue
+ * ini SENGAJA di LUAR try/catch yang menangani kegagalan adapter (sama
+ * alasan `SchedulePostsUseCase`, lihat catatan review Ridwan
+ * Architecture Reviewer di sana) — kegagalan enqueue job murni gagal
+ * mencatat job internal untuk polling belakangan, BUKAN kegagalan publish,
+ * jadi hanya di-log, tidak mengubah status post/target.
  */
 export class PublishNowUseCase {
   constructor(
     private readonly repository: IPublishingRepository,
     private readonly outstandAdapter: IOutstandAdapter,
+    private readonly jobScheduler: IJobScheduler,
     /** Opsional — resolve mediaIds → URL Outstand sebelum create-post. */
     private readonly mediaLookup?: PostMediaLookupPort,
   ) {}
@@ -126,6 +153,12 @@ export class PublishNowUseCase {
     // diketahui gagal (try di bawah) — diringkas lewat
     // `summarizeFailureReasons` (dedup + join `"; "` + fallback generik).
     const failureMessages = new Set<string>();
+    // Follow-up KI-025 (2026-10-05) — non-null HANYA kalau adapter call +
+    // persist `outstandPostId` sukses DAN minimal satu target masih
+    // "pending" setelah `fetchPostOutcome` (lihat catatan panjang di atas
+    // class ini). Dipakai di LUAR try/catch di bawah untuk memutuskan
+    // apakah job fallback resolve-outcome perlu di-enqueue.
+    let pendingOutcomeOutstandPostId: string | null = null;
 
     try {
       const media = await resolveOutstandPostMedia({
@@ -217,6 +250,14 @@ export class PublishNowUseCase {
       allTargetsFailed =
         targetOutcomes.length > 0 &&
         targetOutcomes.every((outcome) => outcome === "failed");
+
+      // Follow-up KI-025 (2026-10-05) — lihat catatan panjang di atas
+      // class ini. Minimal satu target masih "pending" (Outstand belum
+      // instan melaporkan outcome-nya) → job fallback perlu di-enqueue
+      // supaya target itu tidak stuck "pending" permanen.
+      if (targetOutcomes.includes("pending")) {
+        pendingOutcomeOutstandPostId = result.outstandPostId;
+      }
     } catch (error) {
       // Satu call mencakup semua target (redesain 2026-08-26) — gagal
       // berarti SEMUA target gagal bersamaan (all-or-nothing).
@@ -235,6 +276,36 @@ export class PublishNowUseCase {
       );
       failureMessages.add(message);
       allTargetsFailed = true;
+    }
+
+    // Follow-up KI-025 (2026-10-05) — SENGAJA di LUAR try/catch di atas
+    // (pola sama `SchedulePostsUseCase`, lihat catatan panjang di atas
+    // class ini): enqueue job fallback hanya dicoba kalau ada outcome
+    // "pending" yang perlu di-resolve belakangan, dan kegagalannya sendiri
+    // TIDAK BOLEH menandai post/target sebagai `failed` — ini murni gagal
+    // mencatat job internal untuk polling belakangan, bukan kegagalan
+    // publish.
+    if (pendingOutcomeOutstandPostId) {
+      try {
+        await this.jobScheduler.scheduleJob({
+          type: RESOLVE_SCHEDULED_POST_OUTCOME_JOB_TYPE,
+          payload: { outstandPostId: pendingOutcomeOutstandPostId },
+          // Beda dari `SchedulePostsUseCase` (yang pakai `scheduledAt`
+          // masa depan post) — publish-nya sendiri sudah terjadi SEKARANG,
+          // jadi job polling boleh langsung dieksekusi job runner secepat
+          // tick berikutnya.
+          scheduledAt: new Date(),
+        });
+      } catch (jobError) {
+        const message =
+          jobError instanceof Error ? jobError.message : String(jobError);
+        console.error(
+          `[PublishNowUseCase] gagal enqueue job resolve-outcome ` +
+            `(postId=${input.postId}, outstandPostId=${pendingOutcomeOutstandPostId}): ` +
+            `${message} — target yang masih pending TIDAK ditandai gagal, perlu ` +
+            `diselesaikan manual/webhook kalau job ini tidak kunjung sukses ter-enqueue.`,
+        );
+      }
     }
 
     // Bug fix (2026-08-26) — post sudah ditandai `Published` di atas
