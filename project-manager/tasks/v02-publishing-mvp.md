@@ -1635,7 +1635,7 @@ PASS (tidak regresi), boundary case PASS.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress (4/8 subtask, desktop selesai, desain+implementasi mobile Engage Inbox & History Detail belum) |
+| **Status**    | ✅ Done (8/8 subtask, 2026-10-07) — restrukturisasi layout preview media (desktop + mobile, History Detail & Post asal Engage) tuntas total, menutup KI-083 sepenuhnya |
 | **Domain**    | publishing · engagement · UI                                 |
 | **ADR**       | —                                                             |
 | **Depends**   | T-034.3 ✅, T-056 ✅, KI-082 Resolved (PR #144, wajib merge ke `staging` dulu sebelum T-111 dimulai — konfirmasi King Rezi) |
@@ -1700,20 +1700,22 @@ scope T-111 yang disetujui King Rezi):**
   - **Wajib AGENTS.md rule 17:** ini task UI/UX-related — implementasi kode (T-111.6) tidak boleh dimulai sebelum desain mobile ini dikunci di Claude Design (Neymar Product Designer atau King Rezi langsung), sama persis gate yang berlaku untuk T-111.1/T-111.3 sebelumnya.
   - **Keputusan (King Rezi, 2026-10-07, via `AskUserQuestion` — proactive-clarification sebelum menulis kode apapun):** **push navigation** — di ≤768px `.inbox-shell` berhenti jadi grid 2 kolom, satu panel (`.thread-list` atau `.thread-detail`) ditampilkan full-width sekaligus lewat state `data-mobile-view` ("list" default, "detail" setelah tap satu `.thread-item`), dengan tombol back (reuse PERSIS `.settings-back-btn` dari header `.settings-sidebar`) untuk kembali. Opsi lain yang DITOLAK: full-screen sheet/modal (reuse Dialog T-111.1), dan segmented tab switch (2 tab manual, tanpa auto-switch). Filter bar `.inbox-filter` (3 `<select>`) **tetap 3 dropdown**, cuma di-stack vertikal full-width — opsi "collapse ke 1 tombol Filter" DITOLAK. Dikerjakan langsung di `templates/engage-inbox.html` + `styles.css` + `readme.md` (sesi utama, pola sama T-111.1/T-111.3 — `DesignSync` tidak dicoba lagi di subagent Neymar). **SENGAJA TIDAK termasuk scope:** migrasi `.app-shell > .sidebar` halaman ini ke pola Mobile Shell (`.mobile-topbar`, KI-042) — dikonfirmasi saat eksplorasi bahwa pola itu baru ada sebagai demo standalone di `components/navigation-mobile.html`, belum di-retrofit ke screen real manapun (termasuk `publish-queue.html` dkk) — gap terpisah, bukan bagian T-111. LOCKED PATTERN, detail lengkap di komentar `styles.css` (cari "T-111.5") + entri Screens `readme.md`.
 
-- [ ] **T-111.6** ⏳ Not Started — Implementasi kode T-111.5 (apps/web, domain engagement · UI)
-  - **Depends:** T-111.5 ✅ Done — sudah bisa dikerjakan.
-  - **Baca dulu:** entri T-111.5 di atas (keputusan push navigation + filter stack) · `templates/engage-inbox.html` + `styles.css` (cari "T-111.5") di Claude Design.
-  - **Deskripsi:** terapkan hasil desain mobile T-111.5 ke `EngageInboxView.tsx` (`apps/web/src/app/(app)/engage/components/`).
+- [x] **T-111.6** ✅ Done (2026-10-07) — Implementasi kode T-111.5 (apps/web, domain engagement · UI)
+  - **Depends:** T-111.5 ✅ Done.
+  - **Implementasi:** `EngageInboxView.tsx` (`apps/web/src/app/(app)/engage/components/`) — state `mobileView: "list"|"detail"`; grid `.inbox-shell` di-override `max-md:grid-cols-1!` (breakpoint bawaan Tailwind, bukan arbitrary value — inline `style` 340px/1fr struktural existing tidak diubah); thread-list disembunyikan (`hidden md:block`) dan thread-detail ditampilkan (`flex`) sesuai state di mobile; header mobile baru (tombol back `ArrowLeft01Icon` + judul `detail?.authorHandle`) HANYA tampil mobile+state detail; header "Engage"+Refresh dan filter 3 dropdown disembunyikan saat mobile+state detail (full-bleed subpage), sesuai LOCKED PATTERN T-111.5.
+  - **Penyederhanaan dilaporkan (bukan regresi):** 1 poin desain T-111.5 (border-radius/border `.inbox-shell` dihilangkan total saat mobile detail, "full-bleed" sampai tepi layar) SENGAJA dilewati — `.inbox-shell` tetap mempertahankan border+`rounded-xl` di semua state mobile, tidak di-override jadi borderless/square. Keputusan teknis call, dilaporkan eksplisit.
+  - **Verifikasi (sesi utama, browser):** push navigation (list↔detail+back) bekerja sempurna di mobile 375×812, desktop grid 2 kolom tidak ada regresi, 0 error console.
 
-- [ ] **T-111.7** ⏳ Not Started — Desain mobile History Detail (Claude Design)
+- [x] **T-111.7** ✅ Done (2026-10-07) — Desain mobile History Detail (Claude Design)
   - **Domain:** UI
   - **Baca dulu:** `templates/publish-history-detail.html` (Claude Design, Dialog LOCKED PATTERN T-111.1)
   - **Gap (ditemukan King Rezi, 2026-10-07, review ulang T-111 setelah 4/4 subtask desktop Done):** Dialog (`.dialog-md{width:min(560px,92vw); max-height:82vh}`) secara angka computed-responsive (pakai `vw`) tapi belum pernah divalidasi VISUAL di viewport mobile sungguhan — apakah padding/layout tetap enak dilihat di layar kecil, apakah perlu jadi full-screen sheet alih-alih dialog mengambang, dst. Ini keputusan desain, bukan cuma resize CSS.
-  - **Wajib AGENTS.md rule 17:** ini task UI/UX-related — implementasi kode (T-111.8) tidak boleh dimulai sebelum desain mobile ini dikunci di Claude Design (Neymar Product Designer atau King Rezi langsung), sama persis gate yang berlaku untuk T-111.1/T-111.3 sebelumnya.
+  - **Keputusan (King Rezi, 2026-10-07):** Dialog **TETAP floating `.dialog-md`** di semua ukuran — opsi full-screen sheet yang sempat direkomendasikan DITOLAK ("sisanya sudah bagus"). Scope final yang dikunci cuma 2 fix: (a) cegah scroll horizontal — `overflow-wrap:anywhere` pada caption + `overflow-x:hidden` pada `.dialog-md`, di-scope page-local `@media (max-width:768px)`; (b) `.history-target-row` ("Hasil per Akun") dipecah jadi 2 baris di mobile via flex-wrap+order (markup HTML tidak berubah) — baris 1: avatar+nama+chip, baris 2: pesan error/aksi. Sudah dicek `apps/web/src`: tidak ada reuse class `.history-target-row`/`.history-target-account` di luar Claude Design (cuma referensi nama class di komentar `ChannelAvatarBadge.tsx`), jadi T-111.8 aman mengikuti pola ini langsung tanpa migrasi tambahan. LOCKED PATTERN di `templates/publish-history-detail.html`.
 
-- [ ] **T-111.8** ⏳ Not Started — Implementasi kode T-111.7 (apps/web, domain publishing · UI)
-  - **Depends:** T-111.7 (belum bisa dikerjakan sampai desain dikunci)
-  - **Deskripsi:** terapkan hasil desain mobile T-111.7 ke `HistoryDetail.tsx` (`apps/web/src/app/(app)/publish/history/[postId]/components/`).
+- [x] **T-111.8** ✅ Done (2026-10-07) — Implementasi kode T-111.7 (apps/web, domain publishing · UI)
+  - **Depends:** T-111.7 ✅ Done.
+  - **Implementasi:** `HistoryDetail.tsx` (`apps/web/src/app/(app)/publish/history/[postId]/components/`) — tepat 3 titik: (a) `break-words` pada Text caption; (b) `overflow-x-hidden` pada container scroll body dialog; (c) baris target `status==="failed"`: `flex items-center justify-between` → `flex flex-wrap items-center justify-between` + Text error `min-w-0 flex-1 break-words` supaya teks error panjang wrap/shrink, tombol "Coba Lagi" tidak terdorong keluar viewport.
+  - **Verifikasi (sesi utama, data nyata — error OAuthException panjang, post "test" 5 Okt 2026 11:27):** `document.documentElement.scrollWidth === clientWidth` (375=375, tidak ada scroll horizontal), tombol "Coba Lagi" fully in-viewport, desktop tidak ada regresi visual.
 
 ---
 

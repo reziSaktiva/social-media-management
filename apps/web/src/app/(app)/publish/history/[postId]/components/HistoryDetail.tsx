@@ -218,10 +218,13 @@ export function HistoryDetail({ item, thumbnail }: HistoryDetailProps) {
             T-111.1) — caption, media, divider, "Hasil per Akun" semua di
             sini, bukan dipecah jadi beberapa area scroll. */}
         {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
-        <div className="flex flex-col gap-4 overflow-y-auto px-8 py-6">
+        <div className="flex flex-col gap-4 overflow-x-hidden overflow-y-auto px-8 py-6">
           {/* eslint-disable-next-line no-restricted-syntax -- layout-only */}
           <div className="flex flex-col gap-1">
-            <Text variant="p" className="mt-0! text-sm whitespace-pre-wrap">
+            <Text
+              variant="p"
+              className="mt-0! text-sm break-words whitespace-pre-wrap"
+            >
               {item.caption ? linkifyCaption(item.caption) : "(Tanpa caption)"}
             </Text>
             <Text variant="muted" as="span" className="text-xs">
@@ -298,11 +301,11 @@ export function HistoryDetail({ item, thumbnail }: HistoryDetailProps) {
 
                     {target.status === "failed" && (
                       // eslint-disable-next-line no-restricted-syntax -- layout-only
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <Text
                           variant="muted"
                           as="span"
-                          className="text-xs text-destructive"
+                          className="min-w-0 flex-1 text-xs break-words text-destructive"
                         >
                           {target.error ?? "Gagal dipublikasikan."}
                         </Text>

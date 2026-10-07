@@ -321,6 +321,12 @@ export function EngageInboxView({
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Push navigation mobile (≤768px, T-111.5 LOCKED PATTERN) — "list" default,
+  // "detail" setelah tap satu thread. Di `md:` ke atas state ini tidak
+  // berpengaruh visual (kedua panel selalu tampil lewat class `md:flex`/
+  // `md:block` yang menimpa `hidden`), jadi `setMobileView` aman dipanggil
+  // selalu di handler klik thread, tidak perlu cek viewport dulu.
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
   const [detail, setDetail] = useState<InboxItemDetailDto | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
@@ -523,8 +529,13 @@ export function EngageInboxView({
   return (
     // eslint-disable-next-line no-restricted-syntax -- T-053: file baru, dikomposisi Tailwind langsung (ADR-097)
     <div className="flex h-full flex-col gap-4">
-      {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only */}
-      <div className="flex items-center justify-between gap-4">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only; T-111.6: disembunyikan di mobile saat `.thread-detail` full-bleed (CSS asli `.main:has(...) > .page-head {display:none}`) */}
+      <div
+        className={cn(
+          "flex items-center justify-between gap-4",
+          mobileView === "detail" && "hidden md:flex",
+        )}
+      >
         {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only */}
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-2xl font-semibold tracking-tight">
@@ -550,8 +561,13 @@ export function EngageInboxView({
         </Button>
       </div>
 
-      {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only, `.inbox-filter` */}
-      <div className="flex flex-wrap gap-2">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only, `.inbox-filter`; T-111.6: disembunyikan di mobile saat `.thread-detail` full-bleed (CSS asli `.main:has(...) > .inbox-filter {display:none}`) */}
+      <div
+        className={cn(
+          "flex flex-wrap gap-2",
+          mobileView === "detail" && "hidden md:flex",
+        )}
+      >
         <Select value={accountFilter} onValueChange={setAccountFilter}>
           <SelectTrigger size="sm" aria-label="Filter akun" className="w-44">
             <SelectValue />
@@ -605,18 +621,23 @@ export function EngageInboxView({
           </EmptyHeader>
         </Empty>
       ) : (
-        // eslint-disable-next-line no-restricted-syntax -- T-053: `.inbox-shell`, grid 2 kolom (lebar list = konstanta struktural, bukan token, lihat komentar THREAD_LIST_WIDTH_PX)
+        // eslint-disable-next-line no-restricted-syntax -- T-053: `.inbox-shell`, grid 2 kolom (lebar list = konstanta struktural, bukan token, lihat komentar THREAD_LIST_WIDTH_PX); T-111.6: `max-md:!grid-cols-1` (breakpoint bawaan Tailwind, bukan arbitrary value) menimpa `style` inline 340px/1fr HANYA di ≤768px — push navigation 1 panel full-width per state `mobileView`
         <div
           className={cn(
-            "grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card",
+            "grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card max-md:grid-cols-1!",
             isLoadingList && "opacity-60",
           )}
           style={{
             gridTemplateColumns: `${THREAD_LIST_WIDTH_PX}px 1fr`,
           }}
         >
-          {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thread-list` */}
-          <div className="h-full min-h-0 overflow-y-auto border-r border-border">
+          {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thread-list`; T-111.6: disembunyikan total di mobile saat state "detail" */}
+          <div
+            className={cn(
+              "h-full min-h-0 overflow-y-auto border-r border-border",
+              mobileView === "detail" && "hidden md:block",
+            )}
+          >
             <ItemGroup className="gap-0 has-data-[size=sm]:gap-0">
               {items.map((item) => {
                 const isSelected = item.id === effectiveSelectedId;
@@ -631,7 +652,10 @@ export function EngageInboxView({
                   >
                     <button
                       type="button"
-                      onClick={() => setSelectedId(item.id)}
+                      onClick={() => {
+                        setSelectedId(item.id);
+                        setMobileView("detail");
+                      }}
                       aria-current={isSelected ? "true" : undefined}
                     >
                       <ItemMedia className="mt-1.5 items-start justify-start">
@@ -664,8 +688,30 @@ export function EngageInboxView({
             </ItemGroup>
           </div>
 
-          {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thread-detail` */}
-          <div className="flex min-w-0 flex-col gap-4 p-5">
+          {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thread-detail`; T-111.6: `hidden md:flex` saat state "list" (mobile) vs selalu `flex` di desktop/state "detail" */}
+          <div
+            className={cn(
+              "min-w-0 flex-col gap-4 p-5",
+              mobileView === "list" ? "hidden md:flex" : "flex",
+            )}
+          >
+            {mobileView === "detail" ? (
+              // eslint-disable-next-line no-restricted-syntax -- T-111.6: `.thread-detail-mobile-header`, reuse style `.settings-back-btn` (SettingsSideNav), full-bleed lewat `-m-5` menegasikan padding parent `p-5`
+              <div className="-m-5 mb-4 flex items-center gap-2 border-b border-border p-3 md:hidden">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Kembali ke daftar pesan"
+                  onClick={() => setMobileView("list")}
+                >
+                  <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+                </Button>
+                <Text as="span" className="truncate font-semibold">
+                  {detail?.authorHandle ?? ""}
+                </Text>
+              </div>
+            ) : null}
             {isLoadingDetail ? (
               // eslint-disable-next-line no-restricted-syntax -- T-053: layout-only
               <div className="flex flex-1 items-center justify-center">

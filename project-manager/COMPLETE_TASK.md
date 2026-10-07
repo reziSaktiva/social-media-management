@@ -8,6 +8,78 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-07 — T-111 TUNTAS 8/8 subtask: implementasi mobile Engage Inbox + History Detail
+
+T-111 (Restrukturisasi layout preview media post asli, History Detail &
+Post asal Engage, promosi KI-083) sekarang **✅ Done 8/8 subtask** — desktop
+(T-111.1–.4) dan mobile (T-111.5–.8) tuntas total, menutup KI-083
+sepenuhnya.
+
+**T-111.6 ✅ Done** — Implementasi kode T-111.5 (push navigation Engage
+Inbox mobile) di `apps/web/src/app/(app)/engage/components/EngageInboxView.tsx`:
+state `mobileView: "list"|"detail"`; grid `.inbox-shell` di-override
+`max-md:grid-cols-1!` (breakpoint bawaan Tailwind, bukan arbitrary value —
+inline `style` 340px/1fr struktural existing tidak diubah); thread-list
+disembunyikan (`hidden md:block`) dan thread-detail ditampilkan (`flex`)
+sesuai state di mobile; header mobile baru (tombol back `ArrowLeft01Icon` +
+judul `detail?.authorHandle`) hanya tampil mobile+state detail; header
+"Engage"+Refresh dan filter 3 dropdown disembunyikan saat mobile+state
+detail (full-bleed subpage), sesuai LOCKED PATTERN T-111.5. Satu poin
+desain (border-radius/border `.inbox-shell` dihilangkan total saat mobile
+detail, "full-bleed" sampai tepi layar) **sengaja disederhanakan/dilewati**
+— `.inbox-shell` tetap mempertahankan border+`rounded-xl` di semua state
+mobile — keputusan teknis call, dilaporkan eksplisit, bukan regresi.
+
+**T-111.8 ✅ Done** — Implementasi kode T-111.7 (2 fix mobile History
+Detail) di `apps/web/src/app/(app)/publish/history/[postId]/components/HistoryDetail.tsx`:
+tepat 3 titik — (a) `break-words` pada Text caption; (b) `overflow-x-hidden`
+pada container scroll body dialog; (c) baris target `status==="failed"`:
+`flex items-center justify-between` → `flex flex-wrap items-center
+justify-between` + Text error `min-w-0 flex-1 break-words` supaya teks
+error panjang wrap/shrink, tombol "Coba Lagi" tidak terdorong keluar
+viewport.
+
+**Verifikasi:** kedua subtask diverifikasi langsung lewat browser di sesi
+utama sebelum ditutup, bukan cuma klaim subagent — T-111.6: push nav
+(list↔detail+back) bekerja sempurna di mobile 375×812, desktop grid 2
+kolom tidak ada regresi, 0 error console; T-111.8: dicek dengan data nyata
+(error OAuthException panjang, post "test" 5 Okt 2026 11:27),
+`document.documentElement.scrollWidth === clientWidth` (375=375, tidak ada
+scroll horizontal), tombol "Coba Lagi" fully in-viewport, desktop tidak
+ada regresi visual.
+
+Dokumentasi diperbarui: `tasks/v02-publishing-mvp.md` (T-111.6/T-111.8 →
+Done, header Status T-111 → ✅ Done 8/8), `TASKS.md` (Indeks release v0.2 →
+23 ✅ · 2 🟡 · 2 ⏳, Total → 63 selesai, Fokus aktif pindah ke T-037 + T-090),
+`PROJECT_STATE.md` (Top Next Tasks + Completed Ringkasan, tetap 5 item).
+
+---
+
+## 2026-10-07 — T-111.7 Done: desain mobile History Detail dikunci di Claude Design
+
+Desain mobile untuk Dialog History Detail (`templates/publish-history-detail.html`,
+LOCKED PATTERN T-111.1) dikunci di Claude Design. Keputusan King Rezi: dialog
+**TETAP floating `.dialog-md`** di semua ukuran — opsi full-screen sheet yang
+sempat direkomendasikan **DITOLAK** eksplisit ("sisanya sudah bagus"). Scope
+final yang dikunci cuma 2 fix:
+
+1. Cegah scroll horizontal — `overflow-wrap:anywhere` pada caption +
+   `overflow-x:hidden` pada `.dialog-md`, di-scope page-local
+   `@media (max-width:768px)`.
+2. `.history-target-row` ("Hasil per Akun") dipecah jadi 2 baris di mobile
+   via flex-wrap+order (markup HTML tidak berubah) — baris 1: avatar+nama+
+   chip, baris 2: pesan error/aksi.
+
+Sudah dicek `apps/web/src`: tidak ada reuse class `.history-target-row`/
+`.history-target-account` di luar Claude Design (cuma referensi nama class
+di komentar `ChannelAvatarBadge.tsx`), jadi **T-111.8** (implementasi kode
+`HistoryDetail.tsx`) aman mengikuti pola ini langsung tanpa migrasi
+tambahan, dan sekarang **tidak lagi depends-blocked** — sudah bisa mulai.
+T-111 keseluruhan naik jadi 6/8 subtask (T-111.6 dan T-111.8 implementasi
+kode yang masih tersisa).
+
+---
+
 ## 2026-10-07 — KI-042 Mobile Shell retrofit: hamburger+drawer dipasang ke semua screen `.app-shell` + App Prototype
 
 Ditemukan King Rezi setelah QA T-111.5 di App Prototype: pindah viewport ke
