@@ -146,11 +146,20 @@ export async function listInboxAction(
   }
 }
 
-/** Snapshot post asli (T-056, KI-065) siap-render — `mediaIds` domain diganti `thumbnail` tunggal yang sudah di-resolve URL-nya. */
+/**
+ * Snapshot post asli (T-056, KI-065) siap-render — `mediaIds` domain diganti
+ * `thumbnail` tunggal yang sudah di-resolve URL-nya.
+ *
+ * `thumbnails` (T-111.4, array SELURUH media) ditambahkan DI SAMPING
+ * `thumbnail` (dipertahankan, masih dipakai `EngageInboxView.tsx`) untuk
+ * kartu "Post asal" bergaya Instagram dengan carousel (T-111.3, LOCKED
+ * PATTERN Claude Design `templates/engage-inbox.html` § `.post-context`).
+ */
 export interface InboxDetailPostSnapshotDto {
   caption: string;
   platformPostUrl: string | null;
   thumbnail: MediaThumbnailDto | null;
+  thumbnails: MediaThumbnailDto[];
 }
 
 /** `InboxItemDetail` domain + `postSnapshot` yang sudah dipetakan ke bentuk siap-render (T-056). */
@@ -163,11 +172,13 @@ export type InboxItemDetailDto = Omit<InboxItemDetail, "postSnapshot"> & {
  * `postSnapshot` siap-render untuk kotak "Post asal"). Murni wiring —
  * resolve workspace/session, delegasi ke
  * `EngagementService.getInboxItemDetail` untuk data domain, lalu (kalau
- * `postSnapshot.mediaIds` tidak kosong) resolve media PERTAMA ke URL
- * tampil lewat `MediaService.listByIds` (domain `media`, BC-08) — pola
- * sama `getDraftAction` (`draft-editor/actions.ts`): kombinasi dua
- * Application Service lalu dipetakan jadi DTO siap-konsumsi client, BUKAN
- * keputusan bisnis baru (AGENTS.md #5).
+ * `postSnapshot.mediaIds` tidak kosong) resolve media PERTAMA (`thumbnail`,
+ * `MediaService.resolveFirstThumbnail`) MAUPUN seluruh media (`thumbnails`,
+ * `MediaService.resolveThumbnails`, T-111.4 — kartu "Post asal" carousel
+ * T-111.3) ke URL tampil — pola sama `getDraftAction`
+ * (`draft-editor/actions.ts`): kombinasi dua Application Service lalu
+ * dipetakan jadi DTO siap-konsumsi client, BUKAN keputusan bisnis baru
+ * (AGENTS.md #5).
  */
 export async function getInboxItemDetailAction(
   inboxItemId: string,
@@ -202,10 +213,11 @@ export async function getInboxItemDetailAction(
       mediaRepository,
       supabaseMediaStorageAdapter,
     );
-    const thumbnail = await mediaService.resolveFirstThumbnail(
-      { workspaceId, mediaIds: detail.postSnapshot?.mediaIds ?? [] },
-      userId,
-    );
+    const mediaIds = detail.postSnapshot?.mediaIds ?? [];
+    const [thumbnail, thumbnails] = await Promise.all([
+      mediaService.resolveFirstThumbnail({ workspaceId, mediaIds }, userId),
+      mediaService.resolveThumbnails({ workspaceId, mediaIds }, userId),
+    ]);
 
     const data: InboxItemDetailDto = {
       ...detail,
@@ -214,6 +226,7 @@ export async function getInboxItemDetailAction(
             caption: detail.postSnapshot.caption,
             platformPostUrl: detail.postSnapshot.platformPostUrl,
             thumbnail,
+            thumbnails,
           }
         : null,
     };

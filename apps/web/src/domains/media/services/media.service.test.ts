@@ -339,4 +339,114 @@ describe("MediaService", () => {
       );
     });
   });
+
+  // T-111.4: varian multi-item dari `resolveFirstThumbnail`, dipakai kartu
+  // "Post asal" carousel (T-111.3) yang perlu SEMUA media, bukan cuma yang
+  // pertama.
+  describe("resolveThumbnails() (T-111.4)", () => {
+    it("mengembalikan [] tanpa memanggil repository kalau mediaIds kosong", async () => {
+      let called = false;
+      const repository = createFakeRepository({
+        findByIds: async () => {
+          called = true;
+          return [];
+        },
+      });
+      const service = new MediaService(repository);
+
+      const result = await service.resolveThumbnails(
+        { workspaceId: WORKSPACE_ID, mediaIds: [] },
+        UPLOADER_ID,
+      );
+
+      expect(result).toEqual([]);
+      expect(called).toBe(false);
+    });
+
+    it("resolve seluruh mediaIds jadi array {url, type}, bukan cuma yang pertama", async () => {
+      const mediaId2 = asMediaId("media-2");
+      const records = [
+        createRecord({
+          url: "https://storage.example/expired-1",
+          storagePath: "workspace-1/a.jpg",
+          type: MediaType.Image,
+        }),
+        createRecord({
+          id: mediaId2,
+          url: "https://storage.example/expired-2",
+          storagePath: "workspace-1/b.mp4",
+          type: MediaType.Video,
+        }),
+      ];
+      const repository = createFakeRepository({
+        findByIds: async () => records,
+      });
+      const storageAdapter = createFakeStorageAdapter();
+      const service = new MediaService(repository, storageAdapter);
+
+      const result = await service.resolveThumbnails(
+        { workspaceId: WORKSPACE_ID, mediaIds: [MEDIA_ID, mediaId2] },
+        UPLOADER_ID,
+      );
+
+      expect(result).toEqual([
+        {
+          url: "https://storage.example/fresh?path=workspace-1/a.jpg",
+          type: MediaType.Image,
+        },
+        {
+          url: "https://storage.example/fresh?path=workspace-1/b.mp4",
+          type: MediaType.Video,
+        },
+      ]);
+    });
+
+    it("skip item yang gagal diresolve (url null), tanpa menggagalkan item lain", async () => {
+      const mediaId2 = asMediaId("media-2");
+      const records = [
+        createRecord({ storagePath: "workspace-1/ok.jpg" }),
+        createRecord({ id: mediaId2, storagePath: "workspace-1/missing.jpg" }),
+      ];
+      const repository = createFakeRepository({
+        findByIds: async () => records,
+      });
+      const storageAdapter = createFakeStorageAdapter({
+        getSignedUrl: async (storagePath) => {
+          if (storagePath === "workspace-1/missing.jpg") {
+            throw new Error("file tidak ditemukan di Storage");
+          }
+          return `https://storage.example/fresh?path=${storagePath}`;
+        },
+      });
+      const service = new MediaService(repository, storageAdapter);
+
+      const result = await service.resolveThumbnails(
+        { workspaceId: WORKSPACE_ID, mediaIds: [MEDIA_ID, mediaId2] },
+        UPLOADER_ID,
+      );
+
+      expect(result).toEqual([
+        {
+          url: "https://storage.example/fresh?path=workspace-1/ok.jpg",
+          type: MediaType.Image,
+        },
+      ]);
+    });
+
+    it("mengembalikan [] (bukan throw) kalau listByIds sendiri gagal", async () => {
+      const repository = createFakeRepository({
+        findByIds: async () => {
+          throw new Error("DB error");
+        },
+      });
+      const service = new MediaService(repository);
+
+      const result = await service.resolveThumbnails(
+        { workspaceId: WORKSPACE_ID, mediaIds: [MEDIA_ID] },
+        UPLOADER_ID,
+      );
+
+      expect(result).toEqual([]);
+    });
+  });
 });
