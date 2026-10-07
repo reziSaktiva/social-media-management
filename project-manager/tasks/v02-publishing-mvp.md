@@ -1635,7 +1635,7 @@ PASS (tidak regresi), boundary case PASS.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                               |
+| **Status**    | ✅ Done (8/8 subtask, 2026-10-07) — restrukturisasi layout preview media (desktop + mobile, History Detail & Post asal Engage) tuntas total, menutup KI-083 sepenuhnya |
 | **Domain**    | publishing · engagement · UI                                 |
 | **ADR**       | —                                                             |
 | **Depends**   | T-034.3 ✅, T-056 ✅, KI-082 Resolved (PR #144, wajib merge ke `staging` dulu sebelum T-111 dimulai — konfirmasi King Rezi) |
@@ -1652,10 +1652,70 @@ PASS (tidak regresi), boundary case PASS.
 
 **Urutan eksekusi (konfirmasi King Rezi, 2026-10-06):** PR #144 (KI-082) wajib merge ke `staging` dulu — T-111 TIDAK dikerjakan di atas branch/PR yang sama, baru dimulai setelah merge.
 
-- [ ] **T-111.1** Claude Design: rancang ulang `templates/publish-history-detail.html` — media natural-size sebagai elemen utama, lock pattern baru (gantikan `.popover-thumb` lama di konteks ini)
-- [ ] **T-111.2** Implementasi kode T-111.1 (`apps/web`, domain `publishing`, `HistoryDetail.tsx`)
-- [ ] **T-111.3** Claude Design: rancang ulang `templates/engage-inbox.html` § `.post-context` — media natural-size sesuai konteks kotak panel detail (ruang terbatas), lock pattern baru (gantikan `.thumb` lama di konteks ini)
-- [ ] **T-111.4** Implementasi kode T-111.3 (`apps/web`, domain `engagement`, `EngageInboxView.tsx`)
+- [x] **T-111.1** ✅ Done (2026-10-07, 3 revisi sama hari — final) — Claude Design: rancang ulang `templates/publish-history-detail.html` jadi **Modal/Dialog** (bukan hanya ubah ukuran media di struktur lama) — dikerjakan di sesi utama (bukan Neymar subagent, `DesignSync` gagal dimuat lagi di sesi subagent, pola sama § "Keterbatasan teknis" `.claude/agents/README.md`, izin eksplisit King Rezi 2026-10-06). Primitive FINAL: `.dialog-md-backdrop`+`.dialog-md` dengan **`.dialog-fs-header`+`.dialog-fs-body` SAJA — TIDAK PAKAI `.dialog-fs-footer`** (2 iterasi sempat pakai footer — "Published via X"/"Go to post", lalu list "Hasil per Akun" dengan scroll sendiri — keduanya dibatalkan: dua area scroll terpisah dalam satu dialog tidak enak dilihat, King Rezi). `.dialog-fs-body` (satu-satunya scroll area) berisi berurutan: caption → media natural-size → `.history-post-divider` → "Hasil per Akun" (paling bawah). Tiap baris "Hasil per Akun" punya **avatar+badge platform miliknya sendiri** (class `.history-target-account`, reuse `.channel-avatar-wrap`/`.channel-avatar`/`.channel-badge` dari sidebar, 28px/12px) menggantikan `.platform-dot`+nama platform generik — akurat per-target (draft paling awal sempat taruh 1 avatar representatif "target pertama published" di atas body — ambigu, sudah dibuang). LOCKED PATTERN, lihat komentar HTML di file + readme.md Screens section untuk riwayat lengkap 3 iterasi. **Catatan implementasi T-111.2:** caption perlu utility "linkify" baru (parse URL/#hashtag jadi `<a>`), belum ada di `apps/web/src` — scope kode baru, bukan sekadar styling.
+- [x] **T-111.2** ✅ Done (2026-10-07) — Implementasi kode T-111.1 (`apps/web`, domain `publishing`, `HistoryDetail.tsx`)
+- [x] **T-111.3** ✅ Done (2026-10-07, 2 revisi — final: kartu Instagram-style + avatar per-row + caption tanpa truncate) — Claude Design: rancang ulang `templates/engage-inbox.html` § `.post-context` — dikerjakan di sesi utama (sama seperti T-111.1, `DesignSync` tidak dicoba lagi di subagent Neymar). Draft pertama (COLUMN sederhana) diganti jadi **kartu ala post Instagram**: lebar TETAP 360px, DI-CENTER (`margin:0 auto`) di desktop, melebar penuh (`width:100%`) hanya ≤768px. Terbagi 2 sisi: atas `.post-context-media-wrap` (media RASIO 1:1, `object-fit:cover`) + 2 tombol carousel (`.post-context-carousel-btn` prev/next, ‹ › konsisten `.schedcal-nav`) melayang di atas badan gambar — HANYA 1 gambar tampil sekaligus (index ditangani T-111.4); bawah `.post-context-content`: label "Post asal" → **avatar+badge platform+nama akun** (`.post-context-account`, reuse PERSIS `.history-target-account` dari T-111.1 — `.channel-avatar-wrap`/`.channel-avatar`/`.channel-badge`, 28px/12px) → **caption TIDAK truncate lagi** (`.post-context-cap`, beda dari T-056 lama yang truncate 1 baris — sekarang wrap multi-baris penuh) → "Go to post →" (TIDAK berubah dari T-056). **Sengaja beda** dari History Detail (modal penuh, media unconstrained, bukan square/carousel) sesuai klarifikasi scope King Rezi 2026-10-06. Fallback no-media: `.post-context-nomedia` (bukan kartu 1:1, full-width, tidak di-center, tetap pakai avatar+caption-no-truncate yang sama), konsisten T-056 (media di-omit sepenuhnya). LOCKED PATTERN, lihat komentar HTML di file + readme.md Screens section.
+- [x] **T-111.4** ✅ Done (2026-10-07) — Implementasi kode T-111.3 (`apps/web`, domain `engagement`, `EngageInboxView.tsx`)
+
+**Implementasi (selesai, 2026-10-07):** `HistoryDetail.tsx` dirombak jadi Dialog
+shadcn (LOCKED PATTERN T-111.1 — `.dialog-fs-header`+`.dialog-fs-body` saja,
+tanpa footer); `media-thumbnail.tsx` menambah prop `fit="natural"` untuk
+media ukuran asli (non-crop); `engage/actions.ts` menambah field
+`thumbnails[]` ke payload post asal; `media.service.ts` menambah method
+`resolveThumbnails()` (dipakai kedua lokasi, sekaligus ditambah test baru di
+`media.service.test.ts`); 2 file baru —
+`apps/web/src/components/shared/ChannelAvatarBadge.tsx` (avatar+badge
+platform reusable, dipakai `HistoryDetail.tsx`) dan `apps/web/src/lib/linkify.tsx`
+(utility parse URL/#hashtag di caption jadi `<a>`, dibutuhkan T-111.1 LOCKED
+PATTERN). `EngageInboxView.tsx` menambah `PostOriginCard` — kartu
+Instagram-style 360px + carousel media, LOCKED PATTERN T-111.3. Dikerjakan 2
+subagent Mark UI Engineer paralel (T-111.2 History Detail, T-111.4 Post asal
+Engage) + Elon Backend Engineer untuk data layer `resolveThumbnails()`.
+Review Ridwan Architecture Reviewer: clean, 0 temuan blocking. QA Najwa:
+golden path PASS kedua lokasi.
+
+**Follow-up non-blocking ditemukan (dicatat, belum dikerjakan — bukan bagian
+scope T-111 yang disetujui King Rezi):**
+
+1. Duplikasi komponen: `EngageInboxView.tsx` masih pakai
+   `PostContextAccountBadge` lokal sendiri, belum migrasi ke
+   `ChannelAvatarBadge` baru yang diekstrak T-111.2 (konsekuensi 2 subagent
+   paralel tanpa saling tahu komponen shared yang baru dibuat). Sebaiknya
+   dikonsolidasi sekalian dengan 2 duplikat lama lain yang sudah ada
+   (`PlatformBadge` di `ChannelsSection.tsx` dan `ConnectedAccountsList.tsx`).
+2. Overflow horizontal minor di Dialog History Detail untuk pesan error
+   target yang panjang (pre-existing dari T-034.3/PR#144, bukan regresi
+   T-111.2) — perlu `break-words`/`whitespace-pre-wrap` di elemen pesan
+   error.
+3. Gap data: `HistoryItemTargetRecord` tidak membawa `avatarUrl` akun,
+   sehingga avatar "Hasil per Akun" di History Detail selalu fallback ke
+   inisial, tidak pernah foto profil asli — perlu field baru di
+   repository/service kalau foto asli wajib tampil (keputusan King Rezi,
+   bukan default assumption).
+
+- [x] **T-111.5** ✅ Done (2026-10-07) — Desain mobile Engage Inbox (Claude Design)
+  - **Domain:** UI
+  - **Baca dulu:** `templates/engage-inbox.html` (Claude Design, versi desktop-only saat ini) · `04-ux/key-screen-patterns.md`
+  - **Gap (ditemukan King Rezi, 2026-10-07, review ulang T-111 setelah 4/4 subtask desktop Done):** T-111 sebelumnya ditandai selesai 100%, tapi desain mobile untuk restrukturisasi media preview belum pernah ditentukan/dikunci. Verifikasi langsung ke CSS asli Claude Design (`styles.css`): `.inbox-shell` (grid `.thread-list` 340px + `.thread-detail` 1fr, dipakai halaman `/engage`) **tidak punya breakpoint mobile sama sekali** — satu-satunya aturan mobile yang ada di `@media (max-width:768px)` cuma `.post-context{width:100%; margin-left:0; margin-right:0}` (kartu "Post asal" doang, bukan keseluruhan layout 2-kolom thread-list+thread-detail). Di layar sempit, grid 2 kolom itu berisiko overflow horizontal — sempat dilaporkan Najwa QA Engineer saat QA T-111.4 sebagai "pre-existing dari T-053, bukan regresi T-111.4", tapi memang belum pernah didesain ulang untuk mobile. Belum ada pola "master-detail mobile" (mis. thread-list jadi full-screen dulu, push ke detail saat item dipilih, lalu tombol back — atau pola lain) yang didesain di Claude Design untuk Engage Inbox — ini keputusan desain baru, bukan sekadar resize CSS.
+  - **Wajib AGENTS.md rule 17:** ini task UI/UX-related — implementasi kode (T-111.6) tidak boleh dimulai sebelum desain mobile ini dikunci di Claude Design (Neymar Product Designer atau King Rezi langsung), sama persis gate yang berlaku untuk T-111.1/T-111.3 sebelumnya.
+  - **Keputusan (King Rezi, 2026-10-07, via `AskUserQuestion` — proactive-clarification sebelum menulis kode apapun):** **push navigation** — di ≤768px `.inbox-shell` berhenti jadi grid 2 kolom, satu panel (`.thread-list` atau `.thread-detail`) ditampilkan full-width sekaligus lewat state `data-mobile-view` ("list" default, "detail" setelah tap satu `.thread-item`), dengan tombol back (reuse PERSIS `.settings-back-btn` dari header `.settings-sidebar`) untuk kembali. Opsi lain yang DITOLAK: full-screen sheet/modal (reuse Dialog T-111.1), dan segmented tab switch (2 tab manual, tanpa auto-switch). Filter bar `.inbox-filter` (3 `<select>`) **tetap 3 dropdown**, cuma di-stack vertikal full-width — opsi "collapse ke 1 tombol Filter" DITOLAK. Dikerjakan langsung di `templates/engage-inbox.html` + `styles.css` + `readme.md` (sesi utama, pola sama T-111.1/T-111.3 — `DesignSync` tidak dicoba lagi di subagent Neymar). **SENGAJA TIDAK termasuk scope:** migrasi `.app-shell > .sidebar` halaman ini ke pola Mobile Shell (`.mobile-topbar`, KI-042) — dikonfirmasi saat eksplorasi bahwa pola itu baru ada sebagai demo standalone di `components/navigation-mobile.html`, belum di-retrofit ke screen real manapun (termasuk `publish-queue.html` dkk) — gap terpisah, bukan bagian T-111. LOCKED PATTERN, detail lengkap di komentar `styles.css` (cari "T-111.5") + entri Screens `readme.md`.
+
+- [x] **T-111.6** ✅ Done (2026-10-07) — Implementasi kode T-111.5 (apps/web, domain engagement · UI)
+  - **Depends:** T-111.5 ✅ Done.
+  - **Implementasi:** `EngageInboxView.tsx` (`apps/web/src/app/(app)/engage/components/`) — state `mobileView: "list"|"detail"`; grid `.inbox-shell` di-override `max-md:grid-cols-1!` (breakpoint bawaan Tailwind, bukan arbitrary value — inline `style` 340px/1fr struktural existing tidak diubah); thread-list disembunyikan (`hidden md:block`) dan thread-detail ditampilkan (`flex`) sesuai state di mobile; header mobile baru (tombol back `ArrowLeft01Icon` + judul `detail?.authorHandle`) HANYA tampil mobile+state detail; header "Engage"+Refresh dan filter 3 dropdown disembunyikan saat mobile+state detail (full-bleed subpage), sesuai LOCKED PATTERN T-111.5.
+  - **Penyederhanaan dilaporkan (bukan regresi):** 1 poin desain T-111.5 (border-radius/border `.inbox-shell` dihilangkan total saat mobile detail, "full-bleed" sampai tepi layar) SENGAJA dilewati — `.inbox-shell` tetap mempertahankan border+`rounded-xl` di semua state mobile, tidak di-override jadi borderless/square. Keputusan teknis call, dilaporkan eksplisit.
+  - **Verifikasi (sesi utama, browser):** push navigation (list↔detail+back) bekerja sempurna di mobile 375×812, desktop grid 2 kolom tidak ada regresi, 0 error console.
+
+- [x] **T-111.7** ✅ Done (2026-10-07) — Desain mobile History Detail (Claude Design)
+  - **Domain:** UI
+  - **Baca dulu:** `templates/publish-history-detail.html` (Claude Design, Dialog LOCKED PATTERN T-111.1)
+  - **Gap (ditemukan King Rezi, 2026-10-07, review ulang T-111 setelah 4/4 subtask desktop Done):** Dialog (`.dialog-md{width:min(560px,92vw); max-height:82vh}`) secara angka computed-responsive (pakai `vw`) tapi belum pernah divalidasi VISUAL di viewport mobile sungguhan — apakah padding/layout tetap enak dilihat di layar kecil, apakah perlu jadi full-screen sheet alih-alih dialog mengambang, dst. Ini keputusan desain, bukan cuma resize CSS.
+  - **Keputusan (King Rezi, 2026-10-07):** Dialog **TETAP floating `.dialog-md`** di semua ukuran — opsi full-screen sheet yang sempat direkomendasikan DITOLAK ("sisanya sudah bagus"). Scope final yang dikunci cuma 2 fix: (a) cegah scroll horizontal — `overflow-wrap:anywhere` pada caption + `overflow-x:hidden` pada `.dialog-md`, di-scope page-local `@media (max-width:768px)`; (b) `.history-target-row` ("Hasil per Akun") dipecah jadi 2 baris di mobile via flex-wrap+order (markup HTML tidak berubah) — baris 1: avatar+nama+chip, baris 2: pesan error/aksi. Sudah dicek `apps/web/src`: tidak ada reuse class `.history-target-row`/`.history-target-account` di luar Claude Design (cuma referensi nama class di komentar `ChannelAvatarBadge.tsx`), jadi T-111.8 aman mengikuti pola ini langsung tanpa migrasi tambahan. LOCKED PATTERN di `templates/publish-history-detail.html`.
+
+- [x] **T-111.8** ✅ Done (2026-10-07) — Implementasi kode T-111.7 (apps/web, domain publishing · UI)
+  - **Depends:** T-111.7 ✅ Done.
+  - **Implementasi:** `HistoryDetail.tsx` (`apps/web/src/app/(app)/publish/history/[postId]/components/`) — tepat 3 titik: (a) `break-words` pada Text caption; (b) `overflow-x-hidden` pada container scroll body dialog; (c) baris target `status==="failed"`: `flex items-center justify-between` → `flex flex-wrap items-center justify-between` + Text error `min-w-0 flex-1 break-words` supaya teks error panjang wrap/shrink, tombol "Coba Lagi" tidak terdorong keluar viewport.
+  - **Verifikasi (sesi utama, data nyata — error OAuthException panjang, post "test" 5 Okt 2026 11:27):** `document.documentElement.scrollWidth === clientWidth` (375=375, tidak ada scroll horizontal), tombol "Coba Lagi" fully in-viewport, desktop tidak ada regresi visual.
 
 ---
 

@@ -191,6 +191,57 @@ export class MediaService {
   }
 
   /**
+   * Resolve SELURUH `mediaIds` jadi array thumbnail siap-render (T-111.4) —
+   * varian multi-item dari `resolveFirstThumbnail`, dipakai untuk kartu
+   * "Post asal" bergaya Instagram dengan carousel (T-111.3, LOCKED PATTERN
+   * di Claude Design `templates/engage-inbox.html` § `.post-context`) yang
+   * perlu menampilkan SEMUA media post asal, bukan cuma yang pertama.
+   *
+   * `resolveFirstThumbnail` SENGAJA tidak diubah/dihapus — History Detail
+   * (KI-082) hanya merender satu media dan tetap memanggilnya.
+   *
+   * Filosofi error-handling sama persis dengan `resolveFirstThumbnail`:
+   * kegagalan resolve (termasuk error dari `listByIds` itu sendiri) TIDAK
+   * dilempar ke caller. Bedanya di sini granularitasnya per-item — kalau
+   * satu `mediaId` gagal diresolve jadi thumbnail valid (`url` kosong),
+   * item itu di-skip dari array hasil (bukan disisipkan sebagai `null`),
+   * supaya caller/UI carousel tidak perlu menangani slot kosong di
+   * tengah-tengah array. Kegagalan total (mis. `listByIds` sendiri throw)
+   * mengembalikan array kosong, bukan melempar ke caller.
+   */
+  async resolveThumbnails(
+    input: { workspaceId: WorkspaceId; mediaIds: MediaId[] },
+    userId: UserId,
+  ): Promise<MediaThumbnailDto[]> {
+    if (input.mediaIds.length === 0) {
+      return [];
+    }
+    try {
+      const items = await this.listByIds(
+        { workspaceId: input.workspaceId, mediaIds: input.mediaIds },
+        userId,
+      );
+      // `findByIds` (Prisma) mengurutkan hasil by `createdAt desc`, bukan
+      // urutan `input.mediaIds` — di-reorder manual di sini supaya carousel
+      // menampilkan media sesuai urutan asli post, pola sama
+      // `resolveOutstandPostMedia` (`resolve-outstand-post-media.ts`).
+      const itemById = new Map(items.map((item) => [item.id, item]));
+      return input.mediaIds
+        .map((mediaId) => itemById.get(mediaId))
+        .filter((item): item is MediaItemRecord & { url: string } =>
+          Boolean(item?.url),
+        )
+        .map((item) => ({ url: item.url, type: item.type }));
+    } catch (error) {
+      console.error(
+        `MediaService.resolveThumbnails: gagal resolve thumbnails untuk mediaIds=${input.mediaIds.join(",")}`,
+        error,
+      );
+      return [];
+    }
+  }
+
+  /**
    * Hapus satu `MediaItem`, di-scope ke `workspaceId` (anti-IDOR). Throws
    * `NotFoundError` kalau tidak ditemukan atau bukan milik workspace ini.
    *

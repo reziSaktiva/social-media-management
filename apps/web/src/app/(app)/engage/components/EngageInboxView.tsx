@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Refresh01Icon } from "@hugeicons/core-free-icons";
+import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  Refresh01Icon,
+} from "@hugeicons/core-free-icons";
 
 import { SocialPlatform } from "@social/shared";
 import type { ConnectedAccountRecord } from "@/domains/workspace";
@@ -14,6 +18,7 @@ import type {
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 import { cn } from "@/lib/utils";
 
+import { ChannelAvatarBadge } from "@/components/shared/ChannelAvatarBadge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -64,6 +69,149 @@ const ALL_STATUS_FILTER_VALUE = "all";
  * (ADR-095) di file luar `components/ui/**`. */
 const THREAD_LIST_WIDTH_PX = 340;
 
+/**
+ * Kartu "Post asal" ala Instagram (T-111.4, implementasi LOCKED PATTERN
+ * T-111.3 Claude Design `templates/engage-inbox.html` § `.post-context`).
+ * Komponen terpisah (bukan inline di body utama) supaya state carousel
+ * lokal (`mediaIndex`) otomatis ter-reset tiap ganti komentar yang dipilih
+ * lewat `key={detail.id}` di call-site — tidak butuh `useEffect` manual.
+ *
+ * Struktur: atas `.post-context-media-wrap` (media rasio 1:1 `object-fit:
+ * cover` + 2 tombol carousel melayang, HANYA kalau `thumbnails.length > 1`)
+ * — bawah `.post-context-content` (label "Post asal" → avatar+badge+nama
+ * akun → caption TANPA truncate, wrap multi-baris → "Go to post →", tidak
+ * berubah dari T-056). Lebar kartu **1/3 dari `.thread-detail` di desktop,
+ * RATA KIRI** (`.post-context` CSS asli: `width: 33.333%; align-self:
+ * flex-start`) HANYA kalau ada media (`thumbnails.length > 0`) — koreksi
+ * 2026-10-07: ringkasan task T-111.3/.4 sempat menulis "360px FIXED,
+ * DI-CENTER" tapi CSS literal `styles.css` Claude Design berkata lain (CSS
+ * asli menang atas ringkasan task, lihat KI-083 follow-up). Full-width hanya
+ * di breakpoint ≤768px (default className tanpa prefix = mobile-first
+ * `w-full`, `md:w-1/3` menimpa di ≥768px — breakpoint Tailwind `md` pas
+ * dengan `max-width:768px` CSS asli). Fallback `.post-context-nomedia`
+ * (media di-omit sepenuhnya, konsisten T-056) sengaja full-width, tidak
+ * di-batasi 1/3, sama seperti sebelum T-111.
+ */
+function PostOriginCard({
+  postSnapshot,
+  account,
+  platform,
+  fallbackHandle,
+}: {
+  postSnapshot: NonNullable<InboxItemDetailDto["postSnapshot"]>;
+  account: ConnectedAccountRecord | undefined;
+  platform: SocialPlatform;
+  fallbackHandle: string;
+}) {
+  const [mediaIndex, setMediaIndex] = useState(0);
+  const { thumbnails, caption, platformPostUrl } = postSnapshot;
+  const hasMedia = thumbnails.length > 0;
+  const activeThumbnail = hasMedia
+    ? (thumbnails[mediaIndex] ?? thumbnails[0])
+    : null;
+  const accountLabel = account?.handle ?? fallbackHandle;
+
+  const goPrev = () =>
+    setMediaIndex(
+      (index) => (index - 1 + thumbnails.length) % thumbnails.length,
+    );
+  const goNext = () =>
+    setMediaIndex((index) => (index + 1) % thumbnails.length);
+
+  const accountRow = (
+    // eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context-account`, layout-only
+    <div className="flex items-center gap-2">
+      <ChannelAvatarBadge
+        avatarUrl={account?.avatarUrl}
+        handle={accountLabel}
+        platform={platform}
+      />
+      <Text as="span" variant="small">
+        {accountLabel}
+      </Text>
+    </div>
+  );
+
+  const captionAndLink = (
+    <>
+      <Text as="p" className="text-sm font-semibold whitespace-pre-line">
+        {caption || "(Tanpa caption)"}
+      </Text>
+      {platformPostUrl ? (
+        <a href={platformPostUrl} target="_blank" rel="noopener">
+          <Text variant="muted" as="span" className="text-xs text-primary">
+            Go to post →
+          </Text>
+        </a>
+      ) : null}
+    </>
+  );
+
+  if (!hasMedia) {
+    return (
+      // eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context-nomedia`, full-width/tidak di-center (konsisten T-056, media di-omit sepenuhnya)
+      <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-muted p-3">
+        <Text variant="muted" as="span" className="text-xs">
+          Post asal
+        </Text>
+        {accountRow}
+        {captionAndLink}
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line no-restricted-syntax -- T-111.4 (koreksi 2026-10-07): `.post-context`, kartu ala Instagram, lebar 1/3 RATA KIRI di desktop (CSS asli `width:33.333%; align-self:flex-start` — bukan 360px di-center seperti ringkasan task lama), full-width di breakpoint ≤768px
+    <div className="w-full self-start overflow-hidden rounded-lg border border-border md:w-1/3">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context-media-wrap`, rasio 1:1 */}
+      <div className="relative aspect-square bg-muted-foreground/20">
+        {activeThumbnail ? (
+          <MediaThumbnail
+            key={mediaIndex}
+            url={activeThumbnail.url}
+            type={activeThumbnail.type}
+            alt="Media post asal"
+            fit="cover"
+            className="absolute inset-0"
+          />
+        ) : null}
+        {thumbnails.length > 1 ? (
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon-sm"
+              aria-label="Media sebelumnya"
+              onClick={goPrev}
+              className="absolute top-1/2 left-2 -translate-y-1/2"
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon-sm"
+              aria-label="Media berikutnya"
+              onClick={goNext}
+              className="absolute top-1/2 right-2 -translate-y-1/2"
+            >
+              <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
+            </Button>
+          </>
+        ) : null}
+      </div>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context-content`, layout-only */}
+      <div className="flex min-w-0 flex-col gap-2 p-3">
+        <Text variant="muted" as="span" className="text-xs">
+          Post asal
+        </Text>
+        {accountRow}
+        {captionAndLink}
+      </div>
+    </div>
+  );
+}
+
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: ALL_STATUS_FILTER_VALUE, label: "Semua Status" },
   { value: "unread", label: "Unread" },
@@ -108,16 +256,24 @@ export interface EngageInboxViewProps {
  * Component berikutnya — state list di client ini dipatch langsung dari
  * `data` yang dikembalikan action, pola sama `ConnectedAccountsList`).
  *
- * **Kotak "Post asal" (T-056, KI-065, resolved 2026-10-06):** sebelumnya
- * hanya label generik ("Komentar ini terhubung ke post terjadwal/
- * terpublish") karena `InboxItemDetail` (T-050) tidak membawa snapshot
- * caption/media post asli. Sekarang `InboxItemDetailDto.postSnapshot`
- * (`getInboxItemDetailAction`, join `engagement` → `publishing` lewat
- * public API module + resolve thumbnail lewat `MediaService`) mengisi
- * caption (truncate 1 baris), thumbnail (di-omit sepenuhnya kalau post
- * tidak bermedia — bukan kotak kosong), dan link **"Go to post →"**
- * (`platformPostUrl`, reuse gaya `.popover-link` dari Post Preview Popover
- * Calendar, LOCKED PATTERN Claude Design `templates/engage-inbox.html`).
+ * **Kotak "Post asal" (T-056, KI-065, resolved 2026-10-06; restrukturisasi
+ * T-111.3/T-111.4, 2026-10-07):** awalnya hanya label generik ("Komentar
+ * ini terhubung ke post terjadwal/terpublish") karena `InboxItemDetail`
+ * (T-050) tidak membawa snapshot caption/media post asli; lalu T-056
+ * menambah thumbnail tunggal dalam kotak kecil tetap (`size-11
+ * object-contain`). King Rezi menilai itu belum merepresentasikan post asli
+ * dengan baik (KI-083) — direstrukturisasi total (T-111.3, LOCKED PATTERN
+ * Claude Design `templates/engage-inbox.html` § `.post-context`) jadi kartu
+ * ala post Instagram: media rasio 1:1 + carousel (`PostOriginCard` di
+ * bawah, pakai `InboxDetailPostSnapshotDto.thumbnails`, array SEMUA media —
+ * beda dari `thumbnail` tunggal T-056 yang dipertahankan untuk
+ * backward-compat tempat lain), avatar+badge+nama akun
+ * (`PostContextAccountBadge`, lookup `accounts` prop by
+ * `detail.connectedAccountId`), dan caption TANPA truncate lagi (beda dari
+ * T-056 yang truncate 1 baris). Link **"Go to post →"** (`platformPostUrl`)
+ * TIDAK berubah dari T-056. Sengaja beda dari History Detail (T-111.1/.2,
+ * modal penuh, media unconstrained) sesuai klarifikasi scope King Rezi
+ * 2026-10-06 — lihat `tasks/v02-publishing-mvp.md` § T-111.
  */
 export function EngageInboxView({
   initialItems,
@@ -134,6 +290,12 @@ export function EngageInboxView({
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Push navigation mobile (≤768px, T-111.5 LOCKED PATTERN) — "list" default,
+  // "detail" setelah tap satu thread. Di `md:` ke atas state ini tidak
+  // berpengaruh visual (kedua panel selalu tampil lewat class `md:flex`/
+  // `md:block` yang menimpa `hidden`), jadi `setMobileView` aman dipanggil
+  // selalu di handler klik thread, tidak perlu cek viewport dulu.
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
   const [detail, setDetail] = useState<InboxItemDetailDto | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
@@ -219,6 +381,7 @@ export function EngageInboxView({
       }
 
       setIsLoadingDetail(true);
+      setDetail(null);
       const result = await getInboxItemDetailAction(effectiveSelectedId);
       if (cancelled || detailRequestSeqRef.current !== seq) {
         // Sudah disusul selection lain (out-of-order response) — buang.
@@ -336,8 +499,13 @@ export function EngageInboxView({
   return (
     // eslint-disable-next-line no-restricted-syntax -- T-053: file baru, dikomposisi Tailwind langsung (ADR-097)
     <div className="flex h-full flex-col gap-4">
-      {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only */}
-      <div className="flex items-center justify-between gap-4">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only; T-111.6: disembunyikan di mobile saat `.thread-detail` full-bleed (CSS asli `.main:has(...) > .page-head {display:none}`) */}
+      <div
+        className={cn(
+          "flex items-center justify-between gap-4",
+          mobileView === "detail" && "hidden md:flex",
+        )}
+      >
         {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only */}
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-2xl font-semibold tracking-tight">
@@ -363,8 +531,13 @@ export function EngageInboxView({
         </Button>
       </div>
 
-      {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only, `.inbox-filter` */}
-      <div className="flex flex-wrap gap-2">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-053: layout-only, `.inbox-filter`; T-111.6: disembunyikan di mobile saat `.thread-detail` full-bleed (CSS asli `.main:has(...) > .inbox-filter {display:none}`) */}
+      <div
+        className={cn(
+          "flex flex-wrap gap-2",
+          mobileView === "detail" && "hidden md:flex",
+        )}
+      >
         <Select value={accountFilter} onValueChange={setAccountFilter}>
           <SelectTrigger size="sm" aria-label="Filter akun" className="w-44">
             <SelectValue />
@@ -418,18 +591,23 @@ export function EngageInboxView({
           </EmptyHeader>
         </Empty>
       ) : (
-        // eslint-disable-next-line no-restricted-syntax -- T-053: `.inbox-shell`, grid 2 kolom (lebar list = konstanta struktural, bukan token, lihat komentar THREAD_LIST_WIDTH_PX)
+        // eslint-disable-next-line no-restricted-syntax -- T-053: `.inbox-shell`, grid 2 kolom (lebar list = konstanta struktural, bukan token, lihat komentar THREAD_LIST_WIDTH_PX); T-111.6: `max-md:!grid-cols-1` (breakpoint bawaan Tailwind, bukan arbitrary value) menimpa `style` inline 340px/1fr HANYA di ≤768px — push navigation 1 panel full-width per state `mobileView`
         <div
           className={cn(
-            "grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card",
+            "grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card max-md:grid-cols-1!",
             isLoadingList && "opacity-60",
           )}
           style={{
             gridTemplateColumns: `${THREAD_LIST_WIDTH_PX}px 1fr`,
           }}
         >
-          {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thread-list` */}
-          <div className="h-full min-h-0 overflow-y-auto border-r border-border">
+          {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thread-list`; T-111.6: disembunyikan total di mobile saat state "detail" */}
+          <div
+            className={cn(
+              "h-full min-h-0 overflow-y-auto border-r border-border",
+              mobileView === "detail" && "hidden md:block",
+            )}
+          >
             <ItemGroup className="gap-0 has-data-[size=sm]:gap-0">
               {items.map((item) => {
                 const isSelected = item.id === effectiveSelectedId;
@@ -444,7 +622,10 @@ export function EngageInboxView({
                   >
                     <button
                       type="button"
-                      onClick={() => setSelectedId(item.id)}
+                      onClick={() => {
+                        setSelectedId(item.id);
+                        setMobileView("detail");
+                      }}
                       aria-current={isSelected ? "true" : undefined}
                     >
                       <ItemMedia className="mt-1.5 items-start justify-start">
@@ -477,8 +658,30 @@ export function EngageInboxView({
             </ItemGroup>
           </div>
 
-          {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thread-detail` */}
-          <div className="flex min-w-0 flex-col gap-4 p-5">
+          {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thread-detail`; T-111.6: `hidden md:flex` saat state "list" (mobile) vs selalu `flex` di desktop/state "detail" */}
+          <div
+            className={cn(
+              "min-w-0 flex-col gap-4 overflow-y-auto p-5",
+              mobileView === "list" ? "hidden md:flex" : "flex",
+            )}
+          >
+            {mobileView === "detail" ? (
+              // eslint-disable-next-line no-restricted-syntax -- T-111.6: `.thread-detail-mobile-header`, reuse style `.settings-back-btn` (SettingsSideNav), full-bleed lewat `-m-5` menegasikan padding parent `p-5`
+              <div className="-m-5 mb-4 flex items-center gap-2 border-b border-border p-3 md:hidden">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Kembali ke daftar pesan"
+                  onClick={() => setMobileView("list")}
+                >
+                  <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+                </Button>
+                <Text as="span" className="truncate font-semibold">
+                  {detail?.authorHandle ?? ""}
+                </Text>
+              </div>
+            ) : null}
             {isLoadingDetail ? (
               // eslint-disable-next-line no-restricted-syntax -- T-053: layout-only
               <div className="flex flex-1 items-center justify-center">
@@ -504,48 +707,15 @@ export function EngageInboxView({
                 ) : null}
 
                 {detail.postId && detail.postSnapshot ? (
-                  // eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.post-context` (Claude Design `templates/engage-inbox.html`, LOCKED PATTERN T-056 2026-10-06) — thumbnail di-omit sepenuhnya kalau post tidak bermedia (bukan kotak kosong), kolom teks full width.
-                  <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-muted p-3">
-                    {detail.postSnapshot.thumbnail ? (
-                      // eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.thumb` — thumbnail media post asli, size tetap sama placeholder lama (size-11).
-                      <div className="size-11 shrink-0 overflow-hidden rounded-md bg-muted-foreground/20">
-                        <MediaThumbnail
-                          url={detail.postSnapshot.thumbnail.url}
-                          type={detail.postSnapshot.thumbnail.type}
-                          alt="Media post asal"
-                          fit="contain"
-                        />
-                      </div>
-                    ) : null}
-                    {/* eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.post-context-body` */}
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <Text variant="muted" as="span" className="text-xs">
-                        Post asal
-                      </Text>
-                      {/* `.post-context-cap` — truncate 1 baris */}
-                      <Text
-                        as="span"
-                        className="truncate text-sm font-semibold"
-                      >
-                        {detail.postSnapshot.caption || "(Tanpa caption)"}
-                      </Text>
-                      {detail.postSnapshot.platformPostUrl ? (
-                        <a
-                          href={detail.postSnapshot.platformPostUrl}
-                          target="_blank"
-                          rel="noopener"
-                        >
-                          <Text
-                            variant="muted"
-                            as="span"
-                            className="text-xs text-primary"
-                          >
-                            Go to post →
-                          </Text>
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
+                  <PostOriginCard
+                    key={detail.id}
+                    postSnapshot={detail.postSnapshot}
+                    account={accounts.find(
+                      (account) => account.id === detail.connectedAccountId,
+                    )}
+                    platform={detail.platform}
+                    fallbackHandle={PLATFORM_ICON[detail.platform].label}
+                  />
                 ) : null}
 
                 <Text as="p" className="text-sm text-muted-foreground">
@@ -587,14 +757,15 @@ export function EngageInboxView({
                   </Button>
                 ) : null}
 
-                {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.reply-box` */}
-                <div className="mt-auto flex flex-col gap-2">
+                {/* eslint-disable-next-line no-restricted-syntax -- T-053 (koreksi 2026-10-07): `.reply-box` — CSS asli `display:flex; gap; padding-top; border-top` (SATU BARIS textarea+tombol, dipisah divider dari konten di atas), bukan `flex-col` (tombol jatuh ke bawah) seperti sebelumnya */}
+                <div className="mt-auto flex gap-2 border-t border-border pt-4">
                   <Textarea
                     placeholder="Balas komentar..."
                     rows={2}
                     value={replyDraft}
                     onChange={(event) => setReplyDraft(event.target.value)}
                     disabled={isSendingReply}
+                    className="flex-1"
                   />
                   <Button
                     type="button"

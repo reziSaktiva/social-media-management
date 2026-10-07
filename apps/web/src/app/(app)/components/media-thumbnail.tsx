@@ -26,20 +26,31 @@ export function MediaThumbnail({
    * mengandalkan tailwind-merge diam-diam men-dedupe konflik dengan default
    * `object-cover` di bawah. `"cover"` (default) untuk grid aktif
    * mengkurasi media sendiri (Modal.tsx — crop mengisi kotak itu wajar);
-   * `"contain"` untuk preview read-only media yang sudah dipublish (Post
-   * asal Comments Inbox, History Detail — rasio aspek asli harus terlihat
-   * utuh, bukan di-crop).
+   * `"contain"` untuk preview read-only media di dalam kotak berukuran
+   * tetap (Post asal Comments Inbox) — rasio aspek asli harus terlihat
+   * utuh, bukan di-crop, tapi parent-nya tetap punya tinggi fixed.
+   * `"natural"` (T-111.2, KI-083/T-111.1 LOCKED PATTERN) — untuk media
+   * natural-size di History Detail Dialog: TIDAK memaksa `size-full`
+   * (yang mengasumsikan parent sudah punya tinggi tetap), lebar 100% dari
+   * parent + tinggi mengikuti aspect ratio asli (`height:auto`), sama
+   * seperti `<img class="history-post-media">` di mockup Claude Design.
    */
-  fit?: "cover" | "contain";
+  fit?: "cover" | "contain" | "natural";
 }) {
-  const fitClassName = fit === "contain" ? "object-contain" : "object-cover";
+  const fitClassName =
+    fit === "natural"
+      ? "h-auto w-full"
+      : fit === "contain"
+        ? "size-full object-contain"
+        : "size-full object-cover";
 
   if (type === "video") {
     return (
       <video
         src={url ?? undefined}
-        className={cn("size-full", fitClassName, className)}
-        muted
+        className={cn("block", fitClassName, className)}
+        controls={fit === "natural"}
+        muted={fit !== "natural"}
         playsInline
         preload="metadata"
       />
@@ -51,7 +62,7 @@ export function MediaThumbnail({
     <img
       src={url ?? undefined}
       alt={alt}
-      className={cn("size-full", fitClassName, className)}
+      className={cn("block", fitClassName, className)}
     />
   );
 }
