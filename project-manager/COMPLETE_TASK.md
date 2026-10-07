@@ -8,6 +8,156 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-07 — KI-042 Mobile Shell retrofit: hamburger+drawer dipasang ke semua screen `.app-shell` + App Prototype
+
+Ditemukan King Rezi setelah QA T-111.5 di App Prototype: pindah viewport ke
+Mobile (390px) memang memicu breakpoint `@media max-width:768px` yang
+menyembunyikan sidebar (`.app-shell > .sidebar`), tapi **tidak ada hamburger
+apapun untuk membukanya lagi** — navigasi antar halaman total buntu di
+viewport Mobile. Diverifikasi: pola "Mobile Shell" (top app bar + Sidebar
+Drawer) sudah lama terdokumentasi di `styles.css` sebagai CSS + demo
+standalone (`components/navigation-mobile.html`, KI-042) tapi **tidak
+pernah dipasang ke satu pun screen asli maupun ke App Prototype**.
+
+Bukan task T-111 — gap terpisah (KI-042), diperbaiki langsung atas
+instruksi King Rezi (scope dikonfirmasi lewat `AskUserQuestion`: "App
+Prototype saja" vs "App Prototype + semua template" — dipilih yang kedua).
+
+Dipasang ke **14 file** (sesi utama, `DesignSync` tetap tidak dicoba di
+subagent Neymar):
+
+- **7 template workspace sidebar** (`home.html`,
+  `publish-calendar/drafts/history/queue.html`, `engage-inbox.html`,
+  `analyze-dashboard.html`): `.mobile-topbar` (hamburger
+  `data-proto="mobile-nav-toggle"`, title "Kopi Selasar") ditambah sebagai
+  anak pertama `.app-shell`; tombol close (`data-proto="mobile-nav-close"`)
+  ditambah statis di `.ws-switch` setelah `.sidebar-trigger`.
+- **7 template settings sidebar** (`settings-general.html` +
+  `connected-accounts/members/notifications/preferences/profile/workspaces`):
+  sama, title "Settings", close button di `.settings-sidebar-header`.
+- Tombol close `display:none` by default di `styles.css`, cuma tampil via
+  CSS (`.mobile-nav-drawer .mobile-nav-drawer-close`) saat sidebar-nya
+  betulan ada di dalam drawer; `.sidebar-trigger` (collapse desktop) ikut
+  disembunyikan di dalam drawer (tidak relevan di konteks itu).
+- JS per-file (pola sama theme-toggle/sidebar-collapse yang sudah ada,
+  guard `window.top !== window.self`) **MEMINDAHKAN** (bukan
+  menduplikasi) node `.sidebar`/`.settings-sidebar` ke dalam
+  `.mobile-nav-backdrop`>`.mobile-nav-drawer` yang dibuat on-demand saat
+  hamburger diklik, dikembalikan ke posisi semula saat ditutup — sesuai
+  kontrak "move into an overlay Drawer" yang sudah lama tertulis di
+  komentar `styles.css` tapi belum pernah diimplementasikan.
+- `templates/app-prototype/AppPrototype.dc.html`: method generik baru
+  `openMobileNav`/`closeMobileNav` (pola sama
+  `openNotifPanel`/`closeNotifPanel` — capture-phase outside-click +
+  Escape dismiss) + 2 case `route()` baru (`mobile-nav-toggle`/
+  `mobile-nav-close`) — satu implementasi berlaku untuk SEMUA layar di
+  runner, tidak perlu listener per-layar.
+- `readme.md`: section baru "KI-042 Mobile Shell retrofit" + update
+  catatan lama di entri `engage-inbox.html` (yang sebelumnya bilang gap
+  ini "belum di-retrofit ke screen manapun" — sudah tidak akurat lagi).
+
+**Verifikasi struktural** (bukan visual — tidak ada akses browser langsung
+ke Claude Design dari sesi ini): tiap 14 file dicek `grep` memastikan
+tepat 1 `data-proto="mobile-nav-toggle"` markup + 1 `data-proto=
+"mobile-nav-close"` markup hadir dan konsisten.
+
+---
+
+## 2026-10-07 — T-111.5 Done: desain mobile Engage Inbox (Claude Design), push navigation
+
+Gap ditemukan King Rezi saat review ulang T-111 setelah 4/4 subtask desktop
+Done: `.inbox-shell` (grid `.thread-list` 340px + `.thread-detail` 1fr, dipakai
+`/engage`) tidak pernah punya breakpoint mobile — satu-satunya aturan mobile
+yang ada sebelumnya cuma `.post-context{width:100%}` (kartu "Post asal" saja,
+T-111.3), bukan keseluruhan layout 2-kolom. Sempat dilaporkan Najwa QA
+Engineer saat QA T-111.4 sebagai "pre-existing dari T-053, bukan regresi",
+tapi memang belum pernah didesain ulang.
+
+Sebelum menulis kode apapun, dicek dulu ke AGENTS.md rule 17 — ini task
+UI/UX-related sehingga wajib proactive-clarification (`AskUserQuestion`)
+untuk mengunci pola layout mobile dulu di Claude Design. Dua keputusan
+ditanyakan ke King Rezi:
+
+1. **Pola navigasi mobile** — 3 opsi: push navigation (list↔detail, tombol
+   back, pola standar inbox/messaging), full-screen sheet/modal (reuse
+   Dialog T-111.1), atau segmented tab switch (2 tab manual). King Rezi
+   pilih **push navigation**.
+2. **Filter bar** (`.inbox-filter`, 3 `<select>`) — stack vertikal tetap 3
+   dropdown, atau collapse ke 1 tombol "Filter". King Rezi pilih **stack
+   vertikal, tetap 3 dropdown**.
+
+Implementasi di Claude Design (sesi utama, `DesignSync` tidak dicoba lagi di
+subagent Neymar — pola sama T-111.1/T-111.3):
+
+- `styles.css` — `.thread-detail-mobile-header` baru (hidden desktop) +
+  aturan `@media (max-width:768px)` ditambahkan ke blok shared Mobile
+  Shell yang sudah ada: `.inbox-shell` jadi `display:block` (grid 2 kolom
+  mati), `.thread-list`/`.thread-detail` di-toggle lewat selector
+  `.inbox-shell[data-mobile-view="detail"]`, header mobile dapat border +
+  negative margin biar nempel tepi card.
+- `templates/engage-inbox.html` — `.inbox-shell` dapat atribut
+  `data-mobile-view="list"` (default); `.thread-detail` dapat
+  `.thread-detail-mobile-header` berisi tombol back yang REUSE PERSIS
+  `.settings-back-btn` (icon+style) dari header `.settings-sidebar`
+  (`templates/settings-general.html`) — bukan komponen baru. Filter
+  `.inbox-filter` di-stack via media query di `<style>` page-level (sudah
+  page-scoped sejak awal, bukan dipindah ke styles.css supaya tidak
+  konflik specificity dengan `.select{width:auto}` inline yang sudah ada).
+  JS baru (pola sama theme-toggle/sidebar-collapse yang sudah ada di file
+  ini): klik `.thread-item` → `data-mobile-view="detail"`; klik tombol
+  back → `data-mobile-view="list"`. Ini prototype statis, bukan real
+  routing.
+- `readme.md` — entri Screens `templates/engage-inbox.html` ditambah
+  paragraf "MOBILE LAYOUT LOCKED (T-111.5)" mendokumentasikan keputusan +
+  alasan opsi lain ditolak.
+
+**Sengaja TIDAK termasuk scope ini:** migrasi `.app-shell > .sidebar` di
+halaman ini ke pola Mobile Shell (`.mobile-topbar`, KI-042) — dikonfirmasi
+saat eksplorasi bahwa pola itu baru ada sebagai demo standalone di
+`components/navigation-mobile.html`, belum di-retrofit ke screen real
+manapun (termasuk `publish-queue.html` dkk) — itu gap terpisah, bukan
+bagian T-111.
+
+**Follow-up:** T-111.6 (implementasi kode `EngageInboxView.tsx`) sudah bisa
+dimulai — gate AGENTS.md rule 17 untuk layar ini sudah terpenuhi. T-111.7
+(desain mobile History Detail) masih ⏳, belum disentuh sesi ini.
+
+**Fix sama hari (dilaporkan King Rezi setelah test di App Prototype):** klik
+`.thread-item` di dalam runner App Prototype tidak pindah ke
+`.thread-detail` — ternyata `route()` dispatcher App Prototype
+(`templates/app-prototype/AppPrototype.dc.html`) sudah punya case
+`.thread-item` sendiri dari dulu (cuma toggle class `.active`), yang
+meng-override script kecil di `templates/engage-inbox.html` (sengaja
+dimatikan di dalam iframe App Prototype, pola sama persis
+theme-toggle/sidebar-collapse). Ditambahkan method baru
+`setInboxMobileView(doc, view)` (pola sama `toggleSidebarCollapse`) +
+dipanggil dari case `.thread-item` yang sudah ada (set ke `"detail"`) dan
+case baru `data-proto === "inbox-mobile-back"` (set ke `"list"`). Halaman
+statis (dibuka langsung di luar runner) tidak terpengaruh, sudah benar
+dari awal.
+
+**Revisi ke-2 sama hari (King Rezi, setelah review hasil fix di atas):**
+dua perbaikan lanjutan di `styles.css` (+ dokumentasi `readme.md`):
+1. `.page-head` (judul "Engage" + tombol Refresh) dan `.inbox-filter` (3
+   dropdown) sebelumnya tetap tampil di atas `.thread-detail` walau sudah
+   di state "detail" — sekarang disembunyikan juga, bukan cuma
+   `.inbox-shell` yang berubah layout.
+2. `.thread-detail` di state "detail" dibuat jadi **sub-page sungguhan**
+   (bukan panel yang masih kepotong card/padding halaman List) —
+   `.main` di-strip padding-nya jadi 0 pakai selector `:has()` (preseden
+   sudah ada di `.seg label:has(...)`, scope aman cuma ke `.main` yang
+   benar2 berisi `.inbox-shell[data-mobile-view="detail"]`), border+radius
+   card `.thread-detail` dilepas supaya full-bleed ke tepi viewport,
+   `.thread-detail-mobile-header` berfungsi sebagai header sub-page itu
+   sendiri (bukan lagi sekadar header dalam card).
+
+Update dokumentasi: `tasks/v02-publishing-mvp.md` § T-111.5 (✅ Done + detail
+keputusan) dan § T-111.6 (depends terpenuhi), `TASKS.md` Fokus sekarang
+(5/8 subtask), `PROJECT_STATE.md` Snapshot + Completed (Ringkasan, bullet
+T-056 lama digeser keluar supaya tetap 5 item).
+
+---
+
 ## 2026-10-07 — T-111 Done (4/4 subtask): implementasi kode restrukturisasi preview media post asli (History Detail + Post asal Engage), menutup KI-083
 
 Lanjutan dari T-111.1/T-111.3 (Claude Design, entri di bawah) — sesi ini
