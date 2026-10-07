@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Refresh01Icon } from "@hugeicons/core-free-icons";
+import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  Refresh01Icon,
+} from "@hugeicons/core-free-icons";
 
 import { SocialPlatform } from "@social/shared";
 import type { ConnectedAccountRecord } from "@/domains/workspace";
@@ -12,8 +16,10 @@ import type {
   InboxItemStatus,
 } from "@/domains/engagement";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
+import { getInitials } from "@/lib/utils/get-initials";
 import { cn } from "@/lib/utils";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -64,6 +70,186 @@ const ALL_STATUS_FILTER_VALUE = "all";
  * (ADR-095) di file luar `components/ui/**`. */
 const THREAD_LIST_WIDTH_PX = 340;
 
+/** Lebar maksimum kartu "Post asal" ala Instagram (T-111.4, LOCKED PATTERN
+ * Claude Design `templates/engage-inbox.html` § `.post-context`, T-111.3) —
+ * 360px, sama alasan `THREAD_LIST_WIDTH_PX` di atas (dimensi struktural
+ * tanpa padanan spacing scale, diterapkan lewat inline `style` supaya tidak
+ * kena `tailwindcss/no-arbitrary-value`, ADR-095). Dipasangkan dengan
+ * `w-full` + `mx-auto` (bukan `width` tetap) supaya otomatis full-width saat
+ * parent lebih sempit dari 360px (mis. viewport mobile ≤768px) tanpa perlu
+ * media query terpisah — `max-width` murni cukup untuk efek "tetap 360px
+ * di-center di desktop, full-width di layar sempit" yang diminta mockup. */
+const POST_CONTEXT_CARD_MAX_WIDTH_PX = 360;
+
+/** Avatar + badge platform 28px/12px untuk baris akun kartu "Post asal"
+ * (`.post-context-account`, T-111.3) — reuse PERSIS pola `.channel-avatar-
+ * wrap`/`.channel-avatar`/`.channel-badge` dari `ChannelsSection.tsx`
+ * (`PlatformBadge`), hanya beda ukuran (28px/12px di sini vs default
+ * `Avatar` 32px di sidebar) karena `Avatar` shadcn belum punya size variant
+ * yang pas — di-override lewat `className` (`cn()` tailwind-merge menang
+ * atas default `size-8` komponen). */
+function PostContextAccountBadge({ platform }: { platform: SocialPlatform }) {
+  const entry = PLATFORM_ICON[platform];
+  if (!entry) {
+    return null;
+  }
+  const PlatformGlyph = entry.Icon;
+  return (
+    <span
+      className="absolute -inset-e-1 -bottom-1 flex size-3 items-center justify-center rounded-full bg-background ring-1 ring-border"
+      aria-hidden
+    >
+      {/* Warna brand asli (bukan token) — pengecualian disengaja, sama alasan `PlatformBadge` (ADR-058 poin 6 & 10). */}
+      <PlatformGlyph size={7} color={entry.color} />
+    </span>
+  );
+}
+
+/**
+ * Kartu "Post asal" ala Instagram (T-111.4, implementasi LOCKED PATTERN
+ * T-111.3 Claude Design `templates/engage-inbox.html` § `.post-context`).
+ * Komponen terpisah (bukan inline di body utama) supaya state carousel
+ * lokal (`mediaIndex`) otomatis ter-reset tiap ganti komentar yang dipilih
+ * lewat `key={detail.id}` di call-site — tidak butuh `useEffect` manual.
+ *
+ * Struktur: atas `.post-context-media-wrap` (media rasio 1:1 `object-fit:
+ * cover` + 2 tombol carousel melayang, HANYA kalau `thumbnails.length > 1`)
+ * — bawah `.post-context-content` (label "Post asal" → avatar+badge+nama
+ * akun → caption TANPA truncate, wrap multi-baris → "Go to post →", tidak
+ * berubah dari T-056). Lebar kartu tetap `POST_CONTEXT_CARD_MAX_WIDTH_PX`
+ * di-center HANYA kalau ada media (`thumbnails.length > 0`) — fallback
+ * `.post-context-nomedia` (media di-omit sepenuhnya, konsisten T-056)
+ * sengaja full-width, tidak di-center, sama seperti sebelum T-111.
+ */
+function PostOriginCard({
+  postSnapshot,
+  account,
+  platform,
+  fallbackHandle,
+}: {
+  postSnapshot: NonNullable<InboxItemDetailDto["postSnapshot"]>;
+  account: ConnectedAccountRecord | undefined;
+  platform: SocialPlatform;
+  fallbackHandle: string;
+}) {
+  const [mediaIndex, setMediaIndex] = useState(0);
+  const { thumbnails, caption, platformPostUrl } = postSnapshot;
+  const hasMedia = thumbnails.length > 0;
+  const activeThumbnail = hasMedia
+    ? (thumbnails[mediaIndex] ?? thumbnails[0])
+    : null;
+  const accountLabel = account?.handle ?? fallbackHandle;
+
+  const goPrev = () =>
+    setMediaIndex(
+      (index) => (index - 1 + thumbnails.length) % thumbnails.length,
+    );
+  const goNext = () =>
+    setMediaIndex((index) => (index + 1) % thumbnails.length);
+
+  const accountRow = (
+    // eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context-account`, layout-only
+    <div className="flex items-center gap-2">
+      {/* eslint-disable-next-line no-restricted-syntax -- T-111.4: `.channel-avatar-wrap`, layout-only */}
+      <div className="relative shrink-0">
+        <Avatar className="size-7">
+          <AvatarImage
+            src={account?.avatarUrl ?? undefined}
+            alt={accountLabel}
+          />
+          <AvatarFallback>{getInitials(accountLabel)}</AvatarFallback>
+        </Avatar>
+        <PostContextAccountBadge platform={platform} />
+      </div>
+      <Text as="span" className="text-sm font-medium">
+        {accountLabel}
+      </Text>
+    </div>
+  );
+
+  const captionAndLink = (
+    <>
+      <Text as="p" className="text-sm font-semibold whitespace-pre-line">
+        {caption || "(Tanpa caption)"}
+      </Text>
+      {platformPostUrl ? (
+        <a href={platformPostUrl} target="_blank" rel="noopener">
+          <Text variant="muted" as="span" className="text-xs text-primary">
+            Go to post →
+          </Text>
+        </a>
+      ) : null}
+    </>
+  );
+
+  if (!hasMedia) {
+    return (
+      // eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context-nomedia`, full-width/tidak di-center (konsisten T-056, media di-omit sepenuhnya)
+      <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-muted p-3">
+        <Text variant="muted" as="span" className="text-xs">
+          Post asal
+        </Text>
+        {accountRow}
+        {captionAndLink}
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context`, kartu ala Instagram, lebar 360px di-center (lihat komentar POST_CONTEXT_CARD_MAX_WIDTH_PX)
+    <div
+      className="mx-auto w-full overflow-hidden rounded-lg border border-border"
+      style={{ maxWidth: POST_CONTEXT_CARD_MAX_WIDTH_PX }}
+    >
+      {/* eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context-media-wrap`, rasio 1:1 */}
+      <div className="relative aspect-square bg-muted-foreground/20">
+        {activeThumbnail ? (
+          <MediaThumbnail
+            key={mediaIndex}
+            url={activeThumbnail.url}
+            type={activeThumbnail.type}
+            alt="Media post asal"
+            fit="cover"
+            className="absolute inset-0"
+          />
+        ) : null}
+        {thumbnails.length > 1 ? (
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon-sm"
+              aria-label="Media sebelumnya"
+              onClick={goPrev}
+              className="absolute top-1/2 left-2 -translate-y-1/2"
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon-sm"
+              aria-label="Media berikutnya"
+              onClick={goNext}
+              className="absolute top-1/2 right-2 -translate-y-1/2"
+            >
+              <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
+            </Button>
+          </>
+        ) : null}
+      </div>
+      {/* eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context-content`, layout-only */}
+      <div className="flex min-w-0 flex-col gap-2 p-3">
+        <Text variant="muted" as="span" className="text-xs">
+          Post asal
+        </Text>
+        {accountRow}
+        {captionAndLink}
+      </div>
+    </div>
+  );
+}
+
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: ALL_STATUS_FILTER_VALUE, label: "Semua Status" },
   { value: "unread", label: "Unread" },
@@ -108,16 +294,24 @@ export interface EngageInboxViewProps {
  * Component berikutnya — state list di client ini dipatch langsung dari
  * `data` yang dikembalikan action, pola sama `ConnectedAccountsList`).
  *
- * **Kotak "Post asal" (T-056, KI-065, resolved 2026-10-06):** sebelumnya
- * hanya label generik ("Komentar ini terhubung ke post terjadwal/
- * terpublish") karena `InboxItemDetail` (T-050) tidak membawa snapshot
- * caption/media post asli. Sekarang `InboxItemDetailDto.postSnapshot`
- * (`getInboxItemDetailAction`, join `engagement` → `publishing` lewat
- * public API module + resolve thumbnail lewat `MediaService`) mengisi
- * caption (truncate 1 baris), thumbnail (di-omit sepenuhnya kalau post
- * tidak bermedia — bukan kotak kosong), dan link **"Go to post →"**
- * (`platformPostUrl`, reuse gaya `.popover-link` dari Post Preview Popover
- * Calendar, LOCKED PATTERN Claude Design `templates/engage-inbox.html`).
+ * **Kotak "Post asal" (T-056, KI-065, resolved 2026-10-06; restrukturisasi
+ * T-111.3/T-111.4, 2026-10-07):** awalnya hanya label generik ("Komentar
+ * ini terhubung ke post terjadwal/terpublish") karena `InboxItemDetail`
+ * (T-050) tidak membawa snapshot caption/media post asli; lalu T-056
+ * menambah thumbnail tunggal dalam kotak kecil tetap (`size-11
+ * object-contain`). King Rezi menilai itu belum merepresentasikan post asli
+ * dengan baik (KI-083) — direstrukturisasi total (T-111.3, LOCKED PATTERN
+ * Claude Design `templates/engage-inbox.html` § `.post-context`) jadi kartu
+ * ala post Instagram: media rasio 1:1 + carousel (`PostOriginCard` di
+ * bawah, pakai `InboxDetailPostSnapshotDto.thumbnails`, array SEMUA media —
+ * beda dari `thumbnail` tunggal T-056 yang dipertahankan untuk
+ * backward-compat tempat lain), avatar+badge+nama akun
+ * (`PostContextAccountBadge`, lookup `accounts` prop by
+ * `detail.connectedAccountId`), dan caption TANPA truncate lagi (beda dari
+ * T-056 yang truncate 1 baris). Link **"Go to post →"** (`platformPostUrl`)
+ * TIDAK berubah dari T-056. Sengaja beda dari History Detail (T-111.1/.2,
+ * modal penuh, media unconstrained) sesuai klarifikasi scope King Rezi
+ * 2026-10-06 — lihat `tasks/v02-publishing-mvp.md` § T-111.
  */
 export function EngageInboxView({
   initialItems,
@@ -504,48 +698,15 @@ export function EngageInboxView({
                 ) : null}
 
                 {detail.postId && detail.postSnapshot ? (
-                  // eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.post-context` (Claude Design `templates/engage-inbox.html`, LOCKED PATTERN T-056 2026-10-06) — thumbnail di-omit sepenuhnya kalau post tidak bermedia (bukan kotak kosong), kolom teks full width.
-                  <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-muted p-3">
-                    {detail.postSnapshot.thumbnail ? (
-                      // eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.thumb` — thumbnail media post asli, size tetap sama placeholder lama (size-11).
-                      <div className="size-11 shrink-0 overflow-hidden rounded-md bg-muted-foreground/20">
-                        <MediaThumbnail
-                          url={detail.postSnapshot.thumbnail.url}
-                          type={detail.postSnapshot.thumbnail.type}
-                          alt="Media post asal"
-                          fit="contain"
-                        />
-                      </div>
-                    ) : null}
-                    {/* eslint-disable-next-line no-restricted-syntax -- T-056, KI-065: `.post-context-body` */}
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <Text variant="muted" as="span" className="text-xs">
-                        Post asal
-                      </Text>
-                      {/* `.post-context-cap` — truncate 1 baris */}
-                      <Text
-                        as="span"
-                        className="truncate text-sm font-semibold"
-                      >
-                        {detail.postSnapshot.caption || "(Tanpa caption)"}
-                      </Text>
-                      {detail.postSnapshot.platformPostUrl ? (
-                        <a
-                          href={detail.postSnapshot.platformPostUrl}
-                          target="_blank"
-                          rel="noopener"
-                        >
-                          <Text
-                            variant="muted"
-                            as="span"
-                            className="text-xs text-primary"
-                          >
-                            Go to post →
-                          </Text>
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
+                  <PostOriginCard
+                    key={detail.id}
+                    postSnapshot={detail.postSnapshot}
+                    account={accounts.find(
+                      (account) => account.id === detail.connectedAccountId,
+                    )}
+                    platform={detail.platform}
+                    fallbackHandle={PLATFORM_ICON[detail.platform].label}
+                  />
                 ) : null}
 
                 <Text as="p" className="text-sm text-muted-foreground">
