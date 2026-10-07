@@ -70,17 +70,6 @@ const ALL_STATUS_FILTER_VALUE = "all";
  * (ADR-095) di file luar `components/ui/**`. */
 const THREAD_LIST_WIDTH_PX = 340;
 
-/** Lebar maksimum kartu "Post asal" ala Instagram (T-111.4, LOCKED PATTERN
- * Claude Design `templates/engage-inbox.html` § `.post-context`, T-111.3) —
- * 360px, sama alasan `THREAD_LIST_WIDTH_PX` di atas (dimensi struktural
- * tanpa padanan spacing scale, diterapkan lewat inline `style` supaya tidak
- * kena `tailwindcss/no-arbitrary-value`, ADR-095). Dipasangkan dengan
- * `w-full` + `mx-auto` (bukan `width` tetap) supaya otomatis full-width saat
- * parent lebih sempit dari 360px (mis. viewport mobile ≤768px) tanpa perlu
- * media query terpisah — `max-width` murni cukup untuk efek "tetap 360px
- * di-center di desktop, full-width di layar sempit" yang diminta mockup. */
-const POST_CONTEXT_CARD_MAX_WIDTH_PX = 360;
-
 /** Avatar + badge platform 28px/12px untuk baris akun kartu "Post asal"
  * (`.post-context-account`, T-111.3) — reuse PERSIS pola `.channel-avatar-
  * wrap`/`.channel-avatar`/`.channel-badge` dari `ChannelsSection.tsx`
@@ -116,10 +105,17 @@ function PostContextAccountBadge({ platform }: { platform: SocialPlatform }) {
  * cover` + 2 tombol carousel melayang, HANYA kalau `thumbnails.length > 1`)
  * — bawah `.post-context-content` (label "Post asal" → avatar+badge+nama
  * akun → caption TANPA truncate, wrap multi-baris → "Go to post →", tidak
- * berubah dari T-056). Lebar kartu tetap `POST_CONTEXT_CARD_MAX_WIDTH_PX`
- * di-center HANYA kalau ada media (`thumbnails.length > 0`) — fallback
- * `.post-context-nomedia` (media di-omit sepenuhnya, konsisten T-056)
- * sengaja full-width, tidak di-center, sama seperti sebelum T-111.
+ * berubah dari T-056). Lebar kartu **1/3 dari `.thread-detail` di desktop,
+ * RATA KIRI** (`.post-context` CSS asli: `width: 33.333%; align-self:
+ * flex-start`) HANYA kalau ada media (`thumbnails.length > 0`) — koreksi
+ * 2026-10-07: ringkasan task T-111.3/.4 sempat menulis "360px FIXED,
+ * DI-CENTER" tapi CSS literal `styles.css` Claude Design berkata lain (CSS
+ * asli menang atas ringkasan task, lihat KI-083 follow-up). Full-width hanya
+ * di breakpoint ≤768px (default className tanpa prefix = mobile-first
+ * `w-full`, `md:w-1/3` menimpa di ≥768px — breakpoint Tailwind `md` pas
+ * dengan `max-width:768px` CSS asli). Fallback `.post-context-nomedia`
+ * (media di-omit sepenuhnya, konsisten T-056) sengaja full-width, tidak
+ * di-batasi 1/3, sama seperti sebelum T-111.
  */
 function PostOriginCard({
   postSnapshot,
@@ -161,7 +157,7 @@ function PostOriginCard({
         </Avatar>
         <PostContextAccountBadge platform={platform} />
       </div>
-      <Text as="span" className="text-sm font-medium">
+      <Text as="span" variant="small">
         {accountLabel}
       </Text>
     </div>
@@ -196,11 +192,8 @@ function PostOriginCard({
   }
 
   return (
-    // eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context`, kartu ala Instagram, lebar 360px di-center (lihat komentar POST_CONTEXT_CARD_MAX_WIDTH_PX)
-    <div
-      className="mx-auto w-full overflow-hidden rounded-lg border border-border"
-      style={{ maxWidth: POST_CONTEXT_CARD_MAX_WIDTH_PX }}
-    >
+    // eslint-disable-next-line no-restricted-syntax -- T-111.4 (koreksi 2026-10-07): `.post-context`, kartu ala Instagram, lebar 1/3 RATA KIRI di desktop (CSS asli `width:33.333%; align-self:flex-start` — bukan 360px di-center seperti ringkasan task lama), full-width di breakpoint ≤768px
+    <div className="w-full self-start overflow-hidden rounded-lg border border-border md:w-1/3">
       {/* eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context-media-wrap`, rasio 1:1 */}
       <div className="relative aspect-square bg-muted-foreground/20">
         {activeThumbnail ? (
@@ -748,14 +741,15 @@ export function EngageInboxView({
                   </Button>
                 ) : null}
 
-                {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.reply-box` */}
-                <div className="mt-auto flex flex-col gap-2">
+                {/* eslint-disable-next-line no-restricted-syntax -- T-053 (koreksi 2026-10-07): `.reply-box` — CSS asli `display:flex; gap; padding-top; border-top` (SATU BARIS textarea+tombol, dipisah divider dari konten di atas), bukan `flex-col` (tombol jatuh ke bawah) seperti sebelumnya */}
+                <div className="mt-auto flex gap-2 border-t border-border pt-4">
                   <Textarea
                     placeholder="Balas komentar..."
                     rows={2}
                     value={replyDraft}
                     onChange={(event) => setReplyDraft(event.target.value)}
                     disabled={isSendingReply}
+                    className="flex-1"
                   />
                   <Button
                     type="button"
