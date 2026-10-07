@@ -1635,7 +1635,7 @@ PASS (tidak regresi), boundary case PASS.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ✅ Done (4/4 subtask, 2026-10-07)                             |
+| **Status**    | 🟡 In Progress (4/8 subtask, desktop selesai, desain+implementasi mobile Engage Inbox & History Detail belum) |
 | **Domain**    | publishing · engagement · UI                                 |
 | **ADR**       | —                                                             |
 | **Depends**   | T-034.3 ✅, T-056 ✅, KI-082 Resolved (PR #144, wajib merge ke `staging` dulu sebelum T-111 dimulai — konfirmasi King Rezi) |
@@ -1692,6 +1692,26 @@ scope T-111 yang disetujui King Rezi):**
    inisial, tidak pernah foto profil asli — perlu field baru di
    repository/service kalau foto asli wajib tampil (keputusan King Rezi,
    bukan default assumption).
+
+- [ ] **T-111.5** ⏳ Not Started — Desain mobile Engage Inbox (Claude Design)
+  - **Domain:** UI
+  - **Baca dulu:** `templates/engage-inbox.html` (Claude Design, versi desktop-only saat ini) · `04-ux/key-screen-patterns.md`
+  - **Gap (ditemukan King Rezi, 2026-10-07, review ulang T-111 setelah 4/4 subtask desktop Done):** T-111 sebelumnya ditandai selesai 100%, tapi desain mobile untuk restrukturisasi media preview belum pernah ditentukan/dikunci. Verifikasi langsung ke CSS asli Claude Design (`styles.css`): `.inbox-shell` (grid `.thread-list` 340px + `.thread-detail` 1fr, dipakai halaman `/engage`) **tidak punya breakpoint mobile sama sekali** — satu-satunya aturan mobile yang ada di `@media (max-width:768px)` cuma `.post-context{width:100%; margin-left:0; margin-right:0}` (kartu "Post asal" doang, bukan keseluruhan layout 2-kolom thread-list+thread-detail). Di layar sempit, grid 2 kolom itu berisiko overflow horizontal — sempat dilaporkan Najwa QA Engineer saat QA T-111.4 sebagai "pre-existing dari T-053, bukan regresi T-111.4", tapi memang belum pernah didesain ulang untuk mobile. Belum ada pola "master-detail mobile" (mis. thread-list jadi full-screen dulu, push ke detail saat item dipilih, lalu tombol back — atau pola lain) yang didesain di Claude Design untuk Engage Inbox — ini keputusan desain baru, bukan sekadar resize CSS.
+  - **Wajib AGENTS.md rule 17:** ini task UI/UX-related — implementasi kode (T-111.6) tidak boleh dimulai sebelum desain mobile ini dikunci di Claude Design (Neymar Product Designer atau King Rezi langsung), sama persis gate yang berlaku untuk T-111.1/T-111.3 sebelumnya.
+
+- [ ] **T-111.6** ⏳ Not Started — Implementasi kode T-111.5 (apps/web, domain engagement · UI)
+  - **Depends:** T-111.5 (belum bisa dikerjakan sampai desain dikunci)
+  - **Deskripsi:** terapkan hasil desain mobile T-111.5 ke `EngageInboxView.tsx` (`apps/web/src/app/(app)/engage/components/`).
+
+- [ ] **T-111.7** ⏳ Not Started — Desain mobile History Detail (Claude Design)
+  - **Domain:** UI
+  - **Baca dulu:** `templates/publish-history-detail.html` (Claude Design, Dialog LOCKED PATTERN T-111.1)
+  - **Gap (ditemukan King Rezi, 2026-10-07, review ulang T-111 setelah 4/4 subtask desktop Done):** Dialog (`.dialog-md{width:min(560px,92vw); max-height:82vh}`) secara angka computed-responsive (pakai `vw`) tapi belum pernah divalidasi VISUAL di viewport mobile sungguhan — apakah padding/layout tetap enak dilihat di layar kecil, apakah perlu jadi full-screen sheet alih-alih dialog mengambang, dst. Ini keputusan desain, bukan cuma resize CSS.
+  - **Wajib AGENTS.md rule 17:** ini task UI/UX-related — implementasi kode (T-111.8) tidak boleh dimulai sebelum desain mobile ini dikunci di Claude Design (Neymar Product Designer atau King Rezi langsung), sama persis gate yang berlaku untuk T-111.1/T-111.3 sebelumnya.
+
+- [ ] **T-111.8** ⏳ Not Started — Implementasi kode T-111.7 (apps/web, domain publishing · UI)
+  - **Depends:** T-111.7 (belum bisa dikerjakan sampai desain dikunci)
+  - **Deskripsi:** terapkan hasil desain mobile T-111.7 ke `HistoryDetail.tsx` (`apps/web/src/app/(app)/publish/history/[postId]/components/`).
 
 ---
 
