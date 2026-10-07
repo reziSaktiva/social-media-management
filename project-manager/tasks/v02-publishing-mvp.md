@@ -1635,7 +1635,7 @@ PASS (tidak regresi), boundary case PASS.
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | 🟡 In Progress (T-111.1 ✅ Done)                             |
+| **Status**    | ✅ Done (4/4 subtask, 2026-10-07)                             |
 | **Domain**    | publishing · engagement · UI                                 |
 | **ADR**       | —                                                             |
 | **Depends**   | T-034.3 ✅, T-056 ✅, KI-082 Resolved (PR #144, wajib merge ke `staging` dulu sebelum T-111 dimulai — konfirmasi King Rezi) |
@@ -1653,9 +1653,45 @@ PASS (tidak regresi), boundary case PASS.
 **Urutan eksekusi (konfirmasi King Rezi, 2026-10-06):** PR #144 (KI-082) wajib merge ke `staging` dulu — T-111 TIDAK dikerjakan di atas branch/PR yang sama, baru dimulai setelah merge.
 
 - [x] **T-111.1** ✅ Done (2026-10-07, 3 revisi sama hari — final) — Claude Design: rancang ulang `templates/publish-history-detail.html` jadi **Modal/Dialog** (bukan hanya ubah ukuran media di struktur lama) — dikerjakan di sesi utama (bukan Neymar subagent, `DesignSync` gagal dimuat lagi di sesi subagent, pola sama § "Keterbatasan teknis" `.claude/agents/README.md`, izin eksplisit King Rezi 2026-10-06). Primitive FINAL: `.dialog-md-backdrop`+`.dialog-md` dengan **`.dialog-fs-header`+`.dialog-fs-body` SAJA — TIDAK PAKAI `.dialog-fs-footer`** (2 iterasi sempat pakai footer — "Published via X"/"Go to post", lalu list "Hasil per Akun" dengan scroll sendiri — keduanya dibatalkan: dua area scroll terpisah dalam satu dialog tidak enak dilihat, King Rezi). `.dialog-fs-body` (satu-satunya scroll area) berisi berurutan: caption → media natural-size → `.history-post-divider` → "Hasil per Akun" (paling bawah). Tiap baris "Hasil per Akun" punya **avatar+badge platform miliknya sendiri** (class `.history-target-account`, reuse `.channel-avatar-wrap`/`.channel-avatar`/`.channel-badge` dari sidebar, 28px/12px) menggantikan `.platform-dot`+nama platform generik — akurat per-target (draft paling awal sempat taruh 1 avatar representatif "target pertama published" di atas body — ambigu, sudah dibuang). LOCKED PATTERN, lihat komentar HTML di file + readme.md Screens section untuk riwayat lengkap 3 iterasi. **Catatan implementasi T-111.2:** caption perlu utility "linkify" baru (parse URL/#hashtag jadi `<a>`), belum ada di `apps/web/src` — scope kode baru, bukan sekadar styling.
-- [ ] **T-111.2** Implementasi kode T-111.1 (`apps/web`, domain `publishing`, `HistoryDetail.tsx`)
+- [x] **T-111.2** ✅ Done (2026-10-07) — Implementasi kode T-111.1 (`apps/web`, domain `publishing`, `HistoryDetail.tsx`)
 - [x] **T-111.3** ✅ Done (2026-10-07, 2 revisi — final: kartu Instagram-style + avatar per-row + caption tanpa truncate) — Claude Design: rancang ulang `templates/engage-inbox.html` § `.post-context` — dikerjakan di sesi utama (sama seperti T-111.1, `DesignSync` tidak dicoba lagi di subagent Neymar). Draft pertama (COLUMN sederhana) diganti jadi **kartu ala post Instagram**: lebar TETAP 360px, DI-CENTER (`margin:0 auto`) di desktop, melebar penuh (`width:100%`) hanya ≤768px. Terbagi 2 sisi: atas `.post-context-media-wrap` (media RASIO 1:1, `object-fit:cover`) + 2 tombol carousel (`.post-context-carousel-btn` prev/next, ‹ › konsisten `.schedcal-nav`) melayang di atas badan gambar — HANYA 1 gambar tampil sekaligus (index ditangani T-111.4); bawah `.post-context-content`: label "Post asal" → **avatar+badge platform+nama akun** (`.post-context-account`, reuse PERSIS `.history-target-account` dari T-111.1 — `.channel-avatar-wrap`/`.channel-avatar`/`.channel-badge`, 28px/12px) → **caption TIDAK truncate lagi** (`.post-context-cap`, beda dari T-056 lama yang truncate 1 baris — sekarang wrap multi-baris penuh) → "Go to post →" (TIDAK berubah dari T-056). **Sengaja beda** dari History Detail (modal penuh, media unconstrained, bukan square/carousel) sesuai klarifikasi scope King Rezi 2026-10-06. Fallback no-media: `.post-context-nomedia` (bukan kartu 1:1, full-width, tidak di-center, tetap pakai avatar+caption-no-truncate yang sama), konsisten T-056 (media di-omit sepenuhnya). LOCKED PATTERN, lihat komentar HTML di file + readme.md Screens section.
-- [ ] **T-111.4** Implementasi kode T-111.3 (`apps/web`, domain `engagement`, `EngageInboxView.tsx`)
+- [x] **T-111.4** ✅ Done (2026-10-07) — Implementasi kode T-111.3 (`apps/web`, domain `engagement`, `EngageInboxView.tsx`)
+
+**Implementasi (selesai, 2026-10-07):** `HistoryDetail.tsx` dirombak jadi Dialog
+shadcn (LOCKED PATTERN T-111.1 — `.dialog-fs-header`+`.dialog-fs-body` saja,
+tanpa footer); `media-thumbnail.tsx` menambah prop `fit="natural"` untuk
+media ukuran asli (non-crop); `engage/actions.ts` menambah field
+`thumbnails[]` ke payload post asal; `media.service.ts` menambah method
+`resolveThumbnails()` (dipakai kedua lokasi, sekaligus ditambah test baru di
+`media.service.test.ts`); 2 file baru —
+`apps/web/src/components/shared/ChannelAvatarBadge.tsx` (avatar+badge
+platform reusable, dipakai `HistoryDetail.tsx`) dan `apps/web/src/lib/linkify.tsx`
+(utility parse URL/#hashtag di caption jadi `<a>`, dibutuhkan T-111.1 LOCKED
+PATTERN). `EngageInboxView.tsx` menambah `PostOriginCard` — kartu
+Instagram-style 360px + carousel media, LOCKED PATTERN T-111.3. Dikerjakan 2
+subagent Mark UI Engineer paralel (T-111.2 History Detail, T-111.4 Post asal
+Engage) + Elon Backend Engineer untuk data layer `resolveThumbnails()`.
+Review Ridwan Architecture Reviewer: clean, 0 temuan blocking. QA Najwa:
+golden path PASS kedua lokasi.
+
+**Follow-up non-blocking ditemukan (dicatat, belum dikerjakan — bukan bagian
+scope T-111 yang disetujui King Rezi):**
+
+1. Duplikasi komponen: `EngageInboxView.tsx` masih pakai
+   `PostContextAccountBadge` lokal sendiri, belum migrasi ke
+   `ChannelAvatarBadge` baru yang diekstrak T-111.2 (konsekuensi 2 subagent
+   paralel tanpa saling tahu komponen shared yang baru dibuat). Sebaiknya
+   dikonsolidasi sekalian dengan 2 duplikat lama lain yang sudah ada
+   (`PlatformBadge` di `ChannelsSection.tsx` dan `ConnectedAccountsList.tsx`).
+2. Overflow horizontal minor di Dialog History Detail untuk pesan error
+   target yang panjang (pre-existing dari T-034.3/PR#144, bukan regresi
+   T-111.2) — perlu `break-words`/`whitespace-pre-wrap` di elemen pesan
+   error.
+3. Gap data: `HistoryItemTargetRecord` tidak membawa `avatarUrl` akun,
+   sehingga avatar "Hasil per Akun" di History Detail selalu fallback ke
+   inisial, tidak pernah foto profil asli — perlu field baru di
+   repository/service kalau foto asli wajib tampil (keputusan King Rezi,
+   bukan default assumption).
 
 ---
 

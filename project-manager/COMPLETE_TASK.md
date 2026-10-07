@@ -8,6 +8,59 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-07 — T-111 Done (4/4 subtask): implementasi kode restrukturisasi preview media post asli (History Detail + Post asal Engage), menutup KI-083
+
+Lanjutan dari T-111.1/T-111.3 (Claude Design, entri di bawah) — sesi ini
+menuntaskan dua subtask implementasi kode yang tersisa, **T-111.2**
+(`HistoryDetail.tsx`) dan **T-111.4** (`EngageInboxView.tsx`), sehingga T-111
+naik status jadi `✅ Done` secara penuh dan KI-083 Resolved.
+
+**Dikerjakan:**
+- `HistoryDetail.tsx` (domain `publishing`) dirombak jadi Dialog shadcn
+  mengikuti LOCKED PATTERN T-111.1 — `.dialog-fs-header`+`.dialog-fs-body`
+  saja (tanpa footer), body berisi caption → media natural-size → divider →
+  "Hasil per Akun" dengan avatar+badge platform per baris.
+- `EngageInboxView.tsx` (domain `engagement`) menambah komponen
+  `PostOriginCard` — kartu ala post Instagram lebar tetap 360px + carousel
+  media, mengikuti LOCKED PATTERN T-111.3.
+- `media-thumbnail.tsx` menambah prop `fit="natural"` untuk render media
+  ukuran asli (non-crop), dipakai Dialog History Detail.
+- `engage/actions.ts` menambah field `thumbnails[]` ke payload "post asal".
+- `media.service.ts` menambah method `resolveThumbnails()` (dipakai kedua
+  lokasi) + test baru di `media.service.test.ts`.
+- File baru: `apps/web/src/components/shared/ChannelAvatarBadge.tsx`
+  (avatar+badge platform reusable, dipakai `HistoryDetail.tsx`) dan
+  `apps/web/src/lib/linkify.tsx` (parse URL/#hashtag caption jadi `<a>`,
+  kebutuhan LOCKED PATTERN T-111.1).
+
+**Subagent terlibat:** 2× Mark UI Engineer paralel (T-111.2 History Detail,
+T-111.4 Post asal Engage), Elon Backend Engineer (data layer
+`resolveThumbnails()`), Ridwan Architecture Reviewer (review — clean, 0
+temuan blocking), Najwa QA Engineer (golden path PASS kedua lokasi).
+
+**Follow-up non-blocking ditemukan (dicatat sebagai technical debt di
+`tasks/v02-publishing-mvp.md` § T-111, BUKAN dikerjakan sesi ini):**
+1. Duplikasi komponen — `EngageInboxView.tsx` masih pakai
+   `PostContextAccountBadge` lokal sendiri, belum migrasi ke
+   `ChannelAvatarBadge` baru (konsekuensi 2 subagent paralel yang tidak
+   saling tahu komponen shared baru masing-masing); sebaiknya dikonsolidasi
+   sekalian dengan 2 duplikat lama (`PlatformBadge` di `ChannelsSection.tsx`
+   dan `ConnectedAccountsList.tsx`).
+2. Overflow horizontal minor di Dialog History Detail untuk pesan error
+   target yang panjang (pre-existing dari T-034.3/PR#144, bukan regresi
+   T-111.2) — perlu `break-words`/`whitespace-pre-wrap`.
+3. Gap data — `HistoryItemTargetRecord` tidak membawa `avatarUrl` akun,
+   sehingga avatar "Hasil per Akun" selalu fallback ke inisial, tidak pernah
+   foto profil asli; perlu field baru di repository/service kalau foto asli
+   wajib tampil (menunggu keputusan King Rezi).
+
+Status didokumentasikan di `tasks/v02-publishing-mvp.md` § T-111 (4/4
+subtask `[x]`), `TASKS.md` (indeks v0.2: 23 ✅ · 2 🟡 · 2 ⏳), dan
+`PROJECT_STATE.md` (Completed (Ringkasan) + KI-083 dihapus dari Known Issues
+karena Resolved).
+
+---
+
 ## 2026-10-07 — T-111.3 Done: pola media "Post asal" di Engage Inbox dirancang ulang di Claude Design
 
 Lanjutan T-111 setelah T-111.1 (History Detail) dinyatakan selesai oleh King
