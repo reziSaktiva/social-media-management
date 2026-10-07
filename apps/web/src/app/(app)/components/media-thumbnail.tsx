@@ -48,7 +48,7 @@ export function MediaThumbnail({
     return (
       <video
         src={url ?? undefined}
-        className={cn(fitClassName, className)}
+        className={cn("block", fitClassName, className)}
         controls={fit === "natural"}
         muted={fit !== "natural"}
         playsInline

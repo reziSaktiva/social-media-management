@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
  * unicode-aware supaya hashtag non-ASCII — mis. caption Bahasa Indonesia
  * dengan diakritik — tetap terdeteksi).
  */
-const URL_OR_HASHTAG_PATTERN = /(https?:\/\/\S+)|(#[\p{L}\p{N}_]+)/gu;
+const URL_OR_HASHTAG_PATTERN =
+  /(https?:\/\/[^\s,.!?()]+(?:[^\s,.!?()]|\.(?!\s|$))*)|(#[\p{L}\p{N}_]+)/gu;
 
 /**
  * Parse caption plain-text jadi array node React: URL dan hashtag dirender

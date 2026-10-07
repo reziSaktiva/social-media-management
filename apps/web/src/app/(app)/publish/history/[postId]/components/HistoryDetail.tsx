@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ContentStatus } from "@social/shared";
@@ -192,12 +193,18 @@ export interface HistoryDetailProps {
  */
 export function HistoryDetail({ item, thumbnail }: HistoryDetailProps) {
   const router = useRouter();
+  // `isOpen` lokal (bukan `open` literal) supaya Escape/klik overlay
+  // langsung menutup Dialog secara visual, tanpa menunggu navigasi
+  // `router.push` selesai (bisa lambat di koneksi lemah) — lihat komentar
+  // di atas soal keputusan tidak memakai intercepting route.
+  const [isOpen, setIsOpen] = useState(true);
 
   return (
     <Dialog
-      open
+      open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
+          setIsOpen(false);
           router.push("/publish/history");
         }
       }}

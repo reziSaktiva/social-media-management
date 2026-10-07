@@ -221,9 +221,15 @@ export class MediaService {
         { workspaceId: input.workspaceId, mediaIds: input.mediaIds },
         userId,
       );
-      return items
+      // `findByIds` (Prisma) mengurutkan hasil by `createdAt desc`, bukan
+      // urutan `input.mediaIds` — di-reorder manual di sini supaya carousel
+      // menampilkan media sesuai urutan asli post, pola sama
+      // `resolveOutstandPostMedia` (`resolve-outstand-post-media.ts`).
+      const itemById = new Map(items.map((item) => [item.id, item]));
+      return input.mediaIds
+        .map((mediaId) => itemById.get(mediaId))
         .filter((item): item is MediaItemRecord & { url: string } =>
-          Boolean(item.url),
+          Boolean(item?.url),
         )
         .map((item) => ({ url: item.url, type: item.type }));
     } catch (error) {

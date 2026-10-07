@@ -16,10 +16,9 @@ import type {
   InboxItemStatus,
 } from "@/domains/engagement";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
-import { getInitials } from "@/lib/utils/get-initials";
 import { cn } from "@/lib/utils";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ChannelAvatarBadge } from "@/components/shared/ChannelAvatarBadge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -69,30 +68,6 @@ const ALL_STATUS_FILTER_VALUE = "all";
  * (`grid-cols-[340px_1fr]`) akan kena `tailwindcss/no-arbitrary-value`
  * (ADR-095) di file luar `components/ui/**`. */
 const THREAD_LIST_WIDTH_PX = 340;
-
-/** Avatar + badge platform 28px/12px untuk baris akun kartu "Post asal"
- * (`.post-context-account`, T-111.3) — reuse PERSIS pola `.channel-avatar-
- * wrap`/`.channel-avatar`/`.channel-badge` dari `ChannelsSection.tsx`
- * (`PlatformBadge`), hanya beda ukuran (28px/12px di sini vs default
- * `Avatar` 32px di sidebar) karena `Avatar` shadcn belum punya size variant
- * yang pas — di-override lewat `className` (`cn()` tailwind-merge menang
- * atas default `size-8` komponen). */
-function PostContextAccountBadge({ platform }: { platform: SocialPlatform }) {
-  const entry = PLATFORM_ICON[platform];
-  if (!entry) {
-    return null;
-  }
-  const PlatformGlyph = entry.Icon;
-  return (
-    <span
-      className="absolute -inset-e-1 -bottom-1 flex size-3 items-center justify-center rounded-full bg-background ring-1 ring-border"
-      aria-hidden
-    >
-      {/* Warna brand asli (bukan token) — pengecualian disengaja, sama alasan `PlatformBadge` (ADR-058 poin 6 & 10). */}
-      <PlatformGlyph size={7} color={entry.color} />
-    </span>
-  );
-}
 
 /**
  * Kartu "Post asal" ala Instagram (T-111.4, implementasi LOCKED PATTERN
@@ -146,17 +121,11 @@ function PostOriginCard({
   const accountRow = (
     // eslint-disable-next-line no-restricted-syntax -- T-111.4: `.post-context-account`, layout-only
     <div className="flex items-center gap-2">
-      {/* eslint-disable-next-line no-restricted-syntax -- T-111.4: `.channel-avatar-wrap`, layout-only */}
-      <div className="relative shrink-0">
-        <Avatar className="size-7">
-          <AvatarImage
-            src={account?.avatarUrl ?? undefined}
-            alt={accountLabel}
-          />
-          <AvatarFallback>{getInitials(accountLabel)}</AvatarFallback>
-        </Avatar>
-        <PostContextAccountBadge platform={platform} />
-      </div>
+      <ChannelAvatarBadge
+        avatarUrl={account?.avatarUrl}
+        handle={accountLabel}
+        platform={platform}
+      />
       <Text as="span" variant="small">
         {accountLabel}
       </Text>
@@ -412,6 +381,7 @@ export function EngageInboxView({
       }
 
       setIsLoadingDetail(true);
+      setDetail(null);
       const result = await getInboxItemDetailAction(effectiveSelectedId);
       if (cancelled || detailRequestSeqRef.current !== seq) {
         // Sudah disusul selection lain (out-of-order response) — buang.
@@ -691,7 +661,7 @@ export function EngageInboxView({
           {/* eslint-disable-next-line no-restricted-syntax -- T-053: `.thread-detail`; T-111.6: `hidden md:flex` saat state "list" (mobile) vs selalu `flex` di desktop/state "detail" */}
           <div
             className={cn(
-              "min-w-0 flex-col gap-4 p-5",
+              "min-w-0 flex-col gap-4 overflow-y-auto p-5",
               mobileView === "list" ? "hidden md:flex" : "flex",
             )}
           >

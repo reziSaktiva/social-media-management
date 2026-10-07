@@ -214,10 +214,11 @@ export async function getInboxItemDetailAction(
       supabaseMediaStorageAdapter,
     );
     const mediaIds = detail.postSnapshot?.mediaIds ?? [];
-    const [thumbnail, thumbnails] = await Promise.all([
-      mediaService.resolveFirstThumbnail({ workspaceId, mediaIds }, userId),
-      mediaService.resolveThumbnails({ workspaceId, mediaIds }, userId),
-    ]);
+    const thumbnails = await mediaService.resolveThumbnails(
+      { workspaceId, mediaIds },
+      userId,
+    );
+    const thumbnail = thumbnails[0] ?? null;
 
     const data: InboxItemDetailDto = {
       ...detail,
