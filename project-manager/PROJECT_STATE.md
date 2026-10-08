@@ -592,8 +592,15 @@ ditemukan King Rezi saat verifikasi di App Prototype.
    (`Cancel01Icon` dari `sheet.tsx` global) dimatikan via
    `showCloseButton={false}`; tiap sidebar konsumen menyediakan close
    affordance-nya sendiri di dalam header row (lihat poin 3).
-3. Lebar drawer mobile (`SIDEBAR_WIDTH_MOBILE`) sudah `18rem`, identik
-   dengan `SIDEBAR_WIDTH` desktop — tidak perlu perubahan tambahan.
+3. Lebar drawer mobile (`SIDEBAR_WIDTH_MOBILE`) sudah `18rem` (288px),
+   identik dengan `SIDEBAR_WIDTH` desktop di kode — konsisten secara
+   internal (mobile = desktop). **Catatan:** ini BUKAN `260px` yang
+   disebut sebagai nilai lock Claude Design di bullet riwayat 2026-10-07
+   di atas — belum direkonsiliasi apakah `260px` itu cuma nilai CSS
+   mockup statis Claude Design (bukan representasi literal lebar target
+   `apps/web`) atau target asli yang belum terpenuhi di kode (berlaku
+   juga untuk desktop, bukan regresi PR ini). Follow-up: konfirmasi ke
+   King Rezi sebelum menutup gap ini sebagai non-issue.
 
 **Perbaikan (2026-10-08, sesi sama) — close button menabrak "New Post":**
 Percobaan pertama taruh close button sebagai elemen `absolute` baru di

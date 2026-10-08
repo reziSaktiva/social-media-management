@@ -191,8 +191,13 @@ export function WorkspaceSideNav({
               menabrak tombol "New Post" di bawahnya. `toggleSidebar()` yang
               sama persis dipakai untuk buka (desktop) & tutup (mobile, lewat
               `setOpenMobile` toggle di `useSidebar`), jadi icon dan posisi
-              taat konsisten tanpa kode tambahan. */}
-          <SidebarTrigger className="shrink-0" />
+              taat konsisten tanpa kode tambahan. `aria-label` di-override
+              (default `SidebarTrigger` di `sidebar.tsx` adalah "Toggle
+              Sidebar", bahasa Inggris dan tidak menyebut status buka/tutup)
+              supaya konsisten dengan label Indonesia tombol close
+              `SettingsSideNav` ("Tutup menu") dan elemen sidebar lain
+              ("Buka menu", "Notifikasi"). */}
+          <SidebarTrigger className="shrink-0" aria-label="Buka/tutup menu" />
         </div>
 
         {/* ADR-053: CTA pinned di bawah Workspace Selector, di atas nav items. */}
