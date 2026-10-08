@@ -47,6 +47,14 @@ export interface ConnectedAccountRecord {
    * ada, `null` atau string), opsional di sini murni kompatibilitas mock.
    */
   avatarUrl?: string | null;
+  /**
+   * Import Posts dari Social Account (T-090, ADR-093 poin 6) — watermark
+   * (`since` untuk trigger periodik/manual berikutnya) dan cooldown
+   * (`now() - lastImportRequestedAt < 24 jam` untuk manual). `null` berarti
+   * belum pernah ada import yang sukses/direquest sama sekali.
+   */
+  lastImportedUntil: Date | null;
+  lastImportRequestedAt: Date | null;
 }
 
 export interface WorkspaceMemberRecord {
@@ -625,4 +633,43 @@ export interface IWorkspaceRepository {
     avatarUrl?: string | null;
     actingUserId: UserId;
   }): Promise<ConnectedAccountRecord>;
+
+  /**
+   * Import Posts dari Social Account (T-090.3, ADR-093 poin 6) — update
+   * salah satu/kedua watermark import. Dipanggil lewat
+   * `ConnectedAccountWatermarkPort` (`ImportPostsTriggerUseCase`, domain
+   * `publishing`) — composition root yang menyambungkan port itu ke method
+   * ini, domain `publishing` sendiri TIDAK mengimpor `IWorkspaceRepository`
+   * (AGENTS.md #7). Hanya field yang diisi (non-`undefined`) yang
+   * di-update — caller mengisi SALAH SATU (`lastImportRequestedAt` saja
+   * saat request dimulai, `lastImportedUntil` saja saat sukses selesai)
+   * atau keduanya, tidak pernah mengirim dua-duanya `undefined`.
+   *
+   * **`actingUserId` WAJIB ada (koreksi 2026-10-08, bug ditemukan testing
+   * end-to-end DB nyata T-090.3)** — docstring versi sebelumnya mengklaim
+   * method ini aman tanpa `actingUserId`/RLS karena "write murni field
+   * watermark tidak membocorkan data lintas tenant". Klaim itu SALAH:
+   * `workspace_connected_accounts` dijaga RLS policy `FOR ALL` (migration
+   * `20260813045625_t017_add_rls_policies`), dan `FOR ALL` tanpa
+   * `WITH CHECK` terpisah berarti `USING` berlaku juga untuk `UPDATE` — tanpa
+   * `app.current_user_id` di-set, `updateMany` match 0 baris SELALU, secara
+   * senyap (watermark tidak pernah persisten, cooldown manual ADR-093 poin 9
+   * jadi non-fungsional). Implementasi Prisma WAJIB `withCurrentUser`, sama
+   * pola `reconnectAccount` di atas. Semua caller (`triggerAuto`/
+   * `triggerPeriodicForAccounts`/`triggerManual`) sudah punya `actingUserId`
+   * di input masing-masing — termasuk jalur periodik (cron), yang caller-nya
+   * (belum diwiring, di luar scope T-090) wajib me-resolve acting user
+   * (kandidat: Account Owner workspace) sebelum memanggil.
+   *
+   * Silent no-op kalau `connectedAccountId` tidak ditemukan ATAU acting user
+   * bukan member aktif workspace tersebut (best effort, sama pola
+   * `cancelScheduledPost` — kegagalan update watermark tidak boleh
+   * menggagalkan import yang sudah berhasil diproses).
+   */
+  updateImportWatermark(input: {
+    connectedAccountId: ConnectedAccountId;
+    lastImportedUntil?: Date;
+    lastImportRequestedAt?: Date;
+    actingUserId: UserId;
+  }): Promise<void>;
 }

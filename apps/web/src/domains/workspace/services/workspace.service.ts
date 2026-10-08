@@ -112,6 +112,31 @@ interface NotificationPort {
 }
 
 /**
+ * Port lokal untuk cross-domain `workspace` → `publishing` (T-090.3,
+ * ADR-093 poin 7, AGENTS.md #7) — pola sama `ScheduledCountsPort` di atas.
+ * `ImportPostsTriggerUseCase` (domain `publishing`) TIDAK boleh diimport
+ * konkret ke file ini; composition root
+ * (`createWorkspaceServiceWithOutstandAdapter`) menyuplai instance lewat
+ * constructor. Opsional (bisa `undefined`, mis. caller lama/test yang
+ * tidak butuh auto-trigger import) — dipanggil BEST-EFFORT
+ * (`completeAccountConnection` tidak boleh gagal hanya karena trigger
+ * import gagal/Outstand down) dari `completeAccountConnection`, HANYA pada
+ * jalur CREATE akun baru (bukan reconnect — `lastImportedUntil` akun baru
+ * dijamin kosong, ADR-093 poin 7 "since = 90 hari (lastImportedUntil masih
+ * kosong)"; akun reconnect existing mungkin sudah pernah di-import
+ * sebelumnya, tidak diasumsikan perlu re-trigger otomatis di sini).
+ */
+interface ImportPostsAutoTriggerPort {
+  triggerAuto(input: {
+    workspaceId: WorkspaceId;
+    connectedAccountId: ConnectedAccountId;
+    outstandAccountId: string;
+    platform: SocialPlatform;
+    actingUserId: UserId;
+  }): Promise<unknown>;
+}
+
+/**
  * Port lokal untuk cross-domain `workspace` → `engagement` (Temuan #1
  * review Ridwan Architecture Reviewer, T-051, `background-jobs.md` §
  * "Workspace BC → Background Job": "ConnectedAccount created/activated →
@@ -236,6 +261,13 @@ export class WorkspaceService {
      * `requestAcceptInviteVerificationAction`, lihat `requireInviteEmailSender()`.
      */
     private readonly inviteEmailSender?: InviteEmailSenderPort,
+    /**
+     * Import Posts dari Social Account (T-090.3, ADR-093 poin 7) — lihat
+     * docstring `ImportPostsAutoTriggerPort`. Opsional, composition root
+     * produksi (`createWorkspaceServiceWithOutstandAdapter`) WAJIB
+     * menyuplainya supaya auto-trigger on-connect benar-benar berjalan.
+     */
+    private readonly importPostsTrigger?: ImportPostsAutoTriggerPort,
   ) {}
 
   async createWorkspace(input: {
@@ -342,6 +374,26 @@ export class WorkspaceService {
     userId: UserId,
   ): Promise<ConnectedAccountRecord[]> {
     return this.repository.listConnectedAccounts(workspaceId, userId);
+  }
+
+  /**
+   * Lookup satu akun terhubung by id (dipakai `syncNowAction`, T-090.3,
+   * code review Ridwan) — method tipis, reuse langsung
+   * `findConnectedAccountById` tanpa logic tambahan, pola sama seperti
+   * `getWorkspaceById`/`getMembership`. Entry point (Server Action) TIDAK
+   * boleh mengimpor repository langsung (AGENTS.md #5) — ini satu-satunya
+   * jalur yang boleh dipakai untuk kebutuhan itu.
+   */
+  async getConnectedAccountById(
+    workspaceId: WorkspaceId,
+    connectedAccountId: ConnectedAccountId,
+    actorId: UserId,
+  ): Promise<ConnectedAccountRecord | null> {
+    return this.repository.findConnectedAccountById(
+      workspaceId,
+      connectedAccountId,
+      actorId,
+    );
   }
 
   /**
@@ -1535,6 +1587,30 @@ export class WorkspaceService {
         connectedAccountId: record.id,
         outstandAccountId: record.outstandAccountId,
       });
+    }
+
+    // Import Posts dari Social Account (T-090.3, ADR-093 poin 7) —
+    // otomatis on-connect, HANYA untuk akun BARU (bukan reconnect/recovery,
+    // lihat docstring `ImportPostsAutoTriggerPort`). Best-effort: kegagalan
+    // trigger import (mis. Outstand down) TIDAK BOLEH menggagalkan connect
+    // account yang sudah berhasil — endpoint ini murni nilai tambah,
+    // kegagalannya cukup diam-diam diabaikan di sini (konsisten pola
+    // "best-effort" `cancelScheduledPost`/`deletePost` di ACL, tidak ada
+    // infra logging terpusat di codebase ini untuk dilaporkan). `skipSeeding`
+    // sama alasannya dengan JOB-03 di atas — cabang double-submit recovery
+    // tidak menciptakan apa pun baru, jadi tidak perlu trigger import lagi.
+    if (!skipSeeding) {
+      try {
+        await this.importPostsTrigger?.triggerAuto({
+          workspaceId: record.workspaceId,
+          connectedAccountId: record.id,
+          outstandAccountId: record.outstandAccountId,
+          platform: record.platform,
+          actingUserId: input.actorId,
+        });
+      } catch {
+        // Best-effort — lihat komentar di atas.
+      }
     }
 
     return record;

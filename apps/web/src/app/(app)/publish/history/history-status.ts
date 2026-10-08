@@ -24,6 +24,12 @@ export const HISTORY_STATUS_LABEL: Record<ContentStatus, string> = {
   [ContentStatus.Scheduled]: "Scheduled",
   [ContentStatus.Published]: "Published",
   [ContentStatus.Failed]: "Error",
+  // T-090, ADR-093 — placeholder SEMENTARA (bukan keputusan desain final).
+  // `listHistory`/`getHistoryById` tetap di-clamp ke `HISTORY_TERMINAL_STATUSES`
+  // (Published/Failed saja, tidak berubah oleh T-090) jadi `Imported` TIDAK
+  // PERNAH benar-benar muncul di History sekarang — entry ini murni
+  // memenuhi exhaustiveness `Record<ContentStatus, string>`.
+  [ContentStatus.Imported]: "Imported",
 };
 
 /**
@@ -42,6 +48,8 @@ export const HISTORY_STATUS_BADGE_VARIANT: Record<ContentStatus, BadgeVariant> =
     [ContentStatus.Scheduled]: "warning",
     [ContentStatus.Published]: "success",
     [ContentStatus.Failed]: "destructive",
+    // T-090, ADR-093 — placeholder, lihat catatan di `HISTORY_STATUS_LABEL`.
+    [ContentStatus.Imported]: "outline",
   };
 
 /** Label status per-target (`HistoryItemTargetRecord.status`, T-034.1) — dipakai section "Hasil per Akun" (T-034.3). */

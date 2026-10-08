@@ -62,6 +62,10 @@ function createFakeRepository(
     listSyncablePostsByConnectedAccount: async () => [],
     findPostOutstandId: async () => null,
     findPostSnapshotForEngagement: async () => null,
+    upsertImportedPosts: async () => ({
+      insertedCount: 0,
+      skippedDuplicateCount: 0,
+    }),
     ...overrides,
   };
 }
@@ -107,6 +111,12 @@ function createFakeOutstandAdapter(
     }),
     fetchComments: async () => ({ comments: [], nextCursor: null }),
     replyToComment: async () => ({ outstandReplyId: "fake-reply" }),
+    importPosts: async () => ({ importJobId: "fake-import-job" }),
+    fetchImportJobStatus: async () => ({
+      status: "completed" as const,
+      posts: [],
+      error: null,
+    }),
     ...overrides,
   };
 }

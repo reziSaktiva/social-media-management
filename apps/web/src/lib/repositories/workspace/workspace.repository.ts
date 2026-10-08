@@ -93,6 +93,8 @@ function toConnectedAccountRecord(
     // `disconnected`. Kalau field ini `null` untuk akun yang "seharusnya"
     // punya foto, ini gap yang sudah diketahui, bukan bug baru.
     avatarUrl: account.avatarUrl,
+    lastImportedUntil: account.lastImportedUntil,
+    lastImportRequestedAt: account.lastImportRequestedAt,
   };
 }
 
@@ -1034,6 +1036,42 @@ export const workspaceRepository: IWorkspaceRepository = {
       }
       return toConnectedAccountRecord(updated);
     });
+  },
+
+  async updateImportWatermark({
+    connectedAccountId,
+    lastImportedUntil,
+    lastImportRequestedAt,
+    actingUserId,
+  }) {
+    // Bug fix 2026-10-08 (ditemukan testing end-to-end DB nyata, bukan cuma
+    // unit test fake repository) — versi sebelumnya pakai `prisma` plain
+    // (bukan `withCurrentUser`) dengan klaim "write murni field watermark
+    // tidak membocorkan data lintas tenant, jadi aman tanpa RLS". Klaim itu
+    // salah: `workspace_connected_accounts` dijaga RLS policy `FOR ALL`
+    // (migration `20260813045625_t017_add_rls_policies`), dan `FOR ALL`
+    // tanpa `WITH CHECK` terpisah berarti `USING` berlaku juga untuk
+    // `UPDATE` — tanpa `app.current_user_id` di-set, `current_setting`
+    // mengembalikan NULL, subquery `workspace_id IN (...)` tidak pernah
+    // match, dan `updateMany` match 0 baris SELALU, secara senyap (watermark
+    // tidak pernah persisten walau `background_jobs` tercatat `done`).
+    // `withCurrentUser` (pola sama `reconnectAccount` di atas) memperbaiki
+    // ini. `updateMany` (bukan `update`) tetap dipertahankan supaya
+    // `connectedAccountId` yang tidak ditemukan ATAU acting user yang bukan
+    // member aktif workspace tersebut adalah no-op senyap (best effort,
+    // kegagalan update watermark tidak boleh menggagalkan import yang sudah
+    // berhasil diproses).
+    await withCurrentUser(actingUserId, (tx) =>
+      tx.workspaceConnectedAccount.updateMany({
+        where: { id: connectedAccountId },
+        data: {
+          ...(lastImportedUntil !== undefined ? { lastImportedUntil } : {}),
+          ...(lastImportRequestedAt !== undefined
+            ? { lastImportRequestedAt }
+            : {}),
+        },
+      }),
+    );
   },
 };
 

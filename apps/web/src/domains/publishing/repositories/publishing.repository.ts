@@ -258,6 +258,32 @@ export interface RetryTargetRecord {
   hasSiblingLiveTargets: boolean;
 }
 
+/**
+ * Satu post hasil import (T-090, ADR-093 poin 3-4) untuk
+ * `upsertImportedPosts` — input mentah dari `ImportedPostData` (ACL
+ * Outstand) + `platform`/`contentFormat` yang sudah di-resolve caller
+ * (`ImportPostsProcessUseCase`) dari `WorkspaceConnectedAccount`, karena
+ * repository TIDAK boleh tahu tentang `IOutstandAdapter` (AGENTS.md #6) —
+ * konsisten pola `SchedulePostTargetInput` (caller me-resolve
+ * `outstandAccountId` dari domain lain, bukan repository).
+ */
+export interface ImportedPostTargetInput {
+  connectedAccountId: ConnectedAccountId;
+  platform: SocialPlatform;
+  platformPostId: string;
+  platformPostUrl: string | null;
+  caption: string;
+  publishedAt: Date;
+  /** Media eksternal — disimpan di `PublishingPostTarget.platformOptions` (lihat catatan `ImportedPostData.mediaUrls`), bukan kolom baru. */
+  mediaUrls: string[];
+}
+
+/** Hasil `upsertImportedPosts` — ringkas, bukan daftar record lengkap (tidak ada UI yang membutuhkannya sekarang, T-090.5 masih blocked). */
+export interface UpsertImportedPostsResult {
+  insertedCount: number;
+  skippedDuplicateCount: number;
+}
+
 /** Repository interface — implementation (Prisma) lives in src/lib/repositories/publishing. */
 export interface IPublishingRepository {
   createDraft(input: {
@@ -965,6 +991,41 @@ export interface IPublishingRepository {
     },
     userId: UserId,
   ): Promise<PostSnapshotForEngagementRecord | null>;
+
+  /**
+   * Import Posts dari Social Account (T-090.4, ADR-093 poin 3-4, 7) —
+   * dipanggil `ImportPostsProcessUseCase` SETELAH
+   * `IOutstandAdapter.fetchImportJobStatus` resolve `status: "completed"`.
+   * Satu `PublishingPost` BARU (status `Imported`, `authorId: null`) +
+   * SATU `PublishingPostTarget` dibuat per post dalam `input.posts` — beda
+   * dari `schedulePost`/`publishNow` (satu post bisa banyak target),
+   * import SELALU per akun tunggal (satu `importPosts` call = satu
+   * `outstandAccountId`).
+   *
+   * Dedup (ADR-093 poin 4): sebelum insert, cek existing
+   * `PublishingPostTarget` dengan `connectedAccountId` + `platformPostId`
+   * yang sama (reuse kolom `platformPostId` dari ADR-092, BUKAN kolom
+   * baru) — kalau sudah ada, skip (bukan duplikat, bukan error). Idempoten:
+   * memanggil ulang dengan batch yang sama (mis. retry setelah network
+   * error parsial) aman, tidak pernah menggandakan baris.
+   *
+   * **Acting user untuk RLS (bukan `authorId` post — itu tetap `null`):**
+   * `actingUserId` HANYA dipakai untuk `withCurrentUser` (RLS di-scope ke
+   * MEMBERSHIP WORKSPACE, bukan `authorId` — lihat kebijakan
+   * `publishing_posts_workspace_isolation`, migration T-017), jadi boleh
+   * berupa user mana pun yang aktif di `workspaceId` ini. Caller (auto:
+   * user yang connect akun; manual: user yang klik Sync Now; periodik:
+   * BELUM ada acting user alami karena dipicu cron tanpa sesi — lihat
+   * catatan gap di `ImportPostsTriggerUseCase.triggerPeriodicForAccounts`)
+   * yang menentukan nilainya.
+   */
+  upsertImportedPosts(
+    input: {
+      workspaceId: WorkspaceId;
+      posts: ImportedPostTargetInput[];
+    },
+    actingUserId: UserId,
+  ): Promise<UpsertImportedPostsResult>;
 }
 
 /**

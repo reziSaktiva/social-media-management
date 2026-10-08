@@ -14,7 +14,10 @@ import { decodeConnectAccountState } from "@/lib/adapters/outstand/connect-state
 import { getCachedSession } from "@/lib/better-auth/session";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 import { getWorkspaceContext } from "@/lib/workspace/workspace-context";
-import { createWorkspaceServiceWithOutstandAdapter } from "@/lib/workspace/outstand-workspace-service";
+import {
+  createImportPostsTriggerUseCase,
+  createWorkspaceServiceWithOutstandAdapter,
+} from "@/lib/workspace/outstand-workspace-service";
 import {
   outstandConnectNonceCookieName,
   outstandConnectNonceCookieOptions,
@@ -350,6 +353,81 @@ export async function confirmFacebookPagesConnectionAction(
     clearFacebookConnectCookies(cookieStore, decoded.nonce);
     revalidatePath("/settings/connected-accounts");
     return { connectedCount: created.length };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+/**
+ * Sync Now manual (T-090.3, ADR-093 poin 9) — entry point tipis, hanya
+ * resolve context + fetch akun yang relevan lalu memanggil
+ * `ImportPostsTriggerUseCase.triggerManual` (AGENTS.md #5). RBAC
+ * (Owner/Admin), cap mingguan, cooldown 24 jam, dan guard concurrent-import
+ * SEPENUHNYA di Application Service, TIDAK di sini — lihat
+ * `assertActorCanTriggerManualImportSync`/`ImportPostsTriggerUseCase` di
+ * domain `publishing`.
+ *
+ * **Di luar scope aksi ini (T-090.5, blocked):** tombol UI yang memanggil
+ * action ini, dan render pesan cooldown/cap — menunggu rancangan Claude
+ * Design (AGENTS.md rule 17).
+ *
+ * Lookup akun lewat `WorkspaceService.getConnectedAccountById` (code review
+ * Ridwan) — Server Action TIDAK boleh mengimpor `workspaceRepository`
+ * langsung untuk akses data (AGENTS.md #5), konsisten dengan seluruh action
+ * lain di file ini yang selalu lewat Application Service.
+ */
+export async function syncNowAction(connectedAccountId: string): Promise<{
+  error?: string;
+  outcome?: string;
+  importedCount?: number;
+  skippedDuplicateCount?: number;
+}> {
+  const { workspaceId, role } = await getWorkspaceContext();
+  const session = await getCachedSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const actorId = asUserId(session.user.id);
+  const accountId = asConnectedAccountId(connectedAccountId);
+
+  const workspaceService = new WorkspaceService(workspaceRepository);
+  const account = await workspaceService.getConnectedAccountById(
+    workspaceId,
+    accountId,
+    actorId,
+  );
+  if (!account) {
+    return { error: "Akun terhubung tidak ditemukan." };
+  }
+
+  try {
+    const result = await createImportPostsTriggerUseCase().triggerManual({
+      actorRole: role,
+      workspaceId,
+      connectedAccountId: account.id,
+      outstandAccountId: account.outstandAccountId,
+      platform: account.platform,
+      actingUserId: actorId,
+      lastImportedUntil: account.lastImportedUntil,
+      lastImportRequestedAt: account.lastImportRequestedAt,
+    });
+
+    if (
+      result.outcome === "rejected_cap" ||
+      result.outcome === "rejected_cooldown" ||
+      result.outcome === "rejected_concurrent" ||
+      result.outcome === "failed"
+    ) {
+      return { error: result.message, outcome: result.outcome };
+    }
+
+    revalidatePath("/settings/connected-accounts");
+    return {
+      outcome: result.outcome,
+      importedCount: result.importedCount,
+      skippedDuplicateCount: result.skippedDuplicateCount,
+    };
   } catch (error) {
     return toActionError(error);
   }

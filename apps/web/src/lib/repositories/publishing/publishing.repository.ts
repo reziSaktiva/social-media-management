@@ -6,7 +6,7 @@ import {
   asUserId,
   asWorkspaceId,
   type ConnectedAccountId,
-  type ContentFormat,
+  ContentFormat,
   ContentStatus,
   type SocialPlatform,
 } from "@social/shared";
@@ -68,11 +68,32 @@ function isInvalidIdFormat(error: unknown): boolean {
   );
 }
 
+/**
+ * `PublishingPost.authorId` jadi nullable sejak ADR-093 (T-090.1) —
+ * `null` HANYA valid untuk status `Imported`. `mapPost` di bawah ini
+ * HANYA pernah dipanggil dengan baris dari query yang TIDAK PERNAH
+ * mengembalikan status `Imported` (`createDraft`, `schedulePost`,
+ * `publishNow`, `cancelSchedule`, `softDeletePost`, dan query draft
+ * lain yang dideklarasikan `IPublishingRepository` — semuanya mengubah
+ * atau membaca post pada jalur Draft→Schedule/Publish, tidak pernah
+ * Imported). Throw loud (pola ADR-059 poin 6) kalau asumsi itu ternyata
+ * salah, bukan diam-diam meloloskan `UserId` kosong ke pemanggil.
+ */
+function requireAuthorId(authorId: string | null, context: string) {
+  if (!authorId) {
+    throw new Error(
+      `${context}: authorId null — tidak didukung di jalur ini (hanya post ` +
+        `berstatus Imported yang boleh authorId null, ADR-093).`,
+    );
+  }
+  return asUserId(authorId);
+}
+
 function mapPost(post: PublishingPost): PublishingPostRecord {
   return {
     id: asPostId(post.id),
     workspaceId: asWorkspaceId(post.workspaceId),
-    authorId: asUserId(post.authorId),
+    authorId: requireAuthorId(post.authorId, "mapPost"),
     caption: post.caption,
     status: post.status as ContentStatus,
     mediaIds: post.mediaIds.map((id) => asMediaId(id)),
@@ -1124,6 +1145,98 @@ export const publishingRepository: IPublishingRepository = {
       mediaIds: target.post.mediaIds.map((id) => asMediaId(id)),
       platformPostUrl: target.platformPostUrl,
     };
+  },
+
+  /**
+   * Import Posts dari Social Account (T-090.4, ADR-093 poin 3-4, 7) — lihat
+   * docstring lengkap di `IPublishingRepository.upsertImportedPosts`.
+   */
+  async upsertImportedPosts({ workspaceId, posts }, actingUserId) {
+    if (posts.length === 0) {
+      return { insertedCount: 0, skippedDuplicateCount: 0 };
+    }
+
+    return withCurrentUser(actingUserId, async (tx) => {
+      // Dedup (ADR-093 poin 4) — satu query batch untuk SELURUH
+      // `platformPostId` di input, bukan satu query per post (N+1).
+      // `connectedAccountId` ikut disaring karena `platformPostId` hanya
+      // unik PER AKUN (dua akun berbeda bisa kebetulan punya
+      // `platformPostId` yang sama secara string, walau jarang — defensif,
+      // sama semangat dedup existing di ADR-092).
+      const connectedAccountIds = [
+        ...new Set(posts.map((post) => post.connectedAccountId)),
+      ];
+      const platformPostIds = [
+        ...new Set(posts.map((post) => post.platformPostId)),
+      ];
+
+      const existing = await tx.publishingPostTarget.findMany({
+        where: {
+          connectedAccountId: { in: connectedAccountIds },
+          platformPostId: { in: platformPostIds },
+        },
+        select: { connectedAccountId: true, platformPostId: true },
+      });
+      const existingKeys = new Set(
+        existing.map(
+          (row) => `${row.connectedAccountId}:${row.platformPostId}`,
+        ),
+      );
+
+      let insertedCount = 0;
+      let skippedDuplicateCount = 0;
+
+      for (const post of posts) {
+        const key = `${post.connectedAccountId}:${post.platformPostId}`;
+        if (existingKeys.has(key)) {
+          skippedDuplicateCount++;
+          continue;
+        }
+
+        await tx.publishingPost.create({
+          data: {
+            workspaceId,
+            // ADR-093 poin 3 — authorId null HANYA untuk status Imported.
+            authorId: null,
+            status: ContentStatus.Imported,
+            caption: post.caption,
+            publishedAt: post.publishedAt,
+            targets: {
+              create: [
+                {
+                  connectedAccountId: post.connectedAccountId,
+                  platform: post.platform,
+                  contentFormat: ContentFormat.Post,
+                  platformPostId: post.platformPostId,
+                  platformPostUrl: post.platformPostUrl,
+                  // Target hasil import sudah live di platform sejak
+                  // sebelum tool ini tahu soal post ini — "published" (bukan
+                  // "pending") adalah outcome yang benar, bukan hasil
+                  // percobaan publish kita sendiri.
+                  status: "published",
+                  // Media eksternal (`ImportedPostData.mediaUrls`) belum
+                  // punya kolom DB khusus (T-090 scope) — disimpan di sini
+                  // supaya tidak hilang untuk UI Imported nanti (T-090.5).
+                  platformOptions:
+                    post.mediaUrls.length > 0
+                      ? { mediaUrls: post.mediaUrls }
+                      : undefined,
+                },
+              ],
+            },
+          },
+        });
+
+        // Supaya post lain dalam BATCH YANG SAMA dengan `platformPostId`
+        // kebetulan identik (seharusnya tidak terjadi — Outstand tidak
+        // pernah mengembalikan duplikat dalam satu `fetchImportJobStatus`
+        // — tapi defensif) tidak ikut ter-insert dobel.
+        existingKeys.add(key);
+        insertedCount++;
+      }
+
+      return { insertedCount, skippedDuplicateCount };
+    });
   },
 };
 

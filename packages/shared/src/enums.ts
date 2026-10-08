@@ -7,6 +7,17 @@ export enum ContentStatus {
   Scheduled = "scheduled",
   Published = "published",
   Failed = "failed",
+  /**
+   * Import Posts dari Social Account (T-090, ADR-093) — post yang dibuat
+   * LANGSUNG di platform sosial (bukan lewat tool kita), ditarik via
+   * endpoint berbayar Outstand `POST /v1/social-accounts/{id}/imports`.
+   * Status ini TERMINAL dan IMMUTABLE — tidak ada transisi dari/ke status
+   * lain, dan tidak ada RBAC action (`updateDraft`/`deletePost`/
+   * `cancelSchedule`/`scheduleUpdate`, dst.) yang diizinkan untuk post
+   * berstatus ini. `PublishingPost.authorId` adalah `null` HANYA untuk
+   * status ini (post tidak punya "penulis" internal).
+   */
+  Imported = "imported",
 }
 
 /** 3 role (ADR-074) — "Owner" tampil sebagai "Account Owner" di UI/dokumen, value/enum key tidak berubah. */

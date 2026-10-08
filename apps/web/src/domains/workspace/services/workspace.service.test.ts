@@ -84,6 +84,8 @@ function createFakeRepository(
       // default wrapper below (which delegates to this method) doesn't
       // silently drop avatarUrl for tests that don't override either.
       avatarUrl: avatarUrl ?? null,
+      lastImportedUntil: null,
+      lastImportRequestedAt: null,
     }),
     reconnectAccount: async ({
       workspaceId,
@@ -101,6 +103,8 @@ function createFakeRepository(
       reconnectRequired: false,
       connectedAt: new Date(),
       avatarUrl: avatarUrl ?? null,
+      lastImportedUntil: null,
+      lastImportRequestedAt: null,
     }),
     renameWorkspace: async (workspaceId, name) => ({
       id: workspaceId,
@@ -235,6 +239,7 @@ function createFakeRepository(
       members.set(newMember.id, newMember);
       return newMember;
     },
+    updateImportWatermark: async () => undefined,
     ...overrides,
     createConnectedAccounts: async (input) => {
       const current = holder.repo;
@@ -459,6 +464,8 @@ describe("WorkspaceService.listConnectedAccounts", () => {
         status: "active",
         reconnectRequired: false,
         connectedAt: new Date("2026-01-01T00:00:00Z"),
+        lastImportedUntil: null,
+        lastImportRequestedAt: null,
       },
     ];
     const service = new WorkspaceService(
@@ -470,6 +477,46 @@ describe("WorkspaceService.listConnectedAccounts", () => {
     await expect(
       service.listConnectedAccounts(asWorkspaceId("workspace-1"), USER_ID),
     ).resolves.toBe(accounts);
+  });
+});
+
+describe("WorkspaceService.getConnectedAccountById", () => {
+  it("delegates to the repository (code review Ridwan, T-090 — dipakai syncNowAction supaya entry point tidak akses repository langsung)", async () => {
+    const account: ConnectedAccountRecord = {
+      id: asConnectedAccountId("conn-1"),
+      workspaceId: WORKSPACE_ID,
+      platform: SocialPlatform.Instagram,
+      outstandAccountId: "mock-ig-001",
+      handle: "@insvire.demo",
+      status: "active",
+      reconnectRequired: false,
+      connectedAt: new Date("2026-01-01T00:00:00Z"),
+      lastImportedUntil: null,
+      lastImportRequestedAt: null,
+    };
+    const service = new WorkspaceService(
+      createFakeRepository({
+        findConnectedAccountById: async () => account,
+      }),
+    );
+
+    await expect(
+      service.getConnectedAccountById(WORKSPACE_ID, account.id, USER_ID),
+    ).resolves.toBe(account);
+  });
+
+  it("returns null when the repository finds no matching account", async () => {
+    const service = new WorkspaceService(
+      createFakeRepository({ findConnectedAccountById: async () => null }),
+    );
+
+    await expect(
+      service.getConnectedAccountById(
+        WORKSPACE_ID,
+        asConnectedAccountId("conn-missing"),
+        USER_ID,
+      ),
+    ).resolves.toBeNull();
   });
 });
 
@@ -859,6 +906,12 @@ function fakeOutstandAdapter(
     }),
     fetchComments: async () => ({ comments: [], nextCursor: null }),
     replyToComment: async () => ({ outstandReplyId: "fake-reply" }),
+    importPosts: async () => ({ importJobId: "fake-import-job" }),
+    fetchImportJobStatus: async () => ({
+      status: "completed" as const,
+      posts: [],
+      error: null,
+    }),
     ...overrides,
   };
 }
@@ -894,6 +947,8 @@ describe("WorkspaceService.initiateConnectAccount", () => {
       status: "active",
       reconnectRequired: true,
       connectedAt: new Date("2026-01-01T00:00:00.000Z"),
+      lastImportedUntil: null,
+      lastImportRequestedAt: null,
       ...overrides,
     };
   }
@@ -1067,6 +1122,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
       status: "active",
       reconnectRequired: true,
       connectedAt: new Date("2026-01-01T00:00:00.000Z"),
+      lastImportedUntil: null,
+      lastImportRequestedAt: null,
     };
   }
 
@@ -1087,6 +1144,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
         status: "active",
         reconnectRequired: false,
         connectedAt: new Date(),
+        lastImportedUntil: null,
+        lastImportRequestedAt: null,
       }),
     );
     const reconnectAccount = vi.fn();
@@ -1396,6 +1455,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
         reconnectRequired: false,
         connectedAt: new Date(),
         avatarUrl: input.avatarUrl ?? null,
+        lastImportedUntil: null,
+        lastImportRequestedAt: null,
       }),
     );
     const service = new WorkspaceService(
@@ -1491,6 +1552,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
           status: "active",
           reconnectRequired: false,
           connectedAt: new Date(),
+          lastImportedUntil: null,
+          lastImportRequestedAt: null,
         }),
       }),
       undefined,
@@ -1563,6 +1626,8 @@ describe("WorkspaceService.completeAccountConnection", () => {
           status: "active",
           reconnectRequired: false,
           connectedAt: new Date(),
+          lastImportedUntil: null,
+          lastImportRequestedAt: null,
         }),
       }),
       undefined,
@@ -1658,6 +1723,8 @@ describe("WorkspaceService.listPinterestBoards (menutup KI-072, sisa scope ADR-1
       status: "active",
       reconnectRequired: false,
       connectedAt: new Date("2026-01-01T00:00:00.000Z"),
+      lastImportedUntil: null,
+      lastImportRequestedAt: null,
     };
   }
 
@@ -1671,6 +1738,8 @@ describe("WorkspaceService.listPinterestBoards (menutup KI-072, sisa scope ADR-1
       status: "active",
       reconnectRequired: false,
       connectedAt: new Date("2026-01-01T00:00:00.000Z"),
+      lastImportedUntil: null,
+      lastImportRequestedAt: null,
     };
   }
 
@@ -1806,6 +1875,8 @@ describe("WorkspaceService.confirmFacebookPagesConnection (T-025.4, ADR-115)", (
       status: "active" as const,
       reconnectRequired: false,
       connectedAt: new Date(),
+      lastImportedUntil: null,
+      lastImportRequestedAt: null,
     }));
     const onAccountConnected = vi.fn(async () => undefined);
     const service = new WorkspaceService(
@@ -1857,6 +1928,8 @@ describe("WorkspaceService.confirmFacebookPagesConnection (T-025.4, ADR-115)", (
         status: "active" as const,
         reconnectRequired: false,
         connectedAt: new Date(),
+        lastImportedUntil: null,
+        lastImportRequestedAt: null,
       };
     });
     const onAccountConnected = vi.fn(async () => undefined);
@@ -3205,6 +3278,8 @@ describe("WorkspaceService.saveChannelOrder", () => {
       status: "active",
       reconnectRequired: false,
       connectedAt: new Date("2026-01-01T00:00:00Z"),
+      lastImportedUntil: null,
+      lastImportRequestedAt: null,
     };
     let received:
       Parameters<IWorkspaceRepository["saveChannelOrder"]>[0] | null = null;
@@ -3630,6 +3705,8 @@ describe("WorkspaceService.listSidebarChannels", () => {
       reconnectRequired: false,
       connectedAt: new Date(connectedAt),
       avatarUrl,
+      lastImportedUntil: null,
+      lastImportRequestedAt: null,
     };
   }
 

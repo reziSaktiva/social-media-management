@@ -61,3 +61,31 @@ export function assertActorCanDeletePost(actorRole: MemberRole): void {
     );
   }
 }
+
+/**
+ * RBAC untuk trigger manual "Sync Now" Import Posts (T-090.3, ADR-093 poin
+ * 9) — SENGAJA bukan `ROLES_ALLOWED_FOR_CONTENT_ACTIONS` (yang mengikutkan
+ * Creator): endpoint ini BERBAYAR dan ADR-093 eksplisit membatasinya ke
+ * hak "kelola Connected Accounts" — Owner & Admin saja, sama persis dengan
+ * `assertActorCanManageConnectedAccounts` di
+ * `WorkspaceService`/`roles-permissions.md`. Dideklarasikan ulang di sini
+ * (bukan reuse method private `WorkspaceService`) karena
+ * `ImportPostsTriggerUseCase` hidup di domain `publishing`, tidak boleh
+ * mengimpor `workspace` (AGENTS.md #7) — nilai himpunan role HARUS tetap
+ * identik dengan gate itu; kalau salah satu berubah, keduanya wajib
+ * diupdate bersamaan (dicatat di sini supaya mudah ditemukan).
+ */
+const ROLES_ALLOWED_FOR_MANUAL_IMPORT_SYNC: ReadonlySet<MemberRole> = new Set([
+  MemberRole.Owner,
+  MemberRole.Admin,
+]);
+
+export function assertActorCanTriggerManualImportSync(
+  actorRole: MemberRole,
+): void {
+  if (!ROLES_ALLOWED_FOR_MANUAL_IMPORT_SYNC.has(actorRole)) {
+    throw new AuthorizationError(
+      "Hanya Owner atau Admin yang bisa menjalankan sinkronisasi impor manual (Sync Now).",
+    );
+  }
+}

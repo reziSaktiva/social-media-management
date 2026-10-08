@@ -8,6 +8,150 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-08 — Bug RLS silent-noop di `updateImportWatermark` ditemukan+fixed (T-090, lanjutan sesi di bawah) — ditemukan via testing browser+DB sungguhan King Rezi
+
+Lanjutan langsung dari entri T-090.1–T-090.4 di bawah (sesi yang sama,
+branch worktree `claude/t-090-e6bb6d`). Setelah klaim T-090.1–4 "selesai"
+(unit test hijau + review Ridwan + QA Najwa lulus — semuanya memakai fake
+repository), King Rezi minta diuji langsung di browser. Sesi utama (bukan
+subagent) setup `.env.local`, `bunx prisma migrate deploy` migration
+T-090.1 ke database dev Supabase sungguhan, jalankan dev server, test alur
+Connect Account (Settings → Connected Accounts) yang men-trigger
+auto-import.
+
+**Bug ditemukan:** `updateImportWatermark`
+(`apps/web/src/lib/repositories/workspace/workspace.repository.ts`)
+memakai `prisma` client plain, bukan `withCurrentUser(actingUserId, ...)` —
+padahal `workspace_connected_accounts` punya RLS policy `FOR ALL` yang
+butuh `app.current_user_id`. Tanpa itu, `updateMany` selalu match 0 baris
+secara senyap (silent no-op by design). Akibat: `lastImportedUntil`/
+`lastImportRequestedAt` tidak pernah tersimpan ke database sungguhan,
+meski use-case memanggilnya benar dan job tercatat `status: "done"`. Lolos
+dari unit test + code review + QA sebelumnya karena ketiganya pakai fake
+repository, tidak ada test Prisma+RLS asli.
+
+**Dampak sebelum fix:** watermark ADR-093 poin 6 (cegah pemborosan call
+Outstand berbayar) gagal total; guard cooldown 24 jam manual trigger
+(ADR-093 poin 9) tidak pernah aktif. Data `PublishingPost` tidak korup
+(dedup `platformPostId` tetap benar).
+
+**Fix (Elon Backend Engineer):** kontrak `IWorkspaceRepository.updateImportWatermark`
++ port lokal `ConnectedAccountWatermarkPort` sekarang wajib
+`actingUserId: UserId` (signature publik use-case tidak berubah).
+Implementasi Prisma dibungkus `withCurrentUser(actingUserId, ...)`,
+konsisten presedan `reconnectAccount`/`disconnectAccount`/
+`createConnectedAccount`. Docstring salah dikoreksi. Test unit diupdate.
+
+**Verifikasi final (sesi utama, 2x independen):** `bun run
+typecheck`/`lint`/`test` → PASS, 350 passed/5 skipped/0 failed. Live
+end-to-end di database dev Supabase sungguhan: connect LinkedIn baru
+("Fake Company 7283") → 4 `PublishingPost` `Imported` ter-insert benar,
+watermark masih `null` (bug reproduce dikonfirmasi). Setelah fix, ulangi
+dengan akun TikTok baru ("@fake.tiktok.3902") → watermark tersimpan benar
+(`2026-10-08T04:33:30.150Z`), 4 post `Imported` lagi ter-insert benar. Bug
+resolved, diverifikasi 2x independen. Data test dibiarkan di database dev
+workspace `b28e4284-39e5-4d24-ad27-32c2cb286880` (konsisten fixture lain
+yang sudah ada di situ).
+
+Status T-090.1–T-090.4 tetap dianggap selesai dari sisi implementasi
+(bug sudah diperbaiki dan diverifikasi ulang) — ini koreksi/pelengkap
+catatan, bukan regresi status. **T-090 tetap `🟡 In Progress`** (T-090.5
+UI masih `blocked`). Pelajaran pattern-risk lebih luas (tidak ada test
+Prisma+RLS asli di codebase) dicatat di `tasks/v02-publishing-mvp.md` §
+T-090 addendum — dipertimbangkan tidak dibuatkan KI baru terpisah (lihat
+alasan di `PROJECT_STATE.md`, section Known Issues tidak diubah untuk
+ini) karena bug sudah fixed+resolved dalam sesi yang sama sebelum sempat
+sampai production, dan menambah KI yang langsung berstatus Resolved
+hanya akan langsung dihapus lagi oleh guardrail ukuran Known Issues.
+Detail lengkap: `tasks/v02-publishing-mvp.md` § T-090 (addendum
+2026-10-08).
+
+---
+
+## 2026-10-08 — T-090.1–T-090.4 selesai (4/5 subtask) — Import Posts dari Social Account, ADR-093; KI-059 baru
+
+Branch worktree `claude/t-090-e6bb6d`. Rangkaian: Elon Backend Engineer →
+Ridwan Architecture Reviewer (2 temuan, diperbaiki) → Najwa QA Engineer
+(lulus; 1 gap test minor ditambal langsung oleh sesi utama). Verifikasi
+akhir: `bun run typecheck` PASS, `bun run lint` PASS, `bun run test` → 350
+passed, 5 skipped, 0 failed. **T-090.5 (UI) tetap `blocked`** — belum ada
+rancangan Claude Design (AGENTS.md rule 17), tidak dikerjakan. **T-090
+tetap `🟡 In Progress`**.
+
+**Added (T-090.1):** enum `ContentStatus.Imported` baru
+(`packages/shared/src/enums.ts`). Migration Prisma
+(`apps/web/prisma/migrations/20261008120000_t090_1_import_posts_schema/migration.sql`):
+`PublishingPost.authorId` nullable (invariant null-hanya-untuk-`Imported`
+ditegakkan via guard `requireAuthorId` di level repository, bukan DB
+constraint baru), `WorkspaceConnectedAccount.lastImportedUntil`/
+`lastImportRequestedAt` baru. **Catatan penting:** migration SQL ditulis
+manual (bukan hasil `prisma migrate dev` sungguhan) karena worktree sesi ini
+tidak punya `DATABASE_URL`/akses DB — perlu diverifikasi (`prisma migrate
+diff`/apply) oleh sesi yang punya akses DB sebelum dianggap final di
+environment nyata.
+
+**Added (T-090.2):** kontrak ACL `IOutstandAdapter.importPosts`/
+`fetchImportJobStatus` (`packages/shared/src/contracts/outstand-adapter.ts`)
++ `FakeOutstandAdapter.importPosts` instant-success (pola ADR-059) + unit
+test.
+
+**Added (T-090.3):** `ImportPostsTriggerUseCase`
+(`apps/web/src/domains/publishing/services/import-posts-trigger.use-case.ts`,
+JOB-05) — 3 entry point: otomatis on-connect (hook di
+`WorkspaceService.completeAccountConnection` via port lokal
+`ImportPostsAutoTriggerPort`, pola sama `ScheduledCountsPort`/
+`NotificationPort`), periodik (`triggerPeriodicForAccounts`), manual
+(Server Action `syncNowAction` baru di Settings → Connected Accounts).
+Guard concurrent-import per akun (cek status `pending`/`running`) + 3 lapis
+guard biaya manual: RBAC Owner/Admin (`assertActorCanTriggerManualImportSync`),
+cooldown 24 jam/akun, cap 1x/minggu/workspace via COUNT `background_jobs`.
+
+**Added (T-090.4):** `ImportPostsProcessUseCase`
+(`apps/web/src/domains/publishing/services/import-posts-process.use-case.ts`,
+JOB-06) — upsert `PublishingPost`/`PublishingPostTarget` status `Imported`,
+dedup via `platformPostId` (reuse kolom existing ADR-092, tidak ada skema
+baru). File baru:
+`apps/web/src/domains/publishing/repositories/import-job.repository.ts`
+(+impl Prisma).
+
+**Keputusan implementasi (dinilai konsisten dengan presedan yang sudah ada,
+diverifikasi Ridwan — tidak memerlukan ADR terpisah dari ADR-093):**
+JOB-05/JOB-06 dipanggil sinkron dalam satu eksekusi (bukan 2 job async
+lewat `background_jobs`), mengikuti presedan pragmatis
+`OutstandWebhookProcessor` (JOB-01) karena job runner asli T-027 belum
+dibangun — baris `background_jobs` tetap diinsert untuk audit
+log/cap-counting; guard concurrent-import disederhanakan jadi cek status
+`pending`/`running` saja (bukan kondisi literal ADR-093 poin 8), valid
+karena pemrosesan sinkron membuat window itu satu-satunya state transien
+yang mungkin terjadi.
+
+**Fix di luar scope literal (perlu, enum baru `Imported` memaksa
+exhaustiveness check TypeScript):** `PublishingService.listCalendarPosts`/
+`getCalendarPostById` default-exclude status `Imported`
+(`CALENDAR_DEFAULT_STATUSES_EXCLUDING_IMPORTED`) — mencegah jalur Realtime
+granular-patch Calendar/Drafts/Queue membocorkan kartu `Imported`
+placeholder ke UI sebelum desain T-090.5 disetujui. Placeholder
+exhaustiveness ditambahkan di `status-badge.ts`, `calendar-grid-shared.ts`,
+`history-status.ts` — ditandai eksplisit sebagai placeholder sementara,
+bukan desain final.
+
+**KI-059 baru (Open):** `triggerPeriodicForAccounts` butuh `actingUserId`
+per akun yang di-resolve caller — trigger cron asli tidak punya sesi user.
+Didokumentasikan sebagai gap di docstring kode, bukan diselesaikan (kandidat
+resolusi, mis. Account Owner workspace, belum jadi keputusan produk final).
+
+**File diubah lainnya:** `apps/web/prisma/schema.prisma`,
+`apps/web/src/lib/adapters/outstand/fake-outstand-adapter.ts`,
+`apps/web/src/domains/publishing/rbac.ts`,
+`apps/web/src/domains/publishing/repositories/publishing.repository.ts`,
+`apps/web/src/domains/workspace/repositories/workspace.repository.ts`,
+`apps/web/src/domains/workspace/services/workspace.service.ts`,
+`apps/web/src/lib/workspace/outstand-workspace-service.ts`,
+`apps/web/src/app/(app)/settings/connected-accounts/actions.ts`,
+`apps/web/src/domains/publishing/services/publishing.service.ts`.
+
+Detail lengkap: `tasks/v02-publishing-mvp.md` § T-090,
+`decisions/ADR-093-import-posts-dari-social-account-status-imported-read-only.md`.
 ## 2026-10-08 — KI-062 + KI-064 Resolved: koreksi 2 gap dokumentasi baseline arsitektur
 
 Dua Known Issue dokumentasi (keduanya non-blocking, murni koreksi baseline tanpa keputusan arsitektur baru) diselesaikan di branch `fix/ki062-ki064-docs`:

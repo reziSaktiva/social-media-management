@@ -103,6 +103,12 @@ export const CONTENT_STATUS_DOT_CLASSNAME: Record<ContentStatus, string> = {
   [ContentStatus.Scheduled]: "bg-foreground",
   [ContentStatus.Published]: "bg-primary",
   [ContentStatus.Failed]: "bg-destructive",
+  // T-090, ADR-093 — placeholder SEMENTARA (bukan keputusan desain final),
+  // lihat catatan lengkap di `CONTENT_STATUS_LABEL`
+  // (`components/draft-editor/status-badge.ts`). `listCalendarPosts`
+  // meng-exclude `Imported` dari query default Calendar, jadi warna ini
+  // tidak seharusnya pernah benar-benar tampil sekarang.
+  [ContentStatus.Imported]: "bg-muted-foreground",
 };
 
 /** Senin di index 0 — minggu mulai Senin (sama seperti `getWeekRange`). */

@@ -124,6 +124,12 @@ function createFakeAdapter(
     replyToComment: async (): Promise<ReplyToCommentResult> => ({
       outstandReplyId: "fake-reply-1",
     }),
+    importPosts: async () => ({ importJobId: "unused" }),
+    fetchImportJobStatus: async () => ({
+      status: "completed" as const,
+      posts: [],
+      error: null,
+    }),
     ...overrides,
   };
 }

@@ -480,6 +480,72 @@ export interface ReplyToCommentResult {
 }
 
 /**
+ * Import Posts dari Social Account (T-090, ADR-093 poin 5) — mapping ke
+ * `POST /v1/social-accounts/{id}/imports`. Endpoint ini BERBAYAR dan async:
+ * enqueue job di sisi Outstand, hasil diketahui belakangan lewat
+ * `fetchImportJobStatus` (polling, sekarang) atau webhook
+ * `import.completed`/`import.failed` (real adapter T-025 nanti, belum
+ * diimplementasikan). Tidak didukung untuk X/Twitter (ADR-093 Context) —
+ * caller (Use Case) yang bertanggung jawab tidak memanggil ini untuk akun
+ * platform itu, kontrak ini sendiri tidak menolaknya (ACL tidak tahu
+ * platform tujuan, hanya `outstandAccountId`).
+ */
+export interface ImportPostsInput {
+  /** Default (trigger awal/on-connect, ADR-093 poin 5): 90 hari ke belakang. Trigger periodik/manual memakai watermark `lastImportedUntil`. */
+  since?: Date;
+  until?: Date;
+  /** Default (trigger awal): 100. */
+  limit?: number;
+}
+
+/** Hasil `importPosts` — murni id job untuk di-tracking, BUKAN hasil import itu sendiri (resolve belakangan lewat `fetchImportJobStatus`). */
+export interface ImportJobHandle {
+  importJobId: string;
+}
+
+export type ImportJobStatus = "pending" | "completed" | "failed";
+
+/**
+ * Satu post yang berhasil ditarik dari akun sosial (dibuat LANGSUNG di
+ * platform, bukan lewat tool kita) — dipetakan ke `PublishingPost`/
+ * `PublishingPostTarget` berstatus `Imported` oleh
+ * `ImportPostsProcessUseCase` (domain `publishing`). `platformPostId`
+ * dipakai sebagai kunci dedup terhadap `PublishingPostTarget.platformPostId`
+ * yang sudah ada dari ADR-092 (ADR-093 poin 4) — SATU post per akun (import
+ * selalu per `outstandAccountId`, beda dari `schedulePost`/`publishNow`
+ * yang bisa multi-akun dalam satu post).
+ */
+export interface ImportedPostData {
+  platformPostId: string;
+  caption: string;
+  publishedAt: Date;
+  platformPostUrl: string | null;
+  /**
+   * URL media eksternal dari platform asal (BUKAN Supabase Storage/media
+   * internal — post ini tidak punya `mediaIds` internal sama sekali).
+   * Belum ada kolom DB khusus untuk ini (T-090 scope: skema hanya
+   * menambah `authorId` nullable + watermark akun, lihat ADR-093) —
+   * `ImportPostsProcessUseCase` menyimpannya sementara di
+   * `PublishingPostTarget.platformOptions` (kolom JSON yang sudah ada)
+   * supaya tidak hilang untuk UI Imported nanti (T-090.5, masih blocked),
+   * bukan keputusan skema baru.
+   */
+  mediaUrls: string[];
+}
+
+/**
+ * Hasil `fetchImportJobStatus` — resolve belakangan (polling SEKARANG,
+ * webhook `import.completed`/`import.failed` di real adapter T-025 nanti)
+ * untuk SATU `importJobId` dari `importPosts`. `posts` hanya terisi
+ * (non-empty) kalau `status: "completed"`.
+ */
+export interface ImportJobOutcome {
+  status: ImportJobStatus;
+  posts: ImportedPostData[];
+  error: string | null;
+}
+
+/**
  * Anti-Corruption Layer contract untuk Outstand (integration-layer.md,
  * ADR-040, redesain ADR baru 2026-08-26). Domain internal (Publishing,
  * Analytics, dst.) hanya mengenal interface ini — implementasi konkret
@@ -746,4 +812,23 @@ export interface IOutstandAdapter {
     accountUsername: string;
     parentOutstandCommentId?: string;
   }): Promise<ReplyToCommentResult>;
+
+  /**
+   * Import Posts dari Social Account (T-090, ADR-093 poin 5) — mapping 1:1
+   * ke `POST /v1/social-accounts/{id}/imports`. Tidak mengembalikan hasil
+   * import sinkron (sama pola `schedulePost`/`publishNow` — enqueue dulu,
+   * resolve belakangan lewat `fetchImportJobStatus`).
+   */
+  importPosts(
+    outstandAccountId: string,
+    input: ImportPostsInput,
+  ): Promise<ImportJobHandle>;
+
+  /**
+   * Import Posts dari Social Account (T-090, ADR-093 poin 5) — resolve
+   * status job import BELAKANGAN (polling SEKARANG; webhook
+   * `import.completed`/`import.failed` di real adapter T-025 nanti,
+   * pasangan `fetchPostOutcome` tapi untuk import, bukan publish).
+   */
+  fetchImportJobStatus(importJobId: string): Promise<ImportJobOutcome>;
 }

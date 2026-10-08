@@ -1,17 +1,46 @@
 import { ENGAGEMENT_SYNC_JOB_TYPE } from "@/domains/engagement";
+import {
+  ImportPostsProcessUseCase,
+  ImportPostsTriggerUseCase,
+} from "@/domains/publishing";
 import { WorkspaceService } from "@/domains/workspace";
 import { getOutstandAdapter } from "@/lib/adapters/outstand";
 import { backgroundJobStore } from "@/lib/jobs/background-job-store";
 import { backgroundJobScheduler } from "@/lib/jobs/job-scheduler";
+import {
+  importJobRepository,
+  publishingRepository,
+} from "@/lib/repositories/publishing";
 import { workspaceRepository } from "@/lib/repositories/workspace";
 
 /**
- * Composition-root helper (T-013.1/T-013.2, T-015.3, ADR-105) — dipakai
- * Server Action (`connected-accounts/actions.ts`) dan Route Handler
+ * Import Posts dari Social Account (T-090.3, ADR-093 poin 7) — satu-satunya
+ * tempat `ImportPostsAutoTriggerPort`-shaped object dibentuk dari
+ * `ImportPostsTriggerUseCase` (domain `publishing`) sungguhan, supaya
+ * `WorkspaceService` tidak pernah mengimpor domain `publishing` langsung
+ * (AGENTS.md #7). `updateImportWatermark` diteruskan apa adanya dari
+ * `workspaceRepository` — bentuknya sudah cocok dengan
+ * `ConnectedAccountWatermarkPort` di `ImportPostsTriggerUseCase`
+ * (structural typing, tidak perlu wrapper tambahan).
+ */
+export function createImportPostsTriggerUseCase(): ImportPostsTriggerUseCase {
+  return new ImportPostsTriggerUseCase(
+    importJobRepository,
+    getOutstandAdapter(),
+    workspaceRepository,
+    new ImportPostsProcessUseCase(publishingRepository),
+  );
+}
+
+/**
+ * Composition-root helper (T-013.1/T-013.2, T-015.3, ADR-105, T-090.3) —
+ * dipakai Server Action (`connected-accounts/actions.ts`) dan Route Handler
  * (`/api/integrations/outstand/callback`), keduanya butuh `WorkspaceService`
  * yang sudah disuplai `IOutstandAdapter` untuk
- * `initiateConnectAccount`/`completeAccountConnection`. Satu factory supaya
- * kedua entry point tidak bisa diam-diam divergen kalau wiring-nya berubah.
+ * `initiateConnectAccount`/`completeAccountConnection`, DAN (T-090.3)
+ * `ImportPostsAutoTriggerPort` untuk auto-trigger import on-connect. Satu
+ * factory supaya entry point-entry point ini tidak bisa diam-diam divergen
+ * kalau wiring-nya berubah.
  *
  * Sejak Temuan #1 (review Ridwan Architecture Reviewer, T-051) — factory
  * ini JUGA menyuplai `EngagementSyncSeederPort` (parameter ke-5,
@@ -30,6 +59,8 @@ import { workspaceRepository } from "@/lib/repositories/workspace";
  * `EngagementSyncJobHandler` yang memang menunda `+30 menit`.
  */
 export function createWorkspaceServiceWithOutstandAdapter(): WorkspaceService {
+  const importPostsTriggerUseCase = createImportPostsTriggerUseCase();
+
   return new WorkspaceService(
     workspaceRepository,
     undefined,
@@ -61,6 +92,10 @@ export function createWorkspaceServiceWithOutstandAdapter(): WorkspaceService {
           scheduledAt: new Date(),
         });
       },
+    },
+    undefined,
+    {
+      triggerAuto: (input) => importPostsTriggerUseCase.triggerAuto(input),
     },
   );
 }
