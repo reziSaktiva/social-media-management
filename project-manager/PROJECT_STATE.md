@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-111 ✅ Done (8/8 subtask, 2026-10-07)** — restrukturisasi layout preview media post asli di History Detail & Post asal Engage, desktop+mobile tuntas total, menutup KI-082/KI-083 sepenuhnya. **KI-084 ✅ Resolved (2026-10-08)** — konsistensi icon sidebar mobile/desktop, tuntas di Claude Design (2026-10-07) dan kode asli `apps/web` (2026-10-08), lihat **Completed (Ringkasan)** di bawah. **KI-085 ✅ Resolved (2026-10-07)** — bug layout App Prototype. Fokus aktif selanjutnya: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) dan **T-090 Import Posts dari Social Account** (⏳ Not Started, ADR-093) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 6/7 task** (2026-10-06, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
+* **Top Next Tasks:** **T-090 ✅ Done (5/5 subtask, 2026-10-08)** — Import Posts dari Social Account (status `Imported`, read-only), ADR-093, tuntas penuh termasuk UI (T-090.5) + bug fix `getOutstandAdapter`/`toActionError`. **T-111 ✅ Done (8/8 subtask, 2026-10-07)** — restrukturisasi layout preview media post asli di History Detail & Post asal Engage, menutup KI-082/KI-083 sepenuhnya. **KI-084 ✅ Resolved (2026-10-08)** dan **KI-085 ✅ Resolved (2026-10-07)** — lihat **Completed (Ringkasan)** di bawah. Fokus aktif selanjutnya: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 6/7 task** (2026-10-06, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 1 blocker aktif (env var Google OAuth belum diisi, KI-015) — lihat section **Blockers** di bawah. Blocker Outstand (KI-003, `OUTSTAND_API_KEY` + Real OutstandAdapter) sudah **Resolved (2026-09-24)**. Railway staging sudah live & terverifikasi (2026-08-14); JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 91 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * **KI-073–080 Resolved (2026-09-26)** — 4 bug publish Instagram (caption wajib untuk Story, Story publish tanpa media, upload media >1MB gagal, avatar akun tidak tampil di sidebar) diperbaiki + diverifikasi live ke akun Instagram/Facebook real (ADR-120). 2 bug turunan ditemukan saat verifikasi (akun `disconnected` tidak bisa reconnect; callback OAuth silent-success untuk conflict genuine) diperbaiki via **ADR-122**. Plus **KI-080** (baru+langsung Resolved) — Railway staging build gagal (`next.config.ts` tidak bisa resolve import workspace `@social/shared`) diperbaiki di branch terpisah sebelum masuk ke fix KI-078/079.
@@ -440,6 +440,26 @@ dari sesi T-015 — baru ketahuan sekarang karena QA menyentuh area ini lagi
 saat verifikasi Reconnect. King Rezi eksplisit memutuskan (`AskUserQuestion`)
 ini dicatat sebagai Known Issue baru, **tidak diperbaiki di sesi T-015**.
 
+### KI-059 · `triggerPeriodicForAccounts` (Import Posts periodik) butuh `actingUserId` yang belum ada sumbernya
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Tech-Debt / Gap Produk |
+| Terkait | T-090 (T-090.3) |
+
+Ditemukan Elon Backend Engineer saat implementasi T-090.3 (2026-10-08,
+`JOB-05 — Import Posts Trigger`): entry point periodik
+(`ImportPostsTriggerUseCase.triggerPeriodicForAccounts`, dipanggil Railway
+Cron harian) butuh `actingUserId` per akun untuk RBAC/audit trail, tapi
+trigger cron tidak punya sesi user untuk di-resolve — berbeda dari entry
+point otomatis (on-connect, actor = user yang connect) dan manual (actor =
+user yang klik "Sync Now"). Didokumentasikan sebagai gap di docstring kode,
+**bukan** diselesaikan — kandidat resolusi (mis. Account Owner workspace)
+belum jadi keputusan produk final, menunggu King Rezi. Tidak memblokir
+T-090.1–T-090.4 (sudah selesai); jalur periodik butuh keputusan ini sebelum
+dipakai di environment nyata.
+
 ### KI-060 · Account Selector tidak ter-restore saat reopen edit draft
 
 | Field | Value |
@@ -509,6 +529,64 @@ sudah ada sejak sebelum T-027, bukan regresi baru). UI sudah punya fallback
 tapi data historis `publishedAt` di DB tetap kosong untuk seluruh post yang
 sudah tayang. Non-blocking, gap serupa pola **KI-049**
 (`failedAt`/`failureReason` juga tidak pernah ditulis). Tidak memblokir M8.
+
+### KI-086 · Reconnect akun Facebook `disconnected`/`reconnect-required` adalah dead flow — tidak ada jalur apa pun yang mengaktifkannya kembali
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug — Connected Accounts / Facebook Pages |
+| Terkait | ADR-115 poin 8 (Facebook Pages multi-select), ADR-122 (Reconnect `disconnected` untuk platform non-Facebook, menutup KI-078/KI-079) |
+
+Ditemukan King Rezi (2026-10-08) saat menanyakan cara reconnect akun
+Facebook yang sudah disconnected — dikonfirmasi lewat pembacaan kode
+langsung (bukan asumsi) bahwa ini **genuinely dead flow**, bukan cuma UI
+yang kurang nyaman:
+
+1. **UI** — `ConnectedAccountAction` di `ConnectedAccountsList.tsx`
+   (~baris 253-257) sengaja menyembunyikan tombol "Reconnect" total untuk
+   `account.platform === SocialPlatform.Facebook` pada status
+   `reconnect-required`/`disconnected`, dengan komentar eksplisit
+   "Facebook Pages reconnect multi-page belum punya UPDATE path — sembunyikan
+   tombol supaya tidak silent 0-page 'sukses' toast".
+2. **Backend** — bahkan kalau user coba lewat jalur "Connect Account" biasa
+   (pilih ulang Page yang sama), `WorkspaceRepository.createConnectedAccounts`
+   (jamak, khusus Facebook, `workspace.repository.ts` ~baris 933-962)
+   mencocokkan row existing HANYA berdasarkan `outstandAccountId` — tidak
+   mengecek `status`/`reconnectRequired` sama sekali:
+   ```
+   const existing = await tx.workspaceConnectedAccount.findMany({
+     where: { workspaceId, outstandAccountId: { in: [...] } },
+     select: { outstandAccountId: true },   // status tidak dicek
+   });
+   ...
+   if (existingIds.has(account.outstandAccountId)) continue; // skip diam-diam, status APAPUN
+   ```
+   Row yang `disconnected` diperlakukan identik dengan row yang sudah
+   `active` — di-skip diam-diam, tanpa error, tanpa update. Tidak seperti
+   `reconnectAccount` (tunggal, dipakai platform lain via ADR-122) yang
+   memang didesain UPDATE row existing (reset `status`/`reconnectRequired`,
+   pertahankan `connectedAt`), tidak ada padanan path reaktivasi untuk
+   Facebook sama sekali.
+
+**Kenapa belum diperbaiki sekarang:** ini bukan sekadar bug biasa — ADR-115
+poin 8 eksplisit menyatakan "Reconnect Facebook Page tunggal DI LUAR SCOPE"
+sebagai keputusan arsitektur yang disengaja. Memperbaikinya berarti
+membalik keputusan ADR yang sudah ada (AGENTS.md rule 4: butuh ADR baru,
+bukan patch diam-diam) dan kemungkinan juga menyentuh UI (menampilkan lagi
+tombol Reconnect untuk Facebook, rule 17 AGENTS.md: perlu cek Claude Design
+dulu). King Rezi diberi pilihan (perbaiki sekarang + ADR baru / backend saja
+dulu / tunda sebagai Known Issue) dan memilih **tunda** — dicatat di sini
+supaya tidak hilang, belum ada task/ADR yang dibuka untuk ini.
+
+**Rencana perbaikan (kalau nanti dikerjakan, dicatat supaya tidak perlu
+investigasi ulang):** di `createConnectedAccounts`, select juga `id` dan
+`status` pada lookup existing; kalau `outstandAccountId` cocok tapi
+`status !== "active"`, jalankan logika reaktivasi (set `status: "active"`,
+`reconnectRequired: false`, refresh `outstandAccountId`/`handle`/`avatarUrl`)
+pada row itu alih-alih `continue`-skip — hanya row yang SUDAH `active` yang
+tetap di-skip. `WorkspaceService.confirmFacebookPagesConnection` sendiri
+tidak perlu berubah (sudah delegasi penuh ke `createConnectedAccounts`).
 
 ---
 
@@ -673,11 +751,11 @@ seluruh daftar Known Issues.
 
 ## Completed (Ringkasan)
 
+* **T-090 ✅ TUNTAS 5/5 subtask — Import Posts dari Social Account, ADR-093 (2026-10-08)** — Elon Backend Engineer (T-090.1–.4: enum `ContentStatus.Imported` + migration, kontrak ACL `IOutstandAdapter.importPosts`, `JOB-05`/`JOB-06` trigger+webhook) dan Mark UI Engineer (T-090.5: badge `Imported` variant `outline`, `CalendarPostPopover` read-only — link "Lihat di [Platform] →" menggantikan "Buka Draft Editor", `SyncNowButton` baru di Connected Accounts dengan RBAC hide-total untuk Creator; filter exclude `Imported` di Calendar dihapus). QA Najwa menemukan bug crash: `getOutstandAdapter()` tanpa `OUTSTAND_API_KEY` melempar `Error` polos (tidak tertangkap `toActionError`) — diperbaiki Elon jadi `ExternalServiceError` (dampak lintas-fitur, memperbaiki semua Server Action lain yang memanggil adapter ini). Review Ridwan: bersih. `typecheck`/`lint`/`test` PASS (638 passed/6 skipped/0 failed). **Gap diketahui:** verifikasi visual end-to-end tombol "Sync Now" di browser belum dituntaskan (butuh akses DB untuk fixture akun terhubung, ADR-119 menghapus jalur Fake connect) — bukan bug diketahui, hanya verifikasi tertunda, lihat `tasks/v02-publishing-mvp.md` § T-090. Detail lengkap: `decisions/DECISIONS.md` (ADR-093).
 * **KI-062 + KI-064 ✅ Resolved (2026-10-08)** — koreksi 2 gap dokumentasi baseline arsitektur, non-blocking M8: **KI-062** baris formula backoff self-contradictory di `background-jobs.md` (menghasilkan 5/10/20 menit, tidak match tabel 5/15/60 yang sudah konsisten dengan kode `backoff.ts`) diganti penjelasan lookup table eksplisit; **KI-064** panah dependency `BC-03 Publishing → BC-06 Analytics` (via `PostMetricsPort`) yang hilang ditambahkan ke diagram § Peta Dependency Antar Domain `application-layer.md`. Kode tidak diubah di kedua gap — murni koreksi dokumentasi.
 * **KI-084 ✅ Resolved (2026-10-08)** — implementasi fix icon sidebar mobile ke kode asli `apps/web` (lanjutan desain Claude Design 2026-10-07): `MobileTopBar.tsx` icon trigger diganti `Menu01Icon` → `SidebarLeftIcon`. Percobaan pertama (close button `absolute` baru di `sidebar.tsx`) ternyata menabrak tombol "New Post" — King Rezi laporkan dari screenshot — diperbaiki dengan reuse elemen header row yang sudah ada: `WorkspaceSideNav.tsx` menampilkan `SidebarTrigger`-nya (dulu desktop-only) di mobile juga sebagai close button; `SettingsSideNav.tsx` (tanpa `SidebarTrigger` by design) dapat tombol close baru `md:hidden` di header row. Lebar drawer (`SIDEBAR_WIDTH_MOBILE`) sudah `18rem`, konsisten dengan desktop di kode — **belum direkonsiliasi** dengan angka `260px` di bullet sebelah (lihat catatan follow-up di section KI-084 di atas). Diverifikasi via browser preview mobile (375px) di Workspace drawer & Settings drawer, termasuk cek regresi desktop.
 * **KI-084 (desain) + KI-085 ✅ Resolved (2026-10-07)** — King Rezi laporkan sidebar mobile tidak konsisten dengan desktop (icon buka/tutup beda, lebar beda) → **KI-084**: icon disamakan dengan `SidebarLeftIcon` desktop + lebar drawer 260px, diterapkan ke 14 file Claude Design (component spec `navigation-mobile.html` + `styles.css` + 7 screen workspace + 7 screen settings), diverifikasi via `get_file` tiap push. Saat verifikasi di App Prototype, King Rezi temukan bug terpisah (**KI-085**): `.mobile-topbar` (hamburger asli) tetap tampil sebagai "tombol kedua" berdampingan dengan sidebar — butuh 3 percobaan fix (2 gagal: CSS flex-direction, CSS `:has()`) sebelum ketemu yang benar: guard JS di `AppPrototype.dc.html` method `inject()` (jalan di setiap screen load) yang paksa `.mobile-topbar{display:none}` via `getComputedStyle` kalau sidebar asli sedang tampil — dikonfirmasi King Rezi sudah teratasi.
 * **T-111 ✅ TUNTAS 8/8 subtask (2026-10-07)** — restrukturisasi layout preview media post asli, desktop+mobile, History Detail & Post asal Engage. Mencakup **T-111.6** (implementasi push navigation Engage Inbox mobile — `EngageInboxView.tsx`) dan **T-111.8** (2 fix mobile History Detail — `HistoryDetail.tsx`: anti scroll horizontal + baris target failed wrap/shrink), keduanya diverifikasi langsung via browser (mobile 375px + cek regresi desktop) di sesi utama sebelum ditutup, bukan cuma klaim subagent. Menutup **KI-083** sepenuhnya.
-* **KI-042 Mobile Shell retrofit ✅ Done (2026-10-07)** — pola hamburger+drawer (sudah lama terdokumentasi sebagai CSS+demo standalone, `components/navigation-mobile.html`) ternyata TIDAK PERNAH dipasang ke satu pun screen asli maupun App Prototype — ditemukan King Rezi: viewport Mobile di App Prototype menyembunyikan sidebar tapi tidak ada cara membukanya lagi, navigasi buntu total. Dipasang ke 14 file (7 workspace sidebar + 7 settings sidebar) + `AppPrototype.dc.html` (method generik `openMobileNav`/`closeMobileNav` + 2 `route()` case baru). JS memindahkan (bukan menduplikasi) node sidebar ke dalam `.mobile-nav-drawer` saat hamburger diklik. Scope dikonfirmasi King Rezi via `AskUserQuestion`: "App Prototype + semua template" (bukan App Prototype saja).
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 

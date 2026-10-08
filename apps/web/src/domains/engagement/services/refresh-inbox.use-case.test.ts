@@ -72,6 +72,12 @@ function createFakeAdapter(
     }),
     fetchComments,
     replyToComment: async () => ({ outstandReplyId: "fake-reply" }),
+    importPosts: async () => ({ importJobId: "unused" }),
+    fetchImportJobStatus: async () => ({
+      status: "completed" as const,
+      posts: [],
+      error: null,
+    }),
   };
 }
 

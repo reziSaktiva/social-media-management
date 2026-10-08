@@ -14,6 +14,9 @@ import {
   type InboxCommentData,
   type FetchPostMetricsResult,
   type FetchWorkspaceMetricsResult,
+  type ImportJobOutcome,
+  type ImportPostsInput,
+  type ImportJobHandle,
   type IOutstandAdapter,
   type OutstandMetricsPeriod,
   type OutstandPostMediaInput,
@@ -1348,6 +1351,67 @@ export function createRealOutstandAdapter(
       }
 
       return { outstandReplyId: replyId };
+    },
+
+    /**
+     * Import Posts dari Social Account (T-090, ADR-093 poin 5) — **STUB
+     * BELUM DI-WIRE** (keputusan eksplisit sesi rebase 2026-10-08, lihat
+     * amandemen ADR-119 di docstring `ImportPostsTriggerUseCase`).
+     *
+     * Kontrak `IOutstandAdapter.importPosts`/`fetchImportJobStatus`
+     * (`packages/shared/src/contracts/outstand-adapter.ts`) dan use-case
+     * pemanggilnya (`ImportPostsTriggerUseCase`/`ImportPostsProcessUseCase`,
+     * domain `publishing`) SUDAH SELESAI dan sudah diverifikasi lewat unit
+     * test (double lokal) — yang BELUM ada adalah implementasi HTTP call
+     * sungguhan ke endpoint Outstand `POST /v1/social-accounts/{id}/imports`
+     * (berbayar, async) di method ini.
+     *
+     * **Kenapa stub-throw, bukan implementasi langsung (dipertimbangkan,
+     * bukan dilewatkan diam-diam):** method lain di adapter ini
+     * (`fetchComments`/`replyToComment`/`schedulePost`/dst.) semuanya sudah
+     * diverifikasi terhadap OpenAPI spec resmi Outstand sebelum
+     * diimplementasikan (lihat catatan di docstring kelas). Endpoint
+     * `/imports` BELUM pernah diverifikasi ke spec resmi di sesi ini — scope
+     * T-090 (MVP) juga secara eksplisit TIDAK mensyaratkan hasil import
+     * nyata segera (T-090.5 UI yang menampilkannya masih `blocked`
+     * menunggu rancangan Claude Design). Menebak shape request/response
+     * tanpa verifikasi spec berisiko mengulang kesalahan yang sudah pernah
+     * terjadi di method lain adapter ini (lihat "CATATAN PENTING" di
+     * docstring kelas soal tebakan best-effort yang ternyata salah) —
+     * throw eksplisit (pola ADR-059/ADR-119 "throw loud") lebih aman
+     * daripada silent-wrong-shape. `ImportPostsTriggerUseCase.runImportSync`
+     * sudah menangani error ini dengan baik: job tercatat `status: "failed"`
+     * dengan pesan ini sebagai `lastError`, TIDAK PERNAH menggagalkan
+     * Connect Account yang memicunya (best-effort, lihat
+     * `WorkspaceService.completeAccountConnection`).
+     *
+     * Follow-up untuk implementasi sungguhan: verifikasi
+     * `https://api.outstand.so/v1/social-accounts/openapi.json` (pola sama
+     * method lain di kelas ini), lalu ganti kedua method ini jadi
+     * `client.request(...)` sungguhan.
+     */
+    async importPosts(
+      _outstandAccountId: string,
+      _input: ImportPostsInput,
+    ): Promise<ImportJobHandle> {
+      throw new OutstandIntegrationError({
+        type: "client_error",
+        message:
+          "OutstandAdapter.importPosts belum di-wire ke endpoint Outstand sungguhan (stub-throw T-090, lihat docstring method ini) — endpoint POST /v1/social-accounts/{id}/imports belum diverifikasi terhadap OpenAPI spec resmi Outstand.",
+        retryable: false,
+      });
+    },
+
+    /** Pasangan `importPosts` — lihat docstring method itu untuk alasan stub-throw. */
+    async fetchImportJobStatus(
+      _importJobId: string,
+    ): Promise<ImportJobOutcome> {
+      throw new OutstandIntegrationError({
+        type: "client_error",
+        message:
+          "OutstandAdapter.fetchImportJobStatus belum di-wire ke endpoint Outstand sungguhan (stub-throw T-090, lihat docstring importPosts) — tidak ada importJobId yang pernah benar-benar dibuat oleh importPosts di atas.",
+        retryable: false,
+      });
     },
   };
 }

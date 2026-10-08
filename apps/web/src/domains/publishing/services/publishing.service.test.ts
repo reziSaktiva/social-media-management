@@ -73,6 +73,10 @@ function createFakeRepository(
     listSyncablePostsByConnectedAccount: async () => [],
     findPostOutstandId: async () => null,
     findPostSnapshotForEngagement: async () => null,
+    upsertImportedPosts: async () => ({
+      insertedCount: 0,
+      skippedDuplicateCount: 0,
+    }),
     ...overrides,
   };
 }
@@ -409,6 +413,30 @@ describe("PublishingService.listCalendarPosts", () => {
     ).resolves.toEqual([]);
   });
 
+  it("meneruskan input apa adanya ke repository saat caller tidak eksplisit memfilter statuses (T-090, rancangan Imported sudah dikunci — tidak lagi exclude Imported dari default, lihat tasks/v02-publishing-mvp.md § T-090)", async () => {
+    let received:
+      Parameters<IPublishingRepository["listCalendarPosts"]>[0] | null = null;
+    const service = new PublishingService(
+      createFakeRepository({
+        listCalendarPosts: async (input) => {
+          received = input;
+          return [];
+        },
+      }),
+    );
+
+    await service.listCalendarPosts(
+      { workspaceId: WORKSPACE_ID, from: FROM, to: TO },
+      AUTHOR_ID,
+    );
+
+    expect(received).toEqual({
+      workspaceId: WORKSPACE_ID,
+      from: FROM,
+      to: TO,
+    });
+  });
+
   it("meneruskan input rentang + filter apa adanya ke repository", async () => {
     let received:
       Parameters<IPublishingRepository["listCalendarPosts"]>[0] | null = null;
@@ -665,6 +693,26 @@ describe("PublishingService.getCalendarPostById", () => {
     );
 
     expect(result).toEqual({ ...published, metrics: [] });
+  });
+
+  it("mengembalikan post berstatus Imported apa adanya (T-090, rancangan Imported sudah dikunci — jalur Realtime-patch sekarang konsisten dengan listCalendarPosts yang juga tidak lagi exclude Imported, lihat tasks/v02-publishing-mvp.md § T-090)", async () => {
+    const imported = createCalendarItem({
+      id: asPostId("post-imported"),
+      status: ContentStatus.Imported,
+      scheduledAt: null,
+      publishedAt: new Date("2026-07-14T00:00:00Z"),
+    });
+    const service = new PublishingService(
+      createFakeRepository({ getCalendarPostById: async () => imported }),
+    );
+
+    const result = await service.getCalendarPostById(
+      WORKSPACE_ID,
+      imported.id,
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual({ ...imported, metrics: null });
   });
 });
 

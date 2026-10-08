@@ -83,6 +83,8 @@ const ACCOUNT_ACTIVE = {
   status: "active",
   reconnectRequired: false,
   connectedAt: new Date(),
+  lastImportedUntil: null,
+  lastImportRequestedAt: null,
 };
 const ACCOUNT_DISCONNECTED = {
   ...ACCOUNT_ACTIVE,

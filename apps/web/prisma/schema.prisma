@@ -194,6 +194,15 @@ model WorkspaceConnectedAccount {
   avatarUrl         String?  @map("avatar_url")
   reconnectRequired Boolean  @default(false) @map("reconnect_required")
   connectedAt       DateTime @default(now()) @map("connected_at") @db.Timestamptz(6)
+  // Import Posts dari Social Account (T-090, ADR-093 poin 6) — watermark +
+  // cooldown untuk JOB-05 (Import Posts Trigger). `lastImportedUntil`
+  // di-update saat JOB-06 (processing) sukses menyelesaikan sebuah import;
+  // dipakai sebagai `since` untuk trigger periodik & manual berikutnya
+  // (bukan mengulang 90 hari tiap kali). `lastImportRequestedAt` di-update
+  // SETIAP KALI import direquest (dari jalur manapun: auto/periodik/manual);
+  // dipakai untuk cooldown 24 jam per akun jalur manual (ADR-093 poin 9).
+  lastImportedUntil     DateTime? @map("last_imported_until") @db.Timestamptz(6)
+  lastImportRequestedAt DateTime? @map("last_import_requested_at") @db.Timestamptz(6)
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -237,10 +246,21 @@ model WorkspaceChannelOrder {
 // ─────────────────────────────────────────────
 
 model PublishingPost {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspaceId    String    @map("workspace_id") @db.Uuid
-  authorId       String    @map("author_id")
-  status         String    @default("draft")
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  // Import Posts dari Social Account (T-090, ADR-093 poin 3) — nullable
+  // sejak ADR-093 (sebelumnya wajib). INVARIANT: `null` HANYA kalau
+  // `status = 'imported'` (post ditarik langsung dari platform sosial,
+  // tidak punya "penulis" internal) — semua status lain tetap wajib punya
+  // `authorId`. Tidak ada DB CHECK constraint untuk invariant ini (tidak
+  // ada presedan CHECK lintas kolom seperti ini di schema — satu-satunya
+  // CHECK existing, `engagement_inbox_items_type_check`, murni single-value
+  // enum check, bukan conditional cross-column) — ditegakkan di level
+  // Application Service (`ImportPostsProcessUseCase` mengisi `null`,
+  // use-case lain yang membuat/mengubah post SELALU mewajibkan `authorId`)
+  // sebagai defense-in-depth sesuai ADR-059 poin 6, bukan DB constraint.
+  authorId String? @map("author_id")
+  status   String  @default("draft")
   caption        String    @default("")
   mediaIds       String[]  @default([]) @map("media_ids") @db.Uuid
   scheduledAt    DateTime? @map("scheduled_at") @db.Timestamptz(6)

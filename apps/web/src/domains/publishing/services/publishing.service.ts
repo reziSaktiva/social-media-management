@@ -584,6 +584,18 @@ export class PublishingService {
    * route/aksi yang punya alur error eksplisit; method ini dipanggil dari
    * handler event Realtime yang butuh sinyal graceful, bukan exception).
    *
+   * Status `Imported` TIDAK lagi di-exclude di sini (sebelumnya diperlakukan
+   * sebagai `null`, code review Ridwan, T-090) — exclude itu murni defensive
+   * menunggu rancangan Claude Design untuk kartu `Imported` (AGENTS.md rule
+   * 17, T-090.5 waktu itu masih **blocked**). Rancangan sudah dikunci &
+   * diimplementasikan (badge `Imported`, popover read-only, lihat
+   * `tasks/v02-publishing-mvp.md` § T-090 update 2026-10-08) — jalur
+   * Realtime-patch ini sekarang konsisten dengan `listCalendarPosts`
+   * (juga sudah tidak exclude `Imported` dari default statuses), supaya
+   * post `Imported` yang baru ter-INSERT (auto-trigger on-connect ATAU klik
+   * "Sync Now") ikut tampil granular lewat event Realtime, bukan hanya di
+   * initial load.
+   *
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
   async getCalendarPostById(

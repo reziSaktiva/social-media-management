@@ -13,6 +13,11 @@
 export type {
   FetchPostMetricsResult,
   FetchWorkspaceMetricsResult,
+  ImportedPostData,
+  ImportJobHandle,
+  ImportJobOutcome,
+  ImportJobStatus,
+  ImportPostsInput,
   IOutstandAdapter,
   OutstandMetricsPeriod,
   OutstandPostTargetInput,
