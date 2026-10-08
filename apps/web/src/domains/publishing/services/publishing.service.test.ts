@@ -413,7 +413,7 @@ describe("PublishingService.listCalendarPosts", () => {
     ).resolves.toEqual([]);
   });
 
-  it("default exclude Imported saat statuses tidak diisi caller (QA gap, T-090 — mencegah kartu Imported bocor ke Calendar default view sebelum T-090.5 selesai)", async () => {
+  it("meneruskan input apa adanya ke repository saat caller tidak eksplisit memfilter statuses (T-090, rancangan Imported sudah dikunci — tidak lagi exclude Imported dari default, lihat tasks/v02-publishing-mvp.md § T-090)", async () => {
     let received:
       Parameters<IPublishingRepository["listCalendarPosts"]>[0] | null = null;
     const service = new PublishingService(
@@ -434,15 +434,6 @@ describe("PublishingService.listCalendarPosts", () => {
       workspaceId: WORKSPACE_ID,
       from: FROM,
       to: TO,
-      connectedAccountIds: undefined,
-      statuses: [
-        ContentStatus.Draft,
-        ContentStatus.InReview,
-        ContentStatus.ReadyToSchedule,
-        ContentStatus.Scheduled,
-        ContentStatus.Published,
-        ContentStatus.Failed,
-      ],
     });
   });
 
@@ -704,7 +695,7 @@ describe("PublishingService.getCalendarPostById", () => {
     expect(result).toEqual({ ...published, metrics: [] });
   });
 
-  it("mengembalikan null untuk post berstatus Imported (code review Ridwan, T-090) — jalur Realtime-patch harus konsisten dengan exclude di listCalendarPosts, bukan membocorkan kartu Imported sebelum desain T-090.5 selesai", async () => {
+  it("mengembalikan post berstatus Imported apa adanya (T-090, rancangan Imported sudah dikunci — jalur Realtime-patch sekarang konsisten dengan listCalendarPosts yang juga tidak lagi exclude Imported, lihat tasks/v02-publishing-mvp.md § T-090)", async () => {
     const imported = createCalendarItem({
       id: asPostId("post-imported"),
       status: ContentStatus.Imported,
@@ -715,9 +706,13 @@ describe("PublishingService.getCalendarPostById", () => {
       createFakeRepository({ getCalendarPostById: async () => imported }),
     );
 
-    await expect(
-      service.getCalendarPostById(WORKSPACE_ID, imported.id, AUTHOR_ID),
-    ).resolves.toBeNull();
+    const result = await service.getCalendarPostById(
+      WORKSPACE_ID,
+      imported.id,
+      AUTHOR_ID,
+    );
+
+    expect(result).toEqual({ ...imported, metrics: null });
   });
 });
 

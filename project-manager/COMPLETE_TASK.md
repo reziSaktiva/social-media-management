@@ -8,6 +8,91 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-08 — T-090 TUNTAS 5/5 subtask (T-090.5 UI selesai) — Import Posts dari Social Account, ADR-093
+
+Penutup rangkaian T-090 (lanjutan langsung dari dua entri di bawah:
+T-090.1–T-090.4 + bug RLS silent-noop). T-090.5 (UI terakhir yang tersisa)
+selesai diimplementasikan, direview, dan di-QA pada sesi worktree
+`claude/t-090-e6bb6d`.
+
+**Implementasi (Mark UI Engineer):**
+- Badge `Imported` — variant `outline` (reuse token `Draft`; dikoreksi dari
+  rekomendasi awal `secondary` di catatan Claude Design — baseline kode
+  nyata `Draft` memang `outline` — catatan Claude Design juga dikoreksi
+  menyusul).
+- `CalendarPostPopover.tsx` — varian read-only untuk Imported: tombol
+  "Buka Draft Editor" dihilangkan total, diganti link
+  "Lihat di [Platform] →" (fallback disabled kalau `platformPostUrl`
+  kosong), ditambah catatan read-only, metrics block tidak ditampilkan.
+- `ConnectedAccountsList.tsx` — `SyncNowButton` baru (3 state:
+  default/loading/ditolak), muncul sebelum badge status HANYA untuk akun
+  `active` + role dengan akses kelola Connected Accounts (RBAC hide total
+  untuk Creator). Variant `secondary` (padanan terdekat "aksi rutin",
+  karena "Disconnect" asli sudah `destructive`, bukan match literal
+  mockup).
+
+**Pelonggaran filter (Prabowo Feature Engineer):**
+`PublishingService.listCalendarPosts`/`getCalendarPostById` — konstanta
+`CALENDAR_DEFAULT_STATUSES_EXCLUDING_IMPORTED` (placeholder sementara dari
+T-090.1-4) DIHAPUS, post `Imported` sekarang tampil apa adanya di
+Calendar.
+
+**Bug ditemukan+fix (Najwa QA Engineer menemukan, Elon Backend Engineer
+memperbaiki):** klik "Sync Now" tanpa `OUTSTAND_API_KEY` CRASH halaman
+total (Next.js Runtime Error overlay, bukan toast rapi seperti didesain)
+— root cause: `getOutstandAdapter()`
+(`apps/web/src/lib/adapters/outstand/index.ts`) melempar `Error` polos,
+sementara `toActionError()` (dipakai banyak file `actions.ts` lain di
+seluruh codebase) hanya menangani `instanceof ApplicationError`. Fix:
+ganti jadi `throw new ExternalServiceError(...)` (class di `errors.ts`,
+extends `ApplicationError`). **Dampak perbaikan ini lebih luas dari
+T-090.5** — memperbaiki pola yang sama di SEMUA Server Action lain yang
+memanggil `getOutstandAdapter()` tanpa key terisi, bukan hanya Sync Now.
+Ini bug-fix teknis (pola exception-handling, bukan keputusan arsitektur
+baru) — tidak perlu ADR baru, meski terkait erat dengan jalur
+`getOutstandAdapter()` yang diperkenalkan ADR-119.
+
+**Gap verifikasi (dicatat, bukan Known Issue formal):** verifikasi visual
+end-to-end tombol "Sync Now" (klik → lihat toast rapi di browser) belum
+bisa dituntaskan — baik sesi Elon maupun sesi utama dibatasi sandbox
+("Modify Shared Resources") saat mencoba menulis fixture
+`WorkspaceConnectedAccount` langsung ke database dev (workspace yang
+tersedia tidak punya akun terhubung, dan connect akun baru lewat UI
+sekarang butuh `OUTSTAND_API_KEY` asli sejak ADR-119 — jalur Fake loopback
+sudah dihapus). Fix sudah diverifikasi lewat pembacaan kode manual, unit
+test `index.test.ts`, dan grep menyeluruh ke semua test yang menyentuh
+`getOutstandAdapter` (tidak ada regresi) — bukan lewat klik browser
+sungguhan. Tidak dibuat KI formal karena ini bukan bug yang diketahui
+ada, hanya verifikasi yang tertunda; dicatat di `tasks/v02-publishing-mvp.md`
+§ T-090 sebagai pengingat untuk sesi dengan akses DB penuh.
+
+**Review (Ridwan Architecture Reviewer):** bersih, tidak ada pelanggaran
+AGENTS.md #5-9. 1 temuan dokumentasi minor (komentar basi di
+`calendar-grid-shared.ts` yang masih mengklaim Imported di-exclude) —
+sudah diperbaiki.
+
+**Insiden proses (pelajaran untuk sesi berikutnya):** sesi utama sempat
+lupa update task file untuk mencerminkan "tidak lagi blocked" setelah
+desain T-090.5 dikunci di Claude Design — Mark UI Engineer (benar)
+sempat menghentikan pekerjaan karena source-of-truth task file
+bertentangan dengan brief yang diterima. Sudah dikoreksi. Pelajaran:
+setiap kali sesi utama mengerjakan Claude Design sebagai fallback Neymar,
+WAJIB langsung update task file di commit/turn yang sama, jangan ditunda.
+Mark UI Engineer dan Najwa QA Engineer juga tidak punya akses `DesignSync`
+di sesi subagent (pola sama 9 kejadian sebelumnya) — isi rancangan
+diteruskan manual oleh sesi utama.
+
+**Verifikasi final:** `bun run typecheck`/`lint` PASS, `bun run test` 638
+passed/6 skipped/0 failed.
+
+**Status akhir:** T-090 `✅ Done` (5/5 subtask: T-090.1–T-090.4 sejak
+entri di bawah, T-090.5 selesai sekarang). TASKS.md indeks v0.2 diperbarui
+24 ✅ · 2 🟡 · 1 ⏳ (dari 23 ✅ · 2 🟡 · 2 ⏳), Total 64 selesai (dari 63).
+Detail lengkap: `tasks/v02-publishing-mvp.md` § T-090 (update final,
+2026-10-08), `decisions/DECISIONS.md` (ADR-093).
+
+---
+
 ## 2026-10-08 — Bug RLS silent-noop di `updateImportWatermark` ditemukan+fixed (T-090, lanjutan sesi di bawah) — ditemukan via testing browser+DB sungguhan King Rezi
 
 Lanjutan langsung dari entri T-090.1–T-090.4 di bawah (sesi yang sama,

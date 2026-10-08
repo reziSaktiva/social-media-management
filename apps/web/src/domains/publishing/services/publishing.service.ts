@@ -23,26 +23,6 @@ import { resolvePostPerformancePeriodRange } from "./post-performance-period-ran
 import { sortCalendarItemsByEffectiveDate } from "./sort-calendar-items";
 
 /**
- * ADR-093 poin 2 mengamandemen grid Calendar untuk IKUT menampilkan status
- * `Imported` — TAPI kartu UI-nya (T-090.5) masih **blocked**, belum ada
- * rancangan Claude Design (AGENTS.md rule 17). `listCalendarPosts` di
- * bawah mengembalikan "SEMUA status" saat `input.statuses` kosong
- * (dokumentasi existing method ini, tidak diubah) — tanpa exclude ini,
- * begitu baris `Imported` mulai ada di DB (fitur Import Posts T-090.1-4
- * yang task ini implementasikan SUDAH aktif menulis baris itu), Calendar
- * default view akan langsung mengembalikannya ke UI yang belum siap
- * menampilkannya (chip/icon map di `calendar-grid-shared.ts` belum punya
- * desain final untuk status ini). Exclude ini murni DEFENSIVE (bukan
- * keputusan desain final tentang Imported) — caller yang SENGAJA meminta
- * `Imported` lewat `statuses` eksplisit tetap dilayani apa adanya, supaya
- * T-090.5 nanti tidak terblokir method ini saat waktunya tiba.
- */
-const CALENDAR_DEFAULT_STATUSES_EXCLUDING_IMPORTED: ContentStatus[] =
-  Object.values(ContentStatus).filter(
-    (status) => status !== ContentStatus.Imported,
-  );
-
-/**
  * Port lokal untuk cross-domain `publishing` → `analytics` (T-033.1,
  * KSP-02-F08, AGENTS.md #7) — pola sama seperti `ScheduledCountsPort` di
  * `WorkspaceService`/`NotificationPort`. `AnalyticsService` konkret TIDAK
@@ -566,14 +546,7 @@ export class PublishingService {
     },
     userId: UserId,
   ): Promise<CalendarPostItem[]> {
-    const items = await this.repository.listCalendarPosts(
-      {
-        ...input,
-        statuses:
-          input.statuses ?? CALENDAR_DEFAULT_STATUSES_EXCLUDING_IMPORTED,
-      },
-      userId,
-    );
+    const items = await this.repository.listCalendarPosts(input, userId);
     const sorted = sortCalendarItemsByEffectiveDate(items);
 
     const publishedPostIds = sorted
@@ -611,19 +584,17 @@ export class PublishingService {
    * route/aksi yang punya alur error eksplisit; method ini dipanggil dari
    * handler event Realtime yang butuh sinyal graceful, bukan exception).
    *
-   * Status `Imported` JUGA diperlakukan sebagai `null` di sini (code review
-   * Ridwan, T-090) — method ini dipakai jalur Realtime-patch Calendar/
-   * Drafts/Queue (`getCalendarPostAction`/`getDraftPostAction`/
-   * `getQueuePostAction`), yang TIDAK menerima `statuses` eksplisit seperti
-   * `listCalendarPosts` (AGENTS.md rule 17, kartu `Imported` masih
-   * **blocked** T-090.5 menunggu desain). Tanpa exclude ini, sebuah post
-   * `Imported` yang baru ter-INSERT (auto-trigger on-connect ATAU klik
-   * "Sync Now") bisa lolos ke UI lewat event Realtime walau initial load
-   * (`listCalendarPosts`, sudah exclude via
-   * `CALENDAR_DEFAULT_STATUSES_EXCLUDING_IMPORTED`) tidak pernah
-   * menampilkannya — exclude di sini menyamakan kedua jalur. Caller lain
-   * (mis. T-090.5 nanti) yang SENGAJA butuh fetch by id post `Imported`
-   * harus memakai method terpisah, BUKAN memperluas method generik ini.
+   * Status `Imported` TIDAK lagi di-exclude di sini (sebelumnya diperlakukan
+   * sebagai `null`, code review Ridwan, T-090) — exclude itu murni defensive
+   * menunggu rancangan Claude Design untuk kartu `Imported` (AGENTS.md rule
+   * 17, T-090.5 waktu itu masih **blocked**). Rancangan sudah dikunci &
+   * diimplementasikan (badge `Imported`, popover read-only, lihat
+   * `tasks/v02-publishing-mvp.md` § T-090 update 2026-10-08) — jalur
+   * Realtime-patch ini sekarang konsisten dengan `listCalendarPosts`
+   * (juga sudah tidak exclude `Imported` dari default statuses), supaya
+   * post `Imported` yang baru ter-INSERT (auto-trigger on-connect ATAU klik
+   * "Sync Now") ikut tampil granular lewat event Realtime, bukan hanya di
+   * initial load.
    *
    * `userId` (RLS, KI-026 follow-up) — acting user for `withCurrentUser`.
    */
@@ -636,7 +607,7 @@ export class PublishingService {
       { workspaceId, postId },
       userId,
     );
-    if (!item || item.status === ContentStatus.Imported) {
+    if (!item) {
       return null;
     }
 

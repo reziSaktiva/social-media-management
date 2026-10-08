@@ -4,6 +4,9 @@ import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Refresh01Icon } from "@hugeicons/core-free-icons";
+
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +42,7 @@ import {
 import {
   disconnectAccountAction,
   initiateReconnectAccountAction,
+  syncNowAction,
 } from "../actions";
 import { ConnectPlatformMenu } from "./ConnectPlatformMenu";
 import { FacebookPagesPickerDialog } from "./FacebookPagesPickerDialog";
@@ -132,6 +136,71 @@ function ReconnectButton({ account }: { account: ConnectedAccountRecord }) {
       onClick={handleReconnect}
     >
       Reconnect
+    </Button>
+  );
+}
+
+/**
+ * Tombol "Sync Now" (T-090.5, ADR-093 poin 9) — memicu `syncNowAction`
+ * (Server Action → `ImportPostsTriggerUseCase.triggerManual`). LOCKED
+ * PATTERN (`templates/settings-connected-accounts.html`, Claude Design,
+ * 2026-10-08, King Rezi confirmed):
+ * 1. Posisi: SEBELUM Badge status, grup kanan yang sama dengan
+ *    Disconnect/Reconnect (lihat `ConnectedAccountRow`).
+ * 2. Hanya untuk akun `active` — tidak ada yang bisa disinkron kalau belum
+ *    terkoneksi (`reconnect-required`/`disconnected` pakai "Reconnect").
+ * 3. Variant: bobot visual rendah/rutin, BUKAN destructive/primary — dipilih
+ *    `secondary` (sama seperti `ReconnectButton` di file ini), bukan
+ *    `destructive` literal seperti tombol Disconnect di kode — mockup
+ *    menyamakan "bobot visual dengan Disconnect" memakai `.btn` polos
+ *    (netral) di markup prototipe-nya sendiri, sedangkan `Disconnect` di
+ *    kode nyata sudah lebih dulu memakai `variant="destructive"` (keputusan
+ *    established, bukan bagian task ini) — `secondary` paling dekat dengan
+ *    intent "rendah urgensi, bukan primary" tanpa menabrak semantik warna
+ *    destructive yang sudah dipakai Disconnect.
+ * 4. Tiga state: Default, Loading (ikon refresh `animate-spin` + label
+ *    "Syncing…", disabled — pola sama persis `EngageInboxView.tsx` tombol
+ *    "Refresh"), dan Ditolak (cooldown/cap/RBAC) — pesan via `toast.error`
+ *    (mekanisme toast yang sudah ada, BUKAN komponen inline baru); tombol
+ *    kembali ke Default setelah toast (tidak tetap disabled).
+ * 5. RBAC: disembunyikan total untuk role tanpa akses kelola (Creator) —
+ *    sudah ditangani di level `ConnectedAccountAction` (`canManage` early
+ *    return), jadi komponen ini sendiri tidak perlu cek ulang.
+ */
+function SyncNowButton({ account }: { account: ConnectedAccountRecord }) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleSyncNow() {
+    startTransition(async () => {
+      const result = await syncNowAction(account.id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      const importedCount = result.importedCount ?? 0;
+      toast(
+        importedCount > 0
+          ? `${importedCount} post baru diimpor.`
+          : "Sinkron selesai — tidak ada post baru.",
+      );
+    });
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      disabled={isPending}
+      onClick={handleSyncNow}
+      aria-label={`Sync Now — tarik ulang post dari ${PLATFORM_ICON[account.platform]?.label ?? account.platform}`}
+    >
+      <HugeiconsIcon
+        icon={Refresh01Icon}
+        strokeWidth={2}
+        className={cn(isPending && "animate-spin")}
+      />
+      {isPending ? "Syncing…" : "Sync Now"}
     </Button>
   );
 }
@@ -248,6 +317,9 @@ function ConnectedAccountRow({
       <TableCell className="text-right">
         {/* eslint-disable-next-line no-restricted-syntax -- T-099.3, sama seperti di atas */}
         <div className="flex items-center justify-end gap-2">
+          {canManage && displayStatus === "active" ? (
+            <SyncNowButton account={account} />
+          ) : null}
           <Badge variant={STATUS_BADGE_VARIANT[displayStatus]}>
             {getConnectionStatusLabel(account)}
           </Badge>

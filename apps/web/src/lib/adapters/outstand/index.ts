@@ -1,5 +1,6 @@
 import type { IOutstandAdapter } from "@social/shared";
 import { getServerEnv } from "@/lib/env";
+import { ExternalServiceError } from "@/lib/utils/errors";
 import { createRealOutstandAdapter } from "./real-outstand-adapter";
 
 /**
@@ -26,7 +27,14 @@ export function getOutstandAdapter(): IOutstandAdapter {
 
   const apiKey = OUTSTAND_API_KEY?.trim();
   if (!apiKey) {
-    throw new Error(
+    // `ExternalServiceError` (bukan `Error` polos) supaya Server Action
+    // yang memanggil factory ini (langsung atau tidak langsung lewat
+    // use-case) bisa ditangkap `toActionError()` (`@/lib/utils/errors`)
+    // dan dikembalikan sebagai `{error}` rapi, bukan unhandled exception
+    // yang crash jadi Next.js error overlay. Tetap `instanceof Error` jadi
+    // Route Handler (webhook, `/api/jobs/run`) yang hanya mengecek
+    // `instanceof Error` untuk extract message tidak terdampak.
+    throw new ExternalServiceError(
       "OUTSTAND_API_KEY wajib diisi. Factory OutstandAdapter tidak lagi fallback ke Fake (ADR-119).",
     );
   }
