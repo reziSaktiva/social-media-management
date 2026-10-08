@@ -258,7 +258,10 @@ Retry delay dihitung berdasarkan jumlah `attempts`:
 | 2 | 15 menit |
 | 3 | 60 menit |
 
-Formula: `delay = base_delay * 2^(attempts - 1)` dengan `base_delay = 5 menit`.
+Delay dari tabel eksplisit (lookup, bukan formula) — tidak mengikuti rasio
+pangkat dua yang konsisten (5→15 adalah ×3, 15→60 adalah ×4). Diimplementasikan
+sebagai array `RETRY_DELAY_MINUTES = [5, 15, 60]` di
+`apps/web/src/lib/jobs/backoff.ts` (T-027.3, KI-062).
 
 ## Dead Letter
 

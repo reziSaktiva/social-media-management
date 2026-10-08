@@ -8,6 +8,28 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-08 — KI-062 + KI-064 Resolved: koreksi 2 gap dokumentasi baseline arsitektur
+
+Dua Known Issue dokumentasi (keduanya non-blocking, murni koreksi baseline tanpa keputusan arsitektur baru) diselesaikan di branch `fix/ki062-ki064-docs`:
+
+* **KI-062** — `product-discovery/05-architecture/background-jobs.md` § Exponential Backoff
+  self-contradictory: tabel delay (5/15/60 menit) sudah konsisten dengan prosa JOB-01 dan
+  dengan kode (`apps/web/src/lib/jobs/backoff.ts`, `RETRY_DELAY_MINUTES = [5, 15, 60]`), tapi
+  formula `delay = base_delay * 2^(attempts-1)` di baris yang sama menghasilkan 5/10/20 menit —
+  tidak match. Diperbaiki: baris formula diganti jadi penjelasan lookup table eksplisit
+  (bukan formula pangkat dua — rasio 5→15 adalah ×3, 15→60 adalah ×4, tidak konsisten), dengan
+  pointer ke `backoff.ts` sebagai sumber kebenaran implementasi. Kode tidak diubah (sudah benar
+  sejak awal, dokumentasi yang dikoreksi).
+* **KI-064** — `product-discovery/05-architecture/application-layer.md` § Peta Dependency Antar
+  Domain belum mencantumkan panah `BC-03 Publishing → BC-06 Analytics`, padahal kontrak
+  `PostMetricsPort` (arah dependency ini) sudah dipakai sejak T-033.1 (2026-08-27) dan T-043
+  (2026-09-18). Diperbaiki: baris baru ditambahkan di blok BC-03 Publishing —
+  `──→ BC-06 Analytics (metrik post per target akun, via PostMetricsPort — KI-064)`.
+
+Kedua KI dihapus dari daftar Known Issues di `PROJECT_STATE.md` (sudah tercatat di sini).
+
+---
+
 ## 2026-10-08 — KI-084 Resolved sepenuhnya: implementasi icon sidebar mobile ke kode asli `apps/web`
 
 Lanjutan desain Claude Design yang sudah locked 2026-10-07 (lihat entri di

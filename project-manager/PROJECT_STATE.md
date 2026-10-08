@@ -319,28 +319,6 @@ email, lalu diupdate jadi `Active` saat user accept. Implementasi konkret
 menunggu T-005 selesai — dipindah jadi bagian scope resmi **T-007.7**,
 bukan lagi Known Issue berdiri sendiri.
 
-### KI-064 · `application-layer.md` § Peta Dependency Antar Domain belum mencantumkan `publishing→analytics`
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Tech-Debt / Dokumentasi |
-| Terkait | T-043, T-033.1 |
-
-Ditemukan Ridwan Architecture Reviewer saat review putaran 2 T-043 (2026-09-18,
-`tasks/v03-analytics-mvp.md`): kontrak `PostMetricsPort` (arah dependency
-`publishing→analytics`) sudah dipakai sejak T-033.1 (2026-08-27, Popover
-Calendar) dan dipakai lagi di T-043 (metrik History Detail), tapi
-`application-layer.md` § Peta Dependency Antar Domain (baseline arsitektur)
-tidak pernah mencantumkan panah ini di diagram BC-06 Analytics/BC-03
-Publishing — hanya mencantumkan `BC-06 Analytics ──→ BC-02 Workspace`. Gap
-dokumentasi lama, bukan diperkenalkan sesi T-043, baru ketahuan sekarang.
-Diagram perlu ditambal menambahkan `BC-03 Publishing ──→ BC-06 Analytics
-(metrik post per target akun, via port)`. Tidak memblokir M8, perubahan ini
-murni koreksi dokumentasi baseline (bukan keputusan arsitektur baru), tapi
-tetap wajib lewat baseline yang sama karena `application-layer.md` adalah
-Static Reference.
-
 ### KI-053 · Invite via Copy Link — email tidak diverifikasi kepemilikan inbox, rawan identity takeover
 
 | Field | Value |
@@ -514,26 +492,6 @@ Root cause: tidak ada efek/watcher di `Modal.tsx` yang membandingkan
 dan di server saat submit. Dicatat sebagai Known Issue baru, belum
 diperbaiki (perlu cek Claude Design dulu sebelum implementasi UI apa pun,
 rule 17 AGENTS.md).
-
-### KI-062 · `background-jobs.md` self-contradictory soal formula backoff
-
-| Field | Value |
-|-------|-------|
-| Status | Open |
-| Kategori | Tech-Debt / Dokumentasi |
-| Terkait | T-027 |
-
-Ditemukan Ridwan Architecture Reviewer saat review T-027 (2026-09-17):
-`product-discovery/05-architecture/background-jobs.md` § Retry Strategy
-mencantumkan tabel backoff **5 menit / 15 menit / 60 menit** (konsisten
-dengan BG-D04 dan implementasi kode T-027.3), tapi di dokumen yang sama
-formula tertulis `delay = base_delay * 2^(attempts - 1)` dengan
-`base_delay = 5 menit` — formula ini sebenarnya menghasilkan **5 / 10 / 20
-menit**, tidak cocok dengan tabelnya sendiri. Implementasi kode
-(`apps/web/src/lib/jobs/backoff.ts`) memakai angka tabel (5/15/60), jadi
-kode sudah benar — dokumentasi baseline yang perlu dikoreksi (salah satu
-dari tabel atau formula, bukan keduanya sekaligus tanpa dicek). Tidak
-memblokir M8, murni gap dokumentasi.
 
 ### KI-063 · `PublishingPost.publishedAt` tidak pernah diisi oleh `markPostPublished`/`markPostFailed`
 
@@ -715,11 +673,11 @@ seluruh daftar Known Issues.
 
 ## Completed (Ringkasan)
 
+* **KI-062 + KI-064 ✅ Resolved (2026-10-08)** — koreksi 2 gap dokumentasi baseline arsitektur, non-blocking M8: **KI-062** baris formula backoff self-contradictory di `background-jobs.md` (menghasilkan 5/10/20 menit, tidak match tabel 5/15/60 yang sudah konsisten dengan kode `backoff.ts`) diganti penjelasan lookup table eksplisit; **KI-064** panah dependency `BC-03 Publishing → BC-06 Analytics` (via `PostMetricsPort`) yang hilang ditambahkan ke diagram § Peta Dependency Antar Domain `application-layer.md`. Kode tidak diubah di kedua gap — murni koreksi dokumentasi.
 * **KI-084 ✅ Resolved (2026-10-08)** — implementasi fix icon sidebar mobile ke kode asli `apps/web` (lanjutan desain Claude Design 2026-10-07): `MobileTopBar.tsx` icon trigger diganti `Menu01Icon` → `SidebarLeftIcon`. Percobaan pertama (close button `absolute` baru di `sidebar.tsx`) ternyata menabrak tombol "New Post" — King Rezi laporkan dari screenshot — diperbaiki dengan reuse elemen header row yang sudah ada: `WorkspaceSideNav.tsx` menampilkan `SidebarTrigger`-nya (dulu desktop-only) di mobile juga sebagai close button; `SettingsSideNav.tsx` (tanpa `SidebarTrigger` by design) dapat tombol close baru `md:hidden` di header row. Lebar drawer (`SIDEBAR_WIDTH_MOBILE`) sudah `18rem`, konsisten dengan desktop di kode — **belum direkonsiliasi** dengan angka `260px` di bullet sebelah (lihat catatan follow-up di section KI-084 di atas). Diverifikasi via browser preview mobile (375px) di Workspace drawer & Settings drawer, termasuk cek regresi desktop.
 * **KI-084 (desain) + KI-085 ✅ Resolved (2026-10-07)** — King Rezi laporkan sidebar mobile tidak konsisten dengan desktop (icon buka/tutup beda, lebar beda) → **KI-084**: icon disamakan dengan `SidebarLeftIcon` desktop + lebar drawer 260px, diterapkan ke 14 file Claude Design (component spec `navigation-mobile.html` + `styles.css` + 7 screen workspace + 7 screen settings), diverifikasi via `get_file` tiap push. Saat verifikasi di App Prototype, King Rezi temukan bug terpisah (**KI-085**): `.mobile-topbar` (hamburger asli) tetap tampil sebagai "tombol kedua" berdampingan dengan sidebar — butuh 3 percobaan fix (2 gagal: CSS flex-direction, CSS `:has()`) sebelum ketemu yang benar: guard JS di `AppPrototype.dc.html` method `inject()` (jalan di setiap screen load) yang paksa `.mobile-topbar{display:none}` via `getComputedStyle` kalau sidebar asli sedang tampil — dikonfirmasi King Rezi sudah teratasi.
 * **T-111 ✅ TUNTAS 8/8 subtask (2026-10-07)** — restrukturisasi layout preview media post asli, desktop+mobile, History Detail & Post asal Engage. Mencakup **T-111.6** (implementasi push navigation Engage Inbox mobile — `EngageInboxView.tsx`) dan **T-111.8** (2 fix mobile History Detail — `HistoryDetail.tsx`: anti scroll horizontal + baris target failed wrap/shrink), keduanya diverifikasi langsung via browser (mobile 375px + cek regresi desktop) di sesi utama sebelum ditutup, bukan cuma klaim subagent. Menutup **KI-083** sepenuhnya.
 * **KI-042 Mobile Shell retrofit ✅ Done (2026-10-07)** — pola hamburger+drawer (sudah lama terdokumentasi sebagai CSS+demo standalone, `components/navigation-mobile.html`) ternyata TIDAK PERNAH dipasang ke satu pun screen asli maupun App Prototype — ditemukan King Rezi: viewport Mobile di App Prototype menyembunyikan sidebar tapi tidak ada cara membukanya lagi, navigasi buntu total. Dipasang ke 14 file (7 workspace sidebar + 7 settings sidebar) + `AppPrototype.dc.html` (method generik `openMobileNav`/`closeMobileNav` + 2 `route()` case baru). JS memindahkan (bukan menduplikasi) node sidebar ke dalam `.mobile-nav-drawer` saat hamburger diklik. Scope dikonfirmasi King Rezi via `AskUserQuestion`: "App Prototype + semua template" (bukan App Prototype saja).
-* **T-111.3 ✅ Done (2026-10-07, 2 revisi — final)** — `templates/engage-inbox.html` § `.post-context` (kotak "Post asal", panel `.thread-detail` di `/engage`) dirancang ulang di Claude Design jadi KARTU: lebar tetap 360px + di-center (desktop), full-width ≤768px; terbagi 2 sisi (atas media rasio 1:1 `object-fit:cover` + 2 tombol carousel ‹ › melayang di atas gambar, hanya 1 gambar tampil sekaligus, index ditangani T-111.4; bawah label+**avatar+badge platform+nama akun** `.post-context-account`, reuse persis `.history-target-account` dari T-111.1, + **caption TANPA truncate** `.post-context-cap`, wrap multi-baris penuh — beda dari T-056 lama yang truncate 1 baris — + "Go to post →" tidak berubah). Sengaja beda dari History Detail (modal penuh, media unconstrained, bukan square/carousel) sesuai klarifikasi scope King Rezi. Fallback no-media: `.post-context-nomedia` (bukan kartu, full-width, tidak di-center, tetap avatar+caption-no-truncate). T-111.4 (kode `EngageInboxView.tsx`) masih ⏳.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
