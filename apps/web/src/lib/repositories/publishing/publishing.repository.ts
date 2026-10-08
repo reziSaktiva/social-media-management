@@ -982,7 +982,15 @@ export const publishingRepository: IPublishingRepository = {
     const record: WebhookPostLookupRecord = {
       postId: asPostId(first.post_id),
       workspaceId: asWorkspaceId(first.workspace_id),
-      authorId: asUserId(first.author_id),
+      // Code review PR #148 — `author_id` nullable sejak ADR-093 (T-090.1,
+      // status `Imported`); reuse guard `requireAuthorId` (bukan `asUserId`
+      // telanjang) supaya lookup ini throw loud kalau pernah menerima baris
+      // Imported, bukan diam-diam meloloskan `UserId` palsu ke webhook
+      // processor.
+      authorId: requireAuthorId(
+        first.author_id,
+        "findPostTargetsByOutstandPostId",
+      ),
       targets: rows.map((row) => ({
         postTargetId: asPostTargetId(row.post_target_id),
         connectedAccountId: asConnectedAccountId(row.connected_account_id),

@@ -43,6 +43,14 @@ export interface IImportJobRepository {
    * `IOutstandAdapter.importPosts` (urutan "persist dulu, network call
    * sesudah", konsisten `schedulePost`/`publishNow`). Dipakai sebagai audit
    * log DAN sumber hitung cap mingguan (`countManualImportSyncJobsSince`).
+   *
+   * Melempar `ConflictError` (`@/lib/utils/errors`) kalau partial unique
+   * index `background_jobs_active_import_sync_account_key` (migration
+   * `20261008130000_t090_concurrent_import_guard`) menolak insert —
+   * code review PR #148 (finding #2): `hasActiveImportSyncJob` adalah soft
+   * pre-check (TOCTOU), constraint DB ini adalah gate sebenarnya untuk dua
+   * trigger yang nyaris bersamaan. Caller (`runImportSync`) menangkap error
+   * ini dan mengembalikan `outcome: "rejected_concurrent"`.
    */
   createImportSyncJob(
     payload: ImportSyncJobPayload,
@@ -72,6 +80,13 @@ export interface IImportJobRepository {
    * adapter (T-025 follow-up: real adapter polling/webhook akan
    * memperpanjang window `pending`/`running` ini secara alami, guard yang
    * sama tetap berlaku tanpa perubahan).
+   *
+   * Code review PR #148 (finding #4) — implementasi membatasi "aktif" ke
+   * job yang dibuat dalam beberapa menit terakhir (lihat
+   * `STALE_IMPORT_SYNC_JOB_TIMEOUT_MS` di Prisma impl), supaya baris yang
+   * macet (mis. `markImportSyncJobStatus` di catch block `runImportSync`
+   * sendiri gagal menulis status akhir) tidak mengunci akun ini dari
+   * sinkronisasi berikutnya selamanya.
    */
   hasActiveImportSyncJob(
     connectedAccountId: ConnectedAccountId,
@@ -83,6 +98,11 @@ export interface IImportJobRepository {
    * `workspaceId` ini dalam 7 hari terakhir (`createdAt >= since`), lintas
    * SEMUA akun (bukan per akun). Guard "paling dominan" — ditegakkan
    * SEBELUM cooldown per-akun di `ImportPostsTriggerUseCase`.
+   *
+   * Code review PR #148 (finding #3) — job berstatus `failed` TIDAK
+   * dihitung: cap ini dimaksudkan membatasi PEMAKAIAN (endpoint berbayar),
+   * bukan menghukum percobaan yang gagal di sisi infrastruktur kita sendiri
+   * (mis. adapter belum di-wire, ADR-119).
    */
   countManualImportSyncJobsSince(
     workspaceId: WorkspaceId,

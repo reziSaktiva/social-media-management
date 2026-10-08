@@ -5,6 +5,7 @@ import {
   MemberRole,
   MemberStatus,
   NotificationType,
+  OWNER_OR_ADMIN_ROLES,
   SocialPlatform,
 } from "@social/shared";
 import type {
@@ -629,12 +630,18 @@ export class WorkspaceService {
    * salah satu lupa diupdate kalau matrix role berubah (mis. role elevated
    * baru ditambah). Pure function, operasi di atas membership yang SUDAH
    * di-fetch caller — tidak melakukan query sendiri.
+   *
+   * Himpunan role ini (`OWNER_OR_ADMIN_ROLES`, `packages/shared`) adalah
+   * satu sumber kebenaran bersama dengan
+   * `publishing/rbac.ts#assertActorCanTriggerManualImportSync` (code review
+   * PR #148) — sebelumnya dua `Set`/kondisi literal terpisah yang hanya
+   * dijaga identik lewat komentar.
    */
   private isOwnerOrAdminActive(actor: WorkspaceMemberRecord | null): boolean {
     return (
       !!actor &&
       actor.status === MemberStatus.Active &&
-      (actor.role === MemberRole.Owner || actor.role === MemberRole.Admin)
+      OWNER_OR_ADMIN_ROLES.has(actor.role)
     );
   }
 
@@ -1599,7 +1606,11 @@ export class WorkspaceService {
     // infra logging terpusat di codebase ini untuk dilaporkan). `skipSeeding`
     // sama alasannya dengan JOB-03 di atas — cabang double-submit recovery
     // tidak menciptakan apa pun baru, jadi tidak perlu trigger import lagi.
-    if (!skipSeeding) {
+    // `!input.redirectAccountId` — code review PR #148: `skipSeeding` sendiri
+    // TIDAK cukup, karena tetap `false` di sepanjang cabang reconnect (hanya
+    // dipakai utk recovery di cabang create) — tanpa guard ini, triggerAuto
+    // (selalu window 90 hari, abaikan watermark) ikut jalan setiap reconnect.
+    if (!skipSeeding && !input.redirectAccountId) {
       try {
         await this.importPostsTrigger?.triggerAuto({
           workspaceId: record.workspaceId,

@@ -1,4 +1,4 @@
-import { MemberRole } from "@social/shared";
+import { MemberRole, OWNER_OR_ADMIN_ROLES } from "@social/shared";
 import { AuthorizationError } from "@/lib/utils/errors";
 
 /**
@@ -72,18 +72,15 @@ export function assertActorCanDeletePost(actorRole: MemberRole): void {
  * (bukan reuse method private `WorkspaceService`) karena
  * `ImportPostsTriggerUseCase` hidup di domain `publishing`, tidak boleh
  * mengimpor `workspace` (AGENTS.md #7) — nilai himpunan role HARUS tetap
- * identik dengan gate itu; kalau salah satu berubah, keduanya wajib
- * diupdate bersamaan (dicatat di sini supaya mudah ditemukan).
+ * identik dengan gate itu — code review PR #148: nilai himpunan role
+ * sekarang satu sumber kebenaran bersama, `OWNER_OR_ADMIN_ROLES` di
+ * `packages/shared` (lihat docstring konstanta itu), bukan `Set` literal
+ * terpisah di sini.
  */
-const ROLES_ALLOWED_FOR_MANUAL_IMPORT_SYNC: ReadonlySet<MemberRole> = new Set([
-  MemberRole.Owner,
-  MemberRole.Admin,
-]);
-
 export function assertActorCanTriggerManualImportSync(
   actorRole: MemberRole,
 ): void {
-  if (!ROLES_ALLOWED_FOR_MANUAL_IMPORT_SYNC.has(actorRole)) {
+  if (!OWNER_OR_ADMIN_ROLES.has(actorRole)) {
     throw new AuthorizationError(
       "Hanya Owner atau Admin yang bisa menjalankan sinkronisasi impor manual (Sync Now).",
     );

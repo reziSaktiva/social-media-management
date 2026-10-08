@@ -27,6 +27,23 @@ export enum MemberRole {
   Creator = "creator",
 }
 
+/**
+ * Role set "Owner atau Admin aktif" (ADR-074) — satu sumber kebenaran untuk
+ * gate role yang butuh nilai identik di lebih dari satu bounded context yang
+ * tidak boleh saling import (AGENTS.md #7): `WorkspaceService`
+ * (`isOwnerOrAdminActive`, dipakai manage members/connected accounts/
+ * settings) dan `domains/publishing/rbac.ts`
+ * (`assertActorCanTriggerManualImportSync`). Code review PR #148 — kedua
+ * sisi sebelumnya mendeklarasikan `Set` literal terpisah dengan komentar
+ * "harus tetap identik" tanpa mekanisme yang benar-benar menegakkannya. Pure
+ * value object (membership enum) — assertion/pesan error tetap
+ * didefinisikan per-domain.
+ */
+export const OWNER_OR_ADMIN_ROLES: ReadonlySet<MemberRole> = new Set([
+  MemberRole.Owner,
+  MemberRole.Admin,
+]);
+
 export enum MemberStatus {
   Pending = "pending",
   Active = "active",

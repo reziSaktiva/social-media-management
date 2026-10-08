@@ -64,17 +64,29 @@ export const backgroundJobStore = {
    * job self-reschedule (mis. `engagement.sync`) supaya disconnect→reconnect
    * cepat pada `ConnectedAccount` yang sama tidak membuat dua chain paralel
    * (tidak ada apa pun yang membatalkan chain lama saat disconnect).
+   *
+   * `staleAfterMs` (opsional, code review PR #148) — kalau diisi, baris
+   * `pending`/`running` yang lebih tua dari ini TIDAK dihitung aktif lagi.
+   * Dipakai caller yang job-nya diproses SINKRON dalam satu request (bukan
+   * lewat `claimPending`/job-runner, yang sudah punya reclaim sendiri lewat
+   * `STALE_RUNNING_TIMEOUT_SECONDS` di atas) supaya satu kegagalan menulis
+   * status akhir tidak mengunci guard ini selamanya. Default (tidak diisi):
+   * perilaku lama, tidak ada batas waktu.
    */
   async hasActiveJobForPayloadKey(input: {
     type: string;
     key: string;
     value: string;
+    staleAfterMs?: number;
   }): Promise<boolean> {
     const existing = await prisma.backgroundJob.findFirst({
       where: {
         type: input.type,
         status: { in: ["pending", "running"] },
         payload: { path: [input.key], equals: input.value },
+        ...(input.staleAfterMs !== undefined
+          ? { createdAt: { gte: new Date(Date.now() - input.staleAfterMs) } }
+          : {}),
       },
       select: { id: true },
     });

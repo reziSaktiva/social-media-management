@@ -6,6 +6,7 @@ import type {
   UserId,
   WorkspaceId,
 } from "@social/shared";
+import { ConflictError } from "@/lib/utils/errors";
 import { assertActorCanTriggerManualImportSync } from "../rbac";
 import type {
   IImportJobRepository,
@@ -283,14 +284,33 @@ export class ImportPostsTriggerUseCase {
     }
 
     const until = new Date();
-    const job = await this.importJobs.createImportSyncJob({
-      workspaceId: input.workspaceId,
-      connectedAccountId: input.connectedAccountId,
-      outstandAccountId: input.outstandAccountId,
-      trigger: input.trigger,
-      since: input.since.toISOString(),
-      until: until.toISOString(),
-    });
+    let job;
+    try {
+      job = await this.importJobs.createImportSyncJob({
+        workspaceId: input.workspaceId,
+        connectedAccountId: input.connectedAccountId,
+        outstandAccountId: input.outstandAccountId,
+        trigger: input.trigger,
+        since: input.since.toISOString(),
+        until: until.toISOString(),
+      });
+    } catch (error) {
+      // Code review PR #148 (finding #2) — pre-check `hasActiveImportSyncJob`
+      // di atas adalah soft check (TOCTOU: dua trigger nyaris bersamaan bisa
+      // sama-sama lolos sebelum salah satunya sempat insert). Partial unique
+      // index `background_jobs_active_import_sync_account_key` adalah gate
+      // sebenarnya — `createImportSyncJob` menerjemahkannya ke
+      // `ConflictError`, yang ditangkap di sini sebagai penolakan normal,
+      // bukan error tak tertangani.
+      if (error instanceof ConflictError) {
+        return {
+          outcome: "rejected_concurrent",
+          message:
+            "Sinkronisasi impor untuk akun ini sedang berjalan — coba lagi setelah selesai.",
+        };
+      }
+      throw error;
+    }
 
     // `lastImportRequestedAt` di-update SETIAP KALI import direquest, dari
     // jalur manapun (ADR-093 poin 6) — SEBELUM network call, konsisten
@@ -329,15 +349,28 @@ export class ImportPostsTriggerUseCase {
         actingUserId: input.actingUserId,
       });
 
-      // `lastImportedUntil` ke nilai `until` yang DIPAKAI job ini (ADR-093
-      // poin 7) — BUKAN publishedAt post terbaru, supaya trigger berikutnya
-      // tidak pernah menarik ulang rentang yang sama walau batch ini
-      // kosong (0 post baru).
-      await this.connectedAccounts.updateImportWatermark({
-        connectedAccountId: input.connectedAccountId,
-        lastImportedUntil: until,
-        actingUserId: input.actingUserId,
-      });
+      // Code review PR #148 (finding #5) — `IOutstandAdapter.importPosts`
+      // tidak punya cursor/next-page (kontrak `packages/shared`), jadi
+      // kalau hasil batch ini PAS sejumlah `DEFAULT_IMPORT_LIMIT`, mungkin
+      // masih ada post lain dalam rentang `since`-`until` yang belum
+      // terambil. Watermark HANYA dimajukan ke `until` kalau batch ini
+      // TIDAK penuh (berarti seluruh rentang sudah habis) — kalau penuh,
+      // watermark dibiarkan apa adanya supaya trigger berikutnya mengulang
+      // rentang yang sama (aman berkat dedup `upsertImportedPosts`)
+      // daripada diam-diam melompati sisa post yang belum terambil.
+      const isPossiblyTruncated =
+        jobOutcome.posts.length >= DEFAULT_IMPORT_LIMIT;
+      if (!isPossiblyTruncated) {
+        // `lastImportedUntil` ke nilai `until` yang DIPAKAI job ini (ADR-093
+        // poin 7) — BUKAN publishedAt post terbaru, supaya trigger berikutnya
+        // tidak pernah menarik ulang rentang yang sama walau batch ini
+        // kosong (0 post baru).
+        await this.connectedAccounts.updateImportWatermark({
+          connectedAccountId: input.connectedAccountId,
+          lastImportedUntil: until,
+          actingUserId: input.actingUserId,
+        });
+      }
 
       await this.importJobs.markImportSyncJobStatus(job.id, "done");
 
@@ -348,7 +381,21 @@ export class ImportPostsTriggerUseCase {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await this.importJobs.markImportSyncJobStatus(job.id, "failed", message);
+      try {
+        await this.importJobs.markImportSyncJobStatus(
+          job.id,
+          "failed",
+          message,
+        );
+      } catch {
+        // Code review PR #148 (finding #4) — kalau PENULISAN status gagal
+        // ini sendiri gagal (mis. DB error transient), jangan biarkan
+        // exception ini menimpa `message` asli dan propagate tak
+        // tertangani — baris job tetap `pending`/`running` untuk sementara,
+        // tapi `hasActiveImportSyncJob` sekarang punya `staleAfterMs`
+        // (lihat Prisma impl) supaya guard ini tidak mengunci akun ini
+        // selamanya.
+      }
       return { outcome: "failed", message };
     }
   }
