@@ -4,7 +4,7 @@
 
 * **Phase / Milestone:** Phase 6 — Implementation · M8 — Development (Sprint 5) · Overall: M7 100%, M8 in progress
 * **Active Mode:** Ready for Development — implementasi fitur produk sesuai Architecture & Engineering Baseline
-* **Top Next Tasks:** **T-111 ✅ Done (8/8 subtask, 2026-10-07)** — restrukturisasi layout preview media post asli di History Detail & Post asal Engage, desktop+mobile tuntas total, menutup KI-082/KI-083 sepenuhnya. Fokus aktif: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) dan **T-090 Import Posts dari Social Account** (⏳ Not Started, ADR-093) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 6/7 task** (2026-10-06, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
+* **Top Next Tasks:** **T-111 ✅ Done (8/8 subtask, 2026-10-07)** — restrukturisasi layout preview media post asli di History Detail & Post asal Engage, desktop+mobile tuntas total, menutup KI-082/KI-083 sepenuhnya. **KI-084 ✅ Resolved (2026-10-08)** — konsistensi icon sidebar mobile/desktop, tuntas di Claude Design (2026-10-07) dan kode asli `apps/web` (2026-10-08), lihat **Completed (Ringkasan)** di bawah. **KI-085 ✅ Resolved (2026-10-07)** — bug layout App Prototype. Fokus aktif selanjutnya: **T-037 Perkaya aturan coding** (kontinu by design, 🟡 In Progress) dan **T-090 Import Posts dari Social Account** (⏳ Not Started, ADR-093) — salinan ID dari **Fokus sekarang** di [`TASKS.md`](TASKS.md), satu-satunya daftar fokus. Rilis terakhir tuntas: **v0.4 Engagement MVP 6/7 task** (2026-10-06, sisa T-055 Could Have tidak blocking) dan **v0.3 Analytics MVP 8/8 task** (2026-09-21). Riwayat detail per task: lihat **Completed (Ringkasan)** di bawah / `COMPLETE_TASK.md`.
 * **Blocker:** 1 blocker aktif (env var Google OAuth belum diisi, KI-015) — lihat section **Blockers** di bawah. Blocker Outstand (KI-003, `OUTSTAND_API_KEY` + Real OutstandAdapter) sudah **Resolved (2026-09-24)**. Railway staging sudah live & terverifikasi (2026-08-14); JOB_SECRET juga sudah diisi di Railway staging. Tidak memblokir M8.
 * **Backlog task lengkap:** [`TASKS.md`](TASKS.md) — 91 task per release (v0.1 → v1.0, + v0.7 migrasi Astryx→shadcn/ui, ADR-097), detail di `tasks/`. Jangan cari detail task di file ini.
 * **KI-073–080 Resolved (2026-09-26)** — 4 bug publish Instagram (caption wajib untuk Story, Story publish tanpa media, upload media >1MB gagal, avatar akun tidak tampil di sidebar) diperbaiki + diverifikasi live ke akun Instagram/Facebook real (ADR-120). 2 bug turunan ditemukan saat verifikasi (akun `disconnected` tidak bisa reconnect; callback OAuth silent-success untuk conflict genuine) diperbaiki via **ADR-122**. Plus **KI-080** (baru+langsung Resolved) — Railway staging build gagal (`next.config.ts` tidak bisa resolve import workspace `@social/shared`) diperbaiki di branch terpisah sebelum masuk ke fix KI-078/079.
@@ -18,7 +18,7 @@
 | ------------ | ---------- |
 | Version      | 1.1.1      |
 | Status       | Active     |
-| Last Updated | 2026-10-06 |
+| Last Updated | 2026-10-08 |
 
 ---
 
@@ -554,6 +554,121 @@ sudah tayang. Non-blocking, gap serupa pola **KI-049**
 
 ---
 
+### KI-084 · Sidebar mobile tidak konsisten dengan sidebar desktop ✅ Resolved (2026-10-08)
+
+| Field | Value |
+|-------|-------|
+| Status | ✅ Resolved — diimplementasikan ke kode asli & diverifikasi di browser preview mobile (375px) |
+| Kategori | UI Bug / Regresi |
+| Terkait | KI-042 (Mobile Shell retrofit, ✅ Done 2026-10-07), KI-085 |
+
+Ditemukan King Rezi (2026-10-07) setelah **KI-042** ditutup: hasil retrofit
+hamburger+drawer di mobile tidak disamakan secara visual dengan sidebar
+desktop. 3 gap konkret dari screenshot King Rezi:
+1. Icon hamburger (buka sidebar) di mobile berbeda dari icon toggle
+   buka/tutup sidebar di desktop — seharusnya sama.
+2. Layout sidebar (struktur/spacing/komponen) berbeda antara mobile dan
+   desktop — seharusnya identik, cuma beda trigger (drawer vs permanen).
+3. Button "X" (tutup sidebar) di mobile berbeda dari desktop — seharusnya
+   sama.
+
+Sebelum fix: wajib cek Claude Design (project "Social Media Management")
+apakah pola sidebar desktop sudah terkunci di sana sebagai acuan, sesuai
+`AGENTS.md` rule 17 — baru lanjut implementasi (domain UI component →
+Mark UI Engineer, ADR-063).
+
+**Update (2026-10-07):** Icon buka/tutup sidebar mobile sudah disamakan
+dengan desktop di 14 file Claude Design (component spec `navigation-mobile.html`
++ `styles.css` + 7 screen workspace + 7 screen settings), diverifikasi via
+`get_file` setelah tiap push. Lihat **KI-085** untuk bug layout terpisah yang
+ditemukan King Rezi saat verifikasi di App Prototype.
+
+**Update (2026-10-08) — implementasi ke kode asli `apps/web`:**
+1. [`MobileTopBar.tsx`](../apps/web/src/app/(app)/components/MobileTopBar.tsx) —
+   icon trigger buka diganti dari `Menu01Icon` ke `SidebarLeftIcon`, sama
+   persis dengan `SidebarTrigger` desktop di `sidebar.tsx`.
+2. [`sidebar.tsx`](../apps/web/src/components/ui/sidebar.tsx) (`Sidebar`,
+   cabang `isMobile`) — default close button `SheetContent`
+   (`Cancel01Icon` dari `sheet.tsx` global) dimatikan via
+   `showCloseButton={false}`; tiap sidebar konsumen menyediakan close
+   affordance-nya sendiri di dalam header row (lihat poin 3).
+3. Lebar drawer mobile (`SIDEBAR_WIDTH_MOBILE`) sudah `18rem` (288px),
+   identik dengan `SIDEBAR_WIDTH` desktop di kode — konsisten secara
+   internal (mobile = desktop). **Catatan:** ini BUKAN `260px` yang
+   disebut sebagai nilai lock Claude Design di bullet riwayat 2026-10-07
+   di atas — belum direkonsiliasi apakah `260px` itu cuma nilai CSS
+   mockup statis Claude Design (bukan representasi literal lebar target
+   `apps/web`) atau target asli yang belum terpenuhi di kode (berlaku
+   juga untuk desktop, bukan regresi PR ini). Follow-up: konfirmasi ke
+   King Rezi sebelum menutup gap ini sebagai non-issue.
+
+**Perbaikan (2026-10-08, sesi sama) — close button menabrak "New Post":**
+Percobaan pertama taruh close button sebagai elemen `absolute` baru di
+`SheetContent` (`sidebar.tsx`) — King Rezi laporkan icon-nya tumpang
+tindih dengan tombol "New Post" di bawah header (keduanya di area
+y≈40-44px, terverifikasi via bounding-rect browser). Diperbaiki dengan
+pendekatan berbeda — reuse elemen yang SUDAH ada di flex row header,
+bukan absolute positioning baru:
+- [`WorkspaceSideNav.tsx`](../apps/web/src/app/(app)/components/WorkspaceSideNav.tsx) —
+  `SidebarTrigger` yang sudah ada di header (dulu `hidden md:flex`,
+  hanya tampil desktop) sekarang SELALU ditampilkan (`shrink-0` saja).
+  `toggleSidebar()` di baliknya sudah otomatis menutup drawer mobile
+  (`setOpenMobile` toggle) — jadi tombol buka desktop & tombol tutup
+  mobile adalah elemen yang SAMA PERSIS, tanpa kode baru.
+- [`SettingsSideNav.tsx`](../apps/web/src/app/(app)/settings/components/SettingsSideNav.tsx) —
+  sidebar ini sengaja tanpa `SidebarTrigger` di desktop (Keputusan #4,
+  fixed-width/no-collapse), jadi ditambah tombol close baru khusus
+  mobile (`md:hidden`) di header row yang sama dengan link "Settings",
+  icon `SidebarLeftIcon` + `closeMobileSidebar()` yang sudah ada.
+
+Diverifikasi ulang via browser preview emulasi mobile (375×812) di `/`
+(Workspace drawer) dan `/settings` (Settings drawer): close button kini di
+dalam alur flex header (bukan absolute), tidak overlap elemen apa pun,
+drawer terbuka & tertutup normal; regresi desktop dicek juga (trigger
+tetap di posisi semula). Menutup KI-084 sepenuhnya.
+
+---
+
+### KI-085 · App Prototype: layout sidebar mobile rusak saat viewport "Website" ✅ Resolved (2026-10-07)
+
+| Field | Value |
+|-------|-------|
+| Status | ✅ Resolved — dikonfirmasi King Rezi di Claude Design |
+| Kategori | UI Bug / Tooling (Claude Design App Prototype) |
+| Terkait | KI-084, KI-042 |
+
+Ditemukan King Rezi (screenshot) di App Prototype dengan viewport
+**"Tampilan: Website"**: `.mobile-topbar` (hamburger+judul "Kopi Selasar")
+tampil sebagai elemen kedua yang tidak seharusnya ada, berdampingan dengan
+sidebar asli — baik saat drawer mobile terbuka (resize manual) **maupun**
+di fresh load pada lebar desktop penuh (sidebar asli sudah tampil normal,
+tapi topbar ikut nongol juga). Mode **"Tampilan: Mobile" (390px) selalu
+normal** — bug spesifik di jalur "Website".
+
+**Proses penyelesaian (3 percobaan, 2 gagal sebelum ketemu akar yang benar):**
+1. ~~CSS `.app-shell{flex-direction:column}` → `display:block`~~ — dugaan
+   soal komputasi flexbox bersarang, tidak menyelesaikan masalah (dites
+   King Rezi: "masih ada").
+2. ~~CSS `.app-shell:has(~ .mobile-nav-backdrop) .mobile-topbar{display:none}`~~
+   — `:has()` tidak didukung di renderer App Prototype, tidak berefek.
+3. ~~JS: sembunyikan `.mobile-topbar` di `openMobileNav()`/`closeMobileNav()`~~
+   — tidak menjangkau kasus fresh-load (topbar nongol tanpa drawer pernah
+   dibuka sama sekali, dikonfirmasi King Rezi).
+
+**Fix final yang berhasil (`AppPrototype.dc.html`, method `inject()` —
+dipanggil di SETIAP `onLoad` iframe, bukan cuma saat drawer dibuka):**
+guard JS yang mengecek `getComputedStyle` sidebar asli (`.app-shell >
+.sidebar`) di setiap load — kalau sidebar itu tampil (`display !== 'none'`),
+`.mobile-topbar` dipaksa `display:none` lewat `style.display`, independen
+dari cascade CSS manapun. **Dikonfirmasi King Rezi: sudah hilang.**
+
+Pelajaran untuk sesi berikutnya: ketergantungan ke CSS murni (termasuk
+`:has()`) tidak reliable di renderer App Prototype — pola yang terbukti
+jalan adalah guard JS langsung di `inject()` yang jalan di setiap screen
+load.
+
+---
+
 ## Blockers
 
 **Wajib dicek AI sebelum mengerjakan subtask apapun yang menyentuh area di
@@ -600,14 +715,14 @@ seluruh daftar Known Issues.
 
 ## Completed (Ringkasan)
 
+* **KI-084 ✅ Resolved (2026-10-08)** — implementasi fix icon sidebar mobile ke kode asli `apps/web` (lanjutan desain Claude Design 2026-10-07): `MobileTopBar.tsx` icon trigger diganti `Menu01Icon` → `SidebarLeftIcon`. Percobaan pertama (close button `absolute` baru di `sidebar.tsx`) ternyata menabrak tombol "New Post" — King Rezi laporkan dari screenshot — diperbaiki dengan reuse elemen header row yang sudah ada: `WorkspaceSideNav.tsx` menampilkan `SidebarTrigger`-nya (dulu desktop-only) di mobile juga sebagai close button; `SettingsSideNav.tsx` (tanpa `SidebarTrigger` by design) dapat tombol close baru `md:hidden` di header row. Lebar drawer (`SIDEBAR_WIDTH_MOBILE`) sudah `18rem`, konsisten dengan desktop di kode — **belum direkonsiliasi** dengan angka `260px` di bullet sebelah (lihat catatan follow-up di section KI-084 di atas). Diverifikasi via browser preview mobile (375px) di Workspace drawer & Settings drawer, termasuk cek regresi desktop.
+* **KI-084 (desain) + KI-085 ✅ Resolved (2026-10-07)** — King Rezi laporkan sidebar mobile tidak konsisten dengan desktop (icon buka/tutup beda, lebar beda) → **KI-084**: icon disamakan dengan `SidebarLeftIcon` desktop + lebar drawer 260px, diterapkan ke 14 file Claude Design (component spec `navigation-mobile.html` + `styles.css` + 7 screen workspace + 7 screen settings), diverifikasi via `get_file` tiap push. Saat verifikasi di App Prototype, King Rezi temukan bug terpisah (**KI-085**): `.mobile-topbar` (hamburger asli) tetap tampil sebagai "tombol kedua" berdampingan dengan sidebar — butuh 3 percobaan fix (2 gagal: CSS flex-direction, CSS `:has()`) sebelum ketemu yang benar: guard JS di `AppPrototype.dc.html` method `inject()` (jalan di setiap screen load) yang paksa `.mobile-topbar{display:none}` via `getComputedStyle` kalau sidebar asli sedang tampil — dikonfirmasi King Rezi sudah teratasi.
 * **T-111 ✅ TUNTAS 8/8 subtask (2026-10-07)** — restrukturisasi layout preview media post asli, desktop+mobile, History Detail & Post asal Engage. Mencakup **T-111.6** (implementasi push navigation Engage Inbox mobile — `EngageInboxView.tsx`) dan **T-111.8** (2 fix mobile History Detail — `HistoryDetail.tsx`: anti scroll horizontal + baris target failed wrap/shrink), keduanya diverifikasi langsung via browser (mobile 375px + cek regresi desktop) di sesi utama sebelum ditutup, bukan cuma klaim subagent. Menutup **KI-083** sepenuhnya.
 * **KI-042 Mobile Shell retrofit ✅ Done (2026-10-07)** — pola hamburger+drawer (sudah lama terdokumentasi sebagai CSS+demo standalone, `components/navigation-mobile.html`) ternyata TIDAK PERNAH dipasang ke satu pun screen asli maupun App Prototype — ditemukan King Rezi: viewport Mobile di App Prototype menyembunyikan sidebar tapi tidak ada cara membukanya lagi, navigasi buntu total. Dipasang ke 14 file (7 workspace sidebar + 7 settings sidebar) + `AppPrototype.dc.html` (method generik `openMobileNav`/`closeMobileNav` + 2 `route()` case baru). JS memindahkan (bukan menduplikasi) node sidebar ke dalam `.mobile-nav-drawer` saat hamburger diklik. Scope dikonfirmasi King Rezi via `AskUserQuestion`: "App Prototype + semua template" (bukan App Prototype saja).
-* **T-111.5 ✅ Done (2026-10-07)** — Desain mobile Engage Inbox (Claude Design). `.inbox-shell` (grid 2 kolom `.thread-list`+`.thread-detail`) sebelumnya tanpa breakpoint mobile sama sekali. Keputusan King Rezi via `AskUserQuestion` (proactive-clarification sebelum kode apapun ditulis): **push navigation** — di ≤768px satu panel full-width ditampilkan sekaligus lewat state `data-mobile-view` ("list"/"detail"), tombol back reuse `.settings-back-btn`; opsi full-screen sheet/modal dan segmented tab switch ditolak. Filter bar `.inbox-filter` tetap 3 dropdown, di-stack vertikal (bukan collapse ke 1 tombol). Dikerjakan di sesi utama (`templates/engage-inbox.html` + `styles.css` + `readme.md`); migrasi sidebar halaman ini ke pola Mobile Shell (KI-042) awalnya di luar scope T-111.5, tapi sudah ditutup terpisah sehari setelahnya (lihat bullet KI-042 di atas). **T-111.6** (implementasi kode `EngageInboxView.tsx`) sudah bisa dimulai.
+* **T-111.3 ✅ Done (2026-10-07, 2 revisi — final)** — `templates/engage-inbox.html` § `.post-context` (kotak "Post asal", panel `.thread-detail` di `/engage`) dirancang ulang di Claude Design jadi KARTU: lebar tetap 360px + di-center (desktop), full-width ≤768px; terbagi 2 sisi (atas media rasio 1:1 `object-fit:cover` + 2 tombol carousel ‹ › melayang di atas gambar, hanya 1 gambar tampil sekaligus, index ditangani T-111.4; bawah label+**avatar+badge platform+nama akun** `.post-context-account`, reuse persis `.history-target-account` dari T-111.1, + **caption TANPA truncate** `.post-context-cap`, wrap multi-baris penuh — beda dari T-056 lama yang truncate 1 baris — + "Go to post →" tidak berubah). Sengaja beda dari History Detail (modal penuh, media unconstrained, bukan square/carousel) sesuai klarifikasi scope King Rezi. Fallback no-media: `.post-context-nomedia` (bukan kartu, full-width, tidak di-center, tetap avatar+caption-no-truncate). T-111.4 (kode `EngageInboxView.tsx`) masih ⏳.
 
 Berikut ~5 item terakhir yang diselesaikan. Riwayat lengkap (sejak M0): lihat `COMPLETE_TASK.md` — ⚠️ jangan dibaca AI kecuali diperintah eksplisit King Rezi.
 
-* **T-111.1–.4 (desktop) ✅ Done (2026-10-07)** — restrukturisasi layout preview media post asli di History Detail (`HistoryDetail.tsx` → Dialog shadcn LOCKED PATTERN T-111.1) dan Post asal Engage (`EngageInboxView.tsx` → `PostOriginCard` kartu Instagram-style+carousel, LOCKED PATTERN T-111.3) tuntas 4/4 subtask desktop. Tambahan: `media-thumbnail.tsx` prop `fit="natural"`, `engage/actions.ts` field `thumbnails[]`, `media.service.ts` method `resolveThumbnails()`, komponen baru `components/shared/ChannelAvatarBadge.tsx` dan `lib/linkify.tsx`. Dikerjakan 2 Mark UI Engineer paralel + Elon Backend Engineer (data layer), review Ridwan 0 temuan blocking, QA Najwa golden path PASS kedua lokasi. Menutup **KI-083** untuk scope desktop. 3 follow-up non-blocking dicatat di `tasks/v02-publishing-mvp.md` § T-111 (duplikasi `ChannelAvatarBadge` vs `PostContextAccountBadge`, overflow minor pesan error History Detail, gap `avatarUrl` di `HistoryItemTargetRecord`).
-* **T-111.3 ✅ Done (2026-10-07, 2 revisi — final)** — `templates/engage-inbox.html` § `.post-context` (kotak "Post asal", panel `.thread-detail` di `/engage`) dirancang ulang di Claude Design jadi KARTU: lebar tetap 360px + di-center (desktop), full-width ≤768px; terbagi 2 sisi (atas media rasio 1:1 `object-fit:cover` + 2 tombol carousel ‹ › melayang di atas gambar, hanya 1 gambar tampil sekaligus, index ditangani T-111.4; bawah label+**avatar+badge platform+nama akun** `.post-context-account`, reuse persis `.history-target-account` dari T-111.1, + **caption TANPA truncate** `.post-context-cap`, wrap multi-baris penuh — beda dari T-056 lama yang truncate 1 baris — + "Go to post →" tidak berubah). Sengaja beda dari History Detail (modal penuh, media unconstrained, bukan square/carousel) sesuai klarifikasi scope King Rezi. Fallback no-media: `.post-context-nomedia` (bukan kartu, full-width, tidak di-center, tetap avatar+caption-no-truncate). T-111.4 (kode `EngageInboxView.tsx`) masih ⏳.
 ---
 
 ## Recent Decisions (Ringkasan)

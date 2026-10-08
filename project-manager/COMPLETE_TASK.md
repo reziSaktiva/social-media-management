@@ -8,6 +8,164 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-08 — KI-084 Resolved sepenuhnya: implementasi icon sidebar mobile ke kode asli `apps/web`
+
+Lanjutan desain Claude Design yang sudah locked 2026-10-07 (lihat entri di
+bawah). Cek Claude Design (`DesignSync get_file`
+`components/navigation-mobile.html`) sebelum menulis kode — sesuai
+`AGENTS.md` rule 17 — mengonfirmasi target icon: glyph "panel" (rect+line,
+`SidebarLeftIcon` di code time) dipakai untuk TOMBOL BUKA dan TOMBOL TUTUP
+sekaligus (bukan hamburger untuk buka + ✕ untuk tutup), dan lebar drawer
+disamakan dengan `.sidebar` desktop.
+
+Perubahan kode:
+1. `apps/web/src/app/(app)/components/MobileTopBar.tsx` — icon trigger buka
+   diganti `Menu01Icon` → `SidebarLeftIcon` (sama dengan `SidebarTrigger`
+   desktop di `sidebar.tsx`).
+2. `apps/web/src/components/ui/sidebar.tsx` (`Sidebar`, cabang `isMobile`)
+   — tombol close default `SheetContent` (`Cancel01Icon` dari `sheet.tsx`)
+   dimatikan via `showCloseButton={false}`, diganti `SheetClose` custom
+   lokal dengan `SidebarLeftIcon` + aria-label "Tutup menu". Override lokal
+   di `sidebar.tsx`, bukan edit `sheet.tsx` global, supaya Sheet lain
+   (notifications panel, dsb.) tidak ikut berubah icon close-nya.
+3. Lebar drawer mobile (`SIDEBAR_WIDTH_MOBILE` di `sidebar.tsx`) sudah
+   bernilai `18rem` — identik dengan `SIDEBAR_WIDTH` desktop. Tidak ada
+   perubahan kode untuk poin ini, sekadar dikonfirmasi sudah sesuai target.
+
+Diverifikasi via `preview_start` ke dev server yang sudah berjalan
+(`localhost:3000`), emulasi viewport mobile 375×812, 2 lokasi: drawer
+Workspace (`/`) dan drawer Settings (`/settings`) — icon buka & tutup
+konsisten (sama persis), drawer buka/tutup berfungsi normal. `tsc --noEmit`
+dan `eslint` pada kedua file bersih, tanpa error baru.
+
+**Perbaikan susulan (sesi sama) — close button menabrak "New Post":**
+King Rezi kirim screenshot: icon close yang baru ditambahkan (`absolute
+top-4 right-4` di `SheetContent`, `sidebar.tsx`) menabrak/tumpang tindih
+dengan tombol "New Post" di bawah header. Dikonfirmasi via bounding-rect
+browser (`getBoundingClientRect`): close button `top:16-44px`, tombol "New
+Post" `top:40-76px` — overlap 4px vertikal, dan secara horizontal close
+button (236-264px) berada di dalam lebar penuh tombol "New Post" (8-272px)
+sehingga terlihat menabrak.
+
+Akar masalah: pendekatan `absolute` positioning baru di `SheetContent`
+tidak memperhitungkan konten child yang sudah ada di bawahnya
+(`SidebarHeader` → CTA "New Post"). Diperbaiki dengan pendekatan berbeda —
+reuse elemen FLEX ROW header yang sudah ada, bukan elemen absolute baru:
+1. `apps/web/src/app/(app)/components/WorkspaceSideNav.tsx` — hapus
+   kode yang menyembunyikan `SidebarTrigger` dari mobile (`hidden
+   md:flex` → `shrink-0`, selalu tampil). `SidebarTrigger` memanggil
+   `toggleSidebar()` yang BERPERILAKU BEDA sesuai konteks: di desktop
+   expand/collapse, di mobile `setOpenMobile` toggle — jadi klik tombol
+   yang sama saat drawer mobile terbuka otomatis menutupnya. Tombol ini
+   sudah ada di flex row header (sejajar nama workspace), posisinya aman
+   dari CTA "New Post" di bawahnya karena mengikuti flow layout, bukan
+   absolute.
+2. `apps/web/src/app/(app)/settings/components/SettingsSideNav.tsx` —
+   sidebar ini sengaja TIDAK punya `SidebarTrigger` di desktop (Keputusan
+   #4 T-105.0/T-105.1: fixed-width, no collapse), jadi solusi #1 di atas
+   tidak bisa langsung dipakai ulang. Ditambah tombol close BARU khusus
+   mobile (`md:hidden`) di flex row header yang sama dengan link
+   "← Settings", pakai `closeMobileSidebar()` yang sudah ada (sebelumnya
+   cuma dipakai di `onClick` link nav) dan icon `SidebarLeftIcon`.
+3. `apps/web/src/components/ui/sidebar.tsx` — elemen `SheetClose` absolute
+   yang bermasalah dihapus total; `showCloseButton={false}` pada
+   `SheetContent` dipertahankan (default `Cancel01Icon` tetap mati, karena
+   sekarang tiap sidebar konsumen menyediakan close affordance sendiri).
+
+Diverifikasi ulang via `preview_start` ke dev server yang sama, emulasi
+375×812, kedua drawer (Workspace & Settings): close button sekarang ada di
+dalam flex row header (tidak ada lagi elemen absolute), tidak overlap "New
+Post" atau elemen lain, buka/tutup berfungsi normal. Regresi desktop juga
+dicek — `SidebarTrigger` tetap di posisi dan perilaku semula (karena hanya
+menghapus kondisi `hidden`, bukan mengubah logic). `tsc --noEmit` dan
+`eslint` pada ketiga file bersih.
+
+Menutup **KI-084** sepenuhnya (desain + kode + perbaikan overlap). **KI-085**
+sudah Resolved terpisah di sesi 2026-10-07 (tooling Claude Design App
+Prototype, tidak menyentuh kode `apps/web`).
+
+---
+
+## 2026-10-07 — KI-084 Resolved (Claude Design) + KI-085 ditemukan & Resolved: sidebar mobile App Prototype
+
+**KI-084** (dicatat Open sebelumnya hari ini) selesai di sisi Claude Design:
+icon buka/tutup sidebar mobile disamakan dengan `SidebarLeftIcon` desktop
+(bukan hamburger 3-garis + ✕ generik), lebar drawer disamakan 260px (dari
+280px/84vw). Diterapkan ke 14 file: `components/navigation-mobile.html` +
+`styles.css` (component spec/acuan) + 7 screen workspace (`home`,
+`publish-calendar`, `publish-queue`, `publish-drafts`, `publish-history`,
+`engage-inbox`, `analyze-dashboard`) + 7 screen settings (`settings-general`,
+`settings-connected-accounts`, `settings-members`, `settings-workspaces`,
+`settings-profile`, `settings-notifications`, `settings-preferences`).
+Setiap file diverifikasi via `get_file` sebelum DAN sesudah push (skill
+`claude-design-scope-discipline` rule 6) — cuma 2 baris icon yang berubah
+per file, sisanya byte-identik. Percobaan delegasi ke subagent
+general-purpose untuk pekerjaan mekanis ini **gagal** — `DesignSync` tidak
+ter-load di sesi subagent, sama seperti keterbatasan yang sudah tercatat
+untuk Neymar/Najwa di `.claude/agents/README.md` (ternyata berlaku juga
+untuk general-purpose, bukan cuma 2 subagent itu). Dikerjakan manual di
+sesi utama.
+
+**KI-085 (baru, ditemukan saat verifikasi King Rezi di App Prototype,
+langsung Resolved hari yang sama):** `.mobile-topbar` (hamburger+judul asli)
+tetap tampil sebagai elemen kedua yang membingungkan berdampingan dengan
+sidebar — baik saat drawer mobile terbuka maupun di fresh load viewport
+"Tampilan: Website" lebar desktop penuh (sidebar asli sudah tampil normal).
+Mode "Tampilan: Mobile" (390px) selalu normal.
+
+3 percobaan fix, 2 gagal sebelum ketemu akar yang benar:
+1. CSS `.app-shell{flex-direction:column}` → `{display:block}` (dugaan
+   komputasi flexbox bersarang) — **tidak menyelesaikan**, dikonfirmasi
+   King Rezi "masih ada".
+2. CSS `.app-shell:has(~ .mobile-nav-backdrop) .mobile-topbar{display:none}`
+   — **`:has()` tidak didukung** di renderer App Prototype, tidak berefek.
+3. JS: sembunyikan `.mobile-topbar` di `openMobileNav()`/`closeMobileNav()`
+   (`AppPrototype.dc.html`) — **tidak menjangkau kasus fresh-load** (topbar
+   nongol walau drawer belum pernah dibuka sama sekali di sesi itu).
+
+**Fix final yang berhasil:** guard JS di method `inject()` milik
+`AppPrototype.dc.html` — method ini jalan di SETIAP `onLoad` iframe (semua
+screen, bukan cuma saat drawer dibuka). Cek `getComputedStyle` sidebar asli
+(`.app-shell > .sidebar`); kalau sidebar itu tampil, `.mobile-topbar` dipaksa
+`display:none` via `style.display` langsung — independen dari cascade CSS
+manapun. **Dikonfirmasi King Rezi: sudah hilang.**
+
+**Scope eksplisit SELESAI sesi ini:** Claude Design saja (component spec,
+styles.css, 14 screen, App Prototype runner). **Scope BELUM dikerjakan,
+lanjut sesi berikutnya (King Rezi minta lanjut di room chat baru,
+2026-10-08):** implementasi fix KI-084 ke kode asli `apps/web` —
+`MobileTopBar.tsx` (`Menu01Icon` → `SidebarLeftIcon`), override icon close
+Sheet sidebar mobile (lokal ke komponen ini saja, BUKAN ubah `sheet.tsx`
+global karena dipakai komponen `Sheet` lain seperti Notifications Drawer),
+dan samakan lebar Sheet mobile jadi 18rem persis (hilangkan cap
+`w-3/4 max-w-sm` khusus sidebar ini).
+
+**Docs diupdate:** `PROJECT_STATE.md` (§ KI-084 update + § KI-085 baru →
+✅ Resolved, Completed Ringkasan bullet baru menggantikan bullet T-111.3
+terlama, Top Next Tasks catat pekerjaan lanjutan).
+
+---
+
+## 2026-10-07 — KI-084 (baru, Open): sidebar mobile tidak konsisten dengan desktop
+
+Ditemukan King Rezi lewat screenshot, langsung setelah **KI-042** (Mobile
+Shell retrofit) ditutup ✅ Done hari yang sama: icon hamburger, layout, dan
+button "X" sidebar mobile berbeda dari sidebar desktop — seharusnya sama,
+cuma beda trigger buka/tutup (drawer vs permanen). Kemungkinan regresi/
+residual dari retrofit KI-042 yang tidak mengecek kesamaan visual dengan
+pola desktop.
+
+Dicatat sebagai **KI-084** (bukan Task baru) karena ini defect pada fitur
+yang sudah ada, bukan fitur baru. Branch kerja: `feature/mobile-sidebar-design`
+(dari `fix/t-111-history-media-layout`). Sebelum fix: wajib cek Claude
+Design dulu (rule 17 `AGENTS.md`) untuk pola sidebar desktop yang terkunci,
+baru lanjut implementasi via Mark UI Engineer.
+
+**Docs diupdate:** `PROJECT_STATE.md` (§ KI-084 baru, Status Open; Last
+Updated → 2026-10-07).
+
+---
+
 ## 2026-10-07 — T-111 TUNTAS 8/8 subtask: implementasi mobile Engage Inbox + History Detail
 
 T-111 (Restrukturisasi layout preview media post asli, History Detail &

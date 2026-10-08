@@ -184,12 +184,20 @@ export function WorkspaceSideNav({
               (deviasi disengaja dari pola resmi shadcn `SidebarInset >
               header`). Tidak dirender `SidebarRail` (strip toggle tambahan
               di tepi sidebar) supaya tidak ada affordance toggle kedua yang
-              belum dikunci King Rezi. Disembunyikan di mobile (`hidden
-              md:flex`) — di viewport itu header ini dirender SEBAGAI konten
-              drawer yang sudah terbuka, jadi trigger yang sama akan langsung
-              menutup drawer yang baru saja dibuka lewat hamburger
-              `MobileTopBar`. */}
-          <SidebarTrigger className="hidden shrink-0 md:flex" />
+              belum dikunci King Rezi.
+              KI-084: SEKARANG tetap ditampilkan di mobile juga (dulu `hidden
+              md:flex`) — ini SATU-SATUNYA tombol close drawer mobile,
+              menggantikan close button absolut terpisah yang sebelumnya
+              menabrak tombol "New Post" di bawahnya. `toggleSidebar()` yang
+              sama persis dipakai untuk buka (desktop) & tutup (mobile, lewat
+              `setOpenMobile` toggle di `useSidebar`), jadi icon dan posisi
+              taat konsisten tanpa kode tambahan. `aria-label` di-override
+              (default `SidebarTrigger` di `sidebar.tsx` adalah "Toggle
+              Sidebar", bahasa Inggris dan tidak menyebut status buka/tutup)
+              supaya konsisten dengan label Indonesia tombol close
+              `SettingsSideNav` ("Tutup menu") dan elemen sidebar lain
+              ("Buka menu", "Notifikasi"). */}
+          <SidebarTrigger className="shrink-0" aria-label="Buka/tutup menu" />
         </div>
 
         {/* ADR-053: CTA pinned di bawah Workspace Selector, di atas nav items. */}
