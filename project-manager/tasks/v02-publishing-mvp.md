@@ -1280,6 +1280,48 @@ Keputusan implementasi non-trivial (dinilai konsisten dengan presedan yang sudah
 
 **T-090 sekarang `✅ Done` (5/5 subtask).**
 
+### T-112 · Wiring `IOutstandAdapter.importPosts`/`fetchImportJobStatus` ke endpoint Outstand sungguhan
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| **Status**    | ⏳ Not Started                                                |
+| **Domain**    | integration                                                  |
+| **ADR**       | ADR-093, ADR-119 (pola stub-throw "throw loud" alih-alih Fake di produksi) |
+| **Terkait**   | T-090 ✅ (seluruh plumbing aplikasi — DB, job trigger, UI — sudah selesai dan terverifikasi; task ini HANYA menyisakan panggilan HTTP sungguhannya) |
+| **Depends**   | `OUTSTAND_API_KEY` (sudah tersedia) · verifikasi wire-format `POST /v1/social-accounts/{id}/imports` terhadap OpenAPI spec resmi Outstand (belum pernah dilakukan — beda dari endpoint lain di `RealOutstandAdapter` yang sudah) |
+| **Baca dulu** | `05-architecture/integration-layer.md` · `decisions/ADR-093-import-posts-dari-social-account-status-imported-read-only.md` · `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts` (docstring `importPosts`/`fetchImportJobStatus`) |
+
+Ditemukan King Rezi (2026-10-08) saat testing manual "Sync Now" lewat browser+DB
+Supabase dev sungguhan (akun Facebook "Cook It Real Good") — awalnya dikira
+bug ("kenapa belum terhubung padahal `OUTSTAND_API_KEY` sudah ada dan Connect
+Account sudah terbukti jalan ke platform sungguhan?"), ternyata memang
+**gap yang belum pernah dibuatkan task-nya**. T-090 ditutup `✅ Done` tanpa
+menyertakan wiring HTTP sungguhan untuk endpoint import — `RealOutstandAdapter
+.importPosts`/`.fetchImportJobStatus` (`apps/web/src/lib/adapters/outstand/
+real-outstand-adapter.ts`) sengaja ditulis **stub-throw** (`OutstandIntegrationError`,
+bukan diam-diam mengembalikan data kosong/palsu — pola "throw loud" ADR-059)
+karena wire-format `POST /v1/social-accounts/{id}/imports` belum pernah
+diverifikasi terhadap OpenAPI spec resmi Outstand — persis pola yang sudah
+berkali-kali terjadi di endpoint lain sebelum diperbaiki (lihat ADR-113
+komentar/reply, ADR-115/ADR-116 Facebook, ADR-118 Pinterest `board_id`):
+dokumentasi Outstand beberapa kali ternyata tidak cocok dengan API
+sungguhannya, jadi tim sengaja menahan implementasi sampai diverifikasi
+langsung, bukan menebak dari dokumentasi saja.
+
+**Dampak saat ini:** setiap klik "Sync Now" (manual, maupun trigger
+otomatis on-connect/periodik) **selalu** berakhir `status: "failed"` dengan
+pesan stub-throw yang eksplisit — fitur Import Posts tidak bisa benar-benar
+menarik data post dari platform sosial sampai task ini selesai. Cap mingguan
+manual (code review PR #148) sudah tidak lagi menghitung percobaan yang
+gagal karena ini, jadi minimal tidak mengunci jatah sinkronisasi — tapi
+fiturnya sendiri tetap tidak berfungsi.
+
+- [ ] **T-112.1** Verifikasi wire-format `POST /v1/social-accounts/{id}/imports` (request/response shape, auth, error codes) langsung terhadap OpenAPI spec resmi Outstand — jangan asumsikan dari deskripsi fitur di ADR-093
+- [ ] **T-112.2** Implementasi `RealOutstandAdapter.importPosts` sungguhan (ganti stub-throw) sesuai hasil verifikasi T-112.1
+- [ ] **T-112.3** Verifikasi wire-format `GET` status import job (dipakai `fetchImportJobStatus`) — kemungkinan polling atau webhook, cek OpenAPI spec apakah ada event webhook terpisah untuk ini (konsisten pola `OutstandWebhookProcessor` kalau ada)
+- [ ] **T-112.4** Implementasi `RealOutstandAdapter.fetchImportJobStatus` sungguhan (ganti stub-throw) sesuai hasil verifikasi T-112.3
+- [ ] **T-112.5** Verifikasi end-to-end di browser + DB dev Supabase sungguhan (pola sama verifikasi T-090 addendum di atas) — "Sync Now" benar-benar menarik post nyata dari akun yang terhubung
+
 ---
 
 ## Read-Only Enforcement
