@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Menu01Icon } from "@hugeicons/core-free-icons";
+import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -43,7 +43,7 @@ export function MobileTopBar({ workspaceName }: { workspaceName: string }) {
         aria-label="Buka menu"
         onClick={toggleSidebar}
       >
-        <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />
+        <HugeiconsIcon icon={SidebarLeftIcon} strokeWidth={2} />
       </Button>
       <span className="flex-1 truncate font-heading text-sm font-semibold">
         {title}

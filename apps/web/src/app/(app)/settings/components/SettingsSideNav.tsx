@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, SidebarLeftIcon } from "@hugeicons/core-free-icons";
 
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -86,18 +87,37 @@ export function SettingsSideNav() {
     // dirender di header di bawah — konsisten dengan "tidak dapat trigger".
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <Link
-          href="/"
-          onClick={closeMobileSidebar}
-          className="flex items-center gap-2 px-1 font-heading text-sm font-semibold"
-        >
-          <HugeiconsIcon
-            icon={ArrowLeft01Icon}
-            strokeWidth={2}
-            className="size-4"
-          />
-          Settings
-        </Link>
+        {/* eslint-disable-next-line no-restricted-syntax -- file ini sudah
+            dimigrasi ke komposisi Tailwind shadcn (ADR-097). */}
+        <div className="flex items-center justify-between gap-1">
+          <Link
+            href="/"
+            onClick={closeMobileSidebar}
+            className="flex min-w-0 items-center gap-2 px-1 font-heading text-sm font-semibold"
+          >
+            <HugeiconsIcon
+              icon={ArrowLeft01Icon}
+              strokeWidth={2}
+              className="size-4 shrink-0"
+            />
+            Settings
+          </Link>
+          {/* KI-084: Settings sidebar sengaja TANPA `SidebarTrigger` di
+              desktop (Keputusan #4 T-105.0/T-105.1 — fixed-width, tidak bisa
+              collapse). Di mobile tetap butuh affordance tutup drawer —
+              icon sama (`SidebarLeftIcon`) dengan trigger buka & trigger
+              Workspace sidebar, ditaruh di header row (bukan absolute)
+              supaya tidak menabrak konten di bawahnya. */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0 md:hidden"
+            aria-label="Tutup menu"
+            onClick={closeMobileSidebar}
+          >
+            <HugeiconsIcon icon={SidebarLeftIcon} strokeWidth={2} />
+          </Button>
+        </div>
       </SidebarHeader>
 
       <SidebarContent>
