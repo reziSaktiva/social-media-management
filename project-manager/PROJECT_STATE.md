@@ -530,6 +530,64 @@ tapi data historis `publishedAt` di DB tetap kosong untuk seluruh post yang
 sudah tayang. Non-blocking, gap serupa pola **KI-049**
 (`failedAt`/`failureReason` juga tidak pernah ditulis). Tidak memblokir M8.
 
+### KI-086 · Reconnect akun Facebook `disconnected`/`reconnect-required` adalah dead flow — tidak ada jalur apa pun yang mengaktifkannya kembali
+
+| Field | Value |
+|-------|-------|
+| Status | Open |
+| Kategori | Bug — Connected Accounts / Facebook Pages |
+| Terkait | ADR-115 poin 8 (Facebook Pages multi-select), ADR-122 (Reconnect `disconnected` untuk platform non-Facebook, menutup KI-078/KI-079) |
+
+Ditemukan King Rezi (2026-10-08) saat menanyakan cara reconnect akun
+Facebook yang sudah disconnected — dikonfirmasi lewat pembacaan kode
+langsung (bukan asumsi) bahwa ini **genuinely dead flow**, bukan cuma UI
+yang kurang nyaman:
+
+1. **UI** — `ConnectedAccountAction` di `ConnectedAccountsList.tsx`
+   (~baris 253-257) sengaja menyembunyikan tombol "Reconnect" total untuk
+   `account.platform === SocialPlatform.Facebook` pada status
+   `reconnect-required`/`disconnected`, dengan komentar eksplisit
+   "Facebook Pages reconnect multi-page belum punya UPDATE path — sembunyikan
+   tombol supaya tidak silent 0-page 'sukses' toast".
+2. **Backend** — bahkan kalau user coba lewat jalur "Connect Account" biasa
+   (pilih ulang Page yang sama), `WorkspaceRepository.createConnectedAccounts`
+   (jamak, khusus Facebook, `workspace.repository.ts` ~baris 933-962)
+   mencocokkan row existing HANYA berdasarkan `outstandAccountId` — tidak
+   mengecek `status`/`reconnectRequired` sama sekali:
+   ```
+   const existing = await tx.workspaceConnectedAccount.findMany({
+     where: { workspaceId, outstandAccountId: { in: [...] } },
+     select: { outstandAccountId: true },   // status tidak dicek
+   });
+   ...
+   if (existingIds.has(account.outstandAccountId)) continue; // skip diam-diam, status APAPUN
+   ```
+   Row yang `disconnected` diperlakukan identik dengan row yang sudah
+   `active` — di-skip diam-diam, tanpa error, tanpa update. Tidak seperti
+   `reconnectAccount` (tunggal, dipakai platform lain via ADR-122) yang
+   memang didesain UPDATE row existing (reset `status`/`reconnectRequired`,
+   pertahankan `connectedAt`), tidak ada padanan path reaktivasi untuk
+   Facebook sama sekali.
+
+**Kenapa belum diperbaiki sekarang:** ini bukan sekadar bug biasa — ADR-115
+poin 8 eksplisit menyatakan "Reconnect Facebook Page tunggal DI LUAR SCOPE"
+sebagai keputusan arsitektur yang disengaja. Memperbaikinya berarti
+membalik keputusan ADR yang sudah ada (AGENTS.md rule 4: butuh ADR baru,
+bukan patch diam-diam) dan kemungkinan juga menyentuh UI (menampilkan lagi
+tombol Reconnect untuk Facebook, rule 17 AGENTS.md: perlu cek Claude Design
+dulu). King Rezi diberi pilihan (perbaiki sekarang + ADR baru / backend saja
+dulu / tunda sebagai Known Issue) dan memilih **tunda** — dicatat di sini
+supaya tidak hilang, belum ada task/ADR yang dibuka untuk ini.
+
+**Rencana perbaikan (kalau nanti dikerjakan, dicatat supaya tidak perlu
+investigasi ulang):** di `createConnectedAccounts`, select juga `id` dan
+`status` pada lookup existing; kalau `outstandAccountId` cocok tapi
+`status !== "active"`, jalankan logika reaktivasi (set `status: "active"`,
+`reconnectRequired: false`, refresh `outstandAccountId`/`handle`/`avatarUrl`)
+pada row itu alih-alih `continue`-skip — hanya row yang SUDAH `active` yang
+tetap di-skip. `WorkspaceService.confirmFacebookPagesConnection` sendiri
+tidak perlu berubah (sudah delegasi penuh ke `createConnectedAccounts`).
+
 ---
 
 ### KI-084 · Sidebar mobile tidak konsisten dengan sidebar desktop ✅ Resolved (2026-10-08)
