@@ -200,11 +200,14 @@ export class ImportPostsTriggerUseCase {
   ) {}
 
   /**
-   * Polling `fetchImportJobStatus` sampai resolve `completed`/`partial`/
-   * `failed`, atau sampai `IMPORT_STATUS_POLL_TIMEOUT_MS` terlampaui (lihat
-   * catatan bug di atas konstanta modul ini). Panggilan PERTAMA selalu
-   * terjadi SEGERA (tanpa delay) — delay hanya di ANTARA percobaan
-   * berikutnya.
+   * Polling `fetchImportJobStatus` sampai resolve `completed`/`failed`
+   * (kontrak `ImportJobStatus` di titik ini hanya punya 3 nilai — real API
+   * `partial` SUDAH dipetakan jadi `"completed"` satu lapis di bawah,
+   * `RealOutstandAdapter.fetchImportJobStatus`, ADR-123 — jadi method ini
+   * TIDAK PERNAH melihat `"partial"`), atau sampai
+   * `IMPORT_STATUS_POLL_TIMEOUT_MS` terlampaui (lihat catatan bug di atas
+   * konstanta modul ini). Panggilan PERTAMA selalu terjadi SEGERA (tanpa
+   * delay) — delay hanya di ANTARA percobaan berikutnya.
    */
   private async pollImportJobStatus(
     outstandAccountId: string,
@@ -402,9 +405,17 @@ export class ImportPostsTriggerUseCase {
         // polling di atas HABIS WAKTU (25 detik) sementara Outstand masih
         // `queued`/`running` — beda dari kegagalan sungguhan, pesannya
         // sengaja dibedakan supaya user tahu ini bukan error permanen.
+        // Code review PR #149 — TIDAK menjanjikan jendela waktu retry
+        // spesifik ("beberapa menit") di sini: untuk trigger `manual`,
+        // `lastImportRequestedAt` SUDAH diupdate di atas SEBELUM polling
+        // ini (persist-dulu, ADR-093 poin 6) — `triggerManual` akan tetap
+        // menegakkan `MANUAL_COOLDOWN_MS` (24 jam) pada percobaan
+        // berikutnya walau job ini gagal karena timeout, bukan kegagalan
+        // permanen. Menjanjikan retry cepat di sini akan kontradiksi
+        // dengan guard cooldown yang sungguhan berlaku.
         const message =
           jobOutcome.status === "pending"
-            ? "Import masih diproses di Outstand setelah menunggu 25 detik — coba Sync Now lagi dalam beberapa menit."
+            ? "Import masih diproses di Outstand setelah menunggu 25 detik. Job ini ditandai gagal untuk sementara di sisi kita, tapi proses di Outstand TIDAK dibatalkan — coba Sync Now lagi nanti (jatah cooldown akun ini tetap berlaku seperti biasa)."
             : (jobOutcome.error ??
               `Import job berstatus "${jobOutcome.status}".`);
         await this.importJobs.markImportSyncJobStatus(
@@ -422,6 +433,17 @@ export class ImportPostsTriggerUseCase {
         posts: jobOutcome.posts,
         actingUserId: input.actingUserId,
       });
+
+      // Code review PR #149 — `jobOutcome.error` di titik ini (status
+      // SUDAH `"completed"`) hanya terisi untuk kasus real API `partial`
+      // (lihat `RealOutstandAdapter.fetchImportJobStatus`, ADR-123): post
+      // yang berhasil TETAP diproses di atas, tapi job ini TIDAK 100%
+      // sukses. Sebelumnya info ini didiamkan (job tercatat `"done"` polos,
+      // tidak ada jejak sama sekali) — sekarang disimpan sebagai
+      // `lastError` job (status tetap `"done"`, BUKAN `"failed"` — post
+      // yang berhasil memang berhasil) dan diteruskan ke caller lewat
+      // `message`, supaya UI/log punya jejak kegagalan sebagian ini.
+      const partialWarning = jobOutcome.error ?? undefined;
 
       // Code review PR #148 (finding #5) — `IOutstandAdapter.importPosts`
       // tidak punya cursor/next-page (kontrak `packages/shared`), jadi
@@ -446,12 +468,17 @@ export class ImportPostsTriggerUseCase {
         });
       }
 
-      await this.importJobs.markImportSyncJobStatus(job.id, "done");
+      await this.importJobs.markImportSyncJobStatus(
+        job.id,
+        "done",
+        partialWarning,
+      );
 
       return {
         outcome: "triggered",
         importedCount: processed.insertedCount,
         skippedDuplicateCount: processed.skippedDuplicateCount,
+        message: partialWarning,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

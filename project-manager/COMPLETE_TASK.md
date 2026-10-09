@@ -8,6 +8,21 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-09 — Hardening code-review PR #149 (T-112, branch `feature/t-112`) — 4 temuan diperbaiki, status T-112 tetap ✅ Done
+
+King Rezi menjalankan `/code-review` manual atas PR [#149](https://github.com/reziSaktiva/social-media-management/pull/149) (T-112) sebelum merge ke `staging`, lalu minta semua temuan diperbaiki. Review menemukan 4 temuan nyata (di luar 1 nit stale docstring yang sudah dicatat Ridwan di sesi T-112 sebelumnya):
+
+1. **(High)** `ImportPostsTriggerUseCase.runImportSync` tidak pernah membaca `jobOutcome.error` di jalur sukses (`status: "completed"`) — padahal real API `partial` dipetakan ke `"completed"` DENGAN `error` berisi ringkasan kegagalan sebagian (ADR-123). Info ini hilang total: job tercatat `"done"` polos, tidak ada jejak sama sekali, kontradiksi tujuan desain ADR-123 sendiri. Fix: `partialWarning` baru diteruskan ke `markImportSyncJobStatus(job.id, "done", partialWarning)` (status job tetap `"done"`, bukan `"failed"`) dan ke `ImportSyncTriggerResult.message`.
+2. **(High)** Pesan error timeout-polling ("coba Sync Now lagi dalam beberapa menit") kontradiksi dengan guard `MANUAL_COOLDOWN_MS` (24 jam) yang sungguhan berlaku pada percobaan manual berikutnya (`lastImportRequestedAt` sudah diupdate SEBELUM polling dimulai, persist-dulu ADR-093 poin 6) — pesan diperbaiki agar tidak menjanjikan jendela retry yang salah.
+3. **(Medium)** `RealOutstandAdapter.fetchImportJobStatus` memanggil `GET /v1/posts` untuk data post job `completed`/`partial` hanya difilter `social_account_id` + `limit`, tanpa korelasi waktu ke job spesifik (endpoint tidak punya filter `importJobId`). Ditambahkan `created_after`/`created_before` dari `since`/`until` job — field diverifikasi ADA lewat WebFetch `api.outstand.so/v1/posts/openapi.json` — untuk mempersempit risiko match post lain di akun yang sama di luar rentang job ini. Didokumentasikan sebagai perbaikan best-effort (filter waktu DIBUAT di Outstand, bukan `publishedAt` platform), bukan korelasi sempurna.
+4. **(Low)** Komentar test timeout-polling (`import-posts-trigger.use-case.test.ts`) salah hitung jumlah panggilan ("call ke-13"); dihitung ulang jadi 14 `fetchImportJobStatus`/13 `sleep`, assertion diperketat dari `toBeGreaterThan(1)` ke angka pasti.
+
+Test baru ditambahkan untuk temuan #1 (skenario `partial` → `jobOutcome.error` tetap diteruskan). 2 test lama disesuaikan (argumen ke-3 `markImportSyncJobStatus` baru + query string `/v1/posts` baru). `typecheck`/`lint` PASS, `bun run test` 649 passed/6 skipped/0 failed (naik dari 648 — satu test baru). Scope diff hanya 4 file (2 kode + 2 test), tidak menyentuh kontrak publik `packages/shared`, tidak ada ADR baru (perbaikan perilaku internal yang konsisten dengan ADR-123, bukan amandemen keputusannya). Dikerjakan di sesi utama (bukan subagent terpisah) langsung di branch `feature/t-112` (belum di-push/PR-kan ulang — menunggu instruksi King Rezi untuk commit/push).
+
+Dokumen diupdate: `project-manager/tasks/v02-publishing-mvp.md` § T-112 (entri baru, status tetap `✅ Done`, bukan subtask baru).
+
+---
+
 ## 2026-10-09 — T-112 ✅ Done (5/5 subtask) — Fix bug polling status async + verifikasi end-to-end berhasil
 
 Melanjutkan sesi 2026-10-08 (T-112.1–T-112.4 sudah selesai, T-112.5

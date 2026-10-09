@@ -1590,8 +1590,14 @@ describe("RealOutstandAdapter.importPosts / fetchImportJobStatus (T-112)", () =>
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     const [secondUrl] = fetchImpl.mock.calls[1];
+    // Code review PR #149 — `GET /v1/posts` sekarang disempitkan dengan
+    // `created_after`/`created_before` dari `since`/`until` JOB ini (bukan
+    // hanya `social_account_id`+`limit` seperti sebelumnya), supaya hasil
+    // tidak match post lain di akun yang sama di luar rentang job ini.
     expect(secondUrl).toBe(
-      "https://api.outstand.so/v1/posts?social_account_id=acc-ig-1&limit=1",
+      "https://api.outstand.so/v1/posts?social_account_id=acc-ig-1&limit=1" +
+        "&created_after=2026-07-10T00%3A00%3A00.000Z" +
+        "&created_before=2026-10-08T00%3A00%3A00.000Z",
     );
   });
 

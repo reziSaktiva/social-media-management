@@ -158,9 +158,15 @@ describe("ImportPostsTriggerUseCase.triggerAuto (T-090.3, ADR-093 poin 7)", () =
       lastImportedUntil: expect.any(Date),
       actingUserId: ACTING_USER_ID,
     });
+    // Code review PR #149 — `markImportSyncJobStatus` sekarang selalu
+    // disuplai argumen ke-3 (`lastError`, di sini `undefined` karena
+    // `jobOutcome.error` null/full-success) supaya kasus `partial` (lihat
+    // test baru di bawah) bisa meneruskan ringkasan kegagalan sebagian ke
+    // `lastError` lewat jalur yang sama, bukan jalur baru/terpisah.
     expect(importJobs.markImportSyncJobStatus).toHaveBeenCalledWith(
       expect.any(String),
       "done",
+      undefined,
     );
   });
 
@@ -303,10 +309,21 @@ describe("ImportPostsTriggerUseCase — polling fetchImportJobStatus (bug fix 20
         "failed",
         expect.stringContaining("masih diproses di Outstand"),
       );
-      // Timeout 25s / interval 2s → berhenti SETELAH elapsedMs >= 25_000,
-      // yakni panggilan ke-13 (call 1 di t=0, lalu +2s tiap sleep sampai
-      // t=24_000 masih < 25_000 jadi poll lagi, t=26_000 keluar loop).
-      expect(fetchImportJobStatus.mock.calls.length).toBeGreaterThan(1);
+      // Code review PR #149 — komentar lama di sini salah hitung ("call
+      // ke-13"); ditulis ulang + assertion dipertegas jadi angka pasti
+      // (sebelumnya `toBeGreaterThan(1)`, longgar, tidak akan gagal kalau
+      // math timeout berubah tanpa sengaja).
+      //
+      // Timeout 25s / interval 2s, loop cek KONDISI dulu baru sleep+fetch:
+      // call #1 di elapsed=0 (pending) → cek 0<25_000 true → sleep
+      // (elapsed=2_000) → call #2 (pending) → cek 2_000<25_000 true →
+      // sleep (4_000) → call #3 ... berlanjut sampai cek elapsed=24_000
+      // (<25_000, masih true) → sleep (elapsed=26_000) → call #14 (masih
+      // "pending") → cek 26_000<25_000 FALSE → loop berhenti. Total 14
+      // panggilan `fetchImportJobStatus`, 13 panggilan `sleep` (satu sleep
+      // di antara setiap pasang panggilan berurutan).
+      expect(fetchImportJobStatus).toHaveBeenCalledTimes(14);
+      expect(sleep).toHaveBeenCalledTimes(13);
     } finally {
       vi.spyOn(Date, "now").mockRestore();
     }
@@ -345,6 +362,57 @@ describe("ImportPostsTriggerUseCase — polling fetchImportJobStatus (bug fix 20
     expect(fetchImportJobStatus).toHaveBeenCalledTimes(1);
     expect(sleep).not.toHaveBeenCalled();
   });
+
+  it(
+    "surfaces jobOutcome.error as a non-blocking warning (job still marked done, outcome still triggered) " +
+      'when the real API status was "partial" (code review PR #149 — previously silently dropped)',
+    async () => {
+      const importJobs = createFakeImportJobRepository();
+      const fetchImportJobStatus = vi.fn(
+        async (): Promise<ImportJobOutcome> => ({
+          status: "completed",
+          posts: [],
+          error: "1 dari 3 post gagal diimport.",
+        }),
+      );
+      const outstandAdapter = createFakeOutstandAdapter({
+        fetchImportJobStatus,
+      });
+      const watermark = createFakeWatermarkPort();
+      const processUseCase = createProcessUseCase(2);
+      const sleep = vi.fn(async () => undefined);
+
+      const useCase = new ImportPostsTriggerUseCase(
+        importJobs,
+        outstandAdapter,
+        watermark,
+        processUseCase,
+        sleep,
+      );
+
+      const result = await useCase.triggerAuto({
+        workspaceId: WORKSPACE_ID,
+        connectedAccountId: CONNECTED_ACCOUNT_ID,
+        outstandAccountId: OUTSTAND_ACCOUNT_ID,
+        platform: SocialPlatform.Instagram,
+        actingUserId: ACTING_USER_ID,
+      });
+
+      // Outcome is still success (posts that DID succeed are not dropped).
+      expect(result.outcome).toBe("triggered");
+      expect(result.importedCount).toBe(2);
+      // But the partial-failure summary must now reach the caller...
+      expect(result.message).toBe("1 dari 3 post gagal diimport.");
+      // ...and be persisted as `lastError` on the job record, even though
+      // the job's own status stays "done" (not "failed" — the posts that
+      // succeeded genuinely succeeded).
+      expect(importJobs.markImportSyncJobStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        "done",
+        "1 dari 3 post gagal diimport.",
+      );
+    },
+  );
 });
 
 describe("ImportPostsTriggerUseCase — guard concurrent-import (ADR-093 poin 8)", () => {

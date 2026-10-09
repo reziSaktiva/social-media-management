@@ -1420,11 +1420,24 @@ export function createRealOutstandAdapter(
      *    diamandemen dari `(importJobId)` jadi
      *    `(outstandAccountId, importJobId)`, ADR-123).
      * 2. Kalau status real API `completed`/`partial` → `GET /v1/posts?
-     *    social_account_id={outstandAccountId}` untuk data post
-     *    sesungguhnya (endpoint status TIDAK membawanya, hanya angka
-     *    ringkasan). Limit diset ke `imported + skipped` job ini (atau 100
-     *    kalau nol/tidak ada) — TIDAK ada pagination loop (YAGNI, sama
-     *    semantik `limit` yang dipakai `importPosts` membuat job ini).
+     *    social_account_id={outstandAccountId}&created_after=...&
+     *    created_before=...` untuk data post sesungguhnya (endpoint status
+     *    TIDAK membawanya, hanya angka ringkasan). `created_after`/
+     *    `created_before` diisi dari `since`/`until` JOB ini (bukan
+     *    `since`/`until` request terakhir ke `importPosts` — job bisa jadi
+     *    lebih lama, lihat `pollImportJobStatus`) — diverifikasi ADA di
+     *    OpenAPI spec resmi (`api.outstand.so/v1/posts/openapi.json`,
+     *    param `created_after`/`created_before`, bukan `since`/`until`).
+     *    **Catatan jujur:** ini filter berdasar WAKTU DIBUAT di Outstand,
+     *    bukan `publishedAt` platform — tidak dijamin 100% berkorelasi
+     *    dengan post yang SPESIFIK ditarik job ini (tidak ada `importJobId`
+     *    sebagai filter query di endpoint ini), tapi jauh mempersempit
+     *    risiko dibanding tanpa filter waktu sama sekali (lihat code
+     *    review PR #149: sebelumnya HANYA `social_account_id` + `limit`,
+     *    beresiko match post lain di akun yang sama kalau ada aktivitas di
+     *    luar rentang job ini). Limit diset ke `imported + skipped` job ini
+     *    (atau 100 kalau nol/tidak ada) — TIDAK ada pagination loop (YAGNI,
+     *    sama semantik `limit` yang dipakai `importPosts` membuat job ini).
      *
      * **Pemetaan status (ADR-123, keputusan King Rezi 2026-10-08):**
      * `queued|running` → `"pending"` (posts kosong, tidak fetch /posts
@@ -1504,6 +1517,10 @@ export function createRealOutstandAdapter(
         });
       }
 
+      const since = toDateOrNull(job.since);
+      const until = toDateOrNull(job.until);
+      const fallbackPublishedAt = until ?? since ?? new Date();
+
       const postsResponse = await client.request<Record<string, unknown>>(
         "/v1/posts",
         {
@@ -1511,6 +1528,11 @@ export function createRealOutstandAdapter(
           query: {
             social_account_id: outstandAccountId,
             limit: String(imported + skipped > 0 ? imported + skipped : 100),
+            // Code review PR #149 — persempit hasil ke rentang waktu job
+            // ini (lihat catatan "jujur" di docstring method ini), bukan
+            // hanya mengandalkan `social_account_id` + `limit`.
+            ...(since ? { created_after: since.toISOString() } : {}),
+            ...(until ? { created_before: until.toISOString() } : {}),
           },
         },
       );
@@ -1518,10 +1540,6 @@ export function createRealOutstandAdapter(
       const rawPosts = Array.isArray(postsResponse.data)
         ? (postsResponse.data as Record<string, unknown>[])
         : [];
-
-      const since = toDateOrNull(job.since);
-      const until = toDateOrNull(job.until);
-      const fallbackPublishedAt = until ?? since ?? new Date();
 
       const posts: ImportedPostData[] = [];
       for (const rawPost of rawPosts) {

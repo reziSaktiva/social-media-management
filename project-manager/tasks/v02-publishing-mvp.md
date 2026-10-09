@@ -1398,6 +1398,43 @@ Review Ridwan juga mencatat satu catatan non-blocking terpisah: docstring
 dipetakan jadi "completed" sebelum sampai ke use-case ini (ADR-123) — sedikit
 stale tapi tidak memengaruhi kebenaran kode, tidak wajib diperbaiki.
 
+**Update (2026-10-09) — hardening code-review PR #149 (branch `feature/t-112`
+sebelum merge), status T-112 tetap `✅ Done`, bukan subtask baru:**
+`/code-review` menemukan 3 temuan nyata (di luar 1 nit stale docstring yang
+sudah dicatat di atas) yang tidak masuk putaran review Ridwan sebelumnya:
+
+1. **(High)** `jobOutcome.error` untuk status real API `partial` (sudah
+   dipetakan jadi `"completed"`, ADR-123) tidak pernah dibaca di
+   `runImportSync` — job tercatat `"done"` polos, info "sebagian post gagal"
+   hilang total (padahal tujuan desain ADR-123 eksplisit menyimpannya).
+   Fix: `partialWarning` baru diteruskan ke `markImportSyncJobStatus(job.id,
+   "done", partialWarning)` (status job tetap `"done"`, bukan `"failed"` —
+   post yang berhasil tetap berhasil) dan ke `ImportSyncTriggerResult.message`.
+2. **(High)** Pesan error timeout-polling ("coba Sync Now lagi dalam
+   beberapa menit") kontradiksi dengan guard `MANUAL_COOLDOWN_MS` (24 jam)
+   yang sungguhan berlaku pada percobaan manual berikutnya (`lastImportRequestedAt`
+   sudah diupdate SEBELUM polling dimulai) — pesan diperbaiki supaya tidak
+   menjanjikan jendela retry yang salah.
+3. **(Medium)** `GET /v1/posts` untuk mengambil data post job yang
+   `completed`/`partial` sebelumnya HANYA difilter `social_account_id` +
+   `limit` (tidak ada korelasi waktu ke job tertentu). Ditambahkan
+   `created_after`/`created_before` dari `since`/`until` job (field
+   diverifikasi ADA di `api.outstand.so/v1/posts/openapi.json`) untuk
+   mempersempit risiko match post lain di akun yang sama di luar rentang
+   job ini — didokumentasikan sebagai perbaikan best-effort, bukan filter
+   sempurna (endpoint tidak punya filter `importJobId`).
+4. **(Low)** Komentar test timeout-polling salah hitung jumlah panggilan
+   (`"call ke-13"`); dihitung ulang (14 `fetchImportJobStatus`, 13 `sleep`)
+   dan assertion diperketat dari `toBeGreaterThan(1)` ke angka pasti.
+
+Test baru untuk temuan #1 (`partial` → `jobOutcome.error` tetap diteruskan ke
+`markImportSyncJobStatus`/`result.message`). Test lama disesuaikan untuk
+argumen ke-3 baru + query string `/v1/posts` baru. `typecheck`/`lint` PASS,
+`bun run test` 649 passed/6 skipped/0 failed (naik dari 648). Scope diff
+hanya 4 file kode (2 use-case + 1 test tiap-tiap): tidak menyentuh kontrak
+publik (`packages/shared`), tidak ada ADR baru (perbaikan perilaku internal,
+konsisten semangat ADR-123, bukan amandemen keputusannya).
+
 ---
 
 ## Read-Only Enforcement
