@@ -136,6 +136,15 @@ describe("ImportPostsTriggerUseCase.triggerAuto (T-090.3, ADR-093 poin 7)", () =
       OUTSTAND_ACCOUNT_ID,
       expect.objectContaining({ limit: 100 }),
     );
+    // T-112/ADR-123 — `fetchImportJobStatus` sekarang butuh `outstandAccountId`
+    // SELAIN `importJobId` (endpoint real `GET /v1/social-accounts/{id}/
+    // imports/{importId}` butuh account id di path) — pastikan use-case
+    // menyuplai `outstandAccountId` yang SAMA dengan yang dipakai `importPosts`,
+    // bukan cuma `importJobId` dari hasil `importPosts`.
+    expect(outstandAdapter.fetchImportJobStatus).toHaveBeenCalledWith(
+      OUTSTAND_ACCOUNT_ID,
+      "fake-import-job",
+    );
     // Dipanggil dua kali: sekali saat request mulai (lastImportRequestedAt),
     // sekali saat sukses selesai (lastImportedUntil) — ADR-093 poin 6.
     expect(watermark.updateImportWatermark).toHaveBeenCalledTimes(2);
@@ -149,9 +158,15 @@ describe("ImportPostsTriggerUseCase.triggerAuto (T-090.3, ADR-093 poin 7)", () =
       lastImportedUntil: expect.any(Date),
       actingUserId: ACTING_USER_ID,
     });
+    // Code review PR #149 — `markImportSyncJobStatus` sekarang selalu
+    // disuplai argumen ke-3 (`lastError`, di sini `undefined` karena
+    // `jobOutcome.error` null/full-success) supaya kasus `partial` (lihat
+    // test baru di bawah) bisa meneruskan ringkasan kegagalan sebagian ke
+    // `lastError` lewat jalur yang sama, bukan jalur baru/terpisah.
     expect(importJobs.markImportSyncJobStatus).toHaveBeenCalledWith(
       expect.any(String),
       "done",
+      undefined,
     );
   });
 
@@ -200,6 +215,204 @@ describe("ImportPostsTriggerUseCase.triggerAuto (T-090.3, ADR-093 poin 7)", () =
       expect.objectContaining({ actingUserId: ACTING_USER_ID }),
     );
   });
+});
+
+describe("ImportPostsTriggerUseCase — polling fetchImportJobStatus (bug fix 2026-10-09, King Rezi testing manual)", () => {
+  it('polls with the injected sleep (not real setTimeout) until status resolves completed, instead of failing immediately on the first "pending" response', async () => {
+    const importJobs = createFakeImportJobRepository();
+    let callCount = 0;
+    const fetchImportJobStatus = vi.fn(async (): Promise<ImportJobOutcome> => {
+      callCount += 1;
+      // Outstand async beneran — 2 panggilan pertama "pending" (queued/running
+      // dipetakan ke ini di RealOutstandAdapter), baru yang ketiga "completed".
+      if (callCount < 3) {
+        return { status: "pending", posts: [], error: null };
+      }
+      return { status: "completed", posts: [], error: null };
+    });
+    const outstandAdapter = createFakeOutstandAdapter({
+      fetchImportJobStatus,
+    });
+    const watermark = createFakeWatermarkPort();
+    const processUseCase = createProcessUseCase(0);
+    const sleep = vi.fn(async () => undefined);
+
+    const useCase = new ImportPostsTriggerUseCase(
+      importJobs,
+      outstandAdapter,
+      watermark,
+      processUseCase,
+      sleep,
+    );
+
+    const result = await useCase.triggerAuto({
+      workspaceId: WORKSPACE_ID,
+      connectedAccountId: CONNECTED_ACCOUNT_ID,
+      outstandAccountId: OUTSTAND_ACCOUNT_ID,
+      platform: SocialPlatform.Instagram,
+      actingUserId: ACTING_USER_ID,
+    });
+
+    expect(result.outcome).toBe("triggered");
+    expect(fetchImportJobStatus).toHaveBeenCalledTimes(3);
+    // Delay HANYA di antara percobaan (2 kali untuk 3 panggilan), bukan
+    // sebelum panggilan pertama — dan selalu 2 detik (IMPORT_STATUS_POLL_INTERVAL_MS).
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenNthCalledWith(1, 2_000);
+    expect(sleep).toHaveBeenNthCalledWith(2, 2_000);
+  });
+
+  it('gives up after the ~25s timeout budget and marks the job failed with a message distinguishing "still processing" from a real failure', async () => {
+    const importJobs = createFakeImportJobRepository();
+    const fetchImportJobStatus = vi.fn(async (): Promise<ImportJobOutcome> => ({
+      status: "pending",
+      posts: [],
+      error: null,
+    }));
+    const outstandAdapter = createFakeOutstandAdapter({
+      fetchImportJobStatus,
+    });
+    const watermark = createFakeWatermarkPort();
+    const processUseCase = createProcessUseCase(0);
+    // Sleep palsu yang memajukan Date.now() secara efektif dengan TIDAK
+    // menunggu sungguhan — simulasikan 25+ detik berlalu lewat mock
+    // Date.now() supaya test ini TIDAK benar-benar lambat 25 detik.
+    const realDateNow = Date.now;
+    let elapsedMs = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => realDateNow() + elapsedMs);
+    const sleep = vi.fn(async () => {
+      elapsedMs += 2_000;
+    });
+
+    const useCase = new ImportPostsTriggerUseCase(
+      importJobs,
+      outstandAdapter,
+      watermark,
+      processUseCase,
+      sleep,
+    );
+
+    try {
+      const result = await useCase.triggerAuto({
+        workspaceId: WORKSPACE_ID,
+        connectedAccountId: CONNECTED_ACCOUNT_ID,
+        outstandAccountId: OUTSTAND_ACCOUNT_ID,
+        platform: SocialPlatform.Instagram,
+        actingUserId: ACTING_USER_ID,
+      });
+
+      expect(result.outcome).toBe("failed");
+      expect(result.message).toMatch(/masih diproses di Outstand/);
+      expect(result.message).not.toMatch(/Outstand down/);
+      expect(importJobs.markImportSyncJobStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        "failed",
+        expect.stringContaining("masih diproses di Outstand"),
+      );
+      // Code review PR #149 — komentar lama di sini salah hitung ("call
+      // ke-13"); ditulis ulang + assertion dipertegas jadi angka pasti
+      // (sebelumnya `toBeGreaterThan(1)`, longgar, tidak akan gagal kalau
+      // math timeout berubah tanpa sengaja).
+      //
+      // Timeout 25s / interval 2s, loop cek KONDISI dulu baru sleep+fetch:
+      // call #1 di elapsed=0 (pending) → cek 0<25_000 true → sleep
+      // (elapsed=2_000) → call #2 (pending) → cek 2_000<25_000 true →
+      // sleep (4_000) → call #3 ... berlanjut sampai cek elapsed=24_000
+      // (<25_000, masih true) → sleep (elapsed=26_000) → call #14 (masih
+      // "pending") → cek 26_000<25_000 FALSE → loop berhenti. Total 14
+      // panggilan `fetchImportJobStatus`, 13 panggilan `sleep` (satu sleep
+      // di antara setiap pasang panggilan berurutan).
+      expect(fetchImportJobStatus).toHaveBeenCalledTimes(14);
+      expect(sleep).toHaveBeenCalledTimes(13);
+    } finally {
+      vi.spyOn(Date, "now").mockRestore();
+    }
+  });
+
+  it("does NOT poll at all when the first fetchImportJobStatus call already resolves completed/failed (no wasted delay on the happy path)", async () => {
+    const importJobs = createFakeImportJobRepository();
+    const fetchImportJobStatus = vi.fn(async (): Promise<ImportJobOutcome> => ({
+      status: "completed",
+      posts: [],
+      error: null,
+    }));
+    const outstandAdapter = createFakeOutstandAdapter({
+      fetchImportJobStatus,
+    });
+    const watermark = createFakeWatermarkPort();
+    const processUseCase = createProcessUseCase(0);
+    const sleep = vi.fn(async () => undefined);
+
+    const useCase = new ImportPostsTriggerUseCase(
+      importJobs,
+      outstandAdapter,
+      watermark,
+      processUseCase,
+      sleep,
+    );
+
+    await useCase.triggerAuto({
+      workspaceId: WORKSPACE_ID,
+      connectedAccountId: CONNECTED_ACCOUNT_ID,
+      outstandAccountId: OUTSTAND_ACCOUNT_ID,
+      platform: SocialPlatform.Instagram,
+      actingUserId: ACTING_USER_ID,
+    });
+
+    expect(fetchImportJobStatus).toHaveBeenCalledTimes(1);
+    expect(sleep).not.toHaveBeenCalled();
+  });
+
+  it(
+    "surfaces jobOutcome.error as a non-blocking warning (job still marked done, outcome still triggered) " +
+      'when the real API status was "partial" (code review PR #149 — previously silently dropped)',
+    async () => {
+      const importJobs = createFakeImportJobRepository();
+      const fetchImportJobStatus = vi.fn(
+        async (): Promise<ImportJobOutcome> => ({
+          status: "completed",
+          posts: [],
+          error: "1 dari 3 post gagal diimport.",
+        }),
+      );
+      const outstandAdapter = createFakeOutstandAdapter({
+        fetchImportJobStatus,
+      });
+      const watermark = createFakeWatermarkPort();
+      const processUseCase = createProcessUseCase(2);
+      const sleep = vi.fn(async () => undefined);
+
+      const useCase = new ImportPostsTriggerUseCase(
+        importJobs,
+        outstandAdapter,
+        watermark,
+        processUseCase,
+        sleep,
+      );
+
+      const result = await useCase.triggerAuto({
+        workspaceId: WORKSPACE_ID,
+        connectedAccountId: CONNECTED_ACCOUNT_ID,
+        outstandAccountId: OUTSTAND_ACCOUNT_ID,
+        platform: SocialPlatform.Instagram,
+        actingUserId: ACTING_USER_ID,
+      });
+
+      // Outcome is still success (posts that DID succeed are not dropped).
+      expect(result.outcome).toBe("triggered");
+      expect(result.importedCount).toBe(2);
+      // But the partial-failure summary must now reach the caller...
+      expect(result.message).toBe("1 dari 3 post gagal diimport.");
+      // ...and be persisted as `lastError` on the job record, even though
+      // the job's own status stays "done" (not "failed" — the posts that
+      // succeeded genuinely succeeded).
+      expect(importJobs.markImportSyncJobStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        "done",
+        "1 dari 3 post gagal diimport.",
+      );
+    },
+  );
 });
 
 describe("ImportPostsTriggerUseCase — guard concurrent-import (ADR-093 poin 8)", () => {

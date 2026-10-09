@@ -1385,3 +1385,287 @@ describe("RealOutstandAdapter.uploadMediaWorkingCopy (T-025.5, ADR-106)", () => 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("RealOutstandAdapter.importPosts / fetchImportJobStatus (T-112)", () => {
+  it("importPosts POSTs to /v1/social-accounts/{id}/imports with since/until/limit and maps data.id to importJobId", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(202, {
+        success: true,
+        data: {
+          id: "import-job-1",
+          orgId: ORG_ID,
+          socialAccountId: "acc-ig-1",
+          status: "queued",
+          since: "2026-07-10T00:00:00.000Z",
+          until: "2026-10-08T00:00:00.000Z",
+          limit: 100,
+          imported: 0,
+          skipped: 0,
+          failed: 0,
+          error: null,
+          createdAt: "2026-10-08T00:00:00.000Z",
+          updatedAt: "2026-10-08T00:00:00.000Z",
+          completedAt: null,
+        },
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+    const since = new Date("2026-07-10T00:00:00.000Z");
+    const until = new Date("2026-10-08T00:00:00.000Z");
+
+    const result = await adapter.importPosts("acc-ig-1", {
+      since,
+      until,
+      limit: 100,
+    });
+
+    expect(result).toEqual({ importJobId: "import-job-1" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe(
+      "https://api.outstand.so/v1/social-accounts/acc-ig-1/imports",
+    );
+    expect(init.method).toBe("POST");
+    const body = JSON.parse(init.body);
+    expect(body).toEqual({
+      since: since.toISOString(),
+      until: until.toISOString(),
+      limit: 100,
+    });
+  });
+
+  it("importPosts throws OutstandIntegrationError when response has no valid data.id", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(202, { success: true, data: {} }));
+    const adapter = buildAdapter(fetchImpl);
+
+    await expect(adapter.importPosts("acc-ig-1", {})).rejects.toBeInstanceOf(
+      OutstandIntegrationError,
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetchImportJobStatus maps queued/running to pending WITHOUT calling GET /v1/posts", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(200, {
+        success: true,
+        data: {
+          id: "import-job-1",
+          status: "queued",
+          imported: 0,
+          skipped: 0,
+          failed: 0,
+          error: null,
+        },
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.fetchImportJobStatus(
+      "acc-ig-1",
+      "import-job-1",
+    );
+
+    expect(result).toEqual({ status: "pending", posts: [], error: null });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url] = fetchImpl.mock.calls[0];
+    expect(url).toBe(
+      "https://api.outstand.so/v1/social-accounts/acc-ig-1/imports/import-job-1",
+    );
+  });
+
+  it("fetchImportJobStatus maps failed to failed WITHOUT calling GET /v1/posts", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(200, {
+        success: true,
+        data: {
+          id: "import-job-1",
+          status: "failed",
+          imported: 0,
+          skipped: 0,
+          failed: 0,
+          error: "Outstand rate limited",
+        },
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.fetchImportJobStatus(
+      "acc-ig-1",
+      "import-job-1",
+    );
+
+    expect(result).toEqual({
+      status: "failed",
+      posts: [],
+      error: "Outstand rate limited",
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetchImportJobStatus maps completed to completed, fetching GET /v1/posts?social_account_id=... and mapping matched socialAccounts entry + containers to ImportedPostData[]", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          success: true,
+          data: {
+            id: "import-job-1",
+            status: "completed",
+            since: "2026-07-10T00:00:00.000Z",
+            until: "2026-10-08T00:00:00.000Z",
+            imported: 1,
+            skipped: 0,
+            failed: 0,
+            error: null,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          success: true,
+          data: [
+            {
+              id: "post-1",
+              publishedAt: "2026-08-01T00:00:00.000Z",
+              containers: [
+                {
+                  id: "container-1",
+                  content: "Hello from Instagram",
+                  media: [
+                    { url: "https://cdn.example/a.png", filename: "a.png" },
+                  ],
+                },
+              ],
+              socialAccounts: [
+                {
+                  id: "acc-ig-1",
+                  network: "instagram",
+                  status: "published",
+                  platformPostId: "ig-post-1",
+                  platformPostUrl: "https://instagram.com/p/ig-post-1",
+                  publishedAt: "2026-08-01T00:05:00.000Z",
+                },
+              ],
+            },
+            {
+              // Post targeting a DIFFERENT account — must be skipped.
+              id: "post-2",
+              containers: [{ id: "c2", content: "Other account", media: [] }],
+              socialAccounts: [
+                {
+                  id: "acc-other",
+                  status: "published",
+                  platformPostId: "other-1",
+                  platformPostUrl: null,
+                  publishedAt: null,
+                },
+              ],
+            },
+          ],
+          pagination: { limit: 1, offset: 0, total: 2, count: 2 },
+        }),
+      );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.fetchImportJobStatus(
+      "acc-ig-1",
+      "import-job-1",
+    );
+
+    expect(result).toEqual({
+      status: "completed",
+      posts: [
+        {
+          platformPostId: "ig-post-1",
+          caption: "Hello from Instagram",
+          publishedAt: new Date("2026-08-01T00:05:00.000Z"),
+          platformPostUrl: "https://instagram.com/p/ig-post-1",
+          mediaUrls: ["https://cdn.example/a.png"],
+        },
+      ],
+      error: null,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const [secondUrl] = fetchImpl.mock.calls[1];
+    // Code review PR #149 — `GET /v1/posts` sekarang disempitkan dengan
+    // `created_after`/`created_before` dari `since`/`until` JOB ini (bukan
+    // hanya `social_account_id`+`limit` seperti sebelumnya), supaya hasil
+    // tidak match post lain di akun yang sama di luar rentang job ini.
+    expect(secondUrl).toBe(
+      "https://api.outstand.so/v1/posts?social_account_id=acc-ig-1&limit=1" +
+        "&created_after=2026-07-10T00%3A00%3A00.000Z" +
+        "&created_before=2026-10-08T00%3A00%3A00.000Z",
+    );
+  });
+
+  it("fetchImportJobStatus maps partial to completed WITH posts + a summarized error message", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          success: true,
+          data: {
+            id: "import-job-1",
+            status: "partial",
+            since: "2026-07-10T00:00:00.000Z",
+            until: "2026-10-08T00:00:00.000Z",
+            imported: 1,
+            skipped: 0,
+            failed: 2,
+            error: null,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          success: true,
+          data: [
+            {
+              id: "post-1",
+              containers: [
+                { id: "c1", content: "Partial success post", media: [] },
+              ],
+              socialAccounts: [
+                {
+                  id: "acc-ig-1",
+                  status: "published",
+                  platformPostId: "ig-post-1",
+                  platformPostUrl: null,
+                  publishedAt: null,
+                },
+              ],
+            },
+          ],
+        }),
+      );
+    const adapter = buildAdapter(fetchImpl);
+
+    const result = await adapter.fetchImportJobStatus(
+      "acc-ig-1",
+      "import-job-1",
+    );
+
+    expect(result.status).toBe("completed");
+    expect(result.posts).toHaveLength(1);
+    expect(result.posts[0]?.platformPostId).toBe("ig-post-1");
+    expect(result.error).toBe("2 dari 3 post gagal diimport.");
+  });
+
+  it("fetchImportJobStatus throws OutstandIntegrationError for an unrecognized status value (throw-loud, ADR-059)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(200, {
+        success: true,
+        data: { id: "import-job-1", status: "unknown_future_status" },
+      }),
+    );
+    const adapter = buildAdapter(fetchImpl);
+
+    await expect(
+      adapter.fetchImportJobStatus("acc-ig-1", "import-job-1"),
+    ).rejects.toBeInstanceOf(OutstandIntegrationError);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});
