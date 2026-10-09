@@ -1284,9 +1284,9 @@ Keputusan implementasi non-trivial (dinilai konsisten dengan presedan yang sudah
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| **Status**    | ⏳ Not Started                                                |
+| **Status**    | ✅ Done (5/5 subtask, 2026-10-09)                             |
 | **Domain**    | integration                                                  |
-| **ADR**       | ADR-093, ADR-119 (pola stub-throw "throw loud" alih-alih Fake di produksi) |
+| **ADR**       | ADR-093, ADR-119 (pola stub-throw "throw loud" alih-alih Fake di produksi), ADR-123 (wiring sungguhan — breaking change signature `fetchImportJobStatus` + pemetaan status `partial`) |
 | **Terkait**   | T-090 ✅ (seluruh plumbing aplikasi — DB, job trigger, UI — sudah selesai dan terverifikasi; task ini HANYA menyisakan panggilan HTTP sungguhannya) |
 | **Depends**   | `OUTSTAND_API_KEY` (sudah tersedia) · verifikasi wire-format `POST /v1/social-accounts/{id}/imports` terhadap OpenAPI spec resmi Outstand (belum pernah dilakukan — beda dari endpoint lain di `RealOutstandAdapter` yang sudah) |
 | **Baca dulu** | `05-architecture/integration-layer.md` · `decisions/ADR-093-import-posts-dari-social-account-status-imported-read-only.md` · `apps/web/src/lib/adapters/outstand/real-outstand-adapter.ts` (docstring `importPosts`/`fetchImportJobStatus`) |
@@ -1316,11 +1316,87 @@ manual (code review PR #148) sudah tidak lagi menghitung percobaan yang
 gagal karena ini, jadi minimal tidak mengunci jatah sinkronisasi — tapi
 fiturnya sendiri tetap tidak berfungsi.
 
-- [ ] **T-112.1** Verifikasi wire-format `POST /v1/social-accounts/{id}/imports` (request/response shape, auth, error codes) langsung terhadap OpenAPI spec resmi Outstand — jangan asumsikan dari deskripsi fitur di ADR-093
-- [ ] **T-112.2** Implementasi `RealOutstandAdapter.importPosts` sungguhan (ganti stub-throw) sesuai hasil verifikasi T-112.1
-- [ ] **T-112.3** Verifikasi wire-format `GET` status import job (dipakai `fetchImportJobStatus`) — kemungkinan polling atau webhook, cek OpenAPI spec apakah ada event webhook terpisah untuk ini (konsisten pola `OutstandWebhookProcessor` kalau ada)
-- [ ] **T-112.4** Implementasi `RealOutstandAdapter.fetchImportJobStatus` sungguhan (ganti stub-throw) sesuai hasil verifikasi T-112.3
-- [ ] **T-112.5** Verifikasi end-to-end di browser + DB dev Supabase sungguhan (pola sama verifikasi T-090 addendum di atas) — "Sync Now" benar-benar menarik post nyata dari akun yang terhubung
+- [x] **T-112.1** Verifikasi wire-format `POST /v1/social-accounts/{id}/imports` (request/response shape, auth, error codes) langsung terhadap OpenAPI spec resmi Outstand — jangan asumsikan dari deskripsi fitur di ADR-093
+- [x] **T-112.2** Implementasi `RealOutstandAdapter.importPosts` sungguhan (ganti stub-throw) sesuai hasil verifikasi T-112.1
+- [x] **T-112.3** Verifikasi wire-format `GET` status import job (dipakai `fetchImportJobStatus`) — kemungkinan polling atau webhook, cek OpenAPI spec apakah ada event webhook terpisah untuk ini (konsisten pola `OutstandWebhookProcessor` kalau ada)
+- [x] **T-112.4** Implementasi `RealOutstandAdapter.fetchImportJobStatus` sungguhan (ganti stub-throw) sesuai hasil verifikasi T-112.3
+- [x] **T-112.5** Verifikasi end-to-end di browser + DB dev Supabase sungguhan (pola sama verifikasi T-090 addendum di atas) — "Sync Now" benar-benar menarik post nyata dari akun yang terhubung
+
+**Update (2026-10-08) — T-112.1–T-112.4 selesai, T-112.5 belum (4/5
+subtask):** Elon Backend Engineer mengimplementasikan wiring sungguhan
+(`importPosts` + `fetchImportJobStatus`), dua panggilan HTTP diverifikasi
+terhadap OpenAPI spec resmi Outstand (`POST /v1/social-accounts/{id}/
+imports` dan `GET /v1/social-accounts/{id}/imports/{importId}` +
+`GET /v1/posts` tambahan untuk data post). 1 putaran review Ridwan
+Architecture Reviewer: menemukan **governance gap kritis** — kode sudah
+menyebut "ADR-123" 7x di komentar/docstring tapi file ADR-nya belum pernah
+dibuat (sudah dibuat, lihat `decisions/
+ADR-123-wiring-import-posts-fetchimportjobstatus-outstandaccountid-partial-status-ki112.md`),
+plus 2 temuan ringan yang sudah diperbaiki: sitasi OpenAPI untuk
+`GET /v1/posts` LIST diperjelas (dicek langsung untuk endpoint LIST, bukan
+diekstrapolasi dari endpoint singular), dan `console.warn` ditambahkan
+untuk kasus silent-fail (`imported > 0` tapi tidak ada post yang berhasil
+dipetakan dari `GET /v1/posts` — kemungkinan drift shape API, diperlakukan
+sebagai 0 post, bukan error, tapi tidak boleh didiamkan tanpa jejak). QA
+Najwa: tidak ada regresi (`git diff --stat` tidak menyentuh file UI apa
+pun), `bun run test` 645 passed/6 skipped/0 failed. **T-112.5 belum
+tuntas** — guard cooldown manual 24 jam (`MANUAL_COOLDOWN_MS`, ADR-093
+poin 9) sudah terpakai oleh percobaan sync sebelumnya pada akun test
+"Cook It Real Good" (cooldown sampai `2026-10-09T08:42:24Z`), dan sandbox
+Najwa tidak bisa akses `.env.local`/MCP Supabase untuk verifikasi DB
+langsung — gap verifikasi ini sudah terjadi 3x berturut-turut di sesi
+berbeda (T-090 sebelumnya + 2 percobaan T-112 ini). Tidak ada bukti bug.
+Saran untuk King Rezi: coba "Sync Now" lagi setelah cooldown berakhir
+(`2026-10-09T08:42:24Z`) untuk menuntaskan T-112.5.
+
+**Update (2026-10-09) — T-112.5 tuntas, T-112 `✅ Done` (5/5 subtask):**
+King Rezi menemukan bug baru saat testing manual setelah cooldown berakhir —
+"Sync Now" selalu berakhir gagal dengan status `pending`. Root cause: di
+`ImportPostsTriggerUseCase.runImportSync` (`apps/web/src/domains/publishing/
+services/import-posts-trigger.use-case.ts`), `fetchImportJobStatus` cuma
+dipanggil **sekali** langsung setelah `importPosts()`, padahal job Outstand
+betulan async (butuh waktu diproses) — status pertama yang didapat hampir
+selalu `pending`/`queued`/`running`, langsung ditandai gagal. Bug ini murni
+di lapisan use-case trigger, **bukan** di adapter/kontrak yang sudah
+diverifikasi T-112.1–T-112.4 (tidak mengubah ADR-123).
+
+Perbaikan Elon Backend Engineer (review Ridwan: array temuan kosong, tidak
+ada pelanggaran arsitektur/bug blocking):
+- Method privat baru `pollImportJobStatus` — polling `fetchImportJobStatus`
+  tiap 2 detik sampai status resolve (`completed`/`failed`) atau timeout 25
+  detik (margin dari budget 30 detik BG-D05 job runner).
+- Timeout masih `pending` → pesan error baru yang membedakan "masih
+  diproses, coba lagi nanti" dari kegagalan permanen.
+- Parameter `sleep: SleepFn` opsional baru di constructor untuk injeksi
+  test (default `setTimeout` asli) — composition root
+  (`outstand-workspace-service.ts`) tidak perlu diubah.
+- Guard cooldown 24 jam (`MANUAL_COOLDOWN_MS`) sempat dinonaktifkan
+  sementara untuk kebutuhan testing berulang, lalu di-revert penuh —
+  dikonfirmasi utuh 100% oleh Ridwan.
+- 3 test baru untuk perilaku polling. Total test naik ke 648 passed/6
+  skipped/0 failed.
+
+Verifikasi end-to-end akhirnya berhasil di dev server + DB Supabase dev
+nyata, user `rezi@insvire.com`, workspace "Lunch", akun Facebook "Cook It
+Real Good" (`connectedAccountId=d17e38ce-fbae-434c-ab27-e417fca384ab`,
+`outstandAccountId=Kav29`): klik "Sync Now" → tombol "Syncing..." selama
+±20 detik (konsisten polling) → kembali normal, tidak langsung gagal.
+Calendar menampilkan **16+ post asli** berstatus `Imported` (4 di Oktober +
+12+ di September, rentang lookback 90 hari). Detail post diverifikasi:
+caption lengkap dan masuk akal, badge "Imported" terpasang, platform
+Facebook benar.
+
+Satu observasi non-blocking (di luar scope T-112, tidak dibuatkan task/KI
+baru): popover post menampilkan "Media belum tersedia untuk preview" —
+`mediaUrls` sudah benar terisi di backend, tapi thumbnail-nya belum
+di-render di UI Imported — terkait rancangan Claude Design yang menurut
+catatan T-090.5 sebelumnya memang masih `blocked`. Disebutkan di sini
+sebagai saran untuk King Rezi, bukan gap governance.
+
+Review Ridwan juga mencatat satu catatan non-blocking terpisah: docstring
+`pollImportJobStatus` menyebut status "partial" padahal nilai itu sudah
+dipetakan jadi "completed" sebelum sampai ke use-case ini (ADR-123) — sedikit
+stale tapi tidak memengaruhi kebenaran kode, tidak wajib diperbaiki.
 
 ---
 

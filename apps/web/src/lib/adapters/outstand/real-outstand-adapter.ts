@@ -14,6 +14,7 @@ import {
   type InboxCommentData,
   type FetchPostMetricsResult,
   type FetchWorkspaceMetricsResult,
+  type ImportedPostData,
   type ImportJobOutcome,
   type ImportPostsInput,
   type ImportJobHandle,
@@ -1354,64 +1355,245 @@ export function createRealOutstandAdapter(
     },
 
     /**
-     * Import Posts dari Social Account (T-090, ADR-093 poin 5) — **STUB
-     * BELUM DI-WIRE** (keputusan eksplisit sesi rebase 2026-10-08, lihat
-     * amandemen ADR-119 di docstring `ImportPostsTriggerUseCase`).
+     * Import Posts dari Social Account (T-090/T-112, ADR-093 poin 5) —
+     * **diverifikasi terhadap OpenAPI spec resmi Outstand**
+     * (`POST https://api.outstand.so/v1/social-accounts/{id}/imports`,
+     * diambil 2026-10-08 lewat WebFetch
+     * `api.outstand.so/v1/social-accounts/openapi.json`): body
+     * `{ since?, until?, limit? }` (semua ISO 8601 / integer, opsional —
+     * kita selalu mengirim ketiganya karena `ImportPostsTriggerUseCase`
+     * selalu menyuplainya). Response **202 Accepted**
+     * `{ success, data: { id, orgId, socialAccountId, status, since, until,
+     * limit, imported, skipped, failed, error, createdAt, updatedAt,
+     * completedAt } }` — job langsung di-enqueue async di sisi Outstand,
+     * `data.id` dipetakan ke `ImportJobHandle.importJobId`.
      *
-     * Kontrak `IOutstandAdapter.importPosts`/`fetchImportJobStatus`
-     * (`packages/shared/src/contracts/outstand-adapter.ts`) dan use-case
-     * pemanggilnya (`ImportPostsTriggerUseCase`/`ImportPostsProcessUseCase`,
-     * domain `publishing`) SUDAH SELESAI dan sudah diverifikasi lewat unit
-     * test (double lokal) — yang BELUM ada adalah implementasi HTTP call
-     * sungguhan ke endpoint Outstand `POST /v1/social-accounts/{id}/imports`
-     * (berbayar, async) di method ini.
-     *
-     * **Kenapa stub-throw, bukan implementasi langsung (dipertimbangkan,
-     * bukan dilewatkan diam-diam):** method lain di adapter ini
-     * (`fetchComments`/`replyToComment`/`schedulePost`/dst.) semuanya sudah
-     * diverifikasi terhadap OpenAPI spec resmi Outstand sebelum
-     * diimplementasikan (lihat catatan di docstring kelas). Endpoint
-     * `/imports` BELUM pernah diverifikasi ke spec resmi di sesi ini — scope
-     * T-090 (MVP) juga secara eksplisit TIDAK mensyaratkan hasil import
-     * nyata segera (T-090.5 UI yang menampilkannya masih `blocked`
-     * menunggu rancangan Claude Design). Menebak shape request/response
-     * tanpa verifikasi spec berisiko mengulang kesalahan yang sudah pernah
-     * terjadi di method lain adapter ini (lihat "CATATAN PENTING" di
-     * docstring kelas soal tebakan best-effort yang ternyata salah) —
-     * throw eksplisit (pola ADR-059/ADR-119 "throw loud") lebih aman
-     * daripada silent-wrong-shape. `ImportPostsTriggerUseCase.runImportSync`
-     * sudah menangani error ini dengan baik: job tercatat `status: "failed"`
-     * dengan pesan ini sebagai `lastError`, TIDAK PERNAH menggagalkan
-     * Connect Account yang memicunya (best-effort, lihat
-     * `WorkspaceService.completeAccountConnection`).
-     *
-     * Follow-up untuk implementasi sungguhan: verifikasi
-     * `https://api.outstand.so/v1/social-accounts/openapi.json` (pola sama
-     * method lain di kelas ini), lalu ganti kedua method ini jadi
-     * `client.request(...)` sungguhan.
+     * Status endpoint ini TIDAK membawa data post sesungguhnya (hanya
+     * angka ringkasan `imported`/`skipped`/`failed`) — detail mapping
+     * lengkap (dua panggilan HTTP, pemetaan status enum, join ke
+     * `GET /v1/posts`) ada di docstring `fetchImportJobStatus` di bawah
+     * (ADR-123, keputusan King Rezi 2026-10-08, menutup gap kontrak yang
+     * dilaporkan T-112.3).
      */
     async importPosts(
-      _outstandAccountId: string,
-      _input: ImportPostsInput,
+      outstandAccountId: string,
+      input: ImportPostsInput,
     ): Promise<ImportJobHandle> {
-      throw new OutstandIntegrationError({
-        type: "client_error",
-        message:
-          "OutstandAdapter.importPosts belum di-wire ke endpoint Outstand sungguhan (stub-throw T-090, lihat docstring method ini) — endpoint POST /v1/social-accounts/{id}/imports belum diverifikasi terhadap OpenAPI spec resmi Outstand.",
-        retryable: false,
-      });
+      const response = await client.request<Record<string, unknown>>(
+        `/v1/social-accounts/${encodeURIComponent(outstandAccountId)}/imports`,
+        {
+          method: "POST",
+          body: {
+            ...(input.since ? { since: input.since.toISOString() } : {}),
+            ...(input.until ? { until: input.until.toISOString() } : {}),
+            ...(typeof input.limit === "number" ? { limit: input.limit } : {}),
+          },
+        },
+      );
+
+      const data =
+        typeof response.data === "object" && response.data !== null
+          ? (response.data as Record<string, unknown>)
+          : {};
+
+      const importJobId = data.id;
+      if (typeof importJobId !== "string" || importJobId.length === 0) {
+        throw new OutstandIntegrationError({
+          type: "client_error",
+          message:
+            "OutstandAdapter: response POST /v1/social-accounts/{id}/imports tidak mengandung id job yang valid.",
+          retryable: false,
+        });
+      }
+
+      return { importJobId };
     },
 
-    /** Pasangan `importPosts` — lihat docstring method itu untuk alasan stub-throw. */
+    /**
+     * Pasangan `importPosts` (T-112, ADR-123) — **diverifikasi terhadap
+     * OpenAPI spec resmi Outstand**, dua panggilan HTTP berurutan:
+     *
+     * 1. `GET /v1/social-accounts/{outstandAccountId}/imports/{importJobId}`
+     *    — status job: `{ success, data: { status, since, until, imported,
+     *    skipped, failed, error, ... } }`. `outstandAccountId` WAJIB di
+     *    path (gap kontrak T-112 yang menyebabkan signature method ini
+     *    diamandemen dari `(importJobId)` jadi
+     *    `(outstandAccountId, importJobId)`, ADR-123).
+     * 2. Kalau status real API `completed`/`partial` → `GET /v1/posts?
+     *    social_account_id={outstandAccountId}` untuk data post
+     *    sesungguhnya (endpoint status TIDAK membawanya, hanya angka
+     *    ringkasan). Limit diset ke `imported + skipped` job ini (atau 100
+     *    kalau nol/tidak ada) — TIDAK ada pagination loop (YAGNI, sama
+     *    semantik `limit` yang dipakai `importPosts` membuat job ini).
+     *
+     * **Pemetaan status (ADR-123, keputusan King Rezi 2026-10-08):**
+     * `queued|running` → `"pending"` (posts kosong, tidak fetch /posts
+     * sama sekali — hemat 1 network call untuk job yang belum selesai).
+     * `completed` → `"completed"`. `partial` → **JUGA `"completed"`**
+     * (post yang berhasil tetap diambil, bukan di-drop) dengan `error`
+     * diisi ringkasan `"{failed} dari {imported+skipped+failed} post
+     * gagal diimport"` supaya caller tahu ini sukses sebagian, bukan
+     * penuh. `failed` → `"failed"` (posts kosong, `error` dari job).
+     *
+     * **Mapping `GET /v1/posts` → `ImportedPostData[]` — diverifikasi
+     * terhadap OpenAPI spec resmi Outstand** (`api.outstand.so/v1/posts/
+     * openapi.json`, diambil 2026-10-08, dicek LANGSUNG untuk endpoint LIST
+     * `GET /v1/posts`, bukan diekstrapolasi dari endpoint singular
+     * `GET /v1/posts/{id}` yang dipakai `fetchPostOutcome`): item schema
+     * endpoint list mereferensikan definisi yang SAMA dengan endpoint
+     * singular, jadi `containers[]` dan `socialAccounts[]` dikonfirmasi
+     * ADA sekaligus di tiap item array `data`. response per post punya
+     * `containers[]` (content + media di level post, BUKAN per-account)
+     * dan `socialAccounts[]` (platformPostId/platformPostUrl/
+     * publishedAt/status PER akun tujuan — satu post bisa multi-akun).
+     * Untuk setiap post: cari entri `socialAccounts[]` yang `id` cocok
+     * `outstandAccountId` DAN `status === "published"` DAN
+     * `platformPostId` tidak null (post belum publish/gagal di akun ini
+     * tidak relevan untuk Import — ADR-093 hanya menyasar post yang sudah
+     * live) — post tanpa entri cocok di-skip. `caption` = seluruh
+     * `containers[].content` digabung `"\n\n"` (bisa lebih dari satu
+     * container untuk post multi-bagian; join adalah keputusan pragmatis,
+     * belum ada data real untuk memverifikasi apakah Outstand pernah
+     * mengirim >1 container untuk kasus Import). `mediaUrls` = seluruh
+     * `containers[].media[].url` digabung satu array datar.
+     * `publishedAt` diambil dari field PER-akun (`socialAccounts[].
+     * publishedAt`), fallback ke `since`/`until` job (lalu `new Date()`)
+     * kalau null — konsisten pola `toDateOrNull` fallback di
+     * `fetchComments`.
+     */
     async fetchImportJobStatus(
-      _importJobId: string,
+      outstandAccountId: string,
+      importJobId: string,
     ): Promise<ImportJobOutcome> {
-      throw new OutstandIntegrationError({
-        type: "client_error",
-        message:
-          "OutstandAdapter.fetchImportJobStatus belum di-wire ke endpoint Outstand sungguhan (stub-throw T-090, lihat docstring importPosts) — tidak ada importJobId yang pernah benar-benar dibuat oleh importPosts di atas.",
-        retryable: false,
-      });
+      const statusResponse = await client.request<Record<string, unknown>>(
+        `/v1/social-accounts/${encodeURIComponent(outstandAccountId)}/imports/${encodeURIComponent(importJobId)}`,
+        { method: "GET" },
+      );
+
+      const job =
+        typeof statusResponse.data === "object" && statusResponse.data !== null
+          ? (statusResponse.data as Record<string, unknown>)
+          : {};
+
+      const rawStatus = typeof job.status === "string" ? job.status : "";
+      const imported = toNumber(job.imported);
+      const skipped = toNumber(job.skipped);
+      const failed = toNumber(job.failed);
+      const jobError = toStringOrNull(job.error);
+
+      if (rawStatus === "queued" || rawStatus === "running") {
+        return { status: "pending", posts: [], error: null };
+      }
+
+      if (rawStatus === "failed") {
+        return {
+          status: "failed",
+          posts: [],
+          error: jobError ?? "Import job gagal di sisi Outstand.",
+        };
+      }
+
+      if (rawStatus !== "completed" && rawStatus !== "partial") {
+        // Status tidak dikenali (API berubah di luar spec yang
+        // diverifikasi) — throw loud alih-alih diam-diam menganggap
+        // sukses/gagal (ADR-059).
+        throw new OutstandIntegrationError({
+          type: "client_error",
+          message: `OutstandAdapter.fetchImportJobStatus: status job tidak dikenali ("${rawStatus}").`,
+          retryable: false,
+        });
+      }
+
+      const postsResponse = await client.request<Record<string, unknown>>(
+        "/v1/posts",
+        {
+          method: "GET",
+          query: {
+            social_account_id: outstandAccountId,
+            limit: String(imported + skipped > 0 ? imported + skipped : 100),
+          },
+        },
+      );
+
+      const rawPosts = Array.isArray(postsResponse.data)
+        ? (postsResponse.data as Record<string, unknown>[])
+        : [];
+
+      const since = toDateOrNull(job.since);
+      const until = toDateOrNull(job.until);
+      const fallbackPublishedAt = until ?? since ?? new Date();
+
+      const posts: ImportedPostData[] = [];
+      for (const rawPost of rawPosts) {
+        const socialAccounts = Array.isArray(rawPost.socialAccounts)
+          ? (rawPost.socialAccounts as Record<string, unknown>[])
+          : [];
+        const matchedAccount = socialAccounts.find(
+          (account) =>
+            account.id === outstandAccountId &&
+            account.status === "published" &&
+            typeof account.platformPostId === "string" &&
+            account.platformPostId.length > 0,
+        );
+        if (!matchedAccount) continue;
+
+        const containers = Array.isArray(rawPost.containers)
+          ? (rawPost.containers as Record<string, unknown>[])
+          : [];
+        const caption = containers
+          .map((container) =>
+            typeof container.content === "string" ? container.content : "",
+          )
+          .filter((content) => content.length > 0)
+          .join("\n\n");
+        const mediaUrls: string[] = [];
+        for (const container of containers) {
+          const media = Array.isArray(container.media)
+            ? (container.media as Record<string, unknown>[])
+            : [];
+          for (const item of media) {
+            if (typeof item.url === "string" && item.url.length > 0) {
+              mediaUrls.push(item.url);
+            }
+          }
+        }
+
+        posts.push({
+          platformPostId: matchedAccount.platformPostId as string,
+          caption,
+          publishedAt:
+            toDateOrNull(matchedAccount.publishedAt) ??
+            toDateOrNull(rawPost.publishedAt) ??
+            fallbackPublishedAt,
+          platformPostUrl: toStringOrNull(matchedAccount.platformPostUrl),
+          mediaUrls,
+        });
+      }
+
+      // Code review Ridwan Architecture Reviewer (T-112) — Outstand bilang
+      // `imported` post berhasil, tapi mapping di atas tidak menemukan
+      // SATUPUN entri `socialAccounts[]` yang cocok (id + status
+      // "published" + platformPostId) untuk `outstandAccountId` ini. Ini
+      // kemungkinan drift shape API (asumsi field berubah) — bukan error
+      // fatal (job tetap valid, caller lain sudah menangani 0 post dengan
+      // baik), tapi TIDAK boleh didiamkan tanpa jejak (semangat "throw
+      // loud" ADR-059, versi non-fatal: visibility, bukan exception).
+      if (imported > 0 && posts.length === 0) {
+        console.warn(
+          `[RealOutstandAdapter] fetchImportJobStatus: job "${importJobId}" (akun ${outstandAccountId}) melaporkan imported=${imported} tapi tidak ada post yang berhasil dipetakan dari GET /v1/posts — kemungkinan shape response Outstand berubah (socialAccounts[]/containers[] tidak sesuai ekspektasi) atau race (post belum muncul di endpoint list). Diperlakukan sebagai 0 post, BUKAN error, tapi perlu investigasi kalau berulang.`,
+        );
+      }
+
+      if (rawStatus === "partial") {
+        const total = imported + skipped + failed;
+        return {
+          status: "completed",
+          posts,
+          error: `${failed} dari ${total} post gagal diimport.`,
+        };
+      }
+
+      return { status: "completed", posts, error: null };
     },
   };
 }

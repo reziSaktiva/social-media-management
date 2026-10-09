@@ -136,6 +136,15 @@ describe("ImportPostsTriggerUseCase.triggerAuto (T-090.3, ADR-093 poin 7)", () =
       OUTSTAND_ACCOUNT_ID,
       expect.objectContaining({ limit: 100 }),
     );
+    // T-112/ADR-123 — `fetchImportJobStatus` sekarang butuh `outstandAccountId`
+    // SELAIN `importJobId` (endpoint real `GET /v1/social-accounts/{id}/
+    // imports/{importId}` butuh account id di path) — pastikan use-case
+    // menyuplai `outstandAccountId` yang SAMA dengan yang dipakai `importPosts`,
+    // bukan cuma `importJobId` dari hasil `importPosts`.
+    expect(outstandAdapter.fetchImportJobStatus).toHaveBeenCalledWith(
+      OUTSTAND_ACCOUNT_ID,
+      "fake-import-job",
+    );
     // Dipanggil dua kali: sekali saat request mulai (lastImportRequestedAt),
     // sekali saat sukses selesai (lastImportedUntil) — ADR-093 poin 6.
     expect(watermark.updateImportWatermark).toHaveBeenCalledTimes(2);
@@ -199,6 +208,142 @@ describe("ImportPostsTriggerUseCase.triggerAuto (T-090.3, ADR-093 poin 7)", () =
     expect(watermark.updateImportWatermark).toHaveBeenCalledWith(
       expect.objectContaining({ actingUserId: ACTING_USER_ID }),
     );
+  });
+});
+
+describe("ImportPostsTriggerUseCase — polling fetchImportJobStatus (bug fix 2026-10-09, King Rezi testing manual)", () => {
+  it('polls with the injected sleep (not real setTimeout) until status resolves completed, instead of failing immediately on the first "pending" response', async () => {
+    const importJobs = createFakeImportJobRepository();
+    let callCount = 0;
+    const fetchImportJobStatus = vi.fn(async (): Promise<ImportJobOutcome> => {
+      callCount += 1;
+      // Outstand async beneran — 2 panggilan pertama "pending" (queued/running
+      // dipetakan ke ini di RealOutstandAdapter), baru yang ketiga "completed".
+      if (callCount < 3) {
+        return { status: "pending", posts: [], error: null };
+      }
+      return { status: "completed", posts: [], error: null };
+    });
+    const outstandAdapter = createFakeOutstandAdapter({
+      fetchImportJobStatus,
+    });
+    const watermark = createFakeWatermarkPort();
+    const processUseCase = createProcessUseCase(0);
+    const sleep = vi.fn(async () => undefined);
+
+    const useCase = new ImportPostsTriggerUseCase(
+      importJobs,
+      outstandAdapter,
+      watermark,
+      processUseCase,
+      sleep,
+    );
+
+    const result = await useCase.triggerAuto({
+      workspaceId: WORKSPACE_ID,
+      connectedAccountId: CONNECTED_ACCOUNT_ID,
+      outstandAccountId: OUTSTAND_ACCOUNT_ID,
+      platform: SocialPlatform.Instagram,
+      actingUserId: ACTING_USER_ID,
+    });
+
+    expect(result.outcome).toBe("triggered");
+    expect(fetchImportJobStatus).toHaveBeenCalledTimes(3);
+    // Delay HANYA di antara percobaan (2 kali untuk 3 panggilan), bukan
+    // sebelum panggilan pertama — dan selalu 2 detik (IMPORT_STATUS_POLL_INTERVAL_MS).
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenNthCalledWith(1, 2_000);
+    expect(sleep).toHaveBeenNthCalledWith(2, 2_000);
+  });
+
+  it('gives up after the ~25s timeout budget and marks the job failed with a message distinguishing "still processing" from a real failure', async () => {
+    const importJobs = createFakeImportJobRepository();
+    const fetchImportJobStatus = vi.fn(async (): Promise<ImportJobOutcome> => ({
+      status: "pending",
+      posts: [],
+      error: null,
+    }));
+    const outstandAdapter = createFakeOutstandAdapter({
+      fetchImportJobStatus,
+    });
+    const watermark = createFakeWatermarkPort();
+    const processUseCase = createProcessUseCase(0);
+    // Sleep palsu yang memajukan Date.now() secara efektif dengan TIDAK
+    // menunggu sungguhan — simulasikan 25+ detik berlalu lewat mock
+    // Date.now() supaya test ini TIDAK benar-benar lambat 25 detik.
+    const realDateNow = Date.now;
+    let elapsedMs = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => realDateNow() + elapsedMs);
+    const sleep = vi.fn(async () => {
+      elapsedMs += 2_000;
+    });
+
+    const useCase = new ImportPostsTriggerUseCase(
+      importJobs,
+      outstandAdapter,
+      watermark,
+      processUseCase,
+      sleep,
+    );
+
+    try {
+      const result = await useCase.triggerAuto({
+        workspaceId: WORKSPACE_ID,
+        connectedAccountId: CONNECTED_ACCOUNT_ID,
+        outstandAccountId: OUTSTAND_ACCOUNT_ID,
+        platform: SocialPlatform.Instagram,
+        actingUserId: ACTING_USER_ID,
+      });
+
+      expect(result.outcome).toBe("failed");
+      expect(result.message).toMatch(/masih diproses di Outstand/);
+      expect(result.message).not.toMatch(/Outstand down/);
+      expect(importJobs.markImportSyncJobStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        "failed",
+        expect.stringContaining("masih diproses di Outstand"),
+      );
+      // Timeout 25s / interval 2s → berhenti SETELAH elapsedMs >= 25_000,
+      // yakni panggilan ke-13 (call 1 di t=0, lalu +2s tiap sleep sampai
+      // t=24_000 masih < 25_000 jadi poll lagi, t=26_000 keluar loop).
+      expect(fetchImportJobStatus.mock.calls.length).toBeGreaterThan(1);
+    } finally {
+      vi.spyOn(Date, "now").mockRestore();
+    }
+  });
+
+  it("does NOT poll at all when the first fetchImportJobStatus call already resolves completed/failed (no wasted delay on the happy path)", async () => {
+    const importJobs = createFakeImportJobRepository();
+    const fetchImportJobStatus = vi.fn(async (): Promise<ImportJobOutcome> => ({
+      status: "completed",
+      posts: [],
+      error: null,
+    }));
+    const outstandAdapter = createFakeOutstandAdapter({
+      fetchImportJobStatus,
+    });
+    const watermark = createFakeWatermarkPort();
+    const processUseCase = createProcessUseCase(0);
+    const sleep = vi.fn(async () => undefined);
+
+    const useCase = new ImportPostsTriggerUseCase(
+      importJobs,
+      outstandAdapter,
+      watermark,
+      processUseCase,
+      sleep,
+    );
+
+    await useCase.triggerAuto({
+      workspaceId: WORKSPACE_ID,
+      connectedAccountId: CONNECTED_ACCOUNT_ID,
+      outstandAccountId: OUTSTAND_ACCOUNT_ID,
+      platform: SocialPlatform.Instagram,
+      actingUserId: ACTING_USER_ID,
+    });
+
+    expect(fetchImportJobStatus).toHaveBeenCalledTimes(1);
+    expect(sleep).not.toHaveBeenCalled();
   });
 });
 

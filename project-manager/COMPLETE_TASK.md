@@ -8,6 +8,138 @@ Seluruh perubahan penting pada dokumentasi maupun implementasi project dicatat p
 
 ---
 
+## 2026-10-09 — T-112 ✅ Done (5/5 subtask) — Fix bug polling status async + verifikasi end-to-end berhasil
+
+Melanjutkan sesi 2026-10-08 (T-112.1–T-112.4 sudah selesai, T-112.5
+tertunda 3x berturut-turut karena cooldown manual 24 jam + keterbatasan
+sandbox). King Rezi akhirnya mencoba "Sync Now" setelah cooldown berakhir
+dan menemukan bug baru: tombol selalu berakhir gagal dengan pesan status
+`pending`.
+
+**Root cause:** `ImportPostsTriggerUseCase.runImportSync`
+(`apps/web/src/domains/publishing/services/import-posts-trigger.use-case.ts`)
+hanya memanggil `fetchImportJobStatus` sekali langsung setelah
+`importPosts()` — padahal job Outstand betulan async (butuh waktu
+diproses), jadi status pertama yang didapat hampir selalu
+`pending`/`queued`/`running` dan langsung ditandai gagal. Bug ini murni di
+lapisan use-case trigger, bukan di adapter/kontrak yang sudah diverifikasi
+T-112.1–T-112.4 — ADR-123 tidak berubah.
+
+**Fix (Elon Backend Engineer):**
+- Method privat baru `pollImportJobStatus` — polling `fetchImportJobStatus`
+  tiap 2 detik sampai status resolve (`completed`/`failed`) atau timeout 25
+  detik (margin dari budget 30 detik BG-D05 job runner).
+- Timeout dengan status masih `pending` → pesan error baru yang
+  membedakan "masih diproses, coba lagi nanti" dari kegagalan permanen.
+- Parameter `sleep: SleepFn` opsional baru di constructor untuk injeksi
+  test (default `setTimeout` asli) — composition root
+  (`outstand-workspace-service.ts`) tidak perlu diubah.
+- Guard cooldown manual 24 jam (`MANUAL_COOLDOWN_MS`) sempat dinonaktifkan
+  sementara untuk kebutuhan testing berulang, lalu di-revert penuh.
+- 3 test baru untuk perilaku polling. Total test naik ke 648 passed/6
+  skipped/0 failed.
+
+**Review Ridwan Architecture Reviewer:** array temuan kosong (tidak ada
+pelanggaran arsitektur/bug blocking). Guard cooldown dikonfirmasi utuh
+100% (tidak ada sisa bypass). Satu catatan non-blocking: docstring
+`pollImportJobStatus` menyebut status "partial" padahal nilai itu sudah
+dipetakan jadi "completed" sebelum sampai ke use-case ini (ADR-123) —
+sedikit stale, tidak wajib diperbaiki.
+
+**T-112.5 verifikasi end-to-end — akhirnya berhasil:** testing sungguhan
+di dev server + DB Supabase dev nyata, user `rezi@insvire.com`, workspace
+"Lunch", akun Facebook "Cook It Real Good"
+(`connectedAccountId=d17e38ce-fbae-434c-ab27-e417fca384ab`,
+`outstandAccountId=Kav29`):
+- Klik "Sync Now" → tombol "Syncing..." selama ±20 detik (konsisten
+  polling) → kembali normal, tidak langsung gagal.
+- Calendar menampilkan 16+ post asli berstatus `Imported` (4 di Oktober:
+  tanggal 4,5,6,7 + 12+ di September, rentang lookback 90 hari).
+- Detail post diverifikasi: caption lengkap dan masuk akal (contoh: "Air
+  Fryer Roast Beef (Ultimate Guide)..." dengan hashtag), badge "Imported"
+  terpasang, platform Facebook benar.
+
+**Observasi non-blocking (di luar scope T-112, tidak dibuatkan task/KI
+baru):** popover post menampilkan "Media belum tersedia untuk preview" —
+`mediaUrls` sudah benar terisi di backend, tapi thumbnail-nya belum
+di-render di UI Imported. Terkait rancangan Claude Design yang menurut
+catatan T-090.5 sebelumnya memang masih `blocked`. Dicatat sebagai
+observasi/saran untuk King Rezi, bukan gap governance.
+
+Dokumentasi diperbarui: `tasks/v02-publishing-mvp.md` § T-112 (status
+`✅ Done` 5/5 subtask, update log baru), `TASKS.md` (hitungan v0.2:
+25 ✅ · 2 🟡 · 1 ⏳), `PROJECT_STATE.md` (Snapshot Top Next Tasks,
+Completed Ringkasan — bullet T-111 lama digeser keluar untuk menjaga
+batas 5 item).
+
+---
+
+## 2026-10-08 — T-112 4/5 subtask (T-112.1–T-112.4 selesai, T-112.5 pending) — Wiring Outstand import sungguhan + ADR-123 baru
+
+Menutup gap yang ditinggalkan T-090 (✅ Done tanpa wiring HTTP sungguhan ke
+endpoint import Outstand — sebelumnya sengaja stub-throw, ADR-059/ADR-119
+"throw loud"). Implementasi Elon Backend Engineer, 1 putaran review Ridwan
+Architecture Reviewer, QA Najwa QA Engineer — semua dalam sesi ini.
+
+**Implementasi (Elon Backend Engineer):**
+- `RealOutstandAdapter.importPosts` — wiring sungguhan `POST
+  /v1/social-accounts/{id}/imports` (diverifikasi OpenAPI spec resmi
+  Outstand, diambil 2026-10-08), ganti stub-throw.
+- `RealOutstandAdapter.fetchImportJobStatus` — wiring sungguhan, DUA
+  panggilan HTTP: `GET /v1/social-accounts/{id}/imports/{importId}`
+  (status + ringkasan angka) lalu, kalau status `completed`/`partial`,
+  `GET /v1/posts?social_account_id=...` (data post sesungguhnya — endpoint
+  status ternyata tidak membawanya), difilter via `socialAccounts[]` yang
+  cocok `id` + `status === "published"`.
+- **Breaking change kontrak publik** `IOutstandAdapter.fetchImportJobStatus`
+  — signature berubah dari `(importJobId)` jadi
+  `(outstandAccountId, importJobId)` (endpoint sungguhan mensyaratkan
+  account id di path). Call site `ImportPostsTriggerUseCase.runImportSync`
+  diupdate.
+- Pemetaan status real API (5 nilai: `queued|running|completed|failed|
+  partial`) ke kontrak `ImportJobStatus` (3 nilai): `queued`/`running` →
+  `pending`; `completed` → `completed`; **`partial` → `completed`** (post
+  berhasil tetap diambil, TIDAK di-drop, `error` diisi ringkasan jumlah
+  post gagal — keputusan produk King Rezi, disetujui via
+  `AskUserQuestion`); `failed` → `failed`; status tak dikenal → throw
+  `OutstandIntegrationError`.
+
+**Review (Ridwan Architecture Reviewer) — 1 putaran, lulus bersih setelah
+perbaikan:**
+- **Temuan kritis:** kode sudah menyebut "ADR-123" 7x di komentar/docstring
+  tapi file ADR-nya belum pernah dibuat (melanggar `AGENTS.md` rule 4) —
+  ditutup dengan membuat `decisions/
+  ADR-123-wiring-import-posts-fetchimportjobstatus-outstandaccountid-partial-status-ki112.md`
+  (sesi dokumentasi ini).
+- 2 temuan ringan (sudah diperbaiki sebelum review ditutup): sitasi OpenAPI
+  untuk `GET /v1/posts` diperjelas (dicek langsung endpoint LIST, bukan
+  diekstrapolasi dari endpoint singular); `console.warn` ditambahkan untuk
+  kasus `imported > 0` tapi 0 post berhasil dipetakan (kemungkinan drift
+  shape API Outstand — diperlakukan sebagai 0 post, bukan error, tapi
+  perlu visibility).
+
+**QA (Najwa QA Engineer):** tidak ada regresi — `git diff --stat` tidak
+menyentuh file UI apa pun, `typecheck`/`lint` PASS, `bun run test` 645
+passed/6 skipped/0 failed. **T-112.5 (verifikasi end-to-end browser+DB
+real) belum tuntas** — dua blocker: (1) guard cooldown manual 24 jam
+(`MANUAL_COOLDOWN_MS`, ADR-093 poin 9) sudah terpakai oleh percobaan sync
+sebelumnya pada akun test "Cook It Real Good", cooldown sampai
+`2026-10-09T08:42:24Z`; (2) sandbox Najwa tidak bisa akses `.env.local`/MCP
+Supabase untuk verifikasi DB langsung — gap verifikasi ini sudah terjadi
+3x berturut-turut di sesi berbeda (T-090 sebelumnya + 2 percobaan T-112
+ini). Tidak ada bukti bug.
+
+**Status:** T-112 `🟡 In Progress (4/5 subtask)`. Saran untuk King Rezi:
+coba "Sync Now" lagi setelah `2026-10-09T08:42:24Z` untuk menuntaskan
+T-112.5 dan menutup task ini penuh.
+
+Dokumen diupdate: `project-manager/decisions/ADR-123-...md` (baru),
+`DECISIONS.md`, `tasks/v02-publishing-mvp.md` § T-112, `TASKS.md` (hitungan
+v0.2: 24 ✅ · 3 🟡 · 1 ⏳), `PROJECT_STATE.md` (Snapshot Top Next Tasks,
+Recent Decisions Ringkasan).
+
+---
+
 ## 2026-10-08 — T-090 TUNTAS 5/5 subtask (T-090.5 UI selesai) — Import Posts dari Social Account, ADR-093
 
 Penutup rangkaian T-090 (lanjutan langsung dari dua entri di bawah:

@@ -538,6 +538,16 @@ export interface ImportedPostData {
  * webhook `import.completed`/`import.failed` di real adapter T-025 nanti)
  * untuk SATU `importJobId` dari `importPosts`. `posts` hanya terisi
  * (non-empty) kalau `status: "completed"`.
+ *
+ * **Pemetaan status enum real API → kontrak (ADR-123, T-112):** real
+ * Outstand API punya 5 status (`queued|running|completed|failed|partial`),
+ * kontrak ini tetap 3 (`pending|completed|failed`) — `queued`/`running` →
+ * `"pending"`, `failed` → `"failed"`, dan **`partial` DIPETAKAN KE
+ * `"completed"`** (keputusan eksplisit King Rezi, bukan tebakan adapter):
+ * post yang berhasil diimport tetap diambil (tidak di-drop), `error` diisi
+ * ringkasan kegagalan sebagian (mis. "`{failed}` dari `{imported+skipped+
+ * failed}` post gagal diimport") supaya caller tahu ini bukan sukses penuh
+ * walau `status: "completed"`.
  */
 export interface ImportJobOutcome {
   status: ImportJobStatus;
@@ -825,10 +835,23 @@ export interface IOutstandAdapter {
   ): Promise<ImportJobHandle>;
 
   /**
-   * Import Posts dari Social Account (T-090, ADR-093 poin 5) — resolve
-   * status job import BELAKANGAN (polling SEKARANG; webhook
-   * `import.completed`/`import.failed` di real adapter T-025 nanti,
-   * pasangan `fetchPostOutcome` tapi untuk import, bukan publish).
+   * Import Posts dari Social Account (T-090, ADR-093 poin 5; signature
+   * diamandemen T-112/ADR-123) — resolve status job import BELAKANGAN
+   * (polling SEKARANG; webhook `import.completed`/`import.failed` di real
+   * adapter T-025 nanti, pasangan `fetchPostOutcome` tapi untuk import,
+   * bukan publish).
+   *
+   * **`outstandAccountId` ditambahkan (ADR-123)** — endpoint sungguhan
+   * `GET /v1/social-accounts/{id}/imports/{importId}` (diverifikasi
+   * terhadap OpenAPI spec resmi Outstand, T-112) mensyaratkan account id
+   * DI PATH, bukan hanya `importJobId` — signature awal (T-090, sebelum
+   * endpoint ini pernah diverifikasi) salah tebak bahwa `importJobId` saja
+   * cukup untuk mengidentifikasi job secara global. Semua caller
+   * (`ImportPostsTriggerUseCase`) WAJIB menyuplai `outstandAccountId` yang
+   * sama dengan yang dipakai di `importPosts` untuk job ini.
    */
-  fetchImportJobStatus(importJobId: string): Promise<ImportJobOutcome>;
+  fetchImportJobStatus(
+    outstandAccountId: string,
+    importJobId: string,
+  ): Promise<ImportJobOutcome>;
 }
