@@ -1,6 +1,6 @@
 # Deployment & Infrastructure
 
-Dokumen ini mendefinisikan **platform deployment, region, topologi environment, dan strategi infrastruktur** untuk produk Social Media Management.
+Dokumen ini mendefinisikan **platform deployment, region, topologi environment, dan strategi infrastruktur** untuk produk Postific.
 
 Dokumen ini adalah implementasi konkret dari keputusan pra-architecture (Railway sebagai deployment platform, Supabase sebagai database/storage/realtime) dan menetapkan detail operasional yang belum diputuskan: region hosting, jumlah tier environment, dan strategi Supabase project per environment.
 
